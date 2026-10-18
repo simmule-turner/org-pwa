@@ -1,0 +1,34 @@
+Table of Contents
+_________________
+
+1. Section
+
+
+First[1] second[2] inline[3] again[1] named inline[4].
+
+
+1 Section
+=========
+
+  Third[5] with a [link].
+
+
+[link] <https://example.com>
+
+
+
+Footnotes
+_________
+
+[1] Footnote A text, long enough that it will wrap across more than
+one line of the output at width seventy two.
+
+[2] Footnote two.
+
+Second paragraph of footnote two.
+
+[3] inline def here
+
+[4] named inline text
+
+[5] Footnote three has [a link] (<https://example.com>).

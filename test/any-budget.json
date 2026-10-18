@@ -32,7 +32,6 @@
   "src/document-store.js": 1,
   "src/effort-values.js": 2,
   "src/emacs-regex.js": 3,
-  "src/export-ascii.js": 11,
   "src/export-html.js": 42,
   "src/export-icalendar.js": 18,
   "src/export-include.js": 11,

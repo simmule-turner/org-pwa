@@ -1,0 +1,20 @@
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            A RATHER LONG TITLE THAT WILL BE WRAPPED BECAUSE
+                IT IS WIDER THAN TWO THIRDS OF THE WIDTH
+                            With a subtitle
+
+                                Jane Doe
+                            jane@example.com
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+                               2026-10-18
+
+
+Table of Contents
+─────────────────
+
+
+
+
+Text.

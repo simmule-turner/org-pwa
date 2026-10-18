@@ -1,0 +1,20 @@
+#+TITLE: Links
+First [[https://example.com][with description]] and [[https://example.org]] bare and [[https://example.com][with description]] again, plus [[mailto:a@b.c][mail]].
+
+See [[*Target heading][the heading]], [[*Target heading]], [[#cid][custom]] and [[#cid]], also [[file:other.org][other file]] and [[file:img.png]].
+
+<<mytarget>> A target para. Jump [[mytarget][to target]] and [[mytarget]].
+
+#+NAME: tab1
+#+CAPTION: Named table
+| x | y |
+
+Refer to [[tab1][the table]] and [[tab1]].
+
+* Target heading
+:PROPERTIES:
+:CUSTOM_ID: cid
+:END:
+Body with [[https://one.example][one]] and [[https://two.example][two]].
+** Sub with link [[https://three.example][three]]
+Text.

@@ -1,0 +1,39 @@
+                                ________
+
+                                 CHOSEN
+
+                                 Nobody
+                                ________
+
+
+Table of Contents
+_________________
+
+1. Child one
+.. 1. Grandchild
+2. Child two
+
+
+Body of the chosen heading, long enough that it has to wrap around the
+right edge of the page for sure.
+
+
+1 Child one
+===========
+
+  Child text with a [link].
+
+
+[link] <https://example.com>
+
+1.1 Grandchild
+~~~~~~~~~~~~~~
+
+  Deep.
+
+
+2 Child two
+===========
+
+  - a list
+  - of items

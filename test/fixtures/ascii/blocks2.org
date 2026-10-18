@@ -1,0 +1,64 @@
+* Blocks
+#+begin_quote
+A quoted paragraph that is long enough to need wrapping because quote margins narrow the text width considerably.
+
+Second paragraph.
+#+end_quote
+
+#+begin_verse
+Roses are red
+  Violets are blue
+Sugar is sweet
+#+end_verse
+
+#+begin_center
+Centered text
+#+end_center
+
+#+begin_export ascii
+Raw ascii here
+#+end_export
+
+#+begin_export html
+<b>no</b>
+#+end_export
+
+#+begin_comment
+nothing
+#+end_comment
+
+#+begin_example
+  indented example
+    more
+#+end_example
+
+#+CAPTION: A listing caption
+#+begin_src python
+def f():
+    return 1
+#+end_src
+
+#+begin_src emacs-lisp
+(+ 1 2)
+#+end_src
+
+: fixed one
+: fixed two
+
+# a comment line
+
+#+begin_special
+inside special
+#+end_special
+
+#+begin_JUSTIFYRIGHT
+right aligned
+#+end_JUSTIFYRIGHT
+
+:LOGBOOK:
+- State "DONE" from "TODO" [2026-10-18 Sun 10:00]
+:END:
+
+#+ASCII: ascii keyword line
+
+-----

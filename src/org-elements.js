@@ -17,6 +17,7 @@
  *   footnote-def     { label, children }
  *   html-line        { value }     (`#+HTML:`)
  *   latex-line       { value }     (`#+LATEX:`)
+ *   ascii-line       { value }     (`#+ASCII:`)
  *   toc              { value }     (`#+TOC:`)
  *   include          { value }     (`#+INCLUDE:`)
  *   print-bibliography { value }   (`#+PRINT_BIBLIOGRAPHY:`)
@@ -31,13 +32,14 @@
  *   { type: 'paragraph', lines: string[] } |
  *   { type: 'list', listType: 'unordered' | 'ordered' | 'descriptive', items: ElementListItem[] } |
  *   { type: 'table', rows: ElementTableRow[] } |
- *   { type: 'block', name: string, params: string, lines: string[], indent: number } |
+ *   { type: 'block', name: string, rawName?: string, params: string, lines: string[], indent: number } |
  *   { type: 'drawer', name: string, lines: string[] } |
  *   { type: 'fixed', lines: string[] } |
  *   { type: 'hr' } |
  *   { type: 'latex-env', lines: string[] } |
  *   { type: 'footnote-def', label: string, children: OrgElement[] } |
  *   { type: 'html-line', value: string } |
+ *   { type: 'ascii-line', value: string } |
  *   { type: 'latex-line', value: string } |
  *   { type: 'toc', value: string } |
  *   { type: 'include', value: string } |
@@ -306,7 +308,7 @@ export function parseElements(lines) {
       const name = b[1];
       const end = findBlockEnd(lines, i, name);
       if (end > 0) {
-        push({ type: 'block', name: name.toLowerCase(), params: b[2] || '', lines: lines.slice(i + 1, end), indent: indentOf(line) });
+        push({ type: 'block', name: name.toLowerCase(), rawName: name, params: b[2] || '', lines: lines.slice(i + 1, end), indent: indentOf(line) });
         i = end + 1;
         continue;
       }
@@ -316,6 +318,7 @@ export function parseElements(lines) {
       const key = kw[1].toUpperCase();
       if (key === 'HTML') push({ type: 'html-line', value: kw[2] });
       else if (key === 'LATEX') push({ type: 'latex-line', value: kw[2] });
+      else if (key === 'ASCII') push({ type: 'ascii-line', value: kw[2] });
       else if (key === 'TOC') push({ type: 'toc', value: kw[2] });
       else if (key === 'INCLUDE') push({ type: 'include', value: kw[2] });
       else if (key === 'PRINT_BIBLIOGRAPHY') push({ type: 'print-bibliography', value: kw[2] });

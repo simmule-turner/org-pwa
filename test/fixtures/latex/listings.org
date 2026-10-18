@@ -1,0 +1,32 @@
+#+TITLE: Listings
+#+TOC: listings
+
+* Code
+#+begin_src python
+def f(x):
+    return x + 1
+#+end_src
+
+#+CAPTION: A captioned listing
+#+NAME: lst-one
+#+begin_src emacs-lisp
+(message "hello")
+#+end_src
+
+#+CAPTION[Short]: Long caption here
+#+ATTR_LATEX: :options numbers=left :float t
+#+begin_src latex
+\textbf{x}
+#+end_src
+
+#+begin_src
+no language
+#+end_src
+
+#+begin_src sh :results output
+echo hi
+#+end_src
+
+#+begin_example
+an example stays verbatim
+#+end_example

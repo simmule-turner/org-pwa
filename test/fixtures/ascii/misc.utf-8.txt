@@ -1,0 +1,21 @@
+Table of Contents
+─────────────────
+
+1. Misc
+
+
+1 Misc
+══════
+
+  Timestamps <2026-10-18 Sun>, [2026-10-18 Sun 10:00], <2026-10-18
+  Sun>–<2026-10-20 Tue> and <2026-10-18 Sun +1w>.  Entities α β →   x_1
+  y^2 a_{bc} \(x^2\) $y$ \[z\] and — dashes – and … dots, soft.
+
+  \begin{equation}
+  a = b
+  \end{equation}
+
+  Line one
+  line two after break. [1/2] [50%] RAW call.
+
+  • *bold*, /it/, _un_, +st+, `co', `ve'

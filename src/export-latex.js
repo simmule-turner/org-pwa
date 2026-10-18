@@ -14,7 +14,11 @@
  * citations for the natbib and biblatex processors (any other processor prints text, as in the other exporters).
  * `#+INCLUDE` and babel `:exports` are settled before the document gets here (expandIncludes, prepareBabelExport).
  *
- * Not yet: the `listings` backend, `#+LATEX_CLASS` beyond article/report/book.
+ * Classes, packages and source blocks follow the ox-latex variables an init text sets (latex-config.js): `org-latex-classes` (any
+ * `#+LATEX_CLASS:`, with its header placeholders and sectioning), `org-latex-packages-alist`, and `org-latex-src-block-backend`
+ * (`verbatim`, `listings` or `minted`, with their options and language tables).
+ *
+ * Not yet: Beamer, line numbers and references in source blocks, custom language environments, `engraved`.
  */
 
 import { parseElements, parseAttributes } from './org-elements.js';
@@ -27,6 +31,7 @@ import { latexTable } from './latex-table.js';
 import { natbibCitation, biblatexCitation } from './latex-cite.js';
 import { bibliographyFiles, citeDefaults, citeExportFor, citeExportSetting } from './cite.js';
 import { radioTargetRegExp } from './targets.js';
+import { latexConfig } from './latex-config.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -53,6 +58,7 @@ import { radioTargetRegExp } from './targets.js';
  *   anon: number,
  *   inLink: boolean,
  *   parsed: Map<string[], OrgElement[]>,
+ *   cfg: import('./latex-config.js').LatexConfig,
  * }} LatexState
  */
 
@@ -70,7 +76,7 @@ let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map() };
+  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), cfg: latexConfig(undefined) };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -449,6 +455,8 @@ function block(el) {
     case 'example': {
       const raw = lines.map((l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2'));
       if (attrs.environment) return namedLabel(el) + '\\begin{' + attrs.environment + '}\n' + raw.join('\n') + '\n\\end{' + attrs.environment + '}\n';
+      const coded = el.name === 'src' ? codeBlock(el, raw, attrs) : null;
+      if (coded !== null) return coded;
       const caption = el.name === 'src' && el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
       return (el.name === 'example' ? namedLabel(el) : '') + verbatim(raw) + (caption ? '\\captionof{figure}{' + inline(caption.text) + '}\n' : '');
     }
@@ -461,6 +469,48 @@ function block(el) {
     default:
       return wrapIn(el.name, attrs.options || '');
   }
+}
+
+/** `key=value,...` as `org-latex--make-option-string` writes it; a value with square brackets goes in braces. @param {[string, string | null][]} options */
+function optionString(options) {
+  return options.map(([key, value]) => key + (value === null ? '' : '=' + (/[[\]]/.test(value) ? '{' + value + '}' : value))).join(',');
+}
+
+/**
+ * A source block through the listings or minted package, as `org-latex-src-block--listings` and `--minted` write it; null when the
+ * block is written as verbatim text (the backend says so, the block has no language, or it is empty).
+ * @param {Extract<OrgElement, { type: 'block' }>} el @param {string[]} raw @param {Record<string, string>} attrs
+ */
+function codeBlock(el, raw, attrs) {
+  const backend = S.cfg.backend;
+  const lang = el.params.trim().split(/\s+/)[0];
+  if ((backend !== 'listings' && backend !== 'minted') || !lang || !raw.some((l) => l.trim())) return null;
+  const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
+  const name = el.aff && el.aff.name;
+  const label = name ? 'lst:org' + hash7('name:' + name) : '';
+  const code = raw.join('\n') + '\n';
+  const local = attrs.options ? ',' + attrs.options : '';
+  const position = (attrs.placement || '').replace(/^\[(.*)\]$/, '$1') || 'htbp';
+  if (backend === 'listings') {
+    const options = S.cfg.listingsOptions;
+    const has = (/** @type {string} */ key) => options.some(([k]) => k === key);
+    /** @type {[string, string | null][]} */
+    const all = [...options];
+    if (attrs.float === 'multicolumn') all.push(['float', '*']);
+    else if (attrs.float !== undefined && attrs.float !== '' && !has('float')) all.push(['float', 'htbp']);
+    all.push(['language', S.cfg.listingsLangs.get(lang) || lang]);
+    all.push(['label', label || ' ']);
+    all.push(['caption', cap ? (cap.short ? '{[' + inline(cap.short) + ']' + inline(cap.text) + '}' : '{' + inline(cap.text) + '}') : ' ']);
+    all.push(['captionpos', 'b']);
+    if (!has('numbers')) all.push(['numbers', 'none']);
+    return '\\begin{lstlisting}[' + optionString(all) + local + ']\n' + code + '\\end{lstlisting}\n';
+  }
+  const multicolumn = attrs.float === 'multicolumn';
+  const captionText = cap ? '\\caption' + (cap.short ? '[' + inline(cap.short) + ']' : '') + '{' + (label ? '\\label{' + label + '}' : '') + inline(cap.text) + '}\n' : label ? '\\label{' + label + '}\n' : '';
+  const body = '\\begin{minted}[' + optionString(S.cfg.mintedOptions) + local + ']{' + (S.cfg.mintedLangs.get(lang) || lang.toLowerCase()) + '}\n' + code + '\\end{minted}';
+  if (cap || multicolumn) return '\\begin{listing' + (multicolumn ? '*' : '') + '}[' + position + ']\n' + body + '\n' + captionText + '\\end{listing' + (multicolumn ? '*' : '') + '}\n';
+  if (attrs.float === 't') return '\\begin{listing}[' + position + ']\n' + body + '\n\\end{listing}\n';
+  return body + '\n';
 }
 
 /** @param {string} line */
@@ -514,7 +564,7 @@ function table(el) {
 /** `#+TOC: headlines N [local]`, `tables` or `listings`. @param {string} value */
 function tocKeyword(value) {
   if (/\btables\b/.test(value)) return '\\listoftables\n';
-  if (/\blistings\b/.test(value)) return '\\lstlistoflistings\n';
+  if (/\blistings\b/.test(value)) return S.cfg.backend === 'minted' || S.cfg.backend === 'engraved' ? '\\listoflistings\n' : '\\lstlistoflistings\n';
   if (!/\bheadlines\b/.test(value)) return '';
   const local = /\blocal\b/.test(value) && S.current !== null;
   const level = local && S.current ? S.current.level - S.base : 0;
@@ -542,12 +592,6 @@ function bibliography() {
 
 // ---- headings -------------------------------------------------------------
 
-const SECTIONS = {
-  article: ['section', 'subsection', 'subsubsection', 'paragraph', 'subparagraph'],
-  report: ['part', 'chapter', 'section', 'subsection', 'subsubsection'],
-  book: ['part', 'chapter', 'section', 'subsection', 'subsubsection'],
-};
-
 const keywordList = (/** @type {Doc} */ doc, /** @type {string} */ key) => (doc.keywords || []).filter((k) => k.key.toUpperCase() === key).map((k) => k.value.trim());
 
 /** Which headings are exported: not COMMENT, not tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), not the Footnotes section. @param {Doc} doc @param {boolean} [footnoteSection] */
@@ -565,7 +609,7 @@ function headingTitle(h) {
 }
 
 /**
- * @typedef {{ doc: Doc, kind: 'article' | 'report' | 'book', depth: number, numbered: boolean, skip: (h: Heading) => boolean, path: number[] }} HeadingCtx
+ * @typedef {{ doc: Doc, cls: import('./latex-config.js').LatexClass, depth: number, numbered: boolean, skip: (h: Heading) => boolean, path: number[] }} HeadingCtx
  */
 
 /** @param {Heading[]} children @param {HeadingCtx} ctx @param {number} base */
@@ -579,7 +623,7 @@ function headings(children, ctx, base) {
     run = [];
   };
   shown.forEach((h) => {
-    if (h.level - base > ctx.depth) {
+    if (h.level - base > ctx.depth || !sectionFormat(ctx, h.level - base)) {
       run.push(h);
       return;
     }
@@ -597,9 +641,22 @@ function labelFor(h, ctx) {
 
 /** @param {Heading} h @param {HeadingCtx} ctx @param {number} base */
 function section(h, ctx, base) {
-  const name = SECTIONS[ctx.kind][Math.min(h.level - base, 5) - 1];
-  const out = '\\' + name + (ctx.numbered ? '' : '*') + '{' + headingTitle(h) + '}\n\\label{' + labelFor(h, ctx) + '}\n';
-  return out + headingBody(h, ctx, base);
+  const fmt = /** @type {string} */ (sectionFormat(ctx, h.level - base));
+  const label = '\\label{' + labelFor(h, ctx) + '}\n';
+  return formatSection(fmt, headingTitle(h), label + headingBody(h, ctx, base));
+}
+
+/** The class's way to write a heading of this relative level: a format with two `%s`, or null when the class has none (the heading becomes a list item). @param {HeadingCtx} ctx @param {number} level */
+function sectionFormat(ctx, level) {
+  const sec = ctx.cls.sections[level - 1];
+  return sec ? (ctx.numbered ? sec.numbered : sec.unnumbered) : null;
+}
+
+/** Lisp's `format` with a format that has two `%s` (and `%%`), given the title and what follows it. @param {string} fmt @param {string} title @param {string} rest */
+function formatSection(fmt, title, rest) {
+  let n = 0;
+  const out = fmt.replace(/%([s%])/g, (_m, c) => (c === '%' ? '%' : n++ === 0 ? title : rest));
+  return out.endsWith('\n') ? out : out + '\n'; // an element always ends with a line break
 }
 
 /** @param {Heading} h @param {HeadingCtx} ctx @param {number} base */
@@ -689,6 +746,56 @@ function headlineLevels(doc) {
   return depth;
 }
 
+/** `org-latex-default-packages-alist`: [options, package, only for these compilers]. */
+const DEFAULT_PACKAGES = /** @type {[string, string, string[] | null][]} */ ([
+  ['utf8', 'inputenc', ['pdflatex']],
+  ['T1', 'fontenc', ['pdflatex']],
+  ['', 'graphicx', null],
+  ['', 'longtable', null],
+  ['', 'wrapfig', null],
+  ['', 'rotating', null],
+  ['normalem', 'ulem', null],
+  ['', 'amsmath', null],
+  ['', 'amssymb', null],
+  ['', 'capt-of', null],
+  ['', 'hyperref', null],
+]);
+const COMPILERS = ['pdflatex', 'xelatex', 'lualatex'];
+
+/** The packages as `\usepackage` lines, leaving out those meant for other compilers (`org-latex--remove-packages`). @param {(string | import('./latex-config.js').LatexPackage)[]} list @param {string} compiler @returns {string} */
+function packageLines(list, compiler) {
+  const known = COMPILERS.includes(compiler.toLowerCase());
+  return list
+    .filter((p) => typeof p === 'string' || !known || !p.compilers || p.compilers.some((c) => c.toLowerCase() === compiler.toLowerCase()))
+    .map((p) => (typeof p === 'string' ? p : p.options === '' ? '\\usepackage{' + p.name + '}' : '\\usepackage[' + p.options + ']{' + p.name + '}'))
+    .join('\n');
+}
+
+/**
+ * The class header with the packages and the extra lines put in (`org-latex-make-preamble` and `org-splice-latex-header`): the places
+ * `[DEFAULT-PACKAGES]`, `[PACKAGES]` and `[EXTRA]` mark in the header, or after it when it has none; `[NO-...]` leaves the part out.
+ * @param {string} header @param {string | undefined} classOptions @param {string} compiler @param {string[]} extraLines
+ * @returns {string[]}
+ */
+function spliceHeader(header, classOptions, compiler, extraLines) {
+  let tpl = classOptions === undefined ? header : header.replace(/^([ \t]*\\documentclass)(\[[^\]]*\])?/gm, (_m, lead) => lead + classOptions);
+  const defaults = packageLines(DEFAULT_PACKAGES.map(([options, name, compilers]) => ({ options, name, compilers })), compiler);
+  const packages = packageLines(S.cfg.packages, compiler);
+  const extra = extraLines.length ? extraLines.join('\n') + '\n' : '';
+  let end = '';
+  let m = /^[ \t]*\[(NO-)?DEFAULT-PACKAGES\][ \t]*\n?/m.exec(tpl);
+  if (m) tpl = tpl.slice(0, m.index) + (m[1] || !defaults ? '' : defaults + '\n') + tpl.slice(m.index + m[0].length);
+  else if (defaults) end = defaults;
+  m = /\[(NO-)?PACKAGES\][ \t]*\n?/.exec(tpl);
+  if (m) tpl = tpl.slice(0, m.index) + (m[1] || !packages ? '' : packages + '\n') + tpl.slice(m.index + m[0].length);
+  else if (packages) end += '\n' + packages;
+  m = /\[(NO-)?EXTRA\][ \t]*\n?/.exec(tpl);
+  if (m) tpl = tpl.slice(0, m.index) + (m[1] || !extra ? '' : extra + '\n') + tpl.slice(m.index + m[0].length);
+  else if (/\S/.test(extra)) end += '\n' + extra;
+  const text = /\S/.test(end) ? tpl + '\n' + end : tpl;
+  return text.replace(/(?:\n[ \t]*)*$/, '').split('\n');
+}
+
 /** @param {string} s */
 const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
 
@@ -697,7 +804,7 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, header?: string }} */ ({}) } = {}) {
+export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, header?: string, init?: string }} */ ({}) } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   S = newState();
   activeDoc = doc;
@@ -709,14 +816,17 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
   S.base = scope ? scope.level : 0;
   const first = (/** @type {string} */ key) => keywordList(doc, key)[0];
 
+  S.cfg = latexConfig(defaults.init);
   const declared = (first('LATEX_CLASS') || defaults.cls || 'article').trim();
-  const kind = /** @type {'article' | 'report' | 'book'} */ (declared in SECTIONS ? declared : 'article');
+  const article = /** @type {import('./latex-config.js').LatexClass} */ (S.cfg.classes.find((c) => c.name === 'article'));
+  // a class that is not defined is written as the document class of that name, with the article's sections
+  const cls = S.cfg.classes.find((c) => c.name === declared) || { ...article, header: article.header.replace(/\{article\}/, '{' + declared + '}') };
   const compiler = (first('LATEX_COMPILER') || defaults.compiler || 'pdflatex').trim();
-  const classOptions = (first('LATEX_CLASS_OPTIONS') || '[11pt]').replace(/^\s*\[?/, '[').replace(/\]?\s*$/, ']');
-  const unicodeCompiler = compiler !== 'pdflatex';
+  const givenOptions = first('LATEX_CLASS_OPTIONS');
+  const classOptions = givenOptions === undefined ? undefined : givenOptions.replace(/^\s*\[?/, '[').replace(/\]?\s*$/, ']');
 
   const skip = exclusion(doc);
-  const ctx = { doc, kind, depth: headlineLevels(doc), numbered: options.num !== false, skip, path: /** @type {number[]} */ ([]) };
+  const ctx = { doc, cls, depth: headlineLevels(doc), numbered: options.num !== false, skip, path: /** @type {number[]} */ ([]) };
   const roots = scope ? scope.children || [] : doc.children || [];
   const base = scope ? scope.level : 0;
   indexHeadings(roots, ctx);
@@ -745,20 +855,7 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
 
   const head = [
     '% Intended LaTeX compiler: ' + compiler,
-    '\\documentclass' + classOptions + '{' + declared + '}',
-    ...(unicodeCompiler ? [] : ['\\usepackage[utf8]{inputenc}', '\\usepackage[T1]{fontenc}']),
-    '\\usepackage{graphicx}',
-    '\\usepackage{longtable}',
-    '\\usepackage{wrapfig}',
-    '\\usepackage{rotating}',
-    '\\usepackage[normalem]{ulem}',
-    '\\usepackage{amsmath}',
-    '\\usepackage{amssymb}',
-    '\\usepackage{capt-of}',
-    '\\usepackage{hyperref}',
-    ...(defaults.header ? defaults.header.split('\n').filter((l) => l.trim() !== '') : []), // the Settings header, before the file's own lines
-    ...keywordList(doc, 'LATEX_HEADER'),
-    ...keywordList(doc, 'LATEX_HEADER_EXTRA'),
+    ...spliceHeader(cls.header, classOptions, compiler, [...(defaults.header ? defaults.header.split('\n').filter((l) => l.trim() !== '') : []), ...keywordList(doc, 'LATEX_HEADER'), ...keywordList(doc, 'LATEX_HEADER_EXTRA')]),
     '\\author{' + (options.author && author ? plain(author) : '') + '}',
     '\\date{' + (options.date === false ? '' : date ? plain(date) : '\\today') + '}',
     '\\title{' + (title ? inline(title) : '') + '}',
@@ -780,7 +877,9 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
     head.push('\\tableofcontents', '');
   }
 
-  const body = elements(parsedLines(preamble)) + headings(roots, ctx, base);
+  // a section with nothing to write still keeps the blank lines that followed its keywords (Org counts them as the elements' post-blank)
+  const zeroth = elements(parsedLines(preamble));
+  const body = (zeroth === '' ? '\n'.repeat(preamble.filter((l) => !l.trim()).length) : zeroth) + headings(roots, ctx, base);
   return head.join('\n') + '\n' + (body ? trimEnd(body) : '') + '\\end{document}\n';
 }
 

@@ -1,0 +1,23 @@
+#+TITLE: Minted
+#+TOC: listings
+
+* Code
+#+begin_src python
+print("hi")
+#+end_src
+
+#+CAPTION: A captioned listing
+#+NAME: lst-two
+#+begin_src emacs-lisp
+(message "hello")
+#+end_src
+
+#+ATTR_LATEX: :float t :placement [t]
+#+begin_src shell-script
+echo hi
+#+end_src
+
+#+ATTR_LATEX: :options linenos=false
+#+begin_src ocaml
+let x = 1
+#+end_src

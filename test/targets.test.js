@@ -58,9 +58,9 @@ test('targets: Markdown export anchors them, numbers description-less links as O
   assert.match(md, /See \[1\.1\]\(#sub\) and \[1\.1\]\(#org-target-spot\) and \[described\]\(#org-target-spot\), a <a href="#org-target-big-apple">Big Apple<\/a> and a pear\./);
 });
 
-test('targets: ASCII export reads those links as their section numbers or descriptions, with no link markup', () => {
+test('targets: ASCII export reads those links as Org does: section numbers, or [description] with a note, and no link markup', () => {
   const out = exportToAscii(parseOrg(linked));
-  assert.match(out, /See 1\.1 and 1\.1 and described, a Big Apple and a pear\./);
+  assert.match(out, /See 1\.1 and 1\.1 and \[described\], a Big Apple and a pear\./);
   assert.ok(!out.includes('<<spot>>') && !out.includes('<<<big'), out);
 });
 

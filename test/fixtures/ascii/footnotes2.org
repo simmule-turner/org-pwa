@@ -1,0 +1,11 @@
+First[fn:a] second[fn:2] inline[fn:: inline def here] again[fn:a] named inline[fn:nm: named inline text].
+
+* Section
+Third[fn:3] with a [[https://example.com][link]].
+
+[fn:a] Footnote A text, long enough that it will wrap across more than one line of the output at width seventy two.
+[fn:2] Footnote two.
+
+Second paragraph of footnote two.
+
+[fn:3] Footnote three has [[https://example.com][a link]].

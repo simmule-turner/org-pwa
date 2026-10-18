@@ -1,0 +1,117 @@
+#+TITLE: Hebrew, Islamic and Bahá'í calendars in org-pwa: scope and design
+#+STARTUP: overview
+
+* Summary
+Emacs ships three non-Gregorian calendars that touch Org through the diary and the holiday list: Hebrew, Islamic and Bahá'í. They give (1) date conversion, (2) holidays that appear in the agenda and in ~org-class~'s ~holidays~ skip list, (3) diary entries written in those dates (the ~H~, ~I~ and ~B~ prefixes), and (4) diary sexp functions such as ~diary-hebrew-yahrzeit~.
+
+The app has none of this today. ~src/holidays.js~ is the US and Christian list only (20 holidays), and the diary reader (v565, v566) skips ~H~, ~I~ and ~B~ lines.
+
+Recommendation: build three small, pure, lazily loaded built-in modules, checked against Emacs 29.3 by an oracle, in three phases. Phase 1 (dates, default holiday groups, ~H/I/B~ entries, date sexps) is a medium project. Phases 2 and 3 are small each. Not extensions: the extension sandbox has no hooks into the diary matcher or holidays, and each script needs approval.
+
+Nothing here is built. Decisions for you are at the end.
+
+* What Emacs does (checked on Emacs 29.3)
+All of the following was run in ~emacs --batch -Q~. Sources: ~cal-hebrew.el~ (1157 lines), ~cal-islam.el~ (327), ~cal-bahai.el~ (331), ~holidays.el~ (828).
+
+** Holidays
+- The default ~calendar-holidays~ has 40 rules in 7 groups: general (17, the US list), Christian (3), Hebrew (4), Islamic (3), Bahá'í (8), oriental (2) and solar (3). The app has the first two groups. This design covers the Hebrew, Islamic and Bahá'í groups. Oriental (Chinese) and solar (equinoxes, solstices, daylight saving) are out of scope.
+- *Main* rules always run. *Extra* rules run only when a flag is on: ~calendar-hebrew-all-holidays-flag~, ~calendar-islamic-all-holidays-flag~, ~calendar-bahai-all-holidays-flag~ (all default ~nil~).
+- Hebrew group: Passover, Rosh Hashanah and Hanukkah always (these expand to the day-by-day entries, for example "Hanukkah (first day)" to "(eighth day)", "Erev Passover", "Hol Hamoed Passover (first day)"). With the flag: Tisha B'Av and the miscellaneous set. Seen with the flag on: Tzom Teveth, Tu B'Shevat, Purim and Shushan Purim, Fast of Esther, and the special Sabbaths (Shabbat Shekalim, Zachor, Parah, HaHodesh, HaGadol, Shirah).
+- Islamic group: Islamic New Year (named with the year) and "Ramadan Begins" always. With the flag: Ashura, Mulad-al-Nabi, Shab-e-Mi'raj, Shab-e-Bara't, Shab-e Qadr, Id-al-Fitr, Id-al-Adha.
+- Bahá'í group: Naw-Ruz (named with the year), Ridvan (first, ninth and twelfth days), then fixed Gregorian dates: Declaration of the Báb (May 23), Ascension of Bahá'u'lláh (May 29), Martyrdom of the Báb (July 9), Birth of the Báb (Oct 20), Birth of Bahá'u'lláh (Nov 12). With the flag: all twelve Ridvan days, Day of the Covenant (Nov 26) and Ascension of 'Abdu'l-Bahá (Nov 28).
+- Samples for 2027, run in Emacs with the flags on: Ramadan begins Feb 8; Id-al-Fitr Mar 10; Naw-Ruz Mar 21 ("Bahá'í New Year (Naw-Ruz) 184"); Purim Mar 23; Passover begins Apr 22 (Erev Passover Apr 21); First Day of Ridvan Apr 21.
+
+** Dates (checked against Emacs)
+| Gregorian  | Hebrew            | Islamic            | Bahá'í          |
+|------------+-------------------+--------------------+-----------------|
+| 2026-09-12 | Tishri 1, 5787    | Rabi I 29, 1448    | 'Izzat 5, 183   |
+| 2026-10-18 | Heshvan 7, 5787   | Jumada I 6, 1448   | 'Ilm 3, 183     |
+| 2026-12-14 | Teveth 4, 5787    | Rajab 4, 1448      | Masá'il 3, 183  |
+| 2027-03-20 | Adar II 11, 5787  | Shawwal 11, 1448   | 'Alá' 19, 183   |
+| 2027-03-21 | Adar II 12, 5787  | Shawwal 12, 1448   | Bahá 1, 184     |
+
+- Hebrew: a true lunisolar calendar computed by arithmetic (molad, the four postponement rules, leap years in a 19-year cycle with Adar I and Adar II). The days run from sunset; Emacs reports the date that holds for the daytime, and says "(until sunset)" in the sexp output.
+- Islamic: Emacs uses the *tabular* (arithmetic) calendar, epoch July 16, 622 (Julian), 30-year cycle. It is *not* moon sighting, so real observance can differ from Emacs by a day or two. A design that follows Emacs inherits that. I recommend following Emacs exactly and saying so in the README.
+- Bahá'í: Emacs uses the fixed Gregorian rule: epoch March 21, 1844, Naw-Ruz always March 21, the four intercalary days (Ayyám-i-Há, five in a Gregorian leap year) before the last month. Since 2015 the Bahá'í community itself fixes Naw-Ruz by the equinox at Tehran and the Twin Holy Birthdays by the lunar calendar, so real dates differ from Emacs in some years (my understanding of the community's rule, not something I checked in Emacs). Again, follow Emacs and say so.
+
+** Diary
+- Entries: ~H~, ~I~, ~B~ then the date in the same ~diary-date-forms~ (month names are the calendar's own and cannot be abbreviated), for example ~H Tishri 1 Hebrew new year~. Hebrew months are numbered with Nisan as 1, up to 13 for Adar II in leap years (to be confirmed by the oracle), Islamic 1 to 12 (Muharram is 1), Bahá'í 1 to 19 (Bahá is 1). A leading ~&~ makes an entry nonmarking, as for the Gregorian entries. The prefixes are the variables ~diary-hebrew-entry-symbol~, ~diary-islamic-entry-symbol~, ~diary-bahai-entry-symbol~ (values H, I, B).
+- Emacs lists them only through the hook ~diary-nongregorian-listing-hook~ (functions ~diary-hebrew-list-entries~, ~diary-islamic-list-entries~, ~diary-bahai-list-entries~). Its default is ~nil~. People turn it on in their init file, or with the diary-fancy setup.
+- *Unverified:* my batch experiment with the hook set returned no ~H/I/B~ entries even on the matching day, while the sexp lines in the same file did show. This may be a batch-mode artifact (point, narrowing or a dynamic variable that ~diary-list-entries~ binds), or the entry regexp. Phase 0 below settles it before any code is written. I will not guess what the Org agenda shows for these entries.
+- Sexp functions in ~cal-hebrew.el~ and the other two (all run in Emacs 29.3 unless noted):
+  | Function | What it gives |
+  |----------+---------------|
+  | ~diary-hebrew-date~, ~diary-islamic-date~, ~diary-bahai-date~ | the day's date in that calendar. Ran: "Hebrew date (until sunset): Tishri 1, 5787", "Islamic date (until sunset): Rabi I 29, 1448", "Bahá'í date: 'Izzat 5, 183" |
+  | ~diary-hebrew-parasha~ | the weekly Torah portion on Saturdays. Ran: "Parashat Lech L'cha" on 2026-10-24. No location needed |
+  | ~diary-hebrew-yahrzeit M D Y~ | anniversary of a death by Hebrew rules |
+  | ~diary-hebrew-birthday M D Y~ | Hebrew-date birthday |
+  | ~diary-hebrew-omer~ | day of the Omer count |
+  | ~diary-hebrew-rosh-hodesh~ | the new-month days |
+  | ~diary-hebrew-sabbath-candles~ | candle-lighting time. Needs latitude, longitude and time zone (and ~diary-hebrew-sabbath-candles-minutes~, default 18) |
+  I only ran the first three and the parasha on matching days. Yahrzeit, birthday, Omer and Rosh Hodesh need a matching day in the oracle to be compared; that is part of Phase 1's test work, not something I can claim today.
+- Asked for a location, Emacs prompts in batch mode (it hung my first experiment). The app already has sunrise and sunset code in ~src/diary-sexp.js~ driven by ~calendar-latitude~ and ~calendar-longitude~, so candle lighting needs no new astronomy.
+
+* Scope
+** Goals
+- Convert any date among Gregorian, Hebrew, Islamic and Bahá'í, using Emacs's algorithms, so results equal Emacs's.
+- Holidays in the three groups, with Emacs's names, appearing in the agenda as the US and Christian ones do, and in ~org-class~'s ~holidays~ skip list when the group is on.
+- ~H~, ~I~, ~B~ diary entries, once Phase 0 shows how Emacs lists them.
+- The sexp functions in the table above.
+- Behavior proved against Emacs on year ranges, not argued.
+** Non-goals
+- Chinese, Julian, Coptic, Persian, French Revolutionary, Mayan and ISO calendar entries; the oriental and solar holiday groups.
+- The calendar window, marks and the date-conversion commands of Emacs (~calendar-goto-*~), except one small conversion view (see Phase 2).
+- Moon-sighting or Tehran-equinox corrections. The tabular and fixed rules are what Emacs does.
+
+* Design
+** Modules
+Pure, no DOM, in ~src/~, ported function by function from the Emacs sources and checked by the oracle:
+| File | Contents | Estimated size |
+|------+----------+----------------|
+| ~src/cal-hebrew.js~ | to and from absolute day, months and leap years, holiday rules, parasha, omer, yahrzeit, birthday, rosh hodesh | 350 lines |
+| ~src/cal-islam.js~ | to and from absolute day, month names, holiday rule | 80 lines |
+| ~src/cal-bahai.js~ | same, with the intercalary days | 100 lines |
+| ~src/calendars.js~ | registry and entry points: ~nonGregorianHolidays(date, groups, flags)~, ~nonGregorianDiaryRows(...)~, ~calendarSexp(...)~ | 150 lines |
+The existing code works with a JavaScript ~Date~ and Gregorian month/day/year. The modules take the same ~Date~, convert through the absolute day number (days from December 31, 1 BC, as Emacs does), and return plain values.
+
+** Lazy loading
+The agenda and diary code is synchronous (~holidaysOn(date)~ is called from ~sexp-eval.js~ and ~diary-file.js~). So the modules register themselves in ~src/calendars.js~, and a small loader in ~src-browser/~ does a dynamic ~import()~ before an agenda is built, when either:
+- the diary text has an ~H/I/B~ line or a ~diary-hebrew-*~, ~diary-islamic-*~ or ~diary-bahai-*~ sexp, or
+- a holiday group for these calendars is on.
+Otherwise nothing downloads. The ~sw.js~ precache lists the new files, so they work offline once cached. ~holidaysOn~ stays the one entry point; it asks the registry for the extra groups when loaded.
+
+** Settings
+Emacs variable names where Emacs has them:
+- The three ~calendar-*-all-holidays-flag~ variables (extra rules), in Settings under a new "Holidays" subsection.
+- A choice of holiday groups. Emacs has no such variable: it has the list ~calendar-holidays~ you edit in Lisp. The app proposes ~org-xx-holiday-groups~ (US, Christian, Hebrew, Islamic, Bahá'í). Default: US and Christian, which is today's behavior. Emacs's own default would turn all of them on, so this is a deliberate difference, for you to decide.
+- ~diary-hebrew-sabbath-candles-minutes~ (18). Location comes from ~calendar-latitude~, ~calendar-longitude~ and ~calendar-time-zone~, already read by the solar sexps.
+
+** Diary integration
+- The diary reader (~src/diary-file.js~) gets one more matcher beside the Gregorian date forms and the sexps: for ~H/I/B~ lines it parses with ~describeDateForm~, converts the day being asked about to the calendar, and matches month, day and optional year (including ~*~ for every month, as the Gregorian forms do).
+- The editor in Text view colors the prefix and the three function names (they are already sexps, so only the prefix is new). The Add entry sheet gains three kinds, "Hebrew date", "Islamic date", "Bahá'í date", matching Emacs's ~diary-hebrew-insert-entry~ family; Emacs also has the monthly and yearly variants. The Check line sheet would show the Hebrew, Islamic or Bahá'í date it understood.
+
+* Test plan
+- New oracle, ~tools/gen-calendars-oracle.mjs~: Emacs batch writes ~expected.json~ with (a) the three date conversions for every day from 1900 to 2100 (73,000 days), (b) ~calendar-holiday-list~ for each month in 1990 to 2060 with the flags off and on, (c) the sexp outputs for sample entries on every day of a few years, (d) sample diary files with ~H/I/B~ lines, once Phase 0 shows how they are listed.
+- ~test/calendars.test.js~ compares the app with the file. Generated files are committed like the other oracles.
+- Time zones: the new modules work on date fields, not instants, so the five-time-zone run should pass unchanged.
+- Limits: an end-to-end smoke check that turns a group on and sees a holiday in the agenda.
+
+* Phases
+0. *Settle the diary question.* Find out why the ~H/I/B~ lines were not listed in my experiment, and what Org's agenda does with them. One session, no app code.
+1. *Core.* Date algorithms for all three calendars, the oracle, the default holiday rules (main rules), the groups setting, ~H/I/B~ entries in the diary reader, ~diary-*-date~ and ~diary-hebrew-parasha~. Medium.
+2. *Rest of the holidays and the UI.* The three "all holidays" flags, the Add entry kinds, a conversion view. Small.
+3. *Sexps with arguments.* ~diary-hebrew-yahrzeit~, ~-birthday~, ~-omer~, ~-rosh-hodesh~, ~-sabbath-candles~. Small to medium; candle lighting reuses the existing sunrise and sunset code.
+
+* Risks
+- Real observance can differ from Emacs's rules (Islamic by a day or two; Bahá'í in some years). The README must say that the app follows Emacs, not the sighting.
+- The Hebrew algorithm is long and exact: one wrong postponement rule shifts a whole year. The 200-year oracle is how that is controlled.
+- The sync agenda code plus lazy loading needs a clean "not loaded yet" path so the first agenda after enabling a group does not show a hole. The loader must finish before the build.
+- Download size: about 600 lines of source, small beside the existing bundle.
+
+* Decisions for you
+1. *Scope.* Hebrew, Islamic and Bahá'í together, or Hebrew first (it is the largest and the one the diary functions are mostly about)?
+2. *Holiday groups default.* Keep US and Christian only (today's behavior), or follow Emacs and turn all groups on?
+3. *Islamic and Bahá'í accuracy.* Follow Emacs exactly (recommended, because the oracle can prove it), or allow a day offset for the Islamic calendar later?
+4. *Candle lighting.* Include it (needs a location the user already sets for the solar sexps), or leave Phase 3 sexps with sunset for later?
+5. *UI.* Add entry kinds and a conversion view in Phase 2, or diary text and holidays only?
+6. *Phase 0 first.* May I run the diary check before you commit to Phase 1, since the answer changes how ~H/I/B~ entries are specified?

@@ -1,0 +1,8 @@
+#+TITLE: A rather long title that will be wrapped because it is wider than two thirds of the width
+#+SUBTITLE: With a subtitle
+#+AUTHOR: Jane Doe
+#+EMAIL: jane@example.com
+#+DATE: 2026-10-18
+#+OPTIONS: email:t
+
+Text.

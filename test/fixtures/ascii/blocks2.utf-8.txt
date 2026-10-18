@@ -1,0 +1,50 @@
+Table of Contents
+─────────────────
+
+1. Blocks
+
+
+1 Blocks
+════════
+
+        A quoted paragraph that is long enough to need wrapping
+        because quote margins narrow the text width considerably.
+
+        Second paragraph.
+
+        Roses are red
+          Violets are blue
+        Sugar is sweet
+
+  			    Centered text
+
+  Raw ascii here
+
+  ┌────
+  │ indented example
+  │   more
+  └────
+
+  ┌────
+  │ def f():
+  │     return 1
+  └────
+  Listing 1: A listing caption
+
+  ┌────
+  │ (+ 1 2)
+  └────
+
+  ┌────
+  │ fixed one
+  │ fixed two
+  └────
+
+
+  inside special
+
+  							 right aligned
+
+  ascii keyword line
+
+  ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――

@@ -1,0 +1,59 @@
+                                _______
+
+                                 LINKS
+                                _______
+
+
+Table of Contents
+_________________
+
+1. Target heading
+.. 1. Sub with link [three]
+
+
+First [with description] and <https://example.org> bare and [with
+description] again, plus [mail].
+
+See [the heading], 1, [custom] and 1, also [other file] and
+<file:img.png>.
+
+A target para. Jump [to target] and ???.
+
+ x  y 
+Table 1: Named table
+
+Refer to [the table] and 1.
+
+
+[with description] <https://example.com>
+
+[mail] <mailto:a@b.c>
+
+[the heading] See section 1
+
+[custom] See section 1
+
+[other file] <file:other.org>
+
+[to target] Unknown reference
+
+[the table] See table 1
+
+
+1 Target heading
+================
+
+  Body with [one] and [two].
+
+
+[one] <https://one.example>
+
+[two] <https://two.example>
+
+1.1 Sub with link [three]
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Text.
+
+
+[three] <https://three.example>

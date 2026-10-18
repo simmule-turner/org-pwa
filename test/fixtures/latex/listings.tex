@@ -1,0 +1,58 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{listings}
+\author{root}
+\date{\today}
+\title{Listings}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Listings},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\lstlistoflistings
+
+\section{Code}
+\label{sec:org6ca1088}
+\begin{lstlisting}[frame=single,basicstyle=\small,language=Python,label= ,caption= ,captionpos=b,numbers=none]
+def f(x):
+    return x + 1
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,basicstyle=\small,language=Lisp,label=lst:org42e2159,caption={A captioned listing},captionpos=b,numbers=none]
+(message "hello")
+\end{lstlisting}
+
+\begin{lstlisting}[frame=single,basicstyle=\small,float=htbp,language={[LaTeX]TeX},label= ,caption={{[Short]Long caption here}},captionpos=b,numbers=none,numbers=left]
+\textbf{x}
+\end{lstlisting}
+
+\begin{verbatim}
+no language
+\end{verbatim}
+
+\begin{lstlisting}[frame=single,basicstyle=\small,language=sh,label= ,caption= ,captionpos=b,numbers=none]
+echo hi
+\end{lstlisting}
+
+\begin{verbatim}
+an example stays verbatim
+\end{verbatim}
+\end{document}

@@ -1,0 +1,24 @@
+* Tables
+| a | b | c |
+|---+---+---|
+| 1 | two | 3.5 |
+| 10 | x | -4 |
+
+#+CAPTION: A table caption
+| Name | Qty |
+|------+-----|
+| apple | 3 |
+| kiwi | 12 |
+
+| only | row |
+
+| <5> | <l> | <r> | <c> |
+| long text here | left | right | center |
+| a | b | c | d |
+
+| h1 | h2 |
+|----+----|
+| x  |    |
+|    | y  |
+|----+----|
+| t1 | t2 |

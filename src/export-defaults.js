@@ -8,6 +8,7 @@
 /** The items, with the text offered before the person has typed anything. `key` is the Global Variable that holds the text.
  *  `lisp` items are Org's own variables (org-html-preamble, -postamble, -head): the value is a quoted string and being set
  *  means being on. The page header and footer have no Org variable: they keep their own text and a `key + '-on'` switch. */
+import { latexClassNames } from './latex-config.js';
 export const EXPORT_DEFAULT_ITEMS = /** @type {const} */ ([
   { id: 'preamble', key: 'org-html-preamble', lisp: true, text: '%t : %s' },
   { id: 'postamble', key: 'org-html-postamble', lisp: true, text: 'Prepared by %a, %d' },
@@ -83,17 +84,19 @@ export function countExportItemsOn(vars, ids) {
 
 /** The LaTeX defaults from the Global Variables: `org-latex-default-class` and `org-latex-compiler`, each a quoted string; anything else is ignored.
  * @param {Record<string, string> | null | undefined} vars
- * @returns {{ cls?: string, compiler?: string, header?: string }} */
+ * @returns {{ cls?: string, compiler?: string, header?: string, init?: string }} */
 export function latexExportDefaults(vars) {
   const v = vars || {};
   const word = (/** @type {string} */ key, /** @type {string[]} */ allowed) => {
     const t = String(v[key] ?? '').trim().replace(/^"(.*)"$/s, '$1');
     return allowed.includes(t) ? t : undefined;
   };
-  /** @type {{ cls?: string, compiler?: string, header?: string }} */ const out = {};
+  /** @type {{ cls?: string, compiler?: string, header?: string, init?: string }} */ const out = {};
   const header = lispStringValue(v[LATEX_HEADER_KEY]);
   if (header !== null && header.trim() !== '') out.header = header;
-  const cls = word('org-latex-default-class', LATEX_CLASSES);
+  const init = lispStringValue(v[LATEX_INIT_KEY]);
+  if (init !== null && init.trim() !== '') out.init = init;
+  const cls = word('org-latex-default-class', [...LATEX_CLASSES, ...latexClassNames(out.init)]);
   const compiler = word('org-latex-compiler', LATEX_COMPILERS);
   if (cls) out.cls = cls;
   if (compiler) out.compiler = compiler;
@@ -129,6 +132,9 @@ export function withPagedToc(head, on) {
   const bare = head.split(PAGED_TOC_HEAD).join('').replace(/\n{3,}/g, '\n\n').trim();
   return on ? (bare ? bare + '\n' : '') + PAGED_TOC_HEAD : bare;
 }
+
+/** The Global Variable that holds the init text for the LaTeX export: `(add-to-list 'org-latex-classes ...)`, `(setq org-latex-src-block-backend 'listings)` and the like (own). */
+export const LATEX_INIT_KEY = 'org-xx-latex-init';
 
 /** The Global Variable that holds extra preamble lines for every LaTeX export (own; Org has no single variable for it). */
 export const LATEX_HEADER_KEY = 'org-xx-latex-header';

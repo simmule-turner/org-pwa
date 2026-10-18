@@ -1,0 +1,51 @@
+                               __________
+
+                                HEADINGS
+                               __________
+
+
+Table of Contents
+_________________
+
+1. One
+.. 1. Two
+..... 1. Three
+2. TODO Todo with priority and tags                          :work:home:
+3. DONE Finished                                                     :x:
+4. Last
+
+
+Preface paragraph before any heading.
+
+
+1 One
+=====
+
+1.1 Two
+~~~~~~~
+
+1.1.1 Three
+-----------
+
+§ 1.1.1.1 Four low-level
+
+  ¶ 1.1.1.1.1 Five low-level
+
+    Text in five.
+
+
+§ 1.1.1.2 Another four
+
+
+2 TODO Todo with priority and tags                           :work:home:
+==================================
+
+  Body line.
+
+
+3 DONE Finished                                                      :x:
+===============
+
+
+4 Last
+======

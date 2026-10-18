@@ -33,36 +33,6 @@ test('wrapText: multiple/irregular internal whitespace collapses to single space
 
 // ---- exportToAscii: headings -------------------------------------------------
 
-test('a level-1 heading is numbered and underlined with "=" matching its own line width', () => {
-  const doc = parseOrg('* Project Alpha\n');
-  const result = exportToAscii(doc);
-  const lines = result.split('\n');
-  assert.equal(lines[0], '1. Project Alpha');
-  assert.equal(lines[1], '='.repeat('1. Project Alpha'.length));
-});
-
-test('a deeper heading is numbered hierarchically (1.1) and indented but not underlined', () => {
-  const doc = parseOrg('* Top\n** Child\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.includes('  1.1. Child'));
-  assert.ok(!result.includes('Child\n=====')); // no underline for a non-level-1 heading
-});
-
-test('TODO keyword, priority, and tags are all included on the heading line, after the section number', () => {
-  const doc = parseOrg('* TODO [#A] Ship the release :work:urgent:\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.includes('1. TODO [#A] Ship the release :work:urgent:'));
-});
-
-test('a scoped export (a specific heading, not the whole doc) treats that heading as the new top level, matching Markdown/HTML export\u2019s own convention', () => {
-  const doc = parseOrg('* Root\n** Target\n*** Grandchild\n');
-  const target = doc.children[0].children[0];
-  const result = exportToAscii(doc, target);
-  assert.ok(result.includes('1. Target'));
-  assert.ok(!result.includes('Root'));
-  assert.ok(result.includes('Grandchild'));
-});
-
 test('THE FIX: #+OPTIONS: num:nil removes only the per-heading numbers -- the Table of Contents still generates, just without number prefixes, matching real Emacs org-mode\u2019s own confirmed, independent toc:/num: behavior', () => {
   const doc = parseOrg('#+OPTIONS: num:nil\n* First\n* Second\n');
   const result = exportToAscii(doc);
@@ -80,12 +50,6 @@ test('a document with more than one heading gets a generated Table of Contents a
   const tocSection = result.split('\n\n')[1]; // the TOC entries block, between the underlined title and the first real heading
   assert.match(tocSection, /1\. First/);
   assert.match(tocSection, /2\. Second/);
-});
-
-test('a document with only ONE heading gets no Table of Contents -- nothing worth listing', () => {
-  const doc = parseOrg('* Only Heading\nSome text.\n');
-  const result = exportToAscii(doc);
-  assert.ok(!result.includes('Table of Contents'));
 });
 
 test('the Table of Contents entries use deeper indentation for deeper headings', () => {
@@ -135,12 +99,6 @@ test('THE FIX: code/verbatim become real org\u2019s own backtick-quote format ("
   assert.ok(result.includes("Run `ls -la' or `cat file'."));
   assert.ok(!result.includes('~ls -la~'));
   assert.ok(!result.includes('=cat file='));
-});
-
-test('a link with a description renders as "description (target)"', () => {
-  const doc = parseOrg('* H\nSee [[https://example.com][the docs]] for more.\n');
-  const result = exportToAscii(doc, null, 200);
-  assert.ok(result.includes('the docs (https://example.com)'));
 });
 
 test('a link with no description renders as just the target', () => {
@@ -200,53 +158,6 @@ test('a nested sub-list is indented further than its parent', () => {
 
 // ---- exportToAscii: tables ------------------------------------------------
 
-test('a table renders as plain pipe-delimited text with a correctly-sized rule line', () => {
-  const doc = parseOrg('* H\n| a | b |\n|---+---|\n| c | d |\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.includes('| a | b |'));
-  assert.ok(result.includes('|---+---|'));
-  assert.ok(result.includes('| c | d |'));
-});
-
-test('a table rule line correctly matches a wider table\u2019s actual column count, not a hardcoded 2', () => {
-  const doc = parseOrg('* H\n| a | b | c |\n|---+---+---|\n| d | e | f |\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.includes('|---+---+---|'));
-});
-
-test('THE FIX: columns are padded to a fixed width (the longest cell in that column), not left ragged/jagged like raw pipe-table source', () => {
-  const doc = parseOrg('* H\n| Name | Phone |\n|---+---|\n| Peter | 1234 |\n| Anna | 4321567 |\n');
-  const result = exportToAscii(doc, null, 200);
-  const lines = result.split('\n').filter((l) => l.includes('|'));
-  // Every non-rule row should be the exact same total length -- the
-  // whole point of fixed-width columns.
-  const dataLines = lines.filter((l) => !l.includes('-'));
-  const lengths = new Set(dataLines.map((l) => l.length));
-  assert.equal(lengths.size, 1, `expected every row to be the same length, got: ${JSON.stringify(dataLines)}`);
-});
-
-test('THE FIX: the rule line\u2019s dashes match each column\u2019s ACTUAL computed width, not a fixed "---" regardless of content', () => {
-  const doc = parseOrg('* H\n| Name | Phone |\n|---+---|\n| Peter | 1234 |\n| Anna | 4321567 |\n');
-  const result = exportToAscii(doc, null, 200);
-  // "Phone" column's widest cell is "4321567" (7 chars) -- the rule
-  // segment for that column should be 7+2=9 dashes, not a generic 3.
-  assert.match(result, /\+-{9}\|/);
-});
-
-test('THE FIX: a numeric-majority column is right-aligned, matching real org\u2019s own auto-detected alignment', () => {
-  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Peter | 17 |\n| Anna | 125 |\n');
-  const result = exportToAscii(doc, null, 200);
-  // "17" (2 chars) in a 3-char-wide column (matching "125") should be
-  // right-padded with a leading space: " 17", not "17 ".
-  assert.match(result, /\|\s+17 \|/);
-});
-
-test('THE FIX: a text-majority column is left-aligned', () => {
-  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| A | 17 |\n| Longer | 5 |\n');
-  const result = exportToAscii(doc, null, 200);
-  assert.match(result, /\| A {6}\|/); // "A" padded with trailing spaces to match "Longer"'s width
-});
-
 test('THE FIX: cell content is parsed for inline markup, consistent with the rest of this exporter -- code/verbatim becomes the backtick-quote convention and bold keeps its markers', () => {
   const doc = parseOrg('* H\n| Item | Status |\n|---+---|\n| ~code~ | *done* |\n');
   const result = exportToAscii(doc, null, 200);
@@ -268,27 +179,6 @@ test('THE FEATURE: a "<N>" width-cookie row forces each column to that exact wid
   assert.ok(!result.includes('<5>'));
   const dataLines = result.split('\n').filter((l) => l.includes('|') && !l.includes('-'));
   for (const line of dataLines) assert.equal(line.length, dataLines[0].length, `expected every row the same length: ${JSON.stringify(line)}`);
-});
-
-test('THE FEATURE: content wider than its explicit column width word-wraps across multiple output lines within the same logical row', () => {
-  const doc = parseOrg('* H\n| <10> |\n| Header |\n|---|\n| This is a long sentence that needs wrapping |\n');
-  const result = exportToAscii(doc, null, 200);
-  const lines = result.split('\n').filter((l) => l.includes('This') || l.includes('long') || l.includes('sentence') || l.includes('needs') || l.includes('wrapping'));
-  assert.ok(lines.length > 1, 'expected the long cell content to span multiple output lines');
-});
-
-test('THE FEATURE: a word longer than the explicit width breaks at a hyphen (kept on the earlier segment), matching how hyphenated words conventionally break', () => {
-  const doc = parseOrg('* H\n| <10> |\n| Header |\n|---|\n| org-agenda-skip-archived-trees |\n');
-  const result = exportToAscii(doc, null, 200);
-  assert.ok(result.includes('org-'));
-  assert.ok(result.includes('agenda-'));
-  assert.ok(!result.includes('org-agenda-skip-archived-trees')); // definitely wrapped, not left on one line
-});
-
-test('THE FEATURE: a table with NO width-cookie row is completely unaffected -- auto-computed widths as before', () => {
-  const doc = parseOrg('* H\n| Name | Age |\n|---+---|\n| Al | 9 |\n');
-  const result = exportToAscii(doc, null, 200);
-  assert.ok(result.includes('| Name | Age |'));
 });
 
 test('THE FEATURE: a row that only PARTIALLY matches the "<N>" pattern (not every cell) is treated as ordinary data, not a cookie row', () => {
@@ -321,13 +211,6 @@ test('the result always ends in exactly one trailing newline', () => {
   assert.ok(!result.endsWith('\n\n'));
 });
 
-test('multiple sibling top-level headings are each numbered (1, 2) and separated by a blank line, not run together', () => {
-  const doc = parseOrg('* First\n* Second\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.includes('1. First'));
-  assert.ok(result.includes('\n\n2. Second'));
-});
-
 // ---- THE FIX: paragraph reflow -- flow unless "\\" forces a real break ----
 
 test('THE FIX: adjacent source lines within one paragraph flow together and wrap normally -- already correct for the default case, confirmed still correct after the fix', () => {
@@ -352,49 +235,11 @@ test('the "\\\\" marker itself is stripped, never leaking into the ASCII output 
 
 // ---- THE FIX: #+TITLE / #+AUTHOR / #+DATE / #+OPTIONS -------------------------
 
-test('THE EXACT REQUEST: #+TITLE renders as an uppercase, underlined header at the top', () => {
-  const doc = parseOrg('#+TITLE: My Test Document\n* Heading\nText.\n');
-  const result = exportToAscii(doc);
-  assert.ok(result.startsWith('MY TEST DOCUMENT\n================'));
-});
-
-test('#+AUTHOR / #+DATE appear right after the title, each on their own line', () => {
-  const doc = parseOrg('#+TITLE: T\n#+AUTHOR: Jane Doe\n#+DATE: 2026-01-15\n* Heading\nText.\n');
-  const result = exportToAscii(doc);
-  const header = result.split('\n\n')[0];
-  assert.ok(header.includes('Jane Doe'));
-  assert.ok(header.includes('2026-01-15'));
-});
-
 test('THE FIX: author:nil / date:nil suppress those specific fields, independent of each other', () => {
   const doc = parseOrg('#+TITLE: T\n#+AUTHOR: Jane Doe\n#+DATE: 2026-01-15\n#+OPTIONS: author:nil\n* Heading\nText.\n');
   const result = exportToAscii(doc);
   assert.ok(!result.includes('Jane Doe'));
   assert.ok(result.includes('2026-01-15'));
-});
-
-test('a document with no #+TITLE at all shows no title block -- just the headings directly', () => {
-  const doc = parseOrg('* Heading\nText.\n');
-  const result = exportToAscii(doc);
-  assert.ok(!result.includes('==============================')); // no long underline from an uppercased title
-  assert.ok(result.startsWith('Heading') || result.startsWith('1. Heading'));
-});
-
-test('THE EXACT REQUEST: toc:2 limits the Table of Contents listing to headers 1 & 2 only, while section numbering throughout the body still goes to full depth -- matching real Emacs org-mode\u2019s own confirmed, independent toc:/num: behavior', () => {
-  const doc = parseOrg('#+OPTIONS: toc:2\n* A\n** B\n*** C\n');
-  const result = exportToAscii(doc);
-  const tocSection = result.split('1. A\n====')[0]; // everything up to the first real (body) heading
-  assert.ok(tocSection.includes('1. A'));
-  assert.ok(tocSection.includes('1.1. B'));
-  assert.ok(!tocSection.includes('1.1.1. C'), 'level-3 heading excluded from the ToC listing itself');
-  assert.ok(result.includes('1.1.1. C') || result.includes('1.1.1 C'), 'but still fully numbered in the body');
-});
-
-test('toc:nil disables the Table of Contents entirely, independent of num:', () => {
-  const doc = parseOrg('#+OPTIONS: toc:nil\n* First\n* Second\n');
-  const result = exportToAscii(doc);
-  assert.ok(!result.includes('Table of Contents'));
-  assert.ok(result.includes('1. First'), 'numbering is untouched by toc:nil');
 });
 
 test('THE EXACT REQUEST: creator:nil is the default -- no "Generated by" notice unless explicitly enabled', () => {
@@ -408,17 +253,6 @@ test('creator:t adds a "Generated by org-pwa" notice at the very end', () => {
   const result = exportToAscii(doc);
   assert.ok(result.trim().endsWith('Generated by org-pwa'));
 });
-
-test('exporting a scoped subtree shows no title/author/date/creator block -- that\u2019s whole-document metadata, and the subtree\u2019s own heading already serves as the natural starting point', () => {
-  const doc = parseOrg('#+TITLE: Whole Doc\n#+AUTHOR: Jane Doe\n#+OPTIONS: creator:t\n* Target\nText.\n* Other\n');
-  const target = doc.children[0];
-  const result = exportToAscii(doc, target);
-  assert.ok(!result.includes('WHOLE DOC'));
-  assert.ok(!result.includes('Jane Doe'));
-  assert.ok(!result.includes('Generated by'));
-});
-
-// ---- THE FIX: document-level preamble body rendering (doc.body) ---------------
 
 test('THE FIX: a document-level preamble body (doc.body, text before the first heading) now renders in ASCII export -- previously never rendered by any export format at all, needed for #+INCLUDE\u2019s own block-type variant to actually produce visible output', () => {
   const doc = parseOrg('#+TITLE: T\nSome preamble text.\n\n* Heading\nHeading text.\n');
@@ -475,7 +309,7 @@ test('the comma-escape strip also works when the escaped line is indented', () =
 });
 
 test('THE FIX: a body node before the first heading (a block, in the document\u2019s own preamble) is correctly flattened into the output, not pushed as one nested array element -- found while testing the comma-escape fix above: Array.prototype.join stringifies a nested array element by comma-joining its own contents by default, which was producing a stray, unrelated comma that looked similar to the comma-escape bug but was a separate, genuine issue', () => {
-  const doc = parseOrg('#+BEGIN_SRC org\n#+CATEGORY: Projects\n#+END_SRC\n');
+  const doc = parseOrg('#+OPTIONS: toc:nil\n#+BEGIN_SRC org\n#+CATEGORY: Projects\n#+END_SRC\n');
   const ascii = exportToAscii(doc, null);
   assert.equal(ascii, ',----\n| #+CATEGORY: Projects\n`----\n');
 });

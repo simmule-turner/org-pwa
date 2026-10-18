@@ -1,0 +1,4 @@
+#+AUTHOR: Jane Doe
+#+DATE: 2026-10-18
+
+Text.

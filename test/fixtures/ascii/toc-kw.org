@@ -1,0 +1,17 @@
+#+OPTIONS: toc:nil
+* Intro
+#+TOC: headlines 2
+** Inside
+* Tables
+#+CAPTION: First
+| a |
+#+CAPTION: Second
+| b |
+#+CAPTION: Code
+#+begin_src sh
+ls
+#+end_src
+#+TOC: tables
+#+TOC: listings
+#+TOC: headlines 1 local
+** Local one

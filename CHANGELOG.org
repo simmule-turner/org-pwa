@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v567 — ASCII export like Emacs, LaTeX classes and listings
+ASCII export now lays out as Emacs does: title block, numbered and underlined headings, filled paragraphs, link notes, tables, lists, footnotes and the three character sets. LaTeX export reads =org-latex-classes=, =org-latex-packages-alist= and =org-latex-src-block-backend= (listings or minted) from a new box in Settings → Export → LaTeX, with header placeholders and sectioning as Emacs reads them. The first launch no longer reloads the page when its service worker starts. =docs/other-calendars-design.org= describes Hebrew, Islamic and Bahá'í calendars; nothing is built.
+Verified: sample files against Emacs 29.3; the offline-capture and export browser checks.
+
 * v566 — A better Text view, and your diary opens from the Agenda
 Tap a diary row in the Agenda to open the entry in the diary, selected, or to add or delete one; Insert entry writes the lines Emacs would, and Check this line says whether a line counts and when it falls. The Text view now has line numbers, wrap, text size, undo and redo, line commands and a key row, and colors Org, the diary, Lisp, Markdown and JavaScript. Files that are not Org (a diary, notes.txt, README.md) open in it, listed by the new Org files / All files switch in Open.
 Verified: entry lines against Emacs 29.3; a browser run from the file list to a saved entry.

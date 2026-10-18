@@ -1,75 +1,105 @@
 // @ts-check
-/** @typedef {import('./types.js').Table} Table */
-/** @typedef {import('./types.js').Heading} Heading */
-/** @typedef {import('./types.js').Doc} Doc */
 /**
- * ASCII export -- real org-mode's ox-ascii backend, for the core,
- * commonly-used cases.
+ * ASCII export (`org-ascii-export-to-ascii`): the document as plain text, laid out the way Org's ox-ascii lays it out.
+ * This is ox-ascii.el and the parts of ox.el it leans on, ported function by function and held to Emacs's own output
+ * by test/export-ascii-emacs.test.js (tools/gen-ascii-oracle.mjs writes those files from Emacs 29.3):
  *
- * org-ascii-text-width: the maximum line width (in characters) for
- * wrapping paragraph text during export. Real org's own default is 72;
- * matched here exactly. See src/local-variables.js's own
- * getAsciiTextWidth for where this is actually read from (Global/Local
- * Variables, same precedence every other such setting already has).
+ *   - every element and object is turned into a string by its own function, and elements are joined the way
+ *     `org-export-data` joins them (one newline at the end of each, then the blank lines it had in the source);
+ *   - headlines are numbered ("1.2 Title") and underlined by level; the ones deeper than `H:` become bullets;
+ *   - paragraphs are filled with `fill-region`'s rules (see ascii-fill.js); quote, verse and center blocks, lists,
+ *     tables, footnotes and the title block are set as ox-ascii sets them;
+ *   - links become `[description]` with the target listed after the section (`org-ascii-links-to-notes`);
+ *   - emphasis keeps its markers (`*bold*`, `/italic/`), code and verbatim text read `like this'.
  *
- * Inline markup is parsed (via the same parseInline every other
- * exporter here already uses), not left as raw source text -- matching
- * a real, confirmed detail of org's own ox-ascii backend: bold,
- * italic, underline, and strikethrough markers are stripped entirely
- * (ASCII has no way to represent any of them visually, and org's own
- * export framework already separates markup from content before a
- * backend's own transcoder ever sees it -- there's nothing for an
- * ASCII backend to re-add). Code/verbatim become real org's own
- * `text' backtick-quote convention (org-ascii-verbatim-format,
- * confirmed directly from ox-ascii.el's own source) rather than
- * keeping the literal ~/= markers, which read as stray, meaningless
- * punctuation once nothing renders them as a visual distinction. A
- * link becomes `desc (target)` (or just `target` with no
- * description), since the raw bracket syntax reads far less like
- * natural prose than everything else here does.
- *
- * Section numbering and a generated Table of Contents are both real
- * ox-ascii features, matched here: headings are numbered "1", "1.1",
- * "2", ... by default (real org's own default too -- #+OPTIONS: num:nil
- * turns numbering off, mirrored here as an opt-out), and a TOC listing
- * every heading with its own number, dot-leader indentation matching
- * depth, is generated at the very top when the document has more than
- * one heading (a single-heading document has nothing worth a table of
- * contents for).
+ * Not yet: inline tasks, line numbers and references in source blocks, `#+ATTR_ASCII`, the `org-ascii-*` variables
+ * other than the text width and the character set (the exporter reads them from one place, `makeInfo`).
  */
 
-import { parseInline, stripLineBreakMarker } from './inline-markup.js';
-import { citeExportFor, dropSilentCitations, isPrintBibliography } from './cite.js';
-import { parseOrg } from './org-parser.js';
+import { parseElements } from './org-elements.js';
+import { parseInline } from './inline-markup.js';
+import { citeExportFor, dropSilentCitations } from './cite.js';
 import { removeIndentation } from './babel-blocks.js';
 import { ENTITIES } from './entities.js';
-import { parseWidthCookieRow } from './table-cookies.js';
-import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
-import { buildLinkContext, internalLink } from './export-links.js';
+import { getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { preambleBody } from './export-html.js';
 import { expandMacrosForExport } from './export-org.js';
+import { radioTargetRegExp } from './targets.js';
+import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
 
-// ---- character sets (org-ascii-charset) -----------------------------------
+/** @typedef {import('./types.js').Doc} Doc */
+/** @typedef {import('./types.js').Heading} Heading */
+/** @typedef {import('./org-elements.js').OrgElement} OrgElement */
+/** @typedef {'left' | 'center' | 'right' | 'full'} Justify */
 
-/** What ox-ascii draws with, per `org-ascii-charset`: heading underlines, bullets, checkboxes, the frame around
- *  example and source blocks, and the horizontal rule. Latin-1 differs from ASCII only in the entity column used. */
-const ASCII_LOOK = { underline: ['=', '~', '-'], bullet: '-', checkbox: { X: '[X] ', ' ': '[ ] ', '-': '[-] ' }, rule: '-', box: [',----', '| ', '`----'] };
+/**
+ * One element or object of the tree Org builds. Only the fields a type uses are set.
+ * @typedef {{
+ *   type: string,
+ *   parent: Node | null,
+ *   contents: Item[],
+ *   postBlank: number,
+ *   value?: string,
+ *   lines?: string[],
+ *   level?: number,
+ *   title?: Item[],
+ *   rawTitle?: string,
+ *   todo?: string | null,
+ *   priority?: string | null,
+ *   tags?: string[],
+ *   properties?: Record<string, string>,
+ *   number?: number[],
+ *   heading?: Heading,
+ *   listType?: string,
+ *   bullet?: string,
+ *   checkbox?: string | null,
+ *   counter?: number | null,
+ *   tag?: Item[] | null,
+ *   itemNumber?: number,
+ *   rowType?: string,
+ *   cells?: Node[],
+ *   key?: string,
+ *   name?: string,
+ *   params?: string,
+ *   caption?: Item[] | null,
+ *   shortCaption?: Item[] | null,
+ *   nameKey?: string | null,
+ *   label?: string | null,
+ *   inline?: Item[] | null,
+ *   fnNumber?: number,
+ *   raw?: string,
+ *   linkType?: string,
+ *   path?: string,
+ *   desc?: Item[] | null,
+ *   descRaw?: string,
+ *   exported?: string,
+ *   ignored?: boolean,
+ *   kind?: string,
+ * }} Node
+ * @typedef {string | Node} Item
+ */
+
+// ---- character sets and options (org-ascii-*) -----------------------------------
+
+/** What ox-ascii draws with, per `org-ascii-charset`. `column` is the spelling used for entities. */
 const CHARSETS = {
-  ascii: { column: 0, ...ASCII_LOOK },
-  latin1: { column: 1, ...ASCII_LOOK },
+  ascii: { column: 0, utf8: false, underline: ['=', '~', '-'], bullets: ['*', '+', '-'], checkbox: { on: '[X] ', off: '[ ] ', trans: '[-] ' }, rule: '-', box: [',----', '| ', '`----'] },
+  latin1: { column: 1, utf8: false, underline: ['=', '~', '-'], bullets: ['§', '¶'], checkbox: { on: '[X] ', off: '[ ] ', trans: '[-] ' }, rule: '-', box: [',----', '| ', '`----'] },
   'utf-8': {
     column: 2,
-    underline: ['\u2550', '\u2500', '\u254c'],
-    bullet: '\u2022',
-    checkbox: { X: '\u2611 ', ' ': '\u2610 ', '-': '\u2612 ' },
-    rule: '\u2015',
-    box: ['\u250c\u2500\u2500\u2500\u2500', '\u2502 ', '\u2514\u2500\u2500\u2500\u2500'],
+    utf8: true,
+    underline: ['═', '─', '╌', '┄', '┈'],
+    bullets: ['◊'],
+    checkbox: { on: '☑ ', off: '☐ ', trans: '☒ ' },
+    rule: '―',
+    box: ['┌────', '│ ', '└────'],
   },
 };
-let charsetAscii = CHARSETS.ascii;
 
 /**
  * `ascii`, `latin1` or `utf-8` (also `utf8`, `iso-8859-1`; case and a leading quote ignored); anything else is ASCII.
  * @param {string} value
+ * @returns {'ascii' | 'latin1' | 'utf-8'}
  */
 export function normalizeAsciiCharset(value) {
   const v = String(value == null ? '' : value).trim().replace(/^'/, '').toLowerCase();
@@ -78,727 +108,1336 @@ export function normalizeAsciiCharset(value) {
   return 'ascii';
 }
 
-const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(\{\}|(?![A-Za-z]))/g;
+/**
+ * @typedef {{
+ *   width: number, charsetName: 'ascii' | 'latin1' | 'utf-8', cs: typeof CHARSETS['ascii'],
+ *   globalMargin: number, innerMargin: number, quoteMargin: number, listMargin: number,
+ *   headlineLevels: number, numbering: boolean | number, toc: boolean | number,
+ *   withTitle: boolean, withAuthor: boolean, withEmail: boolean, withDate: boolean, withCreator: boolean,
+ *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean,
+ *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, drawers: boolean | string[],
+ *   fixedWidth: boolean, tex: boolean,
+ *   linksToNotes: boolean, sup: string, widen: boolean,
+ *   verbatimFormat: string,
+ *   doc: Doc, scope: Heading | null, radioRe: RegExp | null,
+ *   headlines: Node[], defs: Map<string, Node>, fnLabels: Map<string, number>, fnList: { number: number, label: string | null, inline: Item[] | null, def: Node | null }[],
+ *   named: Map<string, Node>, targets: Map<string, Node>, ordinals: Map<Node, number>,
+ *   cite: ReturnType<typeof citeExportFor> | null,
+ *   tableCache: Map<Node, TableInfo>,
+ * }} Info
+ */
 
-/** Entities (`\alpha`, `\rarr{}`) become the character set's own spelling; in UTF-8 `---`, `--` and `...` become the
- * @param {string} text
- *  dash and ellipsis characters, as ox-ascii's special strings do. Code and verbatim text never reaches here. */
-function substituteCharacters(text) {
-  let t = text.replace(ENTITY_RE, (whole, /** @type {string} */ name) => {
-    const entry = /** @type {any} */ (ENTITIES)[name];
-    return entry ? entry[charsetAscii.column] : whole;
-  });
-  if (charsetAscii.column === 2) {
-    t = t.replace(/(^|[^-])---(?=[^-]|$)/g, '$1\u2014').replace(/(^|[^-])--(?=[^-]|$)/g, '$1\u2013').replace(/\.\.\./g, '\u2026');
-  }
-  return t;
-}
-
-const LINK_RE = /\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g;
-
-/** Strips org's own link bracket syntax down to readable plain text --
- *  used for content NOT run through parseInline (kept exported for
- * @param {string} text
- *  backwards compatibility / direct testing). */
-function stripLinksForAscii(text) {
-  return text.replace(LINK_RE, (_, target, description) => (description ? `${description} (${target})` : target));
-}
-
-/** Wraps `text` to `width` characters, breaking only at whitespace --
- *  a single word longer than `width` is kept whole on its own line
- *  rather than split mid-word, the standard text-wrapping convention.
- *  Existing internal whitespace runs collapse to single spaces (this
- *  is meant for a paragraph's already-joined prose, not for content
- *  that depends on preserving original spacing). Returns an array of
- *  wrapped lines; an empty/whitespace-only input returns an empty
- * @param {string} text
- * @param {number} width
- *  array, not a single blank-line entry. */
-function wrapText(text, width) {
-  // Split on plain whitespace only: a no-break space (`\nbsp`) belongs to its word, as in Emacs's fill.
-  const words = text.split(/[ \t\r\n]+/).filter(Boolean);
-  if (words.length === 0) return [];
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= width || current === '') {
-      current = candidate;
-    } else {
-      lines.push(current);
-      current = word;
+/** Option text such as `H:2 toc:nil` as a map of the last value given for each key. @param {Doc} doc */
+function optionTable(doc) {
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  for (const kw of doc.keywords || []) {
+    if (kw.key.toUpperCase() !== 'OPTIONS') continue;
+    for (const token of kw.value.trim().split(/\s+/)) {
+      const m = /^(\\n|\^|-|:|<|\||[A-Za-z]+):(.*)$/.exec(token);
+      if (m) map.set(m[1], m[2]);
     }
   }
-  if (current) lines.push(current);
-  return lines;
+  return map;
 }
 
-// ---- inline markup ---------------------------------------------------
-
-/** @type {any[]} */ let footnoteDefinitionsAscii = [];
-let anonymousFootnoteCounterAscii = 0;
-
-/** @param {string | null} label @returns {string} */
-function footnoteLabelAscii(label) {
-  if (label !== null) return label;
-  anonymousFootnoteCounterAscii++;
-  return 'fn' + anonymousFootnoteCounterAscii;
-}
-
-/** @param {import('./types.js').InlineNode[]} nodes @returns {string} */
-function renderInlineListAscii(nodes) {
-  if (citeAscii) nodes = dropSilentCitations(nodes, (c) => citeAscii.formatCitation(c) === null);
-  return nodes.map(renderInlineNodeAscii).join('');
-}
-
-/** @param {import('./types.js').InlineNode} node @returns {string} */
-function renderInlineNodeAscii(node) {
-  switch (node.type) {
-    case 'text':
-      return substituteCharacters(node.value);
-    // ox-ascii keeps the markers: ASCII has nothing else to show emphasis with
-    case 'bold':
-      return '*' + renderInlineListAscii(node.children) + '*';
-    case 'italic':
-      return '/' + renderInlineListAscii(node.children) + '/';
-    case 'underline':
-      return '_' + renderInlineListAscii(node.children) + '_';
-    case 'strikethrough':
-      return '+' + renderInlineListAscii(node.children) + '+';
-    case 'code':
-    case 'verbatim':
-      // Real org's own org-ascii-verbatim-format ("`%s'") -- confirmed
-      // directly from ox-ascii.el's source -- not the literal ~/=
-      // source markers, which read as meaningless stray punctuation
-      // once nothing renders them as a visual distinction.
-      return '`' + node.value + "'";
-    case 'subscript':
-    case 'superscript':
-      // ox-ascii writes a script as it was typed: x_2, a_{bc}
-      return node.raw !== undefined ? node.raw : (node.type === 'subscript' ? '_' : '^') + node.value;
-    case 'link': {
-      const info = linkCtxAscii ? internalLink(linkCtxAscii, node.target) : null;
-      if (info) {
-        // a link inside the document reads as its description, or as Org numbers it (a section number)
-        if (node.description) return renderTextAscii(node.description, false); // no radio links inside a link's text
-        return info.label !== null ? info.label : renderTextAscii(info.heading ? info.heading.title : node.target);
-      }
-      const label = node.description ? renderTextAscii(node.description, false) : node.target;
-      return label === node.target ? `<${node.target}>` : `${label} (${node.target})`; // no description: <url>, as ox-ascii writes it
-    }
-    case 'latex':
-      // ox-ascii writes the fragment as typed
-      return node.raw !== undefined ? node.raw : node.displayMode ? `\\[${node.source}\\]` : `\\(${node.source}\\)`;
-    case 'image':
-      return `[image: ${node.target}]`;
-    case 'footnote-ref':
-    case 'footnote-def': {
-      const children = node.type === 'footnote-def' ? node.children : [];
-      const label = footnoteLabelAscii(node.label);
-      if (node.type === 'footnote-def' || children.length > 0) {
-        footnoteDefinitionsAscii.push({ label, text: renderInlineListAscii(children) });
-      }
-      return `[${label}]`;
-    }
-    case 'citation': {
-      const segments = citeAscii ? citeAscii.formatCitation(node) : null;
-      return (segments ? citeSegmentsAscii(segments).trim() : '') + ' '.repeat(node.blanks);
-    }
-    case 'radio-target':
-      return renderTextAscii(node.name);
-    case 'target':
-      return '';
-    case 'comment':
-      return ''; // matches every other export backend -- comments never appear in exported output
-    default:
-      return '';
-  }
-}
-
-/** @type {any} */ let citeAscii = null; // the citation text maker for this export (cite.js)
-
-/** A citation processor's output as plain text: affixes as Org text, emphasis as /.../ like ox-ascii.
- * @param {import('./cite.js').Segment[]} segments
- * @returns {string} */
-function citeSegmentsAscii(segments) {
-  return segments.map((s) => (typeof s === 'string' ? substituteCharacters(s) : 'org' in s ? renderTextAscii(s.org) : '/' + citeSegmentsAscii(s.italic) + '/')).join('');
-}
-
-/** @type {import('./export-links.js').LinkContext | null} */ let linkCtxAscii = null; // section numbers, targets and radio-target pattern for this export
-
-/** @param {string} text
- * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
-function renderTextAscii(text, radio = true) {
-  return renderInlineListAscii(parseInline(text, radio && linkCtxAscii && linkCtxAscii.radioRe ? { radioTargets: linkCtxAscii.radioRe, subSuperscriptMode: supAscii } : { subSuperscriptMode: supAscii }));
-}
-
-// ---- headings and body content -----------------------------------------
-
-/** Section numbers, one entry per level (1-indexed by array position)
- *  -- e.g. [2, 3] means "currently on the 2nd level-1 heading, its 3rd
- *  child so far". Reset at the start of every exportToAscii() call.
- *  Real org's own default numbering behavior -- headings are numbered
- *  "1", "1.1", "2", ... unless explicitly turned off. */
-/** @type {any[]} */ let sectionNumbersAscii = [];
-/** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
-let supAscii = 't';
-let numberingEnabledAscii = true;
-
-/** @param {number} level */
-function nextSectionNumber(level) {
-  const newNumbers = sectionNumbersAscii.slice(0, level);
-  for (let i = 0; i < level - 1; i++) {
-    if (newNumbers[i] === undefined) newNumbers[i] = 1;
-  }
-  newNumbers[level - 1] = (newNumbers[level - 1] || 0) + 1;
-  sectionNumbersAscii = newNumbers;
-  return sectionNumbersAscii.join('.');
-}
+/** An option value as a boolean the way Org reads it (`nil` is off, anything else on). @param {string | undefined} v @param {boolean} dflt */
+const flag = (v, dflt) => (v === undefined ? dflt : v !== 'nil');
 
 /**
- * @param {Heading} heading
- * @param {number} level
+ * @param {Doc} doc @param {Heading | null} scope @param {number} textWidth @param {'ascii' | 'latin1' | 'utf-8'} charset @param {string} sup
+ * @returns {Info}
  */
-function renderHeadingLineAscii(heading, level) {
-  const parts = [];
-  if (numberingEnabledAscii) parts.push(nextSectionNumber(level) + '.');
-  if (heading.todo) parts.push(heading.todo);
-  if (heading.priority) parts.push(`[#${heading.priority}]`);
-  parts.push(renderTextAscii(heading.title) || '(untitled)');
-  if (heading.tags && heading.tags.length) parts.push(`:${heading.tags.join(':')}:`);
-  const indent = '  '.repeat(Math.max(0, level - 1));
-  const line = indent + parts.join(' ');
-  if (level === 1) {
-    // Real org-ascii's own default "underline" heading style, at least
-    // for the top level -- a row of "=" matching the title's own
-    // width makes a level-1 heading genuinely stand out in a format
-    // with no other way to indicate emphasis of structure itself.
-    return [line, charsetAscii.underline[0].repeat(line.length)];
-  }
-  return [line];
+function makeInfo(doc, scope, textWidth, charset, sup) {
+  const o = optionTable(doc);
+  const numValue = o.get('num');
+  const tocValue = o.get('toc');
+  const tags = o.get('tags');
+  const drawers = o.get('d');
+  const levels = Number(o.get('H'));
+  return {
+    width: textWidth,
+    charsetName: charset,
+    cs: CHARSETS[charset],
+    globalMargin: 0,
+    innerMargin: 2,
+    quoteMargin: 6,
+    listMargin: 0,
+    headlineLevels: Number.isFinite(levels) && o.has('H') ? levels : 3,
+    numbering: numValue === undefined ? true : /^\d+$/.test(numValue) ? Number(numValue) : numValue !== 'nil',
+    toc: tocValue === undefined ? true : /^\d+$/.test(tocValue) ? Number(tocValue) : tocValue !== 'nil',
+    withTitle: flag(o.get('title'), true),
+    withAuthor: flag(o.get('author'), true),
+    withEmail: flag(o.get('email'), false),
+    withDate: flag(o.get('date'), true),
+    withCreator: o.get('creator') === 't',
+    withTags: tags === 'not-in-toc' ? 'not-in-toc' : flag(tags, true),
+    withTodo: flag(o.get('todo'), true),
+    withPriority: flag(o.get('pri'), false),
+    preserveBreaks: flag(o.get('\\n'), false),
+    specialStrings: flag(o.get('-'), true),
+    entities: flag(o.get('e'), true),
+    footnotes: flag(o.get('f'), true),
+    drawers: drawers === undefined ? ['!LOGBOOK'] : drawers === 'nil' ? false : drawers === 't' ? true : drawers.replace(/[()"]/g, '').split(/\s+/).filter(Boolean),
+    fixedWidth: flag(o.get(':'), true),
+    tex: flag(o.get('tex'), true),
+    linksToNotes: true,
+    sup: o.has('^') ? (o.get('^') === 'nil' || o.get('^') === '{}' ? /** @type {string} */ (o.get('^')) : 't') : sup,
+    widen: true,
+    verbatimFormat: "`%s'",
+    doc,
+    scope,
+    radioRe: radioTargetRegExp(doc),
+    headlines: [],
+    defs: new Map(),
+    fnLabels: new Map(),
+    fnList: [],
+    named: new Map(),
+    targets: new Map(),
+    ordinals: new Map(),
+    cite: null,
+    tableCache: new Map(),
+  };
 }
+
+// ---- building the tree ----------------------------------------------------------
 
 /**
- * @param {Heading['planning'] | null | undefined} planning
- * @param {string} indent
+ * @param {string} type @param {Node | null} parent @param {Partial<Node>} [props]
+ * @returns {Node}
  */
-function renderPlanningAscii(planning, indent) {
-  const parts = [];
-  if (planning && planning.scheduled) parts.push(`Scheduled: ${planning.scheduled}`);
-  if (planning && planning.deadline) parts.push(`Deadline: ${planning.deadline}`);
-  if (parts.length === 0) return [];
-  return [indent + parts.join('  ')];
+function mk(type, parent, props = {}) {
+  return { type, parent, contents: [], postBlank: 0, ...props };
 }
+
+/** The nodes among some items (the rest are plain strings). @param {Item[]} items @returns {Node[]} */
+const nodesOf = (items) => /** @type {Node[]} */ (items.filter((x) => typeof x !== 'string'));
+
+const LINE_BREAK_RE = /\\\\[ \t]*$/;
+const ENTITY_RE = /\\(there4|sup[123]|frac[13][24]|[A-Za-z]+)(\{\}|(?![A-Za-z]))/g;
+const SNIPPET_RE = /@@([-A-Za-z0-9]+):(.*?)@@/g;
+const UNICODE_SPECIAL = [
+  [/---/g, '—'],
+  [/--/g, '–'],
+  [/\.\.\./g, '…'],
+];
 
 /**
- * @param {{ lines: string[] }} node
- * @param {string} indent
- * @param {number} width
+ * A run of plain text as ox-ascii writes it: entities in the character set's own spelling, `\-` dropped, and in UTF-8 the dashes and ellipsis.
+ * @param {string} text @param {Info} I
+ * @returns {string}
  */
-function renderParagraphAscii(node, indent, width) {
-  const available = Math.max(10, width - indent.length); // a pathologically narrow width still leaves SOME room, rather than producing zero-or-negative-width wrapping
-  const segments = /** @type {string[][]} */ ([[]]);
-  for (const line of node.lines) {
-    segments[segments.length - 1].push(stripLineBreakMarker(line));
-    if (stripLineBreakMarker(line) !== line) segments.push([]); // an explicit "\\" starts a genuinely new, separately-wrapped segment
-  }
-  const out = [];
-  for (const segment of segments) {
-    if (segment.length === 0) continue;
-    const joined = renderTextAscii(segment.join(' '));
-    out.push(...wrapText(joined, available).map((line) => indent + line));
-  }
-  return out;
-}
-
-/**
- * @param {import('./types.js').List} list
- * @param {string} indent
- * @param {number} width
- * @returns {string[]}
- */
-function renderListAscii(list, indent, width) {
-  const out = [];
-  let counter = 0;
-  for (const item of list.items) {
-    let marker;
-    if (item.ordered) {
-      counter = item.startValue != null ? item.startValue : counter + 1;
-      marker = `${counter}. `;
-    } else {
-      marker = charsetAscii.bullet + ' ';
-    }
-    if (item.checkbox !== null) marker += charsetAscii.checkbox[item.checkbox === 'X' || item.checkbox === 'x' ? 'X' : item.checkbox === '-' ? '-' : ' '];
-    const prefix = indent + marker;
-    let text = renderTextAscii(item.text || '');
-    if (item.tag) text = `${renderTextAscii(item.tag)}: ${text}`;
-    const available = Math.max(10, width - prefix.length);
-    const wrapped = wrapText(text, available);
-    if (wrapped.length === 0) {
-      out.push(prefix.trimEnd());
-    } else {
-      out.push(prefix + wrapped[0]);
-      const continuationIndent = ' '.repeat(prefix.length);
-      for (const line of wrapped.slice(1)) out.push(continuationIndent + line);
-    }
-    for (const nested of item.children || []) {
-      out.push(...renderListAscii(nested, indent + '  ', width));
-    }
-  }
-  return out;
-}
-
-/** Whether a cell's content looks like a number -- real org's own
- *  heuristic for per-column alignment (see the Org manual's own
- *  "Column Width and Alignment": alignment is auto-detected from the
- *  fraction of number-like versus non-number fields in the column).
- *  Matches an optional sign, digits, and an optional decimal part --
- *  deliberately simple rather than a full numeric-literal grammar,
- *  since this only has to be good enough to bias a column's own
- * @param {string} text
- *  alignment one way or the other, not validate the value itself. */
-function looksNumeric(text) {
-  return /^[+-]?\d+(\.\d+)?$/.test(text.trim());
-}
-
-/** Pads `text` to `width` characters, left- or right-aligned --
- *  matching real org's own org-ascii--justify-string. A value already
- *  at or beyond `width` (a cell content computed the width FROM in
- *  the first place, so this is normally exact, never truncated) is
- * @param {string} text
- * @param {number} width
- * @param {boolean} alignRight
- *  returned unchanged rather than clipped. */
-function justify(text, width, alignRight) {
-  const padding = ' '.repeat(Math.max(0, width - text.length));
-  return alignRight ? padding + text : text + padding;
-}
-
-/** Like wrapText, but ALSO breaks at hyphens when a single unbroken
- *  "word" (no whitespace at all) is itself wider than `width` --
- *  common in this app's own content: long, hyphenated identifiers
- *  like org-mode variable names easily exceed a narrow, explicitly-
- *  set table column width on their own. The hyphen itself stays at
- *  the end of the broken segment ("org-agenda-skip-archived-" /
- *  "trees"), matching how hyphenated words are conventionally broken
- *  in running text. Regular paragraph/list wrapping (wrapText itself)
- *  doesn't need this -- it's specific to the tighter, fixed-width
- * @param {string} text
- * @param {number} width
- *  constraint an explicit table column width actually creates. */
-function wrapTableCellAscii(text, width) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
+function plainText(text, I) {
   const pieces = [];
-  for (const word of words) {
-    if (word.length <= width) {
-      pieces.push(word);
-      continue;
+  let last = 0;
+  if (I.entities) {
+    for (const m of text.matchAll(ENTITY_RE)) {
+      const entry = /** @type {Record<string, string[]>} */ (ENTITIES)[m[1]];
+      if (!entry) continue;
+      const at = m.index || 0;
+      pieces.push({ text: text.slice(last, at), entity: false }, { text: entry[I.cs.column], entity: true });
+      last = at + m[0].length;
     }
-    let remaining = word;
-    while (remaining.length > width) {
-      // Break at the last hyphen that still fits within width, if
-      // there is one -- keeps the hyphen itself on the earlier
-      // segment, matching conventional hyphenated-word line breaks.
-      const breakAt = remaining.lastIndexOf('-', width - 1);
-      if (breakAt > 0) {
-        pieces.push(remaining.slice(0, breakAt + 1));
-        remaining = remaining.slice(breakAt + 1);
-      } else {
-        // No hyphen to break at within reach -- fall back to a hard
-        // break at the width boundary rather than overflowing it.
-        pieces.push(remaining.slice(0, width));
-        remaining = remaining.slice(width);
+  }
+  pieces.push({ text: text.slice(last), entity: false });
+  return pieces
+    .map((p) => {
+      if (p.entity) return p.text;
+      let t = p.text;
+      if (I.specialStrings) {
+        t = t.replace(/\\-/g, '');
+        if (I.cs.utf8) for (const [re, to] of UNICODE_SPECIAL) t = t.replace(/** @type {RegExp} */ (re), /** @type {string} */ (to));
       }
-    }
-    pieces.push(remaining);
-  }
-  if (pieces.length === 0) return [];
-
-  const lines = [];
-  let current = '';
-  for (const piece of pieces) {
-    const candidate = current ? `${current} ${piece}` : piece;
-    if (candidate.length <= width || current === '') {
-      current = candidate;
-    } else {
-      lines.push(current);
-      current = piece;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
+      return t;
+    })
+    .join('');
 }
 
 /**
- * @param {Table} table
- * @param {string} indent
+ * Org text as objects. `parent` is the element that holds it (a target needs it to say which section it is in).
+ * @param {string} text @param {Node | null} parent @param {Info} I @param {boolean} [radio]
+ * @returns {Item[]}
  */
-function renderTableAscii(table, indent) {
-  // Real org's own table editor keeps every column a single, fixed
-  // width (the widest cell in it) and auto-aligns each column left or
-  // right depending on whether it's mostly numeric -- confirmed
-  // directly from the Org manual's own "Column Width and Alignment"
-  // section and ox-ascii.el's own org-ascii--justify-string. Ragged,
-  // unaligned columns (this app's own earlier behavior, just joining
-  // raw cell text with " | ") is NOT what real org actually produces,
-  // even though it happens to be valid, parseable pipe-table syntax
-  // on its own -- looking like unformatted Markdown rather than a
-  // properly typeset org table was the actual bug.
-  //
-  // An explicit column-width cookie row (see parseWidthCookieRow),
-  // when present, overrides the auto-computed width for those
-  // columns -- real org's own way of forcing a table to a specific
-  // total width. Content that doesn't fit an explicit width word-
-  // wraps across multiple output lines within the same logical row,
-  // rather than being left to overflow unbounded.
-  let explicitWidths = null;
-  const contentRows = [];
-  for (const row of table.rows) {
-    if (row.type === 'row') {
-      const cookie = parseWidthCookieRow(row);
-      if (cookie) {
-        explicitWidths = cookie;
-        continue; // a directive, not a data row -- excluded from the rendered output entirely
-      }
-    }
-    contentRows.push(row);
+function objects(text, parent, I, radio = true) {
+  const marked = text.split('\n').map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l)).join('\n');
+  let nodes = parseInline(marked, { subSuperscriptMode: I.sup, radioTargets: radio ? I.radioRe : null });
+  if (I.cite) {
+    const cite = I.cite;
+    nodes = dropSilentCitations(nodes, (c) => cite.formatCitation(c) === null);
   }
+  return convertInline(nodes, parent, I);
+}
 
-  const dataRows = contentRows.filter((r) => r.type === 'row');
-  if (dataRows.length === 0) return [];
-
-  const renderedRows = dataRows.map((row) => row.cells.map((cell) => renderTextAscii(cell)));
-  const columnCount = Math.max(...renderedRows.map((cells) => cells.length));
-
-  const columnWidths = [];
-  /** @type {any[]} */ const columnAlignRight = [];
-  for (let col = 0; col < columnCount; col++) {
-    const columnCells = renderedRows.map((cells) => cells[col] || '');
-    const explicit = explicitWidths && explicitWidths[col];
-    columnWidths.push(explicit || Math.max(1, ...columnCells.map((c) => c.length)));
-    const numericCount = columnCells.filter((c) => c && looksNumeric(c)).length;
-    const nonEmptyCount = columnCells.filter((c) => c).length;
-    columnAlignRight.push(nonEmptyCount > 0 && numericCount / nonEmptyCount > 0.5);
-  }
-
-  const ruleLine = indent + '|' + columnWidths.map((w) => '-'.repeat(w + 2)).join('+') + '|';
-
+/** @param {import('./types.js').InlineNode[]} nodes @param {Node | null} parent @param {Info} I @returns {Item[]} */
+function convertInline(nodes, parent, I) {
+  /** @type {Item[]} */
   const out = [];
-  let dataRowIndex = -1;
-  for (const row of contentRows) {
-    if (row.type === 'rule') {
-      out.push(ruleLine);
-      continue;
-    }
-    dataRowIndex++;
-    const cells = renderedRows[dataRowIndex];
-    // Word-wrap each cell to its own column's width -- a cell that
-    // fits on one line produces a single-entry array, same as before;
-    // one that doesn't gets split across as many lines as it needs.
-    const wrappedCells = columnWidths.map((width, col) => {
-      const wrapped = wrapTableCellAscii(cells[col] || '', width);
-      return wrapped.length ? wrapped : [''];
-    });
-    const lineCount = Math.max(...wrappedCells.map((lines) => lines.length));
-    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-      const rendered = columnWidths
-        .map((width, col) => justify(wrappedCells[col][lineIndex] || '', width, columnAlignRight[col]))
-        .join(' | ');
-      out.push(`${indent}| ${rendered} |`);
+  for (const n of nodes) {
+    switch (n.type) {
+      case 'text': {
+        let last = 0;
+        const text = n.value;
+        for (const m of text.matchAll(SNIPPET_RE)) {
+          const at = m.index || 0;
+          out.push(plainText(text.slice(last, at), I));
+          if (m[1].toLowerCase() === 'ascii') out.push(m[2]);
+          last = at + m[0].length;
+        }
+        out.push(plainText(text.slice(last), I));
+        break;
+      }
+      case 'bold':
+      case 'italic':
+      case 'underline':
+      case 'strikethrough':
+        out.push(mk(n.type, parent, { contents: convertInline(n.children, parent, I) }));
+        break;
+      case 'code':
+      case 'verbatim':
+        out.push(mk('verbatim', parent, { value: n.value }));
+        break;
+      case 'subscript':
+      case 'superscript': {
+        const brackets = n.raw !== undefined && /^[_^]\{/.test(n.raw);
+        out.push(mk(n.type, parent, { kind: brackets ? 'brackets' : 'plain', contents: objects(n.value, parent, I) }));
+        break;
+      }
+      case 'link':
+        out.push(linkNode(n.target, n.description, !!n.radio, parent, I));
+        break;
+      case 'image':
+        out.push(linkNode(n.target, null, false, parent, I));
+        break;
+      case 'latex':
+        out.push(I.tex ? (n.raw !== undefined ? n.raw : n.displayMode ? `\\[${n.source}\\]` : `\\(${n.source}\\)`) : '');
+        break;
+      case 'footnote-ref':
+        out.push(mk('footnote-reference', parent, { label: n.label, inline: null }));
+        break;
+      case 'footnote-def':
+        out.push(mk('footnote-reference', parent, { label: n.label, inline: convertInline(n.children, parent, I) }));
+        break;
+      case 'target':
+        out.push(mk('target', parent, { name: n.name }));
+        break;
+      case 'radio-target':
+        out.push(mk('radio-target', parent, { name: n.name, contents: [plainText(n.name, I)] }));
+        break;
+      case 'citation':
+        out.push(mk('citation', parent, { raw: n.raw, value: JSON.stringify(n.refs), kind: String(n.blanks) }));
+        citations.set(/** @type {Node} */ (out[out.length - 1]), n);
+        break;
+      default:
+        break;
     }
   }
   return out;
 }
 
-/** Strips org's own comma-escape convention from one block content
- *  line for display -- see export-html.js's own stripCommaEscape for
- * @param {string} line
- *  the full reasoning; the same fix, applied here too. */
-function stripCommaEscape(line) {
-  return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
-}
+/** The citations by node, for the transcoder (kept apart so a node stays plain data). */
+const citations = new WeakMap();
 
 /**
- * The frame ox-ascii draws around example blocks, source blocks and fixed-width lines.
- * @param {string[]} lines
- * @param {string} indent
+ * A link as Org classifies it: the type, the path, and the raw link the way it was typed.
+ * @param {string} raw @param {string | null} description @param {boolean} radio @param {Node | null} parent @param {Info} I
  */
-function boxLines(lines, indent) {
-  const [top, side, bottom] = charsetAscii.box;
-  return [indent + top, ...lines.map((/** @type {string} */ line) => indent + side + line), indent + bottom];
-}
-
-/**
- * The nodes of a block's lines (comma escapes undone), for the block kinds whose content is Org text.
- * @param {string[]} lines
- */
-function parseBlockContent(lines) {
-  const doc = parseOrg('* x\n' + lines.map(stripCommaEscape).join('\n'));
-  return doc.children[0].body || [];
-}
-
-/**
- * Nodes rendered one after another with a blank line between, as a section's body is.
- * @param {import('./types.js').BodyNode[]} nodes
- * @param {string} indent
- * @param {number} width
- */
-function renderNodesAscii(nodes, indent, width) {
-  const out = [];
-  for (const node of nodes) {
-    /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
-    if (!rendered.length) continue;
-    if (out.length) out.push('');
-    out.push(...rendered);
-  }
-  return out;
-}
-
-/** ox-ascii centres each line of a centre block on the text width (less the base margin), but never left of the
- * @param {string[]} lines
- * @param {any} indent
- * @param {number} width
- *  margin. Emacs pads with tabs; spaces are used here so the file reads the same everywhere. */
-function centerLines(lines, indent, width) {
-  return lines.map((/** @type {string} */ line) => {
-    const text = line.slice(indent.length);
-    if (!text) return line;
-    const column = Math.max(indent.length, Math.floor((width - indent.length - text.length) / 2));
-    return ' '.repeat(column) + text;
+function linkNode(raw, description, radio, parent, I) {
+  /** @type {string} */
+  let linkType;
+  if (radio) linkType = 'radio';
+  else if (raw.startsWith('*')) linkType = 'fuzzy';
+  else if (raw.startsWith('#')) linkType = 'custom-id';
+  else if (/^id:/i.test(raw)) linkType = 'id';
+  else if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(raw)) linkType = raw.slice(0, raw.indexOf(':')).toLowerCase();
+  else if (/^(\.{0,2}\/|~\/)/.test(raw)) linkType = 'file';
+  else linkType = 'fuzzy';
+  return mk('link', parent, {
+    linkType,
+    raw,
+    path: linkType === 'fuzzy' || linkType === 'custom-id' || linkType === 'id' ? raw.replace(/^(?:id:|#|\*)/i, '') : raw,
+    desc: description === null ? null : objects(description, parent, I, false),
+    descRaw: description === null ? '' : description.replace(/\s+/g, ' ').trim(),
+    kind: raw.startsWith('*') ? 'headline' : '',
   });
 }
 
-const QUOTE_MARGIN = 6;
+/** @param {{ short: string | null, text: string }[]} captions @param {Node} parent @param {Info} I */
+function captionItems(captions, parent, I) {
+  const last = captions[captions.length - 1];
+  return last ? { caption: objects(last.text, parent, I), shortCaption: last.short ? objects(last.short, parent, I) : null } : { caption: null, shortCaption: null };
+}
 
 /**
- * @param {import('./types.js').Block} block
- * @param {string} indent
- * @param {number} width
+ * Elements from the parser, as nodes.
+ * @param {OrgElement[]} list @param {Node} parent @param {Info} I
+ * @returns {Node[]}
  */
-function renderBlockAscii(block, indent, width) {
-  const name = (block.name || '').toUpperCase();
-  switch (name) {
-    case 'EXPORT':
-      if ((block.params || '').trim().toLowerCase() !== 'ascii') return [];
-      return block.lines.map((/** @type {string} */ line) => indent + line);
-    case 'COMMENT':
-      return [];
-    case 'EXAMPLE':
-    case 'SRC':
-      return boxLines(removeIndentation(block.lines.map(stripCommaEscape)), indent);
-    case 'VERSE': {
-      // Line breaks and spacing are the poet's own: no filling, set in from the margin like a quotation.
-      const pad = indent + ' '.repeat(QUOTE_MARGIN);
-      return removeIndentation(block.lines.map(stripCommaEscape)).map((/** @type {string} */ line) => (line.trim() ? pad + renderTextAscii(line) : ''));
+function buildElements(list, parent, I) {
+  /** @type {Node[]} */
+  const out = [];
+  for (const el of list) {
+    const node = buildElement(el, parent, I);
+    if (!node) continue;
+    node.postBlank = el.postBlank || 0;
+    if (el.aff) {
+      node.nameKey = el.aff.name;
+      Object.assign(node, captionItems(el.aff.caption, node, I));
+      if (el.aff.name) I.named.set(el.aff.name, node);
     }
-    case 'QUOTE':
-      return renderNodesAscii(parseBlockContent(block.lines), indent + ' '.repeat(QUOTE_MARGIN), width - QUOTE_MARGIN);
-    case 'CENTER': {
-      const out = [];
-      for (const node of parseBlockContent(block.lines)) {
-        /** @type {any} */ const rendered = renderBodyNodeAscii(node, indent, width);
-        if (!rendered.length) continue;
-        if (out.length) out.push('');
-        out.push(...(node.type === 'paragraph' ? centerLines(rendered, indent, width) : rendered));
+    out.push(node);
+  }
+  return out;
+}
+
+/** @param {string[]} lines */
+function unescapeCode(lines) {
+  return removeIndentation(lines).map((l) => l.replace(/^([ \t]*),(?=\*|#\+)/, '$1'));
+}
+
+/**
+ * @param {OrgElement} el @param {Node} parent @param {Info} I
+ * @returns {Node | null}
+ */
+function buildElement(el, parent, I) {
+  switch (el.type) {
+    case 'paragraph': {
+      const lines = el.lines.slice();
+      // clock lines are elements of their own, and not exported
+      while (lines.length && /^[ \t]*CLOCK:[ \t]*\[/.test(lines[0])) lines.shift();
+      if (lines.length === 0) return null;
+      const node = mk('paragraph', parent);
+      node.contents = objects([lines[0].trimStart(), ...lines.slice(1)].join('\n') + '\n', node, I);
+      return node;
+    }
+    case 'list': {
+      const node = mk('plain-list', parent, { listType: el.listType });
+      let counter = 0;
+      for (const it of el.items) {
+        const item = mk('item', node, { bullet: it.bullet, checkbox: it.checkbox, counter: it.counter, postBlank: it.postBlank || 0 });
+        if (el.listType === 'ordered') {
+          counter = it.counter !== null ? it.counter : counter + 1;
+          item.itemNumber = counter;
+        }
+        if (it.tag !== null) item.tag = objects(it.tag, item, I);
+        item.contents = buildElements(it.children, item, I);
+        node.contents.push(item);
       }
-      return out;
+      return node;
     }
+    case 'table': {
+      const node = mk('table', parent);
+      for (const row of el.rows) {
+        const cellTexts = 'cells' in row && row.cells ? row.cells : null;
+        const r = mk('table-row', node, { rowType: cellTexts ? 'standard' : 'rule' });
+        if (cellTexts) {
+          const cells = cellTexts.map((/** @type {string} */ c) => mk('table-cell', r, { raw: c, contents: objects(c, r, I) }));
+          r.cells = cells;
+          r.contents = cells;
+        }
+        node.contents.push(r);
+      }
+      return node;
+    }
+    case 'block':
+      return buildBlock(el, parent, I);
+    case 'fixed':
+      return mk('fixed-width', parent, { lines: el.lines });
+    case 'hr':
+      return mk('horizontal-rule', parent);
+    case 'latex-env':
+      return mk('latex-environment', parent, { lines: el.lines });
+    case 'drawer': {
+      const node = mk('drawer', parent, { name: el.name });
+      node.contents = buildElements(parseElements(el.lines), node, I);
+      return node;
+    }
+    case 'footnote-def': {
+      const node = mk('footnote-definition', parent, { label: el.label });
+      node.contents = buildElements(el.children, node, I);
+      return node;
+    }
+    case 'toc':
+      return mk('keyword', parent, { key: 'TOC', value: el.value });
+    case 'ascii-line':
+      return mk('keyword', parent, { key: 'ASCII', value: el.value });
+    case 'print-bibliography':
+      return mk('keyword', parent, { key: 'PRINT_BIBLIOGRAPHY', value: el.value });
     default:
-      // JUSTIFYLEFT, JUSTIFYRIGHT and any other special block: Emacs sets their content like ordinary text.
-      return renderNodesAscii(parseBlockContent(block.lines), indent, width);
+      return null;
   }
 }
 
-/** A paragraph's lines in runs: affiliated keywords (`#+ATTR_ASCII:`, `#+NAME:`, ...) are consumed, `: ` lines are
- *  fixed-width text drawn in a frame, the rest is prose. `:width` on `#+ATTR_ASCII` changes nothing in Emacs's
- * @param {import('./types.js').Paragraph} node
- * @param {string} indent
- * @param {number} width
- *  output for any element, so it is read and ignored. */
-function renderParagraphRuns(node, indent, width) {
-  const AFFILIATED = /^\s*#\+(NAME|CAPTION|HEADERS?|ATTR_[A-Za-z0-9_-]+)\s*:/i;
-  const FIXED = /^\s*:(?: |$)/;
-  const runs = [];
-  for (const line of node.lines) {
-    if (AFFILIATED.test(line)) continue;
-    const kind = isPrintBibliography(line) ? 'bibliography' : FIXED.test(line) ? 'fixed' : 'prose';
-    /** @type {any} */ const last = runs[runs.length - 1];
-    if (last && last.kind === kind) last.lines.push(line);
-    else runs.push({ kind, lines: [line] });
+/** @param {Extract<OrgElement, { type: 'block' }>} el @param {Node} parent @param {Info} I @returns {Node | null} */
+function buildBlock(el, parent, I) {
+  const name = el.name.toLowerCase();
+  switch (name) {
+    case 'src':
+      return mk('src-block', parent, { lines: unescapeCode(el.lines), params: el.params });
+    case 'example':
+      return mk('example-block', parent, { lines: unescapeCode(el.lines) });
+    case 'comment':
+      return null;
+    case 'export':
+      return mk('export-block', parent, { name: (el.params.split(/\s+/)[0] || '').toUpperCase(), lines: el.lines });
+    case 'verse': {
+      const node = mk('verse-block', parent);
+      node.contents = objects(removeIndentation(el.lines).join('\n') + '\n', node, I);
+      return node;
+    }
+    default: {
+      const type = name === 'quote' ? 'quote-block' : name === 'center' ? 'center-block' : 'special-block';
+      const node = mk(type, parent, { name: el.rawName || el.name });
+      node.contents = buildElements(parseElements(removeIndentation(el.lines).map((l) => l.replace(/^([ \t]*),(?=\*|#\+)/, '$1'))), node, I);
+      return node;
+    }
   }
-  const out = [];
-  for (const run of runs) {
-    if (run.kind === 'bibliography') {
-      // one paragraph for each entry
-      const available = Math.max(10, width - indent.length);
-      for (const entry of citeAscii ? citeAscii.bibliography() : []) {
-        if (out.length) out.push('');
-        out.push(...wrapText(citeSegmentsAscii(entry), available).map((/** @type {string} */ l) => indent + l));
+}
+
+/** @param {Heading} h */
+const isFootnoteSection = (h) => h.title.trim() === 'Footnotes';
+
+/** Which headings are left out: COMMENT, tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), the Footnotes section. @param {Doc} doc */
+function exclusion(doc) {
+  const tags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'EXCLUDE_TAGS').map((k) => k.value).join(' ').split(/\s+/).filter(Boolean);
+  const exclude = new Set(tags.length ? tags : ['noexport']);
+  return (/** @type {Heading} */ h) => /^COMMENT(\s|$)/.test(h.title) || h.tags.some((t) => exclude.has(t)) || isFootnoteSection(h);
+}
+
+/**
+ * The headline nodes for `children`, with their sections.
+ * @param {Heading[]} children @param {Node} parent @param {Info} I @param {number} offset @param {(h: Heading) => boolean} skip
+ */
+function buildHeadlines(children, parent, I, offset, skip) {
+  for (const h of children) {
+    if (skip(h)) continue;
+    const node = mk('headline', parent, { level: h.level + offset, heading: h, rawTitle: h.title, todo: h.todo, priority: h.priority, tags: h.tags, properties: h.properties });
+    node.title = objects(h.title, node, I);
+    I.headlines.push(node);
+    const lines = h.bodyLines || [];
+    const elements = parseElements(lines);
+    if (elements.length) {
+      const section = mk('section', node);
+      section.contents = buildElements(elements, section, I);
+      node.contents.push(section);
+    }
+    buildHeadlines(h.children || [], node, I, offset, skip);
+    for (const c of node.contents) if (c !== undefined) continue;
+    parent.contents.push(node);
+  }
+}
+
+/**
+ * The whole tree for the export.
+ * @param {Info} I
+ * @returns {Node}
+ */
+function buildTree(I) {
+  const root = mk('org-data', null);
+  const scope = I.scope;
+  const skip = exclusion(I.doc);
+  const lines = scope ? scope.bodyLines || [] : preambleBody(I.doc);
+  const elements = parseElements(lines);
+  if (elements.length) {
+    const section = mk('section', root);
+    section.contents = buildElements(elements, section, I);
+    root.contents.push(section);
+  }
+  buildHeadlines(scope ? scope.children || [] : I.doc.children || [], root, I, scope ? -scope.level : 0, skip);
+  return root;
+}
+
+// ---- walking the tree -----------------------------------------------------------
+
+/** @param {Item} item @returns {Item[]} */
+function childrenOf(item) {
+  if (typeof item === 'string') return [];
+  const out = [...item.contents];
+  if (item.title) out.unshift(...item.title);
+  if (item.tag) out.unshift(...item.tag);
+  return out;
+}
+
+/**
+ * Applies `fn` to every node under `item` in document order (secondary strings included).
+ * @param {Item} item @param {(n: Node) => boolean | void} fn  returns true to skip what is inside
+ */
+function walk(item, fn) {
+  if (typeof item === 'string') return;
+  if (fn(item) === true) return;
+  for (const child of childrenOf(item)) walk(child, fn);
+}
+
+// ---- ordinals, footnote numbers, headline numbers --------------------------------
+
+/**
+ * Org's headline numbers: one number per level, counted over the exported headlines.
+ * @param {Info} I
+ */
+function numberHeadlines(I) {
+  const counters = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (const h of I.headlines) {
+    const rel = /** @type {number} */ (h.level);
+    counters[rel - 1] = (counters[rel - 1] || 0) + 1;
+    for (let i = rel; i < counters.length; i++) counters[i] = 0;
+    h.number = counters.slice(0, rel);
+  }
+}
+
+/** @param {Node} h @param {Info} I */
+function isNumbered(h, I) {
+  const unnumbered = h.properties && h.properties.UNNUMBERED;
+  if (unnumbered && unnumbered.toLowerCase() !== 'nil') return false;
+  return typeof I.numbering === 'number' ? /** @type {number} */ (h.level) <= I.numbering : I.numbering;
+}
+
+/** 0 when the headline is a normal one, else how many levels past `H:` it is. @param {Node} h @param {Info} I */
+function lowLevel(h, I) {
+  const level = /** @type {number} */ (h.level);
+  return level > I.headlineLevels ? level - I.headlineLevels : 0;
+}
+
+/**
+ * Numbers the footnotes in the order they are first referenced; a definition is searched as soon as its first reference is found.
+ * @param {Node} root @param {Info} I
+ */
+function numberFootnotes(root, I) {
+  walk(root, (n) => {
+    if (n.type === 'footnote-definition') {
+      if (n.label) I.defs.set(n.label, n);
+      return false;
+    }
+    return false;
+  });
+  /** @param {Item} item */
+  const visit = (item) =>
+    walk(item, (n) => {
+      if (n.type === 'footnote-definition') return true;
+      if (n.type !== 'footnote-reference') return false;
+      const label = n.label || null;
+      if (label && I.fnLabels.has(label)) {
+        n.fnNumber = I.fnLabels.get(label);
+        return true;
       }
-      continue;
+      const number = I.fnList.length + 1;
+      n.fnNumber = number;
+      const def = label && !n.inline ? I.defs.get(label) || null : null;
+      I.fnList.push({ number, label, inline: n.inline || null, def });
+      if (label) I.fnLabels.set(label, number);
+      if (n.inline) for (const c of n.inline) visit(c);
+      else if (def) visit(def);
+      return true;
+    });
+  if (I.footnotes) visit(root);
+}
+
+/** Numbers tables, source blocks and figures with captions, as `org-export-get-ordinal` does, and notes targets. @param {Node} root @param {Info} I */
+function collectOrdinals(root, I) {
+  /** @type {Record<string, number>} */
+  const counts = {};
+  walk(root, (n) => {
+    if (n.type === 'target' && n.name) I.targets.set(n.name.trim().replace(/\s+/g, ' ').toLowerCase(), n);
+    if (n.type === 'radio-target' && n.name) I.targets.set(n.name.trim().replace(/\s+/g, ' ').toLowerCase(), n);
+    if ((n.type === 'table' || n.type === 'src-block' || n.type === 'paragraph') && n.caption) {
+      counts[n.type] = (counts[n.type] || 0) + 1;
+      I.ordinals.set(n, counts[n.type]);
     }
-    const rendered = run.kind === 'fixed'
-      ? boxLines(removeIndentation(run.lines.map((l) => l.replace(/^\s*: ?/, ''))), indent)
-      : renderParagraphAscii({ ...node, lines: run.lines }, indent, width);
-    if (!rendered.length) continue;
-    if (out.length) out.push('');
-    out.push(...rendered);
-  }
-  return out;
+    return false;
+  });
 }
 
-/**
- * @param {import('./types.js').BodyNode} node
- * @param {string} indent
- * @param {number} width
- */
-function renderBodyNodeAscii(node, indent, width) {
-  if (node.type === 'paragraph') return renderParagraphRuns(node, indent, width);
-  if (node.type === 'list') return renderListAscii(node, indent, width);
-  if (node.type === 'table') return renderTableAscii(node, indent);
-  if (node.type === 'block') return renderBlockAscii(node, indent, width);
-  if (node.type === 'hr') return [indent + charsetAscii.rule.repeat(Math.max(1, width - indent.length))];
-  return [];
+// ---- helpers on the tree -----------------------------------------------------------
+
+/** The nearest headline above `n` (not `n` itself). @param {Node} n */
+function parentHeadline(n) {
+  for (let p = n.parent; p; p = p.parent) if (p.type === 'headline') return p;
+  return null;
 }
 
-/**
- * @param {Heading} heading
- * @param {number} levelOffset
- * @param {number} width
- * @param {string[]} out
- */
-function renderHeadingAscii(heading, levelOffset, width, out) {
-  const level = heading.level - levelOffset;
-  out.push(...renderHeadingLineAscii(heading, level));
-  const bodyIndent = '  '.repeat(Math.max(0, level));
-  out.push(...renderPlanningAscii(heading.planning, bodyIndent));
-  const body = renderNodesAscii(heading.body || [], bodyIndent, width);
-  if (body.length) out.push('', ...body);
-  for (const child of heading.children || []) {
-    out.push('');
-    renderHeadingAscii(child, levelOffset, width, out);
-  }
-}
-
-// ---- table of contents ---------------------------------------------------
-
-/** Every heading in document order, alongside the section-number
- *  string it will actually get (computed the same way
- *  renderHeadingLineAscii's own nextSectionNumber does, but run
- *  ahead of time, before the real render pass, specifically so the
- *  TOC -- which has to appear BEFORE the headings themselves in the
- * @param {Heading[]} headings
- * @param {number} level
- * @param {number[]} numbers
- * @param {{ heading: Heading, level: number, number: string }[]} out
- *  output -- can reference numbers that end up matching exactly). */
-function collectHeadingsForToc(headings, level, numbers, out) {
-  for (const heading of headings) {
-    numbers.length = level;
-    numbers[level - 1] = (numbers[level - 1] || 0) + 1;
-    out.push({ heading, level, number: numbers.slice(0, level).join('.') });
-    collectHeadingsForToc(heading.children || [], level + 1, numbers, out);
-  }
-}
-
-/** Real org's own org-ascii--build-toc: a "Table of Contents" header
- *  (underlined, matching the same style a level-1 heading gets),
- *  followed by one line per heading -- dot-leader indentation
- *  matching depth (real org's own "make-string (1- indent) '.'"
- *  convention, here approximated as literal repeated dots), each
- * @param {Heading[]} headings
- * @param {number | boolean | null | undefined} toc
- * @param {boolean} numberingEnabled
- *  prefixed with its own section number when numbering is on. */
-function renderToc(headings, toc, numberingEnabled) {
-  if (!toc) return []; // toc:nil -- no Table of Contents at all, independent of num:
-  const maxDepth = typeof toc === 'number' ? toc : Infinity;
-  /** @type {any[]} */ const entries = [];
-  collectHeadingsForToc(headings, 1, [], entries);
-  const visible = entries.filter((e) => e.level <= maxDepth);
-  if (visible.length < 2) return []; // a single visible heading has nothing worth a table of contents for
-  const title = 'Table of Contents';
-  const out = [title, charsetAscii.underline[0].repeat(title.length), ''];
-  for (const { heading, level, number } of visible) {
-    const dots = level > 1 ? '.'.repeat((level - 1) * 3 - 1) + ' ' : '';
-    const numberPart = numberingEnabled ? number + '. ' : '';
-    out.push(dots + numberPart + (renderTextAscii(heading.title) || '(untitled)'));
-  }
-  return out;
-}
-
-/**
- * Exports `doc` (or, if `scope` is given, just that heading and its
- * descendants) to a plain ASCII text string, wrapped to `textWidth`
- * characters (org-ascii-text-width; real org's own default is 72).
- * `scope` must be a heading node that's actually part of `doc` --
- * passed by reference, the same convention every other
- * heading-targeting function in this codebase already uses.
- *
- * `numbered` (default true, matching real org's own default): whether
- * headings get section numbers and a Table of Contents is generated
- * at all -- real org's own #+OPTIONS: num:nil turns this off.
- * @param {Doc} doc
- */
-export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii', sup = 't' } = {}) {
-  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
-  charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];
-  footnoteDefinitionsAscii = [];
-  anonymousFootnoteCounterAscii = 0;
-  sectionNumbersAscii = [];
-  const options = parseExportOptions(doc, sup);
-  supAscii = options.sup;
-  numberingEnabledAscii = options.num;
-
-  const roots = scope ? [scope] : doc.children || [];
-  citeAscii = citeExportFor(doc, roots, parseInline, !scope);
-  linkCtxAscii = buildLinkContext(doc, roots, options.num);
-  const levelOffset = scope ? scope.level - 1 : 0;
+/** The ancestors of `n` from `n` itself up. @param {Node} n */
+function lineage(n) {
+  /** @type {Node[]} */
   const out = [];
-
-  if (!scope) {
-    const title = getDocTitle(doc);
-    if (title) {
-      out.push(title.toUpperCase(), charsetAscii.underline[0].repeat(title.length));
-      const author = options.author ? getDocAuthor(doc) : null;
-      if (author) out.push(author);
-      const date = options.date ? getDocDate(doc) : null;
-      if (date) out.push(date);
-      out.push('');
-    }
-  }
-
-  const tocLines = renderToc(roots, options.toc, options.num);
-  if (tocLines.length) out.push(...tocLines, '');
-
-  if (!scope) {
-    for (const node of doc.body || []) {
-      const rendered = renderBodyNodeAscii(node, '', textWidth);
-      if (rendered.length) out.push(...rendered);
-    }
-  }
-
-  for (const heading of roots) {
-    if (out.length) out.push('');
-    renderHeadingAscii(heading, levelOffset, textWidth, out);
-  }
-
-  if (footnoteDefinitionsAscii.length > 0) {
-    const seenLabels = new Set();
-    out.push('', 'Footnotes', charsetAscii.underline[0].repeat('Footnotes'.length), '');
-    for (const { label, text } of footnoteDefinitionsAscii) {
-      if (seenLabels.has(label)) continue; // the same real label can legitimately be referenced more than once, but only needs one definition line
-      seenLabels.add(label);
-      out.push(`[${label}] ${text}`);
-    }
-  }
-
-  if (!scope && options.creator) {
-    out.push('', 'Generated by org-pwa');
-  }
-
-  const joined = out.join('\n');
-  return joined.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+  for (let p = /** @type {Node | null} */ (n); p; p = p.parent) out.push(p);
+  return out;
 }
 
-export { wrapText, stripLinksForAscii };
+/** The widest line a bullet and its checkbox take (the source bullet counts, as in Emacs). @param {Node} item @param {Info} I */
+function itemIndent(item, I) {
+  const list = item.parent;
+  if (list && list.listType === 'descriptive') return I.quoteMargin;
+  return stringWidth(itemCheckbox(item, I) || '') + stringWidth(sourceBullet(item));
+}
+
+/** @param {Node} item */
+function sourceBullet(item) {
+  const b = item.bullet || '-';
+  return /^\d/.test(b) ? b + ' ' : b + ' ';
+}
+
+/** @param {Node} item @param {Info} I */
+function itemCheckbox(item, I) {
+  return item.checkbox ? I.cs.checkbox[/** @type {'on' | 'off' | 'trans'} */ (item.checkbox)] : null;
+}
+
+/** `org-ascii--current-text-width`. @param {Node} n @param {Info} I */
+function currentTextWidth(n, I) {
+  if (n.type === 'headline') {
+    const rank = lowLevel(n, I);
+    return I.width - (rank ? rank * 2 : I.globalMargin);
+  }
+  const genealogy = lineage(n);
+  const parent = parentHeadline(n);
+  let total = I.width - I.globalMargin;
+  if (parent) {
+    const rank = lowLevel(parent, I);
+    total -= rank ? rank * 2 : I.innerMargin;
+  }
+  const quotes = genealogy.filter((e) => e.type === 'quote-block' || e.type === 'verse-block').length;
+  let indentation = 0;
+  for (const e of genealogy) if (e.type === 'item') indentation += itemIndent(e, I);
+  const lists = genealogy.filter((e) => e.type === 'plain-list' && !(e.parent && e.parent.type === 'item')).length;
+  return total - (quotes * 2 * I.quoteMargin + lists * I.listMargin + indentation);
+}
+
+/** `org-ascii--current-justification`. @param {Node} n @returns {Justify} */
+function currentJustification(n) {
+  for (let p = n.parent; p; p = p.parent) {
+    if (p.type === 'center-block') return 'center';
+    if (p.type === 'special-block') {
+      if (p.name === 'JUSTIFYRIGHT') return 'right';
+      if (p.name === 'JUSTIFYLEFT') return 'left';
+    }
+  }
+  return 'left';
+}
+
+/** `org-ascii--justify-element`. @param {string} contents @param {Node} n @param {Info} I */
+function justifyElement(contents, n, I) {
+  if (!/\S/.test(contents)) return contents;
+  const width = currentTextWidth(n, I);
+  const how = currentJustification(n);
+  if (n.type === 'paragraph') return fillString(contents, width, how, I.preserveBreaks);
+  return justifyBlock(contents, width, how);
+}
+
+/** `org-ascii--box-string`. @param {string} s @param {Info} I */
+function boxString(s, I) {
+  const [top, side, bottom] = I.cs.box;
+  const body = s.replace(/\n[ \t]*$/, '').replace(/^/gm, side);
+  return `${top}\n${body}\n${bottom}`;
+}
+
+/** The text of a code or example block. @param {Node} n */
+function codeOf(n) {
+  const lines = n.lines || [];
+  return lines.length ? lines.join('\n') + '\n' : '';
+}
+
+// ---- export ------------------------------------------------------------------------
+
+/** The greater elements: their contents are normalized before they are handed on. */
+const GREATER = new Set(['org-data', 'headline', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'footnote-definition', 'table']);
+const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
+
+/**
+ * `org-export-data`: an element or object as text.
+ * @param {Item} item @param {Info} I
+ * @returns {string}
+ */
+function exportData(item, I) {
+  if (typeof item === 'string') return item;
+  const transcode = TRANSCODERS[item.type];
+  if (!transcode) return '';
+  if (item.type === 'footnote-definition') return '';
+  if (item.type === 'table') tableInfo(item, I);
+  if (item.type === 'headline') exportItems(item.title || [], I); // marks the links of the title as exported
+  const contents = item.contents.map((c) => exportData(c, I)).join('');
+  const greater = GREATER.has(item.type);
+  const results = transcode(item, greater ? normalizeString(contents) : contents, I);
+  if (results === null || results === undefined) return '';
+  let out;
+  if (ELEMENTS.has(item.type) && item.type !== 'table-cell') out = normalizeString(results) + '\n'.repeat(item.postBlank);
+  else out = results;
+  if (item.type === 'fixed-width' && out !== '') out += '\n'; // Org's quirk: a fixed-width element leaves one more blank line
+  if (item.type === 'headline' || item.type === 'section') out = headlineSpacing(out);
+  item.exported = out;
+  return out;
+}
+
+/** `org-ascii-filter-headline-blank-lines`: two blank lines after a headline's contents. @param {string} s */
+function headlineSpacing(s) {
+  return s.replace(/\n(?:\n[ \t]*)*$/, '\n\n\n');
+}
+
+/** @param {Item[]} items @param {Info} I */
+const exportItems = (items, I) => items.map((i) => exportData(i, I)).join('');
+
+/** @param {Info} I @param {boolean} notes */
+function withNotes(I, notes) {
+  const saved = I.linksToNotes;
+  I.linksToNotes = notes;
+  return saved;
+}
+
+/**
+ * One transcoder per type: (node, contents, info) -> string | null.
+ * @type {Record<string, (n: Node, contents: string, I: Info) => string | null>}
+ */
+const TRANSCODERS = {
+  bold: (_n, c) => `*${c}*`,
+  italic: (_n, c) => `/${c}/`,
+  underline: (_n, c) => `_${c}_`,
+  strikethrough: (_n, c) => `+${c}+`,
+  verbatim: (n, _c, I) => I.verbatimFormat.replace('%s', () => n.value || ''),
+  subscript: (n, c) => (n.kind === 'brackets' ? `_{${c}}` : `_${c}`),
+  superscript: (n, c) => (n.kind === 'brackets' ? `^{${c}}` : `^${c}`),
+  'radio-target': (_n, c) => c,
+  target: () => '',
+  'footnote-reference': (n) => `[${n.fnNumber}]`,
+  citation: (n, _c, I) => {
+    const cite = citations.get(n);
+    const segments = I.cite && cite ? I.cite.formatCitation(cite) : null;
+    return (segments ? citeSegments(segments, I).trim() : '') + ' '.repeat(Number(n.kind) || 0);
+  },
+  link: (n, _c, I) => linkText(n, I),
+  paragraph: (n, c, I) => justifyElement(c.replace(/^[ \t]+/, ''), n, I),
+  'plain-list': (_n, c, I) => (I.listMargin < 1 ? c : indentString(c, I.listMargin)),
+  item: (n, c, I) => itemText(n, c, I),
+  table: (n, c, I) => tableText(n, c, I),
+  'table-row': (n, c, I) => tableRowText(n, c, I),
+  'table-cell': (n, c, I) => tableCellText(n, c, I),
+  'src-block': (n, _c, I) => {
+    const code = codeOf(n);
+    if (code === '') return '';
+    const caption = buildCaption(n, I);
+    return justifyElement(boxString(code, I) + (caption ? '\n' + caption : ''), n, I);
+  },
+  'example-block': (n, _c, I) => justifyElement(boxString(codeOf(n), I), n, I),
+  'fixed-width': (n, _c, I) => (I.fixedWidth ? justifyElement(boxString(removeIndentation(n.lines || []).join('\n') + '\n', I), n, I) : null),
+  'quote-block': (_n, c, I) => indentString(c, I.quoteMargin),
+  'verse-block': (n, c, I) => indentString(justifyElement(c, n, I), I.quoteMargin),
+  'center-block': (_n, c) => c,
+  'special-block': (_n, c) => c,
+  'export-block': (n, _c, I) => (n.name === 'ASCII' ? justifyElement((n.lines || []).join('\n') + '\n', n, I) : null),
+  'horizontal-rule': (n, _c, I) => {
+    const width = currentTextWidth(n, I);
+    return justifyLines(I.cs.rule.repeat(width), width, 'center');
+  },
+  'latex-environment': (n, _c, I) => (I.tex ? justifyElement(removeIndentation(n.lines || []).join('\n') + '\n', n, I) : null),
+  drawer: (n, c, I) => {
+    const d = I.drawers;
+    if (d === false) return null;
+    if (Array.isArray(d)) {
+      const name = (n.name || '').toUpperCase();
+      const excluded = d.filter((x) => x.startsWith('!')).map((x) => x.slice(1).toUpperCase());
+      const included = d.filter((x) => !x.startsWith('!')).map((x) => x.toUpperCase());
+      if (excluded.includes(name)) return null;
+      if (included.length && !included.includes(name)) return null;
+    }
+    return c;
+  },
+  keyword: (n, _c, I) => keywordText(n, I),
+  section: (n, c, I) => {
+    const headline = parentHeadline(n);
+    const text = indentString(c, !headline || lowLevel(headline, I) ? 0 : I.innerMargin);
+    const links = I.linksToNotes && !headline ? describeLinks(uniqueLinks([n]), currentTextWidth(n, I), I) : '';
+    return links.trim() ? headlineSpacing(normalizeString(text)) + links : text;
+  },
+  headline: (n, c, I) => headlineText(n, c, I),
+  'org-data': (_n, c) => c,
+  'footnote-definition': () => null,
+};
+
+// ---- links ---------------------------------------------------------------------------
+
+/** @param {string} name */
+const normName = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * What a fuzzy, custom-id or id link points at: a headline, a named element or a target, or null.
+ * @param {Node} link @param {Info} I
+ * @returns {Node | null}
+ */
+function resolveLink(link, I) {
+  const path = link.path || '';
+  if (link.linkType === 'custom-id') return I.headlines.find((h) => h.properties && h.properties.CUSTOM_ID === path) || I.named.get(path) || null;
+  if (link.linkType === 'id') return I.headlines.find((h) => h.properties && h.properties.ID === path) || null;
+  if (link.kind === 'headline') return I.headlines.find((h) => normName(h.rawTitle || '') === normName(path)) || null;
+  return I.targets.get(normName(path)) || I.named.get(path) || I.headlines.find((h) => normName(h.rawTitle || '') === normName(path)) || null;
+}
+
+/** The ordinal of a destination (a number, or the headline's number list), or null. @param {Node} dest @param {Info} I @returns {number | number[] | null} */
+function ordinalOf(dest, I) {
+  let el = dest;
+  if (dest.type === 'target' || dest.type === 'radio-target') {
+    const found = lineage(dest).find((e) => ['footnote-definition', 'footnote-reference', 'headline', 'item', 'table'].includes(e.type));
+    if (!found) return null;
+    el = found;
+  }
+  if (el.type === 'headline') return isNumbered(el, I) ? el.number || null : null;
+  if (el.type === 'footnote-definition' || el.type === 'footnote-reference') return el.fnNumber || null;
+  return I.ordinals.get(el) || null;
+}
+
+/** Lisp's `%s` of a number or a list of numbers. @param {number | number[]} n */
+const lispString = (n) => (Array.isArray(n) ? `(${n.join(' ')})` : String(n));
+
+/** `org-ascii--describe-datum`. @param {Node} dest @param {Info} I */
+function describeDatum(dest, I) {
+  if (dest.type === 'headline') return `See section ${isNumbered(dest, I) ? (dest.number || []).join('.') : titleText(dest, I)}`;
+  const number = ordinalOf(dest, I);
+  const enumerable = lineage(dest).find((e) => ['headline', 'paragraph', 'src-block', 'table'].includes(e.type));
+  if (enumerable && enumerable.type === 'headline') return `See section ${isNumbered(enumerable, I) ? (enumerable.number || []).join('.') : titleText(enumerable, I)}`;
+  if (number === null) return 'Unknown reference';
+  if (!enumerable) return 'Unknown reference';
+  if (enumerable.type === 'paragraph') return `See figure ${lispString(number)}`;
+  if (enumerable.type === 'src-block') return `See listing ${lispString(number)}`;
+  return `See table ${lispString(number)}`;
+}
+
+/** A headline's title as text. @param {Node} h @param {Info} I */
+function titleText(h, I) {
+  return exportItems(h.title || [], I).trim();
+}
+
+/** `org-ascii-link`. @param {Node} n @param {Info} I */
+function linkText(n, I) {
+  const desc = n.desc ? exportItems(n.desc, I) : null;
+  if (n.linkType === 'radio') return desc || '';
+  if (n.linkType === 'custom-id' || n.linkType === 'fuzzy' || n.linkType === 'id') {
+    const dest = resolveLink(n, I);
+    if (dest) {
+      if (desc !== null && desc !== '') return I.linksToNotes ? `[${desc}]` : `${desc} (${describeDatum(dest, I)})`;
+      if (dest.type === 'headline') return isNumbered(dest, I) ? (dest.number || []).join('.') : titleText(dest, I);
+      const number = ordinalOf(dest, I);
+      if (number !== null) return Array.isArray(number) ? number.join('.') : String(number);
+      return '???';
+    }
+  }
+  const raw = n.raw || '';
+  if (desc === null || desc === '') return `<${raw}>`;
+  return `[${desc}]` + (I.linksToNotes ? '' : ` (<${raw}>)`);
+}
+
+/**
+ * The links of a headline's title and first section, or of a section, listed once each (`org-ascii--unique-links`).
+ * @param {Node[]} roots
+ * @returns {Node[]}
+ */
+function uniqueLinks(roots) {
+  /** @type {Node[]} */
+  const found = [];
+  const seen = new Set();
+  /** @param {Item} item */
+  const visit = (item) =>
+    walk(item, (n) => {
+      if (n.type === 'headline') return true;
+      if (n.caption) for (const c of n.caption) visit(c);
+      if (n.type !== 'link') return false;
+      if (!n.exported || !n.exported.trim()) return false;
+      const key = `${n.raw}\u0000${n.descRaw}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      found.push(n);
+      return false;
+    });
+  for (const r of roots) visit(r);
+  return found;
+}
+
+/**
+ * `org-ascii--describe-links`.
+ * @param {Node[]} links @param {number} width @param {Info} I
+ */
+function describeLinks(links, width, I) {
+  return links
+    .map((link) => {
+      const type = link.linkType;
+      const description = link.desc && link.desc.length ? link.desc : null;
+      const anchor = exportItems(description || [link.raw || ''], I);
+      if (type === 'coderef' || type === 'radio') return '';
+      if (type === 'custom-id' || type === 'fuzzy' || type === 'id') {
+        const dest = resolveLink(link, I);
+        if (dest) {
+          if (!description) return '';
+          return fillString(`[${anchor}] ${describeDatum(dest, I)}`, width, 'left', I.preserveBreaks) + '\n\n';
+        }
+      }
+      if (!description) return '';
+      return fillString(`[${anchor}] <${link.raw}>`, width, 'left', I.preserveBreaks) + '\n\n';
+    })
+    .join('');
+}
+
+// ---- headlines, lists, tables ---------------------------------------------------------
+
+/**
+ * `org-ascii--build-title`.
+ * @param {Node} h @param {Info} I @param {number} textWidth @param {boolean} underline @param {boolean} noTags @param {boolean} toc
+ */
+function buildTitle(h, I, textWidth, underline, noTags, toc) {
+  const numbers = isNumbered(h, I) && h.number ? (toc ? `${h.number[h.number.length - 1]}. ` : `${h.number.join('.')} `) : '';
+  const alt = toc && h.properties && h.properties.ALT_TITLE ? h.properties.ALT_TITLE : null;
+  const text = (alt !== null ? exportItems(objects(alt, h, I), I) : exportItems(h.title || [], I)).trim();
+  const todo = I.withTodo && h.todo ? `${h.todo} ` : '';
+  const tags = !noTags && I.withTags && h.tags && h.tags.length ? `:${h.tags.join(':')}:` : '';
+  const priority = I.withPriority && h.priority ? `(#${h.priority}) ` : '';
+  const first = numbers + todo + priority + text;
+  let out = first;
+  if (tags) out += ' ' + tags.padStart(Math.max(textWidth - (1 + stringWidth(first)), stringWidth(tags)));
+  if (underline) {
+    const ch = I.cs.underline[/** @type {number} */ (h.level) - 1];
+    if (ch) out += '\n' + ch.repeat(Math.floor(stringWidth(first) / stringWidth(ch)));
+  }
+  return out;
+}
+
+/** `org-ascii-headline`. @param {Node} h @param {string} contents @param {Info} I */
+function headlineText(h, contents, I) {
+  const rank = lowLevel(h, I);
+  const width = currentTextWidth(h, I);
+  const title = buildTitle(h, I, width, !rank, false, false);
+  let body = contents;
+  const parts = nodesOf(h.contents);
+  const first = parts[0];
+  if (I.linksToNotes && first && first.type === 'section') {
+    const links = describeLinks(uniqueLinks([...nodesOf(h.title || []), first]), width, I);
+    if (links.trim()) body = (first.exported || '') + links + parts.slice(1).map((c) => c.exported || '').join('');
+  }
+  if (rank) {
+    const bullets = I.cs.bullets;
+    const bullet = `${bullets[(rank - 1) % bullets.length]} `;
+    return `${bullet}${title}\n\n${indentString(body, bullet.length)}`;
+  }
+  return `${title}\n\n${body}`;
+}
+
+/** `org-ascii-item`. @param {Node} item @param {string} contents @param {Info} I */
+function itemText(item, contents, I) {
+  const list = item.parent;
+  const type = list ? list.listType : 'unordered';
+  const checkbox = itemCheckbox(item, I) || '';
+  let bullet;
+  if (type === 'descriptive') bullet = checkbox + exportItems(item.tag || [], I);
+  else if (type === 'ordered') bullet = `${item.itemNumber || 1}${(item.bullet || '').replace(/^\d+/, '')} `;
+  else {
+    bullet = sourceBulletString(item);
+    if (I.cs.utf8) bullet = bullet.replace(/-/g, '•').replace(/\+/g, '⁃').replace(/\*/g, '‣');
+  }
+  const indentation = type === 'descriptive' ? I.quoteMargin : stringWidth(bullet);
+  const body = indentString(contents, indentation);
+  const firstShown = nodesOf(item.contents).find((e) => (e.exported || '').trim() !== '');
+  if (type !== 'descriptive' && /\S/.test(body) && firstShown && firstShown.type === 'paragraph') return bullet + checkbox + body.trim();
+  return bullet + checkbox + '\n' + body;
+}
+
+/** The unordered bullet with one space after it (`org-list-bullet-string`). @param {Node} item */
+function sourceBulletString(item) {
+  return (item.bullet || '-') + ' ';
+}
+
+/**
+ * @typedef {{
+ *   rows: Node[], special: Set<Node>, widths: number[], aligns: string[], groups: (string | null)[] | null, lastCol: number
+ * }} TableInfo
+ */
+
+const NUMBER_RE = /^([<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%:]*|0[xX][0-9a-fA-F]+|nan|[-+u]?inf)$/;
+
+/** What the table's special rows and columns say, and the width and alignment of each column. @param {Node} table @param {Info} I @returns {TableInfo} */
+function tableInfo(table, I) {
+  const cached = I.tableCache.get(table);
+  if (cached) return cached;
+  const rows = nodesOf(table.contents).filter((r) => r.type === 'table-row');
+  const standard = rows.filter((r) => r.rowType === 'standard');
+  const cellRaw = (/** @type {Node} */ cell) => (cell.raw || '').trim();
+  // a special column: the first column holds only /#!$*_^ marks or nothing, and at least one mark
+  let specialColumn = false;
+  {
+    let state = 'empty';
+    for (const r of standard) {
+      const v = cellRaw((r.cells || [])[0] || mk('table-cell', r, { raw: '' }));
+      if (['/', '#', '!', '$', '*', '_', '^'].includes(v)) state = 'special';
+      else if (v !== '') {
+        state = 'none';
+        break;
+      }
+    }
+    specialColumn = state === 'special';
+  }
+  /** @param {Node} row */
+  const isSpecialRow = (row) => {
+    if (row.rowType !== 'standard') return false;
+    const cells = row.cells || [];
+    const first = cells[0] ? cellRaw(cells[0]) : '';
+    if (first === '/') return true;
+    if (specialColumn && ['^', '_', '$', '!'].includes(first)) return true;
+    let cookie = false;
+    for (const c of cells) {
+      const v = cellRaw(c);
+      if (v === '') continue;
+      if (/^<[lrc]?([0-9]+)?>$/.test(v)) cookie = true;
+      else return false;
+    }
+    return cookie;
+  };
+  /** @type {Set<Node>} */
+  const special = new Set(standard.filter(isSpecialRow));
+  // column groups from the `/` row
+  /** @type {(string | null)[] | null} */
+  let groups = null;
+  for (const r of [...standard].reverse()) {
+    const cells = r.cells || [];
+    if (cells[0] && cellRaw(cells[0]) === '/') {
+      groups = cells.map((c) => (['<', '<>', '>'].includes(cellRaw(c)) ? cellRaw(c) : null));
+      if (specialColumn) groups = groups.slice(1);
+      break;
+    }
+  }
+  if (specialColumn) for (const r of rows) if (r.cells) r.contents = r.cells = r.cells.slice(1);
+  const visibleRows = rows.filter((r) => !special.has(r));
+  const columns = Math.max(0, ...standard.map((r) => (r.cells || []).length));
+  /** @type {number[]} */
+  const widths = [];
+  /** @type {string[]} */
+  const aligns = [];
+  for (let col = 0; col < columns; col++) {
+    let cookieWidth = null;
+    let cookieAlign = null;
+    let contentWidth = 0;
+    let numbers = 0;
+    let total = 0;
+    let previousNumber = false;
+    for (const r of rows) {
+      if (r.rowType !== 'standard') continue;
+      const cell = (r.cells || [])[col];
+      if (special.has(r)) {
+        const v = cell ? cellRaw(cell) : '';
+        const m = /^<([lrc])?([0-9]+)?>$/.exec(v);
+        if (m) {
+          if (m[2] !== undefined) cookieWidth = Number(m[2]);
+          if (m[1]) cookieAlign = m[1];
+        }
+        continue;
+      }
+      const text = cell ? exportItems(cell.contents, I) : '';
+      contentWidth = Math.max(contentWidth, stringWidth(text));
+      if (!cookieAlign) {
+        total++;
+        if (NUMBER_RE.test(text) || (text === '' && previousNumber)) {
+          previousNumber = true;
+          numbers++;
+        } else previousNumber = false;
+      }
+    }
+    widths.push(cookieWidth === null ? contentWidth : I.widen ? Math.max(cookieWidth, contentWidth) : cookieWidth);
+    aligns.push(cookieAlign === 'l' ? 'left' : cookieAlign === 'r' ? 'right' : cookieAlign === 'c' ? 'center' : total && numbers / total >= 0.5 ? 'right' : 'left');
+  }
+  const info = { rows: visibleRows, special, widths, aligns, groups, lastCol: columns - 1 };
+  I.tableCache.set(table, info);
+  return info;
+}
+
+/** The borders of a row's first cell, as `org-export-table-cell-borders` finds them. @param {Node} row @param {TableInfo} T */
+function rowBorders(row, T) {
+  const at = T.rows.indexOf(row);
+  /** @type {string[]} */
+  const borders = [];
+  let rule = false;
+  let found = false;
+  for (let i = at - 1; i >= 0; i--) {
+    if (T.rows[i].rowType === 'rule') rule = true;
+    else {
+      if (rule) borders.push('above');
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    if (rule) borders.push('above');
+    borders.push('top');
+  }
+  rule = false;
+  found = false;
+  for (let i = at + 1; i < T.rows.length; i++) {
+    if (T.rows[i].rowType === 'rule') rule = true;
+    else {
+      if (rule) borders.push('below');
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    if (rule) borders.push('below');
+    borders.push('bottom');
+  }
+  return borders;
+}
+
+/** Left and right borders of column `col` from the column groups. @param {TableInfo} T @param {number} col */
+function sideBorders(T, col) {
+  /** @type {string[]} */
+  const out = [];
+  const g = T.groups;
+  if (!g) return out;
+  if ((col > 0 && (g[col - 1] === '>' || g[col - 1] === '<>')) || g[col] === '<' || g[col] === '<>') out.push('left');
+  if ((col + 1 < g.length && (g[col + 1] === '<' || g[col + 1] === '<>')) || g[col] === '>' || g[col] === '<>') out.push('right');
+  return out;
+}
+
+/** @param {Node} table @param {string} contents @param {Info} I */
+function tableText(table, contents, I) {
+  tableInfo(table, I);
+  const caption = buildCaption(table, I);
+  return justifyElement(contents + (caption || ''), table, I);
+}
+
+/** @param {Node} row @param {string} contents @param {Info} I */
+function tableRowText(row, contents, I) {
+  const table = /** @type {Node} */ (row.parent);
+  const T = tableInfo(table, I);
+  if (row.rowType !== 'standard' || T.special.has(row)) return null;
+  const cells = row.cells || [];
+  const borders = rowBorders(row, T);
+  const utf8 = I.cs.utf8;
+  /** @param {string} l @param {string} horiz @param {string} vert @param {string} r */
+  const hline = (l, horiz, vert, r) => {
+    let out = '';
+    cells.forEach((_c, i) => {
+      const side = sideBorders(T, i);
+      if (side.includes('left') && i === 0) out += l;
+      out += horiz.repeat(T.widths[i] + 2);
+      if (!side.includes('right')) return;
+      out += i === cells.length - 1 ? r : vert;
+    });
+    return out + '\n';
+  };
+  let out = '';
+  if (borders.includes('top') && (utf8 || borders.includes('above'))) out += utf8 ? hline('┍', '━', '┯', '┑') : hline('+', '-', '+', '+');
+  else if (borders.includes('above')) out += utf8 ? hline('├', '─', '┼', '┤') : hline('+', '-', '+', '+');
+  if (sideBorders(T, 0).includes('left')) out += utf8 ? '│' : '|';
+  out += contents + '\n';
+  if (borders.includes('bottom') && (utf8 || borders.includes('below'))) out += utf8 ? hline('┕', '━', '┷', '┙') : hline('+', '-', '+', '+');
+  return out;
+}
+
+/** @param {Node} cell @param {string} contents @param {Info} I */
+function tableCellText(cell, contents, I) {
+  const row = /** @type {Node} */ (cell.parent);
+  const table = /** @type {Node} */ (row.parent);
+  const T = tableInfo(table, I);
+  const col = (row.cells || []).indexOf(cell);
+  const width = T.widths[col] || 0;
+  const data = justifyLines(contents, width, /** @type {'left' | 'center' | 'right'} */ (T.aligns[col] || 'left'));
+  const padded = data + ' '.repeat(Math.max(0, width - stringWidth(data)));
+  return ` ${padded} ` + (sideBorders(T, col).includes('right') ? (I.cs.utf8 ? '│' : '|') : '');
+}
+
+/** `org-ascii--build-caption`. @param {Node} n @param {Info} I */
+function buildCaption(n, I) {
+  if (!n.caption) return null;
+  const number = I.ordinals.get(n);
+  const fmt = n.type === 'table' ? 'Table' : 'Listing';
+  return fillString(`${fmt} ${number}: ${exportItems(n.caption, I)}`, currentTextWidth(n, I), 'left', I.preserveBreaks);
+}
+
+// ---- keywords, table of contents ------------------------------------------------------
+
+/** @param {Node} n @param {Info} I */
+function keywordText(n, I) {
+  const value = n.value || '';
+  if (n.key === 'ASCII') return justifyElement(value, n, I);
+  if (n.key === 'PRINT_BIBLIOGRAPHY') return bibliographyText(n, I);
+  if (n.key !== 'TOC') return null;
+  let text;
+  if (/\bheadlines\b/i.test(value)) {
+    const depth = /\b\d+\b/.exec(value);
+    const local = /\blocal\b/i.test(value);
+    text = buildToc(I, depth ? Number(depth[0]) : null, n, local ? parentHeadline(n) || false : null);
+  } else if (/\btables\b/i.test(value)) text = listOf('table', n, I);
+  else if (/\blistings\b/i.test(value)) text = listOf('src-block', n, I);
+  else return null;
+  return justifyElement(text, n, I);
+}
+
+/** @param {Node} n @param {Info} I */
+function bibliographyText(n, I) {
+  if (!I.cite) return null;
+  const width = currentTextWidth(n, I);
+  return I.cite
+    .bibliography()
+    .map((/** @type {import('./cite.js').Segment[]} */ entry) => fillString(citeSegments(entry, I), width, 'left', I.preserveBreaks))
+    .join('\n\n');
+}
+
+/** A citation processor's output as plain text. @param {import('./cite.js').Segment[]} segments @param {Info} I @returns {string} */
+function citeSegments(segments, I) {
+  return segments
+    .map((s) => (typeof s === 'string' ? plainText(s, I) : 'org' in s ? exportItems(objects(s.org, null, I), I) : '/' + citeSegments(s.italic, I) + '/'))
+    .join('');
+}
+
+/** The underline of a heading such as "Table of Contents". @param {string} title @param {Info} I */
+const underlineFor = (title, I) => '\n' + (I.cs.utf8 ? '─' : '_').repeat(stringWidth(title)) + '\n\n';
+
+/**
+ * `org-ascii--build-toc`. `scope` is false for the whole document, or the headline a local table lists.
+ * @param {Info} I @param {number | null} n @param {Node | null} keyword @param {Node | false | null} scope
+ */
+function buildToc(I, n, keyword, scope) {
+  const limit = I.headlineLevels;
+  const local = scope && scope.type === 'headline' ? scope : null;
+  const base = local ? /** @type {number} */ (local.level) : 0;
+  const depth = n !== null ? Math.min(n, limit) : limit;
+  const headlines = I.headlines.filter((h) => {
+    const level = /** @type {number} */ (h.level);
+    if (local) {
+      if (!lineage(h).includes(local) || h === local) return false;
+      return level <= base + (n !== null ? n : limit - base);
+    }
+    return level <= depth && !(h.properties && /notoc/.test(h.properties.UNNUMBERED || ''));
+  });
+  const textWidth = keyword ? currentTextWidth(keyword, I) : I.width - I.globalMargin;
+  const lines = headlines.map((h) => {
+    const level = /** @type {number} */ (h.level);
+    const indent = (level - 1) * 3;
+    return (indent ? '.'.repeat(indent - 1) + ' ' : '') + buildTitle(h, I, textWidth - indent, false, !I.withTags || I.withTags === 'not-in-toc', true);
+  });
+  const title = 'Table of Contents';
+  return (scope === null || scope === undefined ? title + underlineFor(title, I).replace(/^\n/, '\n') : '') + lines.join('\n');
+}
+
+/** "List of Tables" and "List of Listings". @param {'table' | 'src-block'} type @param {Node} keyword @param {Info} I */
+function listOf(type, keyword, I) {
+  const title = type === 'table' ? 'List of Tables' : 'List of Listings';
+  const width = currentTextWidth(keyword, I);
+  const items = [...I.ordinals.keys()].filter((e) => e.type === type);
+  let count = 0;
+  const lines = items.map((e) => {
+    const initial = `${type === 'table' ? 'Table' : 'Listing'} ${++count}:`;
+    const caption = exportItems(e.shortCaption || e.caption || [], I);
+    const filled = indentString(fillString(caption, width - stringWidth(initial), 'left', I.preserveBreaks), stringWidth(initial));
+    return `${initial} ${filled.trim()}`;
+  });
+  return title + underlineFor(title, I) + lines.join('\n');
+}
+
+// ---- the document ---------------------------------------------------------------------
+
+/** `org-ascii-template--document-title`. @param {Info} I */
+function documentTitle(I) {
+  const doc = I.doc;
+  const saved = withNotes(I, false);
+  const textWidth = I.width;
+  const kw = (/** @type {string} */ key) => {
+    const found = (doc.keywords || []).find((k) => k.key.toUpperCase() === key);
+    return found ? found.value.trim() : '';
+  };
+  const titleRaw = I.scope ? I.scope.title : getDocTitle(doc) || '';
+  const subtitleRaw = I.scope ? '' : kw('SUBTITLE');
+  const text = (/** @type {string} */ raw) => exportItems(objects(raw, null, I), I);
+  const title = I.withTitle && titleRaw ? text(titleRaw) : '';
+  const subtitle = I.withTitle && subtitleRaw ? text(subtitleRaw) : '';
+  const authorRaw = getDocAuthor(doc);
+  const author = I.withAuthor && authorRaw ? text(authorRaw) : '';
+  const email = I.withEmail && kw('EMAIL') ? text(kw('EMAIL')) : '';
+  const dateRaw = getDocDate(doc);
+  const date = I.withDate && dateRaw ? text(dateRaw) : '';
+  I.linksToNotes = saved;
+  const nw = (/** @type {string} */ s) => /\S/.test(s);
+  if (title === '') {
+    if (nw(date) && nw(author)) return author + ' '.repeat(textWidth - stringWidth(date) - stringWidth(author)) + date + (nw(email) ? '\n' + email : '') + '\n\n\n';
+    if (nw(date) && nw(email)) return email + ' '.repeat(textWidth - stringWidth(date) - stringWidth(email)) + date + '\n\n\n';
+    if (nw(date)) return justifyLines(date, textWidth, 'right') + '\n\n\n';
+    if (nw(author) && nw(email)) return `${author}\n${email}\n\n\n`;
+    if (nw(author)) return `${author}\n\n\n`;
+    if (nw(email)) return `${email}\n\n\n`;
+    return '';
+  }
+  const utf8 = I.cs.utf8;
+  const longest = Math.max(...`${title}\n${subtitle}`.split('\n').map(stringWidth));
+  const titleLen = Math.min(longest, Math.floor((2 * textWidth) / 3));
+  const formattedTitle = fillString(title, titleLen, 'left', I.preserveBreaks);
+  const formattedSubtitle = nw(subtitle) ? fillString(subtitle, titleLen, 'left', I.preserveBreaks) : '';
+  const line = (utf8 ? '━' : '_').repeat(Math.min(Math.max(titleLen, stringWidth(author), stringWidth(email)) + 2, textWidth));
+  return justifyLines(
+    line +
+      '\n' +
+      (utf8 ? '' : '\n') +
+      formattedTitle.toUpperCase() +
+      (formattedSubtitle ? '\n' + formattedSubtitle : '') +
+      (nw(author) && nw(email) ? `\n\n${author}\n${email}` : nw(author) ? `\n\n${author}` : nw(email) ? `\n\n${email}` : '') +
+      '\n' +
+      line +
+      (nw(date) ? `\n\n\n${date}` : '') +
+      '\n\n\n',
+    textWidth,
+    'center',
+  );
+}
+
+/** The footnotes, as `org-ascii-inner-template` lists them. @param {Info} I */
+function footnoteSection(I) {
+  if (!I.fnList.length) return '';
+  const saved = withNotes(I, false);
+  const width = I.width - I.globalMargin;
+  const title = 'Footnotes';
+  const entries = I.fnList.map((f) => {
+    const id = `[${f.number}] `;
+    let text;
+    if (f.def && f.def.contents.length) {
+      const first = f.def.contents[0];
+      if (typeof first !== 'string' && first.type === 'paragraph') {
+        first.contents.unshift(id);
+        text = exportItems(f.def.contents, I);
+        first.contents.shift();
+      } else text = id + '\n' + exportItems(f.def.contents, I);
+    } else {
+      const inline = f.inline || [];
+      text = fillString(id + exportItems(inline, I), width, 'left', I.preserveBreaks);
+    }
+    return text.trim();
+  });
+  I.linksToNotes = saved;
+  return '\n\n\n' + title + '\n' + (I.cs.utf8 ? '─' : '_').repeat(stringWidth(title)) + '\n\n' + entries.join('\n\n');
+}
+
+/**
+ * Exports `doc` (or, if `scope` is given, just that heading and its descendants) as plain text, wrapped to `textWidth`
+ * characters (`org-ascii-text-width`, 72 in Org). `scope` must be a heading of `doc`. A subtree export takes the heading's
+ * text as the title, as Org does.
+ * @param {Doc} doc
+ * @param {Heading | null} [scope]
+ * @param {number} [textWidth]
+ * @param {{ charset?: string, sup?: string }} [options]
+ */
+export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't' } = {}) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
+  const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup);
+  const skip = exclusion(doc);
+  const roots = scope ? scope.children || [] : doc.children || [];
+  I.cite = citeExportFor(doc, roots.filter((h) => !skip(h)), parseInline, !scope);
+  const root = buildTree(I);
+  numberHeadlines(I);
+  numberFootnotes(root, I);
+  collectOrdinals(root, I);
+  const body = exportData(root, I);
+  const inner = normalizeString(indentString(body + footnoteSection(I), I.globalMargin));
+  let out = indentString(documentTitle(I) + (I.toc ? buildToc(I, typeof I.toc === 'number' ? I.toc : null, null, null) + '\n\n\n' : ''), I.globalMargin) + inner;
+  if (I.withCreator) out += indentString('\n\n\n' + fillString('Generated by org-pwa', I.width - I.globalMargin, 'right', I.preserveBreaks), I.globalMargin);
+  return out;
+}
+
+/**
+ * Wraps `text` to `width` characters the way Emacs fills a paragraph (see ascii-fill.js); returns the lines.
+ * @param {string} text @param {number} width
+ */
+export function wrapText(text, width) {
+  const filled = fillString(text, width, 'left');
+  return filled === '' ? [] : filled.split('\n');
+}
+
+/** Org's link brackets down to plain text: `[[target][description]]` reads `description (target)`. @param {string} text */
+export function stripLinksForAscii(text) {
+  return text.replace(/\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g, (_, target, description) => (description ? `${description} (${target})` : target));
+}

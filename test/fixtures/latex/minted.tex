@@ -1,0 +1,54 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage[newfloat]{minted}
+\author{root}
+\date{\today}
+\title{Minted}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Minted},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\listoflistings
+
+\section{Code}
+\label{sec:org050b5d7}
+\begin{minted}[bgcolor=gray,frame=lines]{python}
+print("hi")
+\end{minted}
+
+\begin{listing}[htbp]
+\begin{minted}[bgcolor=gray,frame=lines]{common-lisp}
+(message "hello")
+\end{minted}
+\caption{\label{lst:org7c95b4a}A captioned listing}
+\end{listing}
+
+\begin{listing}[t]
+\begin{minted}[bgcolor=gray,frame=lines]{bash}
+echo hi
+\end{minted}
+\end{listing}
+
+\begin{minted}[bgcolor=gray,frame=lines,linenos=false]{ocaml}
+let x = 1
+\end{minted}
+\end{document}

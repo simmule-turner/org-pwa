@@ -1,0 +1,18 @@
+#+TITLE: Whole file title
+#+AUTHOR: Nobody
+
+Preamble text that is not exported.
+
+* Other
+Other body.
+* Chosen
+Body of the chosen heading, long enough that it has to wrap around the right edge of the page for sure.
+** Child one
+Child text with a [[https://example.com][link]].
+*** Grandchild
+Deep.
+** Child two
+- a list
+- of items
+* After
+After body.

@@ -1,0 +1,43 @@
+#+TITLE: Sample Document
+#+AUTHOR: A. Person
+
+Intro paragraph with *bold*, /italic/, _under_, +strike+, ~code~, =verb= and a [[https://example.com][link]] plus a bare [[https://example.org]] and a footnote.[fn:1]
+
+* First heading
+Text under first. A long paragraph that should be wrapped at the text width because it keeps going on and on and on past seventy-two characters for sure.
+** Sub heading
+- item one
+- item two
+  continued text
+  1. nested
+  2. numbered
+- [ ] todo box
+- [X] done box
+*** Third level
+**** Fourth level
+***** Fifth level
+Deep text.
+* TODO Second heading :tag:
+SCHEDULED: <2026-10-18 Sun>
+| Name | Qty |
+|------+-----|
+| a    | 1   |
+| bb   | 22  |
+
+#+begin_example
+example line
+#+end_example
+
+#+begin_src js
+const x = 1;
+#+end_src
+
+#+begin_quote
+Quoted text here.
+#+end_quote
+
+-----
+
+: fixed width
+
+[fn:1] The footnote text.

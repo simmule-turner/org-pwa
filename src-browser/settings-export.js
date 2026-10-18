@@ -1,11 +1,12 @@
 // @ts-check
 // The Export page's General and HTML cards: text for the preamble, postamble, head, page header and page footer, each with a switch.
 // Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
-import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeExportText, encodeLispString, exportItemState, hasLatexTocFix, hasPagedToc, LATEX_HEADER_KEY, latexExportDefaults, withLatexTocFix, withPagedToc } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeExportText, encodeLispString, exportItemState, hasLatexTocFix, hasPagedToc, LATEX_HEADER_KEY, LATEX_INIT_KEY, latexExportDefaults, withLatexTocFix, withPagedToc } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 import { menuButton } from './ui-widgets.js';
+import { latexClassNames } from '../src/latex-config.js';
 
 /** @typedef {typeof EXPORT_DEFAULT_ITEMS[number]} ExportItem */
 
@@ -165,11 +166,38 @@ export function buildExportCards(rerender) {
   const latex = cardShell('LaTeX', 'LaTeX export', 'Used for every LaTeX export whose file does not set its own #+LATEX_CLASS: or #+LATEX_COMPILER:.');
   latex.setAttribute('data-export-card', 'latex');
   const current = latexExportDefaults(S.globalVariables);
-  latex.appendChild(choiceRow('Document class', 'org-latex-default-class', LATEX_CLASSES, current.cls || 'article'));
+  latex.appendChild(choiceRow('Document class', 'org-latex-default-class', [...LATEX_CLASSES, ...latexClassNames(current.init).filter((n) => !LATEX_CLASSES.includes(n))], current.cls || 'article'));
   latex.appendChild(choiceRow('Compiler', 'org-latex-compiler', LATEX_COMPILERS, current.compiler || 'pdflatex'));
   latex.appendChild(latexTocFixRow(rerender, current.header || ''));
   latex.appendChild(line('xelatex and lualatex write Unicode text as it is; pdflatex gets the inputenc and fontenc packages.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
+  latex.appendChild(latexInitRow(rerender, current.init || ''));
   return { general, html, latex };
+}
+
+/** The init text for the LaTeX export: Emacs Lisp that sets org-latex-classes, org-latex-packages-alist and the source block backend.
+ * @param {() => void} rerender @param {string} text */
+function latexInitRow(rerender, text) {
+  const row = document.createElement('div');
+  row.setAttribute('data-export-latex-init', '');
+  row.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border)';
+  const name = document.createElement('div');
+  name.style.cssText = 'font-size: 14px; font-weight: 700; min-height: 32px; display: flex; align-items: center';
+  name.textContent = 'Classes, packages and source blocks';
+  row.appendChild(name);
+  row.appendChild(line("Emacs Lisp, as in an init file: (add-to-list 'org-latex-classes ...), (add-to-list 'org-latex-packages-alist '(\"\" \"listings\")), (setq org-latex-src-block-backend 'listings) or 'minted, org-latex-listings-options, org-latex-minted-options. Other forms are ignored.", 'font-size: 11px; opacity: 0.65; margin-bottom: 6px'));
+  const field = document.createElement('textarea');
+  field.rows = 8;
+  field.value = text;
+  field.spellcheck = false;
+  field.setAttribute('aria-label', 'LaTeX init text');
+  field.style.cssText = 'width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg); font-family: monospace; font-size: 13px; resize: vertical';
+  field.onchange = async () => {
+    await commitGlobalVariableChange(LATEX_INIT_KEY, field.value.trim() === '' ? null : encodeLispString(field.value));
+    setStatus(field.value.trim() === '' ? 'LaTeX init text removed.' : 'LaTeX init text saved.');
+    rerender();
+  };
+  row.appendChild(field);
+  return row;
 }
 
 /** "Add TOC with page numbers": adds or removes the Paged.js script and its CSS in org-html-head, so the text box above shows it.

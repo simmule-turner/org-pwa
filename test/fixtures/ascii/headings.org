@@ -1,0 +1,20 @@
+#+TITLE: Headings
+#+OPTIONS: H:3
+
+Preface paragraph before any heading.
+
+* One
+** Two
+*** Three
+**** Four low-level
+***** Five low-level
+Text in five.
+**** Another four
+* TODO [#A] Todo with priority and tags :work:home:
+Body line.
+* DONE Finished :x:
+** COMMENT hidden
+Hidden text.
+* Gone :noexport:
+Hidden.
+* Last

@@ -29,7 +29,7 @@ export function normalize(tex) {
 
 // readme.org is README.org itself (tools/make-readme-fixture.mjs refreshes it); the other fixtures are small and each aims at one feature.
 // Covered by the first release; the rest of the fixtures (images, entities, citations ...) wait for the next one.
-const covered = ['babel', "attr2", "footsec", "comments", "entities", "links2", "images", "attr", "toc", "extras", "notitle-notoc", "cite-natbib", "cite-biblatex", "refnamed", 'fixed', 'texttt', 'readme', 'headings', 'options-nonum', 'options-nonum-toc', 'options-toc2', 'inline', 'lists', 'tables', 'tables2', 'blocks', 'planning', 'math', 'specials', 'headers', 'noexport', 'latex-env', 'timestamps', 'notitle', 'footnotes-basic', 'links'];
+const covered = ['babel', "attr2", "footsec", "comments", "entities", "links2", "images", "attr", "toc", "extras", "notitle-notoc", "cite-natbib", "cite-biblatex", "refnamed", 'fixed', 'texttt', 'readme', 'headings', 'options-nonum', 'options-nonum-toc', 'options-toc2', 'inline', 'lists', 'tables', 'tables2', 'blocks', 'planning', 'math', 'specials', 'headers', 'noexport', 'latex-env', 'timestamps', 'notitle', 'footnotes-basic', 'links', 'classes', 'classes-koma', 'listings', 'minted'];
 
 for (const name of covered) {
   test(`LaTeX export matches Emacs: ${name}`, () => {
@@ -37,7 +37,9 @@ for (const name of covered) {
     const doc = parseOrg(read(`${name}.org`));
     // prepareBabelExport edits the text and leaves the blank lines of the results it removes, so that one fixture is compared without blank lines
     const flat = (/** @type {string} */ tex) => (name === 'babel' ? tex.replace(/\n{2,}/g, '\n') : tex);
-    const got = flat(normalize(exportToLatex(name === 'babel' ? prepareBabelExport(doc) : doc))).split('\n');
+    // NAME.el holds the ox-latex settings Emacs ran with; the app takes the same text as its LaTeX init
+    const init = fs.existsSync(new URL(`${name}.el`, dir)) ? read(`${name}.el`) : undefined;
+    const got = flat(normalize(exportToLatex(name === 'babel' ? prepareBabelExport(doc) : doc, null, { defaults: { init } }))).split('\n');
     const want = flat(normalize(read(`${name}.tex`))).split('\n');
     const at = got.findIndex((line, i) => line !== want[i]);
     assert.equal(at < 0 && got.length === want.length ? '' : `line ${at < 0 ? got.length : at + 1}: got ${JSON.stringify(got[at])} want ${JSON.stringify(want[at])}`, '');

@@ -1,0 +1,7 @@
+#+TITLE: TOC depth
+#+OPTIONS: toc:2 num:2
+* One
+** Two
+*** Three
+* Four
+** Five

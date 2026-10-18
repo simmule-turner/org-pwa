@@ -1074,6 +1074,9 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateBanner = /** @type {HTMLElement} */ (document.getElementById('updateBanner'));
   const updateReloadBtn = /** @type {HTMLElement} */ (document.getElementById('updateReloadBtn'));
   let reloadedForUpdate = false;
+  // The very first worker claims the page it was installed from, which also fires controllerchange; that is not an update, and a
+  // reload then would only throw away what the person has already started doing (and race anything else reloading the page).
+  const hadController = !!navigator.serviceWorker.controller;
 
   /** @param {ServiceWorker} waitingWorker */
   function showUpdateBanner(waitingWorker) {
@@ -1139,7 +1142,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   // Reload and the new worker calls skipWaiting + clients.claim). Reload
   // exactly once — controllerchange can in principle fire more than once.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadedForUpdate) return;
+    if (reloadedForUpdate || !hadController) return;
     reloadedForUpdate = true;
     window.location.reload();
   });

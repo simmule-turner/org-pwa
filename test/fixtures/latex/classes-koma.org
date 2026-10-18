@@ -1,0 +1,11 @@
+#+TITLE: Koma
+#+LATEX_CLASS: koma
+#+LATEX_CLASS_OPTIONS: [a4paper,12pt]
+
+* One
+Text one.
+** Two
+Text two.
+*** Three
+Text three.
+* Another

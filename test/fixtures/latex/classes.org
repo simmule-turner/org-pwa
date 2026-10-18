@@ -1,0 +1,12 @@
+#+TITLE: Custom classes
+#+LATEX_CLASS: memo
+#+LATEX_HEADER: \usepackage{extra}
+
+* One
+Text one.
+** Two
+Text two.
+*** Three (deeper than the class has)
+Text three.
+* Another
+Done.

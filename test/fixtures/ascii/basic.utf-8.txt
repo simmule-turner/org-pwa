@@ -1,0 +1,84 @@
+                           ━━━━━━━━━━━━━━━━━
+                            SAMPLE DOCUMENT
+
+                               A. Person
+                           ━━━━━━━━━━━━━━━━━
+
+
+Table of Contents
+─────────────────
+
+1. First heading
+.. 1. Sub heading
+..... 1. Third level
+2. TODO Second heading                                             :tag:
+
+
+Intro paragraph with *bold*, /italic/, _under_, +strike+, `code', `verb'
+and a [link] plus a bare <https://example.org> and a footnote.[1]
+
+
+[link] <https://example.com>
+
+
+1 First heading
+═══════════════
+
+  Text under first. A long paragraph that should be wrapped at the text
+  width because it keeps going on and on and on past seventy-two
+  characters for sure.
+
+
+1.1 Sub heading
+───────────────
+
+  • item one
+  • item two continued text
+    1. nested
+    2. numbered
+  • ☐ todo box
+  • ☑ done box
+
+
+1.1.1 Third level
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+
+◊ 1.1.1.1 Fourth level
+
+  ◊ 1.1.1.1.1 Fifth level
+
+    Deep text.
+
+
+2 TODO Second heading                                              :tag:
+═════════════════════
+
+  ━━━━━━━━━━━
+   Name  Qty 
+  ───────────
+   a       1 
+   bb     22 
+  ━━━━━━━━━━━
+
+  ┌────
+  │ example line
+  └────
+
+  ┌────
+  │ const x = 1;
+  └────
+
+        Quoted text here.
+
+  ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
+
+  ┌────
+  │ fixed width
+  └────
+
+
+
+Footnotes
+─────────
+
+[1] The footnote text.
