@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v557 — README pass for novices
+The README is shorter and easier to follow for newcomers: long paragraphs in logging, archiving, attachments, clocking, files, tabs and capture are condensed. "Differences from Emacs org-mode" is corrected: LaTeX export is described (Org 9.6 behaviour, three classes, natbib and biblatex), and the palette-only export formats are listed.
+Verified: README LaTeX fixture still matches Emacs.
+
 * v556 — Smaller Export menu, subscript setting everywhere
 More → Export lists ASCII, HTML, LaTeX and Markdown. ODT, As-org, Calendar (.ics) and Contacts (.vcf) are command-palette commands: =org-odt-export-to-odt=, =org-org-export-as-org=, =org-icalendar-export-to-ics= and =org-vcard-export=, the last two opening their scope choice. Markdown and ODT export now follow =org-use-sub-superscripts= and a file's =#+OPTIONS: ^:= too, so =Effort_ALL= stays as written with ={}=.
 Verified: smoke checks for the menu, the palette commands and the Calendar export.

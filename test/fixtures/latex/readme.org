@@ -5,9 +5,9 @@
 :CUSTOM_ID: org-pwa
 :END:
 
-A single-file, offline-capable, mobile-first outliner for editing ~.org~ files in the browser. No server, no account required to use it locally — just a static site you can install as a PWA and point at a file.
+A mobile-first outliner for editing ~.org~ files in the browser. It works offline, needs no server and no account to use locally, and installs as a PWA.
 
-This document describes what org-pwa actually does today, how to use it, and — since that's usually the more useful question for anyone coming from Emacs — *where it deliberately or incidentally diverges from real org-mode.*
+This guide covers how to use it and, for anyone coming from Emacs, where it differs from real org-mode (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]).
 
 -----
 
@@ -56,9 +56,9 @@ This document describes what org-pwa actually does today, how to use it, and —
 :CUSTOM_ID: what-org-pwa-is-and-isnt
 :END:
 
-org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and writes real ~.org~ files — round-trip fidelity is a hard requirement, so content it doesn't specifically understand is preserved verbatim rather than mangled or dropped. But the /editing model/ is built from scratch around tapping and gestures, not Emacs keybindings, and it deliberately implements a useful subset of org-mode rather than all of it.
+org-pwa is a *touch-first outline editor*, not a port of Emacs. It reads and writes real ~.org~ files and keeps anything it doesn't understand exactly as written. Editing is built around tapping and gestures rather than Emacs keybindings, and it implements a useful subset of org-mode, not all of it.
 
-If you're looking for org-mode-in-the-browser with full parity — babel, LaTeX export, real Emacs Lisp — this isn't that (see [[#known-limitations--not-built-yet][Known limitations]]). If you want to open a real org file on your phone, reorganize your outline, check off tasks, edit tables, and get it saved back to disk, GitHub, or a WebDAV server, that's what this is for.
+It is not org-mode with full parity (babel in languages other than JavaScript, Emacs Lisp; see [[#known-limitations--not-built-yet][Known limitations]]). It is for opening a real org file on your phone, reorganizing the outline, checking off tasks, editing tables and saving back to disk, GitHub or a WebDAV server.
 
 -----
 
@@ -67,20 +67,20 @@ If you're looking for org-mode-in-the-browser with full parity — babel, LaTeX 
 :CUSTOM_ID: getting-started
 :END:
 
-1. Open the app. If no file is open, tap *File → Open*.
+1. Open the app and tap *File → Open* if no file is open.
 2. Choose where to open from:
 
-   - *Local file* — uses the browser's native file picker and keeps a live handle, so Save writes straight back to the same file. Requires a browser with File System Access support (Chrome/Edge on desktop and Android).
-   - *GitHub* — browse folders and ~.org~ files in a repo you've configured in Settings, tap one to open it. A "Type a path instead…" option is always available too, for a path that doesn't show up in the listing (e.g. permissions on a specific subfolder) or if listing fails outright.
-   - *WebDAV* — same idea, browsing a WebDAV server you've configured in Settings via the standard ~PROPFIND~ directory-listing method. Same "Type a path instead…" fallback available here too.
-   - *Import file* (shown instead of "Local file" on platforms without File System Access, i.e. everything on iOS) — picks a file once and reads it; there's no live link back to the original, so Save downloads a new copy you place back manually. See [[#platform-support][Platform support]].
+   - *Local file*: the browser's file picker. Save writes straight back to the same file. Needs File System Access (Chrome or Edge on desktop and Android).
+   - *GitHub*: browse a repo set up in Settings and tap a file. *Type a path instead…* is always there for a path the listing doesn't show.
+   - *WebDAV*: the same, for a WebDAV server set up in Settings.
+   - *Import file* (instead of *Local file* where File System Access is missing, such as iOS): reads a file once. Save downloads a new copy for you to put back (see [[#platform-support][Platform support]]).
 
-3. Edit. Every edit is applied instantly to an in-memory copy and cached locally in the background — nothing is lost if you close the tab, even before you hit Save.
-4. Tap *Save* when you want it written back to wherever it came from. *Save As* lets you choose a different destination or backend.
+3. Edit. Edits apply at once and are cached locally, so nothing is lost if you close the tab before saving.
+4. Tap *Save* to write the file back to where it came from, or *Save As* to choose another destination.
 
-*Menus and popups*: the File, View, More and Extras menus and every popup open as a bottom sheet on a phone or tablet. On a wide screen with a mouse the menus drop down under their button, and *↑*, *↓*, *Home*, *End* and *Enter* move through them. Popups become centered dialogs from 600 px wide, and *Esc* closes either. Questions such as a file path or a replacement string are asked in the same kind of dialog; *Enter* accepts.
+*Menus and popups*: on a phone or tablet the menus and popups open as a bottom sheet. On a wide screen with a mouse the menus drop down under their button (*↑*, *↓*, *Home*, *End* and *Enter* move through them), and popups are centered dialogs. *Esc* closes either, and *Enter* accepts a question dialog such as a file path.
 
-The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current filename, which backend it came from, and whether there are unsaved edits — the same information the tab bar (see [[#tabs][Tabs]]) also carries once a second tab is open, via a solid dot on any tab with unsaved changes.
+The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, where it came from and whether it has unsaved edits. Once a second tab is open, the tab bar (see [[#tabs][Tabs]]) marks unsaved tabs with a dot.
 
 -----
 
@@ -89,13 +89,13 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current file
 :CUSTOM_ID: editing-your-outline
 :END:
 
-- *Headings*: tap the title to reveal twelve actions: edit title, edit the heading's body text, edit details (the general editor, below), add a sub-heading, TODO, move up and down, archive, attach (see [[#attachments][Attachments]]), delete, promote and demote. Most actions close the row after running; move up and down and promote and demote leave it open so you can repeat them. Tap elsewhere on the row to close it. *Delete* always confirms, listing what would be lost (dates, tags, properties, state history). Every delete or discard confirmation in the app (heading, table, note, list item, row or column, attachment, the recent-files list) has *Cancel* as the default, focused when the dialog opens, so a stray Enter, an interrupted tap or a tap on the backdrop never deletes. The buttons arrange themselves to the width: four across in three rows on a narrow screen (with the arrows last, as left, right, up, down), six across in two rows, or one row of twelve on a wide one. With a keyboard, the arrow keys move between them and *Esc* closes the row; hovering shows a button's name, and *Delete* is red.
+- *Headings*: tap the title to show its actions: edit title, edit text, edit details (the general editor, below), add a sub-heading, TODO, move up and down, archive, attach (see [[#attachments][Attachments]]), delete, promote and demote. Most close the row after running; move and promote/demote stay open so you can repeat them. *Delete* always asks first, listing what would be lost, and every delete or discard confirmation in the app defaults to *Cancel*, so a stray Enter or tap never deletes. With a keyboard, the arrow keys move between the buttons and *Esc* closes the row.
 - *TODO state*: tap the TODO badge to cycle the ~#+TODO:~ sequence (default ~TODO~, ~DONE~) one step at a time. The action menu's *TODO* button (~C-c C-t~) does the same, except that for a heading with no keyword in a file with more than one parallel ~#+TODO:~ workflow it opens a picker of every state of every workflow (see [[#progress-logging][Progress logging]]).
 - *Fold and unfold*: tap the chevron to toggle a heading's subtree, or swipe left on a heading to cycle collapsed → children only → fully expanded.
-- *Move*: drag the grip at the right of a heading (Settings → Quick Settings → *Drag handle on headings* puts it on the left or turns it off) to move it with its subtree. The blue line snaps to the gap between two headings, and moving sideways steps through the levels that fit there, one step per level, moving right being deeper. From a right-hand grip you start at the deepest level and move left to come out; from a left-hand grip you start at the outermost and move right to go in. A tag names the result (*into* a heading, *same level as* one, or *top level*). Letting go over the top bar, or over the mode line and minibuffer (they turn red and say *Release to cancel*), or pressing Escape, cancels; the very top and bottom of the outline are still drops. The Up, Down, Promote and Demote buttons in the action menu do the same in single steps.
-- *Complete or archive*: swipe right. With an active TODO keyword it jumps straight to the sequence's first DONE-type keyword. Without one, including an already-DONE heading, it opens the Archive, Refile or Cancel prompt. An already-archived heading unarchives directly.
-- *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~, or back to where it came from, from a panel that shows the destination first (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties are ordinary once the move lands and can be edited or removed in the general editor.
-- *Moving headings* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings, taking its subtree with it. ← promotes it one level, as a sibling right after its former parent. → demotes it one level, as the last child of the heading before it. At a boundary (first or last, top level, nothing to demote under) a brief status message says so.
+- *Move*: drag the grip at the right of a heading to move it with its subtree (Settings → Quick Settings → *Drag handle on headings* moves it to the left or turns it off). The blue line snaps between two headings; moving sideways steps through the levels that fit, rightward being deeper, and a tag names the result (*into* a heading, *same level as* one, or *top level*). Letting go over the top bar or the mode line, or pressing Escape, cancels.
+- *Complete or archive*: swipe right. A heading with an active TODO keyword jumps to the first DONE-type keyword. Otherwise it opens the Archive, Refile or Cancel prompt, and an archived heading unarchives directly.
+- *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~ or back, from a panel that shows the destination first (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties can be edited or removed in the general editor.
+- *Moving in steps* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings with its subtree. ← promotes it one level, right after its former parent. → demotes it one level, as the last child of the heading before it. At a boundary a short status message says so.
 - *The general editor* (📋 *Edit details*) is a popup with five tabs, so nothing is a long scroll: *Dates*, *Tags*, *Props*, *Files* and *More* (priority and tables). A tab you have edited shows a dot, and a note beside the buttons names them ("Changed: Dates, Tags"). Each tab shows how many items it holds.
   - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers, a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
   - *Tags*: removable chips (tap to remove) and an input with an *Add* button (Enter also adds). Suggestions appear as you type: every tag used in the open document or a loaded agenda file (most used first) plus tags declared on a ~#+TAGS:~ line, narrowed to what you typed and excluding tags the heading already has. One tap adds one.
@@ -113,7 +113,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the current file
 
   Everything else (~SRC~, ~EXAMPLE~, ~COMMENT~, custom names) is shown literally.
 
-  On export (see [[#export][Export]]), ~SRC~ becomes a fenced code block with its language kept (~#+BEGIN_SRC python~ gives ```python), ~QUOTE~ becomes a blockquote, and ~COMMENT~ is dropped. Every other name exports as a plain fenced block, without ~VERSE~'s line preserving or ~CENTER~'s centering. A ~SRC~ language is kept only as that export hint: there is no syntax highlighting, and only ~js~ blocks can run (see [[#source-blocks][Source blocks]]).
+  Export (see [[#export][Export]]) turns ~SRC~ into a code block with its language kept, ~QUOTE~ into a blockquote and drops ~COMMENT~. A ~SRC~ language is not syntax-highlighted in the outline, and only ~js~ blocks can run (see [[#source-blocks][Source blocks]]).
 
 *** A heading's "text"
 :PROPERTIES:
@@ -129,15 +129,15 @@ Org has no separate description field: everything after a heading, up to the nex
 :CUSTOM_ID: undoredo-and-history
 :END:
 
-Every edit can be undone and redone: heading, paragraph, list-item and table-cell text, TODO state, priority, tags, properties, moving, promoting, archiving, capturing, all of it. The command palette's *Undo history* opens a panel with quick *‹ Undo* and *Redo ›* buttons for one step at a time, a scrollable list of every step since the file was opened (oldest to newest, current position marked), and a *diff* toggle on each entry showing what that step changed, as added and removed lines diffed against the step before it.
+Every edit can be undone and redone: text, TODO state, priority, tags, properties, moving, archiving, capturing, all of it. The command palette's *Undo history* opens a panel with *‹ Undo* and *Redo ›* buttons, a list of every step since the file was opened (current position marked) and a *diff* toggle on each entry showing what it changed.
 
-Tap *any* entry to jump straight there, forward or back. Entries past your position (available to redo) are dimmer. A genuinely new edit from an undone point discards what was ahead of it, as in most editors, but browsing the list, including jumping back and forward again, discards nothing.
+Tap any entry to jump there. Entries past your position are dimmer. A new edit from an undone point discards what was ahead of it; browsing the list discards nothing.
 
-Each step is a full snapshot of the document's text, one per completed edit action (saving a title, toggling a checkbox, archiving a heading) rather than one per keystroke. An edit that changes nothing, such as toggling something and toggling it back, gets no step.
+A step is one completed edit action (saving a title, toggling a checkbox, archiving a heading), not a keystroke, and an edit that changes nothing adds none.
 
-History is unlimited while a file stays open. It also survives closing and reopening the file, capped at the 200 most recent steps, but only when the text on reopen exactly matches what the app last had: if the file changed in the meantime (edited elsewhere, on another device, or directly on GitHub or WebDAV), the old history is discarded. Undo and redo reapply the file's ~#+STARTUP~ visibility instead of preserving fold state across the jump.
+History is unlimited while a file stays open. It survives closing and reopening (the 200 most recent steps) only if the text on reopen matches what the app last had; if the file changed elsewhere, the old history is dropped. Undo and redo reapply the file's ~#+STARTUP~ visibility instead of keeping fold state.
 
-Landing on a step whose text is identical to the last confirmed saved version (what the app last read or wrote) clears the filename's modified indicator. That baseline updates on every successful Save during the session.
+Landing on a step identical to the last saved text clears the modified indicator.
 
 *If the filename shows modified (red) and nothing you did explains it*, check the first history entry. If it reads "Opened (resumed unsaved local version)" instead of "Opened", the file had an unsaved edit from an earlier session, and reopening resumed it instead of starting from what is stored. Save to make that version the real one, or jump back in the history list if it wasn't what you wanted.
 
@@ -149,12 +149,12 @@ Landing on a step whose text is identical to the last confirmed saved version (w
 :END:
 
 - *Lists*: ordered, unordered, checkboxes, description lists (~term \:: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions.
-- *Checkboxes* cycle unchecked → in-progress → done. A progress cookie in a heading's title (~[3/8]~, ~[40%]~, or the blank ~[/]~ and ~[/8]~) is recalculated whenever a checkbox in the heading's subtree changes, counting the heading's own list and every descendant heading's, as org does. A heading's ~:COOKIE_DATA:~ property changes what is counted: ~checkbox~ or ~todo~ picks which kind when a heading has both, both words count both kinds, and ~recursive~ with ~todo~ extends TODO counting to the whole subtree. Without it, only checkboxes are counted, recursively.
-- *Tables*: tap a cell to edit it in place. A *⎌* button beside the field discards the edit and restores the cell's text, which is the way out on a phone, where there is no Escape key (~Escape~ also works with a hardware keyboard). Row and column add and remove controls sit below the table. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and render bold; a table with no rule has no header, and a later rule is only a group separator.
+- *Checkboxes* cycle unchecked → in-progress → done. A progress cookie in a heading's title (~[3/8]~, ~[40%]~, or the blank ~[/]~) is recalculated whenever a checkbox in its subtree changes, counting its own list and every descendant heading's, as org does. A ~:COOKIE_DATA:~ property changes what is counted: ~checkbox~ or ~todo~ picks the kind when a heading has both, both words count both, and ~recursive~ with ~todo~ extends TODO counting to the whole subtree. Without it, only checkboxes are counted, recursively.
+- *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table, and ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
-- *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. ~#+CAPTION:~ shows as an italic caption, with its inline markup rendered. ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~, ~em~ and similar lengths work). The other lines stay visible as small muted text, and every line is kept exactly as written.
+- *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. A caption shows in italics with its markup rendered; ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~ and ~em~ work). The other lines stay visible as small muted text, exactly as written.
 
-Every delete asks for confirmation, and Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]]).
+Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]]).
 
 *** Table formulas
 :PROPERTIES:
@@ -195,10 +195,9 @@ Every delete asks for confirmation, and Undo/redo covers every edit (see [[#undo
 
 - Subtracting two dates gives days as an integer, or, if either has a time of day, a duration in Calc's HMS form (~8@ 30' 0"~ for 8.5 hours).
 - Adding or subtracting a number shifts a date by that many days and writes it back as a timestamp: ~date($1) + 14~ gives ~<2026-09-08>~.
-- ~deg()~ turns an HMS duration back into days for further arithmetic: ~deg(date($2) - date($1)) * 24;%.2f~ gives ~8.50~ hours.
-- ~now()~ is the current date and time.
-- ~date-to-time(ref)~, spelled as in Emacs, accepts every timestamp ~date()~ does, plus ISO 8601 (~2026-01-15T10:30:00Z~), RFC 822 (~Mon, 15 Jan 2026 10:30:00 GMT~) and US (~01/15/2026~) strings, parsed by the browser. An unparseable string gives ~#ERROR~.
-- ~format-time-string(fmt, time, utc)~ uses the same ~%~ codes as capture templates: ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~. ~time~ defaults to now and accepts a date value or a number of seconds since the Unix epoch. A non-zero ~utc~ formats in UTC (~%Z~ and ~%z~ then say UTC and +0000); otherwise the device's time zone is used.
+- ~deg()~ turns an HMS duration back into days for further arithmetic: ~deg(date($2) - date($1)) * 24;%.2f~ gives ~8.50~ hours. ~now()~ is the current date and time.
+- ~date-to-time(ref)~ accepts every timestamp ~date()~ does, plus ISO 8601 (~2026-01-15T10:30:00Z~), RFC 822 and US (~01/15/2026~) strings, parsed by the browser. An unparseable string gives ~#ERROR~.
+- ~format-time-string(fmt, time, utc)~ uses the capture-template ~%~ codes: ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~. ~time~ defaults to now and takes a date value or Unix seconds; a non-zero ~utc~ formats in UTC, otherwise the device's time zone is used.
 
 *References*: ~$N~ is column N of the current row, ~@N$M~ is row N, column M, ~@-N~ and ~@+N~ are rows relative to the target, ~@<~, ~@>~, ~$<~ and ~$>~ are the first and last row or column, and a range such as ~$1..$3~ or ~@1$1..@3$2~ is an aggregate function's argument. A range may omit the column (~@2..@6~) to mean those rows in the formula's own column. Rows count every actual row, including the header; a horizontal rule has no row number. The column shorthand ~$M=~ (no ~@~, applied to every row) skips rows before the first horizontal rule, while an explicit ~@1$2=~ still changes that row. A table with no rule has no header, so nothing is skipped.
 
@@ -286,7 +285,7 @@ A ~#+PLOT:~ line directly above a table (several stacked lines combine their opt
 
 org-plot's gnuplot scripting options (~set~, ~line~, ~script~, ~file~, ~map~, ~timefmt~) are accepted but have no effect, so a copied line never errors.
 
-The graph is cached for each ~#+PLOT:~ line and its table data, so showing it again is instant, and editing the table re-renders it the next time it is shown. It follows the heading's fold state: collapsing the heading hides the graph, and after expanding it the *Plot* button needs a fresh tap, as with contact photos (see [[#local-variables][~org-xx-startup-with-show-photos~]]).
+The graph is cached per ~#+PLOT:~ line and table data, and editing the table re-renders it the next time it is shown. Collapsing the heading hides it, and the *Plot* button needs a fresh tap after expanding.
 
 -----
 
@@ -306,13 +305,13 @@ All six of org's emphasis markers work in headings, paragraphs and list items:
 | Verbatim | ~=verbatim text=~ | ~verbatim text~ (literal, not further parsed) |
 | Code | =~code text~= | ~code text~ (literal, not further parsed) |
 
-A marker opens where it follows the start of a line, whitespace or one of ~-({'"~ and isn't followed by whitespace. It closes where it isn't preceded by whitespace and is followed by the end of the line, whitespace or closing punctuation. These are org's border rules for the common cases, not its full border-character tables. Bold, italic, underline and strikethrough nest (~*bold /italic/ bold*~); verbatim and code never do, and their content is literal.
+A marker opens after the start of a line, whitespace or one of ~-({'"~, and isn't followed by whitespace. It closes where it isn't preceded by whitespace and is followed by the end of the line, whitespace or closing punctuation. Bold, italic, underline and strikethrough nest (~*bold /italic/ bold*~); verbatim and code never do.
 
 *Horizontal rule*: a line of only dashes, at least five (~-----~), is a horizontal rule. Whitespace around the dashes is fine; any other character on the line makes it a paragraph.
 
-*Hard line break*: a line ending in two backslashes (~\\~) is org's explicit line break. Source lines in an ordinary paragraph or list item otherwise reflow together with a space (org's ~org-export-preserve-breaks~ is ~nil~ by default). The marker forces a break exactly where it is written, in paragraphs, [[#editing-your-outline][QUOTE or CENTER blocks]] and all four document export formats (HTML, Markdown, ASCII, ODT).
+*Hard line break*: a line ending in two backslashes (~\\~) forces a line break, in paragraphs, QUOTE and CENTER blocks and every export format. Otherwise the source lines of a paragraph or list item reflow together with a space, as in org.
 
-*Subscript and superscript*: ~_~ and ~^~ mark them. ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted, mainly for readability. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them, in HTML, LaTeX, Markdown and ODT export as well as in the outline (a file's ~#+OPTIONS: ^:~ wins; ASCII prints a subscript as ~_x~ whatever the setting):
+*Subscript and superscript*: ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them in the outline and in every export except ASCII (which prints ~_x~ either way); a file's ~#+OPTIONS: ^:~ wins:
 
 | Value | Behavior |
 |---+---|
@@ -320,11 +319,11 @@ A marker opens where it follows the start of a line, whitespace or one of ~-({'"
 | ~{}~ | Only the braced form ~x_{i}~ is interpreted; a bare ~x_i~ stays literal text |
 | ~nil~ | Disabled entirely; ~_~ / ~^~ are always literal characters |
 
-~_~ also marks underline, as in org. The two are told apart by what precedes it: underline needs whitespace, a line start or certain punctuation before it (~_underlined_~), and subscript needs a non-space character (~a_b~). Script content is literal: ~x_{*bold*}~ doesn't interpret the ~*bold*~.
+~_~ also marks underline: underline needs whitespace, a line start or punctuation before it (~_underlined_~), subscript a non-space character (~a_b~). Script content is literal, so ~x_{*bold*}~ doesn't interpret the ~*bold*~.
 
-*Footnotes*: ~[fn:label]~ is a reference, shown as a small tappable superscript that jumps to, and briefly highlights, the definition anywhere in the document, even under a folded heading. A definition can be inline at the reference, ~[fn:label:the note text]~, or anonymous, ~[fn::an anonymous note]~, and inline text renders in place, smaller and in italics. A separate line starting ~[fn:label]~ (like ~[fn:1] The actual definition.~) is also a definition, shown with a small label. Markdown export uses GFM's ~[^label]~ and ~[^label]: text~, and HTML export uses a jump-linked superscript with a back-linked Footnotes section.
+*Footnotes*: ~[fn:label]~ is a reference, shown as a small tappable superscript that jumps to the definition, even under a folded heading. A definition can be inline, ~[fn:label:the note text]~, anonymous, ~[fn::an anonymous note]~, or a separate line starting ~[fn:label]~ (like ~[fn:1] The actual definition.~). Markdown export uses GFM's ~[^label]~, HTML a jump-linked superscript with a back-linked Footnotes section.
 
-Table cells render inline markup too. Tap a cell to see and edit its raw text, and tap away or tap another cell to commit (see [[#editing-your-outline][Editing your outline]]).
+Table cells render inline markup too; tap one to edit its raw text and tap away to commit.
 
 *** Footnote commands
 :PROPERTIES:
@@ -357,11 +356,11 @@ Math in a heading, paragraph or list item renders as typeset math with [[https:/
 | ~$...$~ | Inline | No whitespace directly inside the delimiters; the closing ~$~ must be followed by whitespace or punctuation, but never a dash (avoiding ~$5-10~ reading as math) |
 | ~\begin{env}...\end{env}~ | Display | ~\begin~ must start a line, preceded by nothing but whitespace |
 
-~$...$~ avoids misreading currency: ~costs $5 and $10 total~ stays plain text. The opening ~$~ may follow any character except another ~$~ (or the start of the line). The first content character can't be a space, tab, newline, comma, semicolon or period, and the character before the closing ~$~ can't be a space, tab, newline, comma or period (a semicolon is allowed). It needs at least two characters of content, so ~$x$~ doesn't match; use ~\(x\)~ for a single character.
+~$...$~ avoids misreading currency: ~costs $5 and $10 total~ stays text. The first content character can't be whitespace, comma, semicolon or period, the character before the closing ~$~ can't be whitespace, comma or period, and it needs two characters of content (use ~\(x\)~ for one).
 
-~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span any number of lines, even across a blank line (an ~align~ environment with a blank line between rows). ~$...$~ allows at most two embedded newlines. KaTeX doesn't treat ~%~ as a comment, so text after it renders literally. A fragment KaTeX can't render (an unsupported command, a syntax error) shows its raw source with a dashed border, without breaking the paragraph. KaTeX supports a large subset of LaTeX, not all of it.
+~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span lines, even across a blank line; ~$...$~ allows at most two newlines. KaTeX doesn't treat ~%~ as a comment. A fragment KaTeX can't render shows its raw source with a dashed border. KaTeX supports a large subset of LaTeX, not all of it.
 
-Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is inlined only into an export that contains math). Markdown, ASCII and ODT export pass the raw LaTeX through as text.
+Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; Markdown, ASCII and ODT export pass the raw source through as text.
 
 *Examples*: the source ~The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).~ renders inline with a proper fraction bar and a square-root radical. This ~align~ environment:
 
@@ -384,9 +383,9 @@ renders three right-aligned equations, lined up at the ~&~ marks and automatical
 
 Open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
 
-Results appear at once from what is already loaded and fill in as each agenda file finishes loading; a file that fails to fetch is left out. The query box and its options live in the minibuffer at the bottom of the screen (see [[#modeline][Modeline and minibuffer]]). Results update as you type, grouped under the heading each belongs to, with a snippet that highlights the matched keyword. A result from another file shows that file's name.
+Results appear at once from what is loaded and fill in as each agenda file finishes (a file that fails to fetch is left out). The query box and its options live in the minibuffer (see [[#modeline][Modeline and minibuffer]]). Results update as you type, grouped under their heading with the match highlighted; a result from another file shows its name.
 
-Search covers the whole document whatever the fold state: a match inside a collapsed heading, hidden body text, a folded drawer or a block still shows up. Tapping a result expands what is needed to reveal it (the heading's body, and its drawers for a property or block match), scrolls to it with a brief highlight, and switches to that file first when the result came from another one.
+Search covers the whole document whatever the fold state. Tapping a result expands what is needed to reveal it, scrolls to it with a brief highlight and switches to its file first if needed.
 
 *** Filter tokens
 
@@ -399,7 +398,7 @@ Tokens in the query box combine as an implicit AND:
 - ~key:value~: any other ~key:value~ matches a property ~key~ whose value contains ~value~ (substring, case-insensitive), such as ~spouse:Mary~. ~-key:value~ excludes it.
 - ~|~ inside ~tag:~, ~todo:~, ~priority:~ or ~key:value~ means "any of these": ~tag:urgent|blocked~, ~todo:TODO|WAITING~, ~assignee:Bob|Alice~. Negated, it means "none of these". It combines alternatives only within one filter. There is no OR between filters and no grouping; Match mode has both.
 
-A word starting with ~+~ or ~-~ (a negative number, a hyphenated word) or shaped ~word:word~ (such as a ~mailto:~ link) can be read as a filter instead of text. ~http://~ and ~https://~ URLs are not. Tag inheritance is on by default and property inheritance off, as in org (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]] and the ~org-use-tag-inheritance~ and ~org-use-property-inheritance~ variables). A query with only excludes or filters and no keyword (~tag:work -someday~) returns the matching headings directly. The box's placeholder, ~Search, +word -word, or [tag|todo|priority|key]:value…~, is a reminder of the pattern.
+A word starting with ~+~ or ~-~ (a negative number, a hyphenated word) or shaped ~word:word~ (such as ~mailto:~) can be read as a filter; ~http://~ and ~https://~ URLs are not. Tag inheritance is on by default and property inheritance off, as in org. A query with only filters (~tag:work -someday~) returns the matching headings directly.
 
 Example: ~+work todo:WAITING budget~ finds entries tagged ~work~, in WAITING state, containing "budget".
 
@@ -452,7 +451,7 @@ Replace works on heading titles, paragraphs, list items and table cells. Tags, T
 
 When at least one match is in the open document, the results show *Narrow* with a count of those matches (cross-file results aren't counted). It works with any search mode. Tapping it restricts the outline to the matching headings plus their ancestors, so each match keeps its context, and a banner shows the count with a *Widen* button. It composes with [[#narrowing][subtree narrowing]]: narrow to a subtree, then to matches within it. Like subtree narrowing it survives a reload, and a heading renamed or removed in the meantime simply drops out.
 
-Org's own search is several separate tools: sparse trees (~C-c /~), a match grammar, and ~org-search-view~. Here one box covers tags, TODO state, priority, properties and free text together, with Match mode for the fuller boolean grammar. Not included: sparse-tree-style in-place refolding; Narrow is the nearest equivalent.
+Org's search is several tools (sparse trees, a match grammar, ~org-search-view~); here one box covers them, with Match mode for the fuller boolean grammar. Not included: sparse-tree refolding (Narrow is the nearest equivalent).
 
 -----
 
@@ -488,17 +487,16 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 :END:
 
 - ~[[target][description]]~ links render as tappable text.
-- *Bare URLs* link too: ~https://example.com~ typed in a sentence, or wrapped as ~<https://example.com>~. The recognized schemes are ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ and ~local~, so a time like ~10:30~ or a ratio like ~3:4~ is never read as a link. Trailing sentence punctuation (~.~, ~,~, ~)~) is left out: ~see https://example.com/page.~ links the URL without the period. Wrap a URL in ~<...>~ or ~[[...]]~ if it must end in one of those characters.
-- ~doi:10.1145/1327452.1327492~ resolves to ~https://doi.org/...~ and opens like any external link, bracketed or bare.
-- *Internal links* resolve by heading title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~), or by a title search for bare text. Tapping one expands the ancestors and scrolls to the target. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
-- *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property, wherever it now lives. Tapping one looks in the open file, then the other open tabs, then your [[#agenda-files][Agenda Files]] (the files org-id scans), then the GitHub, WebDAV and local files you have opened or saved here before (a remembered table, like ~org-id-locations~), and opens whichever holds it; the ⏎ button comes back. If nothing has the ID the status line says so, and if several headings share it the first is used. *Copy link to heading* (~org-store-link~, ~C-c l~, ~c SPC l~) puts ~[[id:…][Title]]~ on the clipboard, first giving the heading an ~:ID:~ if it has none. *Add ID to heading* (~org-id-get-create~) only adds the ~:ID:~. *Find links to this heading* searches this file and your Agenda Files for ~[[id:…~.
-- *Targets*: ~<<name>>~ is a spot a link can go to, and the same words in triple angle brackets make a *radio target*: every plain use of the same words in the file (any case, any spacing, whole words only) becomes a link to it. A link whose text is the target's name goes to the heading that holds it, after trying a heading with that title. Both are shown dimmed as written. Code blocks are not read, so a noweb ~<<ref>>~ there is left alone. HTML export turns them into anchors and links.
-- *The ⏎ button*: after you follow a link, a floating ⏎ button appears at bottom-left to go back, so a document with a table of contents (Docs' own included) is navigable on a touch device without a browser Back. Chained links unwind one hop at a time, and the button disappears when there is nowhere left to go back to. It is low-opacity at rest and uses the theme's text colours.
+- *Bare URLs* link too, typed in a sentence or wrapped as ~<https://example.com>~. The schemes are ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ and ~local~, so ~10:30~ or ~3:4~ is never a link. Trailing punctuation is left out (~see https://example.com/page.~ links the URL without the period); wrap the URL in ~<...>~ or ~[[...]]~ if it must end in one. ~doi:10.1145/1327452.1327492~ opens ~https://doi.org/...~.
+- *Internal links* go to a heading by title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~) or by a title search for bare text, expanding the ancestors and scrolling to the target. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
+- *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property wherever it now lives. Tapping one looks in the open file, the other open tabs, your [[#agenda-files][Agenda Files]], then files you have opened or saved here before (a remembered table, like ~org-id-locations~); the ⏎ button comes back. If nothing has the ID the status line says so, and if several headings share it the first is used. *Copy link to heading* (~org-store-link~, ~C-c l~) puts ~[[id:…][Title]]~ on the clipboard, adding an ~:ID:~ first if needed; *Add ID to heading* (~org-id-get-create~) only adds it; *Find links to this heading* searches this file and your Agenda Files.
+- *Targets*: ~<<name>>~ is a spot a link can go to. The same words in triple angle brackets, ~<<<name>>>~, make a *radio target*: every plain use of those words in the file (any case, whole words) becomes a link to it. Code blocks are not read. HTML and LaTeX export turn targets into anchors and links.
+- *The ⏎ button*: after you follow a link, a floating ⏎ at bottom-left goes back, one hop at a time, so a document with a table of contents is navigable on a touch device without a browser Back. It disappears when there is nowhere left to go.
 - *Image links*: ~http://~ and ~https://~ image links render inline when ~#+STARTUP: inlineimages~ is set (off by default).
-- *Local and relative image paths* on GitHub and WebDAV render too: ~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~ and ~[[github:images/photo.png]]~ resolve relative to the document's path (a bare filename lands beside it), under the same ~#+STARTUP: inlineimages~ gate, and are cached for the session. Local files (File System Access) and iOS imports show an ~[image: path]~ placeholder instead, because reading a sibling file needs browser permission that can't be granted mid-render.
-- *~file:~, ~github:~, ~webdav:~ and ~local:~ links* parse into a scheme, a path and an optional in-file target, using org's ~::~ convention: an absolute path (~file:/home/user/documents/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=) or a text search (=file:~/notes.org::exact phrase=). Tapping one opens the document, as File → Open does (with its unsaved-changes handling), and jumps to the headline or match. A path with no scheme uses the backend the current document came from; an explicit ~github:~, ~webdav:~ or ~local:~ always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
+- *Local and relative image paths* on GitHub and WebDAV render too (~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~, ~[[github:images/photo.png]]~), relative to the document's path, under the same ~#+STARTUP: inlineimages~ switch. Local files (File System Access) and iOS imports show an ~[image: path]~ placeholder, because reading a sibling file needs browser permission that can't be granted mid-render.
+- *~file:~, ~github:~, ~webdav:~ and ~local:~ links* use org's ~::~ convention: an absolute path (~file:/home/user/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=) or a text search (=file:~/notes.org::exact phrase=). Tapping one opens the document, as File → Open does, and jumps to the headline or match. A path with no scheme uses the backend the current document came from; an explicit scheme always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
 
-  The back button follows these links across documents: it returns to the heading the link was in, with its ancestors and body expanded, found by the heading's title path (a scroll offset wouldn't survive a re-parse). It falls back to the remembered scroll position when the link had no heading (it was in the preamble) or the heading has since been renamed or removed. This works only when both documents are on GitHub or WebDAV. A local file or iOS import can't be reopened from a link tap or the back button, because opening a path needs a file-picker gesture the browser requires for each file, so a clear message is shown instead.
+  The back button returns across documents to the heading the link was in, found by its title path (or the remembered scroll position if the heading was renamed or the link was in the preamble). This works only when both documents are on GitHub or WebDAV: a local file or iOS import can't be reopened from a link tap, because the browser needs a file-picker gesture for each file, so a message says so.
 - *~attachment:~ links* are org-attach's link type, produced by *Attach* (see [[#attachments][Attachments]]). They are bracketed only (~[[attachment:photo.jpg]]~); a bare ~attachment:photo.jpg~ in text is not a link.
 
 -----
@@ -508,7 +506,7 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 :CUSTOM_ID: configuration
 :END:
 
-Three layers set variables (Emacs Lisp variables or org directives), resolved in org's own precedence: *Local Variables beats #+STARTUP beats Global Variables*. A variable set at a higher layer wins for that file, and one left unset falls through to the next layer down.
+Three layers set variables (Emacs Lisp variables or org directives), in org's own precedence: *Local Variables beats #+STARTUP beats Global Variables*. A variable left unset falls through to the next layer down.
 
 1. *Global Variables* ([[#global-variables][below]]): an app-wide baseline, set in Settings.
 2. *~#+STARTUP:~* ([[#folding-and-startup][below]]): a file's own directive. Only three variables have a ~#+STARTUP:~ shorthand, as in real org:
@@ -537,7 +535,7 @@ org-agenda-start-on-weekday: 1
 
 Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
 
-*Smart quotes are normalized*: iOS and many Android keyboards replace a typed straight quote with a curly one, but quote-delimited values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~ and the [[#capture-templates][Capture Templates]] JSON) need the ASCII character. Quick Settings, this text box and Capture Templates convert curly quotes back to straight ones on save. Quotes in ordinary prose elsewhere are untouched.
+*Smart quotes are normalized*: iOS and many Android keyboards turn a typed straight quote into a curly one, but quoted values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~, the [[#capture-templates][Capture Templates]] JSON) need straight quotes. Quick Settings, this text box and Capture Templates convert them back on save; quotes in ordinary prose are untouched.
 
 -----
 
@@ -561,7 +559,7 @@ org-pwa applies ~#+STARTUP:~ directives, typically on the first line. They can s
 - ~showeverything~: ~showall~ plus drawers and blocks fully expanded.
 - ~logdone~, ~lognotedone~: set ~org-log-done~ to ~time~ or ~note~ (see [[#progress-logging][Progress logging]]).
 
-Cycling a heading to fully expanded (slide-left, or tapping through the fold states) always reveals its properties and blocks, whatever ~#+STARTUP:~ says, and collapsing it hides them again. The defaults match org's own: with no ~#+STARTUP~ line, everything is shown. Archived-heading cycling is a separate mechanism (see [[#local-variables][Local Variables]]).
+Cycling a heading to fully expanded always reveals its properties and blocks, whatever ~#+STARTUP:~ says, and collapsing hides them again. With no ~#+STARTUP~ line everything is shown, as in org.
 
 -----
 
@@ -593,53 +591,53 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~calendar-latitude~ | ~35.994~ | Latitude for the solar forms and ~org-weather~ (Durham, NC) |
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
+| ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
-| ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
-| ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
-| ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
-| ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
-| ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
-| ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
-| ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
-| ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
-| ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
+| ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
+| ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
+| ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
+| ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
+| ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
+| ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~) |
 | ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
-| ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
+| ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
+| ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
+| ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
+| ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
 | ~org-global-properties~ | unset | Properties that apply everywhere. Only ~Effort_ALL~ is used, as in ~Effort_ALL: 0:15 0:30 1:00 2:00~ (see [[#effort-all][Effort_ALL]]) |
+| ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
+| ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
+| ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
+| ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
+| ~org-latex-default-class~ | ~article~ | ~article~, ~report~ or ~book~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
+| ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~("private")~) or just words (~private archive~) |
 | ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter also match a value inherited from an ancestor (a heading's own value wins). A ~t~ or ~nil~ simplification of org's fuller value space |
 | ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org); see [[#inline-text-markup][Inline text markup]]. An unrecognized value falls back to ~t~ |
 | ~org-use-tag-inheritance~ | ~t~ | ~t~ lets a ~tag:~ search filter match a tag inherited from an ancestor; ~nil~ limits it to the heading's own tags; a list such as ~("work" "home")~ or a quoted regexp such as ~"^proj_"~ inherits only those tags. Applies to search, the Agenda tag filters and the tags shown on a heading |
-| ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~("private")~) or just words (~private archive~) |
-| ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
-| ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
 | ~org-weather-format~ | ~"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au"~ | (own) The template ~%%(org-weather)~ fills in (see [[#agenda-diary-sexp][Diary-sexp forms]]) |
 | ~org-weather-refresh-interval~ | ~never~ | (own) ~never~, or an automatic refresh every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours |
 | ~org-weather-speed-unit~ | ~mph~ | (own) ~km/h~, ~m/s~, ~mph~ or ~Knots~ |
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
-| ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
-| ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
-| ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
-| ~org-latex-default-class~ | ~article~ | ~article~, ~report~ or ~book~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
-| ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
-| ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
-| ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
-| ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
-| ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
+| ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
+| ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
+| ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
+| ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
+| ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~solar-ampm~ | ~nil~ (24-hour) | (own) ~t~ uses 12-hour am/pm for the solar forms |
 | ~solar-hide-label~ | ~nil~ (label shown) | (own) ~t~ drops the trailing label ("Sunrise", "daylight") and shows the bare time or duration |
@@ -653,20 +651,20 @@ Any other ~# key: value~ line is parsed and ignored, so new variables can be add
 :CUSTOM_ID: progress-logging
 :END:
 
-Two related mechanisms write into the same place: a heading's ~:LOGBOOK:~ drawer, org's running history of state changes and notes, kept apart from the body.
+Two mechanisms write into a heading's ~:LOGBOOK:~ drawer, org's running history of state changes and notes, kept apart from the body.
 
 *** ~org-log-done~
 
-Set by ~#+STARTUP: logdone~ or ~#+STARTUP: lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]), it controls what happens when a heading enters a DONE-type state (tapping the TODO badge to cycle there, or the action menu toggle). The two modes are mutually exclusive:
+Set by ~#+STARTUP: logdone~ or ~lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]), it controls what happens when a heading becomes DONE. The two are mutually exclusive:
 
-- ~logdone~ (~time~) inserts a ~CLOSED: [timestamp]~ planning line when a heading becomes DONE. Cycling it to a non-done keyword removes the timestamp, and cycling it back to no keyword also removes it unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]). Re-marking a done heading with a *different* done keyword (DONE to KILL) doesn't add or disturb a timestamp.
-- ~lognotedone~ (~note~) prompts for a note in a small panel when a heading becomes DONE. The badge flips at once and never waits for the note, so *Skip* only declines to add one. A saved note becomes a timestamped ~:LOGBOOK:~ entry.
+- ~logdone~ (~time~) inserts a ~CLOSED: [timestamp]~ line. Cycling to a non-done keyword removes it, and so does cycling back to no keyword unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]). Switching between two done keywords (DONE to KILL) leaves it alone.
+- ~lognotedone~ (~note~) prompts for a note when a heading becomes DONE; the badge flips at once, so *Skip* only declines the note. A saved note becomes a timestamped ~:LOGBOOK:~ entry.
 
-They apply to a plain DONE-type keyword with no logging spec of its own, and a file has one or the other as its default. With neither, which is the default as in org, entering DONE inserts nothing extra.
+They apply to a done keyword with no logging spec of its own. With neither, as by default in org, entering DONE adds nothing extra.
 
 *** The per-keyword logging spec
 
-The more general mechanism applies to any keyword, not only done ones, and overrides ~org-log-done~ for that keyword. It uses the parenthesized fast-key syntax in ~#+TODO:~:
+The per-keyword spec applies to any keyword, not only done ones, and overrides ~org-log-done~ for it. It uses the parenthesized fast-key syntax in ~#+TODO:~:
 
 #+BEGIN_SRC
 #+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)
@@ -681,21 +679,20 @@ Four markers, each optional, as in org:
 | ~@/!~ | Log a note when entering, /and/ a timestamp when *leaving* — conditionally, see below |
 | ~/!~ | Log a timestamp only when *leaving* this state — no logging on entering it at all |
 
-A leaving-log (~@/!~ or ~/!~) fires only if the target state doesn't already log something on entry. In the example, WAIT to DONE fires nothing extra from WAIT's ~/!~, because DONE already logs a timestamp on entry (~d!~). WAIT to TODO does fire it, since TODO logs nothing of its own and the move would otherwise go unrecorded.
+A leaving-log (~@/!~ or ~/!~) fires only if the target state doesn't already log on entry. In the example, WAIT to DONE adds nothing from WAIT's ~/!~, because DONE logs a timestamp on entry (~d!~); WAIT to TODO does, since TODO logs nothing and the move would go unrecorded. A ~CLOSED~ timestamp and a ~:LOGBOOK:~ entry can both fire for one transition, as in org.
 
-An explicit per-keyword spec always beats ~org-log-done~, which only fills in for a done-type keyword with no spec. Both can fire for one transition (a ~CLOSED~ timestamp and a ~:LOGBOOK:~ entry), which can look redundant but is org's behavior.
 
-*Fast-access keys* (the letter before any ~@~ or ~!~, as in ~TODO(t)~) are parsed, so a ~#+TODO:~ line using them doesn't break TODO recognition. A ~#+TODO:~ line with no ~|~ treats its last keyword as the only done state, as in org.
+*Fast-access keys* (the letter in ~TODO(t)~) are parsed, so a ~#+TODO:~ line using them still works. A ~#+TODO:~ line with no ~|~ treats its last keyword as the only done state, as in org.
 
-*Parallel workflows*: several ~#+TODO:~ lines in one file (~#+TODO: TODO(t) | DONE(d)~ then ~#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)~) define coexisting workflows, as in org. Tapping the badge cycles within the sequence a heading's keyword already belongs to. For a heading with no TODO state, the badge, the action menu's *TODO* button and ~C-c C-t~ all behave alike: with one workflow they cycle as usual, and with more than one they open a picker showing every state of every workflow, one row per sequence, so you can jump to any state. Each sequence's first state (where a fresh heading starts) is green and its done-type states are red, since a workflow can wrap onto several lines and the last button isn't always its end. *Clear* resets the heading to blank, and *Cancel* dismisses the picker unchanged. ~#+SEQ_TODO:~ and ~#+TYP_TODO:~ are read the same way as ~#+TODO:~.
+*Parallel workflows*: several ~#+TODO:~ lines (~#+TODO: TODO(t) | DONE(d)~ then ~#+TODO: REPORT(r) BUG(b) | FIXED(f)~) define coexisting workflows. The badge cycles within the sequence a heading's keyword belongs to. For a heading with no state, the badge, the *TODO* button and ~C-c C-t~ cycle with one workflow and open a picker of every state of every workflow with more than one (first states green, done states red; *Clear* blanks the heading, *Cancel* dismisses). ~#+SEQ_TODO:~ and ~#+TYP_TODO:~ are read like ~#+TODO:~.
 
 *** The ~:LOGBOOK:~ drawer
 
-Shown under a heading like ~:PROPERTIES:~, with the same visibility rule (hidden by default unless ~#+STARTUP: showeverything~ or the heading is swiped fully open) and the same read-only, tap-for-the-action-menu treatment. A state change shows the transition and timestamp (~WAIT → DONE   [timestamp]~), and a note appears indented in italics beneath it. Entries follow org's default log format, including leaving out the "from" clause when there was no previous state and continuing multi-line notes with a trailing backslash. ~CLOCK:~ lines display the same way (see [[#clocking][Clocking]]): ~Clock: start–end ⇒ duration~ once closed, and ~Clock: start (running)~ while open.
+Shown under a heading like ~:PROPERTIES:~, with the same visibility rule (hidden unless ~#+STARTUP: showeverything~ or the heading is swiped fully open). A state change shows the transition and timestamp (~WAIT → DONE   [timestamp]~) with any note indented beneath. ~CLOCK:~ lines show as ~Clock: start–end ⇒ duration~ once closed and ~Clock: start (running)~ while open (see [[#clocking][Clocking]]).
 
 *** Agenda: Log
 
-The Agenda's date-range line has a *Log* checkbox, off by default, like org's ~org-agenda-log-mode~. On, every ~:LOGBOOK:~ entry across the aggregated files appears as its own dated item, interleaved by timestamp with SCHEDULED, DEADLINE and anniversaries, with a 📝 icon and any note beneath. It shows a DONE heading's history even though the Agenda normally excludes DONE headings, since seeing what got done is the point of Log mode.
+The Agenda's date-range line has a *Log* checkbox, off by default (org's ~org-agenda-log-mode~). On, every ~:LOGBOOK:~ entry in the aggregated files appears as its own dated item with a 📝 icon and any note, including the history of DONE headings that the Agenda otherwise hides.
 
 -----
 
@@ -704,11 +701,11 @@ The Agenda's date-range line has a *Log* checkbox, off by default, like org's ~o
 :CUSTOM_ID: archiving
 :END:
 
-Tap a heading's title, then *Archive*, to move its subtree to the archive location (real org's ~org-archive-subtree~, ~C-c C-x C-s~ or ~C-c $~). A panel opens in two parts, each scrolling on its own: *Archive & details* names the destination and what will be added, and *Refile & details* lists places to move it instead (see [[#refile][Refile]]). *Archive*, *Refile* and *Cancel* stay at the bottom; *Cancel* has focus, so a stray tap does nothing. On a screen 600 px wide or more the panel, like the other popups, is a centered dialog instead of a bottom sheet; *Esc* closes it, *Tab* stays inside it, and focus returns to where you were.
+Tap a heading's title, then *Archive*, to move its subtree to the archive location (org's ~org-archive-subtree~, ~C-c C-x C-s~). A panel shows the destination and what will be added (*Archive & details*) and places to refile to instead (*Refile & details*, see [[#refile][Refile]]); *Cancel* has focus, so a stray tap does nothing.
 
-The moved heading gets an ~:ARCHIVE:~ tag and properties recording where it came from: ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~, ~ARCHIVE_CATEGORY~, ~ARCHIVE_TODO~ and ~ARCHIVE_ITAGS~, as in org's ~org-archive-save-context-info~. The original is removed only after the copy is safely written, so a failure leaves it where it was.
+The moved heading gets an ~:ARCHIVE:~ tag and properties recording where it came from (~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~, ~ARCHIVE_CATEGORY~, ~ARCHIVE_TODO~, ~ARCHIVE_ITAGS~). The original is removed only after the copy is safely written.
 
-The location is ~org-archive-location~: the heading's own ~ARCHIVE~ property, else the file's ~#+ARCHIVE:~ keyword, else the default ~%s_archive::~. It has two parts joined by ~::~: a file (~%s~ is the current file's name; empty means the current file) and an optional heading to file entries under, where the stars give its level (~* Archived Tasks~).
+The location is ~org-archive-location~: the heading's own ~ARCHIVE~ property, else the file's ~#+ARCHIVE:~ keyword, else ~%s_archive::~. It is a file (~%s~ is the current file's name; empty means the current file) and an optional heading, joined by ~::~, where the stars give the heading's level (~* Archived Tasks~).
 
 | Location | Behavior |
 |---+---|
@@ -717,25 +714,25 @@ The location is ~org-archive-location~: the heading's own ~ARCHIVE~ property, el
 | ~~/org/archive.org::~ | One central file, top-level entries |
 | ~~/org/archive.org::* %s~ | One central file, filed under a heading named after the source file |
 
-Archiving to a different file works on GitHub and WebDAV only; a local or iOS-imported file needs a file picker that the browser won't show mid-archive, and the app says so. The heading goes into that file's buffer, which is saved like any other (see [[#file-management][File management]]). Archiving within the current file works everywhere. Not supported: ~datetree/~ targets and multi-level heading paths.
+Archiving to a different file works on GitHub and WebDAV only (a local or iOS-imported file needs a file picker the browser won't show mid-archive); within the current file it works everywhere. Not supported: ~datetree/~ targets and multi-level heading paths.
 
 *** Restoring (unarchive)
 :PROPERTIES:
 :CUSTOM_ID: restoring-unarchive
 :END:
 
-Open the archive file (*File → Open* lists ~_archive~ files), tap the archived heading, then *Unarchive*. The same panel opens with *Restore* in place of *Archive*, naming the destination; the heading then moves back to its original file and place, loses ~:ARCHIVE:~ and the ~ARCHIVE_*~ properties, and gets its TODO state back from ~ARCHIVE_TODO~. As with archiving, it leaves the archive only after the other file's buffer has taken it.
+Open the archive file (*File → Open* lists ~_archive~ files), tap the archived heading, then *Unarchive*. The same panel opens with *Restore*; the heading moves back to its original file and place, loses ~:ARCHIVE:~ and the ~ARCHIVE_*~ properties, and gets its TODO state back from ~ARCHIVE_TODO~.
 
-A heading tagged ~:ARCHIVE:~ by hand, with no recorded ~ARCHIVE_FILE~, just has the tag and properties stripped in place. In the command palette it is *Unarchive (restore)* (~org-unarchive-subtree~). There is no separate list for browsing the archive.
+A heading tagged ~:ARCHIVE:~ by hand, with no recorded ~ARCHIVE_FILE~, just has the tag and properties stripped in place. The palette command is *Unarchive (restore)* (~org-unarchive-subtree~); there is no separate list for browsing the archive.
 
 *** Refile
 :PROPERTIES:
 :CUSTOM_ID: refile
 :END:
 
-Tap a heading's title, then *Archive*, pick a target in the lower part of the panel and tap *Refile*, to move the subtree elsewhere in the outline or into another file (real org's ~org-refile~, also in the command palette). The list shows each target by its full outline path, with a search box above it (every word you type must match), with your last five destinations under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child, with its levels adjusted. A subtree is never offered as its own destination.
+Tap a heading's title, then *Archive*, pick a target in the lower part of the panel and tap *Refile* to move the subtree elsewhere in the outline or into another file (org's ~org-refile~, also in the palette). Targets show their full outline path, with a search box (every word must match), your last five under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child with its levels adjusted, and is never offered as its own destination.
 
-Targets come from ~org-refile-targets~ (see [[#local-variables][Local Variables]] and [[#configuration][Configuration]]). The default is the current file, top-level headings only. Entries are separated by ~;~, each a file followed by criteria:
+Targets come from ~org-refile-targets~ (see [[#local-variables][Local Variables]]); the default is the current file's top-level headings. Entries are separated by ~;~, each a file followed by criteria:
 
 #+BEGIN_SRC
 org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT
@@ -744,7 +741,7 @@ org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files
 - *File*: ~current~, ~agenda-files~, or a file name (a bare name is a sibling of the current file), optionally with a ~github:~, ~webdav:~ or ~local:~ prefix, like ~local:inbox.org level=1~.
 - *Criteria*: ~level=N~, ~maxlevel=N~, ~tag=NAME~ (the heading's own tag; inheritance is not considered), ~todo=KEYWORD~, and ~regexp=PATTERN~ (matched against the whole heading line, so it must come last; write a literal ~;~ as ~\;~). Several criteria on one entry must all match, which goes beyond real org.
 
-An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV, and the subtree goes into that file's buffer; a local file must have been opened once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works. Not built: creating a new heading as the destination.
+An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]] where a file in the org-pwa folder works. Not built: creating a new heading as the destination.
 
 -----
 
@@ -829,7 +826,7 @@ You are asked before the first use. A block lists what it needs: ~#+BEGIN_SRC js
 
 ~js~ blocks run in place, as in Org Babel. They are off until you set *Run JavaScript source blocks* to ~On~ in Settings → Quick Settings → *Editing*. The setting comes from your Global Variables, never from a file, so a document cannot turn it on for itself.
 
-Each ~js~ block then has a *Run* button; ~C-c C-c~ runs the block under the cursor, and *Run source block* is in the command palette. The result is written under the block as ~#+RESULTS:~ and replaced on the next run. One Undo removes it.
+Each ~js~ block then has a *Run* button; ~C-c C-c~ or the palette's *Run source block* runs the block under the cursor. The result is written under it as ~#+RESULTS:~ and replaced on the next run; one Undo removes it.
 
 #+BEGIN_SRC
 ,#+NAME: sales
@@ -852,7 +849,7 @@ return data.slice(1).map(([q, n]) => [q, n * 2]);
 - ~:timeout N~: seconds, 5 by default and 60 at most. A block still running then is stopped.
 - ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.
 
-The code runs in a sandbox with no access to the page, your files or your accounts, and with no network unless the header asks for it and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time.
+The code runs in a sandbox with no access to the page, your files or your accounts, and no network unless the header asks and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time.
 
 
 *** Literate programming: header arguments, Noweb and Tangle
@@ -860,15 +857,15 @@ The code runs in a sandbox with no access to the page, your files or your accoun
 :CUSTOM_ID: literate-programming
 :END:
 
-Header arguments are inherited as in Org: a ~#+PROPERTY: header-args :results output~ line applies to the whole file, ~header-args:js~ to ~js~ blocks only, and a ~:header-args:~ property on a heading applies to its subtree (~header-args+~ adds to what is inherited instead of replacing it). A block's own arguments, and its ~#+HEADER:~ lines, win. This applies to every argument, including ~:results~, ~:var~, ~:net~, ~:timeout~ and ~:wrap~.
+Header arguments are inherited as in Org: ~#+PROPERTY: header-args :results output~ applies to the whole file, ~header-args:js~ to ~js~ blocks only, and a ~:header-args:~ property to a subtree (~header-args+~ adds instead of replacing). A block's own arguments and ~#+HEADER:~ lines win.
 
 *Noweb*: with ~:noweb yes~, ~<<name>>~ in a block is replaced by the block ~#+NAME: name~, by all blocks with ~:noweb-ref name~ (joined with ~:noweb-sep~, a newline by default), or by the text of the heading whose ~CUSTOM_ID~ is ~name~. Text before the reference on its line is put before every line of the expansion, so ~// <<name>>~ comments out all of it. ~:noweb~ also takes ~tangle~, ~no-export~ (expand to run and tangle, show the references on export), ~strip-export~ (references removed on export) and ~strip-tangle~. ~yes~ expands when running, tangling and exporting. A reference that matches nothing, or that goes round in a circle, is an error rather than empty text.
 
 *Tangle*: the palette command *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~:tangle yes~ names the file after the document, ~:tangle path/file.js~ names it, ~no~ skips it. Blocks for the same file are joined in order, separated by a blank line (~:padline no~ removes it). Also supported: ~:shebang~ (and the file mode that goes with it), ~:tangle-mode~, ~:comments link~, ~org~, ~both~ and ~noweb~ (which also wraps each ~<<name>>~ chunk in comments naming the block it came from), ~:prologue~, ~:epilogue~, ~:no-expand~, and ~:var~ for ~js~ blocks (written as ~var x=3;~). ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip with the file modes set. Paths may not be absolute or climb out with ~..~. The output was checked against Emacs's own.
 
-*Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ shape are unchanged since its last run; the hash is kept in its results line (~#+RESULTS[hash]:~). Delete the results to run it again. Do not cache a block that reads the time or a live feed.
+*Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ are unchanged since its last run (the hash sits in ~#+RESULTS[hash]:~). Delete the results to force a run. Don't cache a block that reads the time or a live feed.
 
-*Export* shows what ~:exports~ asks: ~code~ (the default; stored results are not shown), ~results~, ~both~ or ~none`. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This applies to ASCII, HTML, LaTeX, Markdown, ODT and Org export.
+*Export* follows ~:exports~: ~code~ (the default), ~results~, ~both~ or ~none~. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This covers ASCII, HTML, LaTeX, Markdown, ODT and Org export.
 
 *The init script from an Org file*: in Settings → Extensions, *Use an Org file…* takes ~github:path~, ~webdav:path~ or ~local:name~, then ~::target~ (default ~::init.js~). The blocks of that file that tangle to the target become the init script, Noweb included. Only the file you name is read; the approval covers the assembled text, so a change to the file asks again.
 
@@ -881,27 +878,27 @@ Header arguments are inherited as in Org: a ~#+PROPERTY: header-args :results ou
 
 Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
-- *Attach* (~a~): on a phone or tablet, opens the system chooser, where you pick a file or a photo, or take a photo or a video with the camera; the file is copied into the heading's folder (in a browser the chooser takes several files at once). On ChromeOS and desktop, whose file chooser has no camera, it first asks *Choose a file*, *Take a photo* or *Record a video*; the last two open an in-app webcam panel (take or record, then Attach or Retake).
+- *Attach* (~a~): on a phone or tablet, opens the system chooser to pick files or photos, or take a photo or video; the file is copied into the heading's folder. On ChromeOS and desktop it first asks *Choose a file*, *Take a photo* or *Record a video* (the last two use an in-app webcam panel).
 - *Record audio* (~r~): record from the microphone, play it back, then save.
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
 - *Open* (~o~): show a picture, recording, video or text file inside the app; anything else opens in the browser's viewer, or downloads when there is none.
-- *Folder* (~f~, ~org-attach-reveal~): the folder as a compact list, one row per file: a checkbox to select, then ~O~ (open), ~S~ (save to disk) and ~D~ (delete), then the name. The strip above selects all, saves or deletes the selection (deleting asks once), and adds files.
+- *Folder* (~f~, ~org-attach-reveal~): the folder as a list with a checkbox per file, then ~O~ (open), ~S~ (save to disk) and ~D~ (delete). The strip above acts on the selection and adds files.
 - *Delete one* (~d~) and *Delete all* (~D~): remove files after a confirmation.
 - *Set DIR* (~s~) and *Unset DIR* (~S~): keep a heading's files in a folder of your choosing instead. Unset DIR asks whether to move the files to the ID folder, delete them, or leave them.
 - *Sync* (~z~, ~org-attach-sync~): set the ~:ATTACH:~ tag to match what is in the folder, for files added or removed by other means.
 
-Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the ID>/~ beside the document, and the heading gets an ~ID~ property and an ~:ATTACH:~ tag the first time. A ~DIR~ property names another folder, relative to the document (a leading ~/~ starts at the root of the storage); it wins over the ID. The attachments of a heading are what is in that folder, so a file added there by other means shows up too. With several files, Open, Preview, Save and Delete ask which one.
+Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the ID>/~ beside the document; the heading gets an ~ID~ property and an ~:ATTACH:~ tag the first time. A ~DIR~ property names another folder, relative to the document (a leading ~/~ starts at the storage root) and wins over the ID. A file added to the folder by other means shows up too. With several files, Open, Preview, Save and Delete ask which one.
 
 Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now carries ~:ATTACH:~ and ~receipt.pdf~ is in its folder.
 
-*Links in the body*: Settings → Attachments chooses whether attaching also adds an ~[[attachment:name]]~ link: for pictures, audio and video (the default), always, or never, as in Org. A bare link to a picture shows it inline; audio gets a play button. Tapping an ~attachment:~ link does the same as *Open*. A link finds its folder from the ~ID~ of its heading, else the nearest ancestor's.
+*Links in the body*: Settings → Attachments chooses whether attaching also adds an ~[[attachment:name]]~ link: for pictures, audio and video (the default), always, or never. A bare link to a picture shows it inline; audio gets a play button. Tapping an ~attachment:~ link does what *Open* does. A link finds its folder from its heading's ~ID~, else the nearest ancestor's.
 
 *Requirements*: GitHub or WebDAV must be connected. The [[#android-app][Android app]] instead keeps a local file's attachments in the org-pwa folder you choose once.
 
-*Large files*: over 25MB asks before attaching, since the whole file is held in memory and uploaded in one go; GitHub refuses over 95MB (its limit is 100MB), so use WebDAV for long videos.
+*Large files*: over 25MB asks before attaching (the whole file is held in memory). GitHub refuses over 95MB, so use WebDAV for long videos.
 
-*Filenames*: path-unsafe characters become ~_~; a name already in the folder gets ~-1~, ~-2~ and so on before the extension, so repeated camera captures named ~image.jpg~ all survive.
+*Filenames*: unsafe characters become ~_~; a duplicate gets ~-1~, ~-2~ before the extension.
 
 *Not built*: Org's copy/move/link variants (~c~, ~m~, ~l~) and absolute ~DIR~ paths outside the storage.
 
@@ -912,12 +909,12 @@ Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now 
 :CUSTOM_ID: clocking
 :END:
 
-Every clocking action is a [[#command-palette][command palette]] command: *Clock in*, *Clock out*, *Cancel clock*, *Continue last clock*, *Go to clocked task* and *Set effort estimate*, found by name or by their real Org name (~org-clock-in~ and so on). The app runs one clock at a time, though a hand-edited file with several running ~CLOCK:~ lines round-trips fine.
+Every clocking action is a [[#command-palette][command palette]] command: *Clock in*, *Clock out*, *Cancel clock*, *Continue last clock*, *Go to clocked task* and *Set effort estimate*, found by name or by Org name (~org-clock-in~ and so on). One clock runs at a time.
 
-- *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line on the heading whose action menu is open, else the keyboard-focused one (a status message says so when there is neither). On the heading already clocked it does nothing. On a different heading it clocks the running one out at the same moment, with no gap.
-- *org-clock-out* turns the line into ~CLOCK: [start]--[end] =>  H:MM~, with the duration computed. *org-clock-cancel* removes the running ~CLOCK:~ line entirely and records no duration, for a clock started by mistake. Both act on whichever clock is running anywhere in the document; with none running they do nothing and say so.
-- *org-clock-in-last* (~C-c C-x C-x~; the palette's *Continue last clock*, ~c x x~ in god-mode) resumes clocking on the most recently clocked heading, anywhere in the document. A status message covers "a clock is already running" and "nothing has been clocked yet". In an Extras entry it is ~'org-clock-in-last~ (see [[#extras-menu][Extras Menu]]).
-- *org-clock-goto* (~C-c C-x C-j~; the palette's *Go to clocked task*, ~c x j~) jumps to the clocked-in heading. There is one clock across all open tabs, so it works from anywhere: it switches to the clock's tab, unfolds whatever hides the task, and leaves the floating back button behind. With no clock running the palette shows it dimmed ("no clock is running"). With ~C-u~ (~u c x j~ in god-mode, or the palette's *Go to a recently clocked task*, named ~org-clock-select-task~) it lists recently clocked tasks from every open tab, most recent first, and jumps to the one you choose.
+- *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line on the heading whose action menu is open, else the focused one. On the heading already clocked it does nothing; on another it clocks the running one out at the same moment.
+- *org-clock-out* turns the line into ~CLOCK: [start]--[end] =>  H:MM~. *org-clock-cancel* removes the running line and records nothing. Both act on whichever clock is running; with none they say so.
+- *org-clock-in-last* (~C-c C-x C-x~; palette *Continue last clock*, ~c x x~ in god-mode) resumes clocking the most recently clocked heading. In an Extras entry it is ~'org-clock-in-last~ (see [[#extras-menu][Extras Menu]]).
+- *org-clock-goto* (~C-c C-x C-j~; palette *Go to clocked task*, ~c x j~) jumps to the clocked heading from any tab, unfolding what hides it. With ~C-u~ (~u c x j~, or the palette's *Go to a recently clocked task*, ~org-clock-select-task~) it lists recently clocked tasks from every open tab, newest first.
 
 Clock lines live in a ~:LOGBOOK:~ drawer from the first one. Org itself keeps the first one bare (see [[#progress-logging][Progress logging]]).
 
@@ -927,9 +924,9 @@ Clock lines live in a ~:LOGBOOK:~ drawer from the first one. Org itself keeps th
 - *org-clock-report*: a ~#+BEGIN: clocktable ... #+END:~ block, computed for a date range and shown read-only under *View → TODO*'s *Clock report* (see [[#the-todo-view][The TODO view]]).
 - While a clock runs, the modeline (see [[#modeline][Modeline and minibuffer]]) shows ~[⏱ H:MM] Heading title~, refreshed every 30 seconds.
 
-*Effort estimates*: *Set effort estimate* in the command palette (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the heading whose action menu is open, else the focused one. Any ~org-duration~ form is accepted and stored as typed: ~1:30~ or ~1:23:45~; units like ~2h~, ~45min~, ~1d 3h~ or ~1y 3d 3h 4min~ (spaces optional); a mix like ~3d 13:35~; decimals like ~2.35h~; or a bare number, which is minutes. The units are Emacs's defaults: ~min~, ~h~, ~d~ (24 hours), ~w~ (7 days), ~m~ (a *month* of 30 days, not minutes: write ~30min~ for half an hour) and ~y~ (365.25 days). A blank value clears the estimate, and an invalid one is refused with a status message and the old value kept. You can also type it into *Edit details → Properties*.
+*Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~; ~2h~, ~45min~, ~1d 3h~; ~2.35h~; or a bare number of minutes. Units are Emacs's defaults: ~min~, ~h~, ~d~ (24 h), ~w~ (7 d), ~m~ (a *month* of 30 days, so write ~30min~ for half an hour) and ~y~. A blank value clears it; an invalid one is refused. You can also type it into *Edit details → Properties*.
 
-An ~EFFORT~ shows beside the title as a ~⏱~ badge, as typed, and tapping the badge opens the same prompt. While that heading is clocked in, the modeline shows the running time against it, ~[⏱ 0:45 / 2:00] Heading title~ (the estimate as ~H:MM~), with a trailing ~!~ once the time passes the estimate.
+An ~EFFORT~ shows beside the title as a ~⏱~ badge; tapping it opens the same prompt. While that heading is clocked in, the modeline shows ~[⏱ 0:45 / 2:00] Heading title~, with a trailing ~!~ once the estimate is passed.
 
 Not built: custom duration units (~org-duration-units~), the ~Effort_ALL+~ append form, and a reminder tied to the estimate beyond the modeline's ~!~. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
 
@@ -956,13 +953,12 @@ Not supported: ~Effort_ALL+~, and quoted values containing spaces.
 :CUSTOM_ID: narrowing
 :END:
 
-A heading's action menu has a *🔽 Narrow* action that restricts the outline to that heading and its subtree: every sibling, ancestor and unrelated heading disappears from view. On the narrowed heading it becomes *🔼 Widen*, while every other heading still shows Narrow, and tapping it re-narrows to that heading instead. A banner at the top, *Narrowed to: TITLE — Widen*, stays while narrowing is active. Tapping *Widen* there, or on the heading's own action menu, shows the whole file again. These are org's ~C-x n s~ and ~C-x n w~, also available in [[#god-mode][god-mode]] as ~x SPC n s~ and ~x SPC n w~.
+A heading's action menu has *🔽 Narrow*, which restricts the outline to that heading and its subtree (org's ~C-x n s~; god-mode ~x SPC n s~). On the narrowed heading it becomes *🔼 Widen* (~C-x n w~, ~x SPC n w~), and a banner, *Narrowed to: TITLE — Widen*, stays at the top. Narrowing to another heading replaces the restriction.
 
-Narrowing only restricts what is displayed; the file is untouched. *Save, Export, Agenda and Search all still work on the whole document.* Narrowing follows the heading it points at: promote, demote, move or rename it and the narrowed view updates, and if it is deleted the view widens automatically. Narrowing to another heading replaces the restriction, with no stack of levels to pop, as in org. Folding is independent of narrowing.
+Narrowing only restricts the display; the file is untouched, and Save, Export, Agenda and Search still use the whole document. It follows its heading through promote, demote, move and rename, and widens if the heading is deleted. It persists across tabs and restarts.
 
-*Narrowing persists* across switching tabs and across closing and reopening the app: a file you left narrowed reopens narrowed to the same heading.
 
-*Text view while narrowed* shows only the narrowed subtree's raw text, so you can edit one section as plain org syntax (see [[#the-plain-text-editor][The plain-text editor]]). You reach it only by being narrowed in the outline first; switching to Text without narrowing shows the whole file.
+*Text view while narrowed* shows only the narrowed subtree's raw text (see [[#the-plain-text-editor][The plain-text editor]]); switching to Text without narrowing shows the whole file.
 
 -----
 
@@ -971,15 +967,15 @@ Narrowing only restricts what is displayed; the file is untouched. *Save, Export
 :CUSTOM_ID: the-plain-text-editor
 :END:
 
-Tap *View → Text* to replace the outline with one full-width textarea holding the whole document as raw org text: everything, including ~#+STARTUP:~, ~#+TODO:~, a [[#local-variables][Local Variables]] block, and syntax the structured view has no UI for (editing block content, changing the ~#+TODO:~ sequence itself). Tap *View → Org* to switch back. The text is reparsed at that point, so changes (to ~#+STARTUP~, ~#+TODO~ or Local Variables, say) take effect at once, mark the document modified, and persist like any other edit. This is the escape hatch for what the tap-driven UI doesn't cover.
+Tap *View → Text* to replace the outline with one textarea holding the raw org text, including ~#+STARTUP:~, ~#+TODO:~, a [[#local-variables][Local Variables]] block and syntax the outline has no UI for. Tap *View → Org* to switch back; the text is reparsed then, so changes take effect at once and count as edits.
 
-*Position*: switching in lands near where you last navigated, not always at the top. After a search result, an internal link or an agenda item, the cursor and scroll position land at that heading's line. Manual scrolling isn't tracked, so scrolling around and then switching opens at the top. The scroll position is proportional to the line's place in the file, so it is near the line, not exact. While [[#narrowing][narrowed]], the textarea starts at the top of the narrowed text.
+*Position*: switching in lands near your last navigation (a search result, internal link or agenda item), approximately; manual scrolling isn't tracked. While [[#narrowing][narrowed]], it starts at the top of the narrowed text.
 
-*Narrowed*: only the narrowed subtree's text is editable. Switching back to Org splices the box into its original place in the full document. The lines it replaces are fixed when you enter narrowed Text view, so retyping the heading's asterisks to promote or demote it, renaming it, or adding a new heading inside the fragment are ordinary edits that can't touch anything outside the region. Narrowing follows a level or title change made this way: rename or re-level the heading you're narrowed to, and the narrowed view updates to match.
+*Narrowed*: only the narrowed subtree is editable, and switching back splices it into place. Retyping asterisks, renaming or adding headings inside it can't touch anything outside; narrowing follows a level or title change.
 
-*Select All* and *Copy All* buttons sit above the textarea, because selecting a long document with the phone's drag handles is painful. *Select All* selects the full text, and the device's own Copy still works from there. *Copy All* writes it straight to the clipboard, and if the clipboard API is unavailable or denied it selects the text instead. ~Ctrl-A~ or ~Cmd-A~ works natively inside the textarea, so the buttons are for devices without a keyboard. While narrowed, both act on just the narrowed text.
+*Select All* and *Copy All* buttons sit above the textarea for devices without a keyboard (Copy All falls back to selecting if the clipboard is denied). While narrowed they act on the narrowed text.
 
-*Search works here without leaving Text view*, searching and replacing the textarea's live raw text. It is a separate implementation from Org view's structured [[#searching][Searching]], which reads a parsed document and so can never safely edit property drawers, tags, block content and the like. Text view has no such restriction: a value inside a ~#+BEGIN_VERSE~ or ~#+BEGIN_QUOTE~ block (an imported contact's note, say) can be found and replaced here. *Regex* and *Replace* work as in Org view, including the interactive ~y~, ~n~, ~q~, ~.~ and ~!~ walk. *Match* mode isn't offered, since it needs a parsed document. A replacement stays in the textarea until you leave (switch views, or Save), like every edit made here.
+*Search works here* on the textarea's live raw text, so it can find and replace inside property drawers and ~#+BEGIN_VERSE~ or ~#+BEGIN_QUOTE~ blocks. *Regex* and *Replace* work as in Org view, including the ~y~, ~n~, ~q~, ~.~, ~!~ walk; *Match* mode isn't offered. Replacements stay in the textarea until you leave or Save.
 
 -----
 
@@ -998,7 +994,7 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 
 *Empty days*: every day shows by default, even when nothing is on it. The *g* button toggles ~org-agenda-show-all-dates~ for the session; it is bold while empty days are hidden. The starting value comes from ~org-agenda-show-all-dates~ in [[#local-variables][Local Variables]] or the *Show empty days in Agenda* Quick Setting.
 
-*Weeks*: Week view always shows a full calendar week, Monday to Sunday by default (~org-agenda-start-on-weekday~), whichever day you opened it on. Day headers show the ISO week number on the first day of each week (always in Day view), and the range label shows the week numbers, like ~(W36)~ or ~(W31-W36)~.
+*Weeks*: Week view always shows a full week, Monday to Sunday by default (~org-agenda-start-on-weekday~). Headers show the ISO week number on each week's first day (always in Day view), and the range label shows ~(W36)~ or ~(W31-W36)~.
 
 *Categories*: every item shows a category prefix: the file's ~#+CATEGORY:~ keyword, else its file name without directory or ~.org~. Put the keyword at the top of the file:
 
@@ -1010,7 +1006,7 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 
 *Times*: a timestamp can carry a range, like ~SCHEDULED: <2026-08-31 Mon 08:00-09:00>~. Week and Month views show ~08:00-09:00~; a single time shows as ~08:00 ……~; an untimed SCHEDULED or DEADLINE shows its ~Scheduled:~ or ~Deadline:~ label instead.
 
-*Time grid*: Day view adds an hour-by-hour grid (org's ~org-agenda-time-grid~ default: dashed lines every two hours, 8am to 8pm). Untimed items come first; timed items sit between the lines at their time. Week and Month views have no grid.
+*Time grid*: Day view adds org's default hour grid (dashed lines every two hours, 8am to 8pm). Untimed items come first; timed items sit at their time. Week and Month have no grid.
 
 *Effort*: an item with an ~EFFORT~ property (any ~org-duration~ form, see [[#clocking][Clocking]]) shows it after its title, as typed: ~⏱ 1:30~. Each day header shows the day's total on the right (~⏱ 3:30~), with a trailing ~+2?~ for TODOs that have no estimate yet. The [[#the-todo-view][TODO view]] shows ~⏱~ too. How it counts:
 
@@ -1026,18 +1022,18 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 - *Max per day*: keep tasks while the running total stays within, say, ~4:00~.
 - *Reset* clears all three.
 
-The rules are org's own: *at most* and *at least* are inclusive; a task with no effort counts as high effort (it sorts last, is dropped by *at most* and *exactly*, and kept by *at least*); the limit keeps a prefix of the sorted day, so once the total passes the maximum everything after it is dropped, and an unestimated task ends the list; entries with no heading behind them (sunrise lines, anniversaries) are never filtered or counted; and the order is sort, limit, filter. These are session settings, not remembered after a reload.
+The rules are org's: *at most* and *at least* are inclusive; a task with no effort counts as high effort (sorts last, dropped by *at most* and *exactly*, kept by *at least*); the limit keeps a prefix of the sorted day, so an unestimated task ends the list; headingless entries (sunrise, anniversaries) are never filtered or counted; the order is sort, limit, filter. These settings last for the session.
 
 *** Dated entry sources
 :PROPERTIES:
 :CUSTOM_ID: agenda-dated-entries
 :END:
 
-Five kinds of entry show up. They differ in whether they carry forward, as in real org:
+Five kinds of entry show up; they carry forward as in org:
 
 - ~SCHEDULED:~ shows on its date and, until the heading is done, on today as overdue ("3 days overdue"), as in Emacs. A delay suffix (~SCHEDULED: <2026-01-10 Sat -2d>~) hides it on its own date and shows it on today once the delay has passed.
-- ~DEADLINE:~ shows on its date, and on today when it is overdue or inside its warning period ("due in 3 days"). A warning suffix (~DEADLINE: <2026-01-10 Sat -3d>~) sets that period. With no suffix it is ~org-deadline-warning-days~ (default 14; see [[#local-variables][Local Variables]]). An explicit suffix overrides that. Overdue and upcoming entries show on today only, not on the days between, and a repeating one counts from its first date.
-- *Plain active timestamps* anywhere in a heading's entry: its title, body, property values and drawers, such as ~**** Jane Doe <2000-01-01 Sat +1y>~. They are listed beside the heading's own SCHEDULED or DEADLINE, and never carry forward. Inactive ~[...]~ timestamps, ~# ~ comment lines, ~#+~ keyword lines and source, example, export and comment blocks are ignored.
+- ~DEADLINE:~ shows on its date, and on today when overdue or inside its warning period ("due in 3 days"). A suffix (~DEADLINE: <2026-01-10 Sat -3d>~) sets the period; otherwise it is ~org-deadline-warning-days~ (default 14; see [[#local-variables][Local Variables]]). Overdue and upcoming entries show on today only, and a repeating one counts from its first date.
+- *Plain active timestamps* anywhere in a heading's entry (title, body, property values, drawers), such as ~**** Jane Doe <2000-01-01 Sat +1y>~, are listed beside its SCHEDULED or DEADLINE and never carry forward. Inactive ~[...]~ timestamps, comment lines, ~#+~ lines and source, example, export and comment blocks are ignored.
 - A *general sexp timestamp* ~<%%(sexp)>~ in the title follows the same rules; see [[#agenda-sexp-timestamps][General sexp timestamps]].
 - ~org-contacts-anniversaries~ reads yearly events (birthdays, anniversaries) from contact headings, as Emacs's org-contacts does. The contacts are the headings of your [[#contacts-files][Contacts Files]] (~org-contacts-files~); with none set, the headings of the files you are looking at. A contact's date is a property, written ~YYYY-MM-DD~, with an optional description after it.
 
@@ -1099,7 +1095,7 @@ All three variables can be edited in Quick Settings, with a reset to default.
 
 *Refreshing*: *Settings → Weather* shows the last refresh time and a *Refresh weather now* button, and says whether ~%%(org-weather)~ is used in the open document, only through ~org-agenda-files~, or nowhere. ~org-weather-refresh-interval~ also refreshes automatically: ~never~ (the default) or every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours, checked at open and periodically, and only while ~%%(org-weather)~ is in use. A failed refresh keeps the cached data, which persists across restarts.
 
-*Not supported on purpose*: ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~. They read dates in an order set by ~calendar-date-style~, while here a date is always year month day, as in their ~org-*~ twins. To use a line from an Emacs diary, rename it and put the year first: ~%%(diary-anniversary 10 31 1948)~ becomes ~%%(org-anniversary 1948 10 31)~. A line using the diary names matches nothing.
+*Not supported on purpose*: ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~, whose date order follows ~calendar-date-style~; here a date is always year month day, as in their ~org-*~ twins. Rename an Emacs diary line and put the year first: ~%%(diary-anniversary 10 31 1948)~ becomes ~%%(org-anniversary 1948 10 31)~. The diary names match nothing.
 
 *** General ~<%%(sexp)>~ timestamps
 :PROPERTIES:
@@ -1182,7 +1178,7 @@ Set in *Settings → Quick Settings → Contacts files*, or per document in Loca
 
 Mirror your agenda into a calendar on your own server, so its items appear, with alarms, in your phone's calendar app. Create a calendar on the server first (a Radicale or Nextcloud calendar), then set it in *Settings → Calendar (CalDAV) / Contacts (CardDAV)*: the calendar's address, and a username and password (blank means the WebDAV ones). Leave the address blank to turn it off.
 
-It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app only ever removes events it created, and an event is removed only when its own file was loaded, so opening a different file never removes another file's events.
+It is one-way: the calendar follows the agenda, and edits made in a calendar app are overwritten, so give it a calendar of its own. The app removes only events it created, and only for files it has loaded.
 
 What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (400 characters), and a deadline's warning delay (~-3d~) becomes an alarm. Every event with a time of day also gets an alarm ~appt-message-warning-time~ minutes before it (Settings → Agenda notifications); all-day events don't. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
 
@@ -1192,7 +1188,7 @@ It syncs after a save, when you return to the app, and at launch. *Sync* in Sett
 
 *Contacts* work the same way. Create an address book on the server, and set its address as the *Contacts address*. It uses the same username and password as the calendar, and either address can be left blank. Your [[#contacts-files][Contacts Files]] are mirrored into it, one vCard per contact, in Flat or Tree style. The open file is not sent unless it is one of them, and a contact is removed only when its own file was loaded. *Sync* does the calendar and the contacts together, and says how each went. *Rebuild contacts* (or *Rebuild contacts from the contacts files*) removes the app's contacts and sends them all again. *Sync agenda to calendar* and *Sync contacts to the address book* do one each.
 
-Examples: ~https://dav.example.com/radicale/me/calendar/~ and ~https://dav.example.com/radicale/me/contacts/~. Like WebDAV, the server must allow requests from the app (CORS), including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
+Examples: ~https://dav.example.com/radicale/me/calendar/~ and ~https://dav.example.com/radicale/me/contacts/~. As with WebDAV, the server must allow CORS requests, including ~PUT~, ~DELETE~ and ~PROPFIND~ with the ~Authorization~, ~Content-Type~ and ~Depth~ headers.
 
 *** Agenda notifications
 :PROPERTIES:
@@ -1219,11 +1215,11 @@ The first time, tap *Allow notifications*. If they are blocked, reminders still 
 :CUSTOM_ID: the-todo-view
 :END:
 
-Tap *View → TODO* for every active TODO-state heading in the file, independent of any date, like org's global TODO list (~C-c a t~, as distinct from the calendar-style agenda, ~C-c a a~). A TODO with no SCHEDULED, DEADLINE or timestamp never shows in Agenda, so this is where it lives.
+Tap *View → TODO* for every active TODO-state heading in the file, whatever its dates (org's ~C-c a t~). A TODO with no date never shows in the Agenda, so this is where it lives.
 
 It is a flat list in document order, each item showing its TODO keyword, title, category and SCHEDULED or DEADLINE date (overdue in red). The filter chips work as in the Agenda, and *Sort* switches between document order and date order, with undated tasks last. Tap an item to jump to it in the outline; press and hold or swipe it as in the [[#agenda][Agenda]]. It has the same exclusions as Agenda (completed items, by the file's ~#+TODO:~ sequence, archived headings and commented headings, with the same [[#local-variables][Local Variables]] overrides).
 
-*Clock report*: a checkbox on the same row as *Clock* (a rule separates the clock controls from the task list) shows org's ~org-clock-report~, a ~#+BEGIN: clocktable ... #+END:~ block, rendered read-only instead of written into the document. Checking it shows a start and end date picker (the last 7 days including today the first time, then whatever you pick) and a ~maxlevel~ selector (1 to 10, default 2, as in org). The table lists every heading with clocked time in the range, down to ~maxlevel~, and each row's total includes all its descendants. A deeper heading still adds its time to the ancestor shown, without a row of its own, and a heading with no clocked time in its subtree is omitted. A clock that is still running is excluded, because its duration would change with every view. A *Copy* button, on the same row as the *Clock* and *Clock report* checkboxes, copies the rendered text as valid org dynamic-block syntax, ready to paste into a file as a permanent record.
+*Clock report*: a checkbox beside *Clock* shows org's ~org-clock-report~ (a ~clocktable~ block) read-only instead of writing it into the document. It asks for a start and end date (the last 7 days at first) and a ~maxlevel~ (1 to 10, default 2). Each row's total includes its descendants; headings with no clocked time are omitted, and a running clock is excluded. *Copy* gives valid org dynamic-block syntax to paste into a file.
 
 -----
 
@@ -1232,11 +1228,11 @@ It is a flat list in document order, each item showing its TODO keyword, title, 
 :CUSTOM_ID: capture-templates
 :END:
 
-The command palette's *Capture* command (or ~C-c c~, see [[#god-mode][God-mode]]) opens a panel for org's ~org-capture-templates~: filing a note, task or table row into a specific place in the outline without navigating there. Each template is listed by its description. Tap one; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a *live preview* of the expanded result above the fields and the first field focused with the keyboard up. A template with no prompts captures at once.
+The palette's *Capture* command (or ~C-c c~) opens org's ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
 
-After a capture the form returns to the template list, so you can capture again straight away. If a capture fails (a network error, a sync conflict) the form stays as you left it, with your text intact. Every template is also a palette command, *Capture: <description>*, that captures with that template directly, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one template by its key.
+After a capture the form returns to the template list. If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key.
 
-A capture into a different file goes into that file's buffer, as in Emacs: the entry is added to its tab (opened in the background if it has none), which shows as modified until you save it with *Save* or *Save Some Buffers* (see [[#file-management][File management]]). If the file has no tab and has unsaved local changes from an earlier session, the capture refuses: open the file, resolve its pending changes, then retry.
+A capture into a different file goes into that file's buffer, as in Emacs: it opens in a background tab, modified until you save it (*Save* or *Save Some Buffers*, see [[#file-management][File management]]). If the file has no tab and has unsaved local changes from an earlier session, the capture refuses; open the file, resolve them, and retry.
 
 Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meeting) and ~t~ (Table Row). Edit or replace them in *Settings → Capture Templates*, as a JSON array of template objects.
 
@@ -1348,7 +1344,7 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 :CUSTOM_ID: capture-from-other-apps
 :END:
 
-On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open Capture. Pick a template, and its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
+On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open Capture. Pick a template; its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
 
 The built-in *Web page or text* template is made for this. Share a web page and it files a heading under *Inbox* that links to the page, titled as the page is; leave its title prompt blank. Share some text from a document and it files the text under a heading with the title you type. Either way the second prompt takes your own note, and ~:CREATED:~ records when. A part that isn't there (no text, no note) leaves a blank line. If you already have templates of your own, add it in *Settings → Capture Templates*:
 
@@ -1367,7 +1363,7 @@ Example: ~index.html?capture=n&text=Buy%20milk~ with this template files the tex
 
 A template that files into another file (~file:~) needs a document from the same backend open; the app restores your tabs when it starts.
 
-*iPhone*: iOS lists neither installed web apps in the Share sheet nor opens them from a link, so none of this reaches it. Copy the text instead (a Shortcut can do it), open the app and run a template that contains ~%x~.
+*iPhone*: iOS can't share to installed web apps. Copy the text (a Shortcut can do it), open the app and run a template that contains ~%x~.
 
 -----
 
@@ -1376,7 +1372,7 @@ A template that files into another file (~file:~) needs a document from the same
 :CUSTOM_ID: extras-menu
 :END:
 
-A floating ☰ button at bottom-right opens a configurable popup of quick actions, a vertical list next to the button and extending to its left. It is this app's own feature, set with ~org-xx-extra-menu~ (Global or Local Variables; see [[#local-variables][Local Variables]]). The button is hidden whenever the variable is unset or resolves to nothing selectable. The sibling variable ~org-xx-menu-aliases~ relabels or hides buttons in the existing File, More, Export and View menus; see [[#menu-customization][Menu customization]].
+A floating ☰ button at bottom-right opens a configurable list of quick actions. It is this app's own feature, set with ~org-xx-extra-menu~ (see [[#local-variables][Local Variables]]); the button is hidden while the variable is unset. The sibling ~org-xx-menu-aliases~ relabels or hides buttons in the File, More, Export and View menus (see [[#menu-customization][Menu customization]]).
 
 *Syntax*: a sequence of double-quoted ~"SPEC;LABEL"~ entries, spread over several lines with a trailing ~\~ (see [[#configuration][Configuration]] for line continuation). Settings → Quick Settings shows and edits it in this one-entry-per-line form (see [[#settings][Settings]]):
 
@@ -1405,7 +1401,7 @@ org-xx-extra-menu: "j;📔 Journal" \
 
 Five hyphens (~"-----"~) on their own are a visual separator rather than an item, for grouping related actions.
 
-A malformed entry (bad JSON in an OLP array, a function symbol that isn't a valid name, a spec matching none of the three shapes, a missing label) is skipped without breaking the rest of the menu.
+A malformed entry (bad OLP JSON, an invalid function name, an unrecognized spec, a missing label) is skipped without breaking the rest of the menu.
 
 -----
 
@@ -1414,7 +1410,7 @@ A malformed entry (bad JSON in an OLP array, a function symbol that isn't a vali
 :CUSTOM_ID: menu-customization
 :END:
 
-~org-xx-menu-aliases~ (a Global or Local Variable; this app's own, not an org variable) relabels or hides buttons across the File, More, Export, Import and View menus at once. Its sibling ~org-xx-extra-menu~ adds a new quick-access menu instead (see [[#extras-menu][Extras menu]]).
+~org-xx-menu-aliases~ (a Global or Local Variable; this app's own) relabels or hides buttons in the File, More, Export, Import and View menus. ~org-xx-extra-menu~ adds a quick-access menu instead (see [[#extras-menu][Extras menu]]).
 
 *Syntax*: double-quoted ~"menu:Label;alias"~ entries, space-separated and spread over several lines with a trailing ~\~. ~menu~ is ~file~, ~more~, ~export~, ~import~ or ~view~. Settings → Quick Settings shows and edits it one entry per line (see [[#settings][Settings]]):
 
@@ -1425,23 +1421,23 @@ org-xx-menu-aliases: "more:Commands;💲 Commands" \
                      "more:Settings;⚙️ Settings"
 #+END_SRC
 
-Export and Import are steps within the More menu and have their own namespaces, ~export:~ and ~import:~. A form like ~"more:export:HTML;📄"~ isn't valid: the colon splits only once, so it is read as the label ~export:HTML~ in the ~more~ namespace, which matches nothing and has no effect, without an error.
+Export and Import are steps within the More menu with their own namespaces, ~export:~ and ~import:~. A form like ~"more:export:HTML;📄"~ is read as the label ~export:HTML~ in ~more~, matches nothing, and is ignored.
 
-~Label~ is one of the menu's built-in button labels (the table below). A label that matches no button, or a ~menu~ other than the five, is skipped without an error. A label never mentioned keeps its default text: this is an override list, not a full redefinition.
+~Label~ is a built-in button label (table below). An unknown label or menu is skipped; a label never mentioned keeps its default, since this is an override list.
 
 *~alias~*, after the semicolon:
 
 - *Non-empty*: replaces the button's visible text. The button does the same thing, and the original label becomes its accessible name (for screen readers and tooltips).
 - *Empty* (~"menu:Label;"~): the button is omitted entirely. ~"export:Markdown;"~ hides the Markdown button from the Export menu. *~more:Settings~ is the exception*: it can never be hidden, because GitHub and WebDAV setup and Global Variables are reachable only from there, so an empty alias keeps the label ~Settings~.
 
-*Order*: buttons can be reordered, but only once every one of a menu's labels is listed (the table has the complete sets). A partial list leaves that menu's order untouched, so setting one alias never reorders the rest. Once all are listed, the buttons appear in the order the entries are written. An empty alias counts as listed but also hides the button (except ~more:Settings~), so to keep a button visible with its default text, repeat that text as the alias: ~"more:Settings;Settings"~. For example, to show the More menu as Settings, Commands, Import, then Export, list all four:
+*Order*: buttons can be reordered once every label of a menu is listed (the table has the complete sets); a partial list leaves the order alone. The buttons then follow the order written. An empty alias hides the button (except ~more:Settings~), so to keep one visible repeat its text: ~"more:Settings;Settings"~. To show More as Settings, Commands, Import, Export:
 
 #+BEGIN_SRC
 org-xx-menu-aliases: "more:Settings;Settings" "more:Commands;Commands" \
                      "more:Import;Import" "more:Export;Export"
 #+END_SRC
 
-*Popup menus*: File, View, More and Extras open as small bordered popups next to their trigger button, below it if there is room and above it otherwise (the Extras button is near the bottom, so its popup opens upward). Each is sized to its widest row, with one full-width row per button, and on a mouse a row highlights as the pointer passes over it. Tapping outside closes a menu, and selecting an action closes it at once, with the result reported on the status line. Every popup (File, View, More, Export, the Open and Save As backend picker, and Extras) shares one size setting, Settings → Appearance → *Menu Size* (Regular or Small). Export is a step within the More popup, and a *‹ Back* button returns to the More list without closing anything.
+*Popup menus*: File, View, More and Extras open as small popups next to their button. Tapping outside closes one, and choosing an action closes it with the result on the status line. All popups share Settings → Appearance → *Menu Size* (Regular or Small). Export is a step within More; *‹ Back* returns to the list.
 
 The real labels of each menu, as used in ~"menu:Label;alias"~:
 
@@ -1462,20 +1458,20 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 :CUSTOM_ID: file-management
 :END:
 
-*File menu*: New, Open, Save, Save As, Save Some Buffers. A 💾 button beside the File menu icon does what *File → Save* does, in one tap. It is disabled under the same conditions as Save: no document open, or a new unsaved document with nowhere to save to yet.
+*File menu*: New, Open, Save, Save As, Save Some Buffers. The 💾 button beside it is a one-tap *Save*, disabled when there is no document or nowhere to save yet.
 
-- *New* creates a document in memory, with no file picker, name or backend to choose. You can edit it at once, and its edits are cached locally like any open document's, so a crash or an accidentally closed tab can be resumed with the usual "resume unsaved local version" prompt. Nothing is written to a backend until you choose to keep it. The tab bar and modeline show ~*scratch*~, Emacs's name for a fresh unnamed buffer, in the same red-with-a-dot style as unsaved edits, until the first heading gets a title, which then becomes the label. *Save* stays disabled, and *Save As* picks a destination and makes it a persisted file. It opens in its own tab (see [[#tabs][Tabs]]), and is handy as a scratch pad for trying a capture template, testing a table formula, or drafting something that may be thrown away.
-- *Open* and *Save As* go to one screen with a *GitHub / Local file / WebDAV* picker (*Import file* / *Download* on iOS, where a file is read once rather than linked). It opens on the type you used last, and switching types never closes it. *Local file* is one button into your device's file picker.
-- *GitHub and WebDAV show a real folder listing.* Tap a folder (📁) to enter it. Files shown are ~.org~ files (📄) and ~_archive~ files (🗄️, org's archive-file naming; see [[#archiving][Archiving]]), and other files are hidden. An *↑ Up* button appears below the root. GitHub uses its Contents API, and WebDAV uses ~PROPFIND~, which Nextcloud, ownCloud and Apache ~mod_dav~ support. The *Enter path…* field above the list opens a file by its path (press Enter), which also works when listing fails (a server without good ~PROPFIND~, a token without list permission on a folder). A backend you haven't set up says so and links to its settings.
+- *New* creates a document in memory, with no picker or backend to choose. Edits are cached locally, so a crash can be resumed with the usual "resume unsaved local version" prompt. The tab shows ~*scratch*~ in the red unsaved style until the first heading gets a title, which becomes the label. *Save* stays disabled; *Save As* picks a destination. Handy as a scratch pad for trying a capture template or table formula.
+- *Open* and *Save As* share one screen with a *GitHub / Local file / WebDAV* picker (*Import file* / *Download* on iOS, where a file is read once rather than linked). It opens on the type you used last. *Local file* opens your device's file picker.
+- *GitHub and WebDAV show a folder listing.* Tap a folder (📁) to enter it; *↑ Up* goes back. Only ~.org~ files (📄) and ~_archive~ files (🗄️, see [[#archiving][Archiving]]) are listed. WebDAV needs ~PROPFIND~ (Nextcloud, ownCloud and Apache ~mod_dav~ have it). The *Enter path…* field opens a file by path, which also works when listing fails. A backend you haven't set up links to its settings.
 - *Save* writes back to the backend the file came from, without asking again.
-- *Save Some Buffers* (~save-some-buffers~, ~C-x s~) goes through every modified tab that has a file and asks about each in the minibuffer, one key: ~y~ or Space saves it, ~n~ or Backspace skips it, ~!~ saves it and the rest without asking, ~.~ saves it and stops, ~q~ (or Escape) stops, ~d~ shows what changed since it was last saved. Each save is the same *Save* as the File menu's (so an outside change is settled the usual way), and you return to the tab you started on. *File → Save Some Buffers* does not ask: it saves them all. It is dimmed when nothing is modified, and skips a new unsaved document, which needs *Save As*.
+- *Save Some Buffers* (~save-some-buffers~, ~C-x s~) asks about each modified tab in the minibuffer: ~y~ or Space saves, ~n~ or Backspace skips, ~!~ saves this and the rest, ~.~ saves this and stops, ~q~ or Escape stops, ~d~ shows what changed. Each save is the same as *Save*. *File → Save Some Buffers* saves them all without asking; it is dimmed when nothing is modified and skips new unsaved documents.
 - *Revert Buffer* (palette, ~revert-buffer~) reads the open file again and drops the buffer's unsaved changes, after asking if there are any. *Undo* brings them back.
-- *Capture, Refile, Archive and Replace edit buffers, not files.* An entry sent to another file goes into that file's tab, which opens in the background if it has none, and shows the modified dot until you save it. Nothing is written behind your back, a file's tab keeps whatever you had typed in it, and the Agenda reads the buffer, so a new entry shows before it is saved. Like any edit, a modified buffer is also kept on the device, so closing the app doesn't lose it.
-- *Line endings* are kept. A Windows-style (CRLF) file is edited as ordinary text and saved back with CRLF, and a Unix-style one stays Unix-style, so a save changes only the lines you edited.
-- *Save As* picks a new destination, possibly on a different backend, or the first destination of a new unsaved document. Browse to a folder, type a name and press Save; if that file already exists you are asked before it is replaced. If someone else saves that file after you agreed, you are asked again rather than their version being overwritten.
-- If a file has unsaved local edits when you open it, you are asked whether to *resume* them or *discard* them and load the current version; either way the file opens. The prompt shows when the edit was made, and discarding clears it. *Settings → Pending Local Changes* lists every file with unsynced edits, with a Discard button for each and *Discard all* when there is more than one.
+- *Capture, Refile, Archive and Replace edit buffers, not files.* An entry sent to another file goes into that file's tab (opened in the background if needed), with the modified dot until you save. Nothing is written behind your back, and the Agenda reads the buffer. Modified buffers are also kept on the device, so closing the app doesn't lose them.
+- *Line endings* are kept: a CRLF file is saved back with CRLF, so a save changes only the lines you edited.
+- *Save As* picks a new destination, possibly on another backend. Browse to a folder, type a name and press Save; an existing file asks before it is replaced, and again if someone else saved it meanwhile.
+- If a file has unsaved local edits when you open it, you are asked to *resume* or *discard* them; either way it opens. *Settings → Pending Local Changes* lists every file with unsynced edits, with *Discard* for each and *Discard all*.
 - *Conflicts*: if the stored version changed since the last sync, Save merges the two where it safely can and asks only about the parts that clash (see [[#offline-behavior-and-sync][Offline behavior and sync]]).
-- *Recently opened*, below a double separator, lists files you have opened or saved as, never the file that is currently open. It persists across sessions, is sorted alphabetically and capped at five. Long-press an entry to remove just that one, or long-press the label to clear the whole list. Tapping an entry opens it directly, with no path or picker prompt, except for a file brought in with *Import* (the read-once fallback for browsers without File System Access, like iOS Safari), which can't be reopened without selecting it again.
+- *Recently opened* lists up to five files you opened or saved (never the current one), sorted alphabetically and kept across sessions. Tap to open directly; long-press an entry to remove it, or the label to clear the list. A file brought in with *Import* (iOS) can't be reopened without selecting it again.
 
 -----
 
@@ -1484,13 +1480,13 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 :CUSTOM_ID: tabs
 :END:
 
-*Several documents can be open at once.* Opening a file (New, Open, a Recently opened entry, a ~file:~, ~github:~ or ~webdav:~ link, or a result from Agenda or Search) adds it as a tab rather than replacing what is open, and all of these use the same open logic. Opening a file that is already open in another tab switches to that tab. Each tab keeps its own content, cursor and keyboard focus, mid-edit fields, scroll position, view mode and undo/redo history (which persists across a reopen; see [[#undoredo-and-history][Undo/redo and History]]).
+*Several documents can be open at once.* Opening a file (New, Open, Recently opened, a ~file:~, ~github:~ or ~webdav:~ link, or an Agenda or Search result) adds a tab; opening one already open switches to it. Each tab keeps its own content, cursor, scroll position, view mode and undo history (see [[#undoredo-and-history][Undo/redo and History]]).
 
-The tab bar is always visible, even with one document. Each tab shows a short label (the filename, or the first heading's title for an unsaved document; several unsaved drafts can be open at once, each with its own local cache) and a solid dot when it has unsaved changes, the same red "modified" convention used elsewhere. Tap a tab to switch to it. The small × closes it, after asking first if it has unsaved changes (~"X" has unsaved changes. Close it anyway?~), as Emacs's ~kill-buffer~ does; a clean tab closes at once. Closing the last tab opens a fresh empty unsaved document in its place, so there is always a tab to work in.
+The tab bar is always visible. Each tab shows the filename (or the first heading's title for an unsaved document) and a red dot when it has unsaved changes. Tap to switch. The × closes a tab, asking first if it is modified (as Emacs's ~kill-buffer~ does). Closing the last tab opens a fresh empty document.
 
-The full set of open tabs persists across closing and reopening the app, each restored as it was left, with the previously active one active again.
+The open tabs persist across restarts, each restored as left.
 
-*Help* has its own tab (see [[#docs][Help]]), always last and styled distinctly (green background, gold underline when active). Switching to a document tab leaves it open but inactive, and unlike document tabs it doesn't survive closing and reopening the app.
+*Help* has its own tab (see [[#docs][Help]]), always last and styled distinctly. It stays open when you switch away but doesn't survive a restart.
 
 -----
 
@@ -1754,7 +1750,7 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 :CUSTOM_ID: docs
 :END:
 
-Open Help from the command palette's *Help* (or god-mode's ~h SPC m~, see [[#keybindings][Keybindings]]). It is this file, ~README.org~, opened like any other document and read-only (see [[#local-variables][Local Variables]]). It shows as its own tab (see [[#tabs][Tabs]]), always last and visually distinct, and opening Help again switches to it if it is already open. It opens with ~#+STARTUP: show2levels~, as any document with that line does.
+Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It is this file, ~README.org~, opened read-only in its own last tab; opening it again switches to it. It opens with ~#+STARTUP: show2levels~.
 
 -----
 
@@ -1775,9 +1771,9 @@ The cards, by what they hold:
 - *Calendar (CalDAV) / Contacts (CardDAV)*: the calendar your agenda is mirrored to and the address book your contacts are, right after WebDAV (see [[#calendar-sync][Calendar and contacts sync]]).
 - *Agenda notifications*: reminders before appointments, just before GitHub (see [[#agenda-notifications][Agenda notifications]]).
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
-- *Backup*: *Export Settings* bundles everything on this page into one downloadable JSON file, and *Import Settings* merges a previously exported file back in, leaving anything it doesn't mention untouched.
-- *Updates*: shows the version of the code that is running and checks for a new one. If a newer version is already installed but this page was opened before it took over, a banner and a note here say so; *Reload* brings the page up to date. The installed Android app has no button, since a newer version is installed instead.
-- *Export* (General, ASCII, HTML): one card per export type. *General* sets a *Page header* and *Page footer* for printed pages (~Draft | | %d~ is left, centre, right). *HTML* sets a *Preamble*, *Postamble* and *Head*. Each has a tick box and is off until ticked; a ticked item is used for every export whose file does not set its own, and the file always wins. A *Format codes* list in each card explains ~%t~, ~%a~, ~%d~, ~%p~, ~%P~ and the rest.
+- *Backup*: *Export Settings* saves everything on this page as JSON; *Import Settings* merges a file back in, leaving other settings untouched.
+- *Updates*: shows the running version and checks for a new one. If a newer version is installed but this page predates it, a banner offers *Reload*. The Android app has no button.
+- *Export* (General, ASCII, HTML, LaTeX): one card per export type. *General* sets a *Page header* and *Page footer* for printed pages (~Draft | | %d~ is left, centre, right). *HTML* sets a *Preamble*, *Postamble* and *Head*, with an option to add a table of contents with page numbers when printing. *LaTeX* sets the class and compiler, with an option that fixes wide TOC numbers. Each has a tick box and is off until ticked; a ticked item applies to every export whose file doesn't set its own. A *Format codes* list explains ~%t~, ~%a~, ~%d~, ~%p~, ~%P~ and the rest.
 
 A file's own ~#+STARTUP:~ or Local Variables block still overrides an app-wide default set here.
 
@@ -2021,7 +2017,7 @@ If a letter doesn't register on your keyboard app, the command palette reaches t
 :CUSTOM_ID: differences-from-emacs-org-mode
 :END:
 
-Read this if you know org-mode well and want to know where org-pwa is a subset, a simplification or just different. It lists only the deltas: a topic not mentioned here matches org's behavior.
+For readers who know Emacs org-mode: where org-pwa does less or differs. A topic not listed here behaves as in org.
 
 *Interaction model* (see [[#keybindings][Keybindings]]): touch-first, not keyboard-driven. The [[#command-palette][command palette]] is ~M-x~ only in spirit: a fixed, curated list that you can't add to, not every Emacs command. god-mode's table doesn't cover table cells, per-list-item checkboxes or link insertion (see [[#god-mode][god-mode]]).
 
@@ -2041,13 +2037,13 @@ Read this if you know org-mode well and want to know where org-pwa is a subset, 
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
-*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. *Citations* (see [[#citations][Citations]]): only the ~basic~ processor. ~#+CITE_EXPORT:~ naming ~csl~, ~biblatex~ or ~natbib~ is exported as ~basic~, ~note~ styles print as ~text~, and ~org-cite-export-processors~ is not a setting (use ~#+CITE_EXPORT:~).
+*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. *Citations* (see [[#citations][Citations]]): LaTeX export honours ~natbib~ and ~biblatex~; every other export uses the ~basic~ processor, so ~csl~ is exported as ~basic~. ~note~ styles print as ~text~, and ~org-cite-export-processors~ is not a setting (use ~#+CITE_EXPORT:~).
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Both subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
-*Export* (see [[#export][Export]]): no LaTeX export. ASCII export matches ~ox-ascii~ for characters, entities, blocks and lists, but lays out headings, tables and links its own way (numbered headings with indented bodies, tables with ~|~ borders, links as ~description (target)~, no ~Notes~ list of links). Justify-left and justify-right blocks are set as ordinary text, which is what Emacs 29.3 produces too. HTML export differs from ~ox-html~ in a few deliberate ways: its own colouring instead of ~htmlize~, KaTeX instead of MathJax, readable element ids, real checkboxes, ~::~ inside code or verbatim text is not a description-list separator, and no ~#+HTML_DOCTYPE:~.
+*Export* (see [[#export][Export]]): ODT, As-org, Calendar (.ics) and Contacts (.vcf) are palette commands; the Export menu lists ASCII, HTML, LaTeX and Markdown. LaTeX follows ~ox-latex~ from Org 9.6 (Emacs 29.3 bundles 9.6.15) and was checked against Emacs on about 40 samples, including this README. It offers only the ~article~, ~report~ and ~book~ classes (no Beamer, no ~org-latex-classes~), writes source blocks as ~verbatim~ (no ~minted~ or ~listings~), leaves ~\author~ empty without ~#+AUTHOR:~, and names the app in ~pdfcreator~. Newer Org versions differ in small details such as blank lines. ASCII export matches ~ox-ascii~ for characters, entities, blocks and lists, but lays out headings, tables and links its own way (numbered headings with indented bodies, tables with ~|~ borders, links as ~description (target)~, no ~Notes~ list of links). Justify-left and justify-right blocks are set as ordinary text, which is what Emacs 29.3 produces too. HTML export differs from ~ox-html~ in a few deliberate ways: its own colouring instead of ~htmlize~, KaTeX instead of MathJax, readable element ids, real checkboxes, ~::~ inside code or verbatim text is not a description-list separator, and no ~#+HTML_DOCTYPE:~.
 
 *Refile* (see [[#refile][Refile]]): you can't create a new destination heading by typing a name that doesn't exist yet.
 
@@ -2087,7 +2083,7 @@ npm test
 
 The tests run with a frozen clock, so they give the same result on any day. ~npm run test:zones~ runs them in five time zones.
 
-Behaviour that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists, and store the answers under ~test/fixtures/~; the tests compare the app with them.
+Behaviour that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists; ~tools/gen-latex-oracle.mjs~ does the same for LaTeX export, and ~tools/latex-compile-check.mjs~ compiles the output. The answers are stored the answers under ~test/fixtures/~; the tests compare the app with them.
 
 ~npm run lint~ (ESLint) and ~npm run typecheck~ (~tsc~ on files that begin with ~// @ts-check~) need ~npm install --no-save eslint @eslint/js globals typescript~. ~node tools/release.mjs N~ checks, bumps the cache name and writes ~org-pwa-vN.zip~; ~.github/workflows/ci.yml~ runs the same checks and the smoke test on every push.
 
