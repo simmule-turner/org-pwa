@@ -15,6 +15,7 @@ import { openActionSheet } from './bottom-sheet.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { openTimestampPickerPopup } from './dialogs.js';
 import { commitAndRender, performUndo, setStatus } from './editing.js';
+import { openDiaryRowActions } from './diary-flow.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { render } from './render.js';
@@ -169,6 +170,10 @@ function openItemHeading(/** @type {any} */ item) {
 
 /** The action sheet for one row. */
 export function openRowActions(/** @type {any} */ item) {
+  if (item.documentId === 'diary-file') {
+    if (item.diaryAt) openDiaryRowActions(item); // a row from the diary file has its own sheet
+    return;
+  }
   const heading = item.heading;
   if (!heading) return;
   const changeable = canChangeItem(item);

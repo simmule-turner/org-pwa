@@ -20,6 +20,7 @@ import { contentAreaEl, outlineEl } from './dom.js';
 import { setStatus } from './editing.js';
 import { dateInputValue } from './field-groups.js';
 import { attachAgendaSwipeNav } from './gestures-structure.js';
+import { openDiaryRowActions } from './diary-flow.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
@@ -655,6 +656,10 @@ export function renderAgendaView() {
 
     row.onclick = () => {
       if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
+      if (item.documentId === 'diary-file') {
+        if (item.diaryAt) openDiaryRowActions(item); // a row from the diary file: Open entry, Add entry, Delete
+        return;
+      }
       const outlinePath = outlinePathForHeadingInDocument(item.documentId, /** @type {Heading} */ (item.heading));
       if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };
@@ -1092,6 +1097,10 @@ export function renderTaskListView() {
 
     row.onclick = () => {
       if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
+      if (item.documentId === 'diary-file') {
+        if (item.diaryAt) openDiaryRowActions(item);
+        return;
+      }
       const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
       if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
     };

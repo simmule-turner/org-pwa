@@ -100,6 +100,41 @@
       --workflow-terminal-fg: #ff9999;
     }
   }
+
+  /* Text view: the editor draws its colors in a layer behind a transparent textarea (src-browser/text-view.js). */
+  :root {
+    --tk-accent: #185fa5; --tk-teal: #0a7a6a; --tk-amber: #a86a00; --tk-purple: #7a3db8; --tk-gray: #8a8a8a;
+  }
+  html[data-theme="dark"] { --tk-accent: #6fb2ff; --tk-teal: #5fd1bd; --tk-amber: #e8b04a; --tk-purple: #c39bf0; --tk-gray: #8a8f98; }
+  html[data-theme="light"] { --tk-accent: #185fa5; --tk-teal: #0a7a6a; --tk-amber: #a86a00; --tk-purple: #7a3db8; --tk-gray: #8a8a8a; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) { --tk-accent: #6fb2ff; --tk-teal: #5fd1bd; --tk-amber: #e8b04a; --tk-purple: #c39bf0; --tk-gray: #8a8f98; }
+  }
+  .te-root { display: flex; flex-direction: column; min-height: 0; }
+  .te-row { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 0.5px solid var(--border); align-items: center; flex: none; overflow-x: auto; }
+  .te-btn { height: 36px; min-width: 36px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; white-space: nowrap; }
+  .te-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); color: var(--accent); }
+  .te-btn:disabled { opacity: 0.4; }
+  .te-keys .te-btn { min-width: 40px; font-family: ui-monospace, monospace; font-size: 15px; }
+  .te-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--bg); }
+  .te-gutter { position: absolute; top: 0; bottom: 0; left: 0; border-right: 1px solid var(--border); background: var(--surface); pointer-events: none; }
+  .te-back { position: absolute; top: 0; left: 0; margin: 0; pointer-events: none; color: var(--fg); font-family: ui-monospace, monospace; will-change: transform; counter-reset: teln; }
+  .te-back .te-ln { counter-increment: teln; position: relative; min-height: 1em; }
+  .te-nums .te-back .te-ln::before { content: counter(teln); position: absolute; left: calc(-1 * (var(--te-gutter) + 8px)); width: calc(var(--te-gutter) - 6px); text-align: right; color: var(--tk-gray); }
+  .te-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: none; border-radius: 0; background: transparent; resize: none; outline: none; font-family: ui-monospace, monospace; overflow: auto; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--fg); }
+  .te-input::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); -webkit-text-fill-color: transparent; }
+  .te-status { flex: none; padding: 8px 12px; border-top: 0.5px solid var(--border); background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 12.5px; line-height: 1.35; }
+  .te-back .te-sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .tk-date, .tk-heading { color: var(--tk-accent); font-weight: 700; }
+  .tk-time, .tk-str, .tk-ts, .tk-code { color: var(--tk-teal); }
+  .tk-mark, .tk-num, .tk-list, .tk-tag { color: var(--tk-amber); }
+  .tk-fn, .tk-kw, .tk-meta, .tk-sexp, .tk-paren { color: var(--tk-purple); }
+  .tk-cmt, .tk-ignored { color: var(--tk-gray); }
+  .tk-todo { color: var(--todo-fg); font-weight: 700; }
+  .tk-done { color: var(--done-fg); font-weight: 700; }
+  .tk-link { color: var(--tk-accent); text-decoration: underline; }
+  .tk-bold { font-weight: 700; }
+  .tk-italic { font-style: italic; }
   * { box-sizing: border-box; }
   html, body {
     overflow: hidden; /* the page itself never scrolls or resizes — only #contentArea does, as its own designated scroll pane */

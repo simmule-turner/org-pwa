@@ -14,11 +14,13 @@ import { clearPersistedHistory, loadPersistedHistory } from '../src/history-stor
 import { findHeadingById, findHeadingByTitle, resolveImagePath } from '../src/link-resolve.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getUsePropertyInheritance, getUseTagInheritance, parseLocalVariables } from '../src/local-variables.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { isPlainTextFile } from '../src/plain-file.js';
 import { searchDocument } from '../src/search.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
+import { diarySaved } from './diary-file-load.js';
 import { rememberIds } from './id-locations.js';
 import { prefetchSetupFiles } from './setupfile.js';
 import { requestApptScan } from './appt-flow.js';
@@ -68,15 +70,17 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   }
   S.externalChangeDismissedHash = null;
   hideExternalChangeBanner();
-  doc = await prefetchSetupFiles(doc, documentId, storageKind ?? null); // #+SETUPFILE: keywords, before anything reads them
-  const rawLocalVars = parseLocalVariables(serializeOrg(doc));
-  const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, S.globalVariables);
+  // A plain text file (a diary, notes.txt) is only text: no #+ keywords, no Local Variables, no SETUPFILE
+  const plainText = isPlainTextFile(documentId, storageKind ?? null);
+  if (!plainText) doc = await prefetchSetupFiles(doc, documentId, storageKind ?? null); // #+SETUPFILE: keywords, before anything reads them
+  const rawLocalVars = plainText ? {} : parseLocalVariables(serializeOrg(doc));
+  const startupConfig = resolveEffectiveStartupConfig(plainText ? parseOrg('') : doc, rawLocalVars, S.globalVariables);
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   S.state = { documentId, doc, startupConfig, storageKind: storageKind ?? null, localVariables };
   S.isBufferReadOnly = getBufferReadOnly(localVariables);
-  void rememberIds(doc, storageKind, documentId);
+  if (!plainText) void rememberIds(doc, storageKind, documentId);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   const openedText = serializeOrg(doc);
@@ -100,7 +104,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   S.isDirty = resumedFromCache;
   await setLastActiveDocument(kv, documentId, storageKind);
   await recordRecentFile(kv, documentId, storageKind);
-  S.currentView = 'org';
+  S.currentView = plainText ? 'text' : 'org';
   S.agendaAnchorDate = new Date();
   /** @type {HTMLButtonElement} */ (viewMenuBtn).disabled = false;
   /** @type {HTMLButtonElement} */ (searchBtn).disabled = false;
@@ -174,7 +178,7 @@ export async function openFromFilesystem() {
 export async function openFromImport() {
   if (commitTextModeIfActive()) render();
   try {
-    const { fileId } = await pickAndImportFile(kv);
+    const { fileId } = await pickAndImportFile(kv, '*/*'); // any file: a diary or a notes.txt opens in the Text view
     const { preferCache } = await resolvePendingChangeChoice(fileId);
     await markDocumentOpen(kv, fileId);
     setStatus('Importing\u2026');
@@ -434,7 +438,8 @@ export async function saveTab(tabId) {
       savedText = serializeOrg(S.state.doc);
     }
     markTabSaved(tabId, savedText);
-    void rememberIds(tabId === S.activeTabId ? S.state.doc : doc, storageKind, documentId);
+    if (!isPlainTextFile(documentId, storageKind)) void rememberIds(tabId === S.activeTabId ? S.state.doc : doc, storageKind, documentId);
+    diarySaved(documentId, storageKind);
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
     scheduleSync(); // the agenda, or the contacts, may have changed
     requestApptScan(); // and so may the appointments

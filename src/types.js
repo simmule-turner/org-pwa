@@ -166,6 +166,7 @@ export {};
  *   importPickingHeading: boolean, importCleanMode: boolean,
  *   capturePromptTemplate: CaptureTemplate | null, capturePromptSkipPrePost: boolean, captureOpenedFromExtraMenu: boolean, captureOpenedViaGodMode: boolean,
  *   currentCaptureTemplates: CaptureTemplate[], capturePromptValues: string[], captureShared: any, captureClipboard: string,
+ *   textLanding: { startLine: number, endLine: number, lineText: string, source: string } | null,
  *   searchQuery: string, searchUseRegex: boolean, searchUseMatch: boolean, searchOptionsMenuOpen: boolean, activeQueryReplace: any,
  *   agendaViewType: string, agendaAnchorDate: Date, agendaLogMode: boolean, agendaHabitsHidden: boolean, agendaEffortPanelOpen: boolean,
  *   agendaEffortSort: string | null, agendaEffortFilter: { op: string, minutes: number | null, text: string } | null, agendaEffortMax: { minutes: number | null, text: string } | null,

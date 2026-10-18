@@ -1,0 +1,124 @@
+#+TITLE: Plain-text files, a better text editor, and editing the diary: design
+#+STARTUP: overview
+
+* Summary
+v565 reads the diary but cannot change it, and tapping a diary row does nothing. This note designs the missing half:
+
+1. *Plain-text documents.* A file that is not Org (the diary first, then any ~.txt~ or ~.md~) opens straight in Text view, with no outline.
+2. *A better Text view.* Today it is a bare textarea. It gets what a phone needs to edit text comfortably: line numbers, wrap control, auto-indent, a key row, indent and move-line commands, real Undo and Redo, and a find that jumps and selects.
+3. *Diary integration.* Tapping a diary row opens the diary at that entry. A new *Add diary entry* command (Emacs's ~i~ in the agenda) and the Emacs insert commands (weekly, monthly, yearly, anniversary, cyclic, block) write the lines.
+
+Nothing here is built. The other calendars (Hebrew, Islamic, Bahá'í) are a separate design that follows this one.
+
+* What exists today
+- *Text view* (View → Text) is one ~textarea~ with *Select All* and *Copy All*. It lands near the last place you navigated to, approximately (a proportion of the scroll height). Search and Replace work on its live text.
+- *Opening files* lists only ~.org~ files (and ~_archive~) in the file browser; the local picker filters to ~.org~.
+- *A diary is safe in the document model.* I ran ~serializeOrg(parseOrg(text))~ over every diary fixture and a set of awkward inputs (a line starting ~* 30 Apr~, an unclosed ~#+BEGIN_SRC~, a table with no end, no final newline): all came back byte for byte. So a plain file can use the existing open, edit and save path, including GitHub, WebDAV and the line-based conflict merge (which merges lines, so it suits plain text well).
+- *Diary rows carry no source.* A row knows its text and day, not the file or line it came from.
+
+* Plain-text documents
+** What makes a file plain
+A file is plain text when its name does not end in ~.org~, or when it is the file named by ~diary-file~ (so a diary called ~diary.org~ is still not parsed as Org). Everything else is Org, as now.
+
+A plain document:
+- opens in Text view and stays there. *View → Org* and the outline commands are hidden; the Agenda, Export and Refile act on Org files only.
+- ignores ~#+KEYWORD:~ lines and a ~# Local Variables:~ block (the settings of an Org file must not come from a text file).
+- saves, syncs, undoes and merges through the same paths as an Org file. Line endings go through the existing line-ending handling.
+- shows its name in the tab like any other file.
+
+The document model is unchanged: the text is parsed as Org only so the existing machinery has something to hold, and the round trip is exact. A property test (random lines, including Org-looking ones) guards that.
+
+** The diary's name
+Use *~diary~, with no extension*, which is Emacs's own default (~~/diary~). The same file then works in Emacs, and a GitHub path of ~diary~ is the obvious choice. ~diary.txt~ or ~my.diary~ work equally, because the app decides by "not ~.org~" and by ~diary-file~, never by a list of allowed extensions. No ~.org~ is needed or wanted.
+
+** Finding and creating plain files
+This changes the file browser, so it needs your decision (see the end): the file screen gets an *Org files / All files* switch, Org files by default, so nothing you see today moves. The local picker accepts any text file. *Save as* keeps the name you type; a name with no ~.org~ is not given one. *New diary file* is a palette command that creates ~diary~ (empty) in the folder of the file browser and offers to set ~diary-file~ to it.
+
+* A better Text view
+The textarea stays (native selection, IME, spelling off, the platform's own keyboard), with a toolbar and a few overlays added. Everything below also applies to the Text view of an Org file unless it says otherwise.
+
+** Tier A: comfortable editing on a phone
+| Feature | What it does | Notes |
+|---------+--------------+-------|
+| Line numbers | A gutter beside the text; *Go to line* in the toolbar | Wrap off while the gutter is on, or numbers are measured per wrapped line (see risks) |
+| Wrap | *Wrap / No wrap* toggle; no wrap scrolls sideways | Diaries read best unwrapped |
+| Font size | Smaller / larger | Remembered |
+| Auto-indent | Enter keeps the indent of the line above | Makes continuation lines in a diary natural |
+| Key row | A row above the keyboard: Tab, ~*~ ~/~ ~%~ ~(~ ~)~ ~&~ ~-~ ~:~ ~<~ ~>~ ~[~ ~]~ | The characters that are slow to reach on a phone keyboard; Tab inserts the indent |
+| Indent / Outdent | Selected lines, by two spaces | Tab and Shift-Tab on a hardware keyboard |
+| Line commands | Duplicate, delete, move up, move down | Act on the selected lines |
+| Undo / Redo | Buttons | Edits made by toolbar commands go through ~document.execCommand('insertText')~ so the browser's own undo keeps them; a small stack of our own is the fallback if that is missing |
+| Find | The existing Search, plus: jump and *select* the match, next/previous, a count | Replacement keeps the ~y n q . !~ walk |
+
+** Tier B: diary-aware helpers (the file named by ~diary-file~)
+- *Insert entry* (the Emacs ~diary-insert-*~ commands), each writing a line at the end of the file in the order of ~calendar-date-style~:
+  - date: ~4/30/27 ~, weekly: ~Friday ~, monthly: ~*/25 ~, yearly: ~4/30 ~, as Emacs's insert commands do;
+  - anniversary, cyclic, block: ~%%(diary-anniversary …) ~ and the other two, with the arguments in the style's order.
+  The cursor lands after the date, ready for the text.
+- *Check this line*: for the line under the cursor, say whether it is an entry, which form matched, and the next five days it applies to (the same matcher the Agenda uses, so it cannot disagree). A line that is not an entry (a date alone, or an indented line with no date above) says so. This is the answer to "why doesn't my line show", built in.
+- *Date picker* for the first token of a line, in the style's order.
+
+** Tier C: later, optional
+Syntax colouring (date, ~&~, ~%%(~, comments) by drawing behind a transparent textarea. It is the most fragile piece (scroll and wrap alignment) and is not needed for the rest.
+
+** Settings
+Three own settings, each with a toolbar button as well: ~org-xx-text-line-numbers~, ~org-xx-text-wrap~, ~org-xx-text-font-size~. Their place in Settings is your decision (see the end).
+
+* Diary integration
+** Rows know where they came from
+Every diary row gets ~source = { file, line, needle }~:
+- ~file~: the diary or the included file it came from.
+- ~line~: the zero-based line of the entry in the text the Agenda read.
+- ~needle~: the first line of the entry as written (including its date), used to find it again.
+Holidays have no source. A row made by joining entries (~org-xx-diary-merge-rows~) points at its first entry.
+
+** Tapping a row (your <<PPP>> idea)
+Opening works like following a ~<<target>>~: by searching, with the line number only as a hint.
+1. Open the file (it is a plain document, in a tab; if it is already open, switch to it).
+2. Switch to Text view.
+3. Look at ~line~: if that line still starts with the needle, use it. Otherwise search for the needle and take the match nearest to the old line; if none, the first match; if none, stay at the top and say "That entry has moved or was edited".
+4. Select the entry's lines and scroll them into view.
+
+Searching rather than trusting the line number matters because the file may have been edited, or synced from another device, since the Agenda read it. If the diary is open in a tab, the Agenda reads that buffer (as it does for agenda files), so unsaved edits show at once.
+
+** Other ways in
+- Long-press a diary row: *Open entry*, and later *Delete entry* (removes its lines after a confirmation).
+- *Add diary entry* (palette, and the Agenda's menu): date defaults to the day on screen, then the text; the line is appended to the end of the file as Emacs does, saved, and the Agenda refreshes. If ~diary-file~ is not set, it offers to create ~diary~.
+- After any save of the diary file the Agenda re-reads it. A diary on ~local:~ shows the same permission prompt as now.
+
+* Tests
+- Pure functions get unit tests: indent and outdent, move, duplicate, auto-indent, insert-entry text in all three date styles, finding an entry again after edits (moved, edited, deleted, duplicated).
+- *Self-consistency with the oracle'd matcher*: every inserted line must match the date it was made for, in every style (the matcher itself is already compared with Emacs).
+- Round-trip property test for plain documents.
+- Browser smoke checks: tap a diary row and land on the right line selected; the gutter lines up with the text after scrolling and after wrapping toggles; Undo after a toolbar edit restores the text; a plain file never shows the outline.
+- Emacs comparison where Emacs defines the result: the text of ~diary-insert-weekly-entry~ and the others, if they can be run in batch; otherwise the shapes are taken from the date forms Emacs ships.
+
+* Phases
+| Step | What | Size |
+|------+------+------|
+| 1 | Plain documents: detection, file browser switch, local picker, Save as, New diary file, Text view only | M |
+| 2 | Text view tier A: gutter, wrap, font, auto-indent, key row, indent, line commands, Undo/Redo, better find | M to L |
+| 3 | Diary: row sources, tap to open and select, buffer-aware Agenda, reload on save | M |
+| 4 | Diary helpers: Add entry, insert commands, Check this line, date picker | M |
+| 5 | Syntax colouring (optional) | M |
+Steps 1 to 4 can ship as one release, as you prefer; step 5 is separate.
+
+* Risks and open points
+- *Undo.* Setting ~textarea.value~ clears the native undo stack, so every programmatic edit must use ~execCommand('insertText')~ (deprecated, but supported everywhere this app runs) or the fallback stack. I would test this on Android WebView and iOS before relying on it.
+- *Line numbers with wrapping.* A gutter cannot number wrapped visual lines without measuring. Turning wrap off while the gutter is on avoids it; a measuring mirror element is the alternative.
+- *Large files.* A textarea holds a few thousand lines comfortably. A diary of ten years is well inside that; a very large file would need a warning.
+- *Safety.* A plain file must not be able to set variables, run blocks or approve extensions. It is never parsed for them.
+- *Input methods.* Auto-indent and the key row must not break composition (CJK, swipe typing). Auto-indent only acts on a plain Enter keypress outside composition.
+- *Two writers.* A diary edited here and in Emacs is the ordinary conflict case; the existing line-based three-way merge applies.
+- *The Agenda and a diary in a tab.* The Agenda must prefer the open buffer over the cached read; one more place that has to be tested.
+
+* Decisions for you
+1. *The file browser switch* (Org files / All files) is a change to an existing screen. Is a switch at the top, defaulting to Org files, acceptable?
+2. *Where do the three text settings go?* The Editing section is the natural place; I would add them at its end.
+3. *Add entry appends to the end of the file*, as Emacs does. Do you want the option to insert in date order instead?
+4. *Open entry selects the entry's lines.* Selecting is easier to see than a caret; is that right for you?
+5. *Syntax colouring now or later?* I recommend later.
+6. *One release for steps 1 to 4?*
+
+* Not in this note
+The Hebrew, Islamic and Bahá'í calendars and their holidays, and whether they should load on demand, follow in their own design.

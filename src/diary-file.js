@@ -65,6 +65,30 @@ function regexpQuote(s) {
   return s.replace(/[[*.\\?+^$]/g, '\\$&');
 }
 
+/** The date form that applies: `diary-date-forms` when set, else the list of the style.
+ * @param {DiaryOptions} options
+ * @returns {DateForm[]} */
+export function dateFormsFor(options) {
+  return options.dateForms || DIARY_DATE_FORMS[/** @type {keyof typeof DIARY_DATE_FORMS} */ (options.dateStyle || 'american')] || DIARY_DATE_FORMS.american;
+}
+
+/** A date form in words, for "this line matched the month/day form": month, day, year, month name and weekday in order, with the
+ *  plain separators between them; the patterns that only decide where the date ends are left out.
+ * @param {DateForm} form
+ * @returns {string} */
+export function describeDateForm(form) {
+  const names = { month: 'month', day: 'day', year: 'year', monthname: 'month name', dayname: 'weekday' };
+  let out = '';
+  for (const part of form) {
+    if (typeof part !== 'string') continue;
+    if (part in names) out += names[/** @type {keyof typeof names} */ (part)];
+    else if (/^[-/]$/.test(part)) out += part;
+    else if (part === '[-/]') out += '-';
+    else if (/^ ?\*$|^,? ?\*$|^ \*$/.test(part)) out += part.startsWith(',') ? ', ' : ' ';
+  }
+  return out;
+}
+
 /** The regexp (Emacs syntax) for one date form on one day, as diary-list-entries-2 builds it.
  * @param {DateForm} form
  * @param {Date} date
@@ -114,12 +138,37 @@ function backToWordStart(text, pos) {
  * @returns {string[][]}  each entry as its lines (the first without the date)
  */
 export function datedEntries(text, date, options = {}) {
-  const forms = options.dateForms || DIARY_DATE_FORMS[/** @type {keyof typeof DIARY_DATE_FORMS} */ (options.dateStyle || 'american')] || DIARY_DATE_FORMS.american;
+  return datedEntriesAt(text, date, options).map((e) => e.lines);
+}
+
+/** @typedef {{ lines: string[], startLine: number, endLine: number, formIndex: number, lineText: string }} LocatedEntry  an entry's lines and the 1-based lines of the file it occupies, the date's line included */
+
+/** The 1-based line number of the character at `offset`.
+ * @param {string} text @param {number} offset */
+function lineAt(text, offset) {
+  let n = 1;
+  for (let i = text.indexOf('\n'); i !== -1 && i < offset; i = text.indexOf('\n', i + 1)) n++;
+  return n;
+}
+
+/** The text of the line holding `offset`, trimmed.
+ * @param {string} text @param {number} offset */
+function lineTextAt(text, offset) {
+  const start = text.lastIndexOf('\n', offset - 1) + 1;
+  const nl = text.indexOf('\n', offset);
+  return text.slice(start, nl === -1 ? text.length : nl).trim();
+}
+
+/** datedEntries with the place of each entry in the file.
+ * @param {string} text @param {Date} date @param {DiaryOptions} [options]
+ * @returns {LocatedEntry[]} */
+export function datedEntriesAt(text, date, options = {}) {
+  const forms = dateFormsFor(options);
   const mark = options.nonmarkingSymbol ?? '&';
   const abbreviatedYear = options.abbreviatedYear !== false;
-  /** @type {string[][]} */
+  /** @type {LocatedEntry[]} */
   const found = [];
-  for (const form of forms) {
+  for (const [formIndex, form] of forms.entries()) {
     const backup = typeof form[0] === 'object';
     let regexp;
     try {
@@ -143,7 +192,7 @@ export function datedEntries(text, date, options = {}) {
       let end = text.indexOf('\n', entryStart);
       while (end !== -1 && /[ \t]/.test(text[end + 1] ?? '')) end = text.indexOf('\n', end + 1); // continuation lines
       if (end === -1) end = text.length;
-      found.push(text.slice(entryStart, end).split('\n'));
+      found.push({ lines: text.slice(entryStart, end).split('\n'), startLine: lineAt(text, match.index), endLine: lineAt(text, Math.max(end - 1, match.index)), formIndex, lineText: lineTextAt(text, match.index) });
       regexp.lastIndex = Math.max(end, match.index + 1);
     }
   }
@@ -156,19 +205,27 @@ export function datedEntries(text, date, options = {}) {
  * @param {DiaryOptions} [options]
  * @returns {string[]} */
 export function sexpEntryLines(text, options = {}) {
+  return sexpEntriesAt(text, options).map((e) => e.text);
+}
+
+/** sexpEntryLines with the lines each entry occupies.
+ * @param {string} text @param {DiaryOptions} [options]
+ * @returns {{ text: string, startLine: number, endLine: number, lineText: string }[]} */
+export function sexpEntriesAt(text, options = {}) {
   const mark = options.nonmarkingSymbol ?? '&';
   const symbol = options.sexpSymbol ?? '%%';
   const start = new RegExp(`^${regexpQuote(mark)}?${regexpQuote(symbol)}\\(`);
   const lines = text.split('\n');
-  /** @type {string[]} */ const out = [];
+  /** @type {{ text: string, startLine: number, endLine: number, lineText: string }[]} */ const out = [];
   for (let i = 0; i < lines.length; i++) {
     if (!start.test(lines[i])) continue;
+    const startLine = i + 1;
     let entry = lines[i].replace(new RegExp(`^${regexpQuote(mark)}`), '');
     while (/^[ \t]/.test(lines[i + 1] ?? '')) {
       i++;
       entry += `; ${lines[i].trim()}`;
     }
-    out.push(entry.replace(new RegExp(`^${regexpQuote(symbol)}`), '%%'));
+    out.push({ text: entry.replace(new RegExp(`^${regexpQuote(symbol)}`), '%%'), startLine, endLine: i + 1, lineText: lines[startLine - 1].trim() });
   }
   return out;
 }
@@ -226,39 +283,62 @@ function startsWithTime(s) {
  * @returns {string[]}
  */
 export function diaryRowsForDay(diary, date, options, sexpTitle) {
+  return diaryRowsLocated(diary, date, options, sexpTitle).map((r) => r.text);
+}
+
+/** @typedef {{ text: string, file: number, startLine: number, endLine: number, lineText: string }} DiaryRow  a row and where it is written: `file` 0 is the diary, 1 and up the included files in order, -1 a holiday (which is written nowhere) */
+
+/**
+ * diaryRowsForDay with the place of each row: the file and the lines of the entry it starts from.
+ * @param {{ text: string, included?: { text: string }[] }} diary
+ * @param {Date} date
+ * @param {DiaryOptions} options
+ * @param {(line: string) => string | null} [sexpTitle]
+ * @returns {DiaryRow[]}
+ */
+export function diaryRowsLocated(diary, date, options, sexpTitle) {
   const hooks = options.hooks || [];
   const files = [diary.text, ...(hooks.includes('diary-include-other-diary-files') ? (diary.included || []).map((f) => f.text) : [])];
-  /** @type {string[][]} */ let entries = [];
-  for (const text of files) {
+  /** @type {{ lines: string[], file: number, startLine: number, endLine: number, lineText: string }[]} */ let entries = [];
+  files.forEach((text, file) => {
     if (sexpTitle) {
-      for (const line of sexpEntryLines(text, options)) {
-        const title = sexpTitle(line);
-        if (title !== null) entries.push([title]);
+      for (const sexp of sexpEntriesAt(text, options)) {
+        const title = sexpTitle(sexp.text);
+        if (title !== null) entries.push({ lines: [title], file, startLine: sexp.startLine, endLine: sexp.endLine, lineText: sexp.lineText });
       }
     }
-    for (const lines of datedEntries(text, date, options)) entries.push(lines);
-  }
+    for (const e of datedEntriesAt(text, date, options)) entries.push({ ...e, file });
+  });
   if (hooks.includes('diary-sort-entries')) {
-    const key = (/** @type {string[]} */ lines) => lines.join('\n');
+    const key = (/** @type {{ lines: string[] }} */ e) => e.lines.join('\n');
     entries = entries
-      .map((lines, i) => ({ lines, i }))
-      .sort((a, b) => diaryEntryTime(key(a.lines)) - diaryEntryTime(key(b.lines)) || (key(a.lines) < key(b.lines) ? -1 : key(a.lines) > key(b.lines) ? 1 : 0) || a.i - b.i)
-      .map((e) => e.lines);
+      .map((e, i) => ({ e, i }))
+      .sort((a, b) => diaryEntryTime(key(a.e)) - diaryEntryTime(key(b.e)) || (key(a.e) < key(b.e) ? -1 : key(a.e) > key(b.e) ? 1 : 0) || a.i - b.i)
+      .map((x) => x.e);
   }
-  const holidays = options.showHolidays === false ? [] : holidaysOn(date);
+  /** @type {DiaryRow[]} */
+  const holidays = (options.showHolidays === false ? [] : holidaysOn(date)).filter(Boolean).map((text) => ({ text, file: -1, startLine: 0, endLine: 0, lineText: '' }));
   if (!options.mergeRows) {
-    return [...holidays, ...entries.map((lines) => lines.map((l) => l.trim()).filter(Boolean).join('; '))].filter(Boolean);
+    /** @type {DiaryRow[]} */ const rows = [...holidays];
+    for (const e of entries) {
+      const text = e.lines.map((l) => l.trim()).filter(Boolean).join('; ');
+      if (text) rows.push({ text, file: e.file, startLine: e.startLine, endLine: e.endLine, lineText: e.lineText });
+    }
+    return rows;
   }
   // Org reads the day from the "fancy" diary buffer. There the holidays and the text of a sexp entry start at the left edge, while
   // an entry written after its date keeps the space that followed the date and a continuation line keeps its indent; every
   // indented line that does not start with a time is joined into the line before it.
-  /** @type {string[]} */ const rows = [...holidays];
+  /** @type {DiaryRow[]} */ const rows = [...holidays];
   for (const piece of entries) {
-    for (const line of piece) {
+    for (const line of piece.lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-      if (rows.length > 0 && /^[ \t]/.test(line) && !startsWithTime(trimmed)) rows[rows.length - 1] += `; ${trimmed}`;
-      else rows.push(trimmed);
+      const last = rows[rows.length - 1];
+      if (last && /^[ \t]/.test(line) && !startsWithTime(trimmed)) {
+        last.text += `; ${trimmed}`;
+        if (last.file >= 0 && last.file === piece.file) last.endLine = Math.max(last.endLine, piece.endLine);
+      } else rows.push({ text: trimmed, file: piece.file, startLine: piece.startLine, endLine: piece.endLine, lineText: piece.lineText });
     }
   }
   return rows;

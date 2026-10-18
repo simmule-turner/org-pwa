@@ -4,6 +4,7 @@ import { resolveLinkTarget } from '../src/link-resolve.js';
 import { getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg } from '../src/org-parser.js';
+import { isPlainTextFile } from '../src/plain-file.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels, scrollContainer } from './chrome.js';
 import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
@@ -33,6 +34,13 @@ export function switchToView(view) {
   if (view === S.currentView) {
     S.viewMenuOpen = false;
     renderViewMenu();
+    return;
+  }
+  if (view !== 'text' && S.state.doc && isPlainTextFile(S.state.documentId, S.state.storageKind)) {
+    // a plain text file has no headings, so there is nothing to show in the other views
+    S.viewMenuOpen = false;
+    renderViewMenu();
+    setStatus('This is a plain text file \u2014 it opens in Text view only.');
     return;
   }
 

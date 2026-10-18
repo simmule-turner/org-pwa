@@ -12,7 +12,7 @@ import { lockBackgroundScroll } from './dialogs.js';
  * @param {string} title
  * @param {string | undefined} subtitle
  */
-function buildSheet(title, subtitle) {
+export function buildSheet(title, subtitle) {
   const overlay = document.createElement('div');
   overlay.setAttribute('data-bottom-sheet', '');
   overlay.className = 'ui-overlay';
@@ -63,7 +63,7 @@ function buildSheet(title, subtitle) {
 }
 
 /** @param {string} label @param {() => void} onClick */
-function cancelButton(label, onClick) {
+export function cancelButton(label, onClick) {
   const btn = document.createElement('button');
   btn.textContent = label;
   btn.style.cssText = 'display:block;width:100%;min-height:var(--target);margin-top:var(--space-3);font-size:var(--text-body);';

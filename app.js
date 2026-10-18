@@ -590,6 +590,7 @@ S.searchQuery = '';
 S.searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value
 S.searchUseMatch = false; // Match Query mode (C-c / m's own grammar) -- mutually exclusive with searchUseRegex, per direct decision: selecting Match replaces the whole query's own interpretation rather than layering on top of regex
 S.searchOptionsMenuOpen = false; // the overflow popover (Regex/Match/Replace) replacing the old three-button row -- reset (not persisted) whenever search itself closes, same lifetime as searchUseRegex/searchUseMatch's own containing UI
+S.textLanding = null; // where the Text view should select on its next draw (opening a diary entry from the Agenda), else null
 S.activeQueryReplace = null; // { controller, replacementText, findPattern } while a replace walk is in progress, else null
 S.viewMenuOpen = false;
 // Agenda view state: which grouping is active, and the anchor date that

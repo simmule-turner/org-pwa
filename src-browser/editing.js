@@ -12,6 +12,7 @@ import { savePersistedHistory } from '../src/history-store.js';
 import { getCycleOpenArchivedTrees, parseLocalVariables } from '../src/local-variables.js';
 import { saveNarrowState } from '../src/narrow-state.js';
 import { findHeadingAtLine, parseOrg, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
+import { isPlainTextFile } from '../src/plain-file.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { canRedo, canUndo, currentEntry, jumpTo, pushSnapshot, redo, undo } from '../src/undo-history.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
@@ -459,8 +460,9 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
  * @param {string} newText @param {string} label */
 export function replaceDocumentText(newText, label) {
   const newDoc = parseOrg(newText);
-  const rawLocalVars = parseLocalVariables(newText);
-  const startupConfig = resolveEffectiveStartupConfig(newDoc, rawLocalVars, S.globalVariables);
+  const plainText = isPlainTextFile(S.state.documentId, S.state.storageKind);
+  const rawLocalVars = plainText ? {} : parseLocalVariables(newText);
+  const startupConfig = resolveEffectiveStartupConfig(plainText ? parseOrg('') : newDoc, rawLocalVars, S.globalVariables);
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
   applyStartupVisibility(newDoc, startupConfig, getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived');
   S.state.doc = newDoc;

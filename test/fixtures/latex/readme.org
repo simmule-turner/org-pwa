@@ -659,6 +659,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-solar-ampm~ | ~nil~ (24-hour) | (own) ~t~ uses 12-hour am/pm for the solar forms |
 | ~org-xx-solar-hide-label~ | ~nil~ (label shown) | (own) ~t~ drops the trailing label ("Sunrise", "daylight") and shows the bare time or duration |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
+| ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
+| ~org-xx-text-line-numbers~ | ~t~ | (own) Whether the Text view shows line numbers |
+| ~org-xx-text-wrap~ | ~nil~ | (own) ~t~ wraps long lines in the Text view; ~nil~ scrolls them sideways |
 
 Any other ~# key: value~ line is parsed and ignored, so new variables can be added later without changing the format.
 
@@ -993,6 +996,10 @@ Tap *View → Text* to replace the outline with one textarea holding the raw org
 
 *Select All* and *Copy All* buttons sit above the textarea for devices without a keyboard (Copy All falls back to selecting if the clipboard is denied). While narrowed they act on the narrowed text.
 
+The text is colored: Org headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links and emphasis, and the code in a source block when it is JavaScript or Lisp. A row of tools sits under the buttons: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, and duplicates, deletes, moves, indents or outdents the lines you have selected. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The three settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]].
+
+*Other files*: in *File → Open*, *All files* lists every file, not only ~.org~. A file that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only, with no outline: a ~#+~ line or a Local Variables block in it means nothing. Colored for ~.md~, ~.js~, ~.json~ and ~.el~; ~.txt~ is plain.
+
 *Search works here* on the textarea's live raw text, so it can find and replace inside property drawers and ~#+BEGIN_VERSE~ or ~#+BEGIN_QUOTE~ blocks. *Regex* and *Replace* work as in Org view, including the ~y~, ~n~, ~q~, ~.~, ~!~ walk; *Match* mode isn't offered. Replacements stay in the textarea until you leave or Save.
 
 -----
@@ -1127,7 +1134,7 @@ All three variables can be edited in Quick Settings, with a reset to default.
 :CUSTOM_ID: diary-file
 :END:
 
-Set ~org-agenda-include-diary~ to ~t~ and name your Emacs diary in ~diary-file~ (~github:diary~, ~webdav:diary~ or ~local:diary~). The Agenda then shows its entries under the category *Diary*, with the day's holidays. The app reads the diary and does not change it.
+Set ~org-agenda-include-diary~ to ~t~ and name your Emacs diary in ~diary-file~ (~github:diary~, ~webdav:diary~ or ~local:diary~). The Agenda then shows its entries under the category *Diary*, with the day's holidays. Tap a diary row for *Open entry* (the diary opens in Text view with the entry selected), *Add entry on this day* and *Delete entry…*.
 
 A diary line starts with a date, written in the order of ~calendar-date-style~; the rest of the line and the indented lines after it are the entry:
 
@@ -1144,6 +1151,8 @@ Friday   Back up files
 ~*~ stands for any month, day or year, and month and day names may be abbreviated. A time at the start of an entry (~10:00am~, ~14:30~) puts it in the day's timeline. A ~&~ before the date, and ~%%(…)~ lines (see [[#agenda-diary-sexp][Diary-sexp forms]]), work as in Emacs.
 
 Each entry is a row. ~org-xx-diary-merge-rows~ set to ~t~ joins an entry that does not start with a time into the row before it, as Org does. ~diary-show-holidays-flag~ set to ~nil~ leaves the holidays out. ~diary-list-entries-hook~ may name ~diary-include-other-diary-files~ (read the files named by ~#include "file"~ lines) and ~diary-sort-entries~ (sort a day's entries by time). *Refresh* in the Agenda reads the file again.
+
+In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly, anniversary, cyclic or block entry at the end of the file, as Emacs's ~diary-insert-*~ commands do, and saves it. *Check this line* says whether the line under the cursor is an entry, by which date form, and on which days it falls next. *Date…* puts a date at the cursor. The Agenda reads the diary from its open tab, so an edit shows at once.
 
 *** General ~<%%(sexp)>~ timestamps
 :PROPERTIES:

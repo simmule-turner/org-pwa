@@ -20,6 +20,11 @@ import { renderRow, syncSidePanel } from './row-render.js';
 import { renderTabBar } from './tabs.js';
 import { VH_UNIT, isWideLayout, menuButton, tableActionButton } from './ui-widgets.js';
 import { platform } from './platform.js';
+import { isPlainTextFile, documentName } from '../src/plain-file.js';
+import { syntaxKindFor } from '../src/text-syntax.js';
+import { isDiaryDocument } from './diary-file-load.js';
+import { diaryToolsRow } from './diary-flow.js';
+import { buildTextEditor, landInTextView } from './text-view.js';
 import { scheduleBibliography } from './bibliography.js';
 
 export function render() {
@@ -59,7 +64,7 @@ export function render() {
 
   if (S.currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
-    if (existingTextarea && existingTextarea.parentElement === outlineEl) {
+    if (existingTextarea && outlineEl.contains(existingTextarea)) {
       // Already showing the text editor with the person's own,
       // possibly-unsaved edits sitting in it -- leave it completely
       // alone. Rebuilding it here from state.doc (stale until the
@@ -75,6 +80,7 @@ export function render() {
     toolbar.className = 'panel-row';
     toolbar.style.padding = '6px 10px';
     toolbar.style.borderBottom = '0.5px solid var(--border)';
+    toolbar.style.flex = 'none';
     toolbar.appendChild(
       tableActionButton('Select All', () => {
         textarea.focus();
@@ -98,22 +104,32 @@ export function render() {
         }
       })
     );
-    outlineEl.appendChild(toolbar);
 
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
     const fullText = S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
     textarea.value = fullText;
     textarea.readOnly = S.isBufferReadOnly;
-    textarea.style.width = '100%';
-    textarea.style.boxSizing = 'border-box';
-    textarea.style.height = VH_UNIT === 'dvh' ? 'calc(100dvh - 204px)' : 'calc(100vh - 204px)';
-    textarea.style.font = 'ui-monospace, monospace';
-    textarea.style.fontSize = '13px';
-    textarea.style.padding = '10px';
-    textarea.style.border = 'none';
     textarea.spellcheck = false;
-    outlineEl.appendChild(textarea);
+    const plainText = isPlainTextFile(S.state.documentId, S.state.storageKind);
+    const diary = plainText && isDiaryDocument(S.state.documentId, S.state.storageKind);
+    const editor = buildTextEditor({
+      textarea,
+      selectRow: toolbar,
+      kind: plainText ? syntaxKindFor(documentName(S.state.documentId), diary) : 'org',
+      extraRow: diary ? diaryToolsRow(textarea) : null,
+      compact: !!S.narrowedHeading,
+      height: VH_UNIT === 'dvh' ? 'calc(100dvh - 155px)' : 'calc(100vh - 155px)',
+    });
+    outlineEl.appendChild(editor.root);
+
+    if (S.textLanding && !S.narrowedHeading) {
+      // opened from the Agenda's diary: select the entry rather than landing near the last heading
+      const landing = S.textLanding;
+      S.textLanding = null;
+      queueMicrotask(() => landInTextView(landing, textarea));
+      return;
+    }
 
     if (S.narrowedHeading) {
       // The splice-back boundary: fixed here, once, BEFORE any editing

@@ -6,6 +6,8 @@ Emacs's Org agenda can read the Emacs diary file when ~org-agenda-include-diary~
 
 This note scopes a feature that reads a diary file the way Emacs does: the same variables, the same date forms, the same rules for which lines match a day, and the same result in the agenda. It records how Emacs behaves (checked by running Emacs 29.3), what has to be built, how to prove it matches Emacs, and the decisions that are yours to make.
 
+Status: steps 1 to 3 shipped in v565 and are proven against Emacs 29.3 on twelve sample diaries, in both row modes. Opening, adding and deleting entries (step 4) shipped with the Text view work described in [[file:text-editor-and-diary-design.org][text-editor-and-diary-design.org]]. Hebrew, Islamic and Bahá'í entries and holidays are not built; they have a design of their own.
+
 Size: a medium project in four steps. The core (steps 1 and 2) is a parser and a matcher plus agenda integration. Everything is testable against Emacs, which is how the other diary features were checked.
 
 * Goals and non-goals
@@ -44,6 +46,22 @@ Which written shapes count as a date depends on ~calendar-date-style~. These are
 
 The shapes are tried in that order, and the lines are scanned in file order for each. A user may replace the list with the variable ~diary-date-forms~, which is why the matcher should be built from the forms, not hard-coded.
 
+Written out, the lists are (Emacs's ~diary-american-date-forms~, ~diary-european-date-forms~ and ~diary-iso-date-forms~):
+
+#+begin_example
+american  (month "/" day "[^/0-9]") (month "/" day "/" year "[^0-9]")
+          (monthname " *" day "[^,0-9]") (monthname " *" day ", *" year "[^0-9]") (dayname "\\W")
+european  (day "/" month "[^/0-9]") (day "/" month "/" year "[^0-9]")
+          (backup day " *" monthname "\\W+\\<\\([^*0-9]\\|\\([0-9]+[:aApP]\\)\\)")
+          (day " *" monthname " *" year "[^0-9:aApP]") (dayname "\\W")
+iso       (month "[-/]" day "[^-/0-9]") (year "[-/]" month "[-/]" day "[^0-9]")
+          (monthname " *" day "[^-0-9]") (year " *" monthname " *" day "[^0-9]") (dayname "\\W")
+#+end_example
+
+Setting ~calendar-date-style~ with a plain ~setq~ does not change ~diary-date-forms~ in Emacs; ~calendar-set-date-style~ does. The app follows the second: the style picks the list, and ~diary-date-forms~ replaces it only when it is set.
+
+Emacs reads the diary with its own syntax table, in which ~*~ and ~:~ are word characters. That decides what ~\W~ and ~\<~ in the forms mean, and it is why ~4 mar 10:30am Coffee~ keeps its ~10:~ in the European style. The matcher reproduces it.
+
 The shapes carry their own punctuation rules. For example, american ~M/D~ must not be followed by another digit or ~/~, which is why ~4/30  text~ matches April 30 but ~4/30/27 text~ is a different shape.
 
 ** What the Org agenda does with the entries
@@ -52,15 +70,16 @@ For each day, Org asks the diary for that day's entries and shows each as an age
 - A time of day is taken from the start of the entry (~9:30am~, ~10:00-11:00~, ~14:00~), which puts the line in the time column and the time grid.
 - Continuation lines are joined to the entry with ~; ~ (checked: ~10:00am Brunch~ with an indented ~at Mom's~ becomes ~10:00am Brunch; at Mom's~).
 - *Holidays* appear too: a day with Christmas shows ~Christmas~ in the Diary lines. (Holidays come from ~calendar-holidays~, whose default includes more than the US and Christian lists.)
-- The order within a day follows the date form, then the file order, unless ~diary-sort-entries~ is added to ~diary-list-entries-hook~, which sorts by time.
+- The order within a day: sexp entries first (~diary-list-sexp-entries~), then each date form in turn, each in file order, unless ~diary-sort-entries~ is added to ~diary-list-entries-hook~, which sorts by time and then by text (an entry with no time sorts first).
 - *Two quirks of Org's own display*: entries that do not start with a time are merged into the line before them with ~; ~, so two untimed entries on one day can show as one row; and a day with holidays prints the holiday and the first entry together. This is a side effect of how Org reads the diary's display buffer rather than a rule anyone wrote down.
 - ~#include "other-file"~ lines are *not* followed unless ~diary-include-other-diary-files~ is added to ~diary-list-entries-hook~ (checked: an included entry did not show without it).
 
-* What org-pwa has today
-- Sexp lines work in Org file bodies and in headings (~<%%(...)>~), through one evaluator verified against Emacs; the date functions that follow ~calendar-date-style~ were added in v561.
-- The list of agenda files can name ~github:~, ~webdav:~ and ~local:~ files, and the agenda reads them.
-- A pure parser can read any text into lines; the agenda code already walks a document's body lines for sexp entries.
-- Not there: a diary file variable, plain date lines, the ~org-agenda-include-diary~ switch, time-of-day handling for such entries, ~#include~, sorting.
+* What org-pwa has
+- Sexp lines work in Org file bodies, in headings (~<%%(...)>~) and in the diary file, through one evaluator verified against Emacs.
+- The diary file (~diary-file~, with ~org-agenda-include-diary~) is read from GitHub, WebDAV or a local file and shown in the Agenda under the category Diary, with the day's holidays, times of day, ~#include~ and sorting.
+- Each Agenda row knows the file and lines it came from, so a tap can open the entry.
+- A file that is not Org (the diary is the first) opens in Text view only, with coloring for the diary's syntax. Opening, adding and deleting entries, Check this line and the date picker are there.
+- Not there: Hebrew, Islamic and Bahá'í dates, and the holidays beyond the US and Christian lists.
 
 * Design
 ** Variables (Emacs's names, as Local or Global Variables)
@@ -68,31 +87,32 @@ For each day, Org asks the diary for that day's entries and shows each as an age
 |----------+---------+---------|
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the diary to the Agenda (as Emacs does). |
 | ~diary-file~ | unset | The file, in the app's file syntax: ~github:diary~, ~webdav:diary~ or ~local:diary~. |
-| ~calendar-date-style~ | ~american~ | Already exists; now also sets the plain date forms. |
-| ~diary-date-forms~ | from the style | Optional override, in Emacs's own syntax. |
+| ~calendar-date-style~ | ~american~ | Already exists; now also sets the plain date forms, as ~calendar-set-date-style~ does. |
+| ~diary-date-forms~ | from the style | Optional override, in Emacs's own syntax (a Lisp list of lists, read but not evaluated). |
+| ~diary-show-holidays-flag~ | ~t~ | Whether the day's holidays are listed with its entries. |
 | ~diary-abbreviated-year-flag~ | ~t~ | Two-digit years match. |
 | ~diary-nonmarking-symbol~ | ~"&"~ | Entry prefix that is ignored. |
 | ~diary-list-entries-hook~ | unset | Names ~diary-include-other-diary-files~ and ~diary-sort-entries~ turn on those two behaviours, as in Emacs. |
 
-No ~org-xx-~ variable is needed: every setting here has an Emacs name. If the merge quirk is kept optional (see decisions), that one switch would be ~org-xx-~.
+Every setting has an Emacs name except one: ~org-xx-diary-merge-rows~ (default ~nil~). By default each entry is its own row, with its continuation lines joined by ~; ~. Set to ~t~, the day is shown as Org shows it: an entry that is indented and does not start with a time is joined into the row before it, holidays and sexp text start rows of their own. Both modes are checked against Emacs.
 
 ** Parser
-~parseDiary(text)~ returns entries: ~{ mark, dateText, formIndex, text, continuation[], line }~. It is built once per file and cached by the file's content hash.
+There is no separate parser: an entry is found on demand, for one day, by ~datedEntriesAt~, which returns the entry's lines, the lines of the file it occupies and the date form that matched. A date alone on a line is not an entry, and an entry may begin on the next, indented line. ~sexpEntriesAt~ does the same for ~%%(…)~ lines.
 
 ** Matcher
-For a day, build the same regular expressions Emacs builds. The date forms are Lisp lists; each form is turned into a pattern with the day's month, day, year, month name and day name substituted (with the ~*~ and leading-zero alternatives), exactly as in ~diary-list-entries-2~. The pattern is an Emacs regexp, so the existing ~emacsRegexToJs~ converter does the work. Patterns are compiled once per (form, day) and reused over every line.
+For a day, build the same regular expressions Emacs builds. The date forms are Lisp lists; each form is turned into a pattern with the day's month, day, year, month name and day name substituted (with the ~*~ and leading-zero alternatives), exactly as in ~diary-list-entries-2~. The pattern is an Emacs regexp, so the existing ~emacsRegexToJs~ converter does the work. Each form is searched over the whole text, as Emacs does, so a day costs one search per form. The word-syntax difference (~*~ and ~:~ as word characters) is applied when the pattern is converted.
 
 Doing it this way, rather than writing a smarter parser, is deliberate: it reproduces Emacs's quirks (the "next character must not be a digit" rules, the backup form for ~30 apr~) without anyone having to rediscover them.
 
 ** Agenda integration
-- The diary file is loaded like an agenda file, as text, then handed to the parser. It is read-only to start with.
-- Each match becomes an agenda item of the existing kind used for sexp lines (~diary-sexp~), with category ~Diary~, the entry text with continuation lines joined by ~; ~, and a start time when the text begins with one.
+- The diary file is loaded like an agenda file, as text. When it is open in a tab the Agenda uses the open text, with unsaved edits; saving it reads the file again.
+- Each match becomes an agenda item of the kind ~diary-sexp~, with category ~Diary~, the entry text with continuation lines joined by ~; ~, and a start time when Org would find one (~org-get-time-of-day~ reads the first time anywhere in the text: ~10:00am~, ~9pm~, ~9:30pm-10pm~; it ignores ~1130~ and ~7~).
 - Sexp lines in the diary file go through the evaluator that exists.
 - With ~org-agenda-include-diary~ ~t~ the day's holidays are added from the app's holiday list.
 - The Agenda (day, week, month) uses it; the TODO view does not, matching Emacs.
 
 ** Where the settings go
-The diary file belongs beside the other file settings, in Settings → Contacts & Calendar (a new field at the end of that section, so nothing moves). If you would rather have it elsewhere, say so before this is built.
+In Settings, the four switches (~org-agenda-include-diary~, ~diary-show-holidays-flag~, ~diary-abbreviated-year-flag~, ~org-xx-diary-merge-rows~) are at the end of the Agenda section, and the three raw ones (~diary-file~, ~diary-list-entries-hook~, ~diary-date-forms~) at the end of Advanced (raw syntax). Nothing existing moved.
 
 ** Tests and proof
 - A tool, ~tools/gen-diary-oracle.mjs~, runs ~org-get-entries-from-diary~ in Emacs on a set of sample diary files, for every day of a range, in all three date styles, and writes the expected lines to a fixture. A test then runs the same files through the app. This is the method used for the sexp functions and the filters.
@@ -100,29 +120,27 @@ The diary file belongs beside the other file settings, in Settings → Contacts 
 - Where the app deliberately differs (see decisions), the fixture records Emacs's answer and the test names the difference.
 
 * Phases
-| Step | What | Size | Proof |
-|------+------+------+-------|
-| 1 | Parser, matcher, oracle fixtures for the three date styles | M | Oracle on ~10 sample diaries |
-| 2 | ~diary-file~ and ~org-agenda-include-diary~, agenda items, time of day, Settings field, README | M | Oracle plus a smoke check on the Agenda |
-| 3 | ~diary-list-entries-hook~ (~#include~, sort), holidays in the Diary lines, ~diary-date-forms~ override | S | Oracle |
-| 4 | Open an entry from the agenda at its line; add an entry from the Agenda (Emacs's ~i~) | M to L | Smoke checks; needs your decision on editing |
-
-Steps 1 and 2 are a release on their own and give the behaviour in your question. Step 3 finishes parity. Step 4 is optional.
+| Step | What | Status |
+|------+------+--------|
+| 1 | Matcher, oracle fixtures for the three date styles | Shipped (v565) |
+| 2 | ~diary-file~ and ~org-agenda-include-diary~, agenda items, time of day, Settings, README | Shipped (v565) |
+| 3 | ~diary-list-entries-hook~ (~#include~, sort), holidays, ~diary-date-forms~ | Shipped (v565) |
+| 4 | Open an entry from the Agenda at its line; add and delete entries; a text editor to do it in | Shipped (v566) |
 
 * Risks and open points
-- *File format.* A diary is plain text, not Org. Opening it for editing in the app needs a plain-text mode that does not exist yet; this is why step 4 is separate.
+- *File format.* A diary is plain text, not Org. Files that are not named ~.org~ now open in Text view only, so the diary is edited as text.
 - *iOS and ~local:~.* A local diary file inherits the limits of local files (read-only, permission prompts, and no persistent handle on iOS). A GitHub or WebDAV diary file avoids that.
-- *Holidays.* Emacs shows its full default holiday list in these lines; the app has the US and Christian list. The Diary lines would differ on days with Hebrew, Islamic or other holidays.
+- *Holidays and other calendars.* Emacs shows its full default holiday list in these lines, and reads ~H~, ~I~ and ~B~ date entries; the app has the US and Christian list and no other calendars. Planned as modules loaded when the diary or the holiday groups need them.
 - *Performance.* Emacs scans the file once per day per date form. A month view of a 1,000-line diary is about 150,000 line tests; patterns are compiled once and lines are cheap, so this should be fast, but it is measured in step 1 before anything is built on it.
 - *Time zones.* Not involved for plain entries.
 - *Emacs's merge quirk.* See the first decision.
 
-* Decisions for you
-1. *One row per entry, or Org's merged rows?* Org merges untimed entries on a day into one row with ~; ~, and prints a holiday together with the first entry. That is an accident of how Org reads the display buffer. Recommendation: one row per entry, with continuation lines joined by ~; ~ (the part that is a real diary rule), and a documented difference. If you want exact Org output, it is a switch.
-2. *Do the diary's holidays belong in the Diary lines, or stay a separate feature?* Emacs puts them there. Recommendation: follow Emacs when ~org-agenda-include-diary~ is ~t~, otherwise leave holidays to the lines you add yourself.
-3. *Is a read-only diary file enough for the first release?* Recommendation: yes. Editing (step 4) needs a plain-text editor, which is a separate piece of work.
-4. *Where does the file setting go?* Recommendation: a new field at the end of Settings → Contacts & Calendar.
-5. *Should a Hebrew or Islamic entry show a message* ("not supported") instead of nothing? Recommendation: show nothing, document it.
+* Decisions (settled)
+1. *Rows.* One row per entry by default; ~org-xx-diary-merge-rows~ gives Org's joined rows.
+2. *Holidays.* Listed with the entries, as Emacs does, controlled by ~diary-show-holidays-flag~.
+3. *Editing.* Not read-only after all: the diary opens in Text view, and entries can be added, deleted and checked.
+4. *Settings.* At the end of Agenda and of Advanced (raw syntax), not in Contacts & Calendar.
+5. *Hebrew and Islamic entries.* Show nothing for now; a separate design covers them.
 
 * Reference
 - Emacs manual, [[https://www.gnu.org/s/emacs/manual/html_node/emacs/Sexp-Diary-Entries.html][Sexp Diary Entries]]; [[https://www.gnu.org/s/emacs/manual/html_node/emacs/Date-Display-Format.html][Date Display Format]], and the variable [[https://doc.emacsen.de/29.4/var/calendar-date-style.html][calendar-date-style]].

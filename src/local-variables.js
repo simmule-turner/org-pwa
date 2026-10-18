@@ -800,3 +800,22 @@ export function getDiaryListEntriesHook(vars) {
 export function getDiaryMergeRows(vars) {
   return parseLispBoolean((vars || {})['org-xx-diary-merge-rows'], false);
 }
+
+/** org-xx-text-line-numbers: this app's own variable. Whether the Text view shows line numbers. Default t.
+ * @param {LocalVars} vars */
+export function getTextLineNumbers(vars) {
+  return parseLispBoolean((vars || {})['org-xx-text-line-numbers'], true);
+}
+
+/** org-xx-text-wrap: this app's own variable. Whether the Text view wraps long lines. Default nil.
+ * @param {LocalVars} vars */
+export function getTextWrap(vars) {
+  return parseLispBoolean((vars || {})['org-xx-text-wrap'], false);
+}
+
+/** org-xx-text-font-size: this app's own variable. The Text view's text size in pixels, 9 to 28. Default 13.
+ * @param {LocalVars} vars */
+export function getTextFontSize(vars) {
+  const n = Math.round(parseLispNumber((vars || {})['org-xx-text-font-size'], 13));
+  return Math.max(9, Math.min(28, n));
+}

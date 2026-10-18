@@ -1,6 +1,6 @@
 // @ts-check
 // The diary file in the Agenda (org-agenda-include-diary): one row per entry, with the holidays, in the category "Diary".
-import { orgTimeOfDay, diaryRowsForDay, sexpEntryLines } from './diary-file.js';
+import { datedEntriesAt, dateFormsFor, describeDateForm, orgTimeOfDay, diaryRowsLocated, sexpEntryLines } from './diary-file.js';
 import { parseOrg } from './org-parser.js';
 import { enumerateDays } from './diary-sexp.js';
 
@@ -48,11 +48,12 @@ export function buildDiaryItems(diary, rangeStart, rangeEnd, agendaOptions, buil
   for (const day of enumerateDays(rangeStart, rangeEnd)) {
     const titles = sexpByDay.get(dayKey(day));
     let ordinal = -1;
-    const rows = diaryRowsForDay(diary, day, options, () => {
+    const rows = diaryRowsLocated(diary, day, options, () => {
       ordinal++;
       return titles?.get(ordinal) ?? null;
     });
-    for (const row of rows) {
+    for (const located of rows) {
+      const row = located.text;
       const time = orgTimeOfDay(row);
       items.push({
         documentId: 'diary-file',
@@ -67,8 +68,56 @@ export function buildDiaryItems(diary, rangeStart, rangeEnd, agendaOptions, buil
         date: time ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), time.hour, time.minute) : new Date(day.getFullYear(), day.getMonth(), day.getDate()),
         daysOverdue: 0,
         category: 'Diary',
+        diaryAt: located.file >= 0 ? { file: located.file, startLine: located.startLine, endLine: located.endLine, lineText: located.lineText } : null,
       });
     }
   }
   return items;
+}
+
+/**
+ * What one diary line means: whether it is an entry, the date form it matched, and the next days it applies on.
+ * @param {string} line  the line, with its date
+ * @param {DiaryOptions} options
+ * @param {Date} from  the first day to look at
+ * @param {import('./agenda.js').AgendaOptions} agendaOptions
+ * @param {Parameters<typeof buildDiaryItems>[4]} buildItems
+ * @param {{ count?: number, days?: number }} [limits]
+ * @returns {{ kind: 'dated' | 'sexp' | 'none', form: string, text: string, dates: Date[] }}
+ */
+export function checkDiaryLine(line, options, from, agendaOptions, buildItems, limits = {}) {
+  const count = limits.count ?? 5;
+  const days = limits.days ?? 1500;
+  const end = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days);
+  const mark = (options.nonmarkingSymbol ?? '&').replace(/[[*.\\?+^$]/g, '\\$&');
+  const sexp = (options.sexpSymbol ?? '%%').replace(/[[*.\\?+^$]/g, '\\$&');
+  if (new RegExp(`^(?:${mark})?${sexp}\\(`).test(line)) {
+    const probe = { text: line, options: { ...options, showHolidays: false, hooks: [] } };
+    const items = buildDiaryItems(probe, from, end, agendaOptions, buildItems);
+    const seen = new Set();
+    /** @type {Date[]} */ const dates = [];
+    for (const item of items) {
+      const d = new Date(item.date.getFullYear(), item.date.getMonth(), item.date.getDate());
+      if (seen.has(+d)) continue;
+      seen.add(+d);
+      dates.push(d);
+      if (dates.length >= count) break;
+    }
+    return { kind: 'sexp', form: '', text: items[0] ? String(items[0].title) : '', dates };
+  }
+  /** @type {Date[]} */ const dates = [];
+  let formIndex = -1;
+  let text = '';
+  for (const day of enumerateDays(from, end)) {
+    const found = datedEntriesAt(line, day, { ...options, showHolidays: false });
+    if (found.length === 0) continue;
+    if (formIndex === -1) {
+      formIndex = found[0].formIndex;
+      text = found[0].lines.map((l) => l.trim()).filter(Boolean).join('; ');
+    }
+    dates.push(day);
+    if (dates.length >= count) break;
+  }
+  if (formIndex === -1) return { kind: 'none', form: '', text: '', dates };
+  return { kind: 'dated', form: describeDateForm(dateFormsFor(options)[formIndex]), text, dates };
 }

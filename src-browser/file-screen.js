@@ -3,6 +3,7 @@
 // used. GitHub and WebDAV show their folder list straight away; Local file is a single button into the system picker.
 // State lives in S.fileScreen so Escape and the other panels' dismissal reach it like any panel.
 import { FILE_SCREEN_TYPES, joinPath, listedAsFile, parentFolder, resolveFileScreenType, stepFileScreenType, visibleEntries } from '../src/file-screen-model.js';
+import { isPlainTextFile } from '../src/plain-file.js';
 import { githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
@@ -41,7 +42,7 @@ export async function openFileScreen(mode) {
   if (mode === 'saveas' && !S.state.doc) return;
   if (commitTextModeIfActive()) render();
   const type = resolveFileScreenType(await getFileScreenType(kv));
-  S.fileScreen = { mode, type, folder: '', entries: null, error: null, unconfigured: false, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusSeg: false };
+  S.fileScreen = { mode, type, folder: '', entries: null, error: null, unconfigured: false, all: false, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusSeg: false };
   renderFileScreen();
   loadListing();
 }
@@ -185,13 +186,34 @@ function listBody(f) {
   const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `${/** @type {any} */ (LABEL)[f.type]}: /${f.folder}`);
   crumb.appendChild(where);
   wrap.appendChild(crumb);
+  if (f.mode === 'open') {
+    // Org files only (the default) or every file: a diary, a notes.txt and a README.md open in the Text view
+    const filter = div('display:flex;border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow:hidden;flex:0 0 auto;');
+    filter.setAttribute('role', 'radiogroup');
+    filter.setAttribute('aria-label', 'Show');
+    for (const [all, label] of /** @type {[boolean, string][]} */ ([[false, 'Org files'], [true, 'All files']])) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.show = all ? 'all' : 'org';
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(!!f.all === all));
+      b.textContent = label;
+      b.style.cssText = `flex:1;min-height:var(--target);border:none;border-left:1px solid var(--border-strong);font:inherit;font-size:14px;color:var(--fg);background:${!!f.all === all ? 'var(--accent-soft, var(--surface-solid))' : 'transparent'};font-weight:${!!f.all === all ? 700 : 400};`;
+      b.onclick = () => {
+        f.all = all;
+        renderFileScreen();
+      };
+      filter.appendChild(b);
+    }
+    wrap.appendChild(filter);
+  }
   const list = div('border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow-y:auto;overscroll-behavior:contain;min-height:80px;flex:1 1 auto;');
   list.dataset.part = 'files';
   if (f.error) list.appendChild(div('padding:10px 12px;font-size:13px;color:#c0392b;', f.error));
   else if (f.entries === null) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', 'Loading…'));
   else {
-    const rows = visibleEntries(f.entries);
-    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', 'No .org files or folders here.'));
+    const rows = visibleEntries(f.entries, !!f.all && f.mode === 'open');
+    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.all && f.mode === 'open' ? 'No files or folders here.' : 'No .org files or folders here.'));
     for (const entry of rows) {
       const row = document.createElement('button');
       row.type = 'button';
@@ -203,7 +225,7 @@ function listBody(f) {
       row.appendChild(name);
       const tag = document.createElement('small');
       tag.style.opacity = '.6';
-      tag.textContent = entry.type === 'dir' ? 'folder' : f.mode === 'saveas' && listedAsFile([entry], entry.path.replace(/^\/+/, '')) ? 'exists' : '';
+      tag.textContent = entry.type === 'dir' ? 'folder' : f.mode === 'saveas' && listedAsFile([entry], entry.path.replace(/^\/+/, '')) ? 'exists' : isPlainTextFile(entry.name, 'github') ? 'text' : '';
       row.appendChild(tag);
       row.onclick = () => {
         if (entry.type === 'dir') {

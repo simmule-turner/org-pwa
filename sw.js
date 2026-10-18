@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v565';
+const CACHE_NAME = 'org-pwa-shell-v566';
 
 const SHELL_FILES = [
   './',
@@ -33,6 +33,10 @@ const SHELL_FILES = [
   './src/agenda.js',
   './src/appt.js',
   './src/diary-file.js',
+  './src/diary-entry.js',
+  './src/plain-file.js',
+  './src/text-edit.js',
+  './src/text-syntax.js',
   './src/diary-sexp.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
@@ -178,6 +182,9 @@ const SHELL_FILES = [
   './src-browser/view-filter-ui.js',
   './src-browser/agenda-view.js',
   './src-browser/diary-file-load.js',
+  './src-browser/diary-flow.js',
+  './src-browser/diary-sheets.js',
+  './src-browser/text-view.js',
   './src-browser/archive-flow.js',
   './src-browser/attachments-flow.js',
   './src-browser/attach-preview.js',

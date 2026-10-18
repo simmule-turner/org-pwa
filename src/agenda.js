@@ -5,7 +5,7 @@
  *   documentId: string, heading?: Heading, kind?: string, hasTime?: boolean, endDate?: Date | null, rangeDay?: number | null,
  *   rangeDays?: number | null, repeater?: string | null, todo?: string | null, priority?: string | null, tags?: string[],
  *   title: string, date: Date, daysOverdue?: number, habit?: any, age?: number | null, field?: string, spouse?: string | null,
- *   weather?: boolean, category?: string, logNote?: string | null,
+ *   weather?: boolean, category?: string, logNote?: string | null, diaryAt?: { file: number, startLine: number, endLine: number, lineText: string } | null,
  * }} AgendaItem
  * @typedef {{
  *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, todoFilter?: ((todo: string) => boolean) | null,

@@ -21,10 +21,10 @@ export function stepFileScreenType(current, delta) {
   return FILE_SCREEN_TYPES[Math.max(0, Math.min(FILE_SCREEN_TYPES.length - 1, i))];
 }
 
-/** The entries worth listing: folders, .org files and org archive files. Folders first, then by name.
- * @param {BrowseEntry[]} entries */
-export function visibleEntries(entries) {
-  const keep = entries.filter((e) => e.type === 'dir' || /\.org$|_archive$/i.test(e.name));
+/** The entries worth listing: folders, .org files and org archive files, or with `all` every file. Folders first, then by name.
+ * @param {BrowseEntry[]} entries @param {boolean} [all] */
+export function visibleEntries(entries, all = false) {
+  const keep = entries.filter((e) => e.type === 'dir' || all || /\.org$|_archive$/i.test(e.name));
   return keep.slice().sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
 }
 

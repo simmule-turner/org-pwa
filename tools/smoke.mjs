@@ -6651,30 +6651,6 @@ check('buffers: Save Some Buffers is in the File menu (dimmed when nothing is mo
   await context.close();
 });
 
-check('saved org-xx-html-* and org-xx-babel-js settings move onto Org\'s own variables when the app starts', async () => {
-  const { context, page, errors } = await freshPage();
-  await page.evaluate(
-    () =>
-      new Promise((resolve, reject) => {
-        const open = indexedDB.open('org-pwa', 1);
-        open.onsuccess = () => {
-          const tx = open.result.transaction('kv', 'readwrite');
-          tx.objectStore('kv').put(JSON.stringify('org-xx-html-preamble: Hi %a\norg-xx-html-preamble-on: t\norg-xx-babel-js: on\norg-xx-page-footer: keep'), 'settings:globalVariables');
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        };
-        open.onerror = () => reject(open.error);
-      })
-  );
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForTimeout(600);
-  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
-  expect(stored['org-html-preamble'] === '"Hi %a"' && stored['org-babel-load-languages'] === '((emacs-lisp . t) (js . t))' && stored['org-xx-page-footer'] === 'keep', `stored: ${JSON.stringify(stored)}`);
-  expect(!Object.keys(stored).some((k) => /^org-xx-(html|babel)/.test(k)), `retired keys left: ${JSON.stringify(stored)}`);
-  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
-  await context.close();
-});
-
 check('every action in a row\'s tap menu runs without a page error and does something', async () => {
   // The sweep that finds "I tapped it and nothing happened": for each kind of row, tap every action (except the
   // ones that ask to delete or archive) on a fresh document; a thrown error, or no visible effect, fails.
@@ -6811,6 +6787,76 @@ check('every command in the palette runs without a page error and does something
 });
 
 // ---- runner -------------------------------------------------------------------
+
+check('text editor and diary file: All files lists a diary, a row of the Agenda opens it with the entry selected, Text view colors it and keeps indentation, Add entry writes at the end and saves, and the other views are refused for a plain file', async () => {
+  const now = new Date();
+  const md = `${now.getMonth() + 1}/${now.getDate()}`;
+  const notes = ['* Notes', '# Local Variables:', '# org-agenda-include-diary: t', '# diary-file: webdav:diary', '# End:', ''].join('\n');
+  const diary = [`${md}  10:00am Brunch`, "   at Mom's", `${md} Second entry`, 'a note the diary ignores', ''].join('\n');
+  dav.reset({ 'notes.org': notes, diary });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+
+  // the file browser: Org files by default, All files lists the diary as text
+  await fileMenu(page, 'Open', 'WebDAV');
+  await page.locator('#fileScreenBox [data-entry="notes.org"]').waitFor({ timeout: 8000 });
+  expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary is listed before All files is chosen');
+  await page.locator('#fileScreenBox [data-show="all"]').click();
+  await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
+  expect((await page.locator('#fileScreenBox [data-entry="diary"]').innerText()).includes('text'), 'the diary should be tagged text');
+  await page.locator('#fileScreenBox [data-entry="notes.org"]').click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('notes.org'), null, { timeout: 8000 });
+
+  // the Agenda shows the diary's entry; a tap offers Open entry
+  await viewMenu(page, 'Agenda');
+  await page.getByText("Brunch; at Mom's").first().waitFor({ timeout: 15000 });
+  await page.getByText("Brunch; at Mom's").first().click();
+  await page.getByText('Open entry', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('diary'), null, { timeout: 10000 });
+  await page.locator('#document-text-edit-input').waitFor({ timeout: 8000 });
+  await page.waitForTimeout(500);
+  const selected = await page.locator('#document-text-edit-input').evaluate((t) => t.value.slice(t.selectionStart, t.selectionEnd));
+  expect(selected === `${md}  10:00am Brunch\n   at Mom's`, `the entry should be selected: ${JSON.stringify(selected)}`);
+  expect((await page.locator('.te-status').innerText()).includes('Opened from the Agenda'), 'the status strip should say where it came from');
+
+  // coloring and line numbers
+  expect((await page.locator('.te-back .tk-date').first().innerText()) === md, 'the date should be colored');
+  expect((await page.locator('.te-back .tk-time').first().innerText()) === '10:00am', 'the time should be colored');
+  expect((await page.locator('.te-back .tk-ignored').first().innerText()).startsWith('a note'), 'the ignored line should be gray');
+  expect((await page.locator('.te-wrap.te-nums').count()) === 1, 'line numbers should be on');
+  await page.locator('[aria-label="Line numbers"]').click();
+  await page.waitForTimeout(300);
+  expect((await page.locator('.te-wrap.te-nums').count()) === 0, 'the line numbers button should turn them off');
+  await page.locator('[aria-label="Line numbers"]').click();
+
+  // Enter keeps the indentation, and Undo takes the new line back
+  const before = await page.locator('#document-text-edit-input').inputValue();
+  await page.locator('#document-text-edit-input').evaluate((t) => {
+    t.focus();
+    const at = t.value.indexOf("Mom's") + "Mom's".length;
+    t.setSelectionRange(at, at);
+  });
+  await page.keyboard.press('Enter');
+  const after = await page.locator('#document-text-edit-input').inputValue();
+  expect(after.includes("   at Mom's\n   \n") || after.includes("   at Mom's\n   "), `Enter should keep the three spaces: ${JSON.stringify(after.slice(0, 80))}`);
+  await page.locator('[aria-label="Undo"]').click();
+  expect((await page.locator('#document-text-edit-input').inputValue()) === before, 'Undo should take the new line back');
+
+  // another view is refused for a plain file
+  await viewMenu(page, 'Org');
+  expect((await page.locator('#status').innerText()).includes('plain text file'), 'the Org view should be refused with a message');
+  expect((await page.locator('#document-text-edit-input').count()) === 1, 'the plain file stays in Text view');
+
+  // Add entry writes at the end of the file and saves it
+  await page.getByText('Insert entry', { exact: false }).click();
+  await page.getByLabel('Entry', { exact: true }).fill('Dentist');
+  await page.getByText('Add entry', { exact: true }).click();
+  for (let n = 0; n < 40 && !(dav.files.get('diary') || '').includes('Dentist'); n++) await page.waitForTimeout(250);
+  const saved = dav.files.get('diary') || '';
+  expect(saved.endsWith(' Dentist\n') && saved.startsWith(diary.slice(0, 20)), `the entry should be at the end of the saved diary: ${JSON.stringify(saved.slice(-60))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
 
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;

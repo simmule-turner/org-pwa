@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v566 — A better Text view, and your diary opens from the Agenda
+Tap a diary row in the Agenda to open the entry in the diary, selected, or to add or delete one; Insert entry writes the lines Emacs would, and Check this line says whether a line counts and when it falls. The Text view now has line numbers, wrap, text size, undo and redo, line commands and a key row, and colors Org, the diary, Lisp, Markdown and JavaScript. Files that are not Org (a diary, notes.txt, README.md) open in it, listed by the new Org files / All files switch in Open.
+Verified: entry lines against Emacs 29.3; a browser run from the file list to a saved entry.
+
 * v565 — Emacs diary file in the Agenda
 Set =org-agenda-include-diary= and =diary-file= and the Agenda shows your Emacs diary: dated lines in your =calendar-date-style= (=4/30=, =apr. 25=, =*/25=, =Friday=, two-digit years, =&= lines, continuation lines), times of day, =%%(…)= lines and the day's holidays, as Emacs lists them. =#include= and sorting come from =diary-list-entries-hook=, and =diary-date-forms= can change which dates are recognised. Two new guides ship in docs/ (diary expressions, diary-file design), and the README's list of differences from Emacs is shorter.
 Verified: 12 sample diaries against Emacs 29.3.
