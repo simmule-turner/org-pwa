@@ -553,11 +553,14 @@ export function getBufferReadOnly(vars) {
   return parseLispBoolean((vars || {})['buffer-read-only'], false);
 }
 
-/** org-xx-agenda-hide-title-stamps: whether an Agenda row leaves the active timestamps out of the title (the day and the
- * @param {LocalVars} vars
- *  time column already say it). Not a real org-mode variable, same org-xx- convention. Default t. */
+/** org-agenda-remove-times-when-in-prefix: whether an Agenda row leaves the timestamps out of its title (the day and the
+ *  time column already say it). t (the default) and `beg` leave them out; nil shows the title as written. Emacs removes only a
+ *  time of day, while this app removes the whole stamp. A file written before this variable was used may still carry the old
+ *  org-xx-agenda-hide-title-stamps, which is read when the Emacs variable is not set.
+ * @param {LocalVars} vars */
 export function getAgendaHideTitleStamps(vars) {
-  return parseLispBoolean((vars || {})['org-xx-agenda-hide-title-stamps'], true);
+  const v = vars || {};
+  return parseLispBoolean(v['org-agenda-remove-times-when-in-prefix'] ?? v['org-xx-agenda-hide-title-stamps'], true);
 }
 
 /** org-xx-god-mode-button: whether the floating [g] button (god-mode

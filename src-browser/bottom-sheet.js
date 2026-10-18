@@ -107,12 +107,35 @@ export function openActionSheet({ title, subtitle, actions }) {
 }
 
 /**
- * A list of choices with check boxes. Apply passes the checked values; Clear passes none.
- * @param {{ title: string, choices: [string, number][], selected: string[], onApply: (values: string[]) => void }} opts
+ * A list of choices with check boxes. Apply passes the checked values; Clear passes none. With `modes`, a row of radio buttons
+ * above the list says what the checked values do (show only these, hide these, ...); Apply then also passes the chosen mode.
+ * @param {{ title: string, choices: [string, number][], selected: string[], onApply: (values: string[], mode: string, cleared: boolean) => void, modes?: [string, string][], mode?: string }} opts
  * @returns {() => void} close
  */
-export function openChoiceSheet({ title, choices, selected, onApply }) {
+export function openChoiceSheet({ title, choices, selected, onApply, modes = [], mode = '' }) {
   const { panel, close } = buildSheet(title, choices.length === 0 ? 'Nothing here to choose from.' : undefined);
+  let chosenMode = mode || (modes[0] ? modes[0][0] : '');
+  if (modes.length > 1) {
+    const group = document.createElement('div');
+    group.setAttribute('role', 'radiogroup');
+    group.style.cssText = 'display:flex;flex-direction:column;margin:4px 0 8px;';
+    for (const [value, label] of modes) {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);cursor:pointer;';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'choice-mode';
+      radio.value = value;
+      radio.checked = value === chosenMode;
+      radio.style.cssText = 'width:22px;height:22px;flex-shrink:0;';
+      radio.onchange = () => {
+        chosenMode = value;
+      };
+      row.append(radio, document.createTextNode(label));
+      group.appendChild(row);
+    }
+    panel.appendChild(group);
+  }
   /** @type {Map<string, HTMLInputElement>} */ const boxes = new Map();
   for (const [value, count] of choices) {
     const row = document.createElement('label');
@@ -138,14 +161,14 @@ export function openChoiceSheet({ title, choices, selected, onApply }) {
   apply.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);';
   apply.onclick = () => {
     close();
-    onApply([...boxes].filter(([, b]) => b.checked).map(([v]) => v));
+    onApply([...boxes].filter(([, b]) => b.checked).map(([v]) => v), chosenMode, false);
   };
   const clear = document.createElement('button');
   clear.textContent = 'Clear';
   clear.style.cssText = 'flex:1 1 0;min-height:var(--target);font-size:var(--text-body);';
   clear.onclick = () => {
     close();
-    onApply([]);
+    onApply([], chosenMode, true);
   };
   buttons.append(clear, apply);
   panel.appendChild(buttons);

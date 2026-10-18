@@ -51,8 +51,20 @@ function chip(tag, inherited) {
   return t;
 }
 
-/** Sets `filterTags` (own plus inherited) on each item that has a heading, for the tag filter.
+/** The title of the top-level heading an item sits under (its own when it is one), for the top-heading filter.
+ * @param {import('../src/types.js').Heading} heading
+ * @returns {string} */
+function topTitleOf(heading) {
+  const ancestors = ancestorIndex().get(heading);
+  return ((ancestors && ancestors[0]) || heading).title || '';
+}
+
+/** Sets `filterTags` (own plus inherited) and `topTitle` on each item that has a heading, for the filter chips.
  * @param {any[]} items */
 export function addFilterTags(items) {
-  for (const item of items) if (item.heading) item.filterTags = effectiveTagsOfHeading(item.heading);
+  for (const item of items) {
+    if (!item.heading) continue;
+    item.filterTags = effectiveTagsOfHeading(item.heading);
+    item.topTitle = topTitleOf(item.heading);
+  }
 }

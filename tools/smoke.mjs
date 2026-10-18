@@ -635,7 +635,7 @@ check('agenda: sort, per-day limit and filter by effort, on real rows and day to
   await context.close();
 });
 
-check('agenda: a timestamp in a title is left out of the row (with the day of a range marked), and the setting org-xx-agenda-hide-title-stamps: nil brings it back', async () => {
+check('agenda: a timestamp in a title is left out of the row (with the day of a range marked), and the setting org-agenda-remove-times-when-in-prefix: nil brings it back', async () => {
   const { context, page, errors } = await freshPage();
   const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return `<${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')} ${x.toLocaleDateString('en-US', { weekday: 'short' })}>`; };
   await newDocument(page, [`* Do task ${d(0).replace('>', ' ++14d>')}`, `* Trip ${d(-1)}--${d(1)} north`, ''].join('\n'));
@@ -644,10 +644,78 @@ check('agenda: a timestamp in a title is left out of the row (with the day of a 
   const t = await page.locator('#outline').innerText();
   expect(t.includes('Do task') && !t.includes('++14d') && t.includes('Trip north (day 2/3)') && !t.includes('--<'), `stamps left out of the rows: ${t}`);
   await viewMenu(page, 'Org');
-  await newDocument(page, [`* Do task ${d(0)}`, '', '# Local Variables:', '# org-xx-agenda-hide-title-stamps: nil', '# End:', ''].join('\n'));
+  await newDocument(page, [`* Do task ${d(0)}`, '', '# Local Variables:', '# org-agenda-remove-times-when-in-prefix: nil', '# End:', ''].join('\n'));
   await viewMenu(page, 'Agenda');
   await page.waitForTimeout(400);
   expect((await page.locator('#outline').innerText()).includes('Do task <'), 'with the setting nil the title keeps its stamp');
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
+check('TODO view: Emacs variables set the starting sort and chips; none-of, Search, Top heading and Effort filters work', async () => {
+  const { context, page, errors } = await freshPage();
+  const body = ['#+TODO: TODO | DONE', '* Work', '** TODO Write report :urgent:', ':PROPERTIES:', ':EFFORT: 2:00', ':END:', '** TODO Call dentist', ':PROPERTIES:', ':EFFORT: 0:30', ':END:', '* Home', '** TODO Pay rent :urgent:', ':PROPERTIES:', ':EFFORT: 1:00', ':END:', ''];
+  await newDocument(page, [...body, '# Local Variables:', '# org-agenda-sorting-strategy: ((todo effort-up))', '# End:', ''].join('\n'));
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  const titles = async () => (await page.locator('#outline').innerText());
+  const order = async () => {
+    const t = await titles();
+    return ['Call dentist', 'Pay rent', 'Write report'].map((w) => t.indexOf(w));
+  };
+  const o = await order();
+  expect(o[0] > 0 && o[0] < o[1] && o[1] < o[2], `org-agenda-sorting-strategy (todo effort-up) starts the list least effort first: ${o}`);
+  expect((await page.locator('[aria-label^="Change the order of the list"]').innerText()).includes('Least effort'), 'the Sort chip says so');
+  const apply = async () => { await page.locator('[data-bottom-sheet] button', { hasText: 'Apply' }).click(); await page.waitForTimeout(250); };
+
+  // Tag chip, "hide items with any of these"
+  await page.locator('[aria-label="Filter by Tags"]').click();
+  await page.waitForSelector('[data-bottom-sheet]');
+  await page.locator('[data-bottom-sheet] label', { hasText: 'Hide items with any of these' }).locator('input').check();
+  await page.locator('[data-bottom-sheet] label', { hasText: 'urgent' }).locator('input').check();
+  await apply();
+  let t = await titles();
+  expect(t.includes('Call dentist') && !t.includes('Write report') && !t.includes('Pay rent'), `hiding :urgent: leaves the dentist: ${t}`);
+  expect((await page.locator('[data-view-filter]').innerText()).includes('not urgent'), 'the chip says what is hidden');
+  await page.locator('[aria-label="Clear the Tags filter"]').click();
+  await page.waitForTimeout(250);
+
+  // Search chip
+  await page.locator('[aria-label="Filter by text"]').click();
+  await page.waitForSelector('[data-bottom-sheet] input[type=text]');
+  await page.locator('[data-bottom-sheet] input[type=text]').fill('^todo pay');
+  await apply();
+  t = await titles();
+  expect(t.includes('Pay rent') && !t.includes('Call dentist'), `a regular expression keeps the matching row: ${t}`);
+  await page.locator('[aria-label="Clear the text filter"]').click();
+  await page.waitForTimeout(250);
+
+  // Top heading chip
+  await page.locator('[aria-label="Filter by top-level heading"]').click();
+  await page.waitForSelector('[data-bottom-sheet]');
+  await page.locator('[data-bottom-sheet] label', { hasText: 'Home' }).locator('input').check();
+  await apply();
+  t = await titles();
+  expect(t.includes('Pay rent') && !t.includes('Write report'), `only the rows under * Home: ${t}`);
+  await page.locator('[aria-label="Clear the top-level heading filter"]').click();
+  await page.waitForTimeout(250);
+
+  // Effort chip
+  await page.locator('[aria-label="Filter by effort"]').click();
+  await page.waitForSelector('[data-bottom-sheet] select');
+  await page.locator('[data-bottom-sheet] select').nth(1).selectOption('0:30');
+  await apply();
+  t = await titles();
+  expect(t.includes('Call dentist') && !t.includes('Pay rent'), `at most 0:30 keeps the dentist: ${t}`);
+  await page.locator('[aria-label="Clear the effort filter"]').click();
+
+  // a tag preset starts as a chip
+  await viewMenu(page, 'Org');
+  await newDocument(page, [...body, '# Local Variables:', '# org-agenda-tag-filter-preset: ("+urgent")', '# End:', ''].join('\n'));
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  t = await titles();
+  expect((await page.locator('[data-view-filter]').innerText()).includes('Tag: urgent') && !t.includes('Call dentist') && t.includes('Pay rent'), `org-agenda-tag-filter-preset starts the Tag chip: ${t}`);
   await context.close();
   expect(errors.length === 0, `page errors: ${errors}`);
 });

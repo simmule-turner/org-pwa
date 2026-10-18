@@ -22,6 +22,8 @@ import { attachAgendaSwipeNav } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
+import { openFormSheet } from './bottom-sheet.js';
+import { seedAgendaDefaults } from './agenda-seed.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { appendTagChips } from './tag-display.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
@@ -217,6 +219,7 @@ export function buildAgendaEffortPanel() {
 }
 
 export function renderAgendaView() {
+  seedAgendaDefaults();
   ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
   const container = document.createElement('div');
@@ -867,7 +870,63 @@ export function buildClocktableSection() {
   return wrap;
 }
 
+/** The TODO view's effort filter chip: the same condition as the Agenda's ⏱ panel (at most, at least or exactly a duration), org's
+ *  `_` filter. Shows the condition when one is set, with an ✕ to clear it. */
+function buildTodoEffortChip() {
+  const wrap = document.createElement('div');
+  wrap.setAttribute('data-todo-effort-filter', '');
+  wrap.style.cssText = 'display:flex;align-items:center;';
+  const f = S.agendaEffortFilter;
+  const button = document.createElement('button');
+  const words = /** @type {Record<string, string>} */ ({ '<': 'at most', '>': 'at least', '=': 'exactly' });
+  button.textContent = f ? `Effort: ${words[f.op]} ${f.text}` : 'Effort ▾';
+  button.setAttribute('aria-label', 'Filter by effort');
+  button.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (f ? 'border-color:var(--accent);font-weight:700;border-top-right-radius:0;border-bottom-right-radius:0;' : '');
+  button.onclick = () => {
+    const allowed = getAllowedEffortValues({ doc: S.state.doc, globalProperties: getGlobalProperties(S.state.localVariables) });
+    const values = allowed.length > 0 ? allowed : DEFAULT_EFFORT_FILTER_VALUES;
+    /** @type {HTMLSelectElement} */ let op;
+    /** @type {HTMLSelectElement} */ let value;
+    openFormSheet({
+      title: 'Filter by effort',
+      subtitle: 'A task with no effort counts as high effort.',
+      submitLabel: 'Apply',
+      build: (panel) => {
+        /** @param {string[][]} options @param {string} current */
+        const make = (options, current) => {
+          const el = document.createElement('select');
+          for (const [v, text] of options) { const o = document.createElement('option'); o.value = v; o.textContent = text; el.appendChild(o); }
+          el.value = current;
+          el.style.cssText = 'width:100%;min-height:var(--target);font-size:var(--text-body);margin-bottom:8px;';
+          panel.appendChild(el);
+          return el;
+        };
+        op = make([['<', 'At most'], ['>', 'At least'], ['=', 'Exactly']], f ? f.op : '<');
+        value = make(values.map((v) => [v, v]), f && values.includes(f.text) ? f.text : values[0]);
+      },
+      onSubmit: () => {
+        S.agendaEffortFilter = { op: op.value, minutes: parseOrgDuration(value.value), text: value.value };
+        render();
+      },
+    });
+  };
+  wrap.appendChild(button);
+  if (f) {
+    const clear = document.createElement('button');
+    clear.textContent = '✕';
+    clear.setAttribute('aria-label', 'Clear the effort filter');
+    clear.style.cssText = 'min-height:44px;padding:0 12px;border-radius:22px;font-size:14px;border-color:var(--accent);border-top-left-radius:0;border-bottom-left-radius:0;border-left:0;';
+    clear.onclick = () => {
+      S.agendaEffortFilter = null;
+      render();
+    };
+    wrap.appendChild(clear);
+  }
+  return wrap;
+}
+
 export function renderTaskListView() {
+  seedAgendaDefaults();
   ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
   const container = document.createElement('div');
@@ -911,20 +970,26 @@ export function renderTaskListView() {
     return;
   }
 
-  // Sort chip: document order (org's own) or by SCHEDULED/DEADLINE date.
+  // Sort chip: document order (org's own), by SCHEDULED/DEADLINE date, or by effort (least or most first).
+  const SORTS = /** @type {const} */ (['document', 'date', 'effort-up', 'effort-down']);
+  const SORT_NAMES = { document: 'Document', date: 'Date', 'effort-up': 'Least effort', 'effort-down': 'Most effort' };
+  const sortNow = /** @type {keyof typeof SORT_NAMES} */ (/** @type {readonly string[]} */ (SORTS).includes(String(S.taskSort)) ? S.taskSort : 'document');
   const sortChip = document.createElement('button');
-  sortChip.textContent = S.taskSort === 'date' ? 'Sort: Date' : 'Sort: Document';
-  sortChip.setAttribute('aria-label', 'Change the order of the list (currently ' + (S.taskSort === 'date' ? 'by date' : 'document order') + ')');
-  sortChip.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (S.taskSort === 'date' ? 'border-color:var(--accent);font-weight:700;' : '');
+  sortChip.textContent = `Sort: ${SORT_NAMES[sortNow]}`;
+  sortChip.setAttribute('aria-label', `Change the order of the list (currently ${SORT_NAMES[sortNow].toLowerCase()})`);
+  sortChip.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (sortNow !== 'document' ? 'border-color:var(--accent);font-weight:700;' : '');
   sortChip.onclick = () => {
-    S.taskSort = S.taskSort === 'date' ? 'document' : 'date';
+    S.taskSort = SORTS[(SORTS.indexOf(sortNow) + 1) % SORTS.length];
     render();
   };
-  container.appendChild(buildViewFilterRow(items, render, [sortChip]));
+  const effortChip = buildTodoEffortChip();
+  container.appendChild(buildViewFilterRow(items, render, [sortChip, effortChip]));
 
   const today = new Date();
   const shownTasks = filterItemsForView(items);
-  const orderedTasks = S.taskSort === 'date' ? sortTasksByDate(shownTasks, today) : shownTasks;
+  const effortShown = S.agendaEffortFilter ? applyAgendaEffortView(shownTasks, { filter: S.agendaEffortFilter }) : shownTasks;
+  const orderedTasks =
+    sortNow === 'date' ? sortTasksByDate(effortShown, today) : sortNow === 'effort-up' || sortNow === 'effort-down' ? applyAgendaEffortView(effortShown, { sort: sortNow === 'effort-up' ? 'up' : 'down' }) : effortShown;
   if (orderedTasks.length === 0) {
     const none = document.createElement('div');
     none.style.opacity = '0.6';

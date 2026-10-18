@@ -1,0 +1,17 @@
+{
+ "rows": [
+  {"tags": ["work", "urgent"], "cat": "Projects", "txt": "TODO Write report :work:urgent:"},
+  {"tags": ["home"], "cat": "House", "txt": "TODO Pay rent :home:"},
+  {"tags": ["work", "home"], "cat": "Projects", "txt": "NEXT Call dentist :work:home:"},
+  {"tags": [], "cat": "Inbox", "txt": "Someday garage"},
+  {"tags": ["later"], "cat": "House", "txt": "TODO Paint fence :later:"},
+  {"tags": ["urgent"], "cat": "Errands", "txt": "TODO Buy stamps :urgent:"}
+ ],
+ "tag": [["+work"], ["+work", "+home"], ["+work", "-urgent"], ["-later"], ["-work", "-home"], ["+urgent", "+work", "-home"]],
+ "category": [["+Projects"], ["+Projects", "+House"], ["-House"], ["-House", "-Inbox"]],
+ "regexp": [["+TODO"], ["+TODO", "+rent"], ["-TODO"], ["+report", "-urgent"], ["+^NEXT"]],
+ "combined": [
+  {"tag": ["+work"], "category": ["-House"], "regexp": ["+TODO"]},
+  {"tag": ["-later"], "category": ["+Projects", "+House"], "regexp": []}
+ ]
+}

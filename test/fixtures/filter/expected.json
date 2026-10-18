@@ -1,0 +1,76 @@
+{
+ "emacs": "29.3",
+ "expected": {
+  "tag:[\"+work\"]": [
+   0,
+   2
+  ],
+  "tag:[\"+work\",\"+home\"]": [
+   2
+  ],
+  "tag:[\"+work\",\"-urgent\"]": [
+   2
+  ],
+  "tag:[\"-later\"]": [
+   0,
+   1,
+   2,
+   3,
+   5
+  ],
+  "tag:[\"-work\",\"-home\"]": [
+   3,
+   4,
+   5
+  ],
+  "tag:[\"+urgent\",\"+work\",\"-home\"]": [
+   0
+  ],
+  "category:[\"+Projects\"]": [
+   0,
+   2
+  ],
+  "category:[\"+Projects\",\"+House\"]": [
+   0,
+   1,
+   2,
+   4
+  ],
+  "category:[\"-House\"]": [
+   0,
+   2,
+   3,
+   5
+  ],
+  "category:[\"-House\",\"-Inbox\"]": [
+   0,
+   2,
+   5
+  ],
+  "regexp:[\"+TODO\"]": [
+   0,
+   1,
+   4,
+   5
+  ],
+  "regexp:[\"+TODO\",\"+rent\"]": [
+   1
+  ],
+  "regexp:[\"-TODO\"]": [
+   2,
+   3
+  ],
+  "regexp:[\"+report\",\"-urgent\"]": [],
+  "regexp:[\"+^NEXT\"]": [
+   2
+  ],
+  "combined:{\"tag\":[\"+work\"],\"category\":[\"-House\"],\"regexp\":[\"+TODO\"]}": [
+   0
+  ],
+  "combined:{\"tag\":[\"-later\"],\"category\":[\"+Projects\",\"+House\"],\"regexp\":null}": [
+   0,
+   1,
+   2
+  ]
+ }
+}

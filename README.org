@@ -590,11 +590,18 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~buffer-read-only~ | ~nil~ | Whether the buffer is read-only (see [[#keybindings][Keybindings]]: ~C-x C-q~, or *Toggle read-only* in the command palette) |
 | ~calendar-latitude~ | ~35.994~ | Latitude for the solar forms and ~org-weather~ (Durham, NC) |
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
+| ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
+| ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
+| ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
+| ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; every ~+~ pattern must match, no ~-~ pattern may |
+| ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
+| ~org-agenda-sorting-strategy~ | unset | Only ~effort-up~ and ~effort-down~ are read, from the ~agenda~ and ~todo~ entries: ~((agenda effort-up) (todo effort-down))~ starts the list sorted by effort |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
+| ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
@@ -630,7 +637,6 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-refresh-interval~ | ~never~ | (own) ~never~, or an automatic refresh every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours |
 | ~org-weather-speed-unit~ | ~mph~ | (own) ~km/h~, ~m/s~, ~mph~ or ~Knots~ |
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
-| ~org-xx-agenda-hide-title-stamps~ | ~t~ | Leave active timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
@@ -988,9 +994,16 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 
 *Row actions*: press and hold an item for *Mark done*, *Set state*, *Reschedule*, *Priority*, *Refile* and *Open heading*. Swipe an item to the right to mark it done; *Undo* stays for a few seconds, and a repeating item moves to its next date. They change the open file only: an item from another agenda file offers *Open heading* alone.
 
-*Filter chips*: *Tag*, *State* and *Category* under the controls keep the items that match; a chip shows its choice and an ✕ clears it. They match a heading's own tags, and last for the session.
+*Filter chips* under the controls narrow the list; a chip shows its choice and an ✕ clears it. They last for the session and combine with *and*:
 
-*Titles*: a timestamp written in a heading's title is left out of its row, since the day and the time column already say it. Set ~org-xx-agenda-hide-title-stamps~ to ~nil~ to show titles as written.
+- *Tag*, *State*, *Category*: pick values, then say what they do: show only items with *any* of them, with *all* of them (tags), or hide items with any (Emacs's ~-~ prefix). Tags include inherited ones (~org-use-tag-inheritance~).
+- *Search*: a regular expression, not case sensitive, matched against the keyword, title and tags (Emacs's ~=~ filter). A box can hide the matching rows instead.
+- *Top heading*: only items under the chosen top-level headings (Emacs's ~^~).
+- *Effort* (TODO view): at most, at least or exactly a duration, as in the ⏱ panel.
+
+The chips start from ~org-agenda-tag-filter-preset~, ~org-agenda-category-filter-preset~, ~org-agenda-regexp-filter-preset~ and ~org-agenda-effort-filter-preset~, and the ⏱ panel from ~org-agenda-sorting-strategy~ and ~org-agenda-max-effort~ (see [[#local-variables][Local Variables]]).
+
+*Titles*: a timestamp written in a heading's title is left out of its row, since the day and the time column already say it. Set ~org-agenda-remove-times-when-in-prefix~ to ~nil~ to show titles as written.
 
 *Empty days*: every day shows by default, even when nothing is on it. The *g* button toggles ~org-agenda-show-all-dates~ for the session; it is bold while empty days are hidden. The starting value comes from ~org-agenda-show-all-dates~ in [[#local-variables][Local Variables]] or the *Show empty days in Agenda* Quick Setting.
 
@@ -1221,7 +1234,7 @@ The first time, tap *Allow notifications*. If they are blocked, reminders still 
 
 Tap *View → TODO* for every active TODO-state heading in the file, whatever its dates (org's ~C-c a t~). A TODO with no date never shows in the Agenda, so this is where it lives.
 
-It is a flat list in document order, each item showing its TODO keyword, title, category and SCHEDULED or DEADLINE date (overdue in red). The filter chips work as in the Agenda, and *Sort* switches between document order and date order, with undated tasks last. Tap an item to jump to it in the outline; press and hold or swipe it as in the [[#agenda][Agenda]]. It has the same exclusions as Agenda (completed items, by the file's ~#+TODO:~ sequence, archived headings and commented headings, with the same [[#local-variables][Local Variables]] overrides).
+It is a flat list in document order, each item showing its TODO keyword, title, category and SCHEDULED or DEADLINE date (overdue in red). The filter chips work as in the Agenda. *Sort* cycles through document order, date order (undated tasks last), least effort first and most effort first. Tap an item to jump to it in the outline; press and hold or swipe it as in the [[#agenda][Agenda]]. It has the same exclusions as Agenda (completed items, by the file's ~#+TODO:~ sequence, archived headings and commented headings, with the same [[#local-variables][Local Variables]] overrides).
 
 *Clock report*: a checkbox beside *Clock* shows org's ~org-clock-report~ (a ~clocktable~ block) read-only instead of writing it into the document. It asks for a start and end date (the last 7 days at first) and a ~maxlevel~ (1 to 10, default 2). Each row's total includes its descendants; headings with no clocked time are omitted, and a running clock is excluded. *Copy* gives valid org dynamic-block syntax to paste into a file.
 
@@ -2037,7 +2050,7 @@ For readers who know Emacs org-mode: where org-pwa does less or differs. A topic
 
 *Clocking* (see [[#clocking][Clocking]]): no custom ~org-duration-units~, no ~Effort_ALL+~, and no clock-in reminder beyond the modeline's over-estimate marker.
 
-*Agenda* (see [[#agenda][Agenda]]): effort sorting, filtering and the per-day limit are session settings in the ⏱ panel, not ~org-agenda-sorting-strategy~ or ~org-agenda-max-effort~. Date stamps in titles are hidden unless ~org-xx-agenda-hide-title-stamps~ is ~nil~ (Emacs strips only a time of day that the row already shows, ~org-agenda-remove-times-when-in-prefix~). The tag, state and category chips are not Emacs's ~/~, ~<~ and ~=~ filters: they match a heading's own tags only. There is no negated (~-<~) filter, no effort column format (~%e~) and no effort sort in the TODO view. The sexp evaluator is a small Lisp subset (~let~, ~if~, ~cond~, ~date~, arithmetic, lists and the common ~calendar-*~ helpers), not Emacs's interpreter: no ~setq~ or function definitions, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
+*Agenda* (see [[#agenda][Agenda]]): sorting is by effort only: ~org-agenda-sorting-strategy~ is read for ~effort-up~ and ~effort-down~, and the other keys are ignored. The effort sort, filter and per-day limit live in the ⏱ panel and last for the session; ~org-agenda-max-effort~ applies to the Agenda only. Date stamps in titles are removed whole when ~org-agenda-remove-times-when-in-prefix~ is ~t~; Emacs removes only a time of day the row already shows. The filter chips follow Emacs's tag, category, regexp and top-heading filters, but a regular expression is a JavaScript one, several category values mean "any of" as in Emacs, and there is no effort column format (~%e~) or custom ~org-agenda-prefix-format~. The sexp evaluator is a small Lisp subset (~let~, ~if~, ~cond~, ~date~, arithmetic, lists and the common ~calendar-*~ helpers), not Emacs's interpreter: no ~setq~ or function definitions, and no holiday-skipping in ~org-class~. ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ are left out on purpose, since their ~org-*~ twins take unambiguous year-month-day dates (see [[#agenda-sexp-timestamps][General sexp timestamps]]). A ~local:~ agenda file is read-only, and only a file already opened on this device can be named.
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 

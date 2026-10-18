@@ -169,7 +169,7 @@ export {};
  *   searchQuery: string, searchUseRegex: boolean, searchUseMatch: boolean, searchOptionsMenuOpen: boolean, activeQueryReplace: any,
  *   agendaViewType: string, agendaAnchorDate: Date, agendaLogMode: boolean, agendaHabitsHidden: boolean, agendaEffortPanelOpen: boolean,
  *   agendaEffortSort: string | null, agendaEffortFilter: { op: string, minutes: number | null, text: string } | null, agendaEffortMax: { minutes: number | null, text: string } | null,
- *   viewFilter: { tags: string[], todos: string[], categories: string[] }, undoToastTimer: number, taskSort: string,
+ *   viewFilter: import('./agenda-filter.js').ViewFilter, agendaSeedSignature?: string, undoToastTimer: number, taskSort: string,
  *   agendaShowAllDatesOverride: boolean | null, showClockDisplay: boolean, showClocktable: boolean,
  *   clocktableStart: string, clocktableEnd: string, clocktableMaxlevel: number,
  *   weatherData: Record<string, any> | null, weatherLastRefreshed: string | null,

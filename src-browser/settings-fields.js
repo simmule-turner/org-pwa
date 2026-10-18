@@ -115,7 +115,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-behavior',
   },
   {
-    key: 'org-xx-agenda-hide-title-stamps',
+    key: 'org-agenda-remove-times-when-in-prefix',
     label: 'Hide timestamps in Agenda titles',
     section: 'Agenda',
     type: 'boolean',
