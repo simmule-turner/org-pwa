@@ -359,14 +359,14 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
     return { size: [t.fontSize, b.fontSize], pad: [t.paddingLeft, b.paddingLeft], line: [t.lineHeight, b.lineHeight] };
   });
   expect(same.size[0] === same.size[1] && same.pad[0] === same.pad[1] && same.line[0] === same.line[1], `the Text view's textarea and its drawn text should match: ${JSON.stringify(same)}`);
-  // the editor fits the visible pane: its first line is in view and the key row ends above the bottom bar and the floating buttons, and still does when the window shrinks (a keyboard)
+  // the editor fits the visible pane: its first line is in view and the key row sits above the bottom bar and ends before the floating buttons, and still does when the window shrinks (a keyboard)
   const fits = () =>
     page.evaluate(() => {
       const keys = /** @type {HTMLElement} */ (document.querySelector('.te-keys')).getBoundingClientRect();
       const text = /** @type {HTMLElement} */ (document.getElementById('document-text-edit-input')).getBoundingClientRect();
       const bar = /** @type {HTMLElement} */ (document.getElementById('modelineBar')).getBoundingClientRect();
       const g = /** @type {HTMLElement} */ (document.getElementById('godModeBtn')).getBoundingClientRect();
-      return { keysBottom: keys.bottom, barTop: Math.min(bar.top, g.top), textTop: text.top };
+      return { keysBottom: keys.bottom, keysRight: keys.right, barTop: bar.top, buttonLeft: g.left, textTop: text.top };
     });
   for (const height of [900, 500]) {
     await page.setViewportSize({ width: 412, height });

@@ -308,18 +308,26 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
     if (!root.isConnected) return;
     box.scrollTop = 0;
     const top = root.getBoundingClientRect().top - box.getBoundingClientRect().top;
-    // it also stops above the round buttons floating in the bottom corners (Back, Extras, [g]), so none covers a key
-    let clear = 0;
-    const bottom = box.getBoundingClientRect().bottom;
+    root.style.height = `${Math.max(160, box.clientHeight - top)}px`;
+    // The key row stays where it is but ends beside the round buttons floating in the bottom corners (Back on the left, Extras
+    // and [g] on the right) rather than running under them; it scrolls sideways within what is left.
+    const edge = box.getBoundingClientRect();
+    let left = 0;
+    let right = 0;
     for (const btn of [navBackBtn, extraMenuBtn, godModeBtn]) {
       if (getComputedStyle(btn).display === 'none') continue;
-      clear = Math.max(clear, bottom - btn.getBoundingClientRect().top + 6);
+      const r = btn.getBoundingClientRect();
+      if (r.top >= edge.bottom || r.bottom <= keys.getBoundingClientRect().top) continue; // not beside the key row
+      if (r.left + r.width / 2 < edge.left + edge.width / 2) left = Math.max(left, r.right - edge.left + 8);
+      else right = Math.max(right, edge.right - r.left + 8);
     }
-    root.style.height = `${Math.max(160, box.clientHeight - top - clear)}px`;
+    keys.style.marginLeft = `${left}px`;
+    keys.style.marginRight = `${right}px`;
   }
   const watch = () => {
     if (!root.isConnected) {
-      if (typeof ResizeObserver === 'function') sizeWatch.disconnect();
+      sizeWatch.disconnect();
+      buttonWatch.disconnect();
       window.removeEventListener('resize', watch);
       window.visualViewport?.removeEventListener('resize', watch);
       return;
@@ -328,6 +336,8 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
   };
   const sizeWatch = typeof ResizeObserver === 'function' ? new ResizeObserver(watch) : { observe() {}, disconnect() {} };
   sizeWatch.observe(box);
+  const buttonWatch = new MutationObserver(watch); // a button shown or hidden (Back appears after a jump)
+  for (const btn of [navBackBtn, extraMenuBtn, godModeBtn]) buttonWatch.observe(btn, { attributes: true, attributeFilter: ['style'] });
   window.addEventListener('resize', watch);
   window.visualViewport?.addEventListener('resize', watch);
   textarea.addEventListener('focus', () => setTimeout(fit, 350)); // the keyboard may still be moving in
