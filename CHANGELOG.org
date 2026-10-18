@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v569 — Text view fits the screen
+The Text view editor now fills exactly the visible area, with the row of keys (Tab, *, /, and the rest) fixed at the bottom: just above the bottom bar, or just above the on-screen keyboard when it is up. Before, the editor was taller than the screen, so the top lines were out of reach and the keys sat at the end of a long scroll.
+Verified: the Text view layout browser check, at two window heights.
+
 * v568 — Bigger Export text boxes; page header and footer removed
 The Export text boxes (Preamble, Postamble, Head and the LaTeX classes box) now open in the large editor used elsewhere in Settings, with OK, Cancel and Reset. The General card and the page header and footer are gone: they only worked in HTML export, in some browsers, and Emacs has no such setting.
 Verified: the Export settings and LaTeX export browser checks.

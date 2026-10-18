@@ -352,6 +352,21 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
   expect((await modeline(page)).startsWith('%%'), 'Help should start read-only');
   await viewMenu(page, 'Text');
   expect(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly), 'textarea should start read-only');
+  // the editor fits the visible pane: its first line is in view and the key row ends above the bottom bar, and still does when the window shrinks (a keyboard)
+  const fits = () =>
+    page.evaluate(() => {
+      const keys = /** @type {HTMLElement} */ (document.querySelector('.te-keys')).getBoundingClientRect();
+      const text = /** @type {HTMLElement} */ (document.getElementById('document-text-edit-input')).getBoundingClientRect();
+      const bar = /** @type {HTMLElement} */ (document.getElementById('modelineBar')).getBoundingClientRect();
+      return { keysBottom: keys.bottom, barTop: bar.top, textTop: text.top };
+    });
+  for (const height of [900, 500]) {
+    await page.setViewportSize({ width: 412, height });
+    await page.waitForTimeout(400);
+    const f = await fits();
+    expect(f.keysBottom <= f.barTop + 1 && f.textTop >= 0, `the Text view's key row should sit above the bottom bar at height ${height}: ${JSON.stringify(f)}`);
+  }
+  await page.setViewportSize({ width: 412, height: 900 });
   await openPalette(page);
   await page.keyboard.type('toggle read-only');
   await page.keyboard.press('Enter');

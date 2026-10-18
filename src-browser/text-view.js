@@ -11,6 +11,7 @@ import { highlight } from '../src/text-syntax.js';
 import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
 import { promptText } from './dialogs.js';
+import { scrollContainer } from './chrome.js';
 import { searchBtn } from './dom.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 
@@ -296,8 +297,34 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
   root.append(wrap, keys, status);
   textarea.addEventListener('focus', schedule);
 
+  // The editor fills what is left of the scrolling pane below it (the pane already stops above the bottom bar and the on-screen
+  // keyboard), so the key row stays at the bottom of the visible area whether or not the keyboard is up, and the pane itself
+  // never has to scroll to reach the top of the text or the keys.
+  const box = scrollContainer();
+  function fit() {
+    if (!root.isConnected) return;
+    box.scrollTop = 0;
+    const top = root.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    root.style.height = `${Math.max(160, box.clientHeight - top)}px`;
+  }
+  const watch = () => {
+    if (!root.isConnected) {
+      if (typeof ResizeObserver === 'function') sizeWatch.disconnect();
+      window.removeEventListener('resize', watch);
+      window.visualViewport?.removeEventListener('resize', watch);
+      return;
+    }
+    fit();
+  };
+  const sizeWatch = typeof ResizeObserver === 'function' ? new ResizeObserver(watch) : { observe() {}, disconnect() {} };
+  sizeWatch.observe(box);
+  window.addEventListener('resize', watch);
+  window.visualViewport?.addEventListener('resize', watch);
+  textarea.addEventListener('focus', () => setTimeout(fit, 350)); // the keyboard may still be moving in
+
   // the first drawing waits until the editor is in the page, so it can be measured
   queueMicrotask(() => {
+    fit();
     layout();
     drawn.text = null;
     draw();
