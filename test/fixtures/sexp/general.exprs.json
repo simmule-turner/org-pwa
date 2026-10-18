@@ -1,0 +1,17 @@
+[
+"(let* ((last (calendar-last-day-of-month (car date) (nth 2 date))) (dow (calendar-day-of-week date)) (day (cadr date))) (or (and (= day last) (memq dow '(1 2 3 4 5))) (and (= dow 5) (memq day (list (- last 1) (- last 2))))))",
+"(and (zerop (mod (nth 2 date) 2)) (diary-float 11 2 1 2))",
+"(if (memq (car date) '(6 7 8)) (= 6 (calendar-day-of-week date)) (diary-float t 6 1))",
+"(let ((n (- (calendar-last-day-of-month (car date) (nth 2 date)) (cadr date)))) (<= n 1))",
+"(cond ((= (car date) 12) (>= (cadr date) 24)) ((= (car date) 1) (<= (cadr date) 2)) (t nil))",
+"(and (> (nth 2 date) 2026) (< (nth 2 date) 2029) (= (car date) 2) (= (cadr date) 29))",
+"(unless (memq (calendar-day-of-week date) '(0 6)) (= 0 (mod (cadr date) 10)))",
+"(and (= (/ (cadr date) 7) 2) (= (calendar-day-of-week date) 3))",
+"(let ((m (car date))) (and (= (cadr date) 1) (zerop (% (1- m) 3))))",
+"(or (= (cadr date) 1) (= (cadr date) (calendar-last-day-of-month (car date) (nth 2 date))))",
+"(member (cadr date) (list 5 15 25))",
+"(/= (calendar-day-of-week date) 3)",
+"(and (calendar-leap-year-p (nth 2 date)) (= (car date) 3) (= (cadr date) 1))",
+"(let* ((x 3) (y (* x x))) (= (cadr date) y))",
+"(and (= (calendar-extract-month date) 7) (< (calendar-extract-day date) 5))"
+]

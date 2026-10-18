@@ -18,14 +18,16 @@
  * a non-nil result means a match, and a STRING result becomes the
  * entry's own displayed text for that occurrence.
  *
- * Deliberately NOT a general elisp interpreter -- only `when`, `and`,
- * `or` and `not` (enough to combine the functions below) and a closed set
- * of named functions are recognized -- no `let`, no `date` variable, no
- * arithmetic, no `calendar-*` helpers; anything else
- * (an unrecognized function name, a malformed expression) evaluates
- * to "no match" rather than throwing, the same tolerant-of-the-
- * unexpected stance every other sexp/timestamp parser in this app
- * already takes.
+ * A small, safe Lisp subset, not Emacs's interpreter: `let`, `let*`, `if`,
+ * `unless`, `cond`, `progn`, `when`, `and`, `or`, `not`; arithmetic and
+ * comparison; `car`, `cadr`, `cdr`, `nth`, `list`, `memq`, `member`; the
+ * `date` variable as (month day year); and a few `calendar-*` helpers. It
+ * has no assignment, no function definitions and no I/O, and one day's
+ * evaluation stops after MAX_STEPS nodes. Anything unrecognized or wrong
+ * (an unknown function, a bad argument type, a malformed expression)
+ * evaluates to "no match" rather than throwing, the same
+ * tolerant-of-the-unexpected stance every other sexp/timestamp parser in
+ * this app already takes.
  *
  * `today-p` is this app's own convenience addition, not a real
  * org/elisp function -- shorthand for real org's own actual
@@ -173,7 +175,7 @@ function setUserSexps(names = [], handler = /** @type {any} */ (null)) {
  * @param {string | boolean} value
  *  displayed entry). */
 function isTruthy(value) {
-  return value !== false && value !== '';
+  return value !== false && value !== '' && !(Array.isArray(value) && value.length === 0);
 }
 
 /** Narrows one of diary-sexp.js's own range-expansion functions down
@@ -242,26 +244,31 @@ function isoWeekNumber(date) {
  * @param {any} [node]
  * @param {any} [context]
  *  `false` rather than throwing -- see parseSexpr's own docs for why. */
-/** @returns {any} */ function evaluateSexpr(/** @type {any} */ node, /** @type {any} */ context) {
+/** @returns {any} */ function ev(/** @type {any} */ node, /** @type {any} */ context) {
+  const budget = context.budget || (context.budget = { steps: 0 });
+  if (++budget.steps > MAX_STEPS) throw new LispError('too many steps');
   if (!Array.isArray(node)) {
     // A bare leaf outside any function call at all -- not a
     // meaningful top-level sexp timestamp on its own (real org
     // expects a function call), so this can't match anything.
-    if (node.type === 'number') return node.value !== 0;
+    if (node.type === 'number') return node.value;
     if (node.type === 'string') return node.value;
-    if (node.type === 'symbol' && node.value === 't') return true;
-    return false; // nil, and any other symbol
+    if (node.type === 'symbol') return lookupSymbol(node.value, context);
+    return false;
   }
 
   const [head, ...args] = node;
-  if (!head || head.type !== 'symbol') return false;
+  if (!head) return false;
+  // A list that starts with a number or string is a literal list, as in '(1 2 3).
+  if (head.type === 'number' || head.type === 'string') return node.map((n) => ev(n, context));
+  if (head.type !== 'symbol') return false;
 
   switch (head.value) {
     case 'when': {
       if (args.length < 2) return false;
-      const condResult = evaluateSexpr(args[0], context);
+      const condResult = ev(args[0], context);
       if (!isTruthy(condResult)) return false;
-      return evaluateSexpr(args[1], context);
+      return progn(args.slice(1), context);
     }
 
     case 'today-p':
@@ -273,20 +280,20 @@ function isoWeekNumber(date) {
     case 'and': {
       let last = true;
       for (const arg of args) {
-        last = evaluateSexpr(arg, context);
+        last = ev(arg, context);
         if (!isTruthy(last)) return false;
       }
       return last;
     }
     case 'or': {
       for (const arg of args) {
-        /** @type {any} */ const value = evaluateSexpr(arg, context);
+        /** @type {any} */ const value = ev(arg, context);
         if (isTruthy(value)) return value;
       }
       return false;
     }
     case 'not':
-      return args.length === 1 ? !isTruthy(evaluateSexpr(args[0], context)) : false;
+      return args.length === 1 ? !isTruthy(ev(args[0], context)) : false;
 
     // org-block: every date from the first through the second, inclusive,
     // written year month day (ISO) as org-agenda.el defines it. Either
@@ -404,18 +411,211 @@ function isoWeekNumber(date) {
       let argIndex = 0;
       return fmt.replace(/%[s%]/g, (/** @type {any} */ m) => {
         if (m === '%%') return '%';
-        const subResult = evaluateSexpr(substitutionArgs[argIndex], context);
+        const subResult = ev(substitutionArgs[argIndex], context);
         argIndex++;
         if (typeof subResult === 'string') return subResult;
+        if (typeof subResult === 'number') return String(subResult);
         return subResult ? 't' : 'nil'; // real elisp's own printed representation for a non-string, non-nil value in a %s slot
       });
     }
+
+    // ---- general Lisp: bindings, branches, arithmetic, lists, calendar helpers ----
+    case 'let':
+    case 'let*': {
+      if (!args.length || !Array.isArray(args[0])) return false;
+      const frame = Object.create(context.env || null);
+      const inner = { ...context, env: frame };
+      const sequential = head.value === 'let*';
+      for (const binding of args[0]) {
+        const name = Array.isArray(binding) ? binding[0] : binding;
+        if (!name || name.type !== 'symbol') throw new LispError('bad binding');
+        const value = Array.isArray(binding) && binding[1] ? ev(binding[1], sequential ? inner : context) : false;
+        frame[name.value] = value;
+      }
+      return progn(args.slice(1), inner);
+    }
+    case 'progn':
+      return progn(args, context);
+    case 'if':
+      if (args.length < 2) return false;
+      return isTruthy(ev(args[0], context)) ? ev(args[1], context) : progn(args.slice(2), context);
+    case 'unless':
+      if (args.length < 1) return false;
+      return isTruthy(ev(args[0], context)) ? false : progn(args.slice(1), context);
+    case 'cond': {
+      for (const clause of args) {
+        if (!Array.isArray(clause) || !clause.length) continue;
+        const test = ev(clause[0], context);
+        if (isTruthy(test)) return clause.length > 1 ? progn(clause.slice(1), context) : test;
+      }
+      return false;
+    }
+
+    case '+':
+    case '*':
+    case '-':
+    case '/':
+    case 'mod':
+    case '%':
+    case '1+':
+    case '1-': {
+      const n = args.map((a) => numberOf(ev(a, context)));
+      return arithmetic(head.value, n);
+    }
+    case '=':
+    case '/=':
+    case '<':
+    case '>':
+    case '<=':
+    case '>=': {
+      const n = args.map((a) => numberOf(ev(a, context)));
+      if (n.length < 1) throw new LispError('arity');
+      if (head.value === '/=') return n.length === 2 && n[0] !== n[1];
+      for (let i = 0; i + 1 < n.length; i++) {
+        const [a, b] = [n[i], n[i + 1]];
+        const ok = head.value === '=' ? a === b : head.value === '<' ? a < b : head.value === '>' ? a > b : head.value === '<=' ? a <= b : a >= b;
+        if (!ok) return false;
+      }
+      return true;
+    }
+    case 'zerop':
+      return args.length === 1 && numberOf(ev(args[0], context)) === 0;
+    case 'equal':
+    case 'eq':
+      return args.length === 2 && JSON.stringify(ev(args[0], context)) === JSON.stringify(ev(args[1], context));
+
+    case 'list':
+      return args.map((a) => ev(a, context));
+    case 'car':
+    case 'cadr':
+    case 'cdr':
+    case 'nth':
+    case 'length':
+    case 'memq':
+    case 'member': {
+      const v = args.map((a) => ev(a, context));
+      return listFunction(head.value, v);
+    }
+
+    case 'calendar-current-date':
+      return dateList(context.today);
+    case 'calendar-day-of-week': {
+      const [m, d, y] = dateParts(ev(args[0], context));
+      return realDate(y, m, d)?.getDay() ?? false;
+    }
+    case 'calendar-last-day-of-month': {
+      const m = numberOf(ev(args[0], context));
+      const y = numberOf(ev(args[1], context));
+      if (m < 1 || m > 12) throw new LispError('bad month');
+      return new Date(y, m, 0).getDate();
+    }
+    case 'calendar-leap-year-p': {
+      const y = numberOf(ev(args[0], context));
+      return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    }
+    case 'calendar-extract-month':
+      return dateParts(ev(args[0], context))[0];
+    case 'calendar-extract-day':
+      return dateParts(ev(args[0], context))[1];
+    case 'calendar-extract-year':
+      return dateParts(ev(args[0], context))[2];
 
     default:
       if (userSexpHandler && userSexpNames.has(head.value)) {
         return userSexpResult(userSexpHandler(head.value, args.map(sexpArgToValue), context.candidateDate));
       }
       return false; // an unrecognized function name -- no match, not an error
+  }
+}
+
+// ---- the general Lisp layer -------------------------------------------------
+
+const MAX_STEPS = 20000; // one day's evaluation may not run longer than this many nodes
+
+class LispError extends Error {}
+
+/** @param {unknown[]} forms @param {Record<string, unknown>} context */
+function progn(forms, context) {
+  let last = false;
+  for (const f of forms) last = ev(f, context);
+  return last;
+}
+
+/** A variable's value: a let binding, else `date` (the day being evaluated, as (month day year)), else t / nil. */
+function lookupSymbol(/** @type {string} */ name, /** @type {Record<string, any>} */ context) {
+  if (context.env && name in context.env) return context.env[name];
+  if (name === 't') return true;
+  if (name === 'date') return dateList(context.candidateDate);
+  return false; // nil, and any unbound symbol
+}
+
+function dateList(/** @type {Date} */ d) {
+  return [d.getMonth() + 1, d.getDate(), d.getFullYear()];
+}
+
+/** (month day year) as three integers, else an error. */
+function dateParts(/** @type {unknown} */ v) {
+  if (!Array.isArray(v) || v.length !== 3 || !v.every((n) => Number.isInteger(n))) throw new LispError('not a date');
+  return /** @type {[number, number, number]} */ (v);
+}
+
+function numberOf(/** @type {unknown} */ v) {
+  if (typeof v !== 'number') throw new LispError('not a number');
+  return v;
+}
+
+function arithmetic(/** @type {string} */ op, /** @type {number[]} */ n) {
+  const allInts = n.every(Number.isInteger);
+  const div = (/** @type {number} */ a, /** @type {number} */ b) => {
+    if (b === 0) throw new LispError('division by zero');
+    return allInts ? Math.trunc(a / b) : a / b;
+  };
+  switch (op) {
+    case '+': return n.reduce((a, b) => a + b, 0);
+    case '*': return n.reduce((a, b) => a * b, 1);
+    case '-': return n.length === 1 ? -n[0] : n.slice(1).reduce((a, b) => a - b, n[0]);
+    case '/': return n.length === 1 ? div(1, n[0]) : n.slice(1).reduce(div, n[0]);
+    case '1+': return n[0] + 1;
+    case '1-': return n[0] - 1;
+    case '%':
+    case 'mod': {
+      if (n.length !== 2 || n[1] === 0) throw new LispError('bad arguments');
+      return op === '%' ? n[0] % n[1] : ((n[0] % n[1]) + n[1]) % n[1];
+    }
+  }
+  throw new LispError('unknown operator');
+}
+
+function listFunction(/** @type {string} */ name, /** @type {unknown[]} */ v) {
+  const list = (/** @type {unknown} */ x) => (Array.isArray(x) ? x : x === false ? [] : (() => { throw new LispError('not a list'); })());
+  switch (name) {
+    case 'car': return list(v[0])[0] ?? false;
+    case 'cdr': { const r = list(v[0]).slice(1); return r.length ? r : false; }
+    case 'cadr': return list(v[0])[1] ?? false;
+    case 'nth': return list(v[1])[numberOf(v[0])] ?? false;
+    case 'length': return list(v[0]).length;
+    case 'memq':
+    case 'member': {
+      const items = list(v[1]);
+      const i = items.findIndex((x) => JSON.stringify(x) === JSON.stringify(v[0]));
+      return i < 0 ? false : items.slice(i);
+    }
+  }
+  throw new LispError('unknown function');
+}
+
+/** What the rest of the app sees: false (no match), true, or a string (the entry's own text). Any
+ *  error -- a wrong argument type, an unbound function, too many steps -- is "no match". */
+function evaluateSexpr(/** @type {unknown} */ node, /** @type {Record<string, unknown>} */ context) {
+  try {
+    if (!Array.isArray(node) && /** @type {{type: string, value: number}} */ (node).type === 'number') return /** @type {{value: number}} */ (node).value !== 0;
+    const value = ev(node, context);
+    if (typeof value === 'number') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    return value;
+  } catch (e) {
+    if (e instanceof LispError) return false;
+    throw e;
   }
 }
 
@@ -529,7 +729,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'org-class', 'org-date']);
+const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

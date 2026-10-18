@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v558 — Real Lisp in diary sexps
+Diary expressions can now use =let=, =if=, =cond=, the =date= variable, arithmetic, comparisons, list functions and the common =calendar-*= helpers, so rules like "last working day of the month", "Election Day, even years only" or "every Saturday in summer, the first Saturday otherwise" work as in Emacs. Mistakes are simply no match. Verified: fifteen expressions match Emacs 29.3 on every day of 2026–2029.
+
 * v557 — README pass for novices
 The README is shorter and easier to follow for newcomers: long paragraphs in logging, archiving, attachments, clocking, files, tabs and capture are condensed. "Differences from Emacs org-mode" is corrected: LaTeX export is described (Org 9.6 behaviour, three classes, natbib and biblatex), and the palette-only export formats are listed.
 Verified: README LaTeX fixture still matches Emacs.

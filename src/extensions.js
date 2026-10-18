@@ -14,6 +14,9 @@ export const BUILTIN_SEXP_NAMES = new Set([
   'diary-float', 'diary-sunrise', 'diary-sunset', 'diary-civil-dawn', 'diary-civil-dusk', 'diary-nautical-dawn',
   'diary-nautical-dusk', 'diary-astronomical-dawn', 'diary-astronomical-dusk', 'diary-day-length', 'org-weather',
   'format', 'diary-anniversary', 'diary-date', 'diary-cyclic', 'diary-block', 'diary-remind', 'diary-phases-of-moon',
+  'let', 'let*', 'progn', 'if', 'unless', 'cond', '+', '-', '*', '/', '%', 'mod', '1+', '1-', '=', '/=', '<', '>', '<=', '>=', 'zerop',
+  'equal', 'eq', 'list', 'car', 'cdr', 'cadr', 'nth', 'length', 'memq', 'member', 'calendar-current-date', 'calendar-day-of-week',
+  'calendar-last-day-of-month', 'calendar-leap-year-p', 'calendar-extract-month', 'calendar-extract-day', 'calendar-extract-year',
 ]);
 
 /** The events a script can hook with org.on. Only `todo-change` and `capture` may answer with edits: changing the
