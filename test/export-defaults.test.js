@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
+import { countExportItemsOn, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
 import { exportToAscii } from '../src/export-ascii.js';
@@ -17,21 +17,15 @@ const doc = (text) => parseOrg(text);
 test('nothing is applied until it is switched on, and the text offered is the default', () => {
   assert.deepEqual(htmlExportDefaults({}), {});
   assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': '"%t : %s"' }), { preamble: '%t : %s' });
-  assert.equal(countExportItemsOn({ 'org-xx-page-footer-on': 't' }, ['pageHeader', 'pageFooter']), 1);
-});
-
-test('text with new lines survives a one-line Global Variable', () => {
-  const t = '<style>\n  a { b: c }\n</style>\\n';
-  assert.equal(decodeExportText(encodeExportText(t)), t);
+  assert.equal(countExportItemsOn({ 'org-html-head': '"<b>x</b>"' }, ['preamble', 'postamble', 'head']), 1);
 });
 
 test('the defaults reach the page, and the file wins', () => {
-  const defaults = { preamble: 'PRE %t', postamble: 'POST %a', head: '<style>/*mine*/</style>', pageFooter: 'F %p' };
+  const defaults = { preamble: 'PRE %t', postamble: 'POST %a', head: '<style>/*mine*/</style>' };
   const plain = exportToHtml(doc('#+TITLE: T\n#+AUTHOR: Ann\n* A\n'), null, { defaults });
   assert.match(plain, /PRE T/);
   assert.match(plain, /POST Ann/);
   assert.match(plain, /\/\*mine\*\//);
-  assert.match(plain, /counter\(page\)/);
   const own = exportToHtml(doc('#+TITLE: T\n#+AUTHOR: Ann\n#+OPTIONS: html-preamble:"FILE %t" html-postamble:nil\n* A\n'), null, { defaults });
   assert.match(own, /FILE T/);
   assert.doesNotMatch(own, /PRE T/);

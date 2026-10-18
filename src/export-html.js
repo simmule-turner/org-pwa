@@ -72,8 +72,6 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     title: true,
     preamble: defaults.preamble ?? null, // null (none) | false | a template string with Org's format codes
     postamble: defaults.postamble ?? true, // true (the author, date and email lines) | false | a template string
-    pageHeader: defaults.pageHeader ?? null, // a template for the top of every printed page, or null
-    pageFooter: defaults.pageFooter ?? null,
     stamps: true,
     arch: 'headline',
     comments: false,
@@ -128,8 +126,6 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'title': o.title = !isNil(v); break;
       case 'html-preamble': o.preamble = isNil(v) ? false : lispString(v); break;
       case 'html-postamble': o.postamble = isNil(v) ? false : lispString(v) ?? true; break;
-      case 'page-header': o.pageHeader = lispString(v); break;
-      case 'page-footer': o.pageFooter = lispString(v); break;
       case '<': o.stamps = !isNil(v); break;
       case 'arch': o.arch = isNil(v) ? false : v === 't' ? true : 'headline'; break;
       case 'c': o.comments = v === 't'; break;
@@ -1499,17 +1495,6 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
     ? `<div id="postamble" class="status">\n${formatSpec(options.postamble, specValues())}\n</div>\n`
     : options.postamble !== false && post.length ? `<div id="postamble" class="status">\n${post.join('\n')}\n</div>\n` : '';
   const preambleDiv = typeof options.preamble === 'string' ? `<div id="preamble" class="status">\n${formatSpec(options.preamble, specValues())}\n</div>\n` : '';
-  // text on every printed page (browser Print -> Save as PDF); plain text, so no markup and no HTML escaping
-  const plainValues = () => {
-    const v = specValues();
-    return { t: stripMarkup(title || ''), s: stripMarkup(keywordValue(doc, 'SUBTITLE') || ''), a: keywordValue(doc, 'AUTHOR') || '', d: keywordValue(doc, 'DATE') || '', e: keywordValue(doc, 'EMAIL') || '', c: v.c, C: v.C, T: v.T, v: '' };
-  };
-  const pageCss = options.pageHeader || options.pageFooter
-    ? '@page { margin: 2cm; ' +
-      (options.pageHeader ? pageBoxesCss(options.pageHeader, 'top', plainValues()) + ' ' : '') +
-      (options.pageFooter ? pageBoxesCss(options.pageFooter, 'bottom', plainValues()) + ' ' : '') + '}'
-    : '';
-
   const docTitle = escapeHtml(scope ? titleOf(scope) : title ? stripMarkup(title) : 'Untitled');
   const lang = (keywordValue(doc, 'LANGUAGE') || 'en').replace(/[^A-Za-z-]/g, '') || 'en';
   const meta = [];
@@ -1529,7 +1514,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
     `<title>${docTitle}</title>\n` +
     meta.map((m) => m + '\n').join('') +
     '<meta name="generator" content="org-pwa">\n' +
-    `<style>${PAGE_CSS}${pageCss ? '\n' + pageCss : ''}</style>\n` +
+    `<style>${PAGE_CSS}</style>\n` +
     (state.math ? `<style>${KATEX_EXPORT_CSS}</style>\n` : '') +
     (head ? head + '\n' : '') +
     '</head>\n' +
@@ -1563,21 +1548,6 @@ function metadataTimestamp(/** @type {Date} */ d) {
  * @param {Record<string, string>} values */
 function formatSpec(template, values) {
   return template.replace(/%([a-zA-Z%])/g, (m, c) => (c === '%' ? '%' : c in values ? values[c] : m));
-}
-
-/** CSS for a header or footer on every printed page, as @page margin boxes: "left | centre | right" (one part is the centre,
- *  two are left and right). %p is the page number and %P the page count; the other codes are the same as the postamble's.
- * @param {string} template
- * @param {'top'|'bottom'} edge
- * @param {Record<string, string>} values */
-function pageBoxesCss(template, edge, values) {
-  const parts = template.split('|').map((p) => p.trim());
-  const places = parts.length === 1 ? ['center'] : parts.length === 2 ? ['left', 'right'] : ['left', 'center', 'right'];
-  return places.map((place, i) => {
-    const pieces = formatSpec(parts[i].replace(/%[pP]/g, '\u0000$&\u0000'), values).split('\u0000').filter(Boolean);
-    const content = pieces.map((x) => (x === '%p' ? 'counter(page)' : x === '%P' ? 'counter(pages)' : `"${x.replace(/[\\"]/g, '\\$&').replace(/\s+/g, ' ')}"`)).join(' ') || '""';
-    return `@${edge}-${place} { content: ${content}; font: 9pt sans-serif; color: #555; }`;
-  }).join(' ');
 }
 
 /** @param {string} text */

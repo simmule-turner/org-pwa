@@ -1621,14 +1621,6 @@ A file that can't be found is skipped silently.
 #+OPTIONS: html-postamble:"Prepared by %a, %d"
 #+END_SRC
 
-For text on every printed page, such as a name and a page number, use ~page-header:~ and ~page-footer:~. Parts are separated by ~|~: three are left, centre and right, two are left and right, one is the centre. ~%p~ is the page number, ~%P~ the number of pages, and the codes above work too.
-
-#+BEGIN_SRC
-#+OPTIONS: page-footer:"%a | | Page %p of %P"
-#+END_SRC
-
-They take effect when you print or use *Print → Save as PDF* in Chrome (also on a ChromeOS laptop); Firefox and Safari ignore them. Pages get a 2 cm margin to hold them. For your own CSS, such as ~@page { @bottom-center { content: counter(page); } }~, use ~#+HTML_HEAD:~.
-
 *** ASCII
 
 Plain text laid out as Emacs's ~org-ascii-export-to-ascii~ lays it out (compared with Emacs 29.3 on sample files). A "Table of Contents" comes first, then the numbered headings, underlined by level, with tags at the right margin. Headings deeper than ~H:~ become bullets. Paragraphs are filled to ~org-ascii-text-width~ (default 72; see Local Variables) as Emacs fills them. Emphasis keeps its markers (~*bold*~, ~/italic/~), and ~code~ and =verbatim= read ~`text'~. A link reads ~[description]~, with its target listed after the section; links to headings and tables read ~See section 1.2~. Footnote references become ~[1]~, with their definitions under "Footnotes". ~#+TITLE~, ~#+AUTHOR~ and ~#+DATE~ make a title block; a subtree export uses the heading as the title.
@@ -1836,7 +1828,7 @@ The cards, by what they hold:
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
 - *Backup*: *Export Settings* saves everything on this page as JSON; *Import Settings* merges a file back in, leaving other settings untouched.
 - *Updates*: shows the running version and checks for a new one. If a newer version is installed but this page predates it, a banner offers *Reload*. The Android app has no button.
-- *Export* (General, ASCII, HTML, LaTeX): one card per export type. *General* sets a *Page header* and *Page footer* for printed pages (~Draft | | %d~ is left, centre, right). *HTML* sets a *Preamble*, *Postamble* and *Head*, with an option to add a table of contents with page numbers when printing. *LaTeX* sets the class and compiler, a box for classes, packages and the source block backend, and an option that fixes wide TOC numbers. Each has a tick box and is off until ticked; a ticked item applies to every export whose file doesn't set its own. A *Format codes* list explains ~%t~, ~%a~, ~%d~, ~%p~, ~%P~ and the rest.
+- *Export* (ASCII, HTML, LaTeX): one card per export type. *HTML* sets a *Preamble*, *Postamble* and *Head*, with an option to add a table of contents with page numbers when printing. *LaTeX* sets the class and compiler, a box for classes, packages and the source block backend, and an option that fixes wide TOC numbers. Tap a text box to edit it in a large editor: *OK* saves, *Cancel* discards, *Reset* (shown once the text differs from the default) puts the default back. Each HTML and LaTeX text item has a tick box and is off until ticked; a ticked item applies to every export whose file doesn't set its own. A *Format codes* list explains ~%t~, ~%a~, ~%d~ and the rest.
 
 A file's own ~#+STARTUP:~ or Local Variables block still overrides an app-wide default set here.
 

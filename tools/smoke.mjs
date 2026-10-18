@@ -4434,7 +4434,7 @@ check('settings: on a platform with no service worker, the update block shows on
   await context.close();
 });
 
-check('settings: Export has General, ASCII and HTML in that order, every box starts unticked, ticking one keeps its text and counts it, and the Sync count includes the services that are set up', async () => {
+check('settings: Export has ASCII and HTML in that order, every box starts unticked, ticking one keeps its text and counts it, and the Sync count includes the services that are set up', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
@@ -4450,14 +4450,23 @@ check('settings: Export has General, ASCII and HTML in that order, every box sta
   await settingsCategory(page, 'export');
   const titles = await page.locator('.settings-section .panel-section-title').allInnerTexts();
   const order = titles.map((t) => t.trim().toLowerCase()).filter((t) => ['general', 'ascii', 'html'].includes(t));
-  expect(order.join(',') === 'general,ascii,html', `card order: ${order.join(',')} of ${JSON.stringify(titles)}`);
+  expect(order.join(',') === 'ascii,html', `card order: ${order.join(',')} of ${JSON.stringify(titles)}`);
   const boxes = page.locator('[data-export-item] input[type=checkbox]');
-  expect((await boxes.count()) === 5, 'five items');
-  for (let i = 0; i < 5; i++) expect(!(await boxes.nth(i).isChecked()), `box ${i} starts unticked`);
+  expect((await boxes.count()) === 3, 'three items (there is no General card)');
+  for (let i = 0; i < 3; i++) expect(!(await boxes.nth(i).isChecked()), `box ${i} starts unticked`);
   const pre = page.locator('[data-export-item="preamble"]');
-  expect((await pre.locator('input[type=text]').inputValue()) === '%t : %s', 'the preamble offers %t : %s');
-  await pre.locator('input[type=text]').fill('Hello %a');
-  await pre.locator('input[type=text]').dispatchEvent('change');
+  expect((await pre.locator('textarea').inputValue()) === '%t : %s', 'the preamble offers %t : %s');
+  expect(await pre.locator('textarea').evaluate((t) => t.readOnly), 'the small box is read-only; the text is edited in the large editor');
+  const editor = page.locator('.ui-overlay textarea').last();
+  await pre.locator('textarea').click();
+  expect((await page.getByText('Reset', { exact: true }).count()) === 0, 'no Reset while the text is still the default');
+  await editor.fill('Typed then cancelled');
+  await page.getByText('Cancel', { exact: true }).last().click();
+  expect((await pre.locator('textarea').inputValue()) === '%t : %s', 'Cancel keeps the old text');
+  await pre.locator('textarea').click();
+  await editor.fill('Hello %a');
+  await page.getByText('OK', { exact: true }).last().click();
+  expect((await pre.locator('textarea').inputValue()) === 'Hello %a', 'OK keeps the new text');
   await pre.locator('input[type=checkbox]').check();
   await page.waitForTimeout(300);
   const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);

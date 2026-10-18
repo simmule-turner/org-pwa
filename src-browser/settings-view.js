@@ -368,7 +368,6 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   for (const group of renderQuickSettingsGroups()) cards.set('quick:' + group.name, group.element);
   const exportCards = buildExportCards(() => renderSettingsView());
-  cards.set('export-general', exportCards.general);
   cards.set('export-html', exportCards.html);
   cards.set('export-latex', exportCards.latex);
 

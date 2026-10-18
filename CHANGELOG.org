@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v568 — Bigger Export text boxes; page header and footer removed
+The Export text boxes (Preamble, Postamble, Head and the LaTeX classes box) now open in the large editor used elsewhere in Settings, with OK, Cancel and Reset. The General card and the page header and footer are gone: they only worked in HTML export, in some browsers, and Emacs has no such setting.
+Verified: the Export settings and LaTeX export browser checks.
+
 * v567 — ASCII export like Emacs, LaTeX classes and listings
 ASCII export now lays out as Emacs does: title block, numbered and underlined headings, filled paragraphs, link notes, tables, lists, footnotes and the three character sets. LaTeX export reads =org-latex-classes=, =org-latex-packages-alist= and =org-latex-src-block-backend= (listings or minted) from a new box in Settings → Export → LaTeX, with header placeholders and sectioning as Emacs reads them. The first launch no longer reloads the page when its service worker starts. =docs/other-calendars-design.org= describes Hebrew, Islamic and Bahá'í calendars; nothing is built.
 Verified: sample files against Emacs 29.3; the offline-capture and export browser checks.
