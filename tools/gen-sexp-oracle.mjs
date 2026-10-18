@@ -22,10 +22,10 @@ const el = `
           (end (calendar-absolute-from-gregorian '(12 31 2029))))
       (while (<= abs end)
         (let* ((g (calendar-gregorian-from-absolute abs))
-               (date (list (nth 0 g) (nth 1 g) (nth 2 g))) (entry ""))
-          (when (eval form nil) (push (format "%04d-%02d-%02d" (nth 2 g) (nth 0 g) (nth 1 g)) days)))
+               (date (list (nth 0 g) (nth 1 g) (nth 2 g))) (entry "ENTRY"))
+          (let ((v (eval form nil))) (when v (push (list (format "%04d-%02d-%02d" (nth 2 g) (nth 0 g) (nth 1 g)) (if (stringp v) v "t")) days))))
         (setq abs (1+ abs)))
-      (push (list src (vconcat (nreverse days))) out)))
+      (push (list src (vconcat (mapcar (lambda (d) (vector (car d) (cadr d))) (nreverse days)))) out)))
   (with-temp-file (getenv "ORACLE_OUT") (insert (json-encode (vconcat (mapcar (lambda (r) (vector (car r) (cadr r))) (nreverse out)))))))
 `;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sexp-oracle-'));
@@ -38,6 +38,6 @@ if (r.status !== 0) {
   process.exit(1);
 }
 const expected = {};
-for (const [src, days] of JSON.parse(fs.readFileSync(outFile, 'utf8'))) expected[src] = days;
+for (const [src, days] of JSON.parse(fs.readFileSync(outFile, 'utf8'))) expected[src] = Object.fromEntries(days); // date -> "t" or the string Emacs returned (the entry text is ENTRY)
 fs.writeFileSync('test/fixtures/sexp/general.expected.json', JSON.stringify({ emacs: '29.3', first: '2026-01-01', last: '2029-12-31', expected }, null, 1) + '\n');
-console.log(`${Object.keys(expected).length} expressions, ${Object.values(expected).reduce((n, d) => n + d.length, 0)} matching days`);
+console.log(`${Object.keys(expected).length} expressions, ${Object.values(expected).reduce((n, d) => n + Object.keys(d).length, 0)} matching days`);

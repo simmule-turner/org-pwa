@@ -17,6 +17,7 @@ export const BUILTIN_SEXP_NAMES = new Set([
   'let', 'let*', 'progn', 'if', 'unless', 'cond', '+', '-', '*', '/', '%', 'mod', '1+', '1-', '=', '/=', '<', '>', '<=', '>=', 'zerop',
   'equal', 'eq', 'list', 'car', 'cdr', 'cadr', 'nth', 'length', 'memq', 'member', 'calendar-current-date', 'calendar-day-of-week',
   'calendar-last-day-of-month', 'calendar-leap-year-p', 'calendar-extract-month', 'calendar-extract-day', 'calendar-extract-year',
+  'calendar-absolute-from-gregorian', 'calendar-gregorian-from-absolute', 'min', 'max', 'abs',
 ]);
 
 /** The events a script can hook with org.on. Only `todo-change` and `capture` may answer with edits: changing the

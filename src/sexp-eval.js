@@ -405,17 +405,24 @@ function isoWeekNumber(date) {
       if (args.length < 1 || args[0].type !== 'string') return false;
       const fmt = args[0].value;
       const substitutionArgs = args.slice(1);
-      /** @param {any} [m] */
-      const placeholderCount = (fmt.match(/%[s%]/g) || []).filter((/** @type {any} */ m) => m === '%s').length;
-      if (placeholderCount > substitutionArgs.length) return false; // not enough sub-expressions to fill every %s
+      const placeholderCount = (fmt.match(FORMAT_RE) || []).filter((/** @type {string} */ m) => !m.endsWith('%')).length;
+      if (placeholderCount > substitutionArgs.length) return false; // not enough sub-expressions to fill every placeholder
       let argIndex = 0;
-      return fmt.replace(/%[s%]/g, (/** @type {any} */ m) => {
-        if (m === '%%') return '%';
-        const subResult = ev(substitutionArgs[argIndex], context);
+      return fmt.replace(FORMAT_RE, (/** @type {string} */ m, /** @type {string} */ left, /** @type {string} */ zero, /** @type {string} */ width, /** @type {string} */ conv) => {
+        if (conv === '%') return '%';
+        const value = ev(substitutionArgs[argIndex], context);
         argIndex++;
-        if (typeof subResult === 'string') return subResult;
-        if (typeof subResult === 'number') return String(subResult);
-        return subResult ? 't' : 'nil'; // real elisp's own printed representation for a non-string, non-nil value in a %s slot
+        let text;
+        if (conv === 'd') {
+          if (typeof value !== 'number') throw new LispError('format: %d needs a number');
+          text = String(Math.trunc(value));
+        } else {
+          text = printValue(value);
+        }
+        const w = width ? Number(width) : 0;
+        if (text.length >= w) return text;
+        if (left) return text.padEnd(w);
+        return conv === 'd' && zero ? (text.startsWith('-') ? '-' + text.slice(1).padStart(w - 1, '0') : text.padStart(w, '0')) : text.padStart(w);
       });
     }
 
@@ -520,6 +527,26 @@ function isoWeekNumber(date) {
     case 'calendar-extract-year':
       return dateParts(ev(args[0], context))[2];
 
+    case 'calendar-absolute-from-gregorian': {
+      const [m, d, y] = dateParts(ev(args[0], context));
+      return absoluteDay(y, m, d);
+    }
+    case 'calendar-gregorian-from-absolute':
+      return gregorianFromAbsolute(numberOf(ev(args[0], context)));
+    case 'min':
+    case 'max':
+    case 'abs': {
+      const n = args.map((a) => numberOf(ev(a, context)));
+      if (!n.length) throw new LispError('arity');
+      return head.value === 'min' ? Math.min(...n) : head.value === 'max' ? Math.max(...n) : Math.abs(n[0]);
+    }
+
+    // (diary-remind SEXP DAYS): as in Emacs, the entry on the day itself, and "Reminder: Only N days until ..." on
+    // the DAYS before it (a number, a list, or a negative number for every day up to it).
+    case 'diary-remind':
+      if (args.length < 2) return false;
+      return remind(args[0], ev(args[1], context), context);
+
     default:
       if (userSexpHandler && userSexpNames.has(head.value)) {
         return userSexpResult(userSexpHandler(head.value, args.map(sexpArgToValue), context.candidateDate));
@@ -546,6 +573,7 @@ function lookupSymbol(/** @type {string} */ name, /** @type {Record<string, any>
   if (context.env && name in context.env) return context.env[name];
   if (name === 't') return true;
   if (name === 'date') return dateList(context.candidateDate);
+  if (name === 'entry') return context.entryText || false; // the text of the line, as in Emacs's diary
   return false; // nil, and any unbound symbol
 }
 
@@ -602,6 +630,50 @@ function listFunction(/** @type {string} */ name, /** @type {unknown[]} */ v) {
     }
   }
   throw new LispError('unknown function');
+}
+
+const FORMAT_RE = /%(-?)(0?)(\d*)([sd%])/g;
+
+/** How a value prints in a %s slot, as Lisp's princ would.
+ * @returns {string} */
+function printValue(/** @type {unknown} */ v) {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  if (Array.isArray(v)) return v.length ? `(${v.map(printValue).join(' ')})` : 'nil';
+  return v ? 't' : 'nil';
+}
+
+/** Emacs's calendar-absolute-from-gregorian: day 1 is January 1, year 1; 1970-01-01 is 719163. */
+function absoluteDay(/** @type {number} */ y, /** @type {number} */ m, /** @type {number} */ d) {
+  const t = new Date(0);
+  t.setUTCFullYear(y, m - 1, d);
+  return Math.round(t.getTime() / 86400000) + 719163;
+}
+
+function gregorianFromAbsolute(/** @type {number} */ abs) {
+  const t = new Date((abs - 719163) * 86400000);
+  return [t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCFullYear()];
+}
+
+/** diary-remind's own logic (diary-lib.el): the entry itself when SEXP matches today's candidate date, else
+ *  the reminder when it matches DAYS later.
+ * @returns {unknown} */
+function remind(/** @type {unknown} */ sexp, /** @type {unknown} */ daysArg, /** @type {Record<string, any>} */ context) {
+  let days = daysArg;
+  if (typeof days === 'number' && Number.isInteger(days) && days < 0) days = Array.from({ length: -days }, (_, i) => i + 1);
+  const entry = ev(sexp, context);
+  if (isTruthy(entry)) return entry;
+  if (typeof days === 'number') {
+    if (!Number.isInteger(days)) throw new LispError('days must be an integer');
+    const c = context.candidateDate;
+    const later = ev(sexp, { ...context, candidateDate: new Date(c.getFullYear(), c.getMonth(), c.getDate() + days) });
+    if (!isTruthy(later)) return false;
+    const what = typeof later === 'string' ? later : context.entryText || '';
+    const span = days % 7 === 0 ? `${days / 7} week${days === 7 ? '' : 's'}` : `${days} day${days === 1 ? '' : 's'}`;
+    return `Reminder: Only ${span} until ${what}`;
+  }
+  if (Array.isArray(days) && days.length) return remind(sexp, days[0], context) || remind(sexp, days.slice(1), context);
+  return false;
 }
 
 /** What the rest of the app sees: false (no match), true, or a string (the entry's own text). Any
@@ -729,7 +801,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

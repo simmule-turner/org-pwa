@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v559 — Reminders and day counts in diary sexps
+Diary expressions gain =diary-remind= (an entry plus "Reminder: Only 3 days until …" warnings ahead of it), =calendar-absolute-from-gregorian= and its inverse for "every other week" and "N days until" rules, =min=, =max=, =abs=, and =format= with =%d= and widths. Verified: twenty-five expressions match Emacs 29.3 on every day of 2026–2029.
+
 * v558 — Real Lisp in diary sexps
 Diary expressions can now use =let=, =if=, =cond=, the =date= variable, arithmetic, comparisons, list functions and the common =calendar-*= helpers, so rules like "last working day of the month", "Election Day, even years only" or "every Saturday in summer, the first Saturday otherwise" work as in Emacs. Mistakes are simply no match. Verified: fifteen expressions match Emacs 29.3 on every day of 2026–2029.
 

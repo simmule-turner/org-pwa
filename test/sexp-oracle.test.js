@@ -7,15 +7,17 @@ import { parseSexpr, evaluateSexpr } from '../src/sexp-eval.js';
 const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/sexp/general.expected.json', import.meta.url), 'utf8'));
 const iso = (/** @type {Date} */ d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// Emacs returns the entry text (ENTRY here) where the app returns true; any other string must be identical.
 for (const [src, days] of Object.entries(fixture.expected)) {
   test(`matches Emacs: ${src.slice(0, 90)}`, () => {
     const expr = parseSexpr(src);
-    const got = [];
+    /** @type {Record<string, string>} */ const got = {};
     for (let d = new Date(2026, 0, 1); d <= new Date(2029, 11, 31); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-      const result = evaluateSexpr(expr, { candidateDate: d, today: new Date(2026, 9, 11) });
-      if (result) got.push(iso(d));
+      const result = evaluateSexpr(expr, { candidateDate: d, today: new Date(2026, 9, 11), entryText: 'ENTRY' });
+      if (result) got[iso(d)] = typeof result === 'string' && result !== 'ENTRY' ? result : 't';
     }
-    assert.deepEqual(got, days);
+    const want = Object.fromEntries(Object.entries(days).map(([d, v]) => [d, v === 'ENTRY' ? 't' : v]));
+    assert.deepEqual(got, want);
   });
 }
 

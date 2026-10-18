@@ -1040,6 +1040,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
           for (const day of enumerateDays(rangeStart, rangeEnd)) {
             const result = evaluateSexpTimestamp(sexpTs.expr, {
               candidateDate: day,
+              entryText: cleanTitle,
               today,
               calendarLatitude,
               calendarLongitude,
@@ -1119,6 +1120,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
             for (const day of enumerateDays(rangeStart, rangeEnd)) {
               const result = evaluateSexpTimestamp(general.expr, {
                 candidateDate: day,
+                entryText: general.text || heading.title || '',
                 today,
                 calendarLatitude,
                 calendarLongitude,

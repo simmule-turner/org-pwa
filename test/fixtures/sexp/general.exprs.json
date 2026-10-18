@@ -13,5 +13,15 @@
 "(/= (calendar-day-of-week date) 3)",
 "(and (calendar-leap-year-p (nth 2 date)) (= (car date) 3) (= (cadr date) 1))",
 "(let* ((x 3) (y (* x x))) (= (cadr date) y))",
-"(and (= (calendar-extract-month date) 7) (< (calendar-extract-day date) 5))"
+"(and (= (calendar-extract-month date) 7) (< (calendar-extract-day date) 5))",
+"(diary-remind '(diary-float 11 4 4) 7)",
+"(diary-remind '(and (= (car date) 12) (= (cadr date) 25) entry) '(1 3 7))",
+"(diary-remind '(and (= (car date) 7) (= (cadr date) 4) entry) -3)",
+"(diary-remind '(and (= (car date) 3) (= (cadr date) 14) entry) 14)",
+"(diary-remind '(and (= (car date) 5) (= (cadr date) 1) entry) 1)",
+"(and (= 4 (calendar-day-of-week date)) (zerop (mod (/ (calendar-absolute-from-gregorian date) 7) 2)))",
+"(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format \"%d days until Christmas\" n)))",
+"(let ((n (- (calendar-absolute-from-gregorian '(12 25 2027)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 3) (format \"%03d|%-4d|%5s|%s\" n n n (list n))))",
+"(let ((g (calendar-gregorian-from-absolute (+ 100000 (calendar-absolute-from-gregorian date))))) (and (= (cadr g) 1) (format \"%s\" g)))",
+"(and (= (max (cadr date) 10) (min (cadr date) 10)) (= (abs (- (cadr date) 20)) 10) (format \"%s\" (cadr date)))"
 ]
