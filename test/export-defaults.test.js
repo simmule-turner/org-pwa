@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import { EXPORT_DEFAULT_ITEMS, countExportItemsOn, decodeExportText, encodeExportText, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, migrateRetiredVariables, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
+import { exportToAscii } from '../src/export-ascii.js';
+import { exportToMarkdown } from '../src/export-markdown.js';
+import { exportToOdt } from '../src/export-odt.js';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { parseOrg } from '../src/org-parser.js';
 
 const doc = (text) => parseOrg(text);
@@ -89,4 +96,23 @@ test('"Fix wide TOC numbers" is stored in org-xx-latex-header and written before
   const tex = exportToLatex(doc('#+LATEX_HEADER: \\usepackage{mine}\n* One\n'), null, { defaults: latexExportDefaults(vars) });
   const at = (text) => tex.indexOf(text);
   assert.ok(at('\\usepackage{tocloft}') > at('\\usepackage{hyperref}') && at('\\cftsubsubsecnumwidth') < at('\\usepackage{mine}'), tex.slice(0, 600));
+});
+
+test('org-use-sub-superscripts also reaches ASCII, Markdown and ODT export, and the file\'s #+OPTIONS: ^: wins', () => {
+  const org = '* Effort_ALL: values\nSee x_{1} and a_b.\n';
+  // ASCII prints a subscript as _x or _{xy} either way, so its text is the same whatever the setting
+  assert.match(exportToAscii(doc(org), null, 72, { sup: '{}' }), /Effort_ALL/);
+  const md = (text, sup) => exportToMarkdown(doc(text), null, { sup });
+  assert.match(md(org, '{}'), /Effort\\_ALL/);
+  assert.match(md(org, 't'), /Effort<sub>ALL<\/sub>/);
+  assert.match(md('#+OPTIONS: ^:nil\n' + org, 't'), /Effort\\_ALL/);
+  const odt = (text, sup) => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'export-defaults-odt-'));
+    writeFileSync(path.join(dir, 't.odt'), exportToOdt(doc(text), null, { sup }));
+    execFileSync('unzip', ['-o', '-q', path.join(dir, 't.odt'), '-d', dir]);
+    return readFileSync(path.join(dir, 'content.xml'), 'utf8');
+  };
+  assert.match(odt(org, '{}'), /Effort_ALL: values/);
+  assert.match(odt(org, 't'), /Effort<text:span text:style-name="Subscript">ALL<\/text:span>/);
+  assert.match(odt('#+OPTIONS: ^:t\n' + org, '{}'), /Effort<text:span text:style-name="Subscript">ALL/);
 });

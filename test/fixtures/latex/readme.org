@@ -312,7 +312,7 @@ A marker opens where it follows the start of a line, whitespace or one of ~-({'"
 
 *Hard line break*: a line ending in two backslashes (~\\~) is org's explicit line break. Source lines in an ordinary paragraph or list item otherwise reflow together with a space (org's ~org-export-preserve-breaks~ is ~nil~ by default). The marker forces a break exactly where it is written, in paragraphs, [[#editing-your-outline][QUOTE or CENTER blocks]] and all four document export formats (HTML, Markdown, ASCII, ODT).
 
-*Subscript and superscript*: ~_~ and ~^~ mark them. ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted, mainly for readability. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them, in HTML and LaTeX export as well as in the outline (a file's ~#+OPTIONS: ^:~ wins; ASCII, Markdown and ODT export always use ~t~):
+*Subscript and superscript*: ~_~ and ~^~ mark them. ~x_i~ and ~x^2~ work without braces, and braces (~x_{alpha}~, ~10^{100}~) are always accepted, mainly for readability. ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]) controls them, in HTML, LaTeX, Markdown and ODT export as well as in the outline (a file's ~#+OPTIONS: ^:~ wins; ASCII prints a subscript as ~_x~ whatever the setting):
 
 | Value | Behavior |
 |---+---|
@@ -1449,7 +1449,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 |----------+--------|
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~, ~Save Some Buffers~ |
 | ~more~ | ~Commands~, ~Export~, ~Import~, ~Settings~ |
-| ~export~ | ~ASCII~, ~As-org~, ~Calendar (.ics)~, ~Contacts (.vcf)~, ~HTML~, ~Markdown~, ~ODT~, ~LaTeX~ |
+| ~export~ | ~ASCII~, ~HTML~, ~LaTeX~, ~Markdown~ |
 | ~import~ | ~Contacts (.vcf)~, ~iCalendar (.ics)~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
@@ -1512,7 +1512,7 @@ The full set of open tabs persists across closing and reopening the app, each re
 :CUSTOM_ID: export
 :END:
 
-*More → Export* gets a document out as ASCII, Markdown, HTML, ODT, LaTeX, As-org, a calendar file (.ics) or contacts (.vcf). File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
+*More → Export* lists ASCII, HTML, LaTeX and Markdown. The other formats are palette commands (*Commands*): ODT (~org-odt-export-to-odt~), As-org (~org-org-export-as-org~), Calendar (.ics) (~org-icalendar-export-to-ics~) and Contacts (.vcf) (~org-vcard-export~); the last two open their own scope choice, and C-c C-e opens the menu. File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
 
 *Scope*: *Choose a heading…* exports just that heading and its descendants, and every heading is listed, even folded ones. The chosen heading becomes the top level of the output. *This file* exports everything. Calendar and Contacts also offer *This file + Agenda Files* or *This file + Contacts Files* once those are configured, fetched fresh at export time. In Tree style, Contacts lists only contacts (headings with ~:KIND:~).
 
@@ -1863,7 +1863,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task, go to a recently clocked task |
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar, sync contacts to the address book, rebuild contacts |
-| *Export* | the Export menu; this file as HTML, Markdown, ASCII, ODT or an Org buffer |
+| *Export* | the Export menu; this file as HTML, LaTeX, Markdown or ASCII |
 | *Import* | Contacts (.vcf), ~org-vcard-import~; iCalendar (.ics), ~icalendar-import-file~ |
 | *App* | settings, help, show display measurements, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 

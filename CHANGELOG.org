@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v556 — Smaller Export menu, subscript setting everywhere
+More → Export lists ASCII, HTML, LaTeX and Markdown. ODT, As-org, Calendar (.ics) and Contacts (.vcf) are command-palette commands: =org-odt-export-to-odt=, =org-org-export-as-org=, =org-icalendar-export-to-ics= and =org-vcard-export=, the last two opening their scope choice. Markdown and ODT export now follow =org-use-sub-superscripts= and a file's =#+OPTIONS: ^:= too, so =Effort_ALL= stays as written with ={}=.
+Verified: smoke checks for the menu, the palette commands and the Calendar export.
+
 * v555 — Page-number TOC for HTML, and subscripts in export
 Settings → Export → HTML has *Add TOC with page numbers*, which fills =org-html-head= with the Paged.js script and its CSS so a printed page has a table of contents with page numbers. Settings → Export → LaTeX has *Fix wide TOC numbers*, which keeps section numbers like 1.11.1 from running into their titles in a PDF's contents. HTML and LaTeX export now follow =org-use-sub-superscripts=, so with ={}= a heading such as =Effort_ALL= is no longer subscripted (a file's =#+OPTIONS: ^:= still wins). ASCII, Markdown and ODT export do not use it yet.
 Verified: a smoke check for the option and for the export.

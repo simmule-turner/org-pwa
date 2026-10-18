@@ -472,6 +472,16 @@ export function paletteCommandList() {
   const runningClock = () => findHeadingWithRunningClock(S.state.doc);
   /** @param {string} format */
   const exportAs = (format) => () => performExport(format, null);
+  // More > Export opened on one format's scope panel (Calendar and Contacts are no longer in the Export menu), the way the C-c C-e chord
+  // opens the format list
+  /** @param {string} format */
+  const openExport = (format) => {
+    moreBtn.click();
+    S.moreMenuStep = 'export';
+    S.exportFormat = format;
+    S.exportPickingHeading = false;
+    renderMoreMenu();
+  };
   // More > Import opened on one format's panel, the way the C-c C-e chord opens More > Export (moreBtn toggles the menu, and the
   // palette has closed it by the time a command runs)
   /** @param {string} format */
@@ -582,6 +592,8 @@ export function paletteCommandList() {
     { id: 'export-markdown', label: 'Export this file as Markdown', orgName: 'org-md-export-to-markdown', group: 'Export', needs: ['doc'], run: exportAs('markdown') },
     { id: 'export-ascii', label: 'Export this file as ASCII', orgName: 'org-ascii-export-to-ascii', group: 'Export', needs: ['doc'], run: exportAs('ascii') },
     { id: 'export-odt', label: 'Export this file as ODT', orgName: 'org-odt-export-to-odt', group: 'Export', needs: ['doc'], run: exportAs('odt') },
+    { id: 'export-icalendar', label: 'Export Calendar (.ics)', orgName: 'org-icalendar-export-to-ics', group: 'Export', keywords: ['ics', 'ical', 'calendar', 'events', 'agenda'], needs: ['doc'], run: () => openExport('icalendar') },
+    { id: 'export-vcard', label: 'Export Contacts (.vcf)', orgName: 'org-vcard-export', group: 'Export', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openExport('vcard') },
     { id: 'export-latex', label: 'Export this file as LaTeX', orgName: 'org-latex-export-to-latex', group: 'Export', keywords: ['tex', 'pdf'], needs: ['doc'], run: exportAs('latex') },
     // Two commands that used to exist only as Extras-menu functions; now ordinary palette commands, so every
     // quoted function an Extras entry can name is a palette command (see runExtraMenuEntry)

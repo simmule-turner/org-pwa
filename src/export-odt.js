@@ -53,6 +53,8 @@ function escapeXml(text) {
 let headingIdMapOdt = new Map();
 let footnoteCounterOdt = 0;
 /** @type {any[]} */ let sectionNumbersOdt = [];
+/** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
+let supOdt = 't';
 let numberingEnabledOdt = true;
 
 /** @param {number} level */
@@ -212,7 +214,7 @@ function citeSegmentsOdt(segments) {
 /** @param {string} text
  * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
 function renderTextOdt(text, radio = true) {
-  return renderInlineListOdt(parseInline(text, radio && linkCtxOdt && linkCtxOdt.radioRe ? { radioTargets: linkCtxOdt.radioRe } : {}));
+  return renderInlineListOdt(parseInline(text, radio && linkCtxOdt && linkCtxOdt.radioRe ? { radioTargets: linkCtxOdt.radioRe, subSuperscriptMode: supOdt } : { subSuperscriptMode: supOdt }));
 }
 
 // ---- body content -----------------------------------------------------
@@ -556,13 +558,14 @@ function buildTocOdt(roots, toc, numberingEnabled) {
 }
 
 /** @param {Doc} doc */
-export function exportToOdt(doc, scope = /** @type {any} */ (null)) {
+export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't' } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;
   sectionNumbersOdt = [];
-  const options = parseExportOptions(doc);
+  const options = parseExportOptions(doc, sup);
+  supOdt = options.sup;
   numberingEnabledOdt = options.num;
 
   const roots = scope ? [scope] : doc.children || [];

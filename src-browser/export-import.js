@@ -83,9 +83,9 @@ export async function performExport(format, scope) {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     if (format === 'ascii') {
-      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables) }), 'text/plain');
+      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables) }), 'text/plain');
     } else if (format === 'markdown') {
-      saveOut(baseName + '.md', exportToMarkdown(doc, scope), 'text/markdown');
+      saveOut(baseName + '.md', exportToMarkdown(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables) }), 'text/markdown');
     } else if (format === 'html') {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex') {
@@ -100,7 +100,7 @@ export async function performExport(format, scope) {
         saveOut(baseName + '.tex', exportToLatex(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
-      saveOut(baseName + '.odt', exportToOdt(doc, scope), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables) }), 'application/vnd.oasis.opendocument.text');
     }
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
@@ -232,14 +232,6 @@ export function renderExportFlow() {
       S.exportFormat = 'ascii';
       renderMoreMenu();
     });
-    const icsBtn = aliasedMenuDivItem(exportMenuAliases, 'Calendar (.ics)', () => {
-      S.exportFormat = 'icalendar';
-      renderMoreMenu();
-    });
-    const vcardBtn = aliasedMenuDivItem(exportMenuAliases, 'Contacts (.vcf)', () => {
-      S.exportFormat = 'vcard';
-      renderMoreMenu();
-    });
     const htmlBtn = aliasedMenuDivItem(exportMenuAliases, 'HTML', () => {
       S.exportFormat = 'html';
       renderMoreMenu();
@@ -248,31 +240,15 @@ export function renderExportFlow() {
       S.exportFormat = 'markdown';
       renderMoreMenu();
     });
-    const odtBtn = aliasedMenuDivItem(exportMenuAliases, 'ODT', () => {
-      S.exportFormat = 'odt';
-      renderMoreMenu();
-    });
     const latexBtn = aliasedMenuDivItem(exportMenuAliases, 'LaTeX', () => {
       S.exportFormat = 'latex';
       renderMoreMenu();
     });
-    const orgexportBtn = aliasedMenuDivItem(exportMenuAliases, 'As-org', async () => {
-      S.moreOpen = false;
-      S.moreMenuStep = null;
-      S.exportFormat = null;
-      renderMoreMenu();
-      await performOrgOrgExport();
-      renderMoreMenu();
-    });
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
-      { label: 'As-org', btn: orgexportBtn },
-      { label: 'Calendar (.ics)', btn: icsBtn },
-      { label: 'Contacts (.vcf)', btn: vcardBtn },
       { label: 'HTML', btn: htmlBtn },
-      { label: 'Markdown', btn: mdBtn },
-      { label: 'ODT', btn: odtBtn },
       { label: 'LaTeX', btn: latexBtn },
+      { label: 'Markdown', btn: mdBtn },
     ]);
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';

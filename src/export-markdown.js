@@ -62,7 +62,10 @@ let anonymousFootnoteCounterMd = 0;
 // implicit (no explicit id attribute) heading-anchor convention: the
 // slug is never written into the heading line itself, only used when
 // resolving a link that points TO that heading.
-/** @type {any} */ let docForLinkResolutionMd = null;
+/** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
+let supMd = 't';
+/** @type {any} */
+let docForLinkResolutionMd = null;
 /** @type {import('./export-links.js').LinkContext | null} */ let linkCtxMd = null; // section numbers, targets and radio-target pattern for this export
 let headingSlugMapMd = new Map();
 /** @type {any} */ let citeMd = null; // the citation text maker for this export (cite.js)
@@ -253,7 +256,7 @@ function escapeHtmlMd(text) {
 
 /** @param {string} text */
 function renderTextMd(text) {
-  return renderInlineListMd(parseInline(text, linkCtxMd && linkCtxMd.radioRe ? { radioTargets: linkCtxMd.radioRe } : {}));
+  return renderInlineListMd(parseInline(text, linkCtxMd && linkCtxMd.radioRe ? { radioTargets: linkCtxMd.radioRe, subSuperscriptMode: supMd } : { subSuperscriptMode: supMd }));
 }
 
 // ---- body content -----------------------------------------------------
@@ -503,22 +506,23 @@ function buildTocMd(headings, toc, numberingEnabled) {
 }
 
 /** @param {Doc} doc */
-export function exportToMarkdown(doc, scope = /** @type {any} */ (null)) {
+export function exportToMarkdown(doc, scope = /** @type {any} */ (null), { sup = 't' } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
   docForLinkResolutionMd = doc;
   headingSlugMapMd = new Map();
+  supMd = parseExportOptions(doc, sup).sup;
 
   const roots = scope ? [scope] : doc.children || [];
   citeMd = citeExportFor(doc, roots, parseInline, !scope);
   assignHeadingSlugsMd(roots, new Set());
-  linkCtxMd = buildLinkContext(doc, roots, parseExportOptions(doc).num);
+  linkCtxMd = buildLinkContext(doc, roots, parseExportOptions(doc, sup).num);
   const levelOffset = scope ? scope.level - 1 : 0;
   const out = [];
 
   if (!scope) {
-    const options = parseExportOptions(doc);
+    const options = parseExportOptions(doc, sup);
     const toc = buildTocMd(roots, options.toc, options.num);
     if (toc) out.push(toc);
     for (const node of doc.body || []) {

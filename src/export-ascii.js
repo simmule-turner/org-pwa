@@ -229,7 +229,7 @@ function citeSegmentsAscii(segments) {
 /** @param {string} text
  * @param {boolean} [radio]  whether a radio target's plain mentions become links (not inside a link's own text) */
 function renderTextAscii(text, radio = true) {
-  return renderInlineListAscii(parseInline(text, radio && linkCtxAscii && linkCtxAscii.radioRe ? { radioTargets: linkCtxAscii.radioRe } : {}));
+  return renderInlineListAscii(parseInline(text, radio && linkCtxAscii && linkCtxAscii.radioRe ? { radioTargets: linkCtxAscii.radioRe, subSuperscriptMode: supAscii } : { subSuperscriptMode: supAscii }));
 }
 
 // ---- headings and body content -----------------------------------------
@@ -240,6 +240,8 @@ function renderTextAscii(text, radio = true) {
  *  Real org's own default numbering behavior -- headings are numbered
  *  "1", "1.1", "2", ... unless explicitly turned off. */
 /** @type {any[]} */ let sectionNumbersAscii = [];
+/** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
+let supAscii = 't';
 let numberingEnabledAscii = true;
 
 /** @param {number} level */
@@ -738,13 +740,14 @@ function renderToc(headings, toc, numberingEnabled) {
  * at all -- real org's own #+OPTIONS: num:nil turns this off.
  * @param {Doc} doc
  */
-export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii' } = {}) {
+export function exportToAscii(doc, scope = /** @type {any} */ (null), textWidth = 72, { charset = 'ascii', sup = 't' } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   charsetAscii = CHARSETS[normalizeAsciiCharset(charset)];
   footnoteDefinitionsAscii = [];
   anonymousFootnoteCounterAscii = 0;
   sectionNumbersAscii = [];
-  const options = parseExportOptions(doc);
+  const options = parseExportOptions(doc, sup);
+  supAscii = options.sup;
   numberingEnabledAscii = options.num;
 
   const roots = scope ? [scope] : doc.children || [];

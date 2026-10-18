@@ -963,6 +963,11 @@ async function openPalette(page) {
   await pick(page, '#morePanel', 'Commands');
   await page.waitForSelector('#command-palette');
 }
+async function runCommand(page, query) {
+  await openPalette(page);
+  await page.keyboard.type(query);
+  await page.keyboard.press('Enter');
+}
 const paletteRows = (page) => page.locator('#command-palette [role=option]').allInnerTexts();
 
 check('command palette: finds a command by name or real Org name, runs it on the open heading, and explains the ones it cannot run', async () => {
@@ -3693,9 +3698,7 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
   await openDav(page, 'notes.org');
   const panelText = async () => (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
   const openScopes = async () => {
-    await page.click('#moreBtn');
-    await pick(page, '#morePanel', 'Export');
-    await pick(page, '#morePanel', 'Calendar (.ics)');
+    await runCommand(page, 'org-icalendar-export-to-ics');
   };
   const savedIcs = async () => (await page.evaluate(() => window.__saved.slice())).find((x) => x.name.endsWith('.ics'));
   await openScopes();
@@ -4379,7 +4382,7 @@ check('settings: Export has General, ASCII and HTML in that order, every box sta
   await context.close();
 });
 
-check('LaTeX export: the Export menu ends with LaTeX, Settings → Export → LaTeX sets the class and compiler, and the saved .tex follows them unless the file says otherwise', async () => {
+check('LaTeX export: the Export menu lists ASCII, HTML, LaTeX and Markdown, Settings → Export → LaTeX sets the class and compiler, and the saved .tex follows them unless the file says otherwise', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
     const { installPlatform } = await import('/src-browser/platform.js');
@@ -4404,7 +4407,7 @@ check('LaTeX export: the Export menu ends with LaTeX, Settings → Export → La
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Export');
     const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
-    expect(items[items.length - 1] === 'LaTeX' && items[items.length - 2] === 'ODT', `LaTeX is appended last: ${items.join(',')}`);
+    expect(items.join(',') === 'ASCII,HTML,LaTeX,Markdown', `the Export menu lists four formats: ${items.join(',')}`);
     await pick(page, '#morePanel', 'LaTeX');
     await pick(page, '#morePanel', 'This file');
     for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
@@ -4494,6 +4497,49 @@ check('LaTeX export: "Fix wide TOC numbers" adds the tocloft lines to the saved 
   await page.locator('[data-settings-back]').first().click().catch(() => {});
   await page.locator('[data-settings-back]').first().click().catch(() => {});
   expect(!(await exportTex()).includes('tocloft'), 'unticking removes it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Export menu: ASCII, HTML, LaTeX and Markdown only; Calendar (.ics), Contacts (.vcf) and ODT are palette commands, and the subscript setting reaches ASCII and Markdown', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Effort_ALL: values\nbody a_b\n');
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    window.__saved = [];
+    installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: typeof content === 'string' ? content : new TextDecoder('latin1').decode(content) }); return { where: 'test' }; } });
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Export');
+  const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
+  expect(items.join(',') === 'ASCII,HTML,LaTeX,Markdown', `menu: ${items.join(',')}`);
+  await page.click('#moreBtn');
+  await openPalette(page);
+  await page.keyboard.type('Export');
+  const rows = (await paletteRows(page)).join(' | ');
+  for (const label of ['Calendar (.ics)', 'Contacts (.vcf)', 'ODT', 'LaTeX']) expect(rows.includes(label), `the palette has ${label}: ${rows}`);
+  await page.keyboard.press('Escape');
+  await runCommand(page, 'org-vcard-export');
+  const vcf = await page.locator('#morePanel').innerText();
+  expect(vcf.includes('Export Contacts (.vcf) for:') || vcf.includes('Contacts (.vcf)'), `the vcard command opens its scope panel: ${vcf.slice(0, 120)}`);
+  await page.click('#moreBtn');
+  await runCommand(page, 'org-icalendar-export-to-ics');
+  expect((await page.locator('#morePanel').innerText()).includes('This file'), 'the calendar command opens its scope panel');
+  await page.click('#moreBtn');
+  await page.evaluate(async () => (await import('/src-browser/settings-quick.js')).commitGlobalVariableChange('org-use-sub-superscripts', '{}'));
+  const exportVia = async (format) => {
+    await page.evaluate(() => { window.__saved = []; });
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Export');
+    await pick(page, '#morePanel', format);
+    await pick(page, '#morePanel', 'This file');
+    for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
+    return (await page.evaluate(() => window.__saved.slice()))[0].content;
+  };
+  const ascii = await exportVia('ASCII');
+  expect(ascii.includes('Effort_ALL') && ascii.includes('a_b'), `ASCII keeps the underscores: ${ascii.slice(0, 160)}`);
+  const md = await exportVia('Markdown');
+  expect(md.includes('Effort\\_ALL') && !md.includes('<sub>'), `Markdown keeps them: ${md.slice(0, 160)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5107,9 +5153,7 @@ check('extensions: a script-defined function in a <%%(…)> line is in Export > 
     window.__saved = [];
     installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
   });
-  await page.click('#moreBtn');
-  await pick(page, '#morePanel', 'Export');
-  await pick(page, '#morePanel', 'Calendar (.ics)');
+  await runCommand(page, 'org-icalendar-export-to-ics');
   await pick(page, '#morePanel', 'Agenda (as displayed)');
   for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
   const ics = (await page.evaluate(() => window.__saved.slice())).find((x) => x.name.endsWith('.ics'));
