@@ -23,6 +23,7 @@ import { closeAllOverlayPanels } from './chrome.js';
 import { effectiveCalendarConfig, syncAgendaToCalendar } from './calendar-sync.js';
 import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-sync.js';
 import { chooseAttachmentsFolder } from './attachments-store.js';
+import { addLocalFile } from './local-file-add.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
 import { executeFocusedBlock } from './babel-flow.js';
 import { tangleCurrentDocument } from './tangle-flow.js';
@@ -410,6 +411,7 @@ export const PALETTE_NEEDS = {
   calendar: () => (effectiveCalendarConfig() ? null : 'no calendar address is set (Settings \u2192 Calendar)'),
   contacts: () => (effectiveContactsConfig() ? null : 'no contacts address is set (Settings \u2192 Contacts)'),
   captureShortcuts: () => (platform.captureShortcuts.supported() ? null : 'only in the Android app'),
+  localFilePicker: () => (platform.localFiles.supported() ? null : 'this browser cannot keep access to a file (not on iOS)'),
   orgPwaFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
   archived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
   notArchived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
@@ -610,6 +612,7 @@ export function paletteCommandList() {
     { id: 'help', label: 'Help', orgName: 'describe-mode', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },
+    { id: 'add-local-file', label: 'Add a local file', group: 'App', keywords: ['agenda', 'files', 'local:', 'pick', 'remember', 'file'], needs: ['localFilePicker'], run: () => addLocalFile() },
     { id: 'org-pwa-folder', label: 'Choose the org-pwa folder', group: 'App', keywords: ['folder', 'local', 'attachments', 'attach', 'documents', 'data'], needs: ['orgPwaFolder'], run: () => chooseAttachmentsFolder() },
   ].concat((extensionPaletteEntries()));
 }

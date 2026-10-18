@@ -734,3 +734,12 @@ export function getUseSubSuperscripts(vars) {
   if (trimmed === 'nil' || trimmed === '{}') return trimmed;
   return 't';
 }
+
+/** calendar-date-style: the order dates are written in diary-anniversary, diary-cyclic,
+ * diary-block and diary-date. `american` (month day year, the default), `european` or `iso`.
+ * @param {LocalVars} vars
+ * @returns {'american' | 'european' | 'iso'} */
+export function getCalendarDateStyle(vars) {
+  const v = String((vars || {})['calendar-date-style'] ?? '').trim().replace(/^'/, '').toLowerCase();
+  return v === 'european' || v === 'iso' ? v : 'american';
+}

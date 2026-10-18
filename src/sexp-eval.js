@@ -39,6 +39,7 @@
 
 import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
+import { holidaysOn } from './holidays.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
   expandOrgAnniversaryOccurrences,
@@ -233,6 +234,42 @@ function isoWeekNumber(date) {
   return Math.ceil(((d.getTime() - yearStart) / 86400000 + 1) / 7);
 }
 
+/** @typedef {{ type: string, value?: unknown }} SexpArg  a parsed leaf of an expression */
+
+/** Order of [month, day, year] within a diary date for each calendar-date-style. */
+const DATE_STYLE_ORDER = { american: [0, 1, 2], european: [1, 0, 2], iso: [2, 0, 1] };
+
+/**
+ * Turns the arguments of a diary-anniversary, diary-cyclic, diary-block or diary-date
+ * (dates written in `style` order) into the year-month-day order of the org-* twins.
+ * @param {string} name
+ * @param {SexpArg[]} args
+ * @param {string} [style]  american (default), european or iso
+ * @returns {SexpArg[]}
+ */
+function reorderDiaryDates(name, args, style) {
+  const order = /** @type {Record<string, number[]>} */ (DATE_STYLE_ORDER)[style || 'american'] || DATE_STYLE_ORDER.american;
+  /** @param {SexpArg[]} d */
+  const ymd = (d) => [d[order.indexOf(2)], d[order.indexOf(0)], d[order.indexOf(1)]];
+  if (name === 'diary-cyclic') return args.length < 4 ? args : [args[0], ...ymd(args.slice(1, 4))];
+  if (name === 'diary-block') return args.length < 6 ? args : [...ymd(args.slice(0, 3)), ...ymd(args.slice(3, 6))];
+  return args.length < 3 ? args : ymd(args.slice(0, 3));
+}
+
+/**
+ * Rewrites a `%%(diary-anniversary …)`, `diary-cyclic` or `diary-block` body line into its
+ * org-* twin (year month day), reading the dates in `style` order. Other lines come back unchanged.
+ * @param {string} line
+ * @param {string} [style]
+ */
+function canonicalDiaryLine(line, style) {
+  const m = /^%%\((diary-anniversary|diary-cyclic|diary-block)((?:\s+-?\d+)+)\)/.exec(line);
+  if (!m) return line;
+  const nums = m[2].trim().split(/\s+/).map((n) => ({ type: 'number', value: Number(n) }));
+  const out = reorderDiaryDates(m[1], nums, style).map((n) => n.value);
+  return '%%(' + m[1].replace('diary-', 'org-') + ' ' + out.join(' ') + ')' + line.slice(m[0].length);
+}
+
 /** Evaluates one already-parsed expression node against `context`
  *  (`{ candidateDate, today, calendarLatitude, calendarLongitude,
  *  solarAmpm, solarHideLabel }`).
@@ -300,12 +337,9 @@ function isoWeekNumber(date) {
     // order of the two dates works, as the %%(org-block ...) body-line form
     // has always allowed.
     //
-    // There is deliberately NO diary-block / diary-anniversary / diary-cyclic
-    // / diary-date here: each has an org-* twin taking ISO (year month day)
-    // arguments, whereas the diary-* ones read their arguments in an order
-    // that depends on calendar-date-style (month-day-year by default), so
-    // the same line would mean different dates depending on a setting this
-    // app doesn't have. An unrecognized name matches nothing.
+    // diary-block, diary-anniversary, diary-cyclic and diary-date are the
+    // org-* forms with the date written in calendar-date-style order
+    // (american month day year by default); they are handled below.
     case 'org-block': {
       if (args.length < 6) return false;
       const n = args.slice(0, 6).map(intArg);
@@ -327,10 +361,7 @@ function isoWeekNumber(date) {
 
     // (org-class Y1 M1 D1 Y2 M2 D2 DAYNAME SKIP-WEEK...): DAYNAME (0 =
     // Sunday) on every week between the two dates, except the ISO weeks
-    // listed. Skipping holidays -- the symbol `holidays` or a holiday's
-    // name -- needs Emacs's holiday database, which this app doesn't have,
-    // so such an expression matches nothing rather than quietly showing
-    // the class on a holiday.
+    // listed. The symbol `holidays` also skips the days src/holidays.js lists.
     case 'org-class': {
       if (args.length < 7) return false;
       const n = args.slice(0, 7).map(intArg);
@@ -338,13 +369,28 @@ function isoWeekNumber(date) {
       const end = realDate(n[3], n[4], n[5]);
       const dayname = n[6];
       if (!start || !end || dayname === null || dayname < 0 || dayname > 6) return false;
-      const skip = args.slice(7);
+      const isHolidays = (/** @type {SexpArg | undefined} */ a) => !!a && a.type === 'symbol' && a.value === 'holidays';
+      const skip = args.slice(7).filter((a) => !isHolidays(a));
+      const skipHolidays = args.length - 7 > skip.length;
       if (skip.some((a) => intArg(a) === null)) return false;
       const day = startOfDay(context.candidateDate);
       if (day < start || day > end || day.getDay() !== dayname) return false;
+      if (skipHolidays && holidaysOn(day).length) return false;
       const week = isoWeekNumber(day);
       return !skip.some((a) => intArg(a) === week);
     }
+
+    case 'calendar-check-holidays': {
+      const d = dateParts(ev(args[0], context));
+      const names = holidaysOn(new Date(d[2], d[0] - 1, d[1]));
+      return names.length ? names : false;
+    }
+
+    case 'diary-anniversary':
+    case 'diary-cyclic':
+    case 'diary-block':
+    case 'diary-date':
+      return ev([{ type: 'symbol', value: head.value.replace('diary-', 'org-') }, ...reorderDiaryDates(head.value, args, context.calendarDateStyle)], context);
 
     case 'org-cyclic': {
       if (args.length < 4) return false;
@@ -801,7 +847,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`
@@ -851,4 +897,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { setUserSexps, parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };
+export { canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };

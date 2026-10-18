@@ -12,6 +12,7 @@ import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
+import { agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -216,6 +217,23 @@ export function buildAgendaEffortPanel() {
     panel.appendChild(resetRow);
   }
   return panel;
+}
+
+/**
+ * The row prefix from `org-agenda-prefix-format` (null when the variable is unset for this view).
+ * @param {import('../src/agenda.js').AgendaItem} item
+ * @param {'agenda' | 'todo'} view
+ * @returns {{ text: string, usesTime: boolean, usesScheduling: boolean, usesEffort: boolean } | null}
+ */
+function rowPrefix(item, view) {
+  const format = agendaPrefixFormat(S.state.localVariables['org-agenda-prefix-format'], view);
+  if (!format) return null;
+  const clock = (/** @type {Date} */ d) => d.toTimeString().slice(0, 5);
+  const time = item.hasTime ? (item.endDate ? clock(item.date) + '-' + clock(item.endDate) : clock(item.date) + '......') : '';
+  const scheduling = item.kind === 'scheduled' ? 'Scheduled:' : item.kind === 'deadline' ? 'Deadline:' : '';
+  const effort = item.heading ? itemEffortText(item) || '' : '';
+  const uses = (/** @type {string} */ letter) => new RegExp('%\\??[-+]?\\d*(\\.\\d+)?[ .;,:!?=|/<>]?' + letter).test(format);
+  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort }), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
 }
 
 export function renderAgendaView() {
@@ -478,8 +496,14 @@ export function renderAgendaView() {
     row.style.alignItems = 'baseline';
     row.style.cursor = 'pointer';
 
+    const prefix = rowPrefix(item, 'agenda');
     const categoryLabel = document.createElement('span');
-    categoryLabel.textContent = item.category + ':';
+    categoryLabel.textContent = prefix ? prefix.text : item.category + ':';
+    if (prefix) {
+      categoryLabel.setAttribute('data-row-prefix', '');
+      categoryLabel.style.whiteSpace = 'pre';
+      categoryLabel.style.fontFamily = 'var(--mono, monospace)';
+    }
     categoryLabel.style.flexShrink = '0';
     categoryLabel.style.opacity = '0.55';
     categoryLabel.style.fontSize = '12px';
@@ -545,7 +569,7 @@ export function renderAgendaView() {
       rep.style.fontSize = '12px';
       text.appendChild(rep);
     }
-    const rowEffort = item.kind === 'scheduled' || item.kind === 'deadline' || item.kind === 'timestamp' ? itemEffortText(item) : null;
+    const rowEffort = prefix && prefix.usesEffort ? null : item.kind === 'scheduled' || item.kind === 'deadline' || item.kind === 'timestamp' ? itemEffortText(item) : null;
     if (rowEffort) {
       const effortBadge = document.createElement('span');
       effortBadge.setAttribute('data-item-effort', '');
@@ -609,7 +633,7 @@ export function renderAgendaView() {
 
     const kindLabel = agendaItemKindLabel(item);
     const timeText = formatAgendaItemTimeText(item);
-    if (kindLabel || timeText) {
+    if ((kindLabel || timeText) && !(prefix && (prefix.usesTime || prefix.usesScheduling))) {
       const trailing = document.createElement('span');
       trailing.style.fontSize = '12px';
       trailing.style.opacity = '0.6';
@@ -1037,7 +1061,8 @@ export function renderTaskListView() {
     meta.setAttribute('data-task-meta', '');
     meta.style.fontSize = '12px';
     meta.style.opacity = '0.75';
-    meta.textContent = [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
+    const todoPrefix = rowPrefix(item, 'todo');
+    meta.textContent = todoPrefix ? todoPrefix.text.trim() : [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
     if (described && described.overdue) meta.style.color = '#c0392b';
     if (meta.textContent) text.appendChild(meta);
     row.appendChild(text);

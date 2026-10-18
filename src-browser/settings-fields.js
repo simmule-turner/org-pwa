@@ -184,6 +184,19 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
+    key: 'calendar-date-style',
+    label: 'Diary date order (diary-anniversary, diary-block…)',
+    section: 'Contacts & Calendar',
+    type: 'select',
+    default: 'american',
+    options: [
+      { value: 'american', label: 'American (month day year)' },
+      { value: 'european', label: 'European (day month year)' },
+      { value: 'iso', label: 'ISO (year month day)' },
+    ],
+    helpAnchor: '#agenda-diary-sexp',
+  },
+  {
     key: 'solar-ampm',
     label: 'Solar times: use am/pm (else 24-hour)',
     section: 'Contacts & Calendar',

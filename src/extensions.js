@@ -10,7 +10,7 @@
 /** Every function the app already evaluates itself. A script cannot register one of these:
  *  the standard forms must mean the same here as in Emacs. */
 export const BUILTIN_SEXP_NAMES = new Set([
-  'when', 'today-p', 'and', 'or', 'not', 'org-block', 'org-date', 'org-class', 'org-cyclic', 'org-anniversary',
+  'when', 'today-p', 'and', 'or', 'not', 'org-block', 'org-date', 'org-class', 'org-cyclic', 'org-anniversary', 'diary-anniversary', 'calendar-check-holidays', 'diary-cyclic', 'diary-block', 'diary-date',
   'diary-float', 'diary-sunrise', 'diary-sunset', 'diary-civil-dawn', 'diary-civil-dusk', 'diary-nautical-dawn',
   'diary-nautical-dusk', 'diary-astronomical-dawn', 'diary-astronomical-dusk', 'diary-day-length', 'org-weather',
   'format', 'diary-anniversary', 'diary-date', 'diary-cyclic', 'diary-block', 'diary-remind', 'diary-phases-of-moon',

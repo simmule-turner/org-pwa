@@ -162,8 +162,9 @@ test('ISO week numbers are right across a year boundary', () => {
   assert.equal(matches('(org-class 2025 12 1 2026 2 1 1 52)', on(2025, 12, 29)), true, 'week 52 skipped: this is week 1');
 });
 
-test('org-class asked to skip holidays matches NOTHING -- it cannot know them, and will not guess', () => {
-  assert.equal(matches('(org-class 2026 9 1 2026 12 18 1 holidays)', on(2026, 9, 28)), false);
+test("org-class skips holidays when asked ('holidays); a holiday's name as a string is still not understood", () => {
+  assert.equal(matches("(org-class 2026 9 1 2026 12 18 1 'holidays)", on(2026, 9, 28)), true);
+  assert.equal(matches("(org-class 2026 9 1 2026 12 18 1 'holidays)", on(2026, 9, 7)), false, 'Labor Day');
   assert.equal(matches('(org-class 2026 9 1 2026 12 18 1 "Labor Day")', on(2026, 9, 28)), false);
 });
 
@@ -247,24 +248,20 @@ test("the README's own combined example: the first Monday of each month, but onl
 });
 
 // ---- the diary-* twins are unsupported ON PURPOSE ---------------------------------
-// diary-anniversary / diary-cyclic / diary-block / diary-date each have an org-*
-// twin taking ISO (year month day) arguments. The diary-* ones read theirs in an
-// order set by calendar-date-style, so the same line would mean different dates
-// under different settings. These tests pin the decision: they match nothing, in
-// either reading, and are not quietly translated.
+// diary-anniversary / diary-cyclic / diary-block / diary-date read their dates in calendar-date-style order
+// (American month day year by default); the org-* twins always take year month day.
+// tests/datestyle-oracle.test.js holds them to Emacs; these pin the default and the body-line forms.
 
-test('diary-anniversary, diary-cyclic, diary-block and diary-date match nothing -- in any argument order', () => {
+test('diary-anniversary, diary-cyclic, diary-block and diary-date read American order by default', () => {
   const cases = [
-    ['(diary-anniversary 10 31 1948)', on(1990, 10, 31)], // American reading
-    ['(diary-anniversary 1948 10 31)', on(1990, 10, 31)], // ISO reading
-    ['(diary-cyclic 50 3 1 1990)', on(1990, 3, 1)],
-    ['(diary-cyclic 50 1990 3 1)', on(1990, 3, 1)],
-    ['(diary-block 6 24 1990 7 10 1990)', on(1990, 7, 1)],
-    ['(diary-block 1990 6 24 1990 7 10)', on(1990, 7, 1)],
-    ['(diary-date 10 22 2026)', on(2026, 10, 22)],
-    ['(diary-date 2026 10 22)', on(2026, 10, 22)],
+    ['(diary-anniversary 10 31 1948)', on(1990, 10, 31), true],
+    ['(diary-anniversary 1948 10 31)', on(1990, 10, 31), false],
+    ['(diary-cyclic 50 3 1 1990)', on(1990, 4, 20), true],
+    ['(diary-block 6 24 1990 7 10 1990)', on(1990, 7, 1), true],
+    ['(diary-date 10 22 2026)', on(2026, 10, 22), true],
+    ['(diary-date 2026 10 22)', on(2026, 10, 22), false],
   ];
-  for (const [sexp, date] of cases) assert.equal(matches(sexp, date), false, sexp);
+  for (const [sexp, date, want] of cases) assert.equal(matches(sexp, date), want, sexp);
 });
 
 test('the org-* twins of those four still work', () => {
@@ -274,13 +271,11 @@ test('the org-* twins of those four still work', () => {
   assert.equal(matches('(org-date 2026 10 22)', on(2026, 10, 22)), true);
 });
 
-test('as body lines the diary-* twins produce nothing, and are not rewritten into org-* ones', () => {
-  assert.deepEqual(titlesOn("* B\n%%(diary-anniversary 10 31 1948) Arthur's %d%s birthday\n", on(1990, 10, 31)), []);
-  assert.deepEqual(titlesOn('* B\n%%(diary-cyclic 50 3 1 1990) Renew\n', on(1990, 4, 20)), []);
-  assert.deepEqual(titlesOn('* B\n%%(diary-block 6 24 1990 7 10 1990) Vacation\n', on(1990, 7, 1)), []);
-  assert.deepEqual(titlesOn('* B\n%%(diary-date 10 22 2026) Rake\n', on(2026, 10, 22)), []);
-  // ...while the org-* spelling of the same entry works, with its text and %d%s
-  assert.deepEqual(titlesOn("* B\n%%(org-anniversary 1948 10 31) Arthur's %d%s birthday\n", on(1990, 10, 31)), ["Arthur's 42nd birthday"]);
+test('as body lines the diary-* forms work like their org-* twins, with the text and %d%s', () => {
+  assert.deepEqual(titlesOn("* B\n%%(diary-anniversary 10 31 1948) Arthur's %d%s birthday\n", on(1990, 10, 31)), ["Arthur's 42nd birthday"]);
+  assert.deepEqual(titlesOn('* B\n%%(diary-cyclic 50 3 1 1990) Renew\n', on(1990, 4, 20)), ['Renew']);
+  assert.deepEqual(titlesOn('* B\n%%(diary-block 6 24 1990 7 10 1990) Vacation\n', on(1990, 7, 1)), ['Vacation']);
+  assert.deepEqual(titlesOn('* B\n%%(diary-date 10 22 2026) Rake\n', on(2026, 10, 22)), ['Rake']);
 });
 
 test('diary-float has no org-* twin, so it stays -- including with the quoted month list Emacs writes', () => {

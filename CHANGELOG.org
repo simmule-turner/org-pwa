@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v561 — Diary dates, holidays and row prefixes
+=diary-anniversary=, =diary-cyclic=, =diary-block= and =diary-date= now work, reading their dates in the order of =calendar-date-style= (American by default). =org-class= can skip holidays with ='holidays=, and =calendar-check-holidays= names them. =org-agenda-prefix-format= sets the text before each row (category, time, Scheduled:, effort), and the command "Add a local file" lets you name a file as =local:NAME= without opening it first. Verified: dates, holidays and prefixes match Emacs 29.3.
+
 * v560 — Agenda and TODO filters follow Emacs
 The Agenda and TODO view now start from Emacs's own variables: =org-agenda-sorting-strategy= (effort keys), =org-agenda-max-effort= and the tag, category, regexp and effort filter presets; =org-agenda-remove-times-when-in-prefix= replaces =org-xx-agenda-hide-title-stamps=. Filter chips can hide ("none of") or require all tags, and there are new Search (regular expression) and Top heading chips, plus effort sort and filter in the TODO view. Verified: the filters match Emacs 29.3 on 17 presets.
 

@@ -1,0 +1,23 @@
+{
+ "emacs": "29.3",
+ "expected": [
+  "  Work:       10:00...... Sched.2x: ",
+  "  Work:       ",
+  "Work 10:00...... In 2 d.: 1:00",
+  "Work    | 0:30|",
+  "Work:",
+  "        Work",
+  "Category|1:00  |",
+  "Ca|2:00|2:00:|",
+  "Deadline: ",
+  "[Home      ][Scheduled:]",
+  "Cate|",
+  "|",
+  "Categor|",
+  "Cate      |",
+  "12:3|",
+  "Cat|",
+  "Sche|",
+  "10:00|"
+ ]
+}

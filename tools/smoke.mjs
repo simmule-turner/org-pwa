@@ -652,6 +652,22 @@ check('agenda: a timestamp in a title is left out of the row (with the day of a 
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
+check('agenda: org-agenda-prefix-format builds the row prefix, and diary-anniversary reads dates in calendar-date-style order', async () => {
+  const { context, page, errors } = await freshPage();
+  const x = new Date();
+  const stamp = `<${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')} ${x.toLocaleDateString('en-US', { weekday: 'short' })}>`;
+  const dmy = `${x.getDate()} ${x.getMonth() + 1} 1990`;
+  await newDocument(page, ['#+CATEGORY: Work', `* TODO Write ${stamp}`, ':PROPERTIES:', ':EFFORT: 1:30', ':END:', '* Birthday', `%%(diary-anniversary ${dmy}) Alice is %d`, '', '# Local Variables:', '# org-agenda-prefix-format: "[%-8c|%e] "', '# calendar-date-style: european', '# End:', ''].join('\n'));
+  await viewMenu(page, 'Agenda');
+  await page.waitForTimeout(400);
+  const prefix = await page.locator('[data-row-prefix]').first().innerText();
+  expect(prefix.startsWith('[Work    |'), `the prefix follows the format: ${JSON.stringify(prefix)}`);
+  const t = await page.locator('#outline').innerText();
+  expect(t.includes('Alice is ' + (x.getFullYear() - 1990)), `European order read day month year: ${t}`);
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
 check('TODO view: Emacs variables set the starting sort and chips; none-of, Search, Top heading and Effort filters work', async () => {
   const { context, page, errors } = await freshPage();
   const body = ['#+TODO: TODO | DONE', '* Work', '** TODO Write report :urgent:', ':PROPERTIES:', ':EFFORT: 2:00', ':END:', '** TODO Call dentist', ':PROPERTIES:', ':EFFORT: 0:30', ':END:', '* Home', '** TODO Pay rent :urgent:', ':PROPERTIES:', ':EFFORT: 1:00', ':END:', ''];

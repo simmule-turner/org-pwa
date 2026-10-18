@@ -1,0 +1,5 @@
+{
+ "american": ["(diary-anniversary 10 31 1948)", "(diary-anniversary 2 29 2000)", "(diary-cyclic 10 3 1 2026)", "(diary-block 12 20 2026 1 5 2027)", "(diary-date 12 25 t)", "(diary-date '(3 6 9 12) 15 2027)", "(diary-date t 1 t)"],
+ "european": ["(diary-anniversary 31 10 1948)", "(diary-anniversary 29 2 2000)", "(diary-cyclic 10 1 3 2026)", "(diary-block 20 12 2026 5 1 2027)", "(diary-date 25 12 t)", "(diary-date 15 '(3 6 9 12) 2027)", "(diary-date 1 t t)"],
+ "iso": ["(diary-anniversary 1948 10 31)", "(diary-anniversary 2000 2 29)", "(diary-cyclic 10 2026 3 1)", "(diary-block 2026 12 20 2027 1 5)", "(diary-date t 12 25)", "(diary-date 2027 '(3 6 9 12) 15)", "(diary-date t t 1)"]
+}

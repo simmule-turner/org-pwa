@@ -11,7 +11,7 @@
  *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, todoFilter?: ((todo: string) => boolean) | null,
  *   tagFilter?: ((tags: string[]) => boolean) | null, rangeStart?: Date | null, rangeEnd?: Date | null, isDone?: ((todo: string) => boolean) | null,
  *   today?: Date, birthdayProperty?: string, contactsDocs?: { documentId: string, doc: Doc }[] | null, deadlineWarningDays?: number,
- *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, solarAmpm?: boolean, solarHideLabel?: boolean,
+ *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarDateStyle?: string, solarAmpm?: boolean, solarHideLabel?: boolean,
  *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
  *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
  * }} AgendaOptions
@@ -40,7 +40,7 @@ import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { parseLogbookEntries } from './logbook.js';
 import { habitSpec, buildHabitGraph, dayNumber } from './habit.js';
-import { findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
+import { canonicalDiaryLine, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
@@ -796,6 +796,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     scheduledDelayDays = 0,
     calendarLatitude = 35.994,
     calendarLongitude = -78.8986,
+    calendarDateStyle = 'american',
     solarAmpm = false,
     solarHideLabel = false,
     weatherData = null,
@@ -1044,6 +1045,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
               today,
               calendarLatitude,
               calendarLongitude,
+              calendarDateStyle,
               solarAmpm,
               solarHideLabel,
               weatherData,
@@ -1089,7 +1091,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       // each pattern directly.
       if (rangeStart && rangeEnd) {
         for (const line of heading.bodyLines || []) {
-          const trimmed = unquoteDiaryFloatMonthList(line.trim());
+          const trimmed = canonicalDiaryLine(unquoteDiaryFloatMonthList(line.trim()), calendarDateStyle);
           if (!trimmed.startsWith('%%(')) continue; // fast skip -- every one of these five forms starts this way
 
           /**
@@ -1125,6 +1127,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
                 calendarLatitude,
                 calendarLongitude,
                 solarAmpm,
+                calendarDateStyle,
                 solarHideLabel,
                 weatherData,
                 orgWeatherFormat,

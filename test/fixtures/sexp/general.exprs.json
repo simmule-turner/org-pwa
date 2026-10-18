@@ -23,5 +23,9 @@
 "(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format \"%d days until Christmas\" n)))",
 "(let ((n (- (calendar-absolute-from-gregorian '(12 25 2027)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 3) (format \"%03d|%-4d|%5s|%s\" n n n (list n))))",
 "(let ((g (calendar-gregorian-from-absolute (+ 100000 (calendar-absolute-from-gregorian date))))) (and (= (cadr g) 1) (format \"%s\" g)))",
-"(and (= (max (cadr date) 10) (min (cadr date) 10)) (= (abs (- (cadr date) 20)) 10) (format \"%s\" (cadr date)))"
+"(and (= (max (cadr date) 10) (min (cadr date) 10)) (= (abs (- (cadr date) 20)) 10) (format \"%s\" (cadr date)))",
+"(org-class 2026 1 1 2029 12 31 1 'holidays)",
+"(org-class 2026 1 1 2029 12 31 5 'holidays 10)",
+"(calendar-check-holidays date)",
+"(and (calendar-check-holidays date) (= (calendar-day-of-week date) 1))"
 ]
