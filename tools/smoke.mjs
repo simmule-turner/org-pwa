@@ -352,13 +352,21 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
   expect((await modeline(page)).startsWith('%%'), 'Help should start read-only');
   await viewMenu(page, 'Text');
   expect(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly), 'textarea should start read-only');
-  // the editor fits the visible pane: its first line is in view and the key row ends above the bottom bar, and still does when the window shrinks (a keyboard)
+  // the textarea and the colored text drawn behind it use the same font, size and left edge, so the caret sits on the characters
+  const same = await page.evaluate(() => {
+    const t = getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('document-text-edit-input')));
+    const b = getComputedStyle(/** @type {HTMLElement} */ (document.querySelector('.te-back')));
+    return { size: [t.fontSize, b.fontSize], pad: [t.paddingLeft, b.paddingLeft], line: [t.lineHeight, b.lineHeight] };
+  });
+  expect(same.size[0] === same.size[1] && same.pad[0] === same.pad[1] && same.line[0] === same.line[1], `the Text view's textarea and its drawn text should match: ${JSON.stringify(same)}`);
+  // the editor fits the visible pane: its first line is in view and the key row ends above the bottom bar and the floating buttons, and still does when the window shrinks (a keyboard)
   const fits = () =>
     page.evaluate(() => {
       const keys = /** @type {HTMLElement} */ (document.querySelector('.te-keys')).getBoundingClientRect();
       const text = /** @type {HTMLElement} */ (document.getElementById('document-text-edit-input')).getBoundingClientRect();
       const bar = /** @type {HTMLElement} */ (document.getElementById('modelineBar')).getBoundingClientRect();
-      return { keysBottom: keys.bottom, barTop: bar.top, textTop: text.top };
+      const g = /** @type {HTMLElement} */ (document.getElementById('godModeBtn')).getBoundingClientRect();
+      return { keysBottom: keys.bottom, barTop: Math.min(bar.top, g.top), textTop: text.top };
     });
   for (const height of [900, 500]) {
     await page.setViewportSize({ width: 412, height });

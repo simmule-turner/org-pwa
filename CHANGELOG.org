@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v570 — Text view: caret and key row fixed
+In the Text view the cursor was drawn in the wrong place: never in front of the first character, and drifting further off along each line. The box you type in used a 16-pixel font while the colored text behind it used the Text size setting (13 by default); both now use that setting. The editor also ends above the round corner buttons, so they no longer cover the right end of the key row (< and >); the text scrolls inside it. On iPhone and iPad the size is never below 16, which stops the browser from zooming in.
+Verified: the Text view browser check compares the two fonts and the key row's position.
+
 * v569 — Text view fits the screen
 The Text view editor now fills exactly the visible area, with the row of keys (Tab, *, /, and the rest) fixed at the bottom: just above the bottom bar, or just above the on-screen keyboard when it is up. Before, the editor was taller than the screen, so the top lines were out of reach and the keys sat at the end of a long scroll.
 Verified: the Text view layout browser check, at two window heights.

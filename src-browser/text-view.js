@@ -12,7 +12,7 @@ import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
 import { promptText } from './dialogs.js';
 import { scrollContainer } from './chrome.js';
-import { searchBtn } from './dom.js';
+import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 
 const SVG = {
@@ -148,12 +148,15 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
   const vars = () => /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
 
   function layout() {
-    const size = getTextFontSize(vars());
+    // iOS zooms the page when a field under 16px is focused, so there the text is never smaller than that
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const size = ios ? Math.max(16, getTextFontSize(vars())) : getTextFontSize(vars());
     const lh = Math.round(size * 1.5);
     const wrapOn = getTextWrap(vars());
     const numbers = getTextLineNumbers(vars()) && !compact;
     const digits = Math.max(2, String(lineCount(textarea.value)).length);
     wrap.style.fontSize = `${size}px`;
+    wrap.style.setProperty('--te-fs', `${size}px`);
     wrap.style.lineHeight = `${lh}px`;
     wrap.style.setProperty('--te-gutter', numbers ? `calc(${digits}ch + 12px)` : '0px');
     wrap.classList.toggle('te-nums', numbers);
@@ -305,7 +308,14 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
     if (!root.isConnected) return;
     box.scrollTop = 0;
     const top = root.getBoundingClientRect().top - box.getBoundingClientRect().top;
-    root.style.height = `${Math.max(160, box.clientHeight - top)}px`;
+    // it also stops above the round buttons floating in the bottom corners (Back, Extras, [g]), so none covers a key
+    let clear = 0;
+    const bottom = box.getBoundingClientRect().bottom;
+    for (const btn of [navBackBtn, extraMenuBtn, godModeBtn]) {
+      if (getComputedStyle(btn).display === 'none') continue;
+      clear = Math.max(clear, bottom - btn.getBoundingClientRect().top + 6);
+    }
+    root.style.height = `${Math.max(160, box.clientHeight - top - clear)}px`;
   }
   const watch = () => {
     if (!root.isConnected) {
