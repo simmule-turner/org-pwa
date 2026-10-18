@@ -352,6 +352,13 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
   expect((await modeline(page)).startsWith('%%'), 'Help should start read-only');
   await viewMenu(page, 'Text');
   expect(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly), 'textarea should start read-only');
+  // Select all and Copy all live in the Line… sheet, not in a row above the text
+  expect((await page.getByRole('button', { name: 'Select All', exact: true }).count()) === 0, 'no Select All row above the Text view');
+  await page.getByRole('button', { name: 'Line commands' }).click();
+  await page.getByText('Copy all', { exact: true }).waitFor({ timeout: 5000 });
+  expect(await page.getByText('Select all', { exact: true }).isVisible(), "the Line… sheet should offer Select all");
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   // the textarea and the colored text drawn behind it use the same font, size and left edge, so the caret sits on the characters
   const same = await page.evaluate(() => {
     const t = getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('document-text-edit-input')));

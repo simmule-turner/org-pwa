@@ -13,13 +13,12 @@ import { S } from './app-state.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
-import { applyPendingCursorPosition, setStatus } from './editing.js';
+import { applyPendingCursorPosition } from './editing.js';
 import { forgetSparseNarrow, maybeRestoreNarrowState, maybeRestoreSparseNarrow, widen, widenSparseSearch } from './gestures-structure.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
 import { renderTabBar } from './tabs.js';
-import { VH_UNIT, isWideLayout, menuButton, tableActionButton } from './ui-widgets.js';
-import { platform } from './platform.js';
+import { VH_UNIT, isWideLayout, menuButton } from './ui-widgets.js';
 import { isPlainTextFile, documentName } from '../src/plain-file.js';
 import { syntaxKindFor } from '../src/text-syntax.js';
 import { isDiaryDocument } from './diary-file-load.js';
@@ -76,35 +75,6 @@ export function render() {
       return;
     }
     outlineEl.innerHTML = '';
-    const toolbar = document.createElement('div');
-    toolbar.className = 'panel-row';
-    toolbar.style.padding = '6px 10px';
-    toolbar.style.borderBottom = '0.5px solid var(--border)';
-    toolbar.style.flex = 'none';
-    toolbar.appendChild(
-      tableActionButton('Select All', () => {
-        textarea.focus();
-        textarea.select();
-      })
-    );
-    toolbar.appendChild(
-      tableActionButton('Copy All', async () => {
-        try {
-          await platform.clipboard.writeText(textarea.value);
-          setStatus('Copied to clipboard.');
-        } catch {
-          // navigator.clipboard can fail or be unavailable (a non-secure
-          // context, a browser without support, permission denied) --
-          // fall back to selecting the text so the device's own native
-          // Copy (from the OS selection toolbar that appears) still works,
-          // one step short of fully automatic but never a dead end.
-          textarea.focus();
-          textarea.select();
-          setStatus('Text selected \u2014 use your device\u2019s own Copy.');
-        }
-      })
-    );
-
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
     const fullText = S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
@@ -115,7 +85,6 @@ export function render() {
     const diary = plainText && isDiaryDocument(S.state.documentId, S.state.storageKind);
     const editor = buildTextEditor({
       textarea,
-      selectRow: toolbar,
       kind: plainText ? syntaxKindFor(documentName(S.state.documentId), diary) : 'org',
       extraRow: diary ? diaryToolsRow(textarea) : null,
       compact: !!S.narrowedHeading,

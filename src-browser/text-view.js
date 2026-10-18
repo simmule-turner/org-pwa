@@ -13,6 +13,8 @@ import { openActionSheet } from './bottom-sheet.js';
 import { promptText } from './dialogs.js';
 import { scrollContainer } from './chrome.js';
 import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
+import { setStatus } from './editing.js';
+import { platform } from './platform.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 
 const SVG = {
@@ -121,14 +123,13 @@ function row(extra = '') {
  * Builds the editor around `textarea`.
  * @param {object} o
  * @param {HTMLTextAreaElement} o.textarea  the textarea, not yet in the page
- * @param {HTMLElement} o.selectRow  the row with Select All and Copy All, kept as it was
  * @param {import('../src/text-syntax.js').SyntaxKind} o.kind
  * @param {HTMLElement | null} [o.extraRow]  a row of tools for this kind of file (the diary's)
  * @param {boolean} o.compact  a narrowed subtree: no line numbers
  * @param {string} o.height  the CSS height of the whole editor
  * @returns {{ root: HTMLElement, status: (text: string) => void }}
  */
-export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, compact, height }) {
+export function buildTextEditor({ textarea, kind, extraRow = null, compact, height }) {
   const root = document.createElement('div');
   root.className = 'te-root';
   root.style.height = height;
@@ -295,7 +296,7 @@ export function buildTextEditor({ textarea, selectRow, kind, extraRow = null, co
   status.hidden = true;
   status.onclick = () => (status.hidden = true);
 
-  root.append(selectRow, tools);
+  root.append(tools);
   if (extraRow) root.appendChild(extraRow);
   root.append(wrap, keys, status);
   textarea.addEventListener('focus', schedule);
@@ -370,7 +371,7 @@ function openLineMenu(textarea, editable) {
   };
   const { a, text } = sel();
   openActionSheet({
-    title: 'Lines',
+    title: 'Lines and text',
     subtitle: `Line ${lineNumberAt(text, a)} of ${lineCount(text)}`,
     actions: [
       {
@@ -383,6 +384,21 @@ function openLineMenu(textarea, editable) {
           const { line, start } = lineRange(textarea.value, n);
           selectLines(textarea, line, line);
           textarea.setSelectionRange(start, start);
+        },
+      },
+      { label: 'Select all', onClick: () => (textarea.focus(), textarea.select()) },
+      {
+        label: 'Copy all',
+        onClick: async () => {
+          try {
+            await platform.clipboard.writeText(textarea.value);
+            setStatus('Copied to clipboard.');
+          } catch {
+            // no clipboard access: select the text so the device's own Copy finishes the job
+            textarea.focus();
+            textarea.select();
+            setStatus('Text selected \u2014 use your device\u2019s own Copy.');
+          }
         },
       },
       { label: 'Duplicate line', disabled: !editable, onClick: run((t, x, y) => duplicateLines(t, x, y)) },

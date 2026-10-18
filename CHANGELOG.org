@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v572 — More room for text in the Text view
+Select All and Copy All no longer take a row above the Text view's text. They are now entries in the Line… sheet (still one tap each), which gives the editor another line or two of text. The phone's own selection menu still offers Select All and Copy as well.
+Verified: the Text view browser check.
+
 * v571 — Text view key row stays in place and clears the corner buttons
 The Text view's key row (Tab, *, /, and the rest through < and >) went back to the bottom of the screen, where it belongs, instead of ending above the round corner buttons. It now stops beside them, so none covers a key, and scrolls sideways within the space left. The text area is back to filling the screen down to the key row.
 Verified: the Text view browser check at two window heights.

@@ -995,9 +995,9 @@ Tap *View → Text* to replace the outline with one textarea holding the raw org
 
 *Narrowed*: only the narrowed subtree is editable, and switching back splices it into place. Retyping asterisks, renaming or adding headings inside it can't touch anything outside; narrowing follows a level or title change.
 
-*Select All* and *Copy All* buttons sit above the textarea for devices without a keyboard (Copy All falls back to selecting if the clipboard is denied). While narrowed they act on the narrowed text.
+*Line…* (in the tool row) also has *Select all* and *Copy all*, one tap each for devices without a keyboard (Copy all falls back to selecting if the clipboard is denied). While narrowed they act on the narrowed text.
 
-The text is colored: Org headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links and emphasis, and the code in a source block when it is JavaScript or Lisp. A row of tools sits under the buttons: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, and duplicates, deletes, moves, indents or outdents the lines you have selected. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The three settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]].
+The text is colored: Org headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links and emphasis, and the code in a source block when it is JavaScript or Lisp. A row of tools sits above the text: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, and duplicates, deletes, moves, indents or outdents the lines you have selected. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The three settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]].
 
 *Other files*: in *File → Open*, *All files* lists every file, not only ~.org~. A file that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only, with no outline: a ~#+~ line or a Local Variables block in it means nothing. Colored for ~.md~, ~.js~, ~.json~ and ~.el~; ~.txt~ is plain.
 
