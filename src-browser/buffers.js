@@ -268,7 +268,14 @@ function showBufferDiff() {
   const later = [setTimeout(place, 350), setTimeout(place, 800)]; // the keyboard may still be moving the bar
   if (vv) vv.addEventListener('resize', place);
   window.addEventListener('resize', place);
+  // and whenever the bar itself is moved or resized (it is lifted by chrome.js, and grows when its message wraps), not only on a resize event
+  const followBar = new MutationObserver(place);
+  followBar.observe(modelineBarEl, { attributes: true, attributeFilter: ['style'] });
+  const barSize = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
+  if (barSize) barSize.observe(modelineBarEl);
   diffPanelState.stop = () => {
+    followBar.disconnect();
+    if (barSize) barSize.disconnect();
     later.forEach(clearTimeout);
     if (vv) vv.removeEventListener('resize', place);
     window.removeEventListener('resize', place);

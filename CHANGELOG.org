@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v574 — Save Some Buffers' changes view stays on its bar
+The changes you get by pressing d in Save Some Buffers is now tied to the bottom bar itself: if the bar moves or grows for any reason (the on-screen keyboard, a longer message), the changes view moves with it instead of being left floating above or below it.
+Verified: the Save Some Buffers browser check, which now moves the bar and requires the view to follow.
+
 * v573 — Switching buffers in Text view no longer shows or saves the wrong file
 Opening a plain-text file such as a diary while another buffer was in Text view kept the old buffer's text box on screen, and the next save or switch wrote that text into the new file. The same could happen after closing a tab. Each Text view now belongs to the buffer that opened it and is rebuilt for any other.
 Verified: the buffer-switching and top-bar browser checks.

@@ -6302,6 +6302,11 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await page.locator('#saveBuffersDiff').waitFor({ state: 'visible', timeout: 5000 });
   const rect = await page.evaluate(() => ({ panel: document.getElementById('saveBuffersDiff').getBoundingClientRect().bottom, bar: document.getElementById('modelineBar').getBoundingClientRect().top, h: window.innerHeight }));
   expect(Math.abs(rect.panel - rect.bar) < 3 && rect.panel < rect.h - 250, `the diff sits on top of the lifted bar, clear of the keyboard: ${JSON.stringify(rect)}`);
+  // and it follows the bar when the bar moves for any other reason than a window resize
+  await page.evaluate(() => { document.getElementById('modelineBar').style.bottom = '120px'; });
+  await page.waitForTimeout(150);
+  const moved = await page.evaluate(() => ({ panel: document.getElementById('saveBuffersDiff').getBoundingClientRect().bottom, bar: document.getElementById('modelineBar').getBoundingClientRect().top }));
+  expect(Math.abs(moved.panel - moved.bar) < 3, `the diff follows the bar when it moves: ${JSON.stringify(moved)}`);
   const diff = await page.locator('#saveBuffersDiff').innerText();
   expect(diff.includes('B typed') && diff.includes('B one'), `d shows what changed: ${diff}`);
   expect(await prompt.isVisible(), 'and the question is still open');
