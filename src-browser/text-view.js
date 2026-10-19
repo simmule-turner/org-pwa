@@ -15,7 +15,7 @@ import { scrollContainer } from './chrome.js';
 import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
-import { describeEditor, noteExpectedCaret, noteKeyLog } from './key-log.js';
+import { caretGeometry, describeEditor, noteExpectedCaret, noteKeyLog } from './key-log.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 
 const SVG = {
@@ -133,7 +133,7 @@ export function sendKeyToTextView(textarea, rawKey, shift) {
     else if (el.offsetTop + el.offsetHeight > textarea.scrollTop + textarea.clientHeight) textarea.scrollTop = el.offsetTop + el.offsetHeight - textarea.clientHeight;
   }
   noteExpectedCaret(to);
-  noteKeyLog('key', { key: rawKey, shift, from: beforeTap, to, after: describeEditor(textarea) });
+  noteKeyLog('key', { key: rawKey, shift, from: beforeTap, to, after: describeEditor(textarea), geo: caretGeometry(textarea) });
 }
 
 /** Selects lines startLine..endLine (1-based) and scrolls so they show about a third of the way down.

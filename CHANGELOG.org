@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v583 — The keyboard debug log also records where the cursor is drawn
+The debug log from the floating keyboard shows the cursor itself always moves one character per tap, so the jump seen on a phone must be in how it is drawn. The log now also measures the row each tap leaves the cursor on, in the editor and in the colored text layer, and the fonts and line heights both use, so a mismatch between them shows up.
+Verified: the Text view floating keyboard check, now also reading the drawn row.
+
 * v582 — A keyboard debug log to track down the cursor jumping in the Text view
 On iPhone and in the Android web app the floating keyboard's arrows can, after five or six taps, put the cursor on another line, which does not happen in the Android app. The palette command Copy keyboard debug log now copies a short trail of the last taps, where the cursor was and landed, focus changes and redraws, with the screen measurements, so the cause can be found from a real device.
 Verified: the Text view floating keyboard check, now also reading the log.
