@@ -376,6 +376,29 @@ check('opening a plain-text file while another buffer is in Text view shows the 
   await context.close();
 });
 
+check('iOS: the bar drops its home-indicator margin while the keyboard is up, and Android keeps it', async () => {
+  const run = async (userAgent) => {
+    const context = await browser.newContext({ viewport: { width: 393, height: 800 }, isMobile: true, hasTouch: true, userAgent, serviceWorkers: 'block' });
+    const page = await context.newPage();
+    await page.goto(`${main.base}/index.html`, { waitUntil: 'load' });
+    await page.waitForTimeout(400);
+    const read = () => page.evaluate(() => document.getElementById('modelineBar').style.paddingBottom);
+    const before = await read();
+    await page.evaluate(() => { Object.defineProperty(window.visualViewport, 'height', { get: () => 500, configurable: true }); window.visualViewport.dispatchEvent(new Event('resize')); });
+    await page.waitForTimeout(200);
+    const up = await read();
+    await page.evaluate(() => { delete window.visualViewport.height; window.visualViewport.dispatchEvent(new Event('resize')); });
+    await page.waitForTimeout(200);
+    const after = await read();
+    await context.close();
+    return { before, up, after };
+  };
+  const ios = await run('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1');
+  const android = await run('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36');
+  expect(JSON.stringify(ios) === JSON.stringify({ before: '', up: '0px', after: '' }), 'iOS ' + JSON.stringify(ios));
+  expect(JSON.stringify(android) === JSON.stringify({ before: '', up: '', after: '' }), 'Android ' + JSON.stringify(android));
+});
+
 check('read-only toggle: a read-only buffer becomes editable in Text view and stays writable back in Org', async () => {
   const { context, page } = await freshPage();
   await openHelp(page); // the Help buffer is read-only by its own file header
@@ -6336,6 +6359,74 @@ check('buffers: a capture into a buffer in Text view -- a background tab left in
   const file = dav.get('a.org');
   expect(file.includes('A typed') && file.includes('Captured into a') && file.includes('more typing') && file.includes('Captured while typing'), `the saved file keeps everything: ${JSON.stringify(file)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('buffers: a capture into a background tab whose file also changed on the server is merged or put to the person at Save, never written over the server copy', async () => {
+  const a = ['* A one', 'body one', '* A two', 'body two', ''].join('\n');
+  dav.reset({ 'a.org': a, 'b.org': '* B one\n' });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  await openDav(page, 'b.org');
+  const capture = (title) =>
+    page.evaluate(
+      async (t) => {
+        const { writeToOtherFile } = await import('/src-browser/buffers.js');
+        const { parseOrg } = await import('/src/org-parser.js');
+        return (await writeToOtherFile('a.org', { label: 'capture', mutate: (doc) => { doc.children.push(...parseOrg('* ' + t + '\n').children); return true; } })).ok;
+      },
+      title
+    );
+  // 1. the server changed somewhere else in the file: Save merges both
+  expect(await capture('Captured'), 'a capture into the background tab');
+  dav.set('a.org', a.replace('body one', 'body one -- theirs'));
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  await page.waitForTimeout(600);
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'merged');
+  const merged = dav.get('a.org');
+  expect(merged.includes('body one -- theirs') && merged.includes('* Captured'), `the merge keeps their change and the capture: ${JSON.stringify(merged)}`);
+  // 2. the server changed again, next to where the capture goes, and the tab is saved from the background: either the changes
+  // merge or the person decides, but the server's copy is never overwritten and nothing is lost
+  await page.locator('#tabBar > div', { hasText: 'b.org' }).first().click();
+  await page.waitForTimeout(400);
+  expect(await capture('Second capture'), 'another capture into the background tab');
+  const theirs = merged.replace('body two', 'body two -- theirs') + '* Theirs at the end\n';
+  dav.set('a.org', theirs);
+  await openPalette(page);
+  await page.keyboard.type('save some buffers');
+  await page.keyboard.press('Enter');
+  await page.locator('#minibufferPrompt').waitFor({ state: 'visible', timeout: 5000 });
+  await page.keyboard.press('y');
+  await page.waitForFunction(() => document.getElementById('conflict-resolver') || /Saved|merged/.test(document.getElementById('status').innerText), null, { timeout: 8000 });
+  if (await page.locator('#conflict-resolver').count()) {
+    expect(dav.get('a.org') === theirs, 'nothing is written while the conflict is undecided');
+    await page.locator('#conflict-resolver [data-choice="both"]').click();
+    await page.locator('[data-action="apply"]').click();
+    await waitForStatus(page, 'merged');
+  }
+  const final = dav.get('a.org');
+  expect(final.includes('* Second capture') && final.includes('* Theirs at the end') && final.includes('body two -- theirs') && final.includes('body one -- theirs') && final.includes('* Captured'), `everything survives: ${JSON.stringify(final)}`);
+  // 3. the same line edited on both sides, saved from the background: the person is asked, and nothing is written until they answer
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  await page.waitForTimeout(400);
+  await replaceInDocument(page, 'body one -- theirs', 'body one -- mine');
+  await page.locator('#tabBar > div', { hasText: 'b.org' }).first().click();
+  await page.waitForTimeout(400);
+  const server = final.replace('body one -- theirs', 'body one -- server');
+  dav.set('a.org', server);
+  await openPalette(page);
+  await page.keyboard.type('save some buffers');
+  await page.keyboard.press('Enter');
+  await page.locator('#minibufferPrompt').waitFor({ state: 'visible', timeout: 5000 });
+  await page.keyboard.press('y');
+  await page.waitForSelector('#conflict-resolver', { timeout: 8000 });
+  expect(dav.get('a.org') === server, 'nothing is written while the conflict is undecided');
+  await page.locator('#conflict-resolver [data-choice="theirs"]').click();
+  await page.locator('[data-action="apply"]').click();
+  await waitForStatus(page, 'Saved 1 file');
+  const after = dav.get('a.org');
+  expect(after.includes('body one -- server') && after.includes('* Second capture') && after.includes('* Captured'), `their line and both captures survive: ${JSON.stringify(after)}`);
   await context.close();
 });
 

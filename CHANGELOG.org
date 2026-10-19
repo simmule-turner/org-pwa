@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v577 — iPhone: search in the Text view stays visible, and the blank band above the keyboard is gone
+On iPhone, tapping search in the Text view could leave the search box and mode line hidden behind the keyboard, because the bar was placed while the keyboard was still sliding in. Its position is now re-checked as the keyboard settles. The bar also no longer keeps the home-indicator margin while the keyboard is up, which removes most of the blank strip above the keyboard. Android is unchanged.
+Verified: a new iOS-versus-Android bar check, plus the Save Some Buffers, Text view and top-bar browser checks.
+
 * v576 — A capture or refile into the buffer in Text view keeps both it and your typing
 Capturing, refiling or archiving into the file you are editing in the Text view left the text box showing the old text, and your next edit would have dropped the new heading without a word. The typing is now taken in first, the change is added on top, and the text box is rebuilt to show both. Targets in other tabs were already safe, including a tab left in Text view.
 Verified: a new Text view capture check, plus the buffer, refile, archive, capture and conflict browser checks.

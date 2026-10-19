@@ -153,9 +153,12 @@ export function renderMinibuffer() {
 
 export function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
-  const bottomBarHeight = modelineBarEl.offsetHeight;
   const vv = window.visualViewport;
   const keyboardInset = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
+  // On iOS the home-indicator margin under the bar is dead space once the keyboard covers that edge
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  modelineBarEl.style.paddingBottom = ios && keyboardInset > 0 ? '0px' : '';
+  const bottomBarHeight = modelineBarEl.offsetHeight;
   modelineBarEl.style.bottom = keyboardInset + 'px';
   // A browser shows the keyboard as a smaller visual viewport (the inset above). An Android WebView shell resizes the
   // window itself instead, which leaves the visual viewport equal to it and the inset 0. So also remember the tallest the

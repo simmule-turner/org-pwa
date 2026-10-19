@@ -286,8 +286,13 @@ if (window.visualViewport) {
   // since editing body text specifically -- the case that motivated this
   // whole 3-trigger setup being extended to the bottom bar in the first
   // place -- is exactly a focusin/focusout on one of those same fields.
-  document.addEventListener('focusin', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
-  document.addEventListener('focusout', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
+  // iOS reports the viewport mid-animation when focus moves from one field to another (opening search from the Text
+  // view), and may send no later resize event, so re-check again as the keyboard settles.
+  const resyncForKeyboard = () => {
+    for (const ms of [350, 700, 1200, 2000]) setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, ms);
+  };
+  document.addEventListener('focusin', resyncForKeyboard);
+  document.addEventListener('focusout', resyncForKeyboard);
 }
 // Crossing the wide-layout breakpoint (e.g. resizing a browser window,
 // or rotating a tablet) while Settings/Docs is open needs a re-render
