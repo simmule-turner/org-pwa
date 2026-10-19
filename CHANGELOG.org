@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v585 — The keyboard debug log records where each tap lands
+The debug log now notes, for each floating keyboard tap, where the finger touched and where every arrow button was at that moment, so a tap that lands on a neighboring key, or a panel that shifted between taps, can be seen from the log.
+Verified: the Text view floating keyboard check, now also reading the tap positions.
+
 * v584 — The cursor no longer disappears under the floating keyboard in the Text view
 Moving down with the floating keyboard's arrows took the cursor's line under the panel, which covers the bottom of the editor, and the browser does not scroll a cursor moved that way into view, so the cursor seemed to vanish into the mode line. The editor now scrolls to keep the cursor's line above the panel, and along a long line it scrolls sideways to keep the cursor on screen.
 Verified: new Text view checks walking the arrows down and up past the panel and along a long line, plus the floating keyboard and Text view browser checks.

@@ -1902,6 +1902,7 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   expect((await mode()) === 'none', 'still away after the editor redraws');
   const log = await page.evaluate(async () => (await import('./src-browser/key-log.js')).keyLogText());
   expect(/ key key=ArrowRight/.test(log) && /tap key=ArrowDown/.test(log) && /user agent:/.test(log), 'the keyboard debug log records the taps and where the cursor went');
+  expect(/tap key=ArrowRight .* at=\[\d+,\d+\] button=\[\d+,\d+,\d+,\d+\] panel=\[.*buttons=Tab@\d+ Left@\d+ Right@\d+ Up@\d+ Down@\d+/.test(log), 'the log records where each tap landed and where the arrow buttons were');
   expect(/"mirrorRow":\d+,"mirrorX":\d+,"backRow":\d+/.test(log), `the log measures the row the cursor is drawn on in the editor and in the text layer: ${log.split('\n').find((l) => l.includes('geo=')) || 'no geo entry'}`);
   await emulateDeviceKeyboard(page, 300);
   await key.click(); // show

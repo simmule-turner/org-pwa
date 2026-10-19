@@ -431,7 +431,9 @@ export function renderFloatingKeyboard() {
         // needs Shift to stay on until it is tapped again
         if (!key.rawKey.startsWith('Arrow')) S.floatingKeyboardShiftArmed = false;
         const textarea = textViewInput();
-        noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp) });
+        const hit = btn.getBoundingClientRect();
+        const panel = floatingKeyboard.getBoundingClientRect();
+        noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp), at: [Math.round(e.clientX), Math.round(e.clientY)], button: [Math.round(hit.left), Math.round(hit.top), Math.round(hit.width), Math.round(hit.height)], panel: [Math.round(panel.left), Math.round(panel.top), Math.round(panel.width), Math.round(panel.height)], buttons: [...floatingKeyboard.querySelectorAll('[data-fk-key]')].map((b) => `${(b.getAttribute('data-fk-key') || '').replace('Arrow', '')}@${Math.round(b.getBoundingClientRect().left)}`).join(' ') });
         if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
         else dispatchGodModeKeystroke(rawKey, shiftKey);
       });
