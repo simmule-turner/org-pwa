@@ -154,9 +154,22 @@ export function renderMinibuffer() {
 export function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
   const vv = window.visualViewport;
-  const keyboardInset = vv ? Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)) : 0;
-  // On iOS the home-indicator margin under the bar is dead space once the keyboard covers that edge
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // A fixed element is positioned inside the layout viewport, whose height iOS does not always report as innerHeight
+  // (the search box in the bar ended up behind the keyboard). Measure that height with a fixed, invisible probe.
+  let layoutHeight = window.innerHeight;
+  if (ios) {
+    let probe = document.getElementById('fixedViewportProbe');
+    if (!probe) {
+      probe = document.createElement('div');
+      probe.id = 'fixedViewportProbe';
+      probe.style.cssText = 'position:fixed;top:0;bottom:0;left:0;width:1px;visibility:hidden;pointer-events:none;';
+      document.body.appendChild(probe);
+    }
+    layoutHeight = probe.offsetHeight || layoutHeight;
+  }
+  const keyboardInset = vv ? Math.max(0, layoutHeight - (vv.height + vv.offsetTop)) : 0;
+  // On iOS the home-indicator margin under the bar is dead space once the keyboard covers that edge
   modelineBarEl.style.paddingBottom = ios && keyboardInset > 0 ? '0px' : '';
   const bottomBarHeight = modelineBarEl.offsetHeight;
   modelineBarEl.style.bottom = keyboardInset + 'px';

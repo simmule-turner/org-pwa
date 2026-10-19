@@ -37,6 +37,8 @@ export function collectDisplayMeasurements(launcher = /** @type {string | null} 
   /** @param {Element | null} el */
   const rect = (el) => (el ? el.getBoundingClientRect() : null);
   const first = rect(firstButton);
+  const bar = modelineBarEl.getBoundingClientRect();
+  const probe = document.getElementById('fixedViewportProbe');
   const rows = [
     ['platform', platform.name],
     ['web view', chrome ? `Chrome/${chrome[1]}` : navigator.userAgent.slice(0, 60)],
@@ -52,6 +54,7 @@ export function collectDisplayMeasurements(launcher = /** @type {string | null} 
     ['first button: top, height', first ? `${px(first.top)}, ${px(first.height)}` : 'none'],
     ['document area starts at', px(contentAreaEl.getBoundingClientRect().top)],
     ['mode line: bottom offset', modelineBarEl.style.bottom || '0'],
+    ['mode line: top, bottom edge, fixed-layout height', `${px(bar.top)}, ${px(bar.bottom)}, ${probe ? px(probe.offsetHeight) : 'n/a'}`],
     ['tallest window at this width', base ? `${base.height} (width ${base.width})` : 'not yet measured'],
     ['launcher shortcuts', launcher || 'not available here'],
   ];

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v578 — iPhone: the bar sits on the keyboard even when search opens in the Text view
+The bar's lift was worked out from a window height that iOS does not always report the way the bar is positioned, so after tapping search the mode line and search box could land behind the keyboard. It is now measured against the same area the bar is placed in. The Show display measurements command lists the bar's position, to help if it is still off. Android is unchanged.
+Verified: the iOS bar check and the Save Some Buffers browser checks.
+
 * v577 — iPhone: search in the Text view stays visible, and the blank band above the keyboard is gone
 On iPhone, tapping search in the Text view could leave the search box and mode line hidden behind the keyboard, because the bar was placed while the keyboard was still sliding in. Its position is now re-checked as the keyboard settles. The bar also no longer keeps the home-indicator margin while the keyboard is up, which removes most of the blank strip above the keyboard. Android is unchanged.
 Verified: a new iOS-versus-Android bar check, plus the Save Some Buffers, Text view and top-bar browser checks.
