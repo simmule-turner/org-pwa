@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v584 — The cursor no longer disappears under the floating keyboard in the Text view
+Moving down with the floating keyboard's arrows took the cursor's line under the panel, which covers the bottom of the editor, and the browser does not scroll a cursor moved that way into view, so the cursor seemed to vanish into the mode line. The editor now scrolls to keep the cursor's line above the panel, and along a long line it scrolls sideways to keep the cursor on screen.
+Verified: new Text view checks walking the arrows down and up past the panel and along a long line, plus the floating keyboard and Text view browser checks.
+
 * v583 — The keyboard debug log also records where the cursor is drawn
 The debug log from the floating keyboard shows the cursor itself always moves one character per tap, so the jump seen on a phone must be in how it is drawn. The log now also measures the row each tap leaves the cursor on, in the editor and in the colored text layer, and the fonts and line heights both use, so a mismatch between them shows up.
 Verified: the Text view floating keyboard check, now also reading the drawn row.

@@ -1912,6 +1912,56 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   await context.close();
 });
 
+check('floating keyboard in Text view: the line the cursor is on is never left under the panel as the arrows walk down and back up', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 640 });
+  await newDocument(page, Array.from({ length: 80 }, (_, i) => `line ${i + 1} of the text`).join('\n'));
+  await viewMenu(page, 'Text');
+  await page.locator('#document-text-edit-input').click();
+  await page.evaluate(() => document.getElementById('document-text-edit-input').setSelectionRange(0, 0));
+  await page.click('#godModeBtn');
+  const fk = page.locator('#floatingKeyboard');
+  await fk.waitFor({ state: 'visible' });
+  const probe = () =>
+    page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // the coloured layer follows a scroll a frame later
+      const t = document.getElementById('document-text-edit-input');
+      const line = t.value.slice(0, t.selectionStart).split('\n').length - 1;
+      const row = t.parentElement.querySelector('.te-back').children[line].getBoundingClientRect();
+      const box = t.getBoundingClientRect();
+      const panel = document.getElementById('floatingKeyboard').getBoundingClientRect();
+      return { line: line + 1, rowTop: row.top, rowBottom: row.bottom, boxTop: box.top, boxBottom: box.bottom, panelTop: panel.top };
+    });
+  const down = fk.locator('[data-fk-key="ArrowDown"]');
+  const up = fk.locator('[data-fk-key="ArrowUp"]');
+  const bad = [];
+  for (let i = 0; i < 40; i++) {
+    await down.click();
+    const p = await probe();
+    const limit = p.panelTop > p.boxTop && p.panelTop < p.boxBottom ? p.panelTop : p.boxBottom;
+    if (p.rowBottom > limit + 1 || p.rowTop < p.boxTop - 1) bad.push(`down ${p.line}: ${JSON.stringify(p)}`);
+  }
+  for (let i = 0; i < 40; i++) {
+    await up.click();
+    const p = await probe();
+    const limit = p.panelTop > p.boxTop && p.panelTop < p.boxBottom ? p.panelTop : p.boxBottom;
+    if (p.rowBottom > limit + 1 || p.rowTop < p.boxTop - 1) bad.push(`up ${p.line}: ${JSON.stringify(p)}`);
+  }
+  expect(bad.length === 0, `the cursor's line was hidden ${bad.length} times, first: ${bad[0]}`);
+  // a long line: walking right past the edge scrolls sideways to keep the cursor in view
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.value = 'x'.repeat(300) + '\n' + t.value; t.setSelectionRange(0, 0); t.dispatchEvent(new Event('input', { bubbles: true })); });
+  const right = fk.locator('[data-fk-key="ArrowRight"]');
+  for (let i = 0; i < 80; i++) await right.click();
+  const side = await page.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const t = document.getElementById('document-text-edit-input');
+    return { left: t.scrollLeft, caretCol: t.selectionStart, width: t.clientWidth };
+  });
+  expect(side.left > 0, `eighty characters along a long line the editor has scrolled sideways: ${JSON.stringify(side)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating keyboard: in the outline the arrows still go to god-mode, not to a text box', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 360, height: 740 });

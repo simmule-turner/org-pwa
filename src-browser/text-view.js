@@ -125,12 +125,27 @@ export function sendKeyToTextView(textarea, rawKey, shift) {
   } else return;
   if (shift) textarea.setSelectionRange(Math.min(anchor, to), Math.max(anchor, to), to < anchor ? 'backward' : 'forward');
   else textarea.setSelectionRange(to, to);
-  // an unfocused textarea does not scroll its cursor into view by itself
+  // the cursor's line must end up in the part of the editor that can be seen: the floating keyboard sits over the bottom of
+  // the editor, and the browser does not scroll a cursor moved by script into view at all
   const line = value.slice(0, to).split('\n').length - 1;
   const el = /** @type {HTMLElement | undefined} */ (textarea.parentElement?.querySelector('.te-back')?.children[line]);
   if (el) {
-    if (el.offsetTop < textarea.scrollTop) textarea.scrollTop = el.offsetTop;
-    else if (el.offsetTop + el.offsetHeight > textarea.scrollTop + textarea.clientHeight) textarea.scrollTop = el.offsetTop + el.offsetHeight - textarea.clientHeight;
+    const box = textarea.getBoundingClientRect();
+    // from the line's layout position, not its drawn one: the coloured layer follows the scroll a frame later
+    const row = { top: box.top - textarea.scrollTop + el.offsetTop, bottom: box.top - textarea.scrollTop + el.offsetTop + el.offsetHeight };
+    const panel = document.getElementById('floatingKeyboard');
+    const panelBox = panel && panel.style.display !== 'none' ? panel.getBoundingClientRect() : null;
+    const covered = panelBox && panelBox.top > box.top && panelBox.top < box.bottom ? panelBox.top - 6 : box.bottom;
+    const limit = Math.min(box.bottom - 2, covered);
+    if (row.top < box.top) textarea.scrollTop -= box.top - row.top;
+    else if (row.bottom > limit) textarea.scrollTop += row.bottom - limit;
+    if (textarea.wrap === 'off') {
+      // a long line runs off the side: keep the character the cursor is on in view, past the line numbers and short of the edge
+      const x = box.left - textarea.scrollLeft + caretGeometry(textarea).mirrorX;
+      const left = box.left + (parseFloat(getComputedStyle(textarea).paddingLeft) || 0);
+      if (x < left) textarea.scrollLeft -= left - x;
+      else if (x > box.right - 24) textarea.scrollLeft += x - (box.right - 24);
+    }
   }
   noteExpectedCaret(to);
   noteKeyLog('key', { key: rawKey, shift, from: beforeTap, to, after: describeEditor(textarea), geo: caretGeometry(textarea) });
