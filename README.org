@@ -2056,6 +2056,8 @@ A phone has no ~Escape~ key, so a floating *[g]* button, the third floating butt
 
 The floating keyboard has the keys a phone keyboard can't type, in one row: *⌨*, ~Tab~, ~←~, ~→~, ~↑~, ~↓~, ~S~ and ~g~. Its thick accent-coloured border makes it easy to spot, and the keys are 34px wide and 44px tall so the row fits a 360px screen.
 
+In the Text view, *[g]* only shows the floating keyboard, with no god-mode: the arrows move the cursor (with *S* they select), ~Tab~ indents and ~g~ types a g. *⌨* puts the device keyboard away, and it stays away while the keys keep working.
+
 - *S* shifts the next key (~Tab~ becomes ~S-Tab~, ~g~ becomes ~G~, the Control+Meta prefix). After an arrow it stays on, so ~S~ then ~↑~ ~↑~ ~↑~ moves the focused heading up three places; tap *S* again to turn it off. It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital.
 - *⌨* hides or shows the device keyboard and changes nothing else. It is lit while the keyboard is up. After a popup closes, the keyboard doesn't return by itself; tap ⌨.
 - The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.

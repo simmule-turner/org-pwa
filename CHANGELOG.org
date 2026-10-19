@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v580 — The floating keyboard works in the Text view
+In the Text view the floating keyboard's arrows did nothing, and putting the device keyboard away brought it back. The arrows now move the cursor (with S they select), Tab indents and g types a g, and the keyboard key hides the device keyboard and keeps it hidden while the keys still work. The panel closes when you leave the Text view.
+Verified: new Text view checks for the floating keyboard, plus the floating keyboard and Text view browser checks.
+
 * v579 — iPhone: opening search no longer scrolls the document or the bar
 Tapping search while editing in the Text view made iOS pan the page, so the text jumped down to the last lines and the bar went with it. The search box now takes focus without asking iOS to scroll, and any pan that still happens while the search box is focused is undone, so the text stays where you were and the bar stays put above the keyboard. Android is unchanged.
 Verified: the search and Text view browser checks.

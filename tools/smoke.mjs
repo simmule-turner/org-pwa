@@ -1842,6 +1842,99 @@ check('floating keyboard: its keyboard key hides and shows the device keyboard w
   await context.close();
 });
 
+check('floating keyboard in Text view: the arrows move the cursor, Shift selects, Tab and g edit; the keyboard key hides the device keyboard and it stays hidden while every key still works', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, 'alpha\nbe\ncharlie\n');
+  await viewMenu(page, 'Text');
+  const ta = page.locator('#document-text-edit-input');
+  const fk = page.locator('#floatingKeyboard');
+  const key = fk.locator('[data-fk-keyboard]');
+  const sel = () => page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return [t.selectionStart, t.selectionEnd]; });
+  const setCaret = (n) => page.evaluate((n) => { const t = document.getElementById('document-text-edit-input'); t.focus(); t.setSelectionRange(n, n); }, n);
+  const tap = (k) => fk.locator(`[data-fk-key="${k}"]`).click();
+  const focusedIsEditor = () => page.evaluate(() => document.activeElement && document.activeElement.id === 'document-text-edit-input');
+  await ta.click();
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  expect(await fk.isVisible(), 'the panel opens in Text view');
+  expect(!(await page.locator('#minibuffer').innerText()).includes('God-mode'), 'Text view is not put into god-mode');
+  await emulateDeviceKeyboard(page, 300);
+  await page.waitForTimeout(400);
+
+  await setCaret(2);
+  await tap('ArrowRight');
+  expect((await sel()).join() === '3,3', `right moves one character: ${await sel()}`);
+  await tap('ArrowLeft');
+  await tap('ArrowLeft');
+  expect((await sel()).join() === '1,1', `left moves back: ${await sel()}`);
+  await tap('ArrowDown'); // column 1 of the next line "be"
+  expect((await sel()).join() === '7,7', `down keeps the column: ${await sel()}`);
+  await tap('ArrowDown'); // "charlie", column 1
+  expect((await sel()).join() === '10,10', `down again: ${await sel()}`);
+  await tap('ArrowUp');
+  expect((await sel()).join() === '7,7', `up: ${await sel()}`);
+  await setCaret(0);
+  await fk.locator('[data-fk-shift]').click();
+  await tap('ArrowRight');
+  await tap('ArrowRight');
+  expect((await sel()).join() === '0,2', `Shift+right selects: ${await sel()}`);
+  await setCaret(0);
+  await tap('Tab');
+  expect((await ta.inputValue()).startsWith('  alpha'), 'Tab indents with two spaces');
+
+  await key.click(); // hide the device keyboard
+  expect(!(await focusedIsEditor()), 'the keyboard key lets go of the editor, which hides the device keyboard');
+  await emulateDeviceKeyboard(page, 0);
+  await page.waitForTimeout(400);
+  expect(await fk.isVisible(), 'the panel stays');
+  await tap('ArrowRight');
+  await tap('ArrowDown');
+  expect(!(await focusedIsEditor()), 'an arrow does not bring the device keyboard back');
+  await setCaret(0);
+  await page.evaluate(() => document.getElementById('document-text-edit-input').blur());
+  await tap('g');
+  expect((await ta.inputValue()).startsWith('g'), `g types a g: ${(await ta.inputValue()).slice(0, 8)}`);
+  await tap('Tab');
+  expect(!(await focusedIsEditor()), 'Tab and g leave the keyboard hidden');
+  await emulateDeviceKeyboard(page, 300);
+  await key.click(); // show
+  expect(await focusedIsEditor(), 'the keyboard key brings it back');
+  await page.click('#godModeBtn');
+  expect(!(await fk.isVisible()), '[g] closes the panel');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: in the outline the arrows still go to god-mode, not to a text box', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n* Two\n');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  expect((await page.locator('#minibuffer').innerText()).includes('God-mode'), 'god-mode is on in the outline');
+  await page.locator('#floatingKeyboard [data-fk-key="ArrowDown"]').click();
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('floating keyboard: left open in Text view it goes away with the switch back to the outline, and [g] works again there', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 360, height: 740 });
+  await newDocument(page, '* One\n');
+  await viewMenu(page, 'Text');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  await viewMenu(page, 'Org');
+  await page.waitForTimeout(300);
+  expect(!(await page.locator('#floatingKeyboard').isVisible()), 'the panel closes when Text view ends');
+  await page.click('#godModeBtn');
+  await page.locator('#floatingKeyboard').waitFor({ state: 'visible' });
+  expect((await page.locator('#minibuffer').innerText()).includes('God-mode'), 'god-mode is on again in the outline');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('floating keyboard: pushed up by the device keyboard it STAYS up when the keyboard goes away (no drop lower); only a drag lowers it', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 360, height: 740 });

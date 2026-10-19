@@ -55,15 +55,16 @@ export function refreshTextEditor(textarea) {
 
 /** Makes an edit as a typed one would be, so the browser's undo can take it back; the selection ends at selStart..selEnd.
  * @param {HTMLTextAreaElement} textarea
- * @param {{ from: number, to: number, insert: string, selStart: number, selEnd: number }} edit */
-export function applyTextEdit(textarea, edit) {
+ * @param {{ from: number, to: number, insert: string, selStart: number, selEnd: number }} edit
+ * @param {boolean} [quiet] */
+export function applyTextEdit(textarea, edit, quiet = false) {
   if (textarea.readOnly) return;
-  textarea.focus();
+  if (!quiet) textarea.focus(); // quiet: leave a hidden device keyboard hidden
   textarea.setSelectionRange(edit.from, edit.to);
   /** @type {{ done: boolean }} */
   const result = { done: false };
   try {
-    result.done = edit.insert === '' ? document.execCommand('delete') : document.execCommand('insertText', false, edit.insert);
+    result.done = document.activeElement !== textarea ? false : edit.insert === '' ? document.execCommand('delete') : document.execCommand('insertText', false, edit.insert);
   } catch {
     result.done = false;
   }
@@ -72,6 +73,62 @@ export function applyTextEdit(textarea, edit) {
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
   }
   textarea.setSelectionRange(edit.selStart, edit.selEnd);
+}
+
+/** What the Tab key does here: indent the selected lines, or put two spaces at the cursor.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {boolean} [quiet] leave a hidden device keyboard hidden */
+function textViewTab(textarea, quiet = false) {
+  const { selectionStart: a, selectionEnd: b, value } = textarea;
+  if (value.slice(a, b).includes('\n')) {
+    const edit = indentLines(value, a, b, 1);
+    if (edit) applyTextEdit(textarea, edit, quiet);
+  } else applyTextEdit(textarea, { from: a, to: b, insert: '  ', selStart: a + 2, selEnd: a + 2 }, quiet);
+}
+
+/** A key from the floating keyboard, acting on the text: arrows move the cursor (with Shift they extend the selection),
+ *  Tab indents, a letter is typed. Never takes focus, so a device keyboard that was put away stays away.
+ * @param {HTMLTextAreaElement} textarea @param {string} rawKey @param {boolean} shift */
+export function sendKeyToTextView(textarea, rawKey, shift) {
+  const { selectionStart: a, selectionEnd: b, value } = textarea;
+  if (rawKey === 'Tab') return textViewTab(textarea, true);
+  if (rawKey.length === 1) {
+    const ch = shift ? rawKey.toUpperCase() : rawKey;
+    return applyTextEdit(textarea, { from: a, to: b, insert: ch, selStart: a + 1, selEnd: a + 1 }, true);
+  }
+  const backward = textarea.selectionDirection === 'backward';
+  const focus = backward ? a : b;
+  const anchor = backward ? b : a;
+  let to;
+  if (rawKey === 'ArrowLeft') to = !shift && a !== b ? a : Math.max(0, focus - 1);
+  else if (rawKey === 'ArrowRight') to = !shift && a !== b ? b : Math.min(value.length, focus + 1);
+  else if (rawKey === 'ArrowUp' || rawKey === 'ArrowDown') {
+    const lineStart = value.lastIndexOf('\n', focus - 1) + 1;
+    const col = focus - lineStart;
+    if (rawKey === 'ArrowUp') {
+      if (lineStart === 0) to = 0;
+      else {
+        const prevStart = value.lastIndexOf('\n', lineStart - 2) + 1;
+        to = Math.min(prevStart + col, lineStart - 1);
+      }
+    } else {
+      const lineEnd = value.indexOf('\n', focus);
+      if (lineEnd === -1) to = value.length;
+      else {
+        const nextEnd = value.indexOf('\n', lineEnd + 1);
+        to = Math.min(lineEnd + 1 + col, nextEnd === -1 ? value.length : nextEnd);
+      }
+    }
+  } else return;
+  if (shift) textarea.setSelectionRange(Math.min(anchor, to), Math.max(anchor, to), to < anchor ? 'backward' : 'forward');
+  else textarea.setSelectionRange(to, to);
+  // an unfocused textarea does not scroll its cursor into view by itself
+  const line = value.slice(0, to).split('\n').length - 1;
+  const el = /** @type {HTMLElement | undefined} */ (textarea.parentElement?.querySelector('.te-back')?.children[line]);
+  if (el) {
+    if (el.offsetTop < textarea.scrollTop) textarea.scrollTop = el.offsetTop;
+    else if (el.offsetTop + el.offsetHeight > textarea.scrollTop + textarea.clientHeight) textarea.scrollTop = el.offsetTop + el.offsetHeight - textarea.clientHeight;
+  }
 }
 
 /** Selects lines startLine..endLine (1-based) and scrolls so they show about a third of the way down.
@@ -272,13 +329,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
 
   // ---- keys
   const keys = row('te-keys');
-  const tab = textButton('Tab', 'Tab', () => {
-    const { selectionStart: a, selectionEnd: b, value } = textarea;
-    if (value.slice(a, b).includes('\n')) {
-      const edit = indentLines(value, a, b, 1);
-      if (edit) applyTextEdit(textarea, edit);
-    } else applyTextEdit(textarea, { from: a, to: b, insert: '  ', selStart: a + 2, selEnd: a + 2 });
-  });
+  const tab = textButton('Tab', 'Tab', () => textViewTab(textarea));
   tab.style.fontSize = '13px';
   keys.appendChild(tab);
   for (const ch of ['*', '/', '%', '(', ')', '&', '-', ':', '<', '>']) {

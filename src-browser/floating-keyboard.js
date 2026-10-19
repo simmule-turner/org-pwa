@@ -27,6 +27,7 @@ import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, model
 import { getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
 import { setFloatingKeyboardPos } from './settings.js';
+import { sendKeyToTextView } from './text-view.js';
 import { kv } from './singletons.js';
 import { safeAreaTop } from './ui-widgets.js';
 
@@ -254,7 +255,8 @@ function wireHandle(handle) {
  *  Android's back gesture can hide the keyboard and leave the field focused. On a
  *  desktop there is no on-screen keyboard, so this is never true there. */
 function deviceKeyboardShowing() {
-  return document.activeElement === godModeKeyboardInput && keyboardLift() > KEYBOARD_INSET_PX;
+  const field = textViewInput() || godModeKeyboardInput;
+  return document.activeElement === field && keyboardLift() > KEYBOARD_INSET_PX;
 }
 
 /** How far the device keyboard has pushed the page up, however the platform shows it: the app lifts its mode line when
@@ -265,6 +267,13 @@ function keyboardLift() {
   const base = S.viewportBaseline;
   const shrunk = base && base.width === window.innerWidth ? base.height - window.innerHeight : 0;
   return Math.max(lifted, shrunk);
+}
+
+/** In the Text view the panel works on the text itself: the editor is the field that brings the device keyboard up, and
+ *  there is no god-mode.
+ *  @returns {HTMLTextAreaElement | null} */
+export function textViewInput() {
+  return S.currentView === 'text' ? /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input')) : null;
 }
 
 /** Lights the panel's keyboard key while the device keyboard is showing. Cheap,
@@ -291,10 +300,14 @@ export function renderFloatingKeyboard() {
   godModeBtn.style.display = enabled ? 'flex' : 'none';
   // turned off while the panel is up (its only way to close is that button):
   // end god-mode, and the line below takes the panel down with it
-  if (!enabled && S.floatingKeyboardOpen) S.godModeActive = false;
+  if (!enabled && S.floatingKeyboardOpen) {
+    S.godModeActive = false;
+    if (textViewInput()) closeFloatingKeyboard();
+  }
   // god-mode ended by some other route (a real Escape, a chord that opened
   // another panel, ...): follow it, so the two can never disagree.
-  if (S.floatingKeyboardOpen && !S.godModeActive) closeFloatingKeyboard();
+  // (in the Text view there is no god-mode, and the panel lives on its own)
+  if (S.floatingKeyboardOpen && !S.godModeActive && !textViewInput()) closeFloatingKeyboard();
 
   const open = S.floatingKeyboardOpen;
   godModeBtn.style.opacity = open ? '0.95' : '0.35';
@@ -364,8 +377,9 @@ export function renderFloatingKeyboard() {
     });
     keyboardBtn.addEventListener('click', () => {
       const wasShowing = deviceKeyboardShowing();
-      godModeKeyboardInput.blur();
-      if (!wasShowing) godModeKeyboardInput.focus({ preventScroll: true }); // blur first so an already-focused field brings the keyboard back
+      const field = textViewInput() || godModeKeyboardInput;
+      field.blur();
+      if (!wasShowing) field.focus({ preventScroll: true }); // blur first so an already-focused field brings the keyboard back
       syncKeyboardToggle();
     });
     floatingKeyboard.appendChild(keyboardBtn);
@@ -399,7 +413,9 @@ export function renderFloatingKeyboard() {
         // one-shot, consumed by this tap, except on the arrows: Shift+arrows move by heading, and walking through headings
         // needs Shift to stay on until it is tapped again
         if (!key.rawKey.startsWith('Arrow')) S.floatingKeyboardShiftArmed = false;
-        dispatchGodModeKeystroke(rawKey, shiftKey);
+        const textarea = textViewInput();
+        if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
+        else dispatchGodModeKeystroke(rawKey, shiftKey);
       });
       if (key.rawKey === 'g') floatingKeyboard.appendChild(shiftBtn); // layout: T \u2190 \u2192 \u2191 \u2193 S g
       floatingKeyboard.appendChild(btn);

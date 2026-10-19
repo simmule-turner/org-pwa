@@ -44,7 +44,7 @@ import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js'
 import { commitAndRender, setStatus } from './src-browser/editing.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu } from './src-browser/file-menu.js';
-import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, withArmedShift } from './src-browser/floating-keyboard.js';
+import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, textViewInput, withArmedShift } from './src-browser/floating-keyboard.js';
 import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, enterGodMode, shiftArrow, tryDispatchPanelHotkey } from './src-browser/god-mode-palette.js';
 import { apptTick, loadApptSettings, requestApptScan } from './src-browser/appt-flow.js';
 import { scheduleSync } from './src-browser/mirror-sync.js';
@@ -289,13 +289,8 @@ if (window.visualViewport) {
   // since editing body text specifically -- the case that motivated this
   // whole 3-trigger setup being extended to the bottom bar in the first
   // place -- is exactly a focusin/focusout on one of those same fields.
-  // iOS reports the viewport mid-animation when focus moves from one field to another (opening search from the Text
-  // view), and may send no later resize event, so re-check again as the keyboard settles.
-  const resyncForKeyboard = () => {
-    for (const ms of [350, 700, 1200, 2000]) setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, ms);
-  };
-  document.addEventListener('focusin', resyncForKeyboard);
-  document.addEventListener('focusout', resyncForKeyboard);
+  document.addEventListener('focusin', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
+  document.addEventListener('focusout', () => setTimeout(() => { repositionTopBarForKeyboard(); syncContentOffset(); }, 350));
 }
 // Crossing the wide-layout breakpoint (e.g. resizing a browser window,
 // or rotating a tablet) while Settings/Docs is open needs a re-render
@@ -1021,12 +1016,14 @@ godModeBtn.addEventListener('click', () => {
     return;
   }
   closeAllOverlayPanels();
-  enterGodMode();
+  const textarea = textViewInput(); // in the Text view the panel works on the text: no god-mode, the editor is the field
+  if (!textarea) enterGodMode();
   S.floatingKeyboardOpen = true;
   S.floatingKeyboardShiftArmed = false;
   S.floatingKeyboardMinimized = false;
   /** @type {any} */ (godModeKeyboardInput).value = '';
   render();
+  if (textarea) return;
   godModeKeyboardInput.focus({ preventScroll: true });
   scrollFocusedHeadingIntoView();
 });
