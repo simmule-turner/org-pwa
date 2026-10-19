@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v576 — A capture or refile into the buffer in Text view keeps both it and your typing
+Capturing, refiling or archiving into the file you are editing in the Text view left the text box showing the old text, and your next edit would have dropped the new heading without a word. The typing is now taken in first, the change is added on top, and the text box is rebuilt to show both. Targets in other tabs were already safe, including a tab left in Text view.
+Verified: a new Text view capture check, plus the buffer, refile, archive, capture and conflict browser checks.
+
+* v575 — Text view can no longer show or save another file's text
+After Reload (or Merge) from the external-change banner, the Text view kept showing the old text, and typing then saving would have put it back over the file you had just reloaded. Each Text view is now tied to the tab and document it was built from; if either changes it is rebuilt, and a leftover one is never saved into a buffer.
+Verified: the Reload-in-Text-view check, plus the conflict, buffer, tab, narrowing and undo browser checks.
+
 * v574 — Save Some Buffers' changes view stays on its bar
 The changes you get by pressing d in Save Some Buffers is now tied to the bottom bar itself: if the bar moves or grows for any reason (the on-screen keyboard, a longer message), the changes view moves with it instead of being left floating above or below it.
 Verified: the Save Some Buffers browser check, which now moves the bar and requires the view to follow.

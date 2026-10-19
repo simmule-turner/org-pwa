@@ -481,6 +481,20 @@ export function replaceDocumentText(newText, label) {
   }
 }
 
+/** The document object each Text view textarea is in step with: the one it was built from, or the one its last commit produced. */
+export const textViewDocs = new WeakMap();
+
+/** The tab a Text view textarea belongs to. */
+export const textViewOwner = () => String(S.activeTabId);
+
+/** Is this Text view textarea the active buffer's own? After another buffer is opened, a tab is closed, or the document is
+ *  replaced (reload, merge, undo), the textarea still in the page is a leftover: showing it, or saving its text, would put one
+ *  file's text into another's.
+ * @param {HTMLElement} textarea */
+export function textViewBelongsToActive(textarea) {
+  return textarea.dataset.owner === textViewOwner() && textViewDocs.get(textarea) === S.state.doc;
+}
+
 // textarea element -> the raw value it was last successfully committed with
 export function commitTextModeIfActive() {
   if (S.currentView !== 'text') return false;
@@ -489,6 +503,7 @@ export function commitTextModeIfActive() {
     return false;
   }
   const textarea = document.getElementById('document-text-edit-input');
+  if (textarea && !textViewBelongsToActive(textarea)) return false; // a leftover from another buffer: never written into this one
   const rawValue = textarea ? /** @type {any} */ (textarea).value : S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
 
   if (textarea && textModeLastCommittedValue.get(textarea) === rawValue) {
@@ -525,6 +540,7 @@ export function commitTextModeIfActive() {
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
   S.state.doc = newDoc;
+  if (textarea) textViewDocs.set(textarea, newDoc); // this textarea is the one that produced it
   S.state.startupConfig = startupConfig;
   reconcileReadOnlyAfterReparse(S.state.localVariables, localVariables);
   S.state.localVariables = localVariables;

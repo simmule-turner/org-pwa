@@ -3039,6 +3039,25 @@ check('conflict: the banner\'s Merge combines unsaved edits with the other versi
   await context.close();
 });
 
+check('conflict: Reload from the banner while in Text view shows the file as it is now, and typing then saving does not bring the old text back', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await viewMenu(page, 'Text');
+  await page.locator('#document-text-edit-input').waitFor({ timeout: 8000 });
+  const theirs = SAMPLE.replace('body 5', 'body 5 -- theirs');
+  dav.set('notes.org', theirs);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForFunction(() => getComputedStyle(document.getElementById('externalChangeBanner')).display !== 'none', null, { timeout: 8000 });
+  await page.click('#externalChangeReloadBtn');
+  await page.waitForFunction((t) => /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'))?.value === t, theirs, { timeout: 8000 });
+  await page.locator('#document-text-edit-input').evaluate((t) => { t.value += 'typed\n'; t.dispatchEvent(new Event('input', { bubbles: true })); });
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  expect(dav.get('notes.org') === theirs + 'typed\n', `the server should hold their text plus what was typed: ${JSON.stringify(dav.get('notes.org'))}`);
+  await context.close();
+});
+
 check('narrowing persists across a reload', async () => {
   dav.reset({ 'notes.org': SAMPLE });
   const { context, page } = await freshPage(main, { withDav: true });
@@ -6280,6 +6299,42 @@ check('buffers: Capture, Refile and Archive into another file edit its buffer --
   expect(dav.get('a.org') === '* A one\n', 'and the clean one was not touched');
   expect((await page.locator('#tabBar > div', { hasText: '●' }).count()) === 0, 'nothing is marked modified now');
   expect((await here()) === 'c.org', 'the tab the command was run from is still the one on screen');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('buffers: a capture into a buffer in Text view -- a background tab left in Text view, and the one on screen with unsaved typing -- keeps both the capture and the typed text', async () => {
+  dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  await viewMenu(page, 'Text');
+  await page.locator('#document-text-edit-input').evaluate((t) => { t.value += 'A typed\n'; t.dispatchEvent(new Event('input', { bubbles: true })); });
+  await openDav(page, 'b.org');
+  const addTo = (file, title) =>
+    page.evaluate(
+      async ([f, t]) => {
+        const { writeToOtherFile } = await import('/src-browser/buffers.js');
+        const { parseOrg } = await import('/src/org-parser.js');
+        return (await writeToOtherFile(f, { label: 'capture', mutate: (doc) => { doc.children.push(...parseOrg('* ' + t + '\n').children); return true; } })).ok;
+      },
+      [file, title]
+    );
+  expect(await addTo('a.org', 'Captured into a'), 'a capture into the background tab');
+  await page.locator('#tabBar > div', { hasText: 'a.org' }).first().click();
+  await page.locator('#document-text-edit-input').waitFor({ timeout: 8000 });
+  await page.waitForTimeout(300);
+  const a = await page.locator('#document-text-edit-input').inputValue();
+  expect(a.includes('A typed') && a.includes('Captured into a'), `the tab left in Text view has its typing and the capture: ${JSON.stringify(a)}`);
+  // now the buffer on screen, in Text view, with typing that is not committed yet
+  await page.locator('#document-text-edit-input').evaluate((t) => { t.value += 'more typing\n'; t.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(await addTo('a.org', 'Captured while typing'), 'a write into the buffer on screen');
+  await page.waitForTimeout(300);
+  const shown = await page.locator('#document-text-edit-input').inputValue();
+  expect(shown.includes('more typing') && shown.includes('Captured while typing'), `Text view shows both: ${JSON.stringify(shown)}`);
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  const file = dav.get('a.org');
+  expect(file.includes('A typed') && file.includes('Captured into a') && file.includes('more typing') && file.includes('Captured while typing'), `the saved file keeps everything: ${JSON.stringify(file)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

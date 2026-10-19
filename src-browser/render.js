@@ -13,7 +13,7 @@ import { S } from './app-state.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
-import { applyPendingCursorPosition } from './editing.js';
+import { applyPendingCursorPosition, textViewBelongsToActive, textViewDocs, textViewOwner } from './editing.js';
 import { forgetSparseNarrow, maybeRestoreNarrowState, maybeRestoreSparseNarrow, widen, widenSparseSearch } from './gestures-structure.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
@@ -63,10 +63,9 @@ export function render() {
 
   if (S.currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
-    // The textarea belongs to the buffer that built it: after a different buffer is opened or the tab it belonged to is closed,
-    // keeping it would show (and later save) one file's text as another's.
-    const owner = `${S.activeTabId}|${S.state.documentId}`;
-    if (existingTextarea && outlineEl.contains(existingTextarea) && existingTextarea.dataset.owner === owner) {
+    // The textarea belongs to the buffer (and the document) it was built from: after another buffer is opened, a tab is closed or
+    // the document is replaced (reload, merge), keeping it would show -- and later save -- one file's text as another's.
+    if (existingTextarea && outlineEl.contains(existingTextarea) && textViewBelongsToActive(existingTextarea)) {
       // Already showing the text editor with the person's own,
       // possibly-unsaved edits sitting in it -- leave it completely
       // alone. Rebuilding it here from state.doc (stale until the
@@ -80,7 +79,8 @@ export function render() {
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
-    textarea.dataset.owner = owner;
+    textarea.dataset.owner = textViewOwner();
+    textViewDocs.set(textarea, S.state.doc);
     const fullText = S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
     textarea.value = fullText;
     textarea.readOnly = S.isBufferReadOnly;

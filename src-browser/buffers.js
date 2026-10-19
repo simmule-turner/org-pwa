@@ -79,8 +79,13 @@ function readOnlyRefusal(fileId, label) {
 /** @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc) => unknown }} options */
 function editActiveBuffer(fileId, { label, historyLabel, mutate }) {
   if (S.isBufferReadOnly) return readOnlyRefusal(fileId, label);
+  // In Text view the typing is in the text box, not yet in the document: take it in first, so the change lands on top of it
+  // rather than being overwritten by it, and afterwards rebuild the text box from the document that now holds both.
+  commitTextModeIfActive();
   const result = mutate(S.state.doc);
   if (result === undefined || result === null) return { ok: false };
+  const textBox = document.getElementById('document-text-edit-input');
+  if (textBox) textBox.remove();
   commitAndRender(historyLabel || label);
   return { ok: true, result };
 }
