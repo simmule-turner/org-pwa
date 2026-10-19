@@ -27,6 +27,7 @@ import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, model
 import { getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
 import { setFloatingKeyboardPos } from './settings.js';
+import { noteKeyLog } from './key-log.js';
 import { sendKeyToTextView } from './text-view.js';
 import { kv } from './singletons.js';
 import { safeAreaTop } from './ui-widgets.js';
@@ -385,6 +386,7 @@ export function renderFloatingKeyboard() {
       if (textarea) {
         // the editor keeps focus, so its cursor stays and the keys keep working; inputmode "none" is what keeps the
         // device keyboard away (blurred and refocused so the change takes effect)
+        noteKeyLog('keyboard key', { hide: wasShowing });
         S.textKeyboardHidden = wasShowing;
         textarea.blur();
         textarea.inputMode = wasShowing ? 'none' : 'text';
@@ -429,6 +431,7 @@ export function renderFloatingKeyboard() {
         // needs Shift to stay on until it is tapped again
         if (!key.rawKey.startsWith('Arrow')) S.floatingKeyboardShiftArmed = false;
         const textarea = textViewInput();
+        noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp) });
         if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
         else dispatchGodModeKeystroke(rawKey, shiftKey);
       });

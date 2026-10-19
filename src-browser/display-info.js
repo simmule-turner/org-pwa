@@ -7,6 +7,7 @@ import { contentAreaEl, modelineBarEl, topBarEl } from './dom.js';
 import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
+import { keyLogText } from './key-log.js';
 
 /** @param {number} n */
 const px = (n) => `${Math.round(n * 10) / 10}px`;
@@ -87,6 +88,24 @@ export async function showDisplayMeasurements() {
         setStatus('Display measurements copied.');
       } catch {
         setStatus("Couldn't copy them: select the text in the box instead.");
+      }
+    },
+  });
+}
+
+/** The trail kept by key-log.js, with the display measurements beneath it, in a box whose OK copies it. */
+export async function showKeyboardDebugLog() {
+  const text = keyLogText() + '\n\n--- display measurements ---\n' + collectDisplayMeasurements(await describeLauncher()).map(([label, value]) => `${label}: ${value}`).join('\n');
+  openTextFieldPopup({
+    label: 'Keyboard debug log (OK copies it)',
+    value: text,
+    defaultValue: text,
+    onSave: async (/** @type {string} */ edited) => {
+      try {
+        await platform.clipboard.writeText(edited);
+        setStatus('Keyboard debug log copied.');
+      } catch {
+        setStatus("Couldn't copy it: select the text in the box instead.");
       }
     },
   });

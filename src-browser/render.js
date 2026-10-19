@@ -10,6 +10,7 @@ import { renderAgendaView, renderTaskListView } from './agenda-view.js';
 import { renderFloatingKeyboard } from './floating-keyboard.js';
 import { renderGodModeHints } from './god-mode-hints.js';
 import { S } from './app-state.js';
+import { noteKeyLog } from './key-log.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
@@ -74,8 +75,10 @@ export function render() {
       // Only the read-only flag is synced: toggling read-only while
       // already in Text view otherwise never reached this textarea.
       /** @type {any} */ (existingTextarea).readOnly = S.isBufferReadOnly;
+      noteKeyLog('render: Text view kept');
       return;
     }
+    noteKeyLog('render: Text view rebuilt');
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';

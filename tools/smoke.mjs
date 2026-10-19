@@ -1900,6 +1900,8 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   await page.evaluate(() => document.getElementById('document-text-edit-input').dispatchEvent(new Event('input', { bubbles: true })));
   await page.waitForTimeout(100);
   expect((await mode()) === 'none', 'still away after the editor redraws');
+  const log = await page.evaluate(async () => (await import('./src-browser/key-log.js')).keyLogText());
+  expect(/ key key=ArrowRight/.test(log) && /tap key=ArrowDown/.test(log) && /user agent:/.test(log), 'the keyboard debug log records the taps and where the cursor went');
   await emulateDeviceKeyboard(page, 300);
   await key.click(); // show
   expect((await focusedIsEditor()) && (await mode()) !== 'none', 'the keyboard key asks for the device keyboard again');

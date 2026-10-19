@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v581';
+const CACHE_NAME = 'org-pwa-shell-v582';
 
 const SHELL_FILES = [
   './',
@@ -261,6 +261,7 @@ const SHELL_FILES = [
   './src-browser/constants.js',
   './src-browser/doc-helpers.js',
   './src-browser/display-info.js',
+  './src-browser/key-log.js',
   './src-browser/sync-helpers.js',
   './src-browser/render-helpers.js',
   './src-browser/indexeddb-adapter.js',

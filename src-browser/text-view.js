@@ -15,6 +15,7 @@ import { scrollContainer } from './chrome.js';
 import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
+import { describeEditor, noteExpectedCaret, noteKeyLog } from './key-log.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 
 const SVG = {
@@ -49,6 +50,7 @@ export function landInTextView(landing, target = /** @type {HTMLTextAreaElement 
 
 /** Redraws the colors and line numbers after the text was changed from code (a replace) rather than typed. @param {HTMLTextAreaElement} textarea */
 export function refreshTextEditor(textarea) {
+  noteKeyLog('editor text refreshed');
   const refresh = refreshers.get(textarea);
   if (refresh) refresh();
 }
@@ -90,6 +92,7 @@ function textViewTab(textarea, quiet = false) {
  *  Tab indents, a letter is typed. Never takes focus, so a device keyboard that was put away stays away.
  * @param {HTMLTextAreaElement} textarea @param {string} rawKey @param {boolean} shift */
 export function sendKeyToTextView(textarea, rawKey, shift) {
+  const beforeTap = describeEditor(textarea);
   const { selectionStart: a, selectionEnd: b, value } = textarea;
   if (rawKey === 'Tab') return textViewTab(textarea, true);
   if (rawKey.length === 1) {
@@ -129,6 +132,8 @@ export function sendKeyToTextView(textarea, rawKey, shift) {
     if (el.offsetTop < textarea.scrollTop) textarea.scrollTop = el.offsetTop;
     else if (el.offsetTop + el.offsetHeight > textarea.scrollTop + textarea.clientHeight) textarea.scrollTop = el.offsetTop + el.offsetHeight - textarea.clientHeight;
   }
+  noteExpectedCaret(to);
+  noteKeyLog('key', { key: rawKey, shift, from: beforeTap, to, after: describeEditor(textarea) });
 }
 
 /** Selects lines startLine..endLine (1-based) and scrolls so they show about a third of the way down.
