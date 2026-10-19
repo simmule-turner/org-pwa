@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v581 — With the keyboard put away in the Text view, the cursor stays and the arrows work
+Putting the device keyboard away with the floating keyboard's keyboard key took the cursor out of the Text view, so there was nothing to navigate. The editor now keeps its cursor and focus and only stops asking for the device keyboard, so the arrows, Shift, Tab and g keep working, and the keyboard stays away until you tap the key again.
+Verified: the Text view floating keyboard check, now covering the cursor and focus, plus the floating keyboard browser checks.
+
 * v580 — The floating keyboard works in the Text view
 In the Text view the floating keyboard's arrows did nothing, and putting the device keyboard away brought it back. The arrows now move the cursor (with S they select), Tab indents and g types a g, and the keyboard key hides the device keyboard and keeps it hidden while the keys still work. The panel closes when you leave the Text view.
 Verified: new Text view checks for the floating keyboard, plus the floating keyboard and Text view browser checks.

@@ -702,6 +702,7 @@ S.floatingKeyboardShiftArmed = false;
 // Tapping the panel's move area shrinks it to just that handle, to see what
 // is behind it; tapping again restores it.
 S.floatingKeyboardMinimized = false;
+S.textKeyboardHidden = false; // the Text view's device keyboard was put away with the floating keyboard's keyboard key
 // Where the floating keyboard was last left: { left } in px (null = its default
 // right-hand corner) and { bottom } in px up from the bottom of the screen.
 // It is set by dragging, and by the device keyboard pushing the panel up (which

@@ -140,7 +140,7 @@ export {};
  *   narrowStateRestoreAttemptedFor: string | null, sparseNarrowRestoreAttemptedFor: string | null,
  *   godModeActive: boolean, godModeState: GodState, godModeRedoArmed: boolean, godModeLastCommand: GodLastCommand | null,
  *   godModeHintsEl: HTMLElement | null, godModeChordIndex: { complete: Set<string>, under: Map<string, number> } | null, godModeInputFedLength: number, godModeRecentKeydown: { key: string, at: number } | null,
- *   floatingKeyboardOpen: boolean, floatingKeyboardShiftArmed: boolean, floatingKeyboardMinimized: boolean,
+ *   floatingKeyboardOpen: boolean, floatingKeyboardShiftArmed: boolean, floatingKeyboardMinimized: boolean, textKeyboardHidden: boolean,
  *   floatingKeyboardPos: { left: number | null, bottom: number } | null, floatingKeyboardSettleTimer: number | null,
  *   pendingLogNote: PendingLogNote | null, pendingRefile: PendingRefile | null,
  *   pendingAttachFileList: { heading: Heading, filenames: string[], action: string } | null,

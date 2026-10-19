@@ -1884,22 +1884,25 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   expect((await ta.inputValue()).startsWith('  alpha'), 'Tab indents with two spaces');
 
   await key.click(); // hide the device keyboard
-  expect(!(await focusedIsEditor()), 'the keyboard key lets go of the editor, which hides the device keyboard');
+  const mode = () => page.evaluate(() => document.getElementById('document-text-edit-input').inputMode);
+  expect((await focusedIsEditor()) && (await mode()) === 'none', 'the keyboard key keeps the editor (and its cursor) focused but asks for no device keyboard');
   await emulateDeviceKeyboard(page, 0);
   await page.waitForTimeout(400);
   expect(await fk.isVisible(), 'the panel stays');
+  await setCaret(0);
   await tap('ArrowRight');
   await tap('ArrowDown');
-  expect(!(await focusedIsEditor()), 'an arrow does not bring the device keyboard back');
-  await setCaret(0);
-  await page.evaluate(() => document.getElementById('document-text-edit-input').blur());
+  expect((await sel()).join() === '9,9' && (await focusedIsEditor()), `an arrow moves the cursor and the editor keeps focus: ${await sel()}`);
   await tap('g');
-  expect((await ta.inputValue()).startsWith('g'), `g types a g: ${(await ta.inputValue()).slice(0, 8)}`);
+  expect((await ta.inputValue()).includes('g'), 'g types a g');
   await tap('Tab');
-  expect(!(await focusedIsEditor()), 'Tab and g leave the keyboard hidden');
+  expect((await focusedIsEditor()) && (await mode()) === 'none', 'Tab and g leave the keyboard away');
+  await page.evaluate(() => document.getElementById('document-text-edit-input').dispatchEvent(new Event('input', { bubbles: true })));
+  await page.waitForTimeout(100);
+  expect((await mode()) === 'none', 'still away after the editor redraws');
   await emulateDeviceKeyboard(page, 300);
   await key.click(); // show
-  expect(await focusedIsEditor(), 'the keyboard key brings it back');
+  expect((await focusedIsEditor()) && (await mode()) !== 'none', 'the keyboard key asks for the device keyboard again');
   await page.click('#godModeBtn');
   expect(!(await fk.isVisible()), '[g] closes the panel');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);

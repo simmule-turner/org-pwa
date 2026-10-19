@@ -255,8 +255,9 @@ function wireHandle(handle) {
  *  Android's back gesture can hide the keyboard and leave the field focused. On a
  *  desktop there is no on-screen keyboard, so this is never true there. */
 function deviceKeyboardShowing() {
-  const field = textViewInput() || godModeKeyboardInput;
-  return document.activeElement === field && keyboardLift() > KEYBOARD_INSET_PX;
+  const textarea = textViewInput();
+  if (textarea) return document.activeElement === textarea && textarea.inputMode !== 'none' && keyboardLift() > KEYBOARD_INSET_PX;
+  return document.activeElement === godModeKeyboardInput && keyboardLift() > KEYBOARD_INSET_PX;
 }
 
 /** How far the device keyboard has pushed the page up, however the platform shows it: the app lifts its mode line when
@@ -314,7 +315,10 @@ export function renderFloatingKeyboard() {
   godModeBtn.style.zIndex = open ? '901' : '50'; // above the panel, so it is always tappable to close it
   godModeBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
 
+  const editor = textViewInput();
+  if (editor && open && S.textKeyboardHidden) editor.inputMode = 'none'; // a rebuilt editor keeps the keyboard away
   if (!open) {
+    S.textKeyboardHidden = false;
     floatingKeyboard.style.display = 'none';
     floatingKeyboard.innerHTML = '';
     return;
@@ -377,7 +381,18 @@ export function renderFloatingKeyboard() {
     });
     keyboardBtn.addEventListener('click', () => {
       const wasShowing = deviceKeyboardShowing();
-      const field = textViewInput() || godModeKeyboardInput;
+      const textarea = textViewInput();
+      if (textarea) {
+        // the editor keeps focus, so its cursor stays and the keys keep working; inputmode "none" is what keeps the
+        // device keyboard away (blurred and refocused so the change takes effect)
+        S.textKeyboardHidden = wasShowing;
+        textarea.blur();
+        textarea.inputMode = wasShowing ? 'none' : 'text';
+        textarea.focus({ preventScroll: true });
+        syncKeyboardToggle();
+        return;
+      }
+      const field = godModeKeyboardInput;
       field.blur();
       if (!wasShowing) field.focus({ preventScroll: true }); // blur first so an already-focused field brings the keyboard back
       syncKeyboardToggle();
