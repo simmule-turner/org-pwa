@@ -35,7 +35,7 @@ import { kv } from './src-browser/singletons.js';
 import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
-import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
+import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, modelineBarEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './src-browser/agenda-files.js';
 import { renderCapturePanel } from './src-browser/capture-ui.js';
 import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContentOffset } from './src-browser/chrome.js';
@@ -243,6 +243,9 @@ setInterval(() => {
 if (window.visualViewport) {
   const vv = window.visualViewport;
   const repositionTopBarForKeyboard = () => {
+    // iOS pans the page to reveal a field it thinks the keyboard covers; for the search box in the mode line that pan
+    // only shifts the document up (the bar itself is placed above the keyboard), so put the page back
+    if (modelineBarEl.contains(document.activeElement) && (window.scrollY > 0 || vv.offsetTop > 0)) window.scrollTo(0, 0);
     topBarEl.style.transform = `translateY(${vv.offsetTop}px)`;
   };
   vv.addEventListener('resize', () => {

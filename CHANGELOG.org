@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v579 — iPhone: opening search no longer scrolls the document or the bar
+Tapping search while editing in the Text view made iOS pan the page, so the text jumped down to the last lines and the bar went with it. The search box now takes focus without asking iOS to scroll, and any pan that still happens while the search box is focused is undone, so the text stays where you were and the bar stays put above the keyboard. Android is unchanged.
+Verified: the search and Text view browser checks.
+
 * v578 — iPhone: the bar sits on the keyboard even when search opens in the Text view
 The bar's lift was worked out from a window height that iOS does not always report the way the bar is positioned, so after tapping search the mode line and search box could land behind the keyboard. It is now measured against the same area the bar is placed in. The Show display measurements command lists the bar's position, to help if it is still off. Android is unchanged.
 Verified: the iOS bar check and the Save Some Buffers browser checks.

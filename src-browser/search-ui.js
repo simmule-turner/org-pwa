@@ -99,7 +99,7 @@ export function renderMinibufferSearch() {
   optionsBtn.onclick = () => {
     S.searchOptionsMenuOpen = !S.searchOptionsMenuOpen;
     renderSearchOptionsMenu();
-    input.focus(); // restores focus (and so the on-screen keyboard) after the button's own click naturally took it away
+    input.focus({ preventScroll: true }); // restores focus (and so the on-screen keyboard) after the button's own click naturally took it away
   };
   topRow.appendChild(optionsBtn);
 
@@ -107,7 +107,7 @@ export function renderMinibufferSearch() {
   optionsRow.id = 'search-options-row';
   minibufferSearchEl.appendChild(optionsRow);
 
-  input.focus();
+  input.focus({ preventScroll: true }); // the bar is already above the keyboard: nothing needs scrolling into view
   renderSearchOptionsMenu();
 }
 
