@@ -231,6 +231,7 @@ export async function closeTab(tabId) {
   }
   const nextIndex = Math.min(index, S.documentSessions.length - 1);
   loadSessionSnapshot(S.documentSessions[nextIndex].tabId);
+  outlineEl.innerHTML = ''; // a Text view textarea left from the closed tab is not this tab's
   hideExternalChangeBanner();
   checkForExternalChange();
   await setLastActiveDocument(kv, S.state.documentId, S.state.storageKind);

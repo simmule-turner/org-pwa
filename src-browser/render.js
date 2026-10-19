@@ -63,7 +63,10 @@ export function render() {
 
   if (S.currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
-    if (existingTextarea && outlineEl.contains(existingTextarea)) {
+    // The textarea belongs to the buffer that built it: after a different buffer is opened or the tab it belonged to is closed,
+    // keeping it would show (and later save) one file's text as another's.
+    const owner = `${S.activeTabId}|${S.state.documentId}`;
+    if (existingTextarea && outlineEl.contains(existingTextarea) && existingTextarea.dataset.owner === owner) {
       // Already showing the text editor with the person's own,
       // possibly-unsaved edits sitting in it -- leave it completely
       // alone. Rebuilding it here from state.doc (stale until the
@@ -77,6 +80,7 @@ export function render() {
     outlineEl.innerHTML = '';
     const textarea = document.createElement('textarea');
     textarea.id = 'document-text-edit-input';
+    textarea.dataset.owner = owner;
     const fullText = S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
     textarea.value = fullText;
     textarea.readOnly = S.isBufferReadOnly;

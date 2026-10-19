@@ -346,6 +346,36 @@ check('app loads with no JavaScript errors, and Help opens', async () => {
   await context.close();
 });
 
+check('opening a plain-text file while another buffer is in Text view shows the new file, not the old textarea, and switching back and forth keeps both intact', async () => {
+  const notes = ['* Notes', 'notes body', ''].join('\n');
+  const diary = ['10/18 Brunch', '   at Mom', ''].join('\n');
+  dav.reset({ 'notes.org': notes, diary });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  await fileMenu(page, 'Open', 'WebDAV');
+  await page.locator('#fileScreenBox [data-entry="notes.org"]').waitFor({ timeout: 8000 });
+  await page.locator('#fileScreenBox [data-entry="notes.org"]').click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('notes.org'), null, { timeout: 8000 });
+  await viewMenu(page, 'Text');
+  await page.locator('#document-text-edit-input').waitFor({ timeout: 8000 });
+  await fileMenu(page, 'Open', 'WebDAV');
+  await page.locator('#fileScreenBox [data-show="all"]').click();
+  await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
+  await page.locator('#fileScreenBox [data-entry="diary"]').click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('diary'), null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  const text = () => page.locator('#document-text-edit-input').inputValue();
+  expect((await text()) === diary, `the diary should show its own text: ${JSON.stringify(await text())}`);
+  for (const [name, want] of [['notes.org', notes], ['diary', diary], ['notes.org', notes], ['diary', diary]]) {
+    await page.locator('#tabBar > div', { hasText: name }).first().click();
+    await page.waitForTimeout(400);
+    const got = await text();
+    expect(got === want || (name === 'notes.org' && got.includes('notes body')), `${name} should show its own text: ${JSON.stringify(got)}`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('read-only toggle: a read-only buffer becomes editable in Text view and stays writable back in Org', async () => {
   const { context, page } = await freshPage();
   await openHelp(page); // the Help buffer is read-only by its own file header
@@ -6786,7 +6816,7 @@ check('every item in the top bar\'s menus runs without a page error and does som
   for (const button of ['#captureBtn', '#searchBtn', '#settingsBtn']) {
     const { context, page, errors } = await open('#topBar');
     const before = await visible(page);
-    await page.click(button).catch(() => {});
+    await page.evaluate((selector) => /** @type {HTMLElement} */ (document.querySelector(selector)).click(), button); // these three are hidden buttons the palette and keys click, so the sweep clicks them the same way
     await page.waitForTimeout(400);
     if (errors.length) problems.push(`${button}: ${errors[0]}`);
     else if ((await visible(page)) === before) problems.push(`${button}: nothing happened`);

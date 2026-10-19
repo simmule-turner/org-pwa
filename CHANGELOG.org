@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v573 — Switching buffers in Text view no longer shows or saves the wrong file
+Opening a plain-text file such as a diary while another buffer was in Text view kept the old buffer's text box on screen, and the next save or switch wrote that text into the new file. The same could happen after closing a tab. Each Text view now belongs to the buffer that opened it and is rebuilt for any other.
+Verified: the buffer-switching and top-bar browser checks.
+
 * v572 — More room for text in the Text view
 Select All and Copy All no longer take a row above the Text view's text. They are now entries in the Line… sheet (still one tap each), which gives the editor another line or two of text. The phone's own selection menu still offers Select All and Copy as well.
 Verified: the Text view browser check.
