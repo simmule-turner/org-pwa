@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v589 — The cursor no longer vanishes in the Text view on iOS
+iOS drops the editor's focus by itself, sometimes half a second after the cursor moves (for example while stepping down through empty lines), and an editor without focus draws no cursor. While the floating keyboard is open, the editor now gets its focus back with the cursor where it was; tapping elsewhere still leaves it.
+Verified: the floating keyboard smoke checks.
+
 * v588 — The keyboard key raises the iOS keyboard; the cursor stays visible
 On iOS the floating keyboard's keyboard key hid the device keyboard but could not bring it back, which also left the editor without focus a moment after arrow taps, so the cursor vanished. Showing now hands focus through a throwaway field inside the tap (the way iOS raises a keyboard), and the editor is refocused if iOS drops its focus after an arrow tap.
 Verified: the floating keyboard smoke checks.

@@ -334,6 +334,31 @@ function drawOutline() {
   floatingKeyboard.appendChild(layer);
 }
 
+/** iOS drops the Text view editor's focus now and then, a moment after the cursor moves, and an editor without focus
+ *  draws no cursor. While the panel is open, a blur that no tap outside the panel just caused is undone, with the
+ *  selection kept; tapping elsewhere still leaves the editor. */
+function guardTextEditor() {
+  if (!document.documentElement.dataset.fkTouchGuard) {
+    document.documentElement.dataset.fkTouchGuard = '1';
+    document.addEventListener('pointerdown', (e) => {
+      if (!floatingKeyboard.contains(/** @type {Node} */ (e.target))) floatingKeyboard.dataset.outsideAt = String(Date.now());
+    }, true);
+  }
+  const textarea = textViewInput();
+  if (!textarea || textarea.dataset.fkGuard) return;
+  textarea.dataset.fkGuard = '1';
+  textarea.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (!S.floatingKeyboardOpen || document.hidden || textViewInput() !== textarea || document.activeElement === textarea) return;
+      if (Date.now() - Number(floatingKeyboard.dataset.outsideAt || 0) < 700) return; // the person tapped elsewhere
+      const { selectionStart: from, selectionEnd: to, selectionDirection: dir } = textarea;
+      textarea.focus({ preventScroll: true });
+      textarea.setSelectionRange(from, to, dir || 'none');
+      noteKeyLog('refocused editor after iOS blur');
+    }, 30);
+  });
+}
+
 /** Lights the panel's keyboard key while the device keyboard is showing. Cheap,
  *  and safe to call when the panel is not there. */
 export function syncKeyboardToggle() {
@@ -524,18 +549,7 @@ export function renderFloatingKeyboard() {
         const hit = btn.getBoundingClientRect();
         const panel = floatingKeyboard.getBoundingClientRect();
         noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp), at: [Math.round(e.clientX), Math.round(e.clientY)], button: [Math.round(hit.left), Math.round(hit.top), Math.round(hit.width), Math.round(hit.height)], panel: [Math.round(panel.left), Math.round(panel.top), Math.round(panel.width), Math.round(panel.height)], buttons: [...floatingKeyboard.querySelectorAll('[data-fk-key]')].map((b) => `${(b.getAttribute('data-fk-key') || '').replace('Arrow', '')}@${Math.round(b.getBoundingClientRect().left)}`).join(' ') });
-        if (textarea) {
-          sendKeyToTextView(textarea, rawKey, shiftKey);
-          // iOS blurs the editor a moment after the selection moves when no keyboard is really up, and a blurred editor
-          // draws no cursor: put the focus back (and the selection) if that happens
-          setTimeout(() => {
-            if (textViewInput() !== textarea || document.activeElement === textarea) return;
-            const { selectionStart: from, selectionEnd: to, selectionDirection: dir } = textarea;
-            textarea.focus({ preventScroll: true });
-            textarea.setSelectionRange(from, to, dir || 'none');
-            noteKeyLog('refocused editor after iOS blur');
-          }, 250);
-        }
+        if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
         else dispatchGodModeKeystroke(rawKey, shiftKey);
       });
       if (key.rawKey === 'g') floatingKeyboard.appendChild(shiftBtn); // layout: T \u2190 \u2192 \u2191 \u2193 S g
@@ -545,6 +559,7 @@ export function renderFloatingKeyboard() {
 
   positionFloatingKeyboard();
   drawOutline();
+  guardTextEditor();
 }
 
 // ---- Letters typed on the device keyboard --------------------------------

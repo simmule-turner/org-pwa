@@ -1914,6 +1914,24 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   await context.close();
 });
 
+check('floating keyboard in Text view: an editor that loses focus by itself (iOS does) gets it back with the cursor where it was, but tapping elsewhere still leaves it', async () => {
+  const { context, page } = await freshPage();
+  await newDocument(page, 'alpha\nbe\ncharlie\n');
+  await viewMenu(page, 'Text');
+  const fk = page.locator('#floatingKeyboard');
+  await page.locator('#document-text-edit-input').click();
+  await page.click('#godModeBtn');
+  await fk.waitFor({ state: 'visible' });
+  const state = () => page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return [document.activeElement === t, t.selectionStart]; });
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.setSelectionRange(7, 7); t.blur(); });
+  await page.waitForTimeout(300);
+  expect((await state()).join() === 'true,7', `refocused with the cursor kept: ${await state()}`);
+  await page.mouse.click(5, 5); // a real tap away from the panel
+  await page.waitForTimeout(300);
+  expect((await state())[0] === false, 'a tap elsewhere leaves the editor');
+  await context.close();
+});
+
 check('floating keyboard in Text view: the line the cursor is on is never left under the panel as the arrows walk down and back up', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 360, height: 640 });
