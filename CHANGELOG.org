@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v588 — The keyboard key raises the iOS keyboard; the cursor stays visible
+On iOS the floating keyboard's keyboard key hid the device keyboard but could not bring it back, which also left the editor without focus a moment after arrow taps, so the cursor vanished. Showing now hands focus through a throwaway field inside the tap (the way iOS raises a keyboard), and the editor is refocused if iOS drops its focus after an arrow tap.
+Verified: the floating keyboard smoke checks.
+
 * v587 — Wider, equal arrow keys; the cursor stays visible on iOS with the keyboard hidden
 All four arrow keys on the floating keyboard are now the same, wider size. On iOS, with the device keyboard hidden, the editor lost focus a moment after an arrow moved the cursor, so the cursor vanished; the panel now puts the focus back.
 Verified: the floating keyboard smoke checks.

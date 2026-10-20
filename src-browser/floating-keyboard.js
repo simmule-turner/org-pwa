@@ -466,7 +466,18 @@ export function renderFloatingKeyboard() {
         textarea.blur();
         textarea.inputMode = wasShowing ? 'none' : 'text';
         if (wasShowing) setTimeout(refocus, 60);
-        else refocus();
+        else {
+          // iOS raises the keyboard for a focus() inside the tap only when focus moves from one real field to another,
+          // so the tap focuses a throwaway field first and hands the focus on to the editor straight away
+          const relay = document.createElement('input');
+          relay.setAttribute('aria-hidden', 'true');
+          relay.tabIndex = -1;
+          relay.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0';
+          document.body.appendChild(relay);
+          relay.focus({ preventScroll: true });
+          refocus();
+          setTimeout(() => relay.remove(), 500);
+        }
         return;
       }
       const field = godModeKeyboardInput;
@@ -515,10 +526,10 @@ export function renderFloatingKeyboard() {
         noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp), at: [Math.round(e.clientX), Math.round(e.clientY)], button: [Math.round(hit.left), Math.round(hit.top), Math.round(hit.width), Math.round(hit.height)], panel: [Math.round(panel.left), Math.round(panel.top), Math.round(panel.width), Math.round(panel.height)], buttons: [...floatingKeyboard.querySelectorAll('[data-fk-key]')].map((b) => `${(b.getAttribute('data-fk-key') || '').replace('Arrow', '')}@${Math.round(b.getBoundingClientRect().left)}`).join(' ') });
         if (textarea) {
           sendKeyToTextView(textarea, rawKey, shiftKey);
-          // With the device keyboard hidden (inputmode none) iOS blurs the editor a moment after the selection moves,
-          // and a blurred editor draws no cursor: put the focus back (and the selection) if that happens
+          // iOS blurs the editor a moment after the selection moves when no keyboard is really up, and a blurred editor
+          // draws no cursor: put the focus back (and the selection) if that happens
           setTimeout(() => {
-            if (!S.textKeyboardHidden || textViewInput() !== textarea || document.activeElement === textarea) return;
+            if (textViewInput() !== textarea || document.activeElement === textarea) return;
             const { selectionStart: from, selectionEnd: to, selectionDirection: dir } = textarea;
             textarea.focus({ preventScroll: true });
             textarea.setSelectionRange(from, to, dir || 'none');
