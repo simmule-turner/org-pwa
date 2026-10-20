@@ -11,7 +11,7 @@
  *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, todoFilter?: ((todo: string) => boolean) | null,
  *   tagFilter?: ((tags: string[]) => boolean) | null, rangeStart?: Date | null, rangeEnd?: Date | null, isDone?: ((todo: string) => boolean) | null,
  *   today?: Date, birthdayProperty?: string, contactsDocs?: { documentId: string, doc: Doc }[] | null, deadlineWarningDays?: number,
- *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarDateStyle?: string, solarAmpm?: boolean, solarHideLabel?: boolean,
+ *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarDateStyle?: string, calendarTimeDisplayForm?: string,
  *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
  *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
  *   diary?: import('./agenda-diary.js').DiarySource | null,
@@ -52,24 +52,6 @@ import {
   expandOrgBlockOccurrences,
   parseDiaryFloatLine,
   expandDiaryFloatOccurrences,
-  isDiarySunriseLine,
-  formatSunriseLine,
-  isDiarySunsetLine,
-  formatSunsetLine,
-  isDiaryCivilDawnLine,
-  formatCivilDawnLine,
-  isDiaryCivilDuskLine,
-  formatCivilDuskLine,
-  isDiaryNauticalDawnLine,
-  formatNauticalDawnLine,
-  isDiaryNauticalDuskLine,
-  formatNauticalDuskLine,
-  isDiaryAstronomicalDawnLine,
-  formatAstronomicalDawnLine,
-  isDiaryAstronomicalDuskLine,
-  formatAstronomicalDuskLine,
-  isDiaryDayLengthLine,
-  formatDayLengthLine,
   enumerateDays,
   unquoteDiaryFloatMonthList,
 } from './diary-sexp.js';
@@ -799,8 +781,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     calendarLatitude = 35.994,
     calendarLongitude = -78.8986,
     calendarDateStyle = 'american',
-    solarAmpm = false,
-    solarHideLabel = false,
+    calendarTimeDisplayForm,
     weatherData = null,
     orgWeatherFormat = DEFAULT_ORG_WEATHER_FORMAT,
     orgWeatherTemperatureUnit = '\u00b0F',
@@ -1049,8 +1030,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
               calendarLatitude,
               calendarLongitude,
               calendarDateStyle,
-              solarAmpm,
-              solarHideLabel,
+              calendarTimeDisplayForm,
               weatherData,
               orgWeatherFormat,
               orgWeatherTemperatureUnit,
@@ -1085,11 +1065,8 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       // no intention of it appearing in the agenda.
       if (contactsTriggers.length && !contactsDocs) pushContactItems(documentId, heading);
 
-      // The fourteen diary-sexp forms below (org-anniversary, org-cyclic,
-      // org-block, diary-float, diary-sunrise, diary-sunset,
-      // diary-civil-dawn, diary-civil-dusk, diary-nautical-dawn,
-      // diary-nautical-dusk, diary-astronomical-dawn, diary-astronomical-dusk,
-      // diary-day-length, org-weather) are each self-contained, per-line
+      // The diary-sexp forms below (org-anniversary, org-cyclic,
+      // org-block, diary-float, org-weather) are each self-contained, per-line
       // sexps -- every line in this heading's own body is checked against
       // each pattern directly.
       if (rangeStart && rangeEnd) {
@@ -1129,9 +1106,8 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
                 today,
                 calendarLatitude,
                 calendarLongitude,
-                solarAmpm,
+                calendarTimeDisplayForm,
                 calendarDateStyle,
-                solarHideLabel,
                 weatherData,
                 orgWeatherFormat,
                 orgWeatherTemperatureUnit,
@@ -1181,168 +1157,6 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
             );
             for (const occ of occs) pushDiarySexpItem(occ, float.title);
             continue;
-          }
-
-          if (isDiarySunriseLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'sunrise',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatSunriseLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiarySunsetLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'sunset',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatSunsetLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryCivilDawnLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'civil-dawn',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatCivilDawnLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryCivilDuskLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'civil-dusk',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatCivilDuskLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryNauticalDawnLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'nautical-dawn',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatNauticalDawnLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryNauticalDuskLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'nautical-dusk',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatNauticalDuskLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryAstronomicalDawnLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'astronomical-dawn',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatAstronomicalDawnLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryAstronomicalDuskLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'astronomical-dusk',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatAstronomicalDuskLine(day, calendarLatitude, calendarLongitude, undefined, solarAmpm, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
-          }
-
-          if (isDiaryDayLengthLine(trimmed)) {
-            for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              items.push({
-                documentId,
-                heading,
-                kind: 'day-length',
-                hasTime: false,
-                repeater: null,
-                todo: heading.todo,
-                priority: heading.priority,
-                tags: heading.tags,
-                title: formatDayLengthLine(day, calendarLatitude, calendarLongitude, solarHideLabel),
-                date: day,
-                daysOverdue: 0,
-              });
-            }
           }
 
           if (isOrgWeatherLine(trimmed) && weatherData && enumerateDays(rangeStart, rangeEnd).some((d) => startOfDay(d).getTime() === startOfDay(today).getTime())) {

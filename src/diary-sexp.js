@@ -402,9 +402,9 @@ function toJulianDay(date) {
  *  every populated latitude never hits this, but a user-supplied
  *  latitude near the poles legitimately could. `angleDegrees` is how
  *  far below the horizon the sun's own center must be for this to
- *  count as "risen"/"set" -- defaults to -0.83, the standard
- *  refraction-and-solar-radius-corrected value real sunrise/sunset
- *  itself uses; -6 degrees for civil dawn/dusk. */
+ *  count as "risen"/"set" -- defaults to -0.61, the value Emacs's
+ *  solar.el uses for sunrise and sunset; -6, -12 and -18 degrees
+ *  give the civil, nautical and astronomical twilights. */
 /** The sun's own declination (radians) and solar transit (Julian
  *  day) for `date` at `longitude` -- factored out of
  *  computeSunriseSunsetUtc so computeDaylightHours below can reuse
@@ -436,7 +436,7 @@ function computeSolarPosition(date, longitude) {
  * @param {number} latitude
  * @param {any} [longitude]
  */
-function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83) {
+function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.61) {
   const { declination, solarTransit } = computeSolarPosition(date, longitude);
   const latRad = latitude * RAD;
   const cosHourAngle =
@@ -473,8 +473,8 @@ function computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees = -0.83
  * @param {number} latitude
  * @param {any} [longitude]
  *  re-derived copy of the same declination formula. */
-function computeDaylightHours(date, latitude, longitude) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude);
+function computeDaylightHours(date, latitude, longitude, angleDegrees = -0.61) {
+  const result = computeSunriseSunsetUtc(date, latitude, longitude, angleDegrees);
   if (result) {
     let hours = result.sunset - result.sunrise;
     if (hours < 0) hours += 24;
@@ -482,241 +482,46 @@ function computeDaylightHours(date, latitude, longitude) {
   }
   const { declination } = computeSolarPosition(date, longitude);
   const noonElevation = 90 - Math.abs(latitude - declination / RAD);
-  return noonElevation > -0.83 ? 24 : 0;
+  return noonElevation > angleDegrees ? 24 : 0;
 }
 
-/** "H:MMam"/"H:MMpm", `offsetMinutes` (this app's own equivalent of
- *  real Emacs's calendar-time-zone -- minutes east of UTC, e.g. -240
- * @param {number} utcHours
- * @param {number} offsetMinutes
- *  for EDT) applied to the UTC fractional-hour value first. */
-function formatSunTime(utcHours, offsetMinutes) {
-  let totalMinutes = Math.round(utcHours * 60 + offsetMinutes);
-  totalMinutes = ((totalMinutes % 1440) + 1440) % 1440;
-  let h = Math.floor(totalMinutes / 60);
-  const mi = totalMinutes % 60;
-  const period = h >= 12 ? 'pm' : 'am';
-  h = h % 12;
-  if (h === 0) h = 12;
-  return `${h}:${String(mi).padStart(2, '0')}${period}`;
+/** Emacs's solar-daylight: a length of time in hours as "H:MM" (truncated, not rounded).
+ * @param {number} hours */
+function solarDaylight(hours) {
+  const h = Math.floor(hours);
+  return `${h}:${String(Math.floor(60 * (hours - h))).padStart(2, '0')}`;
 }
 
-/** Civil twilight's own standard, universally-used astronomical
- *  definition: the sun 0-6 degrees below the horizon. Civil dawn/dusk
- *  is the sun crossing -6 degrees (as opposed to nautical at -12, or
- *  astronomical at -18) -- reusing computeSunriseSunsetUtc's own
- *  already-tested solar-position math at this angle, exactly the same
- *  way it's already used at -0.83 degrees for ordinary sunrise/sunset,
- *  rather than a second implementation of the same underlying
- *  astronomy. */
-const CIVIL_TWILIGHT_ANGLE = -6;
-const NAUTICAL_TWILIGHT_ANGLE = -12;
-const ASTRONOMICAL_TWILIGHT_ANGLE = -18;
-
-/** One resolved sun-crossing time as "H:MMam"/"H:MMpm", or a clear
- *  placeholder for the polar day/night case (computeSunriseSunsetUtc
- * @param {number | null} utcHours
- * @param {number} offsetMinutes
- *  returned null). */
-function formatSunTimeOrPlaceholder(utcHours, offsetMinutes) {
-  return utcHours === null ? 'n/a' : formatSunTime(utcHours, offsetMinutes);
+/** The device's offset from UTC on `date`, in minutes east (daylight saving included).
+ * @param {Date} date */
+function localOffsetMinutes(date) {
+  return -new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12).getTimezoneOffset();
 }
 
-/** "HH:MM" in 24-hour, zero-filled format, or 'n/a' if `utcHours` is
- *  null (the sun doesn't cross this particular angle at all that
- *  day -- polar day/night, or "white nights" for the civil-twilight
- *  angle specifically). Used by the four single-value functions
- * @param {number | null} utcHours
- * @param {number} offsetMinutes
- *  below. */
-function formatSunTime24(utcHours, offsetMinutes) {
-  if (utcHours === null) return 'n/a';
-  let totalMinutes = Math.round(utcHours * 60 + offsetMinutes);
-  totalMinutes = ((totalMinutes % 1440) + 1440) % 1440;
-  const h = Math.floor(totalMinutes / 60);
-  const mi = totalMinutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
+/** The device's short time zone name on `date`, such as "EDT".
+ * @param {Date} date */
+function timeZoneName(date) {
+  const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+  const part = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(noon).find((p) => p.type === 'timeZoneName');
+  return part ? part.value : '';
 }
 
-/** The eight single-value solar functions below (diary-sunrise,
- *  diary-sunset, diary-civil-dawn, diary-civil-dusk, diary-nautical-dawn,
- *  diary-nautical-dusk, diary-astronomical-dawn, diary-astronomical-dusk)
- *  are this app's own extension, not real elisp/org functions -- each
- *  reuses computeSunriseSunsetUtc directly, at whichever angle below
- *  the horizon that particular twilight definition uses (civil -6°,
- *  nautical -12°, astronomical -18°). Each returns "HH:MM Label" by
- *  default -- 24-hour, zero-filled time (formatSunTime24 above), 'n/a'
- *  in place of the time for whichever value doesn't occur that day at
- *  this latitude. Two of this app's own extension variables (see
- *  local-variables.js) adjust the output: org-xx-solar-ampm (default nil)
- *  switches from 24-hour to 12-hour am/pm (formatSunTimeOrPlaceholder
- *  above) when non-nil; org-xx-solar-hide-label (default nil) omits the
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- *  trailing label entirely when non-nil, leaving just the bare time. */
-function formatSunriseLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude);
-  const utcHours = result ? result.sunrise : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Sunrise`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatSunsetLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude);
-  const utcHours = result ? result.sunset : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Sunset`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatCivilDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunrise : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dawn`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatCivilDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, CIVIL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunset : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dusk`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatNauticalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunrise : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dawn`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatNauticalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, NAUTICAL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunset : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dusk`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatAstronomicalDawnLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunrise : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dawn`;
-}
-
-/**
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- */
-function formatAstronomicalDuskLine(date, latitude, longitude, offsetMinutes = -date.getTimezoneOffset(), ampm = false, hideLabel = false) {
-  const result = computeSunriseSunsetUtc(date, latitude, longitude, ASTRONOMICAL_TWILIGHT_ANGLE);
-  const utcHours = result ? result.sunset : null;
-  const time = ampm ? formatSunTimeOrPlaceholder(utcHours, offsetMinutes) : formatSunTime24(utcHours, offsetMinutes);
-  return hideLabel ? time : `${time} Dusk`;
-}
-
-/** diary-day-length -- this app's own extension too: total daylight
- *  duration (computeDaylightHours above) as "HH:MM daylight", always
- *  24-hour zero-filled (a duration, not a time-of-day -- there's no
- *  am/pm distinction to switch to, so org-xx-solar-ampm has no effect here
- *  at all, only org-xx-solar-hide-label does, per the explicit
- *  clarification that a duration still has a label to hide even
- * @param {Date} date
- * @param {any} [latitude]
- * @param {any} [longitude]
- *  though it has no time format to switch between). */
-function formatDayLengthLine(date, latitude, longitude, hideLabel = false) {
-  const hours = computeDaylightHours(date, latitude, longitude);
-  const totalMinutes = Math.round(hours * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const mi = totalMinutes % 60;
-  const duration = `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
-  return hideLabel ? duration : `${duration} daylight`;
-}
-
-const DIARY_SUNRISE_RE = /^%%\(diary-sunrise\)\s*$/;
-const DIARY_SUNSET_RE = /^%%\(diary-sunset\)\s*$/;
-const DIARY_CIVIL_DAWN_RE = /^%%\(diary-civil-dawn\)\s*$/;
-const DIARY_CIVIL_DUSK_RE = /^%%\(diary-civil-dusk\)\s*$/;
-const DIARY_NAUTICAL_DAWN_RE = /^%%\(diary-nautical-dawn\)\s*$/;
-const DIARY_NAUTICAL_DUSK_RE = /^%%\(diary-nautical-dusk\)\s*$/;
-const DIARY_ASTRONOMICAL_DAWN_RE = /^%%\(diary-astronomical-dawn\)\s*$/;
-const DIARY_ASTRONOMICAL_DUSK_RE = /^%%\(diary-astronomical-dusk\)\s*$/;
-
-/**
- * True if `line` is exactly one of the four single-value triggers.
- * @param {string} line
- */
-function isDiarySunriseLine(line) {
-  return DIARY_SUNRISE_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiarySunsetLine(line) {
-  return DIARY_SUNSET_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryCivilDawnLine(line) {
-  return DIARY_CIVIL_DAWN_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryCivilDuskLine(line) {
-  return DIARY_CIVIL_DUSK_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryNauticalDawnLine(line) {
-  return DIARY_NAUTICAL_DAWN_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryNauticalDuskLine(line) {
-  return DIARY_NAUTICAL_DUSK_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryAstronomicalDawnLine(line) {
-  return DIARY_ASTRONOMICAL_DAWN_RE.test(line.trim());
-}
-/** @param {string} line */
-function isDiaryAstronomicalDuskLine(line) {
-  return DIARY_ASTRONOMICAL_DUSK_RE.test(line.trim());
-}
-
-const DIARY_DAY_LENGTH_RE = /^%%\(diary-day-length\)\s*$/;
-
-/** True if `line` is exactly the diary-day-length trigger -- same
- * @param {string} line
- *  self-contained-line convention as the others above. */
-function isDiaryDayLengthLine(line) {
-  return DIARY_DAY_LENGTH_RE.test(line.trim());
+/** Emacs's solar-sunrise-sunset for `date`: local sunrise and sunset in decimal hours (null on a day without one) and the
+ *  length of the daylight as "H:MM". `height` is the angle of the sun's center to the horizon; Emacs uses -0.61 for sunrise and
+ *  sunset, and this takes -6, -12 and -18 as well for the civil, nautical and astronomical twilights.
+ * @param {Date} date @param {number} latitude @param {number} longitude @param {number} [height]
+ * @returns {{ rise: number | null, set: number | null, daylight: string, zone: string }} */
+function solarSunriseSunset(date, latitude, longitude, height = -0.61) {
+  const utc = computeSunriseSunsetUtc(date, latitude, longitude, height);
+  const offset = localOffsetMinutes(date) / 60;
+  /** @param {number} h */
+  const local = (h) => (((h + offset) % 24) + 24) % 24;
+  return {
+    rise: utc ? local(utc.sunrise) : null,
+    set: utc ? local(utc.sunset) : null,
+    daylight: solarDaylight(computeDaylightHours(date, latitude, longitude, height)),
+    zone: timeZoneName(date),
+  };
 }
 
 export {
@@ -735,25 +540,8 @@ export {
   nthWeekdayOfMonth,
   expandDiaryFloatOccurrences,
   computeSunriseSunsetUtc,
-  formatSunTime,
-  formatSunTime24,
-  isDiarySunriseLine,
-  formatSunriseLine,
-  isDiarySunsetLine,
-  formatSunsetLine,
-  isDiaryCivilDawnLine,
-  formatCivilDawnLine,
-  isDiaryCivilDuskLine,
-  formatCivilDuskLine,
-  isDiaryNauticalDawnLine,
-  formatNauticalDawnLine,
-  isDiaryNauticalDuskLine,
-  formatNauticalDuskLine,
-  isDiaryAstronomicalDawnLine,
-  formatAstronomicalDawnLine,
-  isDiaryAstronomicalDuskLine,
-  formatAstronomicalDuskLine,
   computeDaylightHours,
-  formatDayLengthLine,
-  isDiaryDayLengthLine,
+  solarSunriseSunset,
+  solarDaylight,
+  timeZoneName,
 };

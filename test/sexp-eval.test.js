@@ -16,10 +16,10 @@ test('parses a simple function call with numeric arguments', () => {
 });
 
 test('parses a nested expression (when wrapping two more calls)', () => {
-  const result = parseSexpr('(when (today-p) (diary-sunrise))');
+  const result = parseSexpr('(when (today-p) (solar-time-string 6.5))');
   assert.equal(result[0].value, 'when');
   assert.deepEqual(result[1], [{ type: 'symbol', value: 'today-p' }]);
-  assert.deepEqual(result[2], [{ type: 'symbol', value: 'diary-sunrise' }]);
+  assert.deepEqual(result[2], [{ type: 'symbol', value: 'solar-time-string' }, { type: 'number', value: 6.5 }]);
 });
 
 test('parses a symbol argument (the literal "t" for diary-float\u2019s own "every month")', () => {
@@ -56,18 +56,18 @@ function ctx(candidateDate) {
   return { candidateDate, today: TODAY, calendarLatitude: 35.994, calendarLongitude: -78.8986 };
 }
 
-test('(when (today-p) (diary-sunrise)) shows sunrise ONLY on today', () => {
-  const expr = parseSexpr('(when (today-p) (diary-sunrise))');
+test('(when (today-p) (solar-time-string 6.5)) shows sunrise ONLY on today', () => {
+  const expr = parseSexpr('(when (today-p) (solar-time-string 6.5))');
   const todayResult = evaluateSexpr(expr, ctx(TODAY));
   assert.equal(typeof todayResult, 'string');
-  assert.match(todayResult, /Sunrise/);
+  assert.match(todayResult, /^6:30am$/);
 
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 7, 11))), false); // yesterday
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 7, 13))), false); // tomorrow
 });
 
-test('(when (org-cyclic 7 2026 8 9) (diary-sunrise)) -- weekly sunrise combining when + org-cyclic', () => {
-  const expr = parseSexpr('(when (org-cyclic 7 2026 8 9) (diary-sunrise))');
+test('(when (org-cyclic 7 2026 8 9) (solar-time-string 6.5)) -- weekly sunrise combining when + org-cyclic', () => {
+  const expr = parseSexpr('(when (org-cyclic 7 2026 8 9) (solar-time-string 6.5))');
   assert.equal(typeof evaluateSexpr(expr, ctx(new Date(2026, 7, 9))), 'string'); // baseline day
   assert.equal(typeof evaluateSexpr(expr, ctx(new Date(2026, 7, 16))), 'string'); // baseline + 7
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 7, 12))), false); // not a multiple of 7 from baseline
@@ -103,7 +103,7 @@ test('today-p is true only when the candidate date exactly matches today, ignori
 });
 
 test('when with a falsy condition returns false without evaluating the "then" branch', () => {
-  const expr = parseSexpr('(when (org-cyclic 3 2026 1 1) (diary-sunrise))');
+  const expr = parseSexpr('(when (org-cyclic 3 2026 1 1) (solar-time-string 6.5))');
   assert.equal(evaluateSexpr(expr, ctx(new Date(2026, 0, 2))), false); // doesn't match the cyclic pattern
 });
 
@@ -143,9 +143,9 @@ test('isTruthy: false and the empty string are falsy; everything else (including
 // ---- findSexpTimestamps -----------------------------------------------------
 
 test('finds a <%%(...)> timestamp embedded in a heading title, alongside ordinary text', () => {
-  const found = findSexpTimestamps('Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>');
+  const found = findSexpTimestamps('Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (solar-time-string 6.5))>');
   assert.equal(found.length, 1);
-  assert.equal(found[0].raw, '<%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>');
+  assert.equal(found[0].raw, '<%%(when (org-cyclic 7 2026 8 9) (solar-time-string 6.5))>');
   assert.notEqual(found[0].expr, null);
 });
 
@@ -189,41 +189,35 @@ test('evaluateSexpTimestamp delegates to evaluateSexpr for a valid expr', () => 
 
 // ---- format -------------------------------------------------------------
 
-test('THE FIX: THE EXACT REQUEST -- (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) combines two functions into one string, with solar-hide-label set so only the bare times appear', () => {
-  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn))');
-  const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
-  assert.match(result, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/);
+test('THE FIX: THE EXACT REQUEST -- (format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6)) combines two functions into one string, with only the bare times', () => {
+  const expr = parseSexpr('(format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6))');
+  const result = evaluateSexpr(expr, { ...ctx(TODAY) });
+  assert.match(result, /^Rise 6:30am \(6:00am\)$/);
 });
 
 test('THE FIX: THE EXACT REQUEST, wrapped in <%%(when (today-p) ...)> exactly as originally written, via findSexpTimestamps + evaluateSexpTimestamp end to end', () => {
-  const title = 'Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>';
+  const title = 'Sun Report <%%(when (today-p) (format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6)) )>';
   const found = findSexpTimestamps(title);
   assert.equal(found.length, 1, 'the parens embedded inside the "Rise %s (%s)" string literal must not be mistaken for sexp structure');
-  const result = evaluateSexpTimestamp(found[0].expr, { ...ctx(TODAY), solarHideLabel: true });
-  assert.match(result, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/);
-  const notToday = evaluateSexpTimestamp(found[0].expr, { ...ctx(new Date(2026, 7, 13)), solarHideLabel: true });
+  const result = evaluateSexpTimestamp(found[0].expr, { ...ctx(TODAY) });
+  assert.match(result, /^Rise 6:30am \(6:00am\)$/);
+  const notToday = evaluateSexpTimestamp(found[0].expr, { ...ctx(new Date(2026, 7, 13)) });
   assert.equal(notToday, false, 'still only matches on today, same as every other (when (today-p) ...) example');
 });
 
-test('without solar-hide-label set, format still works correctly -- it just includes whatever each nested function itself returns, labels included', () => {
-  const expr = parseSexpr('(format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn))');
-  const result = evaluateSexpr(expr, ctx(TODAY));
-  assert.match(result, /^Rise \d\d:\d\d Sunrise \(\d\d:\d\d Dawn\)$/);
-});
-
 test('THE FIX: too few sub-expressions to fill every %s evaluates to false (no match) rather than throwing or silently leaving a placeholder', () => {
-  const expr = parseSexpr('(format "%s %s" (diary-sunrise))');
+  const expr = parseSexpr('(format "%s %s" (solar-time-string 6.5))');
   assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
 });
 
 test('THE FIX: extra, unused sub-expressions are simply ignored, matching real elisp\u2019s own tolerant behavior for format', () => {
-  const expr = parseSexpr('(format "%s" (diary-sunrise) (diary-sunset))');
+  const expr = parseSexpr('(format "%s" (solar-time-string 6.5) (solar-time-string 19.25))');
   const result = evaluateSexpr(expr, ctx(TODAY));
-  assert.match(result, /^\d\d:\d\d Sunrise$/, 'only the first sub-expression is used; the second is never evaluated or included');
+  assert.match(result, /^6:30am$/, 'only the first sub-expression is used; the second is never evaluated or included');
 });
 
 test('THE FIX: %% is a literal percent sign', () => {
-  const expr = parseSexpr('(format "100%% done: %s" (diary-sunrise))');
+  const expr = parseSexpr('(format "100%% done: %s" (solar-time-string 6.5))');
   const result = evaluateSexpr(expr, ctx(TODAY));
   assert.match(result, /^100% done: /);
 });
@@ -234,9 +228,9 @@ test('a format string with zero %s placeholders is just the literal string, unch
 });
 
 test('THE FIX: format nests inside itself correctly -- each %s recursively evaluates its own sub-expression via the same evaluator, so nested format needs no special-casing at all', () => {
-  const expr = parseSexpr('(format "outer: %s" (format "inner: %s" (diary-sunrise)))');
+  const expr = parseSexpr('(format "outer: %s" (format "inner: %s" (solar-time-string 6.5)))');
   const result = evaluateSexpr(expr, ctx(TODAY));
-  assert.match(result, /^outer: inner: \d\d:\d\d Sunrise$/);
+  assert.match(result, /^outer: inner: 6:30am$/);
 });
 
 test('a boolean sub-expression (today-p) in a %s slot prints as real elisp\u2019s own "t"/"nil"', () => {
@@ -247,14 +241,14 @@ test('a boolean sub-expression (today-p) in a %s slot prints as real elisp\u2019
 });
 
 test('THE FIX: the first argument must be a literal string -- a non-string first argument evaluates to false rather than throwing', () => {
-  const expr = parseSexpr('(format (diary-sunrise) "x")');
+  const expr = parseSexpr('(format (solar-time-string 6.5) "x")');
   assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
 });
 
-test('format combines three functions at once, including diary-day-length', () => {
-  const expr = parseSexpr('(format "%s | %s | %s" (diary-sunrise) (diary-civil-dawn) (diary-day-length))');
-  const result = evaluateSexpr(expr, { ...ctx(TODAY), solarHideLabel: true });
-  assert.match(result, /^\d\d:\d\d \| \d\d:\d\d \| \d\d:\d\d$/);
+test('format combines three functions at once, from solar-time-string', () => {
+  const expr = parseSexpr('(format "%s | %s | %s" (solar-time-string 6.5) (solar-time-string 6) (solar-time-string 13))');
+  const result = evaluateSexpr(expr, { ...ctx(TODAY) });
+  assert.match(result, /^6:30am \| 6:00am \| 1:00pm$/);
 });
 
 test('format with no sub-expressions at all (missing entirely, not just fewer than %s needs) evaluates to false when %s is present, since args.length < 1 only covers the missing-format-string case -- here args.length is 1 (just the string), so placeholderCount (1) > substitutionArgs.length (0)', () => {
@@ -297,4 +291,66 @@ test('documentUsesOrgWeather handles a null/missing document gracefully', () => 
 test('THE FIX: similar-looking but unrelated text does not false-positive -- only a genuine trigger counts', () => {
   const doc = parseOrg('* Heading\nI mention org-weather here but there\u2019s no actual %%(...) trigger.\n');
   assert.equal(documentUsesOrgWeather(doc), false);
+});
+
+// ---- solar-sunrise-sunset, solar-time-string, apply ---------------------------
+
+test('solar-time-string: Emacs\u2019s default calendar-time-display-form, with and without a time zone', () => {
+  const run = (/** @type {string} */ text) => evaluateSexpr(parseSexpr(text), ctx(TODAY));
+  assert.equal(run('(solar-time-string 6.5)'), '6:30am');
+  assert.equal(run('(solar-time-string 6.5 "EDT")'), '6:30am (EDT)');
+  assert.equal(run('(solar-time-string 18.75)'), '6:45pm');
+  assert.equal(run('(solar-time-string 0)'), '12:00am');
+  assert.equal(run('(solar-time-string 12)'), '12:00pm');
+  assert.equal(run('(solar-time-string 6.999)'), '7:00am', 'rounded to the minute');
+  assert.equal(run('(solar-time-string nil)'), false);
+});
+
+test('solar-time-string follows calendar-time-display-form, a malformed one falling back to the default', () => {
+  const run = (/** @type {string} */ form) => evaluateSexpr(parseSexpr('(solar-time-string 6.5 "EDT")'), { ...ctx(TODAY), calendarTimeDisplayForm: form });
+  assert.equal(run('(24-hours ":" minutes)'), '06:30');
+  assert.equal(run('(12-hours ":" minutes am-pm)'), '6:30am');
+  assert.equal(run('(24-hours "h" minutes " " time-zone)'), '06h30 EDT');
+  assert.equal(run('(24-hours'), '6:30am (EDT)');
+});
+
+test('solar-sunrise-sunset returns ((rise zone) (set zone) "H:MM") and takes a height for the twilights', () => {
+  const show = (/** @type {string} */ text, context = ctx(TODAY)) => evaluateSexpr(parseSexpr(`(format "%s" ${text})`), context);
+  const hours = (/** @type {string} */ text) => Number(show(text));
+  const rise = hours('(car (car (solar-sunrise-sunset date)))');
+  const set = hours('(car (cadr (solar-sunrise-sunset date)))');
+  const apart = (/** @type {number} */ from, /** @type {number} */ to) => (((to - from) % 24) + 24) % 24; // hours from one clock time to the next, in any zone
+  assert.ok(Math.abs(apart(rise, set) - 13.6) < 0.3, `${rise} ${set}`);
+  assert.equal(show('(cadr (car (solar-sunrise-sunset date)))'), show('(cadr (cadr (solar-sunrise-sunset date)))'));
+  assert.match(show('(nth 2 (solar-sunrise-sunset date))'), /^1[2-4]:\d\d$/);
+  assert.match(show('(length (solar-sunrise-sunset date))'), /^3$/);
+  const civil = hours('(car (car (solar-sunrise-sunset date -6)))');
+  const nautical = hours('(car (car (solar-sunrise-sunset date -12)))');
+  const astronomical = hours('(car (car (solar-sunrise-sunset date -18)))');
+  assert.ok(apart(civil, rise) > 0 && apart(civil, rise) < 1);
+  assert.ok(apart(astronomical, nautical) > 0 && apart(nautical, civil) > 0 && apart(astronomical, civil) < 3);
+});
+
+test('solar-sunrise-sunset gives nil for an event the day lacks (the polar night)', () => {
+  const polar = { ...ctx(new Date(2026, 11, 21)), calendarLatitude: 80, calendarLongitude: 0 };
+  const show = (/** @type {string} */ text) => evaluateSexpr(parseSexpr(`(format "%s" ${text})`), polar);
+  assert.equal(show('(car (solar-sunrise-sunset date))'), 'nil');
+  assert.equal(show('(cadr (solar-sunrise-sunset date))'), 'nil');
+  assert.equal(show('(nth 2 (solar-sunrise-sunset date))'), '0:00');
+});
+
+test('apply spreads the last argument: the user\u2019s sun-times entry', () => {
+  const text = '(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: %s | %s | %s" (apply \'solar-time-string (car l)) (apply \'solar-time-string (cadr l)) (nth 2 l))))';
+  const result = evaluateSexpr(parseSexpr(text), { ...ctx(TODAY), calendarTimeDisplayForm: '(24-hours ":" minutes)' });
+  assert.match(result, /^Sun times: \d\d:\d\d \| \d\d:\d\d \| 1[2-4]:\d\d$/);
+  assert.equal(evaluateSexpr(parseSexpr(text), ctx(new Date(2026, 7, 13))), false);
+  assert.equal(evaluateSexpr(parseSexpr("(apply '+ 1 2 (list 3 4))"), ctx(TODAY)), true, 'a number result is a match');
+  assert.equal(evaluateSexpr(parseSexpr("(format \"%d\" (apply '+ 1 2 (list 3 4)))"), ctx(TODAY)), '10');
+});
+
+test('a day without the event leaves apply with nothing to pass: solar-time-string gives nil, not an error', () => {
+  const polar = { ...ctx(new Date(2026, 11, 21)), calendarLatitude: 80, calendarLongitude: 0 };
+  const text = `(let ((l (solar-sunrise-sunset date))) (format "Rise %s" (apply 'solar-time-string (car l))))`;
+  assert.equal(evaluateSexpr(parseSexpr(text), polar), 'Rise nil');
+  assert.equal(evaluateSexpr(parseSexpr(`(let ((l (solar-sunrise-sunset date))) (when (car l) "up"))`), polar), false);
 });

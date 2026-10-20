@@ -98,7 +98,7 @@ In the PWA, =org.fetch= only reaches servers that send CORS headers; Open-Meteo 
 
 ** Example: sunrise and sunset
 
-This one runs with the first release (=org.vars= is in Phase 1). It reads =calendar-latitude= and =calendar-longitude= from your settings, and it is checked against the built-in =diary-sunrise= in =test/extension-examples.test.js=.
+This one runs with the first release (=org.vars= is in Phase 1). It reads =calendar-latitude= and =calendar-longitude= from your settings, and it is checked against the app's own sun-time math in =test/extension-examples.test.js=.
 
 #+begin_src org
 ,#+BEGIN_SRC js :results table
@@ -193,10 +193,10 @@ This is a real user's file, lightly changed. Everything in it is a standard Emac
 
 ,** Weather, Sunrise/Sunset
 ,*** <%%(when (today-p) (org-weather))>
-,*** <%%(when (today-p) (format "Sun times: %s | %s | %s" (diary-sunrise) (diary-sunset) (diary-day-length)))>
+,*** <%%(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: %s | %s | %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l))))>
 #+end_src
 
-Where a script would help is a holiday that follows a rule the standard forms do not cover, such as Easter, or the weekday a holiday is observed on when it falls on a weekend. That is a user-defined sexp (see the next section), not a replacement for the lines above. The last two headings also show why scripts need to compose the built-in forms: the sun-times line calls three of them inside =format=.
+Where a script would help is a holiday that follows a rule the standard forms do not cover, such as Easter, or the weekday a holiday is observed on when it falls on a weekend. That is a user-defined sexp (see the next section), not a replacement for the lines above. The last two headings also show why scripts need to compose the built-in forms: the sun-times line calls four of them inside =let= and =format=.
 
 * Diary sexps and scripts
 
@@ -204,7 +204,7 @@ Question: could scripts replace most or all of the diary sexp forms (=%%(...)= i
 
 ** What exists today
 
-The agenda evaluates =%%(...)= and =<%%(...)>= with a small fixed-form evaluator (=src/sexp-eval.js=), once per candidate day, synchronously: =and=, =or=, =not=, =when=, =today-p=, =org-date=, =org-block=, =org-class=, =org-cyclic=, =org-anniversary=, =diary-float=, the =diary-sunrise= / =sunset= / civil, nautical and astronomical dawn and dusk family, =diary-day-length=, =org-weather= and =format=. This is not a Lisp interpreter, and the forms are checked against Emacs.
+The agenda evaluates =%%(...)= and =<%%(...)>= with a small fixed-form evaluator (=src/sexp-eval.js=), once per candidate day, synchronously: =and=, =or=, =not=, =when=, =today-p=, =org-date=, =org-block=, =org-class=, =org-cyclic=, =org-anniversary=, =diary-float=, =solar-sunrise-sunset=, =solar-time-string=, =apply=, =org-weather= and =format=. This is not a Lisp interpreter, and the forms are checked against Emacs.
 
 ** Capability: mostly yes
 

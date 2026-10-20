@@ -1,7 +1,7 @@
 // @ts-check
 // The Quick Settings section of Settings: reading a setting's value, saving a change, and drawing each field.
 import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
-import { getAgendaStartOnWeekday, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
+import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { parseLogDoneLispValue } from '../src/progress-logging.js';
@@ -125,7 +125,7 @@ export function renderQuickSettingField(field) {
   headerRow.style.gap = '8px';
 
   const label = document.createElement('label');
-  const isCheckboxType = field.type === 'boolean' || field.type === 'onezero';
+  const isCheckboxType = field.type === 'boolean' || field.type === 'onezero' || field.type === 'hours24';
   label.style.display = 'flex';
   label.style.flexDirection = isCheckboxType ? 'row' : 'column';
   label.style.alignItems = isCheckboxType ? 'center' : 'stretch';
@@ -148,6 +148,19 @@ export function renderQuickSettingField(field) {
     checkbox.checked = parseLispBoolean(rawValue, field.default);
     checkbox.onchange = async () => {
       await commitGlobalVariableChange(field.key, checkbox.checked ? 't' : 'nil');
+      setStatus(`${field.label}: ${checkbox.checked ? 'on' : 'off'}.`);
+      renderSettingsView();
+      render();
+    };
+    label.replaceChild(checkbox, /** @type {ChildNode} */ (label.firstChild));
+    label.appendChild(labelText);
+  } else if (field.type === 'hours24') {
+    // calendar-time-display-form is a list: ticked writes the 24-hour one, unticked Emacs's default
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = isTimeDisplay24(S.globalVariables);
+    checkbox.onchange = async () => {
+      await commitGlobalVariableChange(field.key, checkbox.checked ? TIME_DISPLAY_FORM_24 : DEFAULT_TIME_DISPLAY_FORM);
       setStatus(`${field.label}: ${checkbox.checked ? 'on' : 'off'}.`);
       renderSettingsView();
       render();

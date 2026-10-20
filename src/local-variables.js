@@ -625,31 +625,24 @@ export function getCalendarLongitude(vars) {
   return n >= -180 && n <= 180 ? n : -78.8986;
 }
 
-/** org-xx-solar-ampm: this app's own extension, not a real elisp/org
- *  variable -- controls the time format for the eight single-value
- *  solar functions (diary-sunrise/diary-sunset/diary-civil-dawn/
- *  diary-civil-dusk/diary-nautical-dawn/diary-nautical-dusk/
- *  diary-astronomical-dawn/diary-astronomical-dusk). Default nil
- *  (24-hour, zero-filled); t switches to 12-hour with am/pm. Doesn't
- *  affect diary-day-length, which is a duration, not a time-of-day --
- * @param {LocalVars} vars
- *  there's no "am/pm" for a duration. */
-export function getSolarAmpm(vars) {
-  return parseLispBoolean((vars || {})['org-xx-solar-ampm'], false);
+/** Emacs's own default calendar-time-display-form: 6:30am (EDT). */
+export const DEFAULT_TIME_DISPLAY_FORM = '(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))';
+
+/** The 24-hour form the Quick Settings checkbox writes. */
+export const TIME_DISPLAY_FORM_24 = '(24-hours ":" minutes)';
+
+/** calendar-time-display-form as set, else Emacs's default; solar-time-string evaluates it.
+ * @param {LocalVars} vars */
+export function getTimeDisplayForm(vars) {
+  const raw = (vars || {})['calendar-time-display-form'];
+  return raw === undefined || String(raw).trim() === '' ? DEFAULT_TIME_DISPLAY_FORM : String(raw);
 }
 
-/** org-xx-solar-hide-label: this app's own extension too -- controls
- *  whether the eight single-value solar functions above, and
- *  diary-day-length, show their own trailing label ("Sunrise",
- *  "Dawn", "daylight", ...) at all. Default nil (label shown,
- *  matching the format originally requested); t omits it, leaving
- *  just the bare time or duration. Unlike org-xx-solar-ampm, this one DOES
- *  apply to diary-day-length as well as the eight solar functions --
- *  a duration still has a label to hide ("daylight"), even though it
- * @param {LocalVars} vars
- *  has no time-of-day format to switch between 12-/24-hour. */
-export function getSolarHideLabel(vars) {
-  return parseLispBoolean((vars || {})['org-xx-solar-hide-label'], false);
+/** Whether calendar-time-display-form shows 24-hour times (it names 24-hours and not 12-hours): the Quick Settings checkbox.
+ * @param {LocalVars} vars */
+export function isTimeDisplay24(vars) {
+  const text = getTimeDisplayForm(vars);
+  return /\b24-hours\b/.test(text) && !/\b12-hours\b/.test(text);
 }
 
 /** org-table-duration-hour-zero-padding: real org's own actual

@@ -139,7 +139,7 @@ These take no arguments and show a line for each day (the moon only on a day wit
 
 Moon times are in this device's time zone. The line is the whole entry, so no text follows it.
 
-The solar lines (~%%(diary-sunrise)~, ~diary-sunset~, the dawn and dusk forms, ~diary-day-length~) use ~calendar-latitude~ and ~calendar-longitude~; ~org-xx-solar-ampm~ and ~org-xx-solar-hide-label~ change how they read.
+The sun-time forms (~solar-sunrise-sunset~, ~solar-time-string~ and ~apply~, as in Emacs's ~solar.el~) use ~calendar-latitude~ and ~calendar-longitude~; ~calendar-time-display-form~ changes how a time reads. The README's Sun times section has the examples.
 
 * Holidays in your agenda
 The app knows a list of holidays and can show them on the agenda, or use them in a rule. Nothing appears until you add a line to an agenda file.

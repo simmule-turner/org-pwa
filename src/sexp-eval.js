@@ -37,6 +37,7 @@
  * list-of-(month day year) return shape at all.
  */
 
+import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn } from './holidays.js';
@@ -46,15 +47,7 @@ import {
   expandOrgAnniversaryOccurrences,
   expandOrgCyclicOccurrences,
   expandDiaryFloatOccurrences,
-  formatSunriseLine,
-  formatSunsetLine,
-  formatCivilDawnLine,
-  formatCivilDuskLine,
-  formatNauticalDawnLine,
-  formatNauticalDuskLine,
-  formatAstronomicalDawnLine,
-  formatAstronomicalDuskLine,
-  formatDayLengthLine,
+  solarSunriseSunset,
 } from './diary-sexp.js';
 
 // ---- tokenizing + parsing ---------------------------------------------------
@@ -273,7 +266,7 @@ function canonicalDiaryLine(line, style) {
 
 /** Evaluates one already-parsed expression node against `context`
  *  (`{ candidateDate, today, calendarLatitude, calendarLongitude,
- *  solarAmpm, solarHideLabel }`).
+ *  calendarTimeDisplayForm }`).
  *  Returns `false` (no match), `true` (a plain match -- the heading's
  *  own title is what should display), or a non-empty string (a
  *  match, AND that string is what should display instead of/
@@ -292,6 +285,7 @@ function canonicalDiaryLine(line, style) {
     if (node.type === 'number') return node.value;
     if (node.type === 'string') return node.value;
     if (node.type === 'symbol') return lookupSymbol(node.value, context);
+    if (node.type === 'value') return node.value; // an already-evaluated value, made by apply
     return false;
   }
 
@@ -436,32 +430,33 @@ function canonicalDiaryLine(line, style) {
       return line || false;
     }
 
-    case 'diary-sunrise':
-      return formatSunriseLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+    case 'solar-sunrise-sunset': {
+      // Emacs's (solar-sunrise-sunset DATE): ((RISE ZONE) (SET ZONE) "H:MM"), nil for an event the day lacks. The optional
+      // second argument is this app's own: the sun's height in degrees (-6 civil, -12 nautical, -18 astronomical twilight).
+      const [m, d, y] = dateParts(ev(args[0] ?? { type: 'symbol', value: 'date' }, context));
+      const day = realDate(y, m, d);
+      if (!day) throw new LispError('not a date');
+      const height = args[1] ? numberOf(ev(args[1], context)) : undefined;
+      const sun = solarSunriseSunset(day, context.calendarLatitude, context.calendarLongitude, height);
+      return [sun.rise === null ? false : [sun.rise, sun.zone], sun.set === null ? false : [sun.set, sun.zone], sun.daylight];
+    }
 
-    case 'diary-sunset':
-      return formatSunsetLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
+    case 'solar-time-string': {
+      if (!args.length) return false; // (apply 'solar-time-string nil), a day without the event
+      const time = ev(args[0], context);
+      if (!isTruthy(time)) return false;
+      const zone = args[1] ? ev(args[1], context) : false;
+      return solarTimeString(numberOf(time), zone, context);
+    }
 
-    case 'diary-civil-dawn':
-      return formatCivilDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-civil-dusk':
-      return formatCivilDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-nautical-dawn':
-      return formatNauticalDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-nautical-dusk':
-      return formatNauticalDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-astronomical-dawn':
-      return formatAstronomicalDawnLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-astronomical-dusk':
-      return formatAstronomicalDuskLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, undefined, context.solarAmpm, context.solarHideLabel);
-
-    case 'diary-day-length':
-      return formatDayLengthLine(context.candidateDate, context.calendarLatitude, context.calendarLongitude, context.solarHideLabel);
+    case 'apply': {
+      // (apply 'f a b LIST): the function name is not evaluated, the last argument is spread.
+      if (args.length < 2 || args[0].type !== 'symbol') return false;
+      const values = args.slice(1).map((a) => ev(a, context));
+      const last = values.pop();
+      const spread = Array.isArray(last) ? last : last === false ? [] : [last];
+      return ev([args[0], ...[...values, ...spread].map((value) => ({ type: 'value', value }))], context);
+    }
 
     case 'org-weather':
       if (!context.weatherData) return false;
@@ -641,6 +636,33 @@ function lookupSymbol(/** @type {string} */ name, /** @type {Record<string, any>
   if (name === 'date') return dateList(context.candidateDate);
   if (name === 'entry') return context.entryText || false; // the text of the line, as in Emacs's diary
   return false; // nil, and any unbound symbol
+}
+
+
+/** Emacs's solar-time-string: TIME in decimal hours, shown by evaluating each element of calendar-time-display-form, with
+ *  12-hours, 24-hours, minutes, am-pm and time-zone bound the way solar.el binds them. */
+function solarTimeString(/** @type {number} */ time, /** @type {unknown} */ zone, /** @type {Record<string, any>} */ context) {
+  const total = Math.round(time * 60);
+  const hours24 = Math.trunc(total / 60);
+  const env = Object.create(null);
+  env.minutes = String(total % 60).padStart(2, '0');
+  env['12-hours'] = String(1 + ((hours24 + 11) % 12));
+  env['am-pm'] = hours24 >= 12 ? 'pm' : 'am';
+  env['24-hours'] = String(hours24).padStart(2, '0');
+  env['time-zone'] = zone;
+  let form;
+  try {
+    form = parseSexpr(context.calendarTimeDisplayForm || DEFAULT_TIME_DISPLAY_FORM);
+    if (!Array.isArray(form)) form = null;
+  } catch {
+    form = null;
+  }
+  if (!form) form = parseSexpr(DEFAULT_TIME_DISPLAY_FORM);
+  const inner = { ...context, env };
+  return form.map((/** @type {any} */ element) => {
+    const value = ev(element, inner);
+    return value === false ? '' : printValue(value);
+  }).join('');
 }
 
 function dateList(/** @type {Date} */ d) {
@@ -867,7 +889,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-lunar-phases']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-lunar-phases']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

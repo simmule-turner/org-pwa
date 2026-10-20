@@ -28,7 +28,7 @@ test('with no forecast fetched yet there is no weather event', () => {
 });
 
 test('a sun-times line uses the coordinates it is given', () => {
-  const doc = parseOrg('* <%%(when (today-p) (format "Sun: %s" (diary-sunrise)))>\n');
+  const doc = parseOrg(`* <%%(when (today-p) (format "Sun: %s" (apply 'solar-time-string (car (solar-sunrise-sunset date)))))>\n`);
   const at = (lat, lon) => summaries(collectAgendaCalendarEvents([{ documentId: 'a.org', doc }], { today, window, agendaOptions: { calendarLatitude: lat, calendarLongitude: lon } }))[0];
   assert.notEqual(at(35.994, -78.8986), at(60, 10));
 });

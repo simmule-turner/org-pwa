@@ -1359,84 +1359,8 @@ test('a SCHEDULED item with NO delay suffix at all is completely unaffected -- s
 
 // ---- <%%(sexp)> timestamps (real org's own general sexp timestamp form) ----
 
-test('THE FIX: standalone "%%(diary-sunrise)" / "%%(diary-sunset)" / "%%(diary-civil-dawn)" / "%%(diary-civil-dusk)" body lines each generate their own agenda entries, with the exact requested "HH:MM Label" 24-hour format', () => {
-  const doc = parseOrg(
-    ['* Sun Times', '%%(diary-sunrise)', '%%(diary-sunset)', '%%(diary-civil-dawn)', '%%(diary-civil-dusk)'].join('\n')
-  );
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 10),
-  });
-  assert.equal(items.length, 4, 'all four trigger lines produce their own entry');
-  const byKind = Object.fromEntries(items.map((i) => [i.kind, i.title]));
-  assert.match(byKind['sunrise'], /^\d\d:\d\d Sunrise$/);
-  assert.match(byKind['sunset'], /^\d\d:\d\d Sunset$/);
-  assert.match(byKind['civil-dawn'], /^\d\d:\d\d Dawn$/);
-  assert.match(byKind['civil-dusk'], /^\d\d:\d\d Dusk$/);
-});
-
-test('THE FIX: solar-ampm/solar-hide-label, passed through buildAgendaItems\u2019 own options, correctly reach the standalone-line pathway\u2019s own output', () => {
-  const doc = parseOrg('* Sun Times\n%%(diary-sunrise)\n');
-  const itemsDefault = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 10),
-  });
-  assert.match(itemsDefault[0].title, /^\d\d:\d\d Sunrise$/, 'default: 24-hour, label shown');
-
-  const itemsAmpmHidden = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 10),
-    solarAmpm: true,
-    solarHideLabel: true,
-  });
-  assert.match(itemsAmpmHidden[0].title, /^\d{1,2}:\d\d(am|pm)$/, '12-hour, no label');
-});
-
-test('THE FIX: a dedicated, standalone "%%(diary-day-length)" body line generates one agenda entry per day, with the exact requested "HH:MM daylight" format', () => {
-  const doc = parseOrg('* Day Length\n%%(diary-day-length)\n');
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 12),
-  });
-  assert.equal(items.length, 3, 'one entry per day in the 3-day range');
-  assert.equal(items[0].kind, 'day-length');
-  assert.match(items[0].title, /^\d\d:\d\d daylight$/);
-});
-
-test('THE FIX: diary-day-length also works inside the general <%%(...)> timestamp form, and solar-hide-label (but not solar-ampm, which has no meaning for a duration) correctly reaches it', () => {
-  const doc = parseOrg('* Today\u2019s Daylight <%%(when (today-p) (diary-day-length))>\n');
-  const today = new Date(2026, 7, 12);
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 14),
-    today,
-    solarHideLabel: true,
-  });
-  assert.equal(items.length, 1);
-  assert.match(items[0].title, /^Today\u2019s Daylight: \d\d:\d\d$/, 'label hidden, bare duration only');
-});
-
-test('all four also work inside the general <%%(...)> timestamp form', () => {
-  const doc = parseOrg([
-    '* Sunrise <%%(diary-sunrise)>',
-    '* Sunset <%%(diary-sunset)>',
-    '* Civil Dawn <%%(diary-civil-dawn)>',
-    '* Civil Dusk <%%(diary-civil-dusk)>',
-  ].join('\n'));
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 10),
-  });
-  assert.equal(items.length, 4);
-  assert.ok(items.every((i) => i.kind === 'sexp-timestamp'));
-  assert.match(items[0].title, /^Sunrise: \d\d:\d\d Sunrise$/);
-  assert.match(items[1].title, /^Sunset: \d\d:\d\d Sunset$/);
-  assert.match(items[2].title, /^Civil Dawn: \d\d:\d\d Dawn$/);
-  assert.match(items[3].title, /^Civil Dusk: \d\d:\d\d Dusk$/);
-});
-
-test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (diary-civil-dawn))> shows civil dawn ONLY on today\u2019s own agenda entry, per the explicit request that these "work with the other sexpr"', () => {
-  const doc = parseOrg('* Civil Dawn Today <%%(when (today-p) (diary-civil-dawn))>\n');
+test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6)) )> -- the user\u2019s own precise, verbatim example, through the full buildAgendaItems pipeline', () => {
+  const doc = parseOrg('* Sun Report <%%(when (today-p) (format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6)) )>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1445,45 +1369,30 @@ test('THE FIX: composes correctly with another sexp form -- <%%(when (today-p) (
   });
   assert.equal(items.length, 1);
   assert.equal(items[0].date.toDateString(), today.toDateString());
-  assert.match(items[0].title, /^Civil Dawn Today: \d\d:\d\d Dawn$/);
-});
-
-test('THE EXACT REQUEST: <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )> -- the user\u2019s own precise, verbatim example, through the full buildAgendaItems pipeline', () => {
-  const doc = parseOrg('* Sun Report <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>\n');
-  const today = new Date(2026, 7, 12);
-  const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
-    rangeStart: new Date(2026, 7, 10),
-    rangeEnd: new Date(2026, 7, 14),
-    today,
-    solarHideLabel: true,
-  });
-  assert.equal(items.length, 1);
-  assert.equal(items[0].date.toDateString(), today.toDateString());
-  assert.match(items[0].title, /^Sun Report: Rise \d\d:\d\d \(\d\d:\d\d\)$/);
+  assert.match(items[0].title, /^Sun Report: Rise 6:30am \(6:00am\)$/);
 });
 
 test('THE FIX: THE EXACT BUG REPORT -- a bare heading with no title text at all (the timestamp IS the entire title) no longer shows a meaningless "(untitled): " prefix in front of a string result', () => {
-  const doc = parseOrg('* <%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)) )>\n');
+  const doc = parseOrg('* <%%(when (today-p) (format "Rise %s (%s)" (solar-time-string 6.5) (solar-time-string 6)) )>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
     rangeEnd: new Date(2026, 7, 14),
     today,
-    solarHideLabel: true,
   });
   assert.equal(items.length, 1);
-  assert.match(items[0].title, /^Rise \d\d:\d\d \(\d\d:\d\d\)$/, 'no "(untitled): " prefix at all -- the result string stands on its own');
+  assert.match(items[0].title, /^Rise 6:30am \(6:00am\)$/, 'no "(untitled): " prefix at all -- the result string stands on its own');
   assert.ok(!items[0].title.includes('untitled'));
 });
 
 test('a bare, title-less heading with a string-returning sexp result never shows an "(untitled): " prefix', () => {
-  const doc = parseOrg('* <%%(diary-sunrise)>\n');
+  const doc = parseOrg('* <%%(solar-time-string 6.5)>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
     rangeEnd: new Date(2026, 7, 10),
   });
   assert.equal(items.length, 1);
-  assert.match(items[0].title, /^\d\d:\d\d Sunrise$/);
+  assert.match(items[0].title, /^6:30am$/);
 });
 
 test('the (untitled) fallback still correctly applies for the genuinely different case: a bare, title-less heading whose sexp result is a plain boolean match, not a string -- there really is nothing else to show here', () => {
@@ -1499,7 +1408,7 @@ test('the (untitled) fallback still correctly applies for the genuinely differen
 });
 
 test('a heading WITH real title text alongside its own sexp timestamp is completely unaffected by this fix -- still "Title: result", exactly as before', () => {
-  const doc = parseOrg('* Sun Report <%%(when (today-p) (diary-sunrise))>\n');
+  const doc = parseOrg('* Sun Report <%%(when (today-p) (solar-time-string 6.5))>\n');
   const today = new Date(2026, 7, 12);
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 10),
@@ -1507,18 +1416,18 @@ test('a heading WITH real title text alongside its own sexp timestamp is complet
     today,
   });
   assert.equal(items.length, 1);
-  assert.match(items[0].title, /^Sun Report: \d\d:\d\d Sunrise$/);
+  assert.match(items[0].title, /^Sun Report: 6:30am$/);
 });
 
-test('weekly sunrise combining when + org-cyclic + diary-sunrise', () => {
-  const doc = parseOrg('* Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>\n');
+test('weekly sunrise combining when + org-cyclic + solar-time-string', () => {
+  const doc = parseOrg('* Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (solar-time-string 6.5))>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 7, 1),
     rangeEnd: new Date(2026, 7, 16),
   });
   const dates = items.map((i) => i.date.getDate());
   assert.deepEqual(dates, [9, 16]); // every 7 days from the Aug 9 baseline
-  assert.match(items[0].title, /^Weekly Sunrise: \d\d:\d\d Sunrise$/);
+  assert.match(items[0].title, /^Weekly Sunrise: 6:30am$/);
 });
 
 test('THE EXACT EXAMPLE: <%%(diary-float t 6 1)> -- first Saturday of every month, as a heading\u2019s own timestamp', () => {
@@ -1837,4 +1746,25 @@ test('stripAgeFromFormat drops the age for an entry that repeats as one event, a
   assert.equal(stripAgeFromFormat('Birthday: %l (%Y)'), 'Birthday: %l');
   assert.equal(stripAgeFromFormat('%h is %y'), '%h is');
   assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101, 111, 112].map(ordinalYears), ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '23rd', '101st', '111th', '112th']);
+});
+
+test('a heading’s solar-time-string follows the calendarTimeDisplayForm option', () => {
+  const doc = parseOrg('* Sun <%%(when (today-p) (solar-time-string 6.5))>\n');
+  const today = new Date(2026, 7, 12);
+  const run = (/** @type {string} */ form) => buildAgendaItems([{ documentId: 'test.org', doc }], { rangeStart: today, rangeEnd: today, today, calendarTimeDisplayForm: form })[0].title;
+  assert.equal(run('(24-hours ":" minutes)'), 'Sun: 06:30');
+  assert.equal(run('(12-hours ":" minutes am-pm)'), 'Sun: 6:30am');
+});
+
+test('a %%(let ...) body line builds its sun times from solar-sunrise-sunset, solar-time-string and apply', () => {
+  const doc = parseOrg(`* Sun
+%%(let ((l (solar-sunrise-sunset date))) (format "Sun: %s | %s | %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l)))
+%%(format "Civil dawn %s" (apply 'solar-time-string (car (solar-sunrise-sunset date -6))))
+`);
+  const day = new Date(2026, 9, 20);
+  const run = (/** @type {string} */ form) => buildAgendaItems([{ documentId: 'test.org', doc }], { rangeStart: day, rangeEnd: day, today: day, calendarLatitude: 35.994, calendarLongitude: -78.8986, calendarTimeDisplayForm: form }).map((i) => i.title);
+  const [sun, dawn] = run('(24-hours ":" minutes)');
+  assert.match(sun, /^Sun: \d\d:\d\d \| \d\d:\d\d \| 1[01]:\d\d$/);
+  assert.match(dawn, /^Civil dawn \d\d:\d\d$/);
+  assert.match(run('(12-hours ":" minutes am-pm)')[0], /^Sun: \d{1,2}:\d\d(am|pm) \| \d{1,2}:\d\d(am|pm) \| 1[01]:\d\d$/);
 });

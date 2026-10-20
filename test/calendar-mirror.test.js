@@ -248,10 +248,6 @@ test('a daily repeating habit is ONE event with a repeat rule starting at its ow
   assert.ok(lines(r).includes('DTSTART:20260901T070000'), 'it starts where the timestamp says, so the id and the start do not move as the window does');
 });
 
-test('only dated things are events: sunrise and weather lines in the agenda are not', () => {
-  assert.equal(build('* Sun\n%%(diary-sunrise)\n').size, 0);
-});
-
 test('a time range has its end, and the details the agenda row shows are there: tags as categories, the location, the start of the body', () => {
   const r = only(build('* TODO Dentist :health:dental:\nSCHEDULED: <2026-10-09 Fri 09:30-10:15>\n:PROPERTIES:\n:LOCATION: Main St, Suite 2\n:END:\nBring the forms\nand the insurance card.\n'));
   assert.ok(lines(r).includes('DTSTART:20261009T093000') && lines(r).includes('DTEND:20261009T101500'));
@@ -271,9 +267,9 @@ test('the body is cut at 400 characters with an ellipsis, and a heading with no 
 });
 
 test('a diary-sexp line in a heading\u2019s body is not part of its description', () => {
-  const r = only(build('* Cal\nSCHEDULED: <2026-10-09 Fri>\nreal text\n%%(diary-sunrise)\n'));
+  const r = only(build('* Cal\nSCHEDULED: <2026-10-09 Fri>\nreal text\n%%(org-weather)\n'));
   const joined = r.ics.replace(/\r\n /g, '');
-  assert.ok(joined.includes('real text') && !joined.includes('diary-sunrise'));
+  assert.ok(joined.includes('real text') && !joined.includes('org-weather'));
 });
 
 test('the title of an event written as a timestamp in the heading has no timestamp text in it', () => {

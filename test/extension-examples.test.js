@@ -21,7 +21,7 @@ const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3,
 const hoursToMinutes = (h) => Math.round(h * 60) % 1440;
 const apart = (a, b) => Math.min(Math.abs(a - b), 1440 - Math.abs(a - b));
 
-test('the sunrise example agrees with the built-in diary-sunrise and diary-sunset', async () => {
+test('the sunrise example agrees with the sun-time math at the same sun height', async () => {
   const code = exampleCode('Example: sunrise and sunset');
   const places = [
     { name: 'New York', lat: 40.71, lon: -74.01, day: '2026-10-10' },
@@ -42,7 +42,7 @@ test('the sunrise example agrees with the built-in diary-sunrise and diary-sunse
     }
     const org = { apiVersion: 1, vars: { get: (n) => ({ 'calendar-latitude': String(lat), 'calendar-longitude': String(lon) })[n] ?? null } };
     const rows = await new AsyncFunction('org', 'Date', code)(org, FixedDate);
-    const expected = computeSunriseSunsetUtc(noon, lat, lon);
+    const expected = computeSunriseSunsetUtc(noon, lat, lon, -0.833); // the example uses the standard -0.833 degrees; Emacs's -0.61 differs by a minute or two
     assert.equal(rows[0][0], 'Sunrise');
     assert.ok(apart(minutesOf(rows[0][1]), hoursToMinutes(expected.sunrise)) <= 2, `${name} sunrise: ${rows[0][1]} vs ${expected.sunrise}`);
     assert.ok(apart(minutesOf(rows[1][1]), hoursToMinutes(expected.sunset)) <= 2, `${name} sunset: ${rows[1][1]} vs ${expected.sunset}`);

@@ -23,13 +23,17 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#lists-tables-and-body-text][Lists, tables, and body text]]
 - [[#inline-text-markup][Inline text markup]]
 - [[#searching][Searching]]
+- [[#modeline][Modeline and minibuffer]]
 - [[#links-and-images][Links and images]]
 - [[#configuration][Configuration]]
 - [[#progress-logging][Progress logging]]
 - [[#archiving][Archiving]]
+- [[#extensions][Extensions]]
 - [[#refile][Refile]]
+- [[#source-blocks][Source blocks]]
 - [[#attachments][Attachments]]
 - [[#clocking][Clocking]]
+- [[#narrowing][Narrowing]]
 - [[#the-plain-text-editor][The plain-text editor]]
 - [[#agenda][Agenda]]
 - [[#the-todo-view][The TODO view]]
@@ -39,10 +43,12 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#file-management][File management]]
 - [[#tabs][Tabs]]
 - [[#export][Export]]
+- [[#import][Import]]
 - [[#docs][Help]]
 - [[#settings][Settings]]
 - [[#offline-behavior-and-sync][Offline behavior and sync]]
 - [[#platform-support][Platform support]]
+- [[#command-palette][Command palette]]
 - [[#security-and-privacy][Security and privacy]]
 - [[#keybindings][Keybindings]]
 - [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]
@@ -591,6 +597,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~calendar-date-style~ | ~american~ | Order of the date in ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~: ~american~ (month day year), ~european~ (day month year) or ~iso~ (year month day) |
 | ~calendar-latitude~ | ~35.994~ | Latitude for the solar forms and ~org-weather~ (Durham, NC) |
 | ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
+| ~calendar-time-display-form~ | ~(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))~ | How ~solar-time-string~ shows a time, as in Emacs: the default reads "6:30am (EDT)". ~(24-hours ":" minutes)~ gives "06:30". The checkbox in Settings → Quick Settings → *Contacts & Calendar* switches between the two (see [[#solar-times][Sun times]]) |
 | ~diary-abbreviated-year-flag~ | ~t~ | ~t~ reads a two-digit year in a diary date as the year it ends: ~4/20/27~ is 2027 (see [[#diary-file][Diary file]]) |
 | ~diary-date-forms~ | unset (from ~calendar-date-style~) | Which written dates a diary line may start with, as in Emacs: a list such as ~((month "/" day "[^/0-9]") (dayname "\\W"))~ of the symbols ~month~, ~day~, ~year~, ~monthname~, ~dayname~ and regexp strings |
 | ~diary-file~ | unset | The diary: one ~github:~, ~webdav:~ or ~local:~ file, shown in the Agenda when ~org-agenda-include-diary~ is ~t~ |
@@ -657,8 +664,6 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX export: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export); Settings → Export → LaTeX sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
-| ~org-xx-solar-ampm~ | ~nil~ (24-hour) | (own) ~t~ uses 12-hour am/pm for the solar forms |
-| ~org-xx-solar-hide-label~ | ~nil~ (label shown) | (own) ~t~ drops the trailing label ("Sunrise", "daylight") and shows the bare time or duration |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-text-line-numbers~ | ~t~ | (own) Whether the Text view shows line numbers |
@@ -1046,7 +1051,7 @@ The chips start from ~org-agenda-tag-filter-preset~, ~org-agenda-category-filter
 - A heading shown twice in one day (scheduled and deadline) counts once. An overdue task carried forward counts toward today.
 - An appointment counts when it has an effort. One with neither a TODO keyword nor an effort is not counted in ~+N?~.
 - An explicit ~0:00~ is an estimate. An invalid effort counts as missing.
-- Logged entries, diary lines and sunrise/sunset lines never count. A day with no estimates shows no total.
+- Logged entries and diary lines never count. A day with no estimates shows no total.
 
 *Sorting, filtering and limiting by effort*: the ~⏱~ button in the toolbar opens a panel, the touch version of org's ~effort-up~ and ~effort-down~, ~org-agenda-filter-by-effort~ and ~org-agenda-max-effort~:
 
@@ -1100,15 +1105,13 @@ Five kinds of entry show up; they carry forward as in org:
 :CUSTOM_ID: agenda-diary-sexp
 :END:
 
-These are self-contained lines anywhere in a heading's body, with no switch line needed. They show with a 🔁 icon (☀️ for the solar ones).
+These are self-contained lines anywhere in a heading's body, with no switch line needed. They show with a 🔁 icon.
 
 - ~%%(org-anniversary YEAR MONTH DAY) text~: applies only to years after YEAR. In the text, ~%d~ becomes the elapsed years and ~%s~ its ordinal suffix, so ~%%(org-anniversary 2001 6 12) %d%s wedding anniversary~ shows "25th wedding anniversary" in 2026. February 29 counts as March 1 in non-leap years.
 - ~%%(org-cyclic N YEAR MONTH DAY) text~: every N days from that date, never before it.
 - ~%%(diary-float MONTH DAYNAME N [DAY] [YEAR]) text~: the Nth weekday of a month. MONTH is 1 to 12, a list like ~(1 4 7 10)~ (a quoted ~'(1 4 7 10)~ also works), or ~t~ for every month. DAYNAME is 0 (Sunday) to 6. N counts from the start of the month when positive and from the end when negative (~-1~ is the last). ~%%(diary-float 11 4 4) Thanksgiving~ is the 4th Thursday of November. An optional DAY moves where scanning starts (~%%(diary-float 11 2 1 2) US Election Day~ starts at the 2nd, skipping a Tuesday on the 1st), and an optional YEAR limits the entry to that year.
 - ~%%(org-block Y1 M1 D1 Y2 M2 D2) text~: every day in an inclusive range, in either order.
 - Lines built from ~and~, ~or~, ~not~, ~when~, ~if~, ~cond~, ~let~, ~org-class~ or ~org-date~, such as ~%%(and (org-block 2026 9 1 2026 12 18) (org-class 2026 9 1 2026 12 18 1)) Seminar~, use the evaluator described under [[#agenda-sexp-timestamps][General sexp timestamps]]. The text after the closing parenthesis is the entry, and a string result replaces it.
-- ~%%(diary-sunrise)~, ~diary-sunset~, ~diary-civil-dawn~, ~diary-civil-dusk~, ~diary-nautical-dawn~, ~diary-nautical-dusk~, ~diary-astronomical-dawn~ and ~diary-astronomical-dusk~ are this app's own. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or with the device-location button in Quick Settings) and show, for example, "06:30 Sunrise", "20:15 Sunset", "06:02 Dawn", "20:43 Dusk" in 24-hour time. Civil, nautical and astronomical twilight are the sun 6°, 12° and 18° below the horizon; ~n/a~ replaces the time on a day when it doesn't occur. ~org-xx-solar-ampm~ (default ~nil~) switches to 12-hour ("6:30am Sunrise") and ~org-xx-solar-hide-label~ (default ~nil~) drops the label ("06:30"); set them in Local Variables or Quick Settings ([[#settings][Settings]]).
-- ~%%(diary-day-length)~ shows the day's daylight as "13:32 daylight". ~org-xx-solar-hide-label~ applies and ~org-xx-solar-ampm~ doesn't. Polar day and night show "24:00" and "00:00".
 - ~%%(org-weather)~ shows current conditions and today's forecast from [[https://open-meteo.com/][Open-Meteo]] (free, no key), for the same coordinates. It is one entry, on today only, showing the last-fetched snapshot, and nothing until the first refresh.
 
 ~org-weather-format~ controls the text. The default is ~"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au"~, which gives "Weather: Overcast, 86.3(75.5-91.8)°F, 1002.8hPa, 49%, 5.1mph, 12m". An unrecognized ~%~ sequence is left as is.
@@ -1129,6 +1132,44 @@ All three variables can be edited in Quick Settings, with a reset to default.
 *Refreshing*: *Settings → Weather* shows the last refresh time and a *Refresh weather now* button, and says whether ~%%(org-weather)~ is used in the open document, only through ~org-agenda-files~, or nowhere. ~org-weather-refresh-interval~ also refreshes automatically: ~never~ (the default) or every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours, checked at open and periodically, and only while ~%%(org-weather)~ is in use. A failed refresh keeps the cached data, which persists across restarts.
 
 ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~ read their dates in the order of ~calendar-date-style~, as in Emacs: month day year by default, day month year for ~european~, year month day for ~iso~. ~%%(diary-anniversary 10 31 1948) %d years~ is the same as ~%%(org-anniversary 1948 10 31)~, whose dates are always year month day.
+
+*** Sun times
+:PROPERTIES:
+:CUSTOM_ID: solar-times
+:END:
+
+Sunrise, sunset, the twilights and the length of the day come from the same two functions Emacs's ~solar.el~ has, so an entry written for Emacs works here. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or with the device-location button in Quick Settings).
+
+- ~(solar-sunrise-sunset DATE)~ returns ~((RISE ZONE) (SET ZONE) "H:MM")~: the local times as decimal hours with the zone name, then the daylight as hours and minutes. A time the day doesn't have (polar day or night) is ~nil~. ~DATE~ is ~date~, the day being evaluated. This app adds an optional second argument, the sun's height in degrees: ~-6~ for civil, ~-12~ for nautical and ~-18~ for astronomical twilight, giving dawn and dusk in place of rise and set. The default is ~-0.61~, as in Emacs.
+- ~(solar-time-string TIME ZONE)~ turns decimal hours into text by evaluating ~calendar-time-display-form~, as Emacs does. ~(solar-time-string 6.5)~ gives "6:30am" and ~(solar-time-string 6.5 "EDT")~ gives "6:30am (EDT)". The form can use ~12-hours~, ~24-hours~, ~minutes~, ~am-pm~ and ~time-zone~, and the zone it prints is this device's.
+- ~(apply 'F ARGS... LIST)~ calls F with the arguments followed by the items of LIST, which is how a ~(RISE ZONE)~ pair reaches ~solar-time-string~.
+
+This entry shows today's sun times:
+
+#+BEGIN_SRC
+,*** <%%(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: 🌅 %s | 🌇 %s | ⌛ %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l))))>
+#+END_SRC
+
+On a 12-hour default it reads "Sun times: 🌅 7:29am (EDT) | 🌇 6:34pm (EDT) | ⌛ 11:05". The same expression works as a ~%%(…)~ line in a heading's body or in the diary file, where it shows on every day (leave out ~when~ and ~today-p~).
+
+Each of the old one-purpose entries is the same pattern with one piece picked out:
+
+| You want | Write |
+|---+---|
+| Sunrise | ~(apply 'solar-time-string (car (solar-sunrise-sunset date)))~ |
+| Sunset | ~(apply 'solar-time-string (cadr (solar-sunrise-sunset date)))~ |
+| Day length | ~(nth 2 (solar-sunrise-sunset date))~ |
+| Civil dawn and dusk | ~(apply 'solar-time-string (car (solar-sunrise-sunset date -6)))~ and ~(cadr ...)~ |
+| Nautical dawn and dusk | the same with ~-12~ |
+| Astronomical dawn and dusk | the same with ~-18~ |
+
+For example, a line that labels itself:
+
+#+BEGIN_SRC
+%%(let ((l (solar-sunrise-sunset date -6))) (format "Civil twilight %s to %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l))))
+#+END_SRC
+
+A day without the event gives ~nil~, and ~solar-time-string~ of ~nil~ is ~nil~, so ~format~ prints "nil" there; wrap the entry in ~(when (car l) ...)~ to leave it out instead. For 24-hour times tick *Solar times: use 24-hour* in Quick Settings, or set ~calendar-time-display-form~ to ~(24-hours ":" minutes)~. ~calendar-time-display-form~ is the only setting: the app no longer has ~org-xx-solar-ampm~ or ~org-xx-solar-hide-label~, and the old ~%%(diary-sunrise)~ family and ~%%(diary-day-length)~ are gone.
 
 *** Diary file
 :PROPERTIES:
@@ -1151,6 +1192,26 @@ Friday   Back up files
 
 ~*~ stands for any month, day or year, and month and day names may be abbreviated. A time at the start of an entry (~10:00am~, ~14:30~) puts it in the day's timeline. A ~&~ before the date, and ~%%(…)~ lines (see [[#agenda-diary-sexp][Diary-sexp forms]]), work as in Emacs.
 
+More examples, with a time on each entry so each gets its own place in the day's timeline:
+
+#+begin_example
+10/24/2026 9:30am Coffee break
+10/24/2026 12:00pm Lunch with engineering team
+10/24/2026 2:30pm Project review meeting
+10/24/2026 5:00pm Dentist appointment
+Thursday 9:00am Standup meeting
+Thursday 1:30pm Code review
+&Thursday 4:00pm Weekly squash game
+*/25 Payday
+10/25/2026 11:00am 1-on-1 with manager
+10/25/2026 Team offsite
+  Bring the laptop
+  and a charger
+%%(let ((l (solar-sunrise-sunset date))) (format "Sun: %s to %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l))))
+#+end_example
+
+A weekday name (~Thursday~, ~thu~) is every week, ~*/25~ the 25th of every month, and a full date that one day. The indented lines under ~Team offsite~ belong to the entry and show as one row, "Team offsite; Bring the laptop; and a charger". The same goes for a date with nothing after it, followed by indented lines: they become one row, so give each timed item its own dated line, as above, when each should have its own time. The last line is a sun-times entry for every day ([[#solar-times][Sun times]]).
+
 Each entry is a row. ~org-xx-diary-merge-rows~ set to ~t~ joins an entry that does not start with a time into the row before it, as Org does. ~diary-show-holidays-flag~ set to ~nil~ leaves the holidays out. ~diary-list-entries-hook~ may name ~diary-include-other-diary-files~ (read the files named by ~#include "file"~ lines) and ~diary-sort-entries~ (sort a day's entries by time). *Refresh* in the Agenda reads the file again.
 
 In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly, anniversary, cyclic or block entry at the end of the file, as Emacs's ~diary-insert-*~ commands do, and saves it. *Check this line* says whether the line under the cursor is an entry, by which date form, and on which days it falls next. *Date…* puts a date at the cursor. The Agenda reads the diary from its open tab, so an edit shows at once.
@@ -1163,7 +1224,7 @@ In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly,
 A ~<%%(expression)>~ goes where a plain timestamp would, in a heading's title. The expression is evaluated for each day shown, and every day it is non-nil is an occurrence. It is a matcher, not a repeater: marking the heading DONE has no effect, and it can't carry a repeater suffix. It is skipped when the heading has SCHEDULED or DEADLINE, and it never carries forward.
 
 #+BEGIN_SRC
-,* Weekly Sunrise <%%(when (org-cyclic 7 2026 8 9) (diary-sunrise))>
+,* Weekly Sync <%%(when (org-cyclic 7 2026 8 9) "Weekly sync")>
 ,* TODO Team Sync <%%(diary-float t 6 1)>
 ,* Water the plants <%%(org-cyclic 3 2026 1 1)>
 ,* Company Anniversary <%%(org-anniversary 2018 5 14)>
@@ -1178,11 +1239,11 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~calendar-absolute-from-gregorian~ and ~calendar-gregorian-from-absolute~ turn a date into a day count and back (day 1 is 1 January, year 1), plus ~min~, ~max~ and ~abs~. A count makes "every other week" and "N days until" rules easy: ~<%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))>~ counts down for the 30 days before.
 - ~(diary-remind SEXP DAYS)~: shows the entry on the day SEXP matches, and "Reminder: Only 3 days until ..." on the DAYS before it. ~DAYS~ is a number, a list (~'(1 3 7)~), or a negative number for every day up to it. ~%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving~ starts a week ahead. The variable ~entry~ is the text of the line, so ~(and (org-block 2026 12 20 2026 12 25) entry)~ also works.
 - ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line.
-- ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) (diary-sunrise))>~ shows sunrise only today.
+- ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) "Payday")>~ shows "Payday" only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
 - ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip public holidays as well: the US holidays of Emacs's ~holiday-general-holidays~ and the Christian ones (Ash Wednesday, Good Friday, Easter, Christmas). ~(calendar-check-holidays date)~ gives a day's holiday names. Hebrew, Islamic and other calendars' holidays aren't included.
-- ~(org-cyclic ...)~, ~(org-anniversary ...)~ and ~(diary-float ...)~, as above, work as sub-expressions. So do the solar functions, ~(diary-day-length)~ and ~(org-weather)~, which return a formatted string; a string result becomes the displayed text ("Weekly Sunrise: 06:30 Sunrise"). ~org-contacts-anniversaries~ isn't recognized inside a sexp timestamp.
-- ~(format FORMAT-STRING ARG...)~ combines string-returning functions into one line: ~<%%(when (today-p) (format "Rise %s (%s)" (diary-sunrise) (diary-civil-dawn)))>~ shows "Rise 06:30 Sunrise (06:02 Dawn)", or "Rise 06:30 (06:02)" with ~org-xx-solar-hide-label~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
+- ~(org-cyclic ...)~, ~(org-anniversary ...)~ and ~(diary-float ...)~, as above, work as sub-expressions. So do ~(solar-sunrise-sunset)~, ~(solar-time-string)~ and ~(apply)~ (see [[#solar-times][Sun times]]) and ~(org-weather)~, which return a formatted string; a string result becomes the displayed text ("Weekly Sync: Weekly sync"). ~org-contacts-anniversaries~ isn't recognized inside a sexp timestamp.
+- ~(format FORMAT-STRING ARG...)~ combines strings and numbers into one line: ~<%%(when (today-p) (format "%d days until Christmas" (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date))))>~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
 - Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
 
 *Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite. Also not implemented: alternate calendars and Hebrew observances (~diary-yahrzeit~, ~diary-rosh-hodesh~ and the rest).
@@ -1245,7 +1306,7 @@ It is one-way: the calendar follows the agenda, and edits made in a calendar app
 
 What goes in is what *View → Agenda* shows, from the open file and your [[#agenda-files][Agenda Files]]: SCHEDULED, DEADLINE, plain timestamps, diary entries, and birthdays and anniversaries (from your Contacts Files). Each event has its title, its start and end time, the heading's tags as categories, its ~:LOCATION:~ and the start of its body (400 characters), and a deadline's warning delay (~-3d~) becomes an alarm. Every event with a time of day also gets an alarm ~appt-message-warning-time~ minutes before it (Settings → Agenda notifications); all-day events don't. A repeating item is one event with a repeat rule. A birthday or anniversary is one event for each year in the window, with that year's age. Completed items, and the agenda's overdue and warning-day entries, are not sent. Items are kept from a month back to six months ahead.
 
-A ~<%%(…)>~ timestamp in a heading title becomes one all-day event for each day it matches, so ~<%%(when (today-p) (org-weather))>~ is a single event for today. It reads "Weather as of 10:45" in its description, from the last forecast fetched, and the calendar sync updates that one event whenever the weather refreshes (see ~org-weather-refresh-interval~). Yesterday's is removed. Your location, the weather settings and any script-defined functions (see [[#extensions][Extensions]]) are used just as in the Agenda; a script's functions are asked first and the export waits for the answers. Plain ~%%(diary-sunrise)~, ~%%(diary-sunset)~ and ~%%(org-weather)~ lines in a body are Agenda-only and are not exported.
+A ~<%%(…)>~ timestamp in a heading title becomes one all-day event for each day it matches, so ~<%%(when (today-p) (org-weather))>~ is a single event for today. It reads "Weather as of 10:45" in its description, from the last forecast fetched, and the calendar sync updates that one event whenever the weather refreshes (see ~org-weather-refresh-interval~). Yesterday's is removed. Your location, the weather settings and any script-defined functions (see [[#extensions][Extensions]]) are used just as in the Agenda; a script's functions are asked first and the export waits for the answers. Plain ~%%(org-weather)~ and sun-time lines in a body are Agenda-only and are not exported.
 
 It syncs after a save, when you return to the app, and at launch. *Sync* in Settings does it now, and *Rebuild calendar* (or the palette's *Rebuild calendar from the agenda*) removes the app's events and sends them all again. After a wrong address or password, automatic syncing stops until you change the settings or sync by hand.
 

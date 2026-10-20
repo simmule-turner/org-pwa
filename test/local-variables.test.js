@@ -10,8 +10,10 @@ import {
   getScheduledDelayDays,
   getCalendarLatitude,
   getCalendarLongitude,
-  getSolarAmpm,
-  getSolarHideLabel,
+  getTimeDisplayForm,
+  isTimeDisplay24,
+  DEFAULT_TIME_DISPLAY_FORM,
+  TIME_DISPLAY_FORM_24,
   getOrgWeatherFormat,
   getOrgWeatherSpeedUnit,
   getOrgWeatherTemperatureUnit,
@@ -357,24 +359,17 @@ test('getCalendarLatitude/Longitude read an explicit override', () => {
   assert.equal(getCalendarLongitude({ 'calendar-longitude': '-88.2' }), -88.2);
 });
 
-test('THE FIX: getSolarAmpm defaults to false (24-hour), matching what was originally requested for the four solar functions', () => {
-  assert.equal(getSolarAmpm({}), false);
-  assert.equal(getSolarAmpm(undefined), false);
+test('getTimeDisplayForm is Emacs\u2019s default unless calendar-time-display-form is set', () => {
+  assert.equal(getTimeDisplayForm({}), '(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))');
+  assert.equal(getTimeDisplayForm(undefined), DEFAULT_TIME_DISPLAY_FORM);
+  assert.equal(getTimeDisplayForm({ 'calendar-time-display-form': '(24-hours ":" minutes)' }), '(24-hours ":" minutes)');
 });
 
-test('THE FIX: getSolarAmpm reads t as true (12-hour am/pm)', () => {
-  assert.equal(getSolarAmpm({ 'org-xx-solar-ampm': 't' }), true);
-  assert.equal(getSolarAmpm({ 'org-xx-solar-ampm': 'nil' }), false);
-});
-
-test('THE FIX: getSolarHideLabel defaults to false (label shown)', () => {
-  assert.equal(getSolarHideLabel({}), false);
-  assert.equal(getSolarHideLabel(undefined), false);
-});
-
-test('THE FIX: getSolarHideLabel reads t as true (label hidden)', () => {
-  assert.equal(getSolarHideLabel({ 'org-xx-solar-hide-label': 't' }), true);
-  assert.equal(getSolarHideLabel({ 'org-xx-solar-hide-label': 'nil' }), false);
+test('isTimeDisplay24: only a form that names 24-hours and not 12-hours', () => {
+  assert.equal(isTimeDisplay24({}), false);
+  assert.equal(isTimeDisplay24({ 'calendar-time-display-form': TIME_DISPLAY_FORM_24 }), true);
+  assert.equal(isTimeDisplay24({ 'calendar-time-display-form': '(12-hours ":" minutes am-pm)' }), false);
+  assert.equal(isTimeDisplay24({ 'calendar-time-display-form': '(24-hours ":" minutes " " time-zone)' }), true);
 });
 
 test('THE FIX: getOrgWeatherFormat defaults to the exact format given in the original request', () => {

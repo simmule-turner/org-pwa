@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v592 — Sun times as Emacs writes them
+Sun times now use the same functions as Emacs's solar.el: =(solar-sunrise-sunset date)= returns the rise, the set and the daylight, with an optional height of -6, -12 or -18 for the twilights, =(solar-time-string time zone)= shows a time by evaluating =calendar-time-display-form= (Emacs's default, "6:30am (EDT)"), and =apply= joins them. The eight =diary-sunrise= to =diary-astronomical-dusk= forms, =diary-day-length=, =org-xx-solar-ampm= and =org-xx-solar-hide-label= are gone, with no conversion; the README shows each as an expression. The Quick Settings checkbox now picks 24-hour. The README gains diary-file examples, a Contents list that includes every section, and no longer describes what is gone.
+Verified: the unit tests, and the sample entries in the README run through the diary and agenda code.
+
 * v591 — Page and line moves from the floating keyboard in the Text view
 In the Text view, g on the floating keyboard no longer types a letter: it lights up and waits for an arrow. g then ↑/↓ moves a page, g then ←/→ goes to the start or end of the line, and S then g (G) then ↑/↓ goes to the start or end of the text. S still extends the selection with these moves. The README's Settings cards list and floating keyboard paragraph are brought up to date.
 Verified: the floating keyboard smoke checks.

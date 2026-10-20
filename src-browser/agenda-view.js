@@ -540,7 +540,7 @@ export function renderAgendaView() {
             ? '\ud83c\udf82'
             : item.kind === 'logbook'
               ? '\ud83d\udcdd'
-              : item.kind === 'sunrise' || item.kind === 'sunset' || item.kind === 'civil-dawn' || item.kind === 'civil-dusk' || item.kind === 'nautical-dawn' || item.kind === 'nautical-dusk' || item.kind === 'astronomical-dawn' || item.kind === 'astronomical-dusk' || item.kind === 'day-length' || item.kind === 'weather'
+              : item.kind === 'weather'
                 ? '\u2600\ufe0f'
                 : '\u23f0';
     kindIcon.textContent = kindIconText || '';
