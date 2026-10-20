@@ -185,6 +185,7 @@ export function closeFloatingKeyboard() {
   S.floatingKeyboardOpen = false;
   S.floatingKeyboardShiftArmed = false;
   S.floatingKeyboardMinimized = false;
+  S.textGMode = '';
   resetGodModeKeyboardInput();
   if (document.activeElement === godModeKeyboardInput) godModeKeyboardInput.blur();
 }
@@ -536,10 +537,11 @@ export function renderFloatingKeyboard() {
 
     for (const key of KEYS) {
       const btn = document.createElement('button');
-      btn.textContent = armed && key.shiftedLabel ? key.shiftedLabel : key.label;
+      btn.textContent = (armed || S.textGMode === 'G') && key.shiftedLabel ? key.shiftedLabel : key.label;
       btn.setAttribute('aria-label', key.aria);
       btn.setAttribute('data-fk-key', key.rawKey);
-      styleButton(btn);
+      styleButton(btn, { armed: key.rawKey === 'g' && !!S.textGMode }); // g stays lit while it waits for an arrow (Text view)
+      if (key.rawKey === 'g') btn.setAttribute('aria-pressed', S.textGMode ? 'true' : 'false');
       placeKey(btn, key.rawKey);
       // pointerdown, not click, and preventDefault: a button tap would
       // otherwise move focus off the hidden input, which looks exactly like
@@ -555,7 +557,21 @@ export function renderFloatingKeyboard() {
         const hit = btn.getBoundingClientRect();
         const panel = floatingKeyboard.getBoundingClientRect();
         noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp), at: [Math.round(e.clientX), Math.round(e.clientY)], button: [Math.round(hit.left), Math.round(hit.top), Math.round(hit.width), Math.round(hit.height)], panel: [Math.round(panel.left), Math.round(panel.top), Math.round(panel.width), Math.round(panel.height)], buttons: [...floatingKeyboard.querySelectorAll('[data-fk-key]')].map((b) => `${(b.getAttribute('data-fk-key') || '').replace('Arrow', '')}@${Math.round(b.getBoundingClientRect().left)}`).join(' ') });
-        if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
+        if (textarea) {
+          if (key.rawKey === 'g') {
+            // g types nothing here: it arms a move for the next arrow (S first makes it G); tapping it again lets go
+            S.textGMode = S.textGMode ? '' : shiftKey ? 'G' : 'g';
+            if (shiftKey) S.floatingKeyboardShiftArmed = false;
+            renderFloatingKeyboard();
+            return;
+          }
+          const prefix = key.rawKey.startsWith('Arrow') ? S.textGMode : '';
+          if (S.textGMode) {
+            S.textGMode = '';
+            renderFloatingKeyboard();
+          }
+          sendKeyToTextView(textarea, rawKey, shiftKey, prefix);
+        }
         else dispatchGodModeKeystroke(rawKey, shiftKey);
       });
       if (key.rawKey === 'g') floatingKeyboard.appendChild(shiftBtn); // layout: T \u2190 \u2192 \u2191 \u2193 S g

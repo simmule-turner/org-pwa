@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v591 — Page and line moves from the floating keyboard in the Text view
+In the Text view, g on the floating keyboard no longer types a letter: it lights up and waits for an arrow. g then ↑/↓ moves a page, g then ←/→ goes to the start or end of the line, and S then g (G) then ↑/↓ goes to the start or end of the text. S still extends the selection with these moves. The README's Settings cards list and floating keyboard paragraph are brought up to date.
+Verified: the floating keyboard smoke checks.
+
 * v590 — A tap on the floating keyboard no longer takes focus from the editor on iOS
 On iOS the mouse events that follow a tap, about 200 ms later, moved focus off the editor: the cursor vanished every few keys and a showing device keyboard dropped by itself. The floating keyboard now stops those events from touching focus, so the editor, its cursor and the device keyboard stay as they were. The README's floating keyboard paragraph now describes the cross layout.
 Verified: the floating keyboard smoke checks.

@@ -89,9 +89,11 @@ function textViewTab(textarea, quiet = false) {
 }
 
 /** A key from the floating keyboard, acting on the text: arrows move the cursor (with Shift they extend the selection),
- *  Tab indents, a letter is typed. Never takes focus, so a device keyboard that was put away stays away.
- * @param {HTMLTextAreaElement} textarea @param {string} rawKey @param {boolean} shift */
-export function sendKeyToTextView(textarea, rawKey, shift) {
+ *  Tab indents, a letter is typed. Never takes focus, so a device keyboard that was put away stays away. `prefix` is
+ *  the g or G armed on the panel: with g, up and down move a page, left and right go to the start and end of the line;
+ *  with G, up and down go to the start and end of the text.
+ * @param {HTMLTextAreaElement} textarea @param {string} rawKey @param {boolean} shift @param {string} [prefix] */
+export function sendKeyToTextView(textarea, rawKey, shift, prefix = '') {
   const beforeTap = describeEditor(textarea);
   const { selectionStart: a, selectionEnd: b, value } = textarea;
   if (rawKey === 'Tab') return textViewTab(textarea, true);
@@ -103,25 +105,35 @@ export function sendKeyToTextView(textarea, rawKey, shift) {
   const focus = backward ? a : b;
   const anchor = backward ? b : a;
   let to;
-  if (rawKey === 'ArrowLeft') to = !shift && a !== b ? a : Math.max(0, focus - 1);
-  else if (rawKey === 'ArrowRight') to = !shift && a !== b ? b : Math.min(value.length, focus + 1);
+  if (rawKey === 'ArrowLeft') to = prefix === 'g' ? value.lastIndexOf('\n', focus - 1) + 1 : !shift && a !== b ? a : Math.max(0, focus - 1);
+  else if (rawKey === 'ArrowRight') to = prefix === 'g' ? (value.indexOf('\n', focus) === -1 ? value.length : value.indexOf('\n', focus)) : !shift && a !== b ? b : Math.min(value.length, focus + 1);
   else if (rawKey === 'ArrowUp' || rawKey === 'ArrowDown') {
-    const lineStart = value.lastIndexOf('\n', focus - 1) + 1;
-    const col = focus - lineStart;
-    if (rawKey === 'ArrowUp') {
-      if (lineStart === 0) to = 0;
-      else {
+    const up = rawKey === 'ArrowUp';
+    const col = focus - (value.lastIndexOf('\n', focus - 1) + 1);
+    /** One line up or down, to column `col` or the line's end. @param {number} from */
+    const oneLine = (from) => {
+      const lineStart = value.lastIndexOf('\n', from - 1) + 1;
+      if (up) {
+        if (lineStart === 0) return 0;
         const prevStart = value.lastIndexOf('\n', lineStart - 2) + 1;
-        to = Math.min(prevStart + col, lineStart - 1);
+        return Math.min(prevStart + col, lineStart - 1);
       }
-    } else {
-      const lineEnd = value.indexOf('\n', focus);
-      if (lineEnd === -1) to = value.length;
-      else {
-        const nextEnd = value.indexOf('\n', lineEnd + 1);
-        to = Math.min(lineEnd + 1 + col, nextEnd === -1 ? value.length : nextEnd);
-      }
-    }
+      const lineEnd = value.indexOf('\n', from);
+      if (lineEnd === -1) return value.length;
+      const nextEnd = value.indexOf('\n', lineEnd + 1);
+      return Math.min(lineEnd + 1 + col, nextEnd === -1 ? value.length : nextEnd);
+    };
+    if (prefix === 'G') to = up ? 0 : value.length;
+    else if (prefix === 'g') {
+      // a page: the lines showing above the floating keyboard, less one for context
+      const box = textarea.getBoundingClientRect();
+      const panel = document.getElementById('floatingKeyboard');
+      const panelBox = panel && panel.style.display !== 'none' ? panel.getBoundingClientRect() : null;
+      const shown = panelBox && panelBox.top > box.top && panelBox.top < box.bottom ? panelBox.top - box.top : box.height;
+      const lines = Math.max(1, Math.floor(shown / (parseFloat(getComputedStyle(textarea).lineHeight) || 24)) - 1);
+      to = focus;
+      for (let i = 0; i < lines; i++) to = oneLine(to);
+    } else to = oneLine(focus);
   } else return;
   if (shift) textarea.setSelectionRange(Math.min(anchor, to), Math.max(anchor, to), to < anchor ? 'backward' : 'forward');
   else textarea.setSelectionRange(to, to);
