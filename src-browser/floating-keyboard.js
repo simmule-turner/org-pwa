@@ -338,6 +338,12 @@ function drawOutline() {
  *  draws no cursor. While the panel is open, a blur that no tap outside the panel just caused is undone, with the
  *  selection kept; tapping elsewhere still leaves the editor. */
 function guardTextEditor() {
+  if (!floatingKeyboard.dataset.keepsFocus) {
+    // On iOS the mouse events that follow a tap arrive about 200 ms after it, and their default action moves focus off the
+    // editor: the cursor disappears and the device keyboard drops. pointerdown's preventDefault does not always stop them.
+    floatingKeyboard.dataset.keepsFocus = '1';
+    floatingKeyboard.addEventListener('mousedown', (e) => e.preventDefault());
+  }
   if (!document.documentElement.dataset.fkTouchGuard) {
     document.documentElement.dataset.fkTouchGuard = '1';
     document.addEventListener('pointerdown', (e) => {

@@ -1926,6 +1926,8 @@ check('floating keyboard in Text view: an editor that loses focus by itself (iOS
   await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.setSelectionRange(7, 7); t.blur(); });
   await page.waitForTimeout(300);
   expect((await state()).join() === 'true,7', `refocused with the cursor kept: ${await state()}`);
+  const kept = await page.evaluate(() => ['ArrowRight', 'ArrowDown'].map((k) => { const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true }); document.querySelector(`#floatingKeyboard [data-fk-key="${k}"]`).dispatchEvent(ev); return ev.defaultPrevented; }).concat((() => { const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true }); document.querySelector('#floatingKeyboard [data-fk-keyboard]').dispatchEvent(ev); return ev.defaultPrevented; })()));
+  expect(kept.every(Boolean), `the mouse events after a tap on the panel cannot move focus off the editor: ${kept}`);
   await page.mouse.click(5, 5); // a real tap away from the panel
   await page.waitForTimeout(300);
   expect((await state())[0] === false, 'a tap elsewhere leaves the editor');
