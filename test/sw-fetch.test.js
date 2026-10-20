@@ -48,3 +48,19 @@ test('a miss still falls through to the network, navigation or not', async () =>
   assert.equal(nav.response, 'from-network');
   assert.equal(w.fetchCalls.length, 1);
 });
+
+test('a request to another server, or one that is not a GET, is left to the network and never held by the worker', async () => {
+  const handlers = {};
+  const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, clients: { claim() {} }, location: { origin: 'https://example.test' } };
+  const caches = { match: async () => 'cached', open: async () => ({ addAll: async () => {} }), keys: async () => [], delete: async () => true };
+  vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: async () => 'net', console, URL, Promise });
+  const answered = (request) => {
+    let used = false;
+    handlers.fetch({ request, respondWith: () => { used = true; } });
+    return used;
+  };
+  assert.equal(answered({ method: 'GET', mode: 'cors', url: 'https://example.test/app/x.js' }), true, 'its own file is answered');
+  assert.equal(answered({ method: 'GET', mode: 'cors', url: 'https://pi.example.ts.net/dav/cal/' }), false, 'another server is not');
+  assert.equal(answered({ method: 'PROPFIND', mode: 'cors', url: 'https://example.test/dav' }), false, 'a PROPFIND is not');
+  assert.equal(answered({ method: 'PUT', mode: 'cors', url: 'https://example.test/dav/a' }), false, 'a PUT is not');
+});

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v595';
+const CACHE_NAME = 'org-pwa-shell-v596';
 
 const SHELL_FILES = [
   './',
@@ -377,6 +377,13 @@ self.addEventListener('activate', (event) => {
 // offline", which is what the outbox/sync-engine split already handles at
 // the data layer.
 self.addEventListener('fetch', (event) => {
+  // Only the app's own files (a GET to this address) are answered here. Everything else -- a sync to a WebDAV, CalDAV or CardDAV
+  // server, GitHub, the weather -- goes straight to the network. Passing those through this worker would keep this worker busy for
+  // as long as the server takes to answer, and a new version cannot take over from a worker that still has requests open, so
+  // an unreachable server delayed an update by minutes.
+  const request = event.request;
+  if (request.method && request.method !== 'GET') return;
+  if (self.location && self.location.origin && new URL(request.url).origin !== self.location.origin) return;
   // A launch from the share sheet or an icon shortcut is a navigation to index.html?capture=... . The cache holds
   // index.html without a query string, so match navigations ignoring it, or such a launch would need the network.
   const options = event.request.mode === 'navigate' ? { ignoreSearch: true } : undefined;

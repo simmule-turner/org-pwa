@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v596 — Updates no longer wait on a slow sync server
+The update log showed the wait: after Reload, the new version sat for 90 seconds before taking over, while sync requests to an unreachable server were still open. The service worker was passing every request, including those to your calendar, contacts and WebDAV servers, through itself, and a new version cannot take over while the old one has requests open. It now answers only the app's own files and lets everything else go straight to the network.
+Verified: the worker's request handling.
+
 * v595 — Android writes into local agenda files; settings and README tidied
 In the Android app, Refile and Replace can now write into a =local:= agenda file while a local file is open (the changes stay unsaved until you save). The birthday property moved from its own Contacts card into the Diary card, so "Agenda, diary and weather" no longer has a card with one setting. The README's settings paths and Differences section are corrected and reworded, and ROADMAP.org lists what is planned, with priorities.
 Verified: the local agenda file check, with the Android and GitHub cases.
