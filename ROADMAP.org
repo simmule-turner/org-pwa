@@ -10,14 +10,12 @@ The Android app writes into =local:= agenda files while a local file is open. In
 Only the effort keys are sorted, and four prefix specs are known. The other keys (priority, time, category) and specs are what Emacs users carry in their configuration.
 ** [#B] =org-agenda-show-inherited-tags= values =always= and a list
 Today it reads =t= or =nil=.
-** [#B] =setq= and =defun= in the sexp evaluator
-Lets a pasted Emacs diary entry run unchanged; today functions come from an Extensions script.
+** [#C] =setq= and =defun= in the sexp evaluator
+Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
 ** [#C] Holidays for =org-class= beyond US and Christian
 ** [#C] Hebrew, Islamic and other non-Gregorian diary entries
 
 * Editing and structure
-** [#A] Refile to a new heading by typing its name
-Emacs offers to create the parent; here the destination must exist.
 ** [#B] Priorities beyond A/B/C
 =org-priority-highest=, =org-priority-lowest= and the default.
 ** [#B] Fold state kept across undo and redo
@@ -26,8 +24,9 @@ Emacs offers to create the parent; here the destination must exist.
 A subtree moved on one side and edited on the other is an ordinary clash today.
 
 * Tables and clocking
-** [#B] Named-field references in =#+TBLFM:=
 ** [#B] Clock-in reminder, =org-duration-units= and =Effort_ALL+=
+** [#C] A field's name as a formula target, and the =%= default format parameter
+Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
 ** [#C] Symbolic algebra from Emacs Calc
 
 * Babel and attachments
@@ -41,6 +40,43 @@ A subtree moved on one side and edited on the other is an ordinary clash today.
 ** [#C] =#+HTML_DOCTYPE:=
 ** [#C] Beamer
 
-* Housekeeping
-** [#B] A test that checks the README against the code
-Setting defaults, the Contents list against the headings, and that every variable it names exists.
+* Appendix: a Lisp interpreter
+:PROPERTIES:
+:CUSTOM_ID: appendix-lisp
+:END:
+
+What it would take for small standalone programs to run, in the diary and in =emacs-lisp= Babel blocks. The diary evaluator stays as it is; the interpreter is a separate module (=src/elisp.js=), so nothing in the diary can regress. Each feature is marked *Lisp* (any Lisp has it) or *Emacs* (specific to Emacs Lisp, and what makes a program read as Emacs's).
+
+** Stage 1: the language
+| Feature | Kind | Why it is needed |
+|---+---+---|
+| Reader: symbols, ='x=, backquote and =,=, comments, floats, strings with escapes | Lisp (backquote and =?c= characters are Emacs-flavored) | Programs are text; today's reader handles numbers, strings and parentheses only |
+| Lexical environments, =lambda=, =funcall=, =apply=, closures | Lisp | Functions as values |
+| =defun=, =defvar=, =defconst=, =setq= | Lisp (=defvar= and =defconst= semantics are Emacs) | Named helpers and state |
+| =while=, =dolist=, =dotimes= | =while= is Lisp; =dolist= and =dotimes= are Emacs (cl-style macros) | Loops; with =defun= they replace recursion |
+| =cons=, =append=, =reverse=, =mapcar=, =push=, =nreverse=, =assoc=, =assq=, =delq=, =sort= | Lisp, except =push=, =assq= and =sort='s argument order, which are Emacs | Building and searching lists |
+| =concat=, =substring=, =string=, =upcase=, =downcase=, =split-string=, =mapconcat=, =string-to-number=, =number-to-string= | Emacs (strings are an Emacs-Lisp data type with these names) | Text handling |
+| =null=, =listp=, =stringp=, =numberp=, =symbolp=, =functionp= | Lisp | Type tests |
+| =condition-case=, =error=, =signal=, =user-error= | Emacs (Common Lisp has a different system) | Errors that can be caught and read |
+| =message=, =print=, =princ=, =prin1= | Emacs | Output, captured for a Babel block |
+| =max-lisp-eval-depth= limit and a step budget | Emacs (the variable); the budget is this app's | Stops runaway programs with a message |
+
+** Stage 2: Babel
+| Feature | Kind | Notes |
+|---+---+---|
+| =emacs-lisp= source blocks run, result is the last value | Emacs | Printed with =prin1= rules, as Emacs prints it |
+| =:var name=value= bound as variables | Org | Same as the =js= blocks |
+| =:results=, =:wrap=, =:cache=, =:noweb= | Org | Shared with the =js= runner |
+| Runs when =(emacs-lisp . t)= is in =org-babel-load-languages= | Org | That is already the default, so a stricter switch may be wanted |
+| Worker sandbox, timeout, no I/O | App | Same sandbox as =js= blocks |
+
+** Later: Emacs and Org specific
+These need Emacs's own libraries and are not part of "small standalone programs":
+- Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-entry-get=, =org-todo=.
+- =format-time-string=, =decode-time=, =encode-time= and other time functions.
+- =cl-lib= (=cl-loop=, =cl-defun=), =seq-*= and =string-*= libraries.
+- Regular expressions the Emacs way (=string-match=, =re-search-forward=, match data).
+- Files and network (=insert-file-contents=, =url-retrieve=): left out on purpose.
+
+** Shared definitions for the diary
+A section in Extensions for Lisp that runs once per session and defines functions that diary entries can call. This is what makes =defun= worth having in the diary.

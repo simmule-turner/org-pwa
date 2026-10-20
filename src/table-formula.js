@@ -2370,11 +2370,81 @@ export function parseTableConstants(doc) {
   return constants;
 }
 
+const NAME_RE = /^[a-zA-Z][_a-zA-Z0-9]*$/;
+const MARKER_ROW_RE = /^[_^!$/]$/;
+const MARKED_ROW_RE = /^[!$^_#*]$/;
+const RECALC_ROW_RE = /^[#*]$/;
+
+/** The names a table gives itself, as Org's org-table-analyze reads them. The first cell of a row is its marker: a row marked `!`
+ *  names the columns (each cell names its own column, the marker column being column 1); a row marked `$` gives parameters as
+ *  `name=value` cells; a row marked `_` or `^` names the fields in the row below or above it, each name standing for that field's text.
+ * @param {{ type: string, cells?: string[] }[]} rows
+ * @returns {{ columns: Map<string, number>, params: Map<string, string> }} */
+function tableNames(rows) {
+  const data = rows.filter((r) => r.type === 'row').map((r) => ({ cells: r.cells || [] }));
+  const columns = new Map();
+  const params = new Map();
+  const marker = (/** @type {{ cells: string[] }} */ row) => String(row.cells[0] ?? '').trim();
+  const named = data.find((r) => marker(r) === '!');
+  if (named) {
+    named.cells.forEach((/** @type {string} */ cell, /** @type {number} */ i) => {
+      const name = String(cell).trim();
+      if (i > 0 && NAME_RE.test(name) && !columns.has(name)) columns.set(name, i + 1);
+    });
+  }
+  data.forEach((row, index) => {
+    const mark = marker(row);
+    if (mark === '$') {
+      row.cells.forEach((/** @type {string} */ cell, /** @type {number} */ i) => {
+        const m = i > 0 ? /^([a-zA-Z][_a-zA-Z0-9]*)\s*=\s*(.*)$/.exec(String(cell).trim()) : null;
+        if (m) params.set(m[1], m[2]);
+      });
+    } else if (mark === '_' || mark === '^') {
+      const target = data[index + (mark === '_' ? 1 : -1)];
+      if (!target) return;
+      row.cells.forEach((/** @type {string} */ cell, /** @type {number} */ i) => {
+        const name = String(cell).trim();
+        if (i === 0 || !NAME_RE.test(name) || i >= target.cells.length) return;
+        params.set(name, String(target.cells[i]).trim());
+      });
+    }
+  });
+  return { columns, params };
+}
+
+/** Rewrites a #+TBLFM: line so the table's own names mean what Org makes them mean: `$Price` becomes the column's `$3`, and a parameter or a
+ *  named field's text goes in parentheses. What is left (a constant) is read as before.
+ * @param {string} tblfm
+ * @param {ReturnType<typeof tableNames>} names */
+function substituteTableNames(tblfm, names) {
+  return tblfm
+    .split('::')
+    .map((statement) => {
+      const eq = statement.indexOf('=');
+      if (eq === -1) return statement;
+      const lhs = statement.slice(0, eq);
+      const rhs = statement.slice(eq + 1);
+      const plain = rhs.trimStart().startsWith("'"); // a Lisp formula takes the text as it is
+      const replaced = rhs.replace(/"(?:[^"\\]|\\.)*"|\$([a-zA-Z][_a-zA-Z0-9]*)/g, (match, name) => {
+        if (name === undefined) return match;
+        const col = names.columns.get(name);
+        if (col !== undefined) return '$' + col;
+        const value = names.params.get(name);
+        if (value !== undefined) return plain ? value : '(' + value + ')';
+        return match;
+      });
+      return lhs + '=' + replaced;
+    })
+    .join('::');
+}
+
 /** @param {Table} table */
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
   const hourZeroPad = /** @type {any} */ (options).hourZeroPad !== undefined ? /** @type {any} */ (options).hourZeroPad : true;
-  const statements = parseTblfm(table.tblfm);
+  const names = tableNames(table.rows);
+  const hasNames = names.columns.size + names.params.size > 0;
+  const statements = parseTblfm(hasNames ? substituteTableNames(table.tblfm, names) : table.tblfm);
 
   // A working copy: same row objects' own shape, but with a fresh
   // `cells` array per row so evaluating one formula can't accidentally
@@ -2467,7 +2537,13 @@ export function recalculateTable(table, options = {}) {
       // OWN row.
       const col = resolveColRef(target.col, colCount);
       if (col === null) throw new Error('Formula target column is out of range for this table');
-      for (let r = headerRowCount + 1; r <= dataRowCount; r++) {
+      // In Org a table with any marked row (`!` `$` `^` `_` `#` `*` in its first cell) recalculates only the rows marked `#` or `*`; one with
+      // none recalculates every row after the header. Rows marked `_` `^` `!` `$` `/` are never data.
+      const firstCell = (/** @type {number} */ r) => String(dataRows[r - 1].cells[0] ?? '').trim();
+      const marked = dataRows.some((_, i) => MARKED_ROW_RE.test(firstCell(i + 1)));
+      for (let r = marked ? 1 : headerRowCount + 1; r <= dataRowCount; r++) {
+        if (MARKER_ROW_RE.test(firstCell(r))) continue;
+        if (marked && !RECALC_ROW_RE.test(firstCell(r))) continue;
         evalCell(r, col);
       }
     }

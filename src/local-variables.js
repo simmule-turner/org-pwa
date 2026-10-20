@@ -292,6 +292,15 @@ export function getRefileTargets(vars) {
   return (vars || {})['org-refile-targets'] || '';
 }
 
+/** org-refile-allow-creating-parent-nodes: real org's own variable. `nil` (Emacs's default) offers only existing headings; `t` lets
+ *  Refile create a new heading under the chosen one and file into it; `confirm` asks first. A leading quote is allowed.
+ * @param {LocalVars} vars
+ * @returns {'nil' | 't' | 'confirm'} */
+export function getRefileAllowCreatingParentNodes(vars) {
+  const value = String((vars || {})['org-refile-allow-creating-parent-nodes'] ?? '').trim().replace(/^'/, '').toLowerCase();
+  return value === 't' ? 't' : value === 'confirm' ? 'confirm' : 'nil';
+}
+
 /** org-global-properties: real org's own variable name -- properties that
  *  apply everywhere unless a file or heading says otherwise. Here a plain
  *  line of semicolon-separated `NAME: value` entries (real org's is a Lisp

@@ -350,6 +350,19 @@ export const QUICK_SETTINGS_FIELDS = [
     default: false,
     helpAnchor: '#searching',
   },
+  {
+    key: 'org-refile-allow-creating-parent-nodes',
+    label: 'Refile: create a new heading to file under',
+    section: 'Editing',
+    type: 'select',
+    default: 'nil',
+    options: [
+      { value: 'nil', label: 'No (only existing headings)' },
+      { value: 't', label: 'Yes' },
+      { value: 'confirm', label: 'Yes, after asking' },
+    ],
+    helpAnchor: '#refile',
+  },
   { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper', helpAnchor: '#inline-text-markup' },
   {
     key: 'org-table-duration-hour-zero-padding',

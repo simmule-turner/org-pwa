@@ -2994,6 +2994,40 @@ check('refile: the destination used last is offered first, under RECENT', async 
   await context.close();
 });
 
+check('refile: with org-refile-allow-creating-parent-nodes, a name typed under the chosen target creates the heading and files into it; off by default', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Home\n* Task one\n* Task two\n');
+  const openPicker = async (title) => {
+    await page.locator('.heading-title', { hasText: title }).first().click();
+    await page.locator('[aria-label="Archive"]').first().click();
+    await page.waitForTimeout(700);
+  };
+  await openPicker('Task one');
+  await page.locator('#archiveRefilePanelBox .menu-list-item', { hasText: 'Home' }).first().click();
+  expect((await page.locator('#archiveRefilePanelBox [data-new-heading]').count()) === 0, 'off by default: no place to type a new heading');
+  await page.locator('#archiveRefilePanelBox [data-act="cancel"]').click();
+  await page.waitForTimeout(300);
+
+  await newDocument(page, ['* Home', '* Task one', '* Task two', '# Local Variables:', '# org-refile-allow-creating-parent-nodes: t', '# End:', ''].join('\n'));
+  await openPicker('Task one');
+  await page.locator('#archiveRefilePanelBox .menu-list-item', { hasText: 'Home' }).first().click();
+  await page.locator('#archiveRefilePanelBox [data-new-heading]').fill('Errands');
+  await page.locator('#archiveRefilePanelBox [data-act="refile"]').click();
+  await page.waitForTimeout(700);
+  const text = await page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
+  expect(/\* Home\n\*\* Errands\n\*\*\* Task one\n/.test(text), `Task one is under a new Errands under Home: ${JSON.stringify(text)}`);
+
+  await openPicker('Task two');
+  await page.locator('#archiveRefilePanelBox .menu-list-item', { hasText: 'Home' }).first().click();
+  await page.locator('#archiveRefilePanelBox [data-new-heading]').fill('Errands');
+  await page.locator('#archiveRefilePanelBox [data-act="refile"]').click();
+  await page.waitForTimeout(700);
+  const again = await page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
+  expect((again.match(/\*\* Errands/g) || []).length === 1 && /\*\*\* Task two/.test(again), `a second one reuses Errands: ${JSON.stringify(again)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('webdav: a document opens from the server and Save writes it back', async () => {
   dav.reset({ 'notes.org': SAMPLE });
   const { context, page } = await freshPage(main, { withDav: true });

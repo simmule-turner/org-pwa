@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v597 — Refile to a new heading, and names in tables
+With ~org-refile-allow-creating-parent-nodes~ on (Settings → Editing), Refile takes a new heading's name and files under it, as Emacs does; it is off by default, as in Emacs. Tables now read Org's name rows: ~!~ names columns (~$Price~), ~$~ gives parameters, ~_~ and ~^~ name fields. As in Org, a table with any marked row recalculates only the rows marked ~#~ or ~*~, so a ~#~ in a header cell now stops the other rows recalculating. The README gained a check against the code, and its Contents and variable table were completed.
+Verified: table names against Emacs 29.3; the new-heading refile.
+
 * v596 — Updates no longer wait on a slow sync server
 The update log showed the wait: after Reload, the new version sat for 90 seconds before taking over, while sync requests to an unreachable server were still open. The service worker was passing every request, including those to your calendar, contacts and WebDAV servers, through itself, and a new version cannot take over while the old one has requests open. It now answers only the app's own files and lets everything else go straight to the network.
 Verified: the worker's request handling.

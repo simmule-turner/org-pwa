@@ -42,6 +42,7 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#menu-customization][Menu customization]]
 - [[#file-management][File management]]
 - [[#tabs][Tabs]]
+- [[#citations][Citations]]
 - [[#export][Export]]
 - [[#import][Import]]
 - [[#docs][Help]]
@@ -197,6 +198,10 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 
 *Named constants*: a ~#+CONSTANTS:~ line anywhere in the file defines constants, used as ~$name~: ~#+CONSTANTS: c=299792458 g=9.81~. Names are space-separated, several lines combine, and a later value wins. An undefined ~$name~ gives ~#ERROR~. There is no built-in physical-constants library (org's optional ~constants.el~); only ~pi~ and ~inf~ are built in.
 
+*Names in the table*: the first cell of a row can mark it, as in Org. A row marked ~!~ names the columns: each cell below ~!~ names its own column, so with ~| ! | Item | Price | Qty | Tot |~ the formula ~$5=$Price*$Qty~ works (the marker column counts as column 1). A row marked ~$~ gives parameters as ~name=value~ cells, used as ~$name~. A row marked ~_~ or ~^~ names the field below or above each of its cells, and ~$name~ is that field's value. Names start with a letter and use letters, digits and ~_~; a column name wins over a parameter, and a parameter over a ~#+CONSTANTS:~ constant.
+
+A row marked ~#~ or ~*~ is recalculated when the table has any marked row (a row marked ~!~ ~$~ ~_~ or ~^~ counts), and then no other row is: put ~#~ in the first cell of each row to calculate. Rows marked ~!~ ~$~ ~_~ ~^~ or ~/~ are never calculated. A table with no marked row recalculates every row below its header.
+
 *Dates and times*: a cell holding an org timestamp (~[YYYY-MM-DD]~ or ~<YYYY-MM-DD>~, with an optional time and day name) is read as a date as soon as it is referenced, so ~$3 = $1 - $2~ subtracts two timestamp cells. Every component is range-checked (month 1 to 12, a day within that month's length with leap years, hour 0 to 23, minute 0 to 59), so ~<2026-06-34>~ gives ~#ERROR~. ~date(ref)~ differs from a bare reference only for a cell that isn't a timestamp: bare, it reads as an ordinary number; wrapped, it gives ~#ERROR~, which is useful when a formula should fail loudly. ~date(Y, M, D)~ builds a date from three numbers (~date(2028, 2, 29)~ is valid, ~date(2026, 2, 29)~ is not).
 
 - Subtracting two dates gives days as an integer, or, if either has a time of day, a duration in Calc's HMS form (~8@ 30' 0"~ for 8.5 hours).
@@ -267,7 +272,7 @@ An unrecognized flag is ignored. Examples:
 
 *Vectors and matrices*: ~[1, 2, 3]~ and ~[[1, 2], [3, 4]]~ in a cell or formula; a cell range such as ~$1..$3~ is a vector of its non-blank cells. ~+ -~ and ~* /~ by a number work elementwise; ~*~ is a dot product for two vectors, a matrix product for matrices, and ~^~ takes a matrix to an integer power. Functions: ~det~, ~inv~, ~trn~, ~tr~, ~cross~, ~vlen~, ~abs~ (the length), and the ~v~ aggregates, which flatten.
 
-Out of scope: Emacs Calc beyond the above (symbolic algebra, the rest of Calc's vector and matrix library), named-field references, and recalculation on every keystroke.
+Out of scope: Emacs Calc beyond the above (symbolic algebra, the rest of Calc's vector and matrix library), and recalculation on every keystroke.
 
 *** Plots
 :PROPERTIES:
@@ -614,6 +619,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
 | ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
+| ~org-agenda-show-all-dates~ | ~t~ | Whether days with nothing on them show in the Agenda; the *g* button toggles it for the session (see [[#agenda][Agenda]]); also Settings → Quick Settings → *Agenda* |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
@@ -637,13 +643,19 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
 | ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
 | ~org-global-properties~ | unset | Properties that apply everywhere. Only ~Effort_ALL~ is used, as in ~Effort_ALL: 0:15 0:30 1:00 2:00~ (see [[#effort-all][Effort_ALL]]) |
+| ~org-habit-following-days~ | ~7~ | Days after today in a habit's strip (see [[#habits][Habits]]); also Settings → Quick Settings → *Agenda* |
+| ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Quick Settings → *Agenda* |
+| ~org-habit-show-all-today~ | ~nil~ | ~t~ shows every habit today, even one not yet due; also Settings → Quick Settings → *Agenda* |
+| ~org-habit-show-habits-only-for-today~ | ~t~ | Habits appear only in today's Agenda; also Settings → Quick Settings → *Agenda* |
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
+| ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
+| ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
@@ -768,7 +780,9 @@ org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files
 - *File*: ~current~, ~agenda-files~, or a file name (a bare name is a sibling of the current file), optionally with a ~github:~, ~webdav:~ or ~local:~ prefix, like ~local:inbox.org level=1~.
 - *Criteria*: ~level=N~, ~maxlevel=N~, ~tag=NAME~ (the heading's own tag; inheritance is not considered), ~todo=KEYWORD~, and ~regexp=PATTERN~ (matched against the whole heading line, so it must come last; write a literal ~;~ as ~\;~). Several criteria on one entry must all match, which goes beyond real org.
 
-An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]] where a file in the org-pwa folder works. Not built: creating a new heading as the destination.
+An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]] where a file in the org-pwa folder works.
+
+To file under a heading that doesn't exist yet, set ~org-refile-allow-creating-parent-nodes~ to ~t~ (or ~confirm~, which asks first), as in Emacs; Settings → Quick Settings → *Editing* has it. Choose the parent as usual, then type the new heading's name in the box under the details. The heading is made as the parent's last child and the subtree goes under it; a child of that name that is already there is used instead.
 
 -----
 

@@ -7,13 +7,13 @@
 // S.pendingRefile so Escape and the other panels' dismissal reach it like any panel.
 import { findAncestorPath, getArchiveLocation, isArchivedInPlace, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
 import { archiveStamps, describeSubtree, displayName, filterTargets, refileDetails, restoreDestination } from '../src/archive-refile-details.js';
-import { getRefileTargets } from '../src/local-variables.js';
+import { getRefileAllowCreatingParentNodes, getRefileTargets } from '../src/local-variables.js';
 import { getRefileCandidates, parseRefileTargetsWithErrors, recentRefileCandidates } from '../src/refile.js';
 import { ensureAgendaFilesLoadedAndWait } from './agenda-files.js';
 import { archiveHeadingToLocation, getArchiveDestinationLabel, unarchiveHeadingToOriginalLocation } from './archive-flow.js';
 import { S } from './app-state.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
-import { showModalOverlay } from './dialogs.js';
+import { confirmDialog, showModalOverlay } from './dialogs.js';
 import { archiveRefilePanel, archiveRefilePanelBox } from './dom.js';
 import { loadRefileTargetDocs, performRefile } from './refile-flow.js';
 import { loadRefileRecent } from './sync-helpers.js';
@@ -166,11 +166,21 @@ export function renderArchiveRefilePanel() {
     if (restore) unarchiveHeadingToOriginalLocation(heading);
     else archiveHeadingToLocation(heading);
   });
-  const refileBtn = button('Refile', () => {
+  const allowNew = getRefileAllowCreatingParentNodes(S.state.localVariables);
+  /** The new heading to file under, typed beside the chosen target; empty means file directly under the target. */
+  const newHeading = document.createElement('input');
+  newHeading.type = 'text';
+  newHeading.placeholder = 'New heading under it (optional)';
+  newHeading.setAttribute('aria-label', 'New heading under the chosen target');
+  newHeading.setAttribute('data-new-heading', '');
+  newHeading.style.cssText = 'width:100%;min-height:40px;box-sizing:border-box;margin-top:8px;';
+  const refileBtn = button('Refile', async () => {
     const chosen = p.selected;
     if (!chosen) return;
+    const title = allowNew === 'nil' ? '' : newHeading.value.replace(/\s+/g, ' ').trim();
+    if (title && allowNew === 'confirm' && !(await confirmDialog(`Create the heading "${title}" under "${chosen.outlinePath[chosen.outlinePath.length - 1]}" and refile into it?`, { confirmLabel: 'Create', danger: false }))) return;
     closeArchiveRefilePanel();
-    performRefile(heading, chosen.documentId, chosen.outlinePath);
+    performRefile(heading, chosen.documentId, chosen.outlinePath, title);
   });
   const cancelBtn = button('Cancel', closeArchiveRefilePanel);
   archiveBtn.setAttribute('data-act', 'archive');
@@ -235,7 +245,10 @@ export function renderArchiveRefilePanel() {
     }
     if (matches.length === 0) listBox.appendChild(div('font-size:13px;opacity:0.6;padding:8px 0;', 'No target matches.'));
     for (const c of matches) listBox.appendChild(row(c, false));
-    if (p.selected) detailBox.appendChild(detailGrid(refileDetails(heading, p.selected, S.state.documentId)));
+    if (p.selected) {
+      detailBox.appendChild(detailGrid(refileDetails(heading, p.selected, S.state.documentId)));
+      if (allowNew !== 'nil') detailBox.appendChild(newHeading);
+    }
   };
   search.oninput = () => {
     p.query = search.value;

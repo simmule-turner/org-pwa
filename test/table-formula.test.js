@@ -1480,3 +1480,37 @@ test('format-time-string() prints a wall-clock time as written, and a zone-less 
   const iso = recalculateTable(mkTable('$2 = date-to-time($1)', [['2026-01-15', '']]));
   assert.equal(iso[0].cells[1], '<2026-01-15 00:00>');
 });
+
+// ---- names a table gives itself (each case below was run through Emacs 29.3's org-table-recalculate) -------------------------------
+
+test('a row marked ! names the columns, and $Name means that column; only rows marked # are recalculated', () => {
+  const result = recalculateTable(mkTable('$5=$Price*$Qty', [['', 'Item', 'Price', 'Qty', 'Tot'], null, ['!', 'Item', 'Price', 'Qty', 'Tot'], ['#', 'a', '2', '3', ''], ['#', 'b', '5', '4', '']]));
+  assert.deepEqual(cellsOf(result).slice(3), [['#', 'a', '2', '3', '6'], ['#', 'b', '5', '4', '20']]);
+});
+
+test('a name that is the start of another name does not take it over', () => {
+  const result = recalculateTable(mkTable('$4=$Pri+$Price', [['!', 'Pri', 'Price', 'S'], ['#', '2', '10', '']]));
+  assert.equal(result[1].cells[3], '12');
+});
+
+test('a row marked $ gives parameters, written name=value', () => {
+  const result = recalculateTable(mkTable('$4=$Price*$Qty*$rate', [['!', 'Price', 'Qty', 'Tot'], ['$', 'rate=2', '', ''], ['#', '10', '3', ''], ['#', '4', '2', '']]));
+  assert.deepEqual(cellsOf(result).slice(2), [['#', '10', '3', '60'], ['#', '4', '2', '16']]);
+});
+
+test('rows marked _ and ^ name the field below and above, and $Name is that field\u2019s value', () => {
+  const result = recalculateTable(mkTable('@2$3=$p*2::@4$2=$q+1', [['_', 'p', '', ''], ['#', '10', '3', ''], ['^', 'q', '', ''], ['#', '7', '', '']]));
+  assert.deepEqual(cellsOf(result), [['_', 'p', '', ''], ['#', '10', '20', ''], ['^', 'q', '', ''], ['#', '11', '', '']]);
+});
+
+test('a table with a marked row recalculates only the rows marked # or *, and never a row of names', () => {
+  const result = recalculateTable(mkTable('$4=$A+$B', [['!', 'A', 'B', 'S'], ['*', '1', '2', ''], ['', '3', '4', '']]));
+  assert.deepEqual(cellsOf(result).slice(1), [['*', '1', '2', '3'], ['', '3', '4', '']]);
+  const unmarked = recalculateTable(mkTable('$3=$2*2', [['Name', 'Qty', 'Double'], null, ['a', '2', ''], ['b', '3', '']]));
+  assert.deepEqual(cellsOf(unmarked).slice(2), [['a', '2', '4'], ['b', '3', '6']]);
+});
+
+test('a format after the formula still applies', () => {
+  const result = recalculateTable(mkTable('$4=$A+$B;%.2f', [['!', 'A', 'B', 'S'], ['#', '1', '2', '']]));
+  assert.equal(result[1].cells[3], '3.00');
+});

@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: refile flow.
 import { shiftLevels } from '../src/archive-model.js';
-import { removeHeading } from '../src/heading-edit.js';
+import { createHeading, removeHeading } from '../src/heading-edit.js';
 import { parseOrg } from '../src/org-parser.js';
 import { findHeadingByOutlinePath, resolveEntryFileIds } from '../src/refile.js';
 import { aggregateAgendaDocs } from './agenda-files.js';
@@ -84,7 +84,23 @@ export async function loadRefileTargetDocs(targetsSpec) {
  * @param {string} targetDocumentId
  * @param {any} [targetOutlinePath]
  */
-export async function performRefile(heading, targetDocumentId, targetOutlinePath) {
+export async function performRefile(heading, targetDocumentId, targetOutlinePath, newTitle = '') {
+  // With a new heading named, the subtree goes under a child of the chosen target with that title: an existing child of that name if
+  // there is one, else a new last child (Emacs's org-refile-allow-creating-parent-nodes).
+  /** @param {Heading} target */
+  const refileUnder = (target) => {
+    let destination = target;
+    if (newTitle) {
+      destination = target.children.find((child) => child.title === newTitle) || createHeading({ level: target.level + 1, title: newTitle });
+      if (!target.children.includes(destination)) target.children.push(destination);
+      target.collapsed = false;
+    }
+    destination.children.push(heading);
+    destination.collapsed = false;
+    shiftLevels(heading, destination.level + 1);
+    return destination.title;
+  };
+  const rememberedPath = newTitle ? [...(targetOutlinePath || []), newTitle] : targetOutlinePath;
   if (targetDocumentId === S.state.documentId) {
     const target = findHeadingByOutlinePath(S.state.doc, targetOutlinePath);
     if (!target) {
@@ -92,12 +108,10 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
       return;
     }
     removeHeading(S.state.doc, heading);
-    target.children.push(heading);
-    target.collapsed = false;
-    shiftLevels(heading, target.level + 1);
+    const destinationTitle = refileUnder(target);
     commitAndRender('Refiled heading');
-    setStatus(`Refiled to "${target.title}".`);
-    rememberRefileTarget(targetDocumentId, targetOutlinePath);
+    setStatus(`Refiled to "${destinationTitle}".`);
+    rememberRefileTarget(targetDocumentId, rememberedPath);
     return;
   }
 
@@ -114,10 +128,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
         );
         return null;
       }
-      target.children.push(heading);
-      target.collapsed = false;
-      shiftLevels(heading, target.level + 1);
-      return target.title;
+      return refileUnder(target);
     },
   });
   if (!ok) return;
@@ -126,5 +137,5 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
   removeHeading(S.state.doc, heading);
   commitAndRender('Refiled heading');
   setStatus(`Refiled to "${targetTitle}" in "${targetDocumentId}"${UNSAVED_NOTE}.`);
-  rememberRefileTarget(targetDocumentId, targetOutlinePath);
+  rememberRefileTarget(targetDocumentId, rememberedPath);
 }
