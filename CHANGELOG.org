@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v586 — The floating keyboard is a cross, and its keyboard key works on iOS
+The arrows are now a cross: ↑ above and ↓ below the ← → pair, so a thumb drifting off → no longer lands on ↑ or ↓, and the outline and glow follow the cross instead of a box. On iOS the keyboard key now hides and shows the device keyboard in the Text view (the tap used to blur the editor first, so it always chose "show"), and the cursor stays where it was.
+Verified: the floating keyboard smoke checks.
+
 * v585 — The keyboard debug log records where each tap lands
 The debug log now notes, for each floating keyboard tap, where the finger touched and where every arrow button was at that moment, so a tap that lands on a neighboring key, or a panel that shifted between taps, can be seen from the log.
 Verified: the Text view floating keyboard check, now also reading the tap positions.

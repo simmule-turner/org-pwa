@@ -42,6 +42,10 @@ const SCREEN_MARGIN = 8;
 /** Keys are narrower than a full touch target wide (they stay 44px tall) so the
  *  panel, with its keyboard key, still fits a 360px-wide screen. */
 const KEY_MIN_WIDTH = 34;
+/** The accent outline round the cross, in px. */
+const OUTLINE_PX = 3;
+/** Width of the up and down keys, which sit alone in their rows. */
+const VERTICAL_KEY_WIDTH = 44;
 /** How much of the screen the app must have lifted its mode line for, before
  *  the device keyboard counts as showing. */
 const KEYBOARD_INSET_PX = 80;
@@ -278,6 +282,57 @@ export function textViewInput() {
   return S.currentView === 'text' ? /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input')) : null;
 }
 
+/** Grid cell of each key: Tab ← → along the middle row, ↑ above and ↓ below the ← → pair, g last. */
+/**
+ * @param {HTMLElement} btn
+ * @param {string} rawKey
+ */
+function placeKey(btn, rawKey) {
+  btn.style.pointerEvents = 'auto';
+  if (rawKey === 'ArrowUp' || rawKey === 'ArrowDown') {
+    btn.style.gridRow = rawKey === 'ArrowUp' ? '1' : '3';
+    btn.style.gridColumn = '4 / span 2';
+    btn.style.justifySelf = 'center';
+    btn.style.width = VERTICAL_KEY_WIDTH + 'px';
+    return;
+  }
+  const column = /** @type {Record<string, number>} */ ({ Tab: 3, ArrowLeft: 4, ArrowRight: 5, g: 7 })[rawKey];
+  btn.style.gridRow = '2';
+  btn.style.gridColumn = String(column);
+}
+
+/** Draws the accent outline and its glow behind the keys, round the cross they form -- the middle row, plus the narrow
+ *  column holding ↑ and ↓ -- and not round the empty corners. The accent shapes are drawn first and the panel colour
+ *  shapes, a few px smaller, over them, so the border is even all the way round; one drop-shadow glows the lot. */
+function drawOutline() {
+  const old = floatingKeyboard.querySelector('[data-fk-outline]');
+  if (old) old.remove();
+  const kids = /** @type {HTMLElement[]} */ ([...floatingKeyboard.children]);
+  const up = floatingKeyboard.querySelector('[data-fk-key="ArrowUp"]');
+  const down = floatingKeyboard.querySelector('[data-fk-key="ArrowDown"]');
+  /** @param {HTMLElement[]} els */
+  const bounds = (els) => ({
+    left: Math.min(...els.map((e) => e.offsetLeft)),
+    top: Math.min(...els.map((e) => e.offsetTop)),
+    right: Math.max(...els.map((e) => e.offsetLeft + e.offsetWidth)),
+    bottom: Math.max(...els.map((e) => e.offsetTop + e.offsetHeight)),
+  });
+  const shapes = [bounds(kids.filter((e) => e !== up && e !== down))];
+  if (up && down) shapes.push(bounds([/** @type {HTMLElement} */ (up), /** @type {HTMLElement} */ (down)]));
+  const layer = document.createElement('div');
+  layer.setAttribute('data-fk-outline', '');
+  layer.setAttribute('aria-hidden', 'true');
+  layer.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:-1;filter:drop-shadow(0 0 5px var(--accent)) drop-shadow(0 4px 8px rgba(0,0,0,0.35))';
+  for (const [grow, color, radius] of /** @type {[number, string, number][]} */ ([[3 + OUTLINE_PX, 'var(--accent)', 10], [3, 'var(--modal-bg)', 7]])) {
+    for (const r of shapes) {
+      const d = document.createElement('div');
+      d.style.cssText = `position:absolute;left:${r.left - grow}px;top:${r.top - grow}px;width:${r.right - r.left + 2 * grow}px;height:${r.bottom - r.top + 2 * grow}px;background:${color};border-radius:${radius}px`;
+      layer.appendChild(d);
+    }
+  }
+  floatingKeyboard.appendChild(layer);
+}
+
 /** Lights the panel's keyboard key while the device keyboard is showing. Cheap,
  *  and safe to call when the panel is not there. */
 export function syncKeyboardToggle() {
@@ -329,20 +384,22 @@ export function renderFloatingKeyboard() {
   const armed = S.floatingKeyboardShiftArmed;
 
   floatingKeyboard.innerHTML = '';
-  floatingKeyboard.style.display = 'flex';
+  // a cross: the keys sit in a grid, the arrows ↑ and ↓ centred above and below the ← → pair, so no up or down key is
+  // next to →. The panel itself is see-through (taps in its empty corners reach what is under them); the accent outline
+  // and glow are drawn behind the keys, following the cross (see drawOutline)
+  floatingKeyboard.style.display = 'grid';
+  floatingKeyboard.style.gridTemplateColumns = minimized ? 'auto' : 'auto auto auto auto auto auto auto';
   floatingKeyboard.style.position = 'fixed';
   floatingKeyboard.style.zIndex = '900';
   floatingKeyboard.style.alignItems = 'center';
   floatingKeyboard.style.gap = '3px';
-  floatingKeyboard.style.padding = '3px';
+  floatingKeyboard.style.padding = OUTLINE_PX + 3 + 'px';
   floatingKeyboard.style.maxWidth = 'calc(100vw - ' + 2 * SCREEN_MARGIN + 'px)';
   floatingKeyboard.style.boxSizing = 'border-box';
-  floatingKeyboard.style.background = 'var(--modal-bg)';
-  // a thick border in the theme's accent colour (with a faint glow of it), so the
-  // panel is easy to pick out from whatever it is floating over
-  floatingKeyboard.style.border = '3px solid var(--accent)';
-  floatingKeyboard.style.borderRadius = '10px';
-  floatingKeyboard.style.boxShadow = '0 0 8px 1px var(--accent), 0 4px 14px rgba(0,0,0,0.35)';
+  floatingKeyboard.style.background = 'none';
+  floatingKeyboard.style.border = 'none';
+  floatingKeyboard.style.boxShadow = 'none';
+  floatingKeyboard.style.pointerEvents = 'none';
   floatingKeyboard.setAttribute('role', 'toolbar');
   floatingKeyboard.setAttribute('aria-label', 'God-mode keys');
 
@@ -363,6 +420,9 @@ export function renderFloatingKeyboard() {
   handle.style.opacity = minimized ? '0.9' : '0.6';
   handle.style.userSelect = 'none';
   handle.style.webkitUserSelect = 'none';
+  handle.style.pointerEvents = 'auto';
+  handle.style.gridRow = minimized ? '1' : '2';
+  handle.style.gridColumn = '1';
   floatingKeyboard.appendChild(handle);
   wireHandle(handle);
 
@@ -376,22 +436,36 @@ export function renderFloatingKeyboard() {
     // pointerdown only keeps focus where it is until the click decides; the
     // focus call itself is in the click, which is what iOS counts as the tap
     // that may bring the keyboard up
+    keyboardBtn.style.pointerEvents = 'auto';
+    keyboardBtn.style.gridRow = '2';
+    keyboardBtn.style.gridColumn = '2';
+    // On iOS the tap itself can blur the editor before the click arrives, so whether the keyboard was showing is read
+    // here, while the editor still has focus, and not in the click
+    let showingAtPress = false;
     keyboardBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      showingAtPress = deviceKeyboardShowing();
     });
     keyboardBtn.addEventListener('click', () => {
-      const wasShowing = deviceKeyboardShowing();
+      const wasShowing = showingAtPress;
       const textarea = textViewInput();
       if (textarea) {
-        // the editor keeps focus, so its cursor stays and the keys keep working; inputmode "none" is what keeps the
-        // device keyboard away (blurred and refocused so the change takes effect)
+        // the editor keeps its cursor and the keys keep working; inputmode "none" is what keeps the device keyboard away.
+        // Hiding blurs first (the keyboard goes) and refocuses a moment later, as iOS ignores a blur and focus in one
+        // breath; showing refocuses inside the tap, which is the only place iOS lets focus raise the keyboard.
         noteKeyLog('keyboard key', { hide: wasShowing });
         S.textKeyboardHidden = wasShowing;
+        const { selectionStart: from, selectionEnd: to, selectionDirection: dir } = textarea;
+        const refocus = () => {
+          textarea.focus({ preventScroll: true });
+          textarea.setSelectionRange(from, to, dir || 'none'); // iOS puts the cursor back at the start otherwise
+          syncKeyboardToggle();
+        };
         textarea.blur();
         textarea.inputMode = wasShowing ? 'none' : 'text';
-        textarea.focus({ preventScroll: true });
-        syncKeyboardToggle();
+        if (wasShowing) setTimeout(refocus, 60);
+        else refocus();
         return;
       }
       const field = godModeKeyboardInput;
@@ -407,6 +481,9 @@ export function renderFloatingKeyboard() {
     shiftBtn.setAttribute('aria-pressed', armed ? 'true' : 'false');
     shiftBtn.setAttribute('data-fk-shift', '');
     styleButton(shiftBtn, { armed });
+    shiftBtn.style.pointerEvents = 'auto';
+    shiftBtn.style.gridRow = '2';
+    shiftBtn.style.gridColumn = '6';
     shiftBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation(); // keeps the app's document-level pointerdown (which clears the status line) out of it
@@ -420,6 +497,7 @@ export function renderFloatingKeyboard() {
       btn.setAttribute('aria-label', key.aria);
       btn.setAttribute('data-fk-key', key.rawKey);
       styleButton(btn);
+      placeKey(btn, key.rawKey);
       // pointerdown, not click, and preventDefault: a button tap would
       // otherwise move focus off the hidden input, which looks exactly like
       // the device keyboard being dismissed (see the input's blur handler).
@@ -443,6 +521,7 @@ export function renderFloatingKeyboard() {
   }
 
   positionFloatingKeyboard();
+  drawOutline();
 }
 
 // ---- Letters typed on the device keyboard --------------------------------

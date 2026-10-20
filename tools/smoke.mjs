@@ -1884,6 +1884,7 @@ check('floating keyboard in Text view: the arrows move the cursor, Shift selects
   expect((await ta.inputValue()).startsWith('  alpha'), 'Tab indents with two spaces');
 
   await key.click(); // hide the device keyboard
+  await page.waitForTimeout(150); // the editor is refocused a moment after the blur (iOS)
   const mode = () => page.evaluate(() => document.getElementById('document-text-edit-input').inputMode);
   expect((await focusedIsEditor()) && (await mode()) === 'none', 'the keyboard key keeps the editor (and its cursor) focused but asks for no device keyboard');
   await emulateDeviceKeyboard(page, 0);
@@ -2106,32 +2107,42 @@ check('floating keyboard: where the person drags it is remembered across a reloa
   }
 });
 
-check('floating keyboard: a thick accent-coloured border identifies it, and it fits a 360px screen with every key at least 34px wide and 44px tall', async () => {
+check('floating keyboard: a cross-shaped accent outline identifies it, ↑ and ↓ sit above and below the ← → pair (never next to →), and it fits 360px and 411px screens with every key at least 34px wide and 44px tall', async () => {
   const { context, page } = await freshPage();
-  await page.setViewportSize({ width: 360, height: 740 });
   await newDocument(page, '* One\n');
   const fk = page.locator('#floatingKeyboard');
   await page.click('#godModeBtn');
   await fk.waitFor({ state: 'visible' });
-  const look = await fk.evaluate((el) => {
-    const probe = document.createElement('span');
-    probe.style.color = 'var(--accent)';
-    document.body.appendChild(probe);
-    const accent = getComputedStyle(probe).color;
-    probe.remove();
-    const cs = getComputedStyle(el);
-    return { width: cs.borderTopWidth, style: cs.borderTopStyle, color: cs.borderTopColor, accent, scroll: el.scrollWidth, client: el.clientWidth, glow: cs.boxShadow };
-  });
-  expect(look.width === '3px' && look.style === 'solid', `a 3px solid border: ${look.width} ${look.style}`);
-  expect(look.color === look.accent, `in the theme's accent colour: ${look.color} vs ${look.accent}`);
-  expect(look.glow.includes(look.accent), `with a faint glow of it: ${look.glow}`);
-  const box = await fk.boundingBox();
-  expect(box.x >= 0 && box.x + box.width <= 360, `inside a 360px screen: x=${box.x} width=${box.width}`);
-  expect(look.scroll <= look.client + 1, `nothing overflows the panel: ${look.scroll} > ${look.client}`);
-  const keys = await fk.locator('button').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-  expect(keys.length === 8 && keys.every(([w, h]) => w >= 34 && h >= 44), `every key at least 34 wide and 44 tall: ${JSON.stringify(keys)}`);
-  await page.locator('[data-fk-handle]').click(); // minimized keeps the border, so it is still findable
-  expect((await fk.evaluate((el) => getComputedStyle(el).borderTopWidth)) === '3px', 'the minimized handle keeps the border');
+  for (const width of [360, 411]) {
+    await page.setViewportSize({ width, height: 740 });
+    await page.waitForTimeout(300);
+    const look = await fk.evaluate((el) => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--accent)';
+      document.body.appendChild(probe);
+      const accent = getComputedStyle(probe).color;
+      probe.remove();
+      const layer = el.querySelector('[data-fk-outline]');
+      const shapes = layer ? [...layer.children].map((d) => getComputedStyle(d).backgroundColor) : [];
+      const r = (k) => { const b = el.querySelector(`[data-fk-key="${k}"]`).getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width }; };
+      return { accent, shapes, glow: layer ? getComputedStyle(layer).filter : '', scroll: el.scrollWidth, client: el.clientWidth, left: r('ArrowLeft'), right: r('ArrowRight'), up: r('ArrowUp'), down: r('ArrowDown'), pe: getComputedStyle(el).pointerEvents };
+    });
+    expect(look.shapes.length === 4 && look.shapes.filter((c) => c === look.accent).length === 2, `${width}: two accent shapes (the row and the ↑↓ column) under two panel-coloured ones: ${JSON.stringify(look.shapes)}`);
+    expect(look.glow.includes('drop-shadow'), `${width}: with a glow: ${look.glow}`);
+    expect(look.pe === 'none', `${width}: the empty corners let taps through`);
+    const mid = (k) => (k.l + k.r) / 2;
+    expect(Math.abs(mid(look.up) - (look.left.l + look.right.r) / 2) < 1.5 && Math.abs(mid(look.down) - mid(look.up)) < 1, `${width}: ↑ and ↓ centred over the ← → pair`);
+    expect(look.up.b <= look.left.t + 1 && look.down.t >= look.left.b - 1, `${width}: ↑ above and ↓ below the middle row`);
+    expect(look.up.r <= look.right.r + 0.5 && look.down.l >= look.left.l - 0.5 && look.up.l > look.left.l - 8, `${width}: neither is beyond the pair`);
+    expect(look.up.l > look.left.l && look.up.r < look.right.r, `${width}: so neither is over → alone (the thumb's drift off → no longer lands on ↑ or ↓)`);
+    const box = await fk.boundingBox();
+    expect(box.x >= 0 && box.x + box.width <= width, `${width}: inside the screen: x=${box.x} width=${box.width}`);
+    expect(look.scroll <= look.client + 1, `${width}: nothing overflows the panel: ${look.scroll} > ${look.client}`);
+    const keys = await fk.locator('button').evaluateAll((els) => els.map((e) => { const q = e.getBoundingClientRect(); return [Math.round(q.width), Math.round(q.height)]; }));
+    expect(keys.length === 8 && keys.every(([w, h]) => w >= 34 && h >= 44), `${width}: every key at least 34 wide and 44 tall: ${JSON.stringify(keys)}`);
+  }
+  await page.locator('[data-fk-handle]').click(); // minimized keeps the outline, so it is still findable
+  expect((await fk.locator('[data-fk-outline] > div').count()) === 2, 'the minimized handle keeps an outline (one accent shape, one panel-coloured)');
   await context.close();
 });
 
