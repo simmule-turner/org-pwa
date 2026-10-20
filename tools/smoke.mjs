@@ -3597,7 +3597,7 @@ check('org-clock-goto with C-u (u c x j): lists recently clocked tasks, most rec
   await context.close();
 });
 
-check('local agenda files: a local: entry loads without any prompt when access is granted, says what to do when it is not, asks only on the refresh button, opens from this device when tapped, and is never written into', async () => {
+check('local agenda files: a local: entry loads without any prompt when access is granted, says what to do when it is not, asks only on the refresh button, opens from this device when tapped, and (in a browser) is never written into', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });
   // A real file handle from the browser's private file system stands in for a file opened on this device earlier;
@@ -3652,6 +3652,26 @@ check('local agenda files: a local: entry loads without any prompt when access i
   });
   expect(ids.all.includes('agenda-local.org'), `the agenda and search can use it: ${JSON.stringify(ids)}`);
   expect(!ids.writable.includes('agenda-local.org'), `but Refile and Replace never see it as somewhere to write: ${JSON.stringify(ids)}`);
+
+  // the Android app (which has the org-pwa folder) may write into it, but only from a local file; GitHub and WebDAV documents may not
+  const android = await page.evaluate(async () => {
+    const { aggregateAgendaDocs } = await import('/src-browser/agenda-files.js');
+    const { platform } = await import('/src-browser/platform.js');
+    const { S } = await import('/src-browser/app-state.js');
+    const supported = platform.attachments.supported;
+    const kind = S.state.storageKind;
+    const writableIds = () => aggregateAgendaDocs({ writable: true }).map((d) => d.documentId);
+    platform.attachments.supported = () => true;
+    S.state.storageKind = 'filesystem';
+    const fromLocal = writableIds();
+    S.state.storageKind = 'github';
+    const fromGithub = writableIds();
+    platform.attachments.supported = supported;
+    S.state.storageKind = kind;
+    return { fromLocal, fromGithub };
+  });
+  expect(android.fromLocal.includes('agenda-local.org'), `the Android app can write into it from a local file: ${JSON.stringify(android)}`);
+  expect(!android.fromGithub.includes('agenda-local.org'), `but not from a GitHub document: ${JSON.stringify(android)}`);
 
   // tapping the item opens the file from this device
   await page.getByText('Local task').first().click();

@@ -159,8 +159,8 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-diary-merge-rows', label: 'Rows as Org shows them (off: one row per entry)', section: 'Diary', type: 'boolean', default: true, helpAnchor: '#diary-file' },
   {
     key: 'org-contacts-birthday-property',
-    label: 'Birthday property name',
-    section: 'Contacts & Calendar',
+    label: 'Birthday property name (contacts)',
+    section: 'Diary',
     type: 'text',
     default: 'BIRTHDAY',
     helpAnchor: '#agenda-diary-sexp',

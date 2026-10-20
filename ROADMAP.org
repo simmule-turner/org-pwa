@@ -1,0 +1,46 @@
+#+TITLE: org-pwa roadmap
+#+STARTUP: overview
+
+Where org-pwa still differs from Emacs org-mode, with a suggested priority. A is next, B follows, C waits for demand. Priorities rank how often the gap meets everyday use (agenda, diary, sync, capture), not effort. This is a plan, not a promise.
+
+* Agenda and diary
+** [#B] Refile and Replace into =local:= files from the web, and from GitHub or WebDAV documents
+The Android app writes into =local:= agenda files while a local file is open. In a browser, and from a document on another backend, those files stay read-only: the browser asks for permission per file, and the other adapter doesn't know them. The diary file is read for the agenda in the same way; its rows are changed by opening it.
+** [#B] More of =org-agenda-sorting-strategy= and =org-agenda-prefix-format=
+Only the effort keys are sorted, and four prefix specs are known. The other keys (priority, time, category) and specs are what Emacs users carry in their configuration.
+** [#B] =org-agenda-show-inherited-tags= values =always= and a list
+Today it reads =t= or =nil=.
+** [#B] =setq= and =defun= in the sexp evaluator
+Lets a pasted Emacs diary entry run unchanged; today functions come from an Extensions script.
+** [#C] Holidays for =org-class= beyond US and Christian
+** [#C] Hebrew, Islamic and other non-Gregorian diary entries
+
+* Editing and structure
+** [#A] Refile to a new heading by typing its name
+Emacs offers to create the parent; here the destination must exist.
+** [#B] Priorities beyond A/B/C
+=org-priority-highest=, =org-priority-lowest= and the default.
+** [#B] Fold state kept across undo and redo
+** [#C] An undo tree
+** [#C] Structure-aware merge
+A subtree moved on one side and edited on the other is an ordinary clash today.
+
+* Tables and clocking
+** [#B] Named-field references in =#+TBLFM:=
+** [#B] Clock-in reminder, =org-duration-units= and =Effort_ALL+=
+** [#C] Symbolic algebra from Emacs Calc
+
+* Babel and attachments
+** [#B] Attachments: copy, move and link (=c= =m= =l=)
+** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
+** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
+
+* Export
+** [#B] Source block line numbers and references (LaTeX, ASCII, HTML)
+** [#C] =#+ATTR_ASCII:= and inline tasks in ASCII export
+** [#C] =#+HTML_DOCTYPE:=
+** [#C] Beamer
+
+* Housekeeping
+** [#B] A test that checks the README against the code
+Setting defaults, the Contents list against the headings, and that every variable it names exists.

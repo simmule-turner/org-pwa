@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v595 — Android writes into local agenda files; settings and README tidied
+In the Android app, Refile and Replace can now write into a =local:= agenda file while a local file is open (the changes stay unsaved until you save). The birthday property moved from its own Contacts card into the Diary card, so "Agenda, diary and weather" no longer has a card with one setting. The README's settings paths and Differences section are corrected and reworded, and ROADMAP.org lists what is planned, with priorities.
+Verified: the local agenda file check, with the Android and GitHub cases.
+
 * v594 — Update and startup log
 A new palette command, *Copy update and startup log*, copies a timestamped trail of what the app and its service worker did while starting and updating: update checks, the new version's download time and any files that failed, the banner, the Reload tap, the takeover, slow or failed network requests, and the first screen drawn. It is kept on the device, never sent anywhere, and records only from this version on.
 Verified: the palette command and the log text.

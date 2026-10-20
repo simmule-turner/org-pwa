@@ -4,8 +4,8 @@ import { EmacsRegexError } from '../src/emacs-regex.js';
 import { getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { countBlockOnlyMatches, createQueryReplace, createTextQueryReplace } from '../src/query-replace.js';
 import { searchDocuments, searchDocumentsByMatchQuery } from '../src/search.js';
-import { githubAdapter, webdavAdapter } from './adapters.js';
-import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded, searchExtraFilesProblems } from './agenda-files.js';
+import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
+import { aggregateAgendaDocs, localAgendaFilesWritable, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded, searchExtraFilesProblems } from './agenda-files.js';
 import { S } from './app-state.js';
 import { renderMinibuffer } from './chrome.js';
 import { SEARCH_TYPE_ICON } from './constants.js';
@@ -278,7 +278,11 @@ export async function switchToAgendaDoc(documentId) {
   if (!cacheEntry) return false;
   const [key] = cacheEntry;
   const scheme = key.slice(0, key.indexOf(':'));
-  if (scheme === 'local') return false; // never written into by a replace (see aggregateAgendaDocs' writable option)
+  if (scheme === 'local') {
+    if (!localAgendaFilesWritable()) return false; // see localAgendaFilesWritable
+    await openRemotePath(documentId, 'filesystem', filesystemAdapter, 'Local');
+    return !!S.state.doc && S.state.documentId === documentId;
+  }
   const adapter = scheme === 'github' ? githubAdapter : webdavAdapter;
   const label = scheme === 'github' ? 'GitHub' : 'WebDAV';
   await openRemotePath(documentId, scheme, adapter, label);

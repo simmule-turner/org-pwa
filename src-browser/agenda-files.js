@@ -137,7 +137,7 @@ function localNotFoundMessage(path) {
  *  File -> Open -> Local file or else in the org-pwa folder. The browser keeps access to a picked file only while it says so,
  *  and asking for it shows a prompt, so this NEVER asks unless `prompt` is true, which only a person's own tap on the refresh
  *  button passes. Without access the entry is an error that says what to do (shown above the list, like any file that fails to
- *  load). Always marked readOnly: nothing may be written into one of these (Refile, Capture and Replace use only writable
+ *  load). Marked readOnly; see localAgendaFilesWritable for when Refile and Replace may still write into one (they use only writable
  * @param {string} path
  * @param {boolean} prompt
  *  entries), since writing it back needs the adapter of the open document, which may be on another backend. */
@@ -248,11 +248,18 @@ export function unloadedAgendaFiles() {
  *  file open in another tab: the agenda reads the buffer, as Emacs's
  *  does, so what was captured or refiled into it shows before it is
  *  saved. */
+/** Whether a `local:` agenda file can be written into right now. In the Android app, which keeps access to its files, it can when the open
+ *  document is itself a local file, because Refile and Replace save through the open document's own adapter. In a browser, or from a
+ *  GitHub or WebDAV document, it cannot: the browser asks for permission per file, and the other adapter does not know the file. */
+export function localAgendaFilesWritable() {
+  return platform.attachments.supported() && S.state.storageKind === 'filesystem';
+}
+
 export function aggregateAgendaDocs({ writable = false } = {}) {
   const docs = [{ documentId: S.state.documentId, doc: S.state.doc }];
   const seen = new Set([S.state.documentId]);
   for (const [key, entry] of agendaFilesCache.entries()) {
-    if (writable && entry.readOnly) continue; // `writable`: only for callers that write back (Refile, Replace); a local agenda file is read-only
+    if (writable && entry.readOnly && !(entry.local && localAgendaFilesWritable())) continue; // `writable`: only for callers that write back (Refile, Replace); see localAgendaFilesWritable
     if (entry.doc && !seen.has(entry.documentId)) {
       const colon = key.indexOf(':');
       const scheme = colon === -1 ? key : key.slice(0, colon);
