@@ -8,6 +8,7 @@ import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 import { keyLogText } from './key-log.js';
+import { updateLogText } from './update-log.js';
 
 /** @param {number} n */
 const px = (n) => `${Math.round(n * 10) / 10}px`;
@@ -88,6 +89,24 @@ export async function showDisplayMeasurements() {
         setStatus('Display measurements copied.');
       } catch {
         setStatus("Couldn't copy them: select the text in the box instead.");
+      }
+    },
+  });
+}
+
+/** The trail kept by update-log.js (the update check, the new version taking over, startup, slow requests), in a box whose OK copies it. */
+export function showUpdateLog() {
+  const text = updateLogText();
+  openTextFieldPopup({
+    label: 'Update and startup log (OK copies it)',
+    value: text,
+    defaultValue: text,
+    onSave: async (/** @type {string} */ edited) => {
+      try {
+        await platform.clipboard.writeText(edited);
+        setStatus('Update and startup log copied.');
+      } catch {
+        setStatus("Couldn't copy it: select the text in the box instead.");
       }
     },
   });

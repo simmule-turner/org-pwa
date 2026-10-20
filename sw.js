@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v593';
+const CACHE_NAME = 'org-pwa-shell-v594';
 
 const SHELL_FILES = [
   './',
@@ -262,6 +262,7 @@ const SHELL_FILES = [
   './src-browser/doc-helpers.js',
   './src-browser/display-info.js',
   './src-browser/key-log.js',
+  './src-browser/update-log.js',
   './src-browser/sync-helpers.js',
   './src-browser/render-helpers.js',
   './src-browser/indexeddb-adapter.js',
@@ -274,7 +275,21 @@ const SHELL_FILES = [
   './icons/icon-512.png',
 ];
 
+// Tells open pages what this worker is doing, for the update log (palette: Copy update and startup log). Best effort.
+function tellPages(what, detail) {
+  try {
+    self.clients
+      .matchAll({ includeUncontrolled: true })
+      .then((list) => list.forEach((c) => c.postMessage({ type: 'SW_LOG', what, detail })))
+      .catch(() => {});
+  } catch {
+    // no clients to tell
+  }
+}
+
 self.addEventListener('install', (event) => {
+  const installStart = Date.now();
+  tellPages(CACHE_NAME + ' installing');
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       // Individually, not cache.addAll(SHELL_FILES) -- addAll fails
@@ -288,6 +303,8 @@ self.addEventListener('install', (event) => {
       // cache: 'reload' skips the browser's own HTTP cache, so this version's cache holds this version's files and never
       // copies an older response the browser still had saved for the same address.
       const results = await Promise.allSettled(SHELL_FILES.map((url) => cache.add(new Request(url, { cache: 'reload' }))));
+      const failed = results.map((r, i) => (r.status === 'rejected' ? SHELL_FILES[i] : null)).filter(Boolean);
+      tellPages(CACHE_NAME + ' files fetched', { ms: Date.now() - installStart, files: SHELL_FILES.length, failed: failed.length, first: failed.slice(0, 3) });
       results.forEach((result, i) => {
         if (result.status === 'rejected') {
           console.warn('[sw] failed to cache', SHELL_FILES[i], result.reason);
@@ -300,8 +317,10 @@ self.addEventListener('install', (event) => {
       const text = stamp ? await stamp.text() : '';
       if (!text.includes("'" + CACHE_NAME + "'")) {
         await caches.delete(CACHE_NAME);
+        tellPages(CACHE_NAME + ' refused: files from another version');
         throw new Error('[sw] ' + CACHE_NAME + ' was given files from another version; not installing');
       }
+      tellPages(CACHE_NAME + ' installed', { ms: Date.now() - installStart });
     })
   );
   // Deliberately no self.skipWaiting() here. Calling it unconditionally
@@ -347,6 +366,7 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => tellPages(CACHE_NAME + ' active'))
   );
 });
 

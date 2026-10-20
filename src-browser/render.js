@@ -11,6 +11,7 @@ import { renderFloatingKeyboard } from './floating-keyboard.js';
 import { renderGodModeHints } from './god-mode-hints.js';
 import { S } from './app-state.js';
 import { noteKeyLog } from './key-log.js';
+import { noteUpdateOnce } from './update-log.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
@@ -28,6 +29,7 @@ import { buildTextEditor, landInTextView } from './text-view.js';
 import { scheduleBibliography } from './bibliography.js';
 
 export function render() {
+  noteUpdateOnce('first screen drawn');
   scheduleBibliography();
   S.radioTargetsCache = null;
   S.ancestorIndexCache = null;

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v594 — Update and startup log
+A new palette command, *Copy update and startup log*, copies a timestamped trail of what the app and its service worker did while starting and updating: update checks, the new version's download time and any files that failed, the banner, the Reload tap, the takeover, slow or failed network requests, and the first screen drawn. It is kept on the device, never sent anywhere, and records only from this version on.
+Verified: the palette command and the log text.
+
 * v593 — A Diary card, and diary rows as Emacs shows them
 Settings has a Diary card that gathers the diary settings with the latitude, longitude and 24-hour choice for sun times, and the Weather card points to it. Diary rows now follow Emacs's Org agenda by default: each indented line that starts with a time is its own row, so a date with timed lines beneath it no longer collapses into one long row (=org-xx-diary-merge-rows= set to nil restores that). The README's diary examples are Emacs's own layout, and its spelling is American throughout.
 Verified: the diary rows against Emacs 29.3; the settings checks.

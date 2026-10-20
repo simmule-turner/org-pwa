@@ -31,6 +31,7 @@ import {
 import { applyFontFamily, applyFontSize, applyMenuSize, applyParagraphSpacing, applyTablesSpacing, applyReadingWidth, applyTablesFontSize } from './src-browser/appearance.js';
 import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-browser/render-helpers.js';
 import { APP_VERSION } from './src-browser/version.js';
+import { installUpdateLog, noteUpdate } from './src-browser/update-log.js';
 import { kv } from './src-browser/singletons.js';
 import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
@@ -1077,6 +1078,8 @@ moreBtn.addEventListener('click', () => {
   renderMoreMenu();
 });
 
+installUpdateLog();
+
 if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateBanner = /** @type {HTMLElement} */ (document.getElementById('updateBanner'));
   const updateReloadBtn = /** @type {HTMLElement} */ (document.getElementById('updateReloadBtn'));
@@ -1089,7 +1092,9 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   function showUpdateBanner(waitingWorker) {
     updateBanner.style.display = 'flex';
     syncContentOffset();
+    noteUpdate('banner: a new version is waiting');
     updateReloadBtn.onclick = () => {
+      noteUpdate('Reload tapped: asking the waiting worker to take over');
       waitingWorker.postMessage('SKIP_WAITING');
     };
     S.updateCheckStatus = 'found';
@@ -1101,7 +1106,10 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
     .then((registration) => {
       S.swRegistration = registration;
       S.appVersionCheckState = 'checking';
+      noteUpdate('worker registered', { active: registration.active?.state, waiting: registration.waiting?.state, installing: registration.installing?.state });
+      const askedAt = Date.now();
       getServiceWorkerVersion().then((version) => {
+        noteUpdate('worker version asked', { version, ms: Date.now() - askedAt });
         S.currentAppVersion = version;
         S.appVersionCheckState = 'done';
         // The worker in charge is a different version from the code this page loaded (the page was opened before an update
@@ -1111,7 +1119,11 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
           if (text) text.textContent = 'This page is running ' + APP_VERSION.replace('org-pwa-shell-', '') + '; ' + version.replace('org-pwa-shell-', '') + ' is installed.';
           updateBanner.style.display = 'flex';
           syncContentOffset();
-          updateReloadBtn.onclick = () => window.location.reload();
+          noteUpdate('banner: this page is older than the worker', { page: APP_VERSION, worker: version });
+          updateReloadBtn.onclick = () => {
+            noteUpdate('Reload tapped: reloading the page');
+            window.location.reload();
+          };
         }
         if (S.settingsOpen) renderSettingsView();
       });
@@ -1126,7 +1138,9 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
+        noteUpdate('new worker found');
         newWorker.addEventListener('statechange', () => {
+          noteUpdate('new worker ' + newWorker.state);
           // 'installed' with an existing controller means this is a real
           // update (not the very first install, which has no controller
           // yet and activates on its own with nothing to prompt about).
@@ -1141,14 +1155,23 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
       // button in Settings' own Updates section. No periodic polling and
       // no visibility-triggered recheck: startup and an explicit,
       // deliberate tap are the only two triggers.
-      registration.update().catch(() => {});
+      noteUpdate('update check started');
+      registration.update().then(
+        () => noteUpdate('update check finished', { waiting: registration.waiting?.state, installing: registration.installing?.state }),
+        (err) => noteUpdate('update check failed', { error: err && err.name ? err.name : 'error' })
+      );
     })
     .catch(() => {});
 
   // Fires once the new worker actually takes over (after the user clicks
   // Reload and the new worker calls skipWaiting + clients.claim). Reload
   // exactly once — controllerchange can in principle fire more than once.
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data && data.type === 'SW_LOG') noteUpdate('worker: ' + data.what, data.detail);
+  });
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    noteUpdate('worker took over', { reloading: !reloadedForUpdate && hadController });
     if (reloadedForUpdate || !hadController) return;
     reloadedForUpdate = true;
     window.location.reload();
@@ -1156,6 +1179,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
 }
 
 async function bootstrap() {
+  noteUpdate('startup: begins');
   // Ready before the palette is first opened, so it can open instantly.
   loadPaletteRecent().then((ids) => {
     if (S.paletteRecentIds === null) S.paletteRecentIds = ids;
@@ -1173,6 +1197,7 @@ async function bootstrap() {
 
   S.customThemeColors = await getCustomThemeColors(kv);
   applyTheme(await getTheme(kv));
+  noteUpdate('startup: settings loaded');
   applyFontFamily(await getFontFamily(kv));
   applyMenuSize(await getMenuSize(kv));
   applyParagraphSpacing(await getParagraphSpacing(kv));
