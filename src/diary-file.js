@@ -57,7 +57,7 @@ export const DIARY_DATE_FORMS = {
  * @property {string} [includeString]  `diary-include-string` (default "#include")
  * @property {boolean} [showHolidays]  `diary-show-holidays-flag` (default true)
  * @property {string[]} [hooks]  the names in `diary-list-entries-hook`: diary-include-other-diary-files, diary-sort-entries
- * @property {boolean} [mergeRows]  `org-xx-diary-merge-rows`: show the day as Org does, untimed entries joined into the row before
+ * @property {boolean} [mergeRows]  `org-xx-diary-merge-rows` (default true): show the day as Org does, untimed entries joined into the row before
  */
 
 /** @param {string} s */
@@ -318,7 +318,7 @@ export function diaryRowsLocated(diary, date, options, sexpTitle) {
   }
   /** @type {DiaryRow[]} */
   const holidays = (options.showHolidays === false ? [] : holidaysOn(date)).filter(Boolean).map((text) => ({ text, file: -1, startLine: 0, endLine: 0, lineText: '' }));
-  if (!options.mergeRows) {
+  if (options.mergeRows === false) {
     /** @type {DiaryRow[]} */ const rows = [...holidays];
     for (const e of entries) {
       const text = e.lines.map((l) => l.trim()).filter(Boolean).join('; ');

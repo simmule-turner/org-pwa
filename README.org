@@ -595,9 +595,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 |---+---+---|
 | ~buffer-read-only~ | ~nil~ | Whether the buffer is read-only (see [[#keybindings][Keybindings]]: ~C-x C-q~, or *Toggle read-only* in the command palette) |
 | ~calendar-date-style~ | ~american~ | Order of the date in ~diary-anniversary~, ~diary-cyclic~, ~diary-block~ and ~diary-date~: ~american~ (month day year), ~european~ (day month year) or ~iso~ (year month day) |
-| ~calendar-latitude~ | ~35.994~ | Latitude for the solar forms and ~org-weather~ (Durham, NC) |
-| ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC) |
-| ~calendar-time-display-form~ | ~(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))~ | How ~solar-time-string~ shows a time, as in Emacs: the default reads "6:30am (EDT)". ~(24-hours ":" minutes)~ gives "06:30". The checkbox in Settings → Quick Settings → *Contacts & Calendar* switches between the two (see [[#solar-times][Sun times]]) |
+| ~calendar-latitude~ | ~35.994~ | Latitude for sun times and ~org-weather~ (Durham, NC); also Settings → Quick Settings → *Diary* |
+| ~calendar-longitude~ | ~-78.8986~ | Longitude for the same (Durham, NC); also Settings → Quick Settings → *Diary* |
+| ~calendar-time-display-form~ | ~(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))~ | How ~solar-time-string~ shows a time, as in Emacs: the default reads "6:30am (EDT)". ~(24-hours ":" minutes)~ gives "06:30". The checkbox in Settings → Quick Settings → *Diary* switches between the two (see [[#solar-times][Sun times]]) |
 | ~diary-abbreviated-year-flag~ | ~t~ | ~t~ reads a two-digit year in a diary date as the year it ends: ~4/20/27~ is 2027 (see [[#diary-file][Diary file]]) |
 | ~diary-date-forms~ | unset (from ~calendar-date-style~) | Which written dates a diary line may start with, as in Emacs: a list such as ~((month "/" day "[^/0-9]") (dayname "\\W"))~ of the symbols ~month~, ~day~, ~year~, ~monthname~, ~dayname~ and regexp strings |
 | ~diary-file~ | unset | The diary: one ~github:~, ~webdav:~ or ~local:~ file, shown in the Agenda when ~org-agenda-include-diary~ is ~t~ |
@@ -655,7 +655,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-refresh-interval~ | ~never~ | (own) ~never~, or an automatic refresh every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours |
 | ~org-weather-speed-unit~ | ~mph~ | (own) ~km/h~, ~m/s~, ~mph~ or ~Knots~ |
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
-| ~org-xx-diary-merge-rows~ | ~nil~ | (own) ~t~ joins diary entries that do not start with a time into the row before, as Org does; ~nil~ gives each entry its own row |
+| ~org-xx-diary-merge-rows~ | ~t~ | (own) ~t~ shows the day as Org's agenda does: each indented line that starts with a time is its own row, and a line without a time joins the row before it. ~nil~ gives each entry (a date and its indented lines) one row |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
@@ -1138,7 +1138,7 @@ All three variables can be edited in Quick Settings, with a reset to default.
 :CUSTOM_ID: solar-times
 :END:
 
-Sunrise, sunset, the twilights and the length of the day come from the same two functions Emacs's ~solar.el~ has, so an entry written for Emacs works here. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or with the device-location button in Quick Settings).
+Sunrise, sunset, the twilights and the length of the day come from the same two functions Emacs's ~solar.el~ has, so an entry written for Emacs works here. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or in Settings → Quick Settings → *Diary*, which also has a *Use device location* button).
 
 - ~(solar-sunrise-sunset DATE)~ returns ~((RISE ZONE) (SET ZONE) "H:MM")~: the local times as decimal hours with the zone name, then the daylight as hours and minutes. A time the day doesn't have (polar day or night) is ~nil~. ~DATE~ is ~date~, the day being evaluated. This app adds an optional second argument, the sun's height in degrees: ~-6~ for civil, ~-12~ for nautical and ~-18~ for astronomical twilight, giving dawn and dusk in place of rise and set. The default is ~-0.61~, as in Emacs.
 - ~(solar-time-string TIME ZONE)~ turns decimal hours into text by evaluating ~calendar-time-display-form~, as Emacs does. ~(solar-time-string 6.5)~ gives "6:30am" and ~(solar-time-string 6.5 "EDT")~ gives "6:30am (EDT)". The form can use ~12-hours~, ~24-hours~, ~minutes~, ~am-pm~ and ~time-zone~, and the zone it prints is this device's.
@@ -1152,7 +1152,7 @@ This entry shows today's sun times:
 
 On a 12-hour default it reads "Sun times: 🌅 7:29am (EDT) | 🌇 6:34pm (EDT) | ⌛ 11:05". The same expression works as a ~%%(…)~ line in a heading's body or in the diary file, where it shows on every day (leave out ~when~ and ~today-p~).
 
-Each of the old one-purpose entries is the same pattern with one piece picked out:
+Each single value is the same pattern with one piece picked out:
 
 | You want | Write |
 |---+---|
@@ -1169,14 +1169,14 @@ For example, a line that labels itself:
 %%(let ((l (solar-sunrise-sunset date -6))) (format "Civil twilight %s to %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l))))
 #+END_SRC
 
-A day without the event gives ~nil~, and ~solar-time-string~ of ~nil~ is ~nil~, so ~format~ prints "nil" there; wrap the entry in ~(when (car l) ...)~ to leave it out instead. For 24-hour times tick *Solar times: use 24-hour* in Quick Settings, or set ~calendar-time-display-form~ to ~(24-hours ":" minutes)~. ~calendar-time-display-form~ is the only setting: the app no longer has ~org-xx-solar-ampm~ or ~org-xx-solar-hide-label~, and the old ~%%(diary-sunrise)~ family and ~%%(diary-day-length)~ are gone.
+A day without the event gives ~nil~, and ~solar-time-string~ of ~nil~ is ~nil~, so ~format~ prints "nil" there; wrap the entry in ~(when (car l) ...)~ to leave it out instead. For 24-hour times tick *Sun times: use 24-hour* in Settings → Quick Settings → *Diary*, or set ~calendar-time-display-form~ to ~(24-hours ":" minutes)~. ~calendar-time-display-form~ is the one setting that changes how times read.
 
 *** Diary file
 :PROPERTIES:
 :CUSTOM_ID: diary-file
 :END:
 
-Set ~org-agenda-include-diary~ to ~t~ and name your Emacs diary in ~diary-file~ (~github:diary~, ~webdav:diary~ or ~local:diary~). The Agenda then shows its entries under the category *Diary*, with the day's holidays. Tap a diary row for *Open entry* (the diary opens in Text view with the entry selected), *Add entry on this day* and *Delete entry…*.
+Set ~org-agenda-include-diary~ to ~t~ (Settings → Quick Settings → *Diary*) and name your Emacs diary in ~diary-file~ (~github:diary~, ~webdav:diary~ or ~local:diary~). The Agenda then shows its entries under the category *Diary*, with the day's holidays. Tap a diary row for *Open entry* (the diary opens in Text view with the entry selected), *Add entry on this day* and *Delete entry…*.
 
 A diary line starts with a date, written in the order of ~calendar-date-style~; the rest of the line and the indented lines after it are the entry:
 
@@ -1192,27 +1192,31 @@ Friday   Back up files
 
 ~*~ stands for any month, day or year, and month and day names may be abbreviated. A time at the start of an entry (~10:00am~, ~14:30~) puts it in the day's timeline. A ~&~ before the date, and ~%%(…)~ lines (see [[#agenda-diary-sexp][Diary-sexp forms]]), work as in Emacs.
 
-More examples, with a time on each entry so each gets its own place in the day's timeline:
+More examples, with the times indented under the date as Emacs allows:
 
 #+begin_example
-10/24/2026 9:30am Coffee break
-10/24/2026 12:00pm Lunch with engineering team
-10/24/2026 2:30pm Project review meeting
-10/24/2026 5:00pm Dentist appointment
-Thursday 9:00am Standup meeting
-Thursday 1:30pm Code review
-&Thursday 4:00pm Weekly squash game
-*/25 Payday
-10/25/2026 11:00am 1-on-1 with manager
-10/25/2026 Team offsite
-  Bring the laptop
-  and a charger
+10/24/2026
+  9:30am Coffee break
+  12:00pm Lunch with engineering team
+  2:30pm Project review meeting
+  5:00pm Dentist appointment
+
+Thursday
+  9:00am Standup meeting
+  1:30pm Code review
+
+10/25/2026
+  * Payday
+  11:00am 1-on-1 with manager
+
+&thu 4:00pm Weekly squash game
+
 %%(let ((l (solar-sunrise-sunset date))) (format "Sun: %s to %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l))))
 #+end_example
 
-A weekday name (~Thursday~, ~thu~) is every week, ~*/25~ the 25th of every month, and a full date that one day. The indented lines under ~Team offsite~ belong to the entry and show as one row, "Team offsite; Bring the laptop; and a charger". The same goes for a date with nothing after it, followed by indented lines: they become one row, so give each timed item its own dated line, as above, when each should have its own time. The last line is a sun-times entry for every day ([[#solar-times][Sun times]]).
+Each indented line is its own row, and the same entries can be written one per line (~10/24/2026 9:30am Coffee break~). A weekday name (~Thursday~, ~thu~) is every week and a full date is that one day. The last line shows the sun times every day ([[#solar-times][Sun times]]).
 
-Each entry is a row. ~org-xx-diary-merge-rows~ set to ~t~ joins an entry that does not start with a time into the row before it, as Org does. ~diary-show-holidays-flag~ set to ~nil~ leaves the holidays out. ~diary-list-entries-hook~ may name ~diary-include-other-diary-files~ (read the files named by ~#include "file"~ lines) and ~diary-sort-entries~ (sort a day's entries by time). *Refresh* in the Agenda reads the file again.
+Rows are as Emacs's Org agenda shows them: a date line followed by indented lines gives one row for each indented line that starts with a time, and a line without a time joins the row before it. ~org-xx-diary-merge-rows~ set to ~nil~ gives each entry, a date and all its indented lines, a single row instead. ~diary-show-holidays-flag~ set to ~nil~ leaves the holidays out. ~diary-list-entries-hook~ may name ~diary-include-other-diary-files~ (read the files named by ~#include "file"~ lines) and ~diary-sort-entries~ (sort a day's entries by time). *Refresh* in the Agenda reads the file again.
 
 In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly, anniversary, cyclic or block entry at the end of the file, as Emacs's ~diary-insert-*~ commands do, and saves it. *Check this line* says whether the line under the cursor is an entry, by which date form, and on which days it falls next. *Date…* puts a date at the cursor. The Agenda reads the diary from its open tab, so an edit shows at once.
 
@@ -1521,7 +1525,7 @@ org-xx-extra-menu: "j;📔 Journal" \
 
   *Recalculate all tables* (~org-table-recalculate-buffer-tables~) recalculates every ~#+TBLFM:~ formula in the document as one undo step, where org's ~C-c C-c~ recalculates one table (see [[#table-formulas][Table formulas]]). *Export as an Org buffer* is ~org-org-export-as-org~ (see [[#export][Export]]).
 
-  *The calendar* (~'calendar~, the palette's *Calendar*) is named after Emacs's command but is this app's own single-month overview, with year and month navigation and a Today jump. Today is bold with a two-colour halo ring that stays visible on any background. Each day is colour-coded by what is on it, from the same agenda pipeline the Agenda uses: green for a contact's birthday (~org-contacts-anniversaries~, see [[#agenda][Agenda]]), blue for any other event (SCHEDULED, DEADLINE, a plain timestamp or a diary-sexp entry), and burnt orange when both. Ambient daily diary entries (sunrise, sunset, weather) and logbook entries don't count, since they would colour nearly every day. Tapping a date closes the calendar and opens Agenda's Day view on that date, whatever is open or connected. The displayed month is remembered for the rest of the session.
+  *The calendar* (~'calendar~, the palette's *Calendar*) is named after Emacs's command but is this app's own single-month overview, with year and month navigation and a Today jump. Today is bold with a two-color halo ring that stays visible on any background. Each day is color-coded by what is on it, from the same agenda pipeline the Agenda uses: green for a contact's birthday (~org-contacts-anniversaries~, see [[#agenda][Agenda]]), blue for any other event (SCHEDULED, DEADLINE, a plain timestamp or a diary-sexp entry), and burnt orange when both. Ambient daily entries (weather) and logbook entries don't count, since they would color nearly every day. Tapping a date closes the calendar and opens Agenda's Day view on that date, whatever is open or connected. The displayed month is remembered for the rest of the session.
 
 Five hyphens (~"-----"~) on their own are a visual separator rather than an item, for grouping related actions.
 
@@ -1664,7 +1668,7 @@ HTML export also takes these, with Org's defaults:
 | ~arch:~, ~tasks:~ | Archived subtrees (title only), TODO headings (~nil~, ~todo~, ~done~) |
 | ~<:~, ~title:~, ~email:~ | Timestamps, the title, the author's address |
 
-~#+EXCLUDE_TAGS:~ (default ~noexport~), ~#+SELECT_TAGS:~, COMMENT headings, ~#+SUBTITLE:~, ~#+DESCRIPTION:~, ~#+KEYWORDS:~, ~#+LANGUAGE:~ and ~#+MACRO:~ are honoured. Other formats ignore these HTML-only keys; Markdown supports only ~toc:~ and ~num:~.
+~#+EXCLUDE_TAGS:~ (default ~noexport~), ~#+SELECT_TAGS:~, COMMENT headings, ~#+SUBTITLE:~, ~#+DESCRIPTION:~, ~#+KEYWORDS:~, ~#+LANGUAGE:~ and ~#+MACRO:~ are honored. Other formats ignore these HTML-only keys; Markdown supports only ~toc:~ and ~num:~.
 
 ~#+INCLUDE: "path" [block-type] [language] [:lines "N-M"] [:minlevel N]~ splices another document in at export time, before the first heading or in a heading's body. In a body it nests as children of that heading, one level deeper by default; at document level it keeps its own levels. The path is read from an explicit ~github:~, ~webdav:~ or ~local:~ prefix, or else relative to the open file.
 
@@ -1702,7 +1706,7 @@ Internal links (~[[#custom-id]]~, ~[[*Heading]]~, fuzzy titles) become GitHub-st
 
 *** HTML
 
-A complete standalone page laid out like Emacs's ~ox-html~: the title as ~h1~, top-level headings as ~h2~ in numbered outline containers, ~org-ul~, ~org-ol~ and ~org-dl~ lists whose items keep their paragraphs, sub-lists and blocks, tables with a header row (when a rule follows it), column alignment and caption, figures, and footnotes numbered in order of reference. Entities (~\alpha~, ~\rarr~), timestamps, inline source, macros, ~@@html:...@@~ snippets, special blocks (~#+BEGIN_NOTE~ becomes ~<div class="note">~), verse and center blocks, ~#+TOC: headlines~, ~tables~ and ~listings~, and ~#+ATTR_HTML:~ on tables and images all work. Source blocks are coloured for common languages. Pictures the app can read (GitHub, WebDAV, attachments) are embedded, so the file stands alone.
+A complete standalone page laid out like Emacs's ~ox-html~: the title as ~h1~, top-level headings as ~h2~ in numbered outline containers, ~org-ul~, ~org-ol~ and ~org-dl~ lists whose items keep their paragraphs, sub-lists and blocks, tables with a header row (when a rule follows it), column alignment and caption, figures, and footnotes numbered in order of reference. Entities (~\alpha~, ~\rarr~), timestamps, inline source, macros, ~@@html:...@@~ snippets, special blocks (~#+BEGIN_NOTE~ becomes ~<div class="note">~), verse and center blocks, ~#+TOC: headlines~, ~tables~ and ~listings~, and ~#+ATTR_HTML:~ on tables and images all work. Source blocks are colored for common languages. Pictures the app can read (GitHub, WebDAV, attachments) are embedded, so the file stands alone.
 
 The CSS is print-aware (headings, tables, figures and code stay whole across pages, and long code lines wrap), so the browser's *Print → Save as PDF* is the route to PDF.
 
@@ -1875,7 +1879,7 @@ Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It is this file, 
 :CUSTOM_ID: settings
 :END:
 
-Reached via *More (⋮) → Settings*, which replaces the outline until you navigate away, like switching views. Settings opens on a list of six categories, each a page of small cards: *Appearance*, *Editing and startup*, *Agenda and weather*, *Sync and storage*, *Export* and *Advanced*. At the foot of the list, *Check for updates* is centred on a line of its own, with the version centred beneath it; the result of the check (or “Out of date — reload”) appears on that line in bold red. Tap one to open it and *‹ Settings* to come back; a number on a category counts what you have set there: changed Quick Settings, connected services, ticked export items. *Search settings* finds a card from any category. In a window wide enough (about 720 px), the categories become a sidebar with the page beside it. Settings reopens on the page you left.
+Reached via *More (⋮) → Settings*, which replaces the outline until you navigate away, like switching views. Settings opens on a list of six categories, each a page of small cards: *Appearance*, *Editing and startup*, *Agenda, diary and weather*, *Sync and storage*, *Export* and *Advanced*. At the foot of the list, *Check for updates* is centered on a line of its own, with the version centered beneath it; the result of the check (or “Out of date — reload”) appears on that line in bold red. Tap one to open it and *‹ Settings* to come back; a number on a category counts what you have set there: changed Quick Settings, connected services, ticked export items. *Search settings* finds a card from any category. In a window wide enough (about 720 px), the categories become a sidebar with the page beside it. Settings reopens on the page you left.
 
 *Order of settings* (Advanced) moves categories, and the cards inside each, up or down with ▲ ▼; *Reset to default order* puts them back. The order is kept on the device and travels with *Export Settings*.
 
@@ -2158,7 +2162,7 @@ For readers who know Emacs org-mode: where org-pwa does less or differs. A topic
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). These do not exist: blocks in any other language, ~:session~, running one block from inside another (~<<name()>>~), and results that refresh when a file is opened.
 
-*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. *Citations* (see [[#citations][Citations]]): LaTeX export honours ~natbib~ and ~biblatex~; every other export uses the ~basic~ processor, so ~csl~ is exported as ~basic~. ~note~ styles print as ~text~, and ~org-cite-export-processors~ is not a setting (use ~#+CITE_EXPORT:~).
+*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, from a table kept in this browser rather than ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. *Citations* (see [[#citations][Citations]]): LaTeX export honors ~natbib~ and ~biblatex~; every other export uses the ~basic~ processor, so ~csl~ is exported as ~basic~. ~note~ styles print as ~text~, and ~org-cite-export-processors~ is not a setting (use ~#+CITE_EXPORT:~).
 
 *Undo/redo* (see [[#undoredo-and-history][Undo/redo and History]]): no undo tree, and fold state isn't preserved across an undo or redo jump (the file's ~#+STARTUP~ visibility is reapplied). There is no per-keystroke granularity; the browser's field-level undo covers that, much as Emacs batches consecutive typing.
 
@@ -2204,7 +2208,7 @@ npm test
 
 The tests run with a frozen clock, so they give the same result on any day. ~npm run test:zones~ runs them in five time zones.
 
-Behaviour that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists; ~tools/gen-latex-oracle.mjs~ does the same for LaTeX export, and ~tools/latex-compile-check.mjs~ compiles the output. The answers are stored the answers under ~test/fixtures/~; the tests compare the app with them.
+Behavior that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists; ~tools/gen-latex-oracle.mjs~ does the same for LaTeX export, and ~tools/latex-compile-check.mjs~ compiles the output. The answers are stored the answers under ~test/fixtures/~; the tests compare the app with them.
 
 ~npm run lint~ (ESLint) and ~npm run typecheck~ (~tsc~ on files that begin with ~// @ts-check~) need ~npm install --no-save eslint @eslint/js globals typescript~. ~node tools/release.mjs N~ checks, bumps the cache name and writes ~org-pwa-vN.zip~; ~.github/workflows/ci.yml~ runs the same checks and the smoke test on every push.
 

@@ -788,10 +788,10 @@ export function getDiaryListEntriesHook(vars) {
 }
 
 /** org-xx-diary-merge-rows: show a day's diary as Org does, with every entry that does not start with a time joined into the
- *  row before it. Default nil: one row per entry.
+ *  row before it. Default t, as Org shows it; nil: one row per entry.
  * @param {LocalVars} vars */
 export function getDiaryMergeRows(vars) {
-  return parseLispBoolean((vars || {})['org-xx-diary-merge-rows'], false);
+  return parseLispBoolean((vars || {})['org-xx-diary-merge-rows'], true);
 }
 
 /** org-xx-text-line-numbers: this app's own variable. Whether the Text view shows line numbers. Default t.

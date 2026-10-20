@@ -426,7 +426,7 @@ export function renderQuickSettingsGroups() {
       wrap.appendChild(renderQuickSettingField(field));
     }
 
-    if (group.name === 'Contacts & Calendar') {
+    if (group.name === 'Diary') {
       const geoRow = document.createElement('div');
       geoRow.className = 'panel-row';
       geoRow.style.marginBottom = '10px';
@@ -440,7 +440,7 @@ export function renderQuickSettingsGroups() {
       weatherHint.style.opacity = '0.6';
       weatherHint.style.margin = '2px 0 6px';
       weatherHint.textContent =
-        'Add "%%(org-weather)" as a line under any heading (or use it inside a <%%(...)> timestamp) to show today\u2019s weather in the agenda there.';
+        'Add "%%(org-weather)" as a line under any heading (or use it inside a <%%(...)> timestamp) to show today\u2019s weather in the agenda there. Weather uses the latitude and longitude in the Diary card.';
       wrap.appendChild(weatherHint);
 
       const weatherStatus = document.createElement('div');

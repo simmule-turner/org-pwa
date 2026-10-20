@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v593 — A Diary card, and diary rows as Emacs shows them
+Settings has a Diary card that gathers the diary settings with the latitude, longitude and 24-hour choice for sun times, and the Weather card points to it. Diary rows now follow Emacs's Org agenda by default: each indented line that starts with a time is its own row, so a date with timed lines beneath it no longer collapses into one long row (=org-xx-diary-merge-rows= set to nil restores that). The README's diary examples are Emacs's own layout, and its spelling is American throughout.
+Verified: the diary rows against Emacs 29.3; the settings checks.
+
 * v592 — Sun times as Emacs writes them
 Sun times now use the same functions as Emacs's solar.el: =(solar-sunrise-sunset date)= returns the rise, the set and the daylight, with an optional height of -6, -12 or -18 for the twilights, =(solar-time-string time zone)= shows a time by evaluating =calendar-time-display-form= (Emacs's default, "6:30am (EDT)"), and =apply= joins them. The eight =diary-sunrise= to =diary-astronomical-dusk= forms, =diary-day-length=, =org-xx-solar-ampm= and =org-xx-solar-hide-label= are gone, with no conversion; the README shows each as an expression. The Quick Settings checkbox now picks 24-hour. The README gains diary-file examples, a Contents list that includes every section, and no longer describes what is gone.
 Verified: the unit tests, and the sample entries in the README run through the diary and agenda code.
