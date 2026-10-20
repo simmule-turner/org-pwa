@@ -44,7 +44,7 @@ const SCREEN_MARGIN = 8;
 const KEY_MIN_WIDTH = 34;
 /** The accent outline round the cross, in px. */
 const OUTLINE_PX = 3;
-/** Width of the up and down keys, which sit alone in their rows. */
+/** Width of all four arrow keys. */
 const VERTICAL_KEY_WIDTH = 44;
 /** How much of the screen the app must have lifted its mode line for, before
  *  the device keyboard counts as showing. */
@@ -299,6 +299,7 @@ function placeKey(btn, rawKey) {
   const column = /** @type {Record<string, number>} */ ({ Tab: 3, ArrowLeft: 4, ArrowRight: 5, g: 7 })[rawKey];
   btn.style.gridRow = '2';
   btn.style.gridColumn = String(column);
+  if (rawKey === 'ArrowLeft' || rawKey === 'ArrowRight') btn.style.width = VERTICAL_KEY_WIDTH + 'px'; // all four arrows alike
 }
 
 /** Draws the accent outline and its glow behind the keys, round the cross they form -- the middle row, plus the narrow
@@ -512,7 +513,18 @@ export function renderFloatingKeyboard() {
         const hit = btn.getBoundingClientRect();
         const panel = floatingKeyboard.getBoundingClientRect();
         noteKeyLog('tap', { key: rawKey, pointer: e.pointerType, id: e.pointerId, stamp: Math.round(e.timeStamp), at: [Math.round(e.clientX), Math.round(e.clientY)], button: [Math.round(hit.left), Math.round(hit.top), Math.round(hit.width), Math.round(hit.height)], panel: [Math.round(panel.left), Math.round(panel.top), Math.round(panel.width), Math.round(panel.height)], buttons: [...floatingKeyboard.querySelectorAll('[data-fk-key]')].map((b) => `${(b.getAttribute('data-fk-key') || '').replace('Arrow', '')}@${Math.round(b.getBoundingClientRect().left)}`).join(' ') });
-        if (textarea) sendKeyToTextView(textarea, rawKey, shiftKey);
+        if (textarea) {
+          sendKeyToTextView(textarea, rawKey, shiftKey);
+          // With the device keyboard hidden (inputmode none) iOS blurs the editor a moment after the selection moves,
+          // and a blurred editor draws no cursor: put the focus back (and the selection) if that happens
+          setTimeout(() => {
+            if (!S.textKeyboardHidden || textViewInput() !== textarea || document.activeElement === textarea) return;
+            const { selectionStart: from, selectionEnd: to, selectionDirection: dir } = textarea;
+            textarea.focus({ preventScroll: true });
+            textarea.setSelectionRange(from, to, dir || 'none');
+            noteKeyLog('refocused editor after iOS blur');
+          }, 250);
+        }
         else dispatchGodModeKeystroke(rawKey, shiftKey);
       });
       if (key.rawKey === 'g') floatingKeyboard.appendChild(shiftBtn); // layout: T \u2190 \u2192 \u2191 \u2193 S g

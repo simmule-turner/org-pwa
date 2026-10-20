@@ -2135,6 +2135,7 @@ check('floating keyboard: a cross-shaped accent outline identifies it, ↑ and �
     expect(look.up.b <= look.left.t + 1 && look.down.t >= look.left.b - 1, `${width}: ↑ above and ↓ below the middle row`);
     expect(look.up.r <= look.right.r + 0.5 && look.down.l >= look.left.l - 0.5 && look.up.l > look.left.l - 8, `${width}: neither is beyond the pair`);
     expect(look.up.l > look.left.l && look.up.r < look.right.r, `${width}: so neither is over → alone (the thumb's drift off → no longer lands on ↑ or ↓)`);
+    expect([look.left.w, look.right.w, look.up.w, look.down.w].every((w) => Math.abs(w - look.up.w) < 0.5), `${width}: all four arrows the same width: ${[look.left.w, look.right.w, look.up.w, look.down.w]}`);
     const box = await fk.boundingBox();
     expect(box.x >= 0 && box.x + box.width <= width, `${width}: inside the screen: x=${box.x} width=${box.width}`);
     expect(look.scroll <= look.client + 1, `${width}: nothing overflows the panel: ${look.scroll} > ${look.client}`);
