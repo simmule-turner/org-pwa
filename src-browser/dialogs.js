@@ -790,8 +790,9 @@ export function openGridChoiceModal({ label, buttons, showKeys = false }) {
   return overlay;
 }
 
-/** @param {{ label: string, fields: { key: string, label: string, type: string, value: string, placeholder?: string }[], onSave: (values: Record<string, string>) => any }} opts */
-export function openMultiFieldPopup({ label, fields, onSave }) {
+/** `onSave` may return `{ keepOpen: true, error: 'text' }` to leave the dialog open with the text shown (a wrong passphrase, say); `note` is a line of explanation under the title; `onCancel` runs when the dialog is cancelled.
+ * @param {{ label: string, note?: string, fields: { key: string, label: string, type: string, value: string, placeholder?: string }[], onSave: (values: Record<string, string>) => any, onCancel?: () => void }} opts */
+export function openMultiFieldPopup({ label, note, fields, onSave, onCancel }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -814,10 +815,22 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
   titleEl.style.marginBottom = '14px';
   modal.appendChild(titleEl);
 
+  if (note) {
+    const noteEl = document.createElement('div');
+    noteEl.textContent = note;
+    noteEl.style.cssText = 'font-size:12px;opacity:.75;margin:-6px 0 12px;';
+    modal.appendChild(noteEl);
+  }
+
   const fieldEntries = fields.map((f) => ({ key: f.key, type: f.type, entry: modalFieldRow(f.label, f.type, f.value, f.placeholder) }));
   for (const { entry } of fieldEntries) {
     modal.appendChild(entry.wrap);
   }
+
+  const errorEl = document.createElement('div');
+  errorEl.setAttribute('role', 'alert');
+  errorEl.style.cssText = 'font-size:12px;color:var(--danger, #c0392b);margin:0 0 8px;display:none;';
+  modal.appendChild(errorEl);
 
   const btnRow = document.createElement('div');
   btnRow.style.display = 'flex';
@@ -836,7 +849,10 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
   }
 
   btnRow.appendChild(
-    menuButton('Cancel', () => close())
+    menuButton('Cancel', () => {
+      close();
+      if (onCancel) onCancel();
+    })
   );
   btnRow.appendChild(
     menuButton('Reset', () => {
@@ -853,7 +869,12 @@ export function openMultiFieldPopup({ label, fields, onSave }) {
       for (const { key, type, entry } of fieldEntries) {
         values[key] = type === 'password' ? entry.input.value : entry.input.value.trim();
       }
-      await onSave(values);
+      const result = await onSave(values);
+      if (result && typeof result === 'object' && result.keepOpen) {
+        errorEl.textContent = String(result.error || '');
+        errorEl.style.display = result.error ? 'block' : 'none';
+        return;
+      }
       close();
     })
   );

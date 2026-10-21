@@ -7393,6 +7393,97 @@ check('text editor and diary file: All files lists a diary, a row of the Agenda 
   await context.close();
 });
 
+check('settings history: a theme change is a step that Undo reverts and Redo restores; protecting connections seals a saved login, and after a reload using it asks for the passphrase', async () => {
+  const { context, page, errors } = await freshPage();
+  const theme = () => page.evaluate(() => document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme') || '');
+  const openSettings = async () => {
+    await page.click('#moreBtn');
+    await pick(page, '#morePanel', 'Settings');
+    await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  };
+  await openSettings();
+  const before = await theme();
+  await settingsCategory(page, 'appearance');
+  await page.getByRole('button', { name: before === 'dark' ? 'Light' : 'Dark', exact: true }).first().click();
+  await page.waitForTimeout(700);
+  const changed = await theme();
+  expect(changed !== before, `the theme changed: ${before} -> ${changed}`);
+  await page.locator('[data-settings-back]').click();
+  await settingsCategory(page, 'advanced');
+  await page.getByRole('button', { name: 'Undo: Theme' }).click();
+  await page.waitForTimeout(500);
+  expect((await theme()) === before, `Undo restores the theme: ${await theme()}`);
+  await page.getByRole('button', { name: 'Redo: Theme' }).click();
+  await page.waitForTimeout(500);
+  expect((await theme()) === changed, 'Redo brings the change back');
+  await page.locator('[data-settings-back]').click();
+  // protection
+  await settingsCategory(page, 'sync');
+  await page.getByRole('button', { name: /Protect with a passphrase/ }).click();
+  await page.locator('input[type="password"]:not([readonly])').nth(0).fill('correct horse');
+  await page.locator('input[type="password"]:not([readonly])').nth(1).fill('correct horse');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForTimeout(1500);
+  const stored = await page.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.databases ? indexedDB.databases() : Promise.resolve([]);
+    open.then(async (dbs) => {
+      for (const d of dbs) {
+        const req = indexedDB.open(d.name);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (![...db.objectStoreNames].includes('kv')) return;
+          const g = db.transaction('kv').objectStore('kv').get('settings:connectionProtection');
+          g.onsuccess = () => resolve(g.result || null);
+        };
+      }
+      setTimeout(() => resolve(null), 3000);
+    });
+  }));
+  expect(stored && String(stored).includes('check'), `the protection marker is stored: ${stored}`);
+  await page.reload({ waitUntil: 'load' });
+  await openSettings();
+  await settingsCategory(page, 'sync');
+  await page.locator('input[readonly][type="password"]').first().click();
+  await page.getByText('Unlock connections').first().waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('input[type="password"]:not([readonly])').first().fill('wrong words');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.getByText('That is not the passphrase.').waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('input[type="password"]:not([readonly])').first().fill('correct horse');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.getByText('Personal access token').last().waitFor({ state: 'visible', timeout: 5000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('protected connections: the login is masked in the app between requests, unlocking once lets a WebDAV file open with the right Authorization, and nothing asks again until a reload', async () => {
+  dav.reset();
+  dav.files.set('note.org', '* TODO protected\n');
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  await settingsCategory(page, 'sync');
+  await page.getByRole('button', { name: /Protect with a passphrase/ }).click();
+  await page.locator('input[type="password"]:not([readonly])').nth(0).fill('correct horse');
+  await page.locator('input[type="password"]:not([readonly])').nth(1).fill('correct horse');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForTimeout(1500);
+  const held = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    return JSON.stringify(S.webdavConfig);
+  });
+  expect(!held.includes('"p"') && !held.includes('"u"'), `state holds no plain login: ${held}`);
+  dav.requests.length = 0;
+  dav.auths.length = 0;
+  await page.locator('[data-settings-back]').click();
+  await page.keyboard.press('Escape').catch(() => {});
+  await openDav(page, 'note.org');
+  const expected = 'Basic ' + Buffer.from('u:p').toString('base64');
+  expect(dav.auths.length > 0 && dav.auths.every((a) => a.authorization === expected), `every request carried the decrypted login: ${JSON.stringify(dav.auths.slice(0, 3))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
 // SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long

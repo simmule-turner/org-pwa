@@ -17,6 +17,7 @@
  */
 
 import { normalizeApptSettings } from '../src/appt.js';
+import { openConnection, sealForStore } from './connection-vault.js';
 import { normalizeAttachLinkMode } from '../src/attach.js';
 
 const KEYS = {
@@ -36,6 +37,7 @@ const KEYS = {
   floatingKeyboardPos: 'settings:floatingKeyboardPos',
   readingWidth: 'settings:readingWidth',
   settingsOrder: 'settings:order',
+  connectionProtection: 'settings:connectionProtection', // the passphrase switch: key settings and a check value, never the passphrase
   bufferNames: 'buffers:names',
   sidePanelWidth: 'settings:sidePanelWidth',
   lastActiveDocument: 'settings:lastActiveDocument',
@@ -144,6 +146,26 @@ async function getJson(kvAdapter, key, fallback) {
  */
 async function setJson(kvAdapter, key, value) {
   await kvAdapter.set(key, JSON.stringify(value));
+  if (writeHook.fn) writeHook.fn();
+}
+
+/** The settings history listens here to learn that a setting was written. */
+/** @type {{ fn: (() => void) | null }} */
+const writeHook = { fn: null };
+
+/** @param {() => void} fn */
+export function onSettingsWrite(fn) {
+  writeHook.fn = fn;
+}
+
+/** Deletes settings by name (used when the history goes back to a time before they were set).
+ * @param {KvAdapter} kvAdapter
+ * @param {string[]} names */
+export async function removeSettings(kvAdapter, names) {
+  for (const name of names) {
+    const key = /** @type {Record<string, string>} */ (KEYS)[name];
+    if (key) await kvAdapter.delete(key);
+  }
 }
 
 // ---- GitHub -------------------------------------------------------------
@@ -151,7 +173,7 @@ async function setJson(kvAdapter, key, value) {
 /** @param {KvAdapter} kvAdapter */
 export async function getGithubConfig(kvAdapter) {
   const stored = await getJson(kvAdapter, KEYS.github, {});
-  return { ...DEFAULT_GITHUB_CONFIG, ...stored };
+  return openConnection('github', { ...DEFAULT_GITHUB_CONFIG, ...stored });
 }
 
 /**
@@ -160,8 +182,23 @@ export async function getGithubConfig(kvAdapter) {
  */
 export async function setGithubConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_GITHUB_CONFIG, ...config };
-  await setJson(kvAdapter, KEYS.github, merged);
+  await setJson(kvAdapter, KEYS.github, await sealForStore('github', merged));
   return merged;
+}
+
+// ---- the passphrase for the connections ----------------------------------------------------------------------------------
+
+/** The key settings and check value stored when protection is on, or null. Never the passphrase.
+ * @param {KvAdapter} kvAdapter */
+export async function getConnectionProtection(kvAdapter) {
+  const stored = await getJson(kvAdapter, KEYS.connectionProtection, null);
+  return stored && typeof stored === 'object' ? stored : null;
+}
+
+/** @param {KvAdapter} kvAdapter @param {unknown} marker  null turns protection off */
+export async function setConnectionProtection(kvAdapter, marker) {
+  if (marker === null) await kvAdapter.delete(KEYS.connectionProtection);
+  else await setJson(kvAdapter, KEYS.connectionProtection, marker);
 }
 
 // ---- WebDAV ------------------------------------------------------------
@@ -169,7 +206,7 @@ export async function setGithubConfig(kvAdapter, config) {
 /** @param {KvAdapter} kvAdapter */
 export async function getWebdavConfig(kvAdapter) {
   const stored = await getJson(kvAdapter, KEYS.webdav, {});
-  return { ...DEFAULT_WEBDAV_CONFIG, ...stored };
+  return openConnection('webdav', { ...DEFAULT_WEBDAV_CONFIG, ...stored });
 }
 
 /**
@@ -178,7 +215,7 @@ export async function getWebdavConfig(kvAdapter) {
  */
 export async function setWebdavConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_WEBDAV_CONFIG, ...config };
-  await setJson(kvAdapter, KEYS.webdav, merged);
+  await setJson(kvAdapter, KEYS.webdav, await sealForStore('webdav', merged));
   return merged;
 }
 
@@ -194,7 +231,7 @@ const CARDDAV_SYNC_KEY = 'carddavSync'; // likewise
  *  stored here is only what was typed. */
 export async function getCaldavConfig(kvAdapter) {
   const stored = await getJson(kvAdapter, KEYS.caldav, {});
-  return { ...DEFAULT_CALDAV_CONFIG, ...stored };
+  return openConnection('caldav', { ...DEFAULT_CALDAV_CONFIG, ...stored });
 }
 
 /**
@@ -203,7 +240,7 @@ export async function getCaldavConfig(kvAdapter) {
  */
 export async function setCaldavConfig(kvAdapter, config) {
   const merged = { ...DEFAULT_CALDAV_CONFIG, ...config, url: String((config && config.url) || '').trim(), contactsUrl: String((config && config.contactsUrl) || '').trim() };
-  await setJson(kvAdapter, KEYS.caldav, merged);
+  await setJson(kvAdapter, KEYS.caldav, await sealForStore('caldav', merged));
   return merged;
 }
 

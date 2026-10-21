@@ -204,6 +204,18 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 
 A row marked ~#~ or ~*~ is recalculated when the table has any marked row (a row marked ~!~ ~$~ ~_~ or ~^~ counts), and then no other row is: put ~#~ in the first cell of each row to calculate. Rows marked ~!~ ~$~ ~_~ ~^~ or ~/~ are never calculated. A table with no marked row recalculates every row below its header.
 
+For example, after *Recalculate* the ~Tot~ column below holds price × quantity plus the 8% tax from the ~$~ row; the ~/~ row is left alone:
+
+#+begin_example
+| ! | Item              | Price | Qty |   Tot |
+|---+-------------------+-------+-----+-------|
+| $ | tax=0.08          |       |     |       |
+| # | Pen               |  1.50 |   4 |  6.48 |
+| # | Book              | 12.00 |   2 | 25.92 |
+| / | note: not counted |       |     |       |
+#+TBLFM: $5=$Price*$Qty*(1+$tax);%.2f
+#+end_example
+
 *Dates and times*: a cell holding an org timestamp (~[YYYY-MM-DD]~ or ~<YYYY-MM-DD>~, with an optional time and day name) is read as a date as soon as it is referenced, so ~$3 = $1 - $2~ subtracts two timestamp cells. Every component is range-checked (month 1 to 12, a day within that month's length with leap years, hour 0 to 23, minute 0 to 59), so ~<2026-06-34>~ gives ~#ERROR~. ~date(ref)~ differs from a bare reference only for a cell that isn't a timestamp: bare, it reads as an ordinary number; wrapped, it gives ~#ERROR~, which is useful when a formula should fail loudly. ~date(Y, M, D)~ builds a date from three numbers (~date(2028, 2, 29)~ is valid, ~date(2026, 2, 29)~ is not).
 
 - Subtracting two dates gives days as an integer, or, if either has a time of day, a duration in Calc's HMS form (~8@ 30' 0"~ for 8.5 hours).
@@ -790,6 +802,16 @@ An entry the app can't understand is skipped and listed with the reason at the t
 
 To file under a heading that doesn't exist yet, set ~org-refile-allow-creating-parent-nodes~ to ~t~ (or ~confirm~, which asks first), as in Emacs; Settings → Quick Settings → *Editing* has it. Choose the parent as usual, then type the new heading's name in the box under the details. The heading is made as the parent's last child and the subtree goes under it; a child of that name that is already there is used instead.
 
+For example, with the option on, refiling ~** TODO File taxes~ to ~Projects~ and typing ~Taxes 2026~ gives:
+
+#+begin_example
+* Projects                    * Projects
+** Garden                     ** Garden
+* Inbox            becomes    ** Taxes 2026
+** TODO File taxes            *** TODO File taxes
+                              * Inbox
+#+end_example
+
 -----
 
 
@@ -1047,6 +1069,33 @@ Tap *View → Agenda* for everything with a date, in Day, Week or Month view. On
 - *Effort* (TODO view): at most, at least or exactly a duration, as in the ⏱ panel.
 
 The chips start from ~org-agenda-tag-filter-preset~, ~org-agenda-category-filter-preset~, ~org-agenda-regexp-filter-preset~ and ~org-agenda-effort-filter-preset~, and the ⏱ panel from ~org-agenda-sorting-strategy~ and ~org-agenda-max-effort~ (see [[#local-variables][Local Variables]]).
+
+*Order and prefix*: ~org-agenda-sorting-strategy~ orders the rows as Emacs does, per view, and ~org-agenda-prefix-format~ builds the text before each row. In a file's ~# Local Variables:~ block (or Settings → Quick Settings):
+
+#+begin_example
+# Local Variables:
+# org-agenda-sorting-strategy: ((agenda time-up priority-down category-keep) (todo priority-down))
+# org-agenda-prefix-format: ((agenda . "%-10:c%b") (todo . "%l%c "))
+# End:
+#+end_example
+
+Within each Agenda day the rows are ordered by time, then by priority with ~[#A]~ first; the TODO list puts ~[#A]~ first. A row for ~** Call bank~ under ~* Errands~ in a file with category ~home~ starts with ~home:     Errands->~ in the Agenda.
+
+*Priorities*: the range is ~org-priority-highest~ to ~org-priority-lowest~, with ~org-priority-default~ for a heading without a cookie. Numbers give ~[#1]~ cookies:
+
+#+begin_example
+# org-priority-highest: 1
+# org-priority-lowest: 5
+# org-priority-default: 3
+#+end_example
+
+The priority buttons, the cycle and the Agenda's Priority menu then offer 1 to 5, and ~priority-down~ puts ~[#1]~ first and a heading without a cookie in the middle.
+
+*Inherited tags*: ~org-agenda-show-inherited-tags~ chooses where rows show them. With ~(todo)~ the TODO list does and the Agenda does not; ~always~ shows them in every view, ~nil~ in none:
+
+#+begin_example
+# org-agenda-show-inherited-tags: (todo)
+#+end_example
 
 *Titles*: a timestamp written in a heading's title is left out of its row, since the day and the time column already say it. Set ~org-agenda-remove-times-when-in-prefix~ to ~nil~ to show titles as written.
 
@@ -1541,7 +1590,7 @@ org-xx-extra-menu: "j;📔 Journal" \
 - A bracketed *OLP path*: an array of double-quoted heading titles, as in a capture template's ~olp:~, each segment expanded for ~%<FORMAT>~ when the item is tapped (~"%<%Y-%m>"~ gives the current year and month). It navigates to that heading. Unlike a capture template, it never creates a missing heading, because browsing a menu shouldn't write to the file: a path that doesn't fully exist creates nothing and says so.
 - A *quoted function reference* (~'calendar~ above) runs the command palette command with that real Emacs or Org function name, as if chosen from the palette. It acts on the heading whose action menu is open, else the keyboard-focused one. A command that can't run says why in the status line (~Clock out: no clock is running.~), and no confirmation is asked, since choosing the item is the confirmation. The names are the ones the palette shows and searches (~org-clock-out~, ~org-clock-in~, ~org-refile~, ~org-todo~, ~org-agenda~, ~save-buffer~, ~isearch-forward~, ~calendar~, ~org-html-export-to-html~ and the rest), so type a function name into the palette to find the command, and quote the same name here.
 
-  *Exceptions*: *New document* and *Undo history* have no Emacs function to name. Emacs has no dedicated new-buffer command (~switch-to-buffer~ with an unused name is the usual way, and ~scratch-buffer~ only returns to the one ~*scratch*~ buffer), and its undo history is a variable, ~buffer-undo-list~, not a command. A name that no command has shows ~'name is not a recognized function.~ when tapped; the entry stays in the menu, so a typo is visible.
+  *Exceptions*: *New document*, *Undo history*, *Undo settings change* and *Redo settings change* have no Emacs function to name. Emacs has no dedicated new-buffer command (~switch-to-buffer~ with an unused name is the usual way, and ~scratch-buffer~ only returns to the one ~*scratch*~ buffer), and its undo history is a variable, ~buffer-undo-list~, not a command. A name that no command has shows ~'name is not a recognized function.~ when tapped; the entry stays in the menu, so a typo is visible.
 
   *Recalculate all tables* (~org-table-recalculate-buffer-tables~) recalculates every ~#+TBLFM:~ formula in the document as one undo step, where org's ~C-c C-c~ recalculates one table (see [[#table-formulas][Table formulas]]). *Export as an Org buffer* is ~org-org-export-as-org~ (see [[#export][Export]]).
 
@@ -1908,6 +1957,8 @@ The cards, by what they hold:
 - *Quick Settings*: labeled controls for the Global and Local Variables the app supports (see [[#local-variables][Local Variables]]), grouped by area, with an *Advanced* group for those with more complex syntax (refile targets, agenda files, the ~org-xx-*~ menu variables; see [[#extras-menu][Extras menu]] and [[#menu-customization][Menu customization]]). It shares storage with the Global Variables text box, so each reflects changes made in the other.
 - *Global Variables* and *Capture Templates*: raw ~name: value~ lines and raw JSON, each edited in a popup.
 - *GitHub* and *WebDAV*: connection details for each backend. Use a fine-grained GitHub token scoped to just that repository (Contents read and write only), and for WebDAV an app-specific password if your server offers one.
+- *Protect connections* (Sync and storage): *Protect with a passphrase…* encrypts the GitHub token and owner and the user names and passwords of WebDAV, the calendar and contacts (addresses, repository and branch stay readable). The passphrase is asked for the first time one of them is used in a session, and again after the page is reloaded; it is not stored, and a login is decrypted only for the length of each request, so between requests the app holds it masked, so if it is forgotten the logins are entered again. *Export Settings* then writes those logins encrypted, and *Import Settings* asks for the file's passphrase and seals them with this device's. The switch covers all connections at once. Passphrases need at least 8 characters.
+- *Settings history* (Advanced): *Undo* and *Redo* name the setting they change, the list below them shows every change of this session (up to 100) and a tap goes to that point, and *Restore from start of session* goes back to the first entry. The palette has *Undo settings change* and *Redo settings change*. Logins, the passphrase and what was open last are not followed, and actions such as *Sync*, *Export* and *Rebuild* cannot be undone. Undo in a document never changes settings.
 - *Calendar (CalDAV) / Contacts (CardDAV)*: the calendar your agenda is mirrored to and the address book your contacts are, right after WebDAV (see [[#calendar-sync][Calendar and contacts sync]]).
 - *Agenda notifications*: reminders before appointments, in *Agenda, diary and weather* (see [[#agenda-notifications][Agenda notifications]]).
 - *Appearance*: theme (System, Light or Dark), fonts, independent font sizes for main text, tables and menus, reading width, custom colors for Light and Dark, and *Paragraph Spacing*. Paragraph Spacing is two independent values laid out like the font sizes: one for paragraphs and one, *Tables*, for tables and other secondary blocks (source and quote blocks, rules). Each is 0 to 32px with a 10px default. Where a paragraph meets a table or block the larger value applies, and headings and list items space themselves.
@@ -1992,7 +2043,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 
 *What it acts on*: heading commands work on the heading whose action menu is open (tap a heading's title first), else the keyboard-focused heading. A command that needs a heading and can't find one says so, except *Add heading after* and *Add TODO heading after*, which also work with nothing selected (see the table in [[#keybindings][Keybindings]] for where the new heading lands).
 
-*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements*, *Copy keyboard debug log*, *Copy update and startup log*, *Add a capture icon to the home screen*, *Choose the org-pwa folder* and *Add a local file*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
+*Names*: a command's real Emacs or Org function name is shown beside it and is searchable. The same name, quoted, names the command in an Extras-menu entry (see [[#extras-menu][Extras menu]]), so the palette, the god-mode chords and Extras share one vocabulary. The commands with no real name are this app's own: *New document*, *Undo history*, *Undo settings change*, *Redo settings change*, *Sync agenda to calendar*, *Rebuild calendar from the agenda*, *Show display measurements*, *Copy keyboard debug log*, *Copy update and startup log*, *Add a capture icon to the home screen*, *Choose the org-pwa folder* and *Add a local file*. A command with a [[#god-mode][god-mode]] key runs the same code as that key and shows it.
 
 *What's in it*, by group:
 

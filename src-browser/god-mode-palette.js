@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').PaletteCommand} PaletteCommand */
 // Extracted from app.js: god mode palette.
+import { redoSettings, undoSettings } from './settings-history.js';
 import { findAncestorPath, isArchivedInPlace } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
@@ -564,6 +565,8 @@ export function paletteCommandList() {
         else renderHistoryPanel(outlineEl);
       },
     },
+    { id: 'settings-undo', label: 'Undo settings change', group: 'App', run: () => undoSettings() },
+    { id: 'settings-redo', label: 'Redo settings change', group: 'App', run: () => redoSettings() },
     { id: 'read-only', label: 'Toggle read-only', orgName: 'read-only-mode', keys: 'C-x C-q', group: 'Document', needs: ['doc'], run: chord('C-x C-q') },
     { id: 'capture', label: 'Capture', orgName: 'org-capture', keys: 'C-c c', group: 'Document', run: chord('C-c c') },
 

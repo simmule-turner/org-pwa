@@ -17,11 +17,13 @@ import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialog
 import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionFile, saveExtensionScript } from './extension-flow.js';
 import { validateCaptureTemplates } from './doc-helpers.js';
 import { setStatus } from './editing.js';
-import { syncExtraMenuButtonVisibility } from './menus.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { APP_VERSION } from './version.js';
 import { render } from './render.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getCustomThemeColors, getFontFamily, getFontSize, getGithubConfig, getGlobalVariables, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
+import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnableProtectionDialog, prepareImport } from './connection-protection.js';
+import { forState, vault } from './connection-vault.js';
+import { buildHistoryCard, reapplySettings } from './settings-history.js';
+import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getFontFamily, getFontSize, getGithubConfig, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
@@ -65,8 +67,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   container.style.minHeight = '100%';
   target.appendChild(container);
 
-  const config = await getGithubConfig(kv);
-  const webdavConfigStored = await getWebdavConfig(kv);
+  const config = forState('github', await getGithubConfig(kv));
+  const webdavConfigStored = forState('webdav', await getWebdavConfig(kv));
   const theme = await getTheme(kv);
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
@@ -917,6 +919,31 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   linkHint.textContent = 'Org keeps attachments in a folder and writes no link. A link is what shows a picture or a recording inline under the heading; with never, attachments are found through the Attach menu only.';
   attachSection.appendChild(linkHint);
 
+  cards.set('history', buildHistoryCard());
+
+  const protectSection = document.createElement('div');
+  protectSection.className = 'settings-section';
+  cards.set('protect', protectSection);
+  const protectTitle = document.createElement('div');
+  protectTitle.className = 'panel-section-title';
+  protectTitle.textContent = 'Protect connections';
+  protectSection.appendChild(protectTitle);
+  const protectRow = document.createElement('div');
+  protectRow.className = 'panel-row';
+  protectRow.appendChild(
+    menuButton(vault.protected ? 'Passphrase: on \u2014 turn off\u2026' : 'Protect with a passphrase\u2026', () => {
+      if (vault.protected) askDisableProtection(() => renderSettingsView());
+      else openEnableProtectionDialog(() => renderSettingsView());
+    })
+  );
+  protectSection.appendChild(protectRow);
+  const protectHint = document.createElement('div');
+  protectHint.style.cssText = 'font-size:11px;opacity:.6;margin:2px 0 6px;';
+  protectHint.textContent =
+    'Encrypts the GitHub token and owner and the WebDAV, calendar and contacts user names and passwords, in this browser and in the exported settings. The passphrase is asked for when one is first used in a session. Addresses and everything else stay as they are.' +
+    (vault.protected && !vault.key ? ' Locked now \u2014 it opens when a connection is used.' : '');
+  protectSection.appendChild(protectHint);
+
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';
   cards.set('github', githubSection);
@@ -926,17 +953,19 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   ghTitle.textContent = 'GitHub';
   githubSection.appendChild(ghTitle);
 
-  function openGithubFormPopup() {
+  async function openGithubFormPopup() {
+    if (!(await ensureConnectionsUnlocked())) return;
+    const plainGithub = await getGithubConfig(kv);
     openMultiFieldPopup({
       label: 'GitHub',
       fields: [
-        { key: 'token', label: 'Personal access token', type: 'password', value: S.githubConfig.token },
-        { key: 'owner', label: 'Owner', type: 'text', value: S.githubConfig.owner, placeholder: 'e.g. octocat' },
-        { key: 'repo', label: 'Repo', type: 'text', value: S.githubConfig.repo, placeholder: 'e.g. my-notes' },
-        { key: 'branch', label: 'Branch', type: 'text', value: S.githubConfig.branch, placeholder: 'main' },
+        { key: 'token', label: 'Personal access token', type: 'password', value: plainGithub.token },
+        { key: 'owner', label: 'Owner', type: 'text', value: plainGithub.owner, placeholder: 'e.g. octocat' },
+        { key: 'repo', label: 'Repo', type: 'text', value: plainGithub.repo, placeholder: 'e.g. my-notes' },
+        { key: 'branch', label: 'Branch', type: 'text', value: plainGithub.branch, placeholder: 'main' },
       ],
       onSave: async (values) => {
-        S.githubConfig = await setGithubConfig(kv, { token: values.token, owner: values.owner, repo: values.repo, branch: values.branch || 'main' });
+        S.githubConfig = forState('github', await setGithubConfig(kv, { token: values.token, owner: values.owner, repo: values.repo, branch: values.branch || 'main' }));
         setStatus('GitHub settings saved.');
         renderSettingsView();
       },
@@ -978,16 +1007,18 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   webdavTitle.textContent = 'WebDAV';
   webdavSection.appendChild(webdavTitle);
 
-  function openWebdavFormPopup() {
+  async function openWebdavFormPopup() {
+    if (!(await ensureConnectionsUnlocked())) return;
+    const plainWebdav = await getWebdavConfig(kv);
     openMultiFieldPopup({
       label: 'WebDAV',
       fields: [
-        { key: 'baseUrl', label: 'Server URL', type: 'text', value: S.webdavConfig.baseUrl, placeholder: 'e.g. https://dav.example.com/remote.php/dav/files/me' },
-        { key: 'username', label: 'Username', type: 'text', value: S.webdavConfig.username },
-        { key: 'password', label: 'Password', type: 'password', value: S.webdavConfig.password },
+        { key: 'baseUrl', label: 'Server URL', type: 'text', value: plainWebdav.baseUrl, placeholder: 'e.g. https://dav.example.com/remote.php/dav/files/me' },
+        { key: 'username', label: 'Username', type: 'text', value: plainWebdav.username },
+        { key: 'password', label: 'Password', type: 'password', value: plainWebdav.password },
       ],
       onSave: async (values) => {
-        S.webdavConfig = await setWebdavConfig(kv, { baseUrl: values.baseUrl, username: values.username, password: values.password });
+        S.webdavConfig = forState('webdav', await setWebdavConfig(kv, { baseUrl: values.baseUrl, username: values.username, password: values.password }));
         setStatus('WebDAV settings saved.');
         renderSettingsView();
       },
@@ -1023,7 +1054,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   // The calendar the agenda is mirrored to and the address book the contacts are, right after WebDAV: a CalDAV or CardDAV
   // server is often the same host, and one username and password serves both.
-  const calendarConfigStored = await getCaldavConfig(kv);
+  const calendarConfigStored = forState('caldav', await getCaldavConfig(kv));
   const calendarSection = document.createElement('div');
   calendarSection.className = 'settings-section';
   cards.set('calendar', calendarSection);
@@ -1032,7 +1063,9 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   calendarTitle.textContent = 'Calendar (CalDAV) / Contacts (CardDAV)';
   calendarSection.appendChild(calendarTitle);
 
-  function openCalendarFormPopup() {
+  async function openCalendarFormPopup() {
+    if (!(await ensureConnectionsUnlocked())) return;
+    const calendarConfigStored = await getCaldavConfig(kv);
     openMultiFieldPopup({
       label: 'Calendar (CalDAV) / Contacts (CardDAV)',
       fields: [
@@ -1042,7 +1075,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         { key: 'password', label: 'Password (blank = the WebDAV one)', type: 'password', value: calendarConfigStored.password },
       ],
       onSave: async (values) => {
-        S.caldavConfig = await setCaldavConfig(kv, { url: values.url, contactsUrl: values.contactsUrl, username: values.username, password: values.password });
+        S.caldavConfig = forState('caldav', await setCaldavConfig(kv, { url: values.url, contactsUrl: values.contactsUrl, username: values.username, password: values.password }));
         S.calendarSyncPaused = false;
         S.calendarSyncLastError = null;
         S.contactsSyncPaused = false;
@@ -1106,11 +1139,11 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     menuButton('Export Settings', async () => {
       const bundle = await exportAllSettings(kv);
       (bundle.settings).globalVariables = buildFullyResolvedGlobalVariablesText();
-      const hasCredentials = !!((bundle.settings).github && /** @type {any} */ (bundle.settings).github.token) || !!((bundle.settings).webdav && /** @type {any} */ (bundle.settings).webdav.password) || !!((bundle.settings).caldav && /** @type {any} */ (bundle.settings).caldav.password);
+      const hasCredentials = !vault.protected && !!((bundle.settings).github && /** @type {any} */ (bundle.settings).github.token) || !!((bundle.settings).webdav && /** @type {any} */ (bundle.settings).webdav.password) || !!((bundle.settings).caldav && /** @type {any} */ (bundle.settings).caldav.password);
       if (
         hasCredentials &&
         !(await confirmDialog(
-          'This file will include your GitHub token and/or WebDAV or calendar password in plain text. Keep it private, and only share it with something you trust. Continue?',
+          'This file will include your GitHub token and/or WebDAV or calendar password in plain text. Keep it private, and only share it with something you trust. (Protecting the connections with a passphrase encrypts them in the file.) Continue?',
           { confirmLabel: 'Continue', danger: true }
         ))
       ) {
@@ -1135,38 +1168,16 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         setStatus('Could not import settings: the file is not valid JSON.');
         return;
       }
+      bundle = await prepareImport(bundle);
+      if (!bundle) return;
       const imported = await importAllSettings(kv, bundle);
+      await afterImport(imported);
       syncCaptureShortcuts();
       if (imported.length === 0) {
         setStatus('No recognizable settings found in that file.');
         return;
       }
-      // Re-apply anything with an immediate visual effect right away,
-      // rather than requiring a reload to see the imported theme/fonts
-      // take effect.
-      if (imported.includes('theme')) applyTheme(await getTheme(kv));
-      if (imported.includes('customThemeColors')) {
-        S.customThemeColors = await getCustomThemeColors(kv);
-        applyTheme(await getTheme(kv));
-      }
-      if (imported.includes('fontFamily')) applyFontFamily(await getFontFamily(kv));
-      if (imported.includes('menuSize')) applyMenuSize(await getMenuSize(kv));
-      if (imported.includes('paragraphSpacing')) applyParagraphSpacing(await getParagraphSpacing(kv));
-      if (imported.includes('tablesSpacing')) applyTablesSpacing(await getTablesSpacing(kv));
-      if (imported.includes('fontSize')) applyFontSize(await getFontSize(kv));
-      if (imported.includes('tablesFontSize')) applyTablesFontSize(await getTablesFontSize(kv));
-      if (imported.includes('github')) S.githubConfig = await getGithubConfig(kv);
-      if (imported.includes('webdav')) S.webdavConfig = await getWebdavConfig(kv);
-      if (imported.includes('globalVariables')) {
-        S.globalVariablesText = await getGlobalVariables(kv);
-        S.globalVariables = parseGlobalVariables(S.globalVariablesText);
-        if (S.state.doc) {
-          S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
-        }
-        syncAgendaFilesConfig();
-        syncContactsFilesConfig();
-        syncExtraMenuButtonVisibility();
-      }
+      await reapplySettings(imported);
       setStatus('Imported: ' + imported.join(', ') + '.');
       renderSettingsView();
     })

@@ -10,6 +10,8 @@ import { agendaSexpOptions, calendarAlarmMinutes } from './agenda-settings.js';
 import { hasUserSexps, settleUserSexps } from './extension-flow.js';
 import { aggregateAgendaDocs, loadContactsDocsForSync, unloadedAgendaFiles, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { setStatus } from './editing.js';
+import { withConnections } from './connection-protection.js';
+import { currentCaldav, currentWebdav } from './connection-vault.js';
 import { getCaldavSyncState, setCaldavSyncState } from './settings.js';
 import { kv } from './singletons.js';
 
@@ -19,10 +21,10 @@ const AUTO_DELAY_MS = 2500; // a burst of saves or focus changes becomes one syn
 /** The username and password for the calendar AND the address book (contacts-sync.js uses the same ones). A blank one falls
  *  back to the WebDAV ones, since a CalDAV or CardDAV server is often the same host. */
 export function effectiveCaldavCredentials() {
-  const c = S.caldavConfig || {};
+  const c = currentCaldav() || {};
   return {
-    username: c.username || (S.webdavConfig && S.webdavConfig.username) || '',
-    password: c.password || (S.webdavConfig && S.webdavConfig.password) || '',
+    username: c.username || (currentWebdav() && currentWebdav().username) || '',
+    password: c.password || (currentWebdav() && currentWebdav().password) || '',
   };
 }
 
@@ -49,6 +51,11 @@ function plural(n, word) {
  * button can put the calendar's and the contacts' together in one line.
  */
 export async function syncAgendaToCalendar({ manual = false, rebuild = false, report = setStatus } = {}) {
+  await withConnections(manual, report, () => runCalendarSync({ manual, rebuild, report }));
+}
+
+/** @param {{ manual: boolean, rebuild: boolean, report: (message: string) => void }} options */
+async function runCalendarSync({ manual, rebuild, report }) {
   const config = effectiveCalendarConfig();
   if (!config) {
     if (manual) report('Set the calendar address first (Settings \u2192 Calendar).');

@@ -33,6 +33,8 @@ import { getServiceWorkerVersion, scrollFocusedHeadingIntoView } from './src-bro
 import { APP_VERSION } from './src-browser/version.js';
 import { installUpdateLog, noteUpdate } from './src-browser/update-log.js';
 import { kv } from './src-browser/singletons.js';
+import { startSettingsHistory } from './src-browser/settings-history.js';
+import { loadProtection } from './src-browser/connection-protection.js';
 import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
@@ -1184,6 +1186,7 @@ async function bootstrap() {
   loadPaletteRecent().then((ids) => {
     if (S.paletteRecentIds === null) S.paletteRecentIds = ids;
   });
+  await loadProtection(); // is the passphrase switched on; the key is entered later, at first use
   S.githubConfig = await getGithubConfig(kv);
   S.webdavConfig = await getWebdavConfig(kv);
   S.caldavConfig = await getCaldavConfig(kv);
@@ -1207,6 +1210,7 @@ async function bootstrap() {
   applyTablesFontSize(await getTablesFontSize(kv));
   applyReadingWidth(await getReadingWidth(kv));
   applySidePanelWidth(await getSidePanelWidth(kv));
+  await startSettingsHistory();
   syncContentOffset();
 
   for (const [id, name] of Object.entries(await getBufferNames(kv))) bufferNames.set(id, name); // names chosen with rename-buffer

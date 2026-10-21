@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v600 — Logins decrypted only while a request runs
+With a passphrase on, the app now keeps your GitHub, WebDAV, calendar and contacts logins masked in memory and decrypts them only for the length of each request or sync run, so a plain token or password is no longer sitting in the page between requests. Prompts are unchanged: once per page load.
+Verified: a WebDAV file opened with protection on carried the right login; the settings and sync checks.
+
+* v599 — A passphrase for stored logins, and undo for settings
+Settings → Sync and storage can now protect the GitHub token and owner and the WebDAV, calendar and contacts logins with a passphrase: they are stored encrypted, asked for once when first used in a session, and exported encrypted, so a lost phone or a shared backup no longer exposes them. Settings → Advanced has a settings history with Undo, Redo, a list of changes to jump to and a way back to the start of the session, plus two palette commands.
+Verified: encryption round trip, wrong passphrase and tampering; the settings history and the unlock prompt in the browser.
+
 * v598 — Emacs's agenda ordering, priority ranges, and folds that survive undo
 ~org-agenda-sorting-strategy~ now orders the Agenda's days and the TODO list with Emacs's own keys (priority, time, category, tag, state, effort, deadline, alpha and more), and ~org-agenda-prefix-format~ gains ~%l~ and ~%b~. ~org-priority-highest~, ~-lowest~ and ~-default~ widen the priority buttons, cycling and ordering beyond A–C, including numbers. ~org-agenda-show-inherited-tags~ takes ~always~ or a list of views, with ~org-agenda-use-tag-inheritance~. Undo and redo keep the folds you see. Unset, the Agenda keeps its order.
 Verified: row order for 16 strategies, priority values and tag rules against Emacs 29.3.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v598';
+const CACHE_NAME = 'org-pwa-shell-v600';
 
 const SHELL_FILES = [
   './',
@@ -162,6 +162,9 @@ const SHELL_FILES = [
   './src/import-icalendar.js',
   './src/import-vcard.js',
   './src/undo-history.js',
+  './src/secret-box.js',
+  './src/connection-secrets.js',
+  './src/settings-history.js',
   './src/text-diff.js',
   './src/startup-config.js',
   './src/webm-track-detect.js',
@@ -273,6 +276,9 @@ const SHELL_FILES = [
   './src-browser/webdav-adapter.js',
   './src-browser/input-file-adapter.js',
   './src-browser/settings.js',
+  './src-browser/settings-history.js',
+  './src-browser/connection-vault.js',
+  './src-browser/connection-protection.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

@@ -10,9 +10,9 @@ export const DEFAULT_SETTINGS_CATEGORIES = /** @type {SettingsCategory[]} */ ([
   { id: 'appearance', title: 'Appearance', blurb: 'Theme, font, spacing, reading width, menu size', cards: ['appearance-theme', 'appearance-font', 'appearance-size', 'appearance-spacing', 'appearance-width', 'appearance-menu'] },
   { id: 'editing', title: 'Editing and startup', blurb: 'Startup view, keyboard, modeline, search, logging', cards: ['quick:Startup', 'quick:Editing', 'quick:Modeline', 'quick:Keyboard', 'quick:Progress logging', 'quick:Search & tags'] },
   { id: 'agenda', title: 'Agenda, diary and weather', blurb: 'Agenda, diary, reminders, weather, location', cards: ['quick:Agenda', 'quick:Diary', 'appt', 'quick:Weather'] },
-  { id: 'sync', title: 'Sync and storage', blurb: 'GitHub, WebDAV, calendar, attachments, backup', cards: ['github', 'webdav', 'calendar', 'attach', 'pending', 'backup'] },
+  { id: 'sync', title: 'Sync and storage', blurb: 'GitHub, WebDAV, calendar, attachments, backup', cards: ['github', 'webdav', 'calendar', 'protect', 'attach', 'pending', 'backup'] },
   { id: 'export', title: 'Export', blurb: 'ASCII, HTML, LaTeX', cards: ['quick:ASCII', 'export-html', 'export-latex'] },
-  { id: 'advanced', title: 'Advanced', blurb: 'Variables, capture templates, extensions, order of settings', cards: ['global-vars', 'capture', 'extensions', 'quick:Advanced (raw syntax)', 'order'] },
+  { id: 'advanced', title: 'Advanced', blurb: 'Variables, capture templates, extensions, order of settings', cards: ['history', 'global-vars', 'capture', 'extensions', 'quick:Advanced (raw syntax)', 'order'] },
 ]);
 
 /** Puts `saved` ids first, in the saved order, dropping any that no longer exist; ids the saved list never heard of (added by a newer version) follow in their default places.

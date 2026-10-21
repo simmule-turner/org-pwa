@@ -5,6 +5,7 @@
 /** @typedef {import('../src/types.js').DiskAdapter} DiskAdapter */
 /** @typedef {Extract<import('../src/link-resolve.js').LinkResolution, { type: 'file' }>} FileLinkResolution */
 // Extracted from app.js: documents io.
+import { forState } from './connection-vault.js';
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
 import { markDocumentClosed, markDocumentOpen, openDocument, saveAndSync } from '../src/document-store.js';
@@ -47,6 +48,7 @@ import { isWebdavConfigured } from './webdav-adapter.js';
 import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
 import { confirmDialog, promptText } from './dialogs.js';
+import { ensureConnectionsUnlocked } from './connection-protection.js';
 
 /** @param {string} fallback */
 export function suggestedSaveAsName(fallback) {
@@ -538,8 +540,12 @@ export async function saveAsGithub(chosenPath, seenFromScreen) {
   if (commitTextModeIfActive()) render();
   const saveAsTab = /** @type {number} */ (S.activeTabId);
   const saveAsText = serializeOrg(S.state.doc);
+  if (!(await ensureConnectionsUnlocked())) {
+    setStatus('The connections are locked \u2014 enter the passphrase to save to GitHub.');
+    return;
+  }
   const config = await getGithubConfig(kv);
-  S.githubConfig = config;
+  S.githubConfig = forState('github', config);
   if (!isGithubConfigured(config)) {
     setStatus('GitHub is not set up yet \u2014 open Settings first.');
     closeFileMenu();
@@ -594,8 +600,12 @@ export async function saveAsWebdav(chosenPath, seenFromScreen) {
   if (commitTextModeIfActive()) render();
   const saveAsTab = /** @type {number} */ (S.activeTabId);
   const saveAsText = serializeOrg(S.state.doc);
+  if (!(await ensureConnectionsUnlocked())) {
+    setStatus('The connections are locked \u2014 enter the passphrase to save to WebDAV.');
+    return;
+  }
   const config = await getWebdavConfig(kv);
-  S.webdavConfig = config;
+  S.webdavConfig = forState('webdav', config);
   if (!isWebdavConfigured(config)) {
     setStatus('WebDAV is not set up yet \u2014 open Settings first.');
     closeFileMenu();

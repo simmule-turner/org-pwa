@@ -1,12 +1,13 @@
 // @ts-check
 // Extracted from app.js: adapters.
-import { S } from './app-state.js';
 import { createGithubAdapter } from './github-adapter.js';
 import { createInputFileAdapter } from './input-file-adapter.js';
 import { folderAvailable, folderFileExists, readFolderText, writeFolderText } from './local-folder.js';
 import { platform } from './platform.js';
 import { matchesExpected, writeConflict } from '../src/sync-engine.js';
 import { withLineEndings } from './line-endings-adapter.js';
+import { ensureConnectionsUnlocked, leaseConnections } from './connection-protection.js';
+import { currentGithub, currentWebdav } from './connection-vault.js';
 import { kv } from './singletons.js';
 import { createWebdavAdapter } from './webdav-adapter.js';
 
@@ -56,6 +57,29 @@ export const filesystemAdapter = withLineEndings(localFileAdapter, kv, { content
 
 export const inputFileAdapter = withLineEndings(createInputFileAdapter(kv), kv, { contentDerivedHash: true });
 
-export const githubAdapter = withLineEndings(createGithubAdapter(() => S.githubConfig), kv);
+/** The adapter with every call waiting for the connections to be unlocked: with a passphrase on, the first use in a session asks for it.
+ * @template {object} T
+ * @param {T} adapter
+ * @returns {T} */
+function afterUnlock(adapter) {
+  /** @type {Record<string, unknown>} */ const out = {};
+  for (const [name, value] of Object.entries(adapter)) {
+    out[name] =
+      typeof value === 'function'
+        ? async (/** @type {unknown[]} */ ...args) => {
+            if (!(await ensureConnectionsUnlocked())) throw new Error('The connections are locked. Enter the passphrase to use them.');
+            const release = await leaseConnections();
+            try {
+              return await Reflect.apply(value, adapter, args);
+            } finally {
+              release();
+            }
+          }
+        : value;
+  }
+  return /** @type {T} */ (out);
+}
 
-export const webdavAdapter = withLineEndings(createWebdavAdapter(() => S.webdavConfig), kv);
+export const githubAdapter = withLineEndings(afterUnlock(createGithubAdapter(currentGithub)), kv);
+
+export const webdavAdapter = withLineEndings(afterUnlock(createWebdavAdapter(currentWebdav)), kv);

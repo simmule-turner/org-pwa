@@ -3,6 +3,7 @@
 // contacts also appear in the phone's own contacts app. The twin of calendar-sync.js: what to send is
 // src/contacts-mirror.js, the requests are src/caldav-client.js (createCarddavClient); this is the part that knows about
 // settings, the contacts files, state and the status line. It signs in with the calendar's username and password.
+import { withConnections } from './connection-protection.js';
 import { createCarddavClient, runLimited } from '../src/caldav-client.js';
 import { buildContactResources, isOurContactResource, nextContactsSyncState, planContactsSync } from '../src/contacts-mirror.js';
 import { getContactsBirthdayProperty } from '../src/local-variables.js';
@@ -46,6 +47,11 @@ function unloadedContactsFiles() {
  * in the address book is left alone. `report` receives the final message of a run (the status line by default).
  */
 export async function syncContactsToAddressBook({ manual = false, rebuild = false, report = setStatus } = {}) {
+  await withConnections(manual, report, () => runContactsSync({ manual, rebuild, report }));
+}
+
+/** @param {{ manual: boolean, rebuild: boolean, report: (message: string) => void }} options */
+async function runContactsSync({ manual, rebuild, report }) {
   const config = effectiveContactsConfig();
   if (!config) {
     if (manual) report('Set the contacts address first (Settings \u2192 Contacts).');

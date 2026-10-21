@@ -2,12 +2,14 @@
 // The Open / Save As screen: one sheet (dialog from 600px) with a GitHub / Local file / WebDAV picker that remembers the last type
 // used. GitHub and WebDAV show their folder list straight away; Local file is a single button into the system picker.
 // State lives in S.fileScreen so Escape and the other panels' dismissal reach it like any panel.
+import { forState } from './connection-vault.js';
 import { FILE_SCREEN_TYPES, joinPath, listedAsFile, parentFolder, resolveFileScreenType, stepFileScreenType, visibleEntries } from '../src/file-screen-model.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { confirmDialog, showModalOverlay } from './dialogs.js';
+import { ensureConnectionsUnlocked } from './connection-protection.js';
 import { openFromFilesystem, openFromImport, openRemotePath, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, suggestedSaveAsName } from './documents-io.js';
 import { fileScreen, fileScreenBox, settingsBtn } from './dom.js';
 import { commitTextModeIfActive } from './editing.js';
@@ -73,9 +75,17 @@ async function loadListing() {
   if (!f || f.type === 'local') return;
   const type = f.type;
   const folder = f.folder;
+  if (!(await ensureConnectionsUnlocked())) {
+    if (S.fileScreen === f && f.type === type) {
+      f.entries = null;
+      f.error = 'The connections are locked. Enter the passphrase to list these files.';
+      renderFileScreen();
+    }
+    return;
+  }
   const config = type === 'github' ? await getGithubConfig(kv) : await getWebdavConfig(kv);
-  if (type === 'github') S.githubConfig = config;
-  else S.webdavConfig = config;
+  if (type === 'github') S.githubConfig = forState('github', config);
+  else S.webdavConfig = forState('webdav', config);
   if (S.fileScreen !== f || f.type !== type) return;
   const ok = type === 'github' ? isGithubConfigured(config) : isWebdavConfigured(config);
   if (!ok) {

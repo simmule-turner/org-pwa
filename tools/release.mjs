@@ -43,8 +43,10 @@ function sourceHash() {
   }
   return h.digest('hex');
 }
+const progress = { step: 0, total: 0, started: Date.now() };
 function run(cmd, cmdArgs) {
-  console.log(`$ ${cmd} ${cmdArgs.join(' ')}`);
+  progress.step += 1;
+  console.log(`[step ${progress.step}/${progress.total}] $ ${cmd} ${cmdArgs.join(' ')} (${Math.round((Date.now() - progress.started) / 1000)}s elapsed)`);
   const r = spawnSync(cmd, cmdArgs, { stdio: 'inherit' });
   if (r.status !== 0) {
     console.error(`FAILED: ${cmd} ${cmdArgs.join(' ')}`);
@@ -56,7 +58,10 @@ const hash = sourceHash();
 const last = fs.existsSync('.green-hash') ? fs.readFileSync('.green-hash', 'utf8').trim() : '';
 if (hash === last && !smoke) {
   console.log('Source unchanged since the last green run: skipping the tests.');
+  progress.total = 1;
 } else {
+  // tests, zones, scope, lint, type check, optional smoke, then the zip
+  progress.total = 3 + (fs.existsSync('node_modules/.bin/eslint') ? 1 : 0) + (fs.existsSync('node_modules/.bin/tsc') ? 1 : 0) + (smoke ? 1 : 0) + (checkOnly ? 0 : 1);
   run('npm', ['test', '--silent']);
   run('node', ['tools/test-zones.mjs']);
   run('node', ['tools/check-scope.mjs']);
