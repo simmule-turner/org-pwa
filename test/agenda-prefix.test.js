@@ -7,9 +7,9 @@ import { formatAgendaPrefix, agendaPrefixFormat } from '../src/agenda-prefix.js'
 const cases = JSON.parse(fs.readFileSync(new URL('./fixtures/prefix/cases.json', import.meta.url), 'utf8'));
 const { expected } = JSON.parse(fs.readFileSync(new URL('./fixtures/prefix/expected.json', import.meta.url), 'utf8'));
 
-cases.forEach((/** @type {any[]} */ [format, category, time, scheduling, effort], i) => {
+cases.forEach((/** @type {any[]} */ [format, category, time, scheduling, effort, parents], i) => {
   test(`matches Emacs: ${format}`, () => {
-    const got = formatAgendaPrefix(format, { category, time: time ? time.padStart(5, '0') + '......' : '', scheduling: scheduling || '', effort: effort || '' });
+    const got = formatAgendaPrefix(format, { category, time: time ? time.padStart(5, '0') + '......' : '', scheduling: scheduling || '', effort: effort || '', level: ' '.repeat((parents || []).length + 1), breadcrumbs: parents && parents.length ? parents.join('->') + '->' : '' });
     assert.equal(got, expected[i]);
   });
 });

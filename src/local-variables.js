@@ -25,7 +25,8 @@
  */
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
-import { parseLispTagList, parseTagInheritance } from './tag-inheritance.js';
+import { readPriorityRange } from './priorities.js';
+import { parseLispTagList, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
@@ -461,11 +462,23 @@ export function getUseTagInheritance(vars) {
   return parseTagInheritance(v['org-use-tag-inheritance'], v['org-tags-exclude-from-inheritance']);
 }
 
-/** org-agenda-show-inherited-tags: whether Agenda and TODO lines show the tags a heading inherits (t, the default; any other
- *  non-nil value is read as t).
+/** org-agenda-show-inherited-tags: whether Agenda and TODO lines show the tags a heading inherits: t (the default), nil, always,
+ *  or a list of view types.
  * @param {LocalVars} vars */
 export function getShowInheritedTagsAgenda(vars) {
-  return parseLispBoolean((vars || {})['org-agenda-show-inherited-tags'], true);
+  return parseShowInheritedTags((vars || {})['org-agenda-show-inherited-tags']);
+}
+
+/** org-priority-highest, -lowest and -default as a range of character codes (or numbers below 65): A, C and B unless set.
+ * @param {LocalVars} vars */
+export function getPriorityRange(vars) {
+  return readPriorityRange(vars);
+}
+
+/** org-agenda-use-tag-inheritance: t, nil or a list of view types (todo, search, agenda); the default is all three.
+ * @param {LocalVars} vars */
+export function getAgendaUseTagInheritance(vars) {
+  return parseAgendaUseTagInheritance((vars || {})['org-agenda-use-tag-inheritance']);
 }
 
 /** org-cite-global-bibliography: bibliography files every document uses, as a Lisp list of names or just names with spaces or

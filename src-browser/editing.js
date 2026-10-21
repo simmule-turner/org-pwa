@@ -5,7 +5,7 @@
 import { editListItemText, editParagraphText, insertParagraphAfter } from '../src/body-edit.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
 import { saveDocument } from '../src/document-store.js';
-import { applyStartupVisibility } from '../src/fold-state.js';
+import { applyStartupVisibility, captureFolds, restoreFolds } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { removeHeading, renameHeading } from '../src/heading-edit.js';
 import { savePersistedHistory } from '../src/history-store.js';
@@ -292,14 +292,10 @@ export function commitAndRender(label = 'Edited') {
  * prompt on next open for content that turns out to be identical to
  * what's already there).
  *
- * Deliberately does NOT try to preserve fold state across the jump --
- * reapplying the document's own #+STARTUP visibility on every
- * undo/redo step is a stated simplification, not an oversight: the
- * alternative (matching which headings correspond to which across two
- * potentially very different trees, to carry fold state over) is real
- * complexity for a benefit that's mostly invisible day to day, and
- * "fold state resets" already matches how this app treats reopening a
- * file or switching documents elsewhere.
+ * Folds follow the text: after the re-parse, each heading takes the fold
+ * state of the heading with the same chain of titles on the screen being
+ * left (src/fold-state.js captureFolds/restoreFolds); headings it doesn't
+ * know get the document's #+STARTUP visibility.
  */
 export function restoreFromHistory() {
   const entry = currentEntry(S.history);
@@ -309,6 +305,7 @@ export function restoreFromHistory() {
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(newDoc, startupConfig, archiveVisibility);
+  if (S.state.doc) restoreFolds(newDoc, captureFolds(S.state.doc)); // the folds you see stay, as in Emacs
   S.state.doc = newDoc;
   S.state.startupConfig = startupConfig;
   reconcileReadOnlyAfterReparse(S.state.localVariables, localVariables);

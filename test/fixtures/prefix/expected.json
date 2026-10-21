@@ -18,6 +18,13 @@
   "12:3|",
   "Cat|",
   "Sche|",
-  "10:00|"
+  "10:00|",
+  "  work",
+  "      |work",
+  "Project->Phase->work",
+  "Project->           |",
+  " ",
+  "work",
+  "work"
  ]
 }

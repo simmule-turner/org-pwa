@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v598 — Emacs's agenda ordering, priority ranges, and folds that survive undo
+~org-agenda-sorting-strategy~ now orders the Agenda's days and the TODO list with Emacs's own keys (priority, time, category, tag, state, effort, deadline, alpha and more), and ~org-agenda-prefix-format~ gains ~%l~ and ~%b~. ~org-priority-highest~, ~-lowest~ and ~-default~ widen the priority buttons, cycling and ordering beyond A–C, including numbers. ~org-agenda-show-inherited-tags~ takes ~always~ or a list of views, with ~org-agenda-use-tag-inheritance~. Undo and redo keep the folds you see. Unset, the Agenda keeps its order.
+Verified: row order for 16 strategies, priority values and tag rules against Emacs 29.3.
+
 * v597 — Refile to a new heading, and names in tables
 With ~org-refile-allow-creating-parent-nodes~ on (Settings → Editing), Refile takes a new heading's name and files under it, as Emacs does; it is off by default, as in Emacs. Tables now read Org's name rows: ~!~ names columns (~$Price~), ~$~ gives parameters, ~_~ and ~^~ name fields. As in Org, a table with any marked row recalculates only the rows marked ~#~ or ~*~, so a ~#~ in a header cell now stops the other rows recalculating. The README gained a check against the code, and its Contents and variable table were completed.
 Verified: table names against Emacs 29.3; the new-heading refile.

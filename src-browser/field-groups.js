@@ -6,6 +6,9 @@
 import { parseRepeater } from '../src/agenda.js';
 import { formatOrgTimestamp, parseDelay, parseOrgTimestamp } from '../src/org-timestamp.js';
 import { fieldRow, textInputStyle, wizardButton } from './ui-widgets.js';
+import { priorityCookies } from '../src/priorities.js';
+import { getPriorityRange } from '../src/local-variables.js';
+import { S } from './app-state.js';
 
 // Contextual action row shown below a heading/list-item when its text has
 // been tapped. `actions` is [{ icon, label, onClick }]. Icons are the only
@@ -260,7 +263,7 @@ export function buildTimestampFieldGroup(label, currentRaw) {
  *  with one tap; anything outside that range isn't reachable from this
  *  UI, a stated scope limit rather than trying to build a full A-Z
  *  picker for a rarely-used case. */
-export const PRIORITY_LEVELS = ['A', 'B', 'C'];
+export const PRIORITY_LEVELS = ['A', 'B', 'C']; // the default range; the editor reads org-priority-highest/-lowest
 
 /** @param {Heading} heading */
 export function buildPriorityFieldGroup(heading) {
@@ -284,12 +287,13 @@ export function buildPriorityFieldGroup(heading) {
 
   const btnRow = document.createElement('div');
   btnRow.style.display = 'flex';
+  btnRow.style.flexWrap = 'wrap';
   btnRow.style.gap = '6px';
   wrap.appendChild(btnRow);
 
   function renderButtons() {
     btnRow.innerHTML = '';
-    for (const level of [...PRIORITY_LEVELS, 'None']) {
+    for (const level of [...priorityCookies(getPriorityRange(S.state.localVariables)), 'None']) {
       const btn = wizardButton(level, () => {
         currentPriority = level === 'None' ? null : level;
         renderButtons();

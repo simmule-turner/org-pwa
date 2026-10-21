@@ -292,7 +292,48 @@ function cycleFoldLevel(heading, opts = /** @type {any} */ ({})) {
   return 'full';
 }
 
+/** Where each heading is, by its chain of titles (repeats counted), so folds can follow the text across a re-parse.
+ * @param {Doc} doc
+ * @returns {Map<string, { collapsed: boolean, bodyHidden: boolean, drawersHidden: boolean | null | undefined }>} */
+function captureFolds(doc) {
+  const out = new Map();
+  walkPaths(doc, (heading, key) => out.set(key, { collapsed: heading.collapsed, bodyHidden: heading.bodyHidden, drawersHidden: heading.drawersHidden }));
+  return out;
+}
+
+/** Gives the headings of `doc` the folds captured from another version of it; headings it doesn't know keep theirs.
+ * @param {Doc} doc
+ * @param {ReturnType<typeof captureFolds>} folds */
+function restoreFolds(doc, folds) {
+  walkPaths(doc, (heading, key) => {
+    const was = folds.get(key);
+    if (!was) return;
+    heading.collapsed = was.collapsed;
+    heading.bodyHidden = was.bodyHidden;
+    if (was.drawersHidden !== undefined) heading.drawersHidden = was.drawersHidden;
+  });
+}
+
+/** @param {Doc} doc @param {(heading: Heading, key: string) => void} visit */
+function walkPaths(doc, visit) {
+  /** @param {Heading[]} headings @param {string} prefix */
+  const walk = (headings, prefix) => {
+    const seen = new Map();
+    for (const heading of headings) {
+      const base = prefix + '\u0001' + (heading.title || '');
+      const n = (seen.get(base) || 0) + 1;
+      seen.set(base, n);
+      const key = base + '#' + n;
+      visit(heading, key);
+      walk(heading.children, key);
+    }
+  };
+  walk(doc.children, '');
+}
+
 export {
+  captureFolds,
+  restoreFolds,
   applyStartupVisibility,
   isFullyExpanded,
   expandOneLevel,

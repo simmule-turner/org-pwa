@@ -1384,6 +1384,7 @@ export {
   itemEffortMinutes,
   summarizeDayEffort,
   sortItemsByEffort,
+  effortSortValue,
   filterItemsByEffort,
   limitItemsByEffort,
   applyAgendaEffortView,

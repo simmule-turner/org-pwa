@@ -1,12 +1,13 @@
 /**
  * org-agenda-prefix-format: the text before each agenda row, built from a format string.
- *   %c category   %t time of day   %s scheduling label ("Scheduled:")   %e effort
+ *   %c category   %t time of day   %s scheduling label ("Scheduled:")   %e effort   %l one space per outline level
+ *   %b the parents' titles with "->" after each   (%i, the category icon, is empty)
  * `%-12c` pads on the right to 12 characters, `%12c` on the left, `%.5c` cuts to 5 (4 for a category, as Emacs does). A character from
  * ` .;,:!?=|/<>` right after the width ("%-12:c", "% s") is added after the text when there is any.
- * `%?` ("%?-12t") leaves the whole part out when the text is empty. Other `%` letters (%l, %i, %b) are left out.
+ * `%?` ("%?-12t") leaves the whole part out when the text is empty. A `%(function)` form prints nothing.
  */
 
-/** @typedef {{ category?: string, time?: string, scheduling?: string, effort?: string }} PrefixFields */
+/** @typedef {{ category?: string, time?: string, scheduling?: string, effort?: string, level?: string, breadcrumbs?: string }} PrefixFields */
 
 const PART_RE = /%(\??)([-+]?[0-9]*(?:\.[0-9]+)?)([ .;,:!?=|/<>]?)([cltseib]|\(.+?\))/g;
 
@@ -17,7 +18,7 @@ const PART_RE = /%(\??)([-+]?[0-9]*(?:\.[0-9]+)?)([ .;,:!?=|/<>]?)([cltseib]|\(.
  */
 export function formatAgendaPrefix(format, fields) {
   /** @type {Record<string, string>} */
-  const values = { c: fields.category || '', t: fields.time || '', s: fields.scheduling || '', e: fields.effort || '' };
+  const values = { c: fields.category || '', t: fields.time || '', s: fields.scheduling || '', e: fields.effort || '', l: fields.level || '', b: fields.breadcrumbs || '' };
   return format.replace(PART_RE, (_all, optional, width, sep, letter) => {
     let text = values[letter] ?? '';
     if (optional && !text) return '';

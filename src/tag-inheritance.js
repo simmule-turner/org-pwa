@@ -101,3 +101,60 @@ export function inheritedOnly(heading, ancestors, policy) {
   }
   return out;
 }
+
+/** @typedef {'agenda' | 'todo' | 'search'} AgendaViewType */
+/** @typedef {{ kind: 't' | 'nil' | 'always' | 'list', views: Set<string> }} ShowInheritedTags */
+
+const VIEW_TYPES = ['agenda', 'todo', 'search'];
+
+/** org-agenda-show-inherited-tags: t (the default), nil, always, or a list of view types. Anything else reads as t.
+ * @param {string | boolean | null | undefined} raw
+ * @returns {ShowInheritedTags} */
+export function parseShowInheritedTags(raw) {
+  if (raw === false) return { kind: 'nil', views: new Set() };
+  if (raw === undefined || raw === null || raw === true) return { kind: 't', views: new Set() };
+  const text = String(raw).trim().replace(/^'/, '').toLowerCase();
+  if (text === '' || text === 't') return { kind: 't', views: new Set() };
+  if (text === 'nil' || text === '()') return { kind: 'nil', views: new Set() };
+  if (text === 'always') return { kind: 'always', views: new Set() };
+  const list = parseLispTagList(text);
+  if (list && !text.includes('.')) return { kind: 'list', views: new Set(list.filter((w) => VIEW_TYPES.includes(w))) };
+  return { kind: 't', views: new Set() };
+}
+
+/** org-agenda-use-tag-inheritance: t, nil or a list of view types; the default is all three.
+ * @param {string | boolean | null | undefined} raw
+ * @returns {{ all: boolean, views: Set<string> }} */
+export function parseAgendaUseTagInheritance(raw) {
+  const every = { all: false, views: new Set(VIEW_TYPES) };
+  if (raw === undefined || raw === null) return every;
+  if (raw === true) return { all: true, views: new Set() };
+  if (raw === false) return { all: false, views: new Set() };
+  const text = String(raw).trim().replace(/^'/, '').toLowerCase();
+  if (text === '') return every;
+  if (text === 't') return { all: true, views: new Set() };
+  if (text === 'nil' || text === '()') return { all: false, views: new Set() };
+  const list = parseLispTagList(text);
+  if (list && !text.includes('.')) return { all: false, views: new Set(list.filter((w) => VIEW_TYPES.includes(w))) };
+  return every;
+}
+
+/** Whether an agenda line of this view type shows the tags it inherits (org-agenda.el's test at each row builder).
+ * @param {AgendaViewType} view
+ * @param {ShowInheritedTags} show
+ * @param {{ all: boolean, views: Set<string> }} use */
+export function showsInheritedTags(view, show, use) {
+  if (show.kind === 'always') return true;
+  if (show.kind === 'list') return show.views.has(view);
+  if (show.kind === 't') return use.all || use.views.has(view);
+  return false;
+}
+
+/** Whether the view's tag filter sees inherited tags: always, or when org-agenda-use-tag-inheritance covers the view.
+ * @param {AgendaViewType} view
+ * @param {ShowInheritedTags} show
+ * @param {{ all: boolean, views: Set<string> }} use */
+export function knowsInheritedTags(view, show, use) {
+  if (show.kind === 'always') return true;
+  return use.all || use.views.has(view);
+}

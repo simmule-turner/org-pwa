@@ -1,0 +1,140 @@
+#+TITLE: Design: attachment copy and move, source block line numbers and references, inherited tags in the agenda
+#+STARTUP: overview
+
+Three roadmap items, designed before any code. Each section says what Org does (read from Emacs 29.3's own sources), what org-pwa does today, the change, the tests, and the questions that need an answer first. Nothing here is built.
+
+* 1. Attachments: copy and move
+** What Org does
+~org-attach-dispatch~ has one key per method, all calling ~org-attach-attach~ with a file path:
+| Key | Command | Method |
+|---+---+---|
+| ~a~ | ~org-attach-attach~ | ~org-attach-method~ (default ~cp~) |
+| ~c~ | ~org-attach-attach-cp~ | copy the file into the attachment directory |
+| ~m~ | ~org-attach-attach-mv~ | move (rename) it in |
+| ~l~ | ~org-attach-attach-ln~ | a hard link |
+| ~y~ | ~org-attach-attach-lns~ | a symbolic link |
+| ~u~ | ~org-attach-url~ | download a URL into the directory |
+The source is any path on the machine. After it, Org adds the ~ATTACH~ tag and may store a link.
+
+** What org-pwa does today
+~a~ takes a file from the device's chooser (or a photo, video or recording) and writes a copy into the heading's folder (~src-browser/attachments-flow.js~, ~uploadAttachmentToHeading~). The folder is reached through the attachments store: ~readBinary~, ~writeBinary~, ~delete~, ~exists~, ~list~. A device chooser hands over bytes, never a path, so there is no source to move or link.
+
+** What copy and move can mean here
+A file's source in org-pwa is a place in storage, not a machine path. So:
+- *~c~, copy from storage*: choose a file already in the document's storage (the GitHub repository, the WebDAV server, or the org-pwa folder on Android), and copy it into the heading's folder. The chooser is the one *File → Open* uses, so there is nothing new to learn.
+- *~m~, move from storage*: the same, and the original is deleted once the copy has been written. Write first, delete second, as Refile and Archive do, so a failure never loses the file.
+- *Between headings*: the Folder panel's selection gets *Copy to heading…* and *Move to heading…*, using Refile's heading picker. This is the most common reason to want ~c~ and ~m~ and it needs no storage chooser.
+- *~l~ and ~y~ have no meaning.* GitHub and WebDAV hold files, not links, and a browser has no hard links. They stay out; the dispatcher will not list them. (Org's own docstrings say they are not supported on all systems.)
+- *~u~* would need to fetch a URL from the browser, which CORS blocks for most sites. It stays a separate decision.
+
+** Behavior
+1. ~c~ or ~m~ in the Attach grid opens the storage chooser, filtered to files (folders are navigated, not chosen). The chooser starts in the heading's own attachment folder's parent.
+2. The file is read from its storage, written to the heading's folder under the usual name rules (unsafe characters become ~_~; a duplicate gets ~-1~, ~-2~), and, for a move, deleted from the source.
+3. The heading gets its ~ID~ and ~ATTACH~ tag as for any attach, and the link setting (Settings → Attachments) decides whether a link is added.
+4. Move out of another heading's folder runs *Sync* on that heading, so its ~ATTACH~ tag disappears when the folder is empty.
+5. Over 25MB asks first, as today.
+6. ~org-attach-method~ (~cp~ or ~mv~) is read as the method for ~a~ when the file comes from storage. It is ignored for device files, which can only be copied. ~ln~ and ~lns~ read as ~cp~.
+
+** Where it goes in the code
+- ~src/attach.js~: a pure ~planAttach(source, targetFolder, existingNames)~ giving the final name and the steps (read, write, delete), so naming and ordering are testable without storage.
+- ~src-browser/attachments-flow.js~: ~attachFromStorage(heading, method)~ and ~transferAttachments(fromHeading, files, toHeading, method)~; the dispatcher and grid gain ~c~ and ~m~ beside ~a~.
+- The storage chooser from the Open screen is reused; it must be able to return a path without opening the file.
+- ~src-browser/attach-folder-panel.js~: the two new actions on the selection.
+
+** Edge cases
+- Source and target are the same folder: refuse with a message.
+- Source is the file just chosen as ~DIR~: same.
+- A move whose delete fails after a good write: report that the copy exists and the original remains; do not retry.
+- Source on GitHub, document on WebDAV: works (bytes pass through memory), subject to the size prompt.
+- Move needs delete permission: on a file opened with the browser's picker there is no storage chooser path, so it is not offered.
+
+** Tests
+Unit: ~planAttach~ (names, duplicates, order). Smoke: copy and move through a fake storage, the ~ATTACH~ tag after moving the last file, the failed-delete message. No Emacs comparison; Org's behavior here is file system calls.
+
+** Questions
+1. Between-heading copy and move first, storage chooser second? (They share ~planAttach~, so either order costs the same.)
+2. Is ~u~ (URL) wanted at all?
+
+* 2. Source block line numbers and references
+** What Org does
+Switches on the ~#+begin_src~ line, read by ~org-element~:
+| Switch | Meaning |
+|---+---|
+| ~-n [N]~ | number the lines, starting at N (default 1) |
+| ~+n [N]~ | continue from the last numbered block, N added to the start |
+| ~-r~ | remove the ~(ref:label)~ markers from the output and make references show line numbers |
+| ~-k~ | with ~-n~: keep the labels in the text, and references show labels |
+| ~-i~ | keep the block's indentation |
+| ~-l "fmt"~ | a label format of your own, such as ~"[ref:%s]"~ |
+Default label format is ~(ref:%s)~, written at the end of a line. ~[[(label)]]~ (and ~[[(label)][text with (label) in it]]~) links to that line. The shared formatting is ~org-export-format-code-default~: numbers right-aligned to the width of the largest, then two spaces; labels flush right, six spaces past the longest line.
+By backend:
+- *HTML*: ~<span class="linenr">%Ns: </span>~ before each line, N the width of the largest number; each labeled line is wrapped in ~<span id="coderef-LABEL" class="coderef-off">~; a reference link is ~<a href="#coderef-LABEL" class="coderef" onmouseover="CodeHighlightOn(this,'coderef-LABEL');" onmouseout="CodeHighlightOff(this,'coderef-LABEL');">~ around the number (or label).
+- *LaTeX*: ~listings~ gets ~numbers=left,firstnumber=N~ (and ~numbers=none~ otherwise); ~minted~ gets ~linenos,firstnumber=N~; the verbatim backend prints the numbered text. References become the number or label text.
+- *ASCII*: the numbered text from ~org-export-format-code-default~; a reference is the number or the label.
+
+** What org-pwa does today
+- HTML (~srcBlockHtml~ in ~src/export-html.js~) numbers lines for ~-n~ and ~+n~ with the start number, but writes the number unpadded (~7: ~) where Org pads to the largest number's width; ~+n~ restarts at 1 instead of continuing; ~(ref:label)~ text stays in the code; ~[[(label)]]~ is not resolved.
+- LaTeX (~src/export-latex.js~, the source block code near line 480) and ASCII (~src/export-ascii.js~) ignore the switches. ASCII drops a ~coderef~ link entirely.
+- The README says line numbers and references are missing from export; HTML already has part of them, so that sentence is also wrong today and is corrected as part of this work.
+
+** Change
+One shared module, ~src/code-lines.js~, mirrors ~org-export-unravel-code~, ~org-export-get-loc~, ~org-export-resolve-coderef~ and ~org-export-format-code~:
+1. ~parseSrcSwitches(params)~ gives ~{ numberLines: null | {mode:'new'|'continued', start}, retainLabels, useLabels, labelFormat, preserveIndent }~ by Org's regexps above.
+2. ~unravelCode(lines, labelFormat)~ removes the labels and returns ~{ code, refs: Map<lineNo,label> }~.
+3. ~lineOffsets(blocks)~ walks the document's source and example blocks in order and gives each ~+n~ block its running offset, as ~org-export-get-loc~ does (counting only blocks that have a number switch).
+4. ~resolveCodeRef(label, blocks)~ gives the line number (or the label when the block uses labels), or fails as Org does ("Unable to resolve code reference").
+5. Each backend renders from these: HTML (padded ~linenr~, ~coderef~ spans and links; the two highlight functions are added with a small script, as Org does), LaTeX (the options above, and the verbatim fallback), ASCII (the padded text and reference text), Markdown and ODT (the numbered text).
+6. ~+n~ continuation and references need the whole document's blocks, so the exporters get a pre-pass that builds the block list once.
+
+** Edge cases
+- ~-n~ on an ~example~ block as well as ~src~ (Org numbers both).
+- A reference to a label in a block that is not exported (inside a comment): fail with Org's message rather than output nothing.
+- Labels inside a table cell or a fixed-width line are not code references.
+- The label must end the line; a ~(ref:x)~ in the middle is plain text.
+- ~-r~ without ~-n~: label removed, references show the line number only if the block is numbered, else the label (Org's ~use-labels~ rule).
+
+** Tests
+Unit tests for each function, and for each backend a table of block+switches → expected output. The expected outputs come from Emacs 29.3 batch export of the same inputs (the same oracle method as ~tools/gen-latex-oracle.mjs~): a new ~tools/gen-coderef-oracle.mjs~ exports a fixed set of documents to HTML, LaTeX (each source backend) and ASCII and stores the answers under ~test/fixtures/~.
+
+** Questions
+1. ~CodeHighlightOn~ and ~CodeHighlightOff~ add a small script to every HTML page that has references. Include it (matches Org), or give plain anchors without the hover highlight?
+2. In-app display: the outline view could also show line numbers for ~-n~ blocks. Not part of this item unless wanted.
+
+* 3. =org-agenda-show-inherited-tags= and =org-agenda-use-tag-inheritance=
+** What Org does
+Two variables decide whether an agenda line shows inherited tags (org-agenda.el, the code at the three row builders):
+- ~org-agenda-show-inherited-tags~: ~t~ (default), ~nil~, ~always~, or a list of view types from ~todo~, ~agenda~ and ~search~.
+- ~org-agenda-use-tag-inheritance~: ~t~, ~nil~, or a list of the same types; default ~(todo search agenda)~.
+For a view of type V the lines show inherited tags when:
+- show is ~always~; or
+- show is a list that contains V; or
+- show is ~t~ and (use is ~t~, or use is a list that contains V).
+Show ~nil~: never. ~always~ also makes the view aware of the inherited tags for filtering; otherwise the filters see them only when ~org-agenda-use-tag-inheritance~ covers V. Matching tag views (tags, tags-todo) use ~org-use-tag-inheritance~ instead.
+
+** What org-pwa does today
+~getShowInheritedTagsAgenda~ (~src/local-variables.js~) reads a boolean. ~appendTagChips~ and ~addFilterTags~ (~src-browser/tag-display.js~) apply it to every agenda row and every filter regardless of view. ~org-agenda-use-tag-inheritance~ is not read. The settings page has a checkbox.
+
+** Change
+1. ~src/local-variables.js~: ~getShowInheritedTagsAgenda~ returns ~{ kind: 'nil' | 't' | 'always' | 'list', views: Set }~, accepting ~t~, ~nil~, ~always~, ~'always~, ~(todo agenda)~ and ~'(todo agenda)~; a new ~getAgendaUseTagInheritance~ returns ~{ all: boolean, views: Set }~, default all three views.
+2. A pure function in ~src/tag-inheritance.js~, ~showsInheritedTags(view, show, use)~ and ~knowsInheritedTags(view, show, use)~, the two rules above, with ~view~ one of ~'agenda'~, ~'todo'~, ~'search'~.
+3. ~tag-display.js~: ~appendTagChips~ and ~addFilterTags~ take the view. The Agenda (Day, Week and Month) is ~agenda~, the TODO view is ~todo~, the Search panel's results are ~search~. The outline keeps its own ~org-xx-show-inherited-tags~.
+4. Settings: the checkbox becomes a choice: *When the view uses inheritance* (~t~), *Always*, *Never*, *Only in selected views* (three ticks). ~org-agenda-use-tag-inheritance~ gets three ticks, *Agenda*, *TODO* and *Search*, in the same card. Both write Org's own value syntax.
+5. Default behavior does not change: ~t~ with all three views in the use list shows inherited tags everywhere, as today. README: the variables table gets the new variable and fuller values; the Differences line goes away.
+
+** Edge cases
+- A value Org would not understand (~maybe~) reads as the default ~t~.
+- Mixed forms like ~(todo . agenda)~ read as the default.
+- A list that contains an unknown view type ignores it.
+- Filter chips: when inherited tags are not known for a view, the tag filter offers and matches own tags only; a filter set earlier that no longer matches simply shows fewer rows.
+
+** Tests
+A table-driven unit test of ~showsInheritedTags~ for every combination of show (~t~, ~nil~, ~always~, ~(todo)~, ~(agenda search)~) and use (~t~, ~nil~, ~(todo)~, ~(agenda)~, default) across the three views, checked against Emacs 29.3 by exporting an agenda to text for each combination (as ~tools/gen-agenda-oracle.mjs~ does for dates) and seeing which lines carry the inherited tag. A smoke check of the settings card.
+
+** Questions
+1. Is the Search panel the right match for Org's ~search~ type, or should it count only the agenda-wide text search?
+2. Does the app have a tag-matching view that should follow ~org-use-tag-inheritance~ instead? If so it is a fourth view type here.
+
+* Suggested order
+1. Inherited tags: smallest, mostly logic, Emacs-checked, no UI risk.
+2. Source block lines and references: contained in the exporters, with the HTML padding fix up front.
+3. Attachments: copy and move between headings first, then from storage.

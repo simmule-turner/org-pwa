@@ -751,6 +751,19 @@ check('agenda: org-agenda-prefix-format builds the row prefix, and diary-anniver
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
+check('TODO view: org-agenda-sorting-strategy priority-down orders the list, over a priority range of A to E', async () => {
+  const { context, page, errors } = await freshPage();
+  const body = ['#+TODO: TODO | DONE', '* TODO [#E] Lowest chore', '* TODO [#A] Highest chore', '* TODO Middle chore (no cookie, so the default B)'];
+  await newDocument(page, [...body, '', '# Local Variables:', '# org-priority-lowest: E', '# org-agenda-sorting-strategy: ((todo priority-down))', '# End:', ''].join('\n'));
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  const t = await page.locator('#outline').innerText();
+  const at = ['Highest chore', 'Middle chore', 'Lowest chore'].map((w) => t.indexOf(w));
+  expect(at[0] > 0 && at[0] < at[1] && at[1] < at[2], `priority-down lists A, then the default B, then E: ${at}`);
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
 check('TODO view: Emacs variables set the starting sort and chips; none-of, Search, Top heading and Effort filters work', async () => {
   const { context, page, errors } = await freshPage();
   const body = ['#+TODO: TODO | DONE', '* Work', '** TODO Write report :urgent:', ':PROPERTIES:', ':EFFORT: 2:00', ':END:', '** TODO Call dentist', ':PROPERTIES:', ':EFFORT: 0:30', ':END:', '* Home', '** TODO Pay rent :urgent:', ':PROPERTIES:', ':EFFORT: 1:00', ':END:', ''];

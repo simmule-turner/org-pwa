@@ -5,7 +5,8 @@
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { getAllowedEffortValues } from '../src/effort-values.js';
 import { setPriority } from '../src/heading-edit.js';
-import { getGlobalProperties } from '../src/local-variables.js';
+import { nextPriority } from '../src/priorities.js';
+import { getPriorityRange, getGlobalProperties } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { S } from './app-state.js';
 import { openTextFieldPopup } from './dialogs.js';
@@ -19,9 +20,7 @@ import { render } from './render.js';
  *  general-editor priority row, which only offers A/B/C/None too). */
 export function cyclePriorityFor(heading) {
   if (!heading) return;
-  const order = [null, 'A', 'B', 'C'];
-  const currentIndex = order.indexOf(heading.priority);
-  const next = order[(Math.max(currentIndex, 0) + 1) % order.length];
+  const next = nextPriority(heading.priority, getPriorityRange(S.state.localVariables));
   setPriority(heading, next);
   commitAndRender(next ? `Priority set to ${next}` : 'Priority cleared');
 }

@@ -419,10 +419,13 @@ test('setPriority rejects more than one character, leaving the heading unchanged
   assert.equal(h.priority, 'B');
 });
 
-test('setPriority rejects a non-letter character', () => {
+test('setPriority accepts a letter or a number, and rejects anything else', () => {
   const h = createHeading({ level: 1, title: 'A' });
-  assert.equal(setPriority(h, '1'), false);
+  assert.equal(setPriority(h, '#'), false);
+  assert.equal(setPriority(h, 'AB'), false);
   assert.equal(h.priority, null);
+  assert.equal(setPriority(h, '1'), true);
+  assert.equal(h.priority, '1');
 });
 
 test('setPriority round-trips correctly through serialization', () => {

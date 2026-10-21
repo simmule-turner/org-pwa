@@ -6,6 +6,8 @@
 // seconds. These change only a heading in the open file, as Refile does: a row from another agenda file offers Open heading alone.
 // They go through the same code as the outline's own buttons, so logging, CLOSED stamps and repeaters behave the same.
 import { setPriority } from '../src/heading-edit.js';
+import { priorityCookies } from '../src/priorities.js';
+import { getPriorityRange } from '../src/local-variables.js';
 import { parseOrgTimestamp } from '../src/org-timestamp.js';
 import { hasRepeater, rescheduleTimestamp } from '../src/reschedule.js';
 import { findSequenceForHeading, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
@@ -145,7 +147,7 @@ function choosePriority(/** @type {any} */ item) {
     title: 'Priority',
     subtitle: plainTitle(heading),
     actions: [
-      ...['A', 'B', 'C'].map((p) => ({
+      ...priorityCookies(getPriorityRange(S.state.localVariables)).map((p) => ({
         label: `[#${p}]` + (heading.priority === p ? '  (now)' : ''),
         onClick: () => {
           setPriority(heading, p);

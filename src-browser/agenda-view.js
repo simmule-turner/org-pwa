@@ -13,6 +13,7 @@ import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, re
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
 import { agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
+import { parseSortingStrategy, sortAgendaItems } from '../src/agenda-sort.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -28,7 +29,7 @@ import { diaryStatus } from './diary-file-load.js';
 import { openFormSheet } from './bottom-sheet.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
-import { appendTagChips } from './tag-display.js';
+import { ancestorTitles, appendTagChips } from './tag-display.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
 import { platform } from './platform.js';
 import { openHabitHistory } from './habit-history.js';
@@ -53,6 +54,21 @@ export function agendaRangeFor(viewType, anchorDate) {
   const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
   const end = endOfDay(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0));
   return { start, end };
+}
+
+/** The rows in the order of org-agenda-sorting-strategy for this view; as they are when the variable is unset or has no entry for it.
+ * @param {import('../src/agenda.js').AgendaItem[]} items
+ * @param {'agenda' | 'todo'} view */
+function applySortingStrategy(items, view) {
+  const keys = parseSortingStrategy(S.state.localVariables['org-agenda-sorting-strategy'], view);
+  if (!keys || !keys.length) return items;
+  const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
+  return sortAgendaItems(items, keys, {
+    localVariables: S.state.localVariables,
+    todoKeywords: [...sequence.todoKeywords, ...sequence.doneKeywords],
+    doneKeywords: sequence.doneKeywords,
+    documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
+  });
 }
 
 /** The Agenda's effort view, or null when nothing is set. */
@@ -234,8 +250,11 @@ function rowPrefix(item, view) {
   const time = item.hasTime ? (item.endDate ? clock(item.date) + '-' + clock(item.endDate) : clock(item.date) + '......') : '';
   const scheduling = item.kind === 'scheduled' ? 'Scheduled:' : item.kind === 'deadline' ? 'Deadline:' : '';
   const effort = item.heading ? itemEffortText(item) || '' : '';
+  const parents = item.heading ? ancestorTitles(item.heading) : [];
+  const level = item.heading ? ' '.repeat(parents.length + 1) : '';
+  const breadcrumbs = parents.length ? parents.join('->') + '->' : '';
   const uses = (/** @type {string} */ letter) => new RegExp('%\\??[-+]?\\d*(\\.\\d+)?[ .;,:!?=|/<>]?' + letter).test(format);
-  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort }), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
+  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
 }
 
 export function renderAgendaView() {
@@ -475,8 +494,8 @@ export function renderAgendaView() {
   });
   items.push(...extensionAgendaItems(start, end));
   items.sort((a, b) => a.date - b.date);
-  filterSlot.appendChild(buildViewFilterRow(items, render));
-  const shownItems = filterItemsForView(items);
+  filterSlot.appendChild(buildViewFilterRow(items, render, [], 'agenda'));
+  const shownItems = filterItemsForView(items, 'agenda');
 
   const groupedByDay =
     S.agendaViewType === 'day'
@@ -487,7 +506,8 @@ export function renderAgendaView() {
   // The effort view is applied here, once, so the rows, the empty-day
   // hiding below and each day's total all describe the same items.
   const effortView = currentAgendaEffortView();
-  const grouped = effortView ? groupedByDay.map((day) => ({ ...day, items: applyAgendaEffortView(day.items, effortView) })) : groupedByDay;
+  const ordered = groupedByDay.map((day) => ({ ...day, items: applySortingStrategy(day.items, 'agenda') }));
+  const grouped = effortView ? ordered.map((day) => ({ ...day, items: applyAgendaEffortView(day.items, effortView) })) : ordered;
   const visibleDays = effectiveShowAllDates ? grouped : grouped.filter((day) => day.items.length > 0);
 
   if (visibleDays.length === 0) {
@@ -1023,11 +1043,11 @@ export function renderTaskListView() {
     render();
   };
   const effortChip = buildTodoEffortChip();
-  container.appendChild(buildViewFilterRow(items, render, [sortChip, effortChip]));
+  container.appendChild(buildViewFilterRow(items, render, [sortChip, effortChip], 'todo'));
 
   const today = new Date();
-  const shownTasks = filterItemsForView(items);
-  const effortShown = S.agendaEffortFilter ? applyAgendaEffortView(shownTasks, { filter: S.agendaEffortFilter }) : shownTasks;
+  const shownTasks = filterItemsForView(items, 'todo');
+  const effortShown = applySortingStrategy(S.agendaEffortFilter ? applyAgendaEffortView(shownTasks, { filter: S.agendaEffortFilter }) : shownTasks, 'todo');
   const orderedTasks =
     sortNow === 'date' ? sortTasksByDate(effortShown, today) : sortNow === 'effort-up' || sortNow === 'effort-down' ? applyAgendaEffortView(effortShown, { sort: sortNow === 'effort-up' ? 'up' : 'down' }) : effortShown;
   if (orderedTasks.length === 0) {
@@ -1059,7 +1079,7 @@ export function renderTaskListView() {
     text.style.minWidth = '0';
     text.style.overflowWrap = 'anywhere';
     text.appendChild(document.createTextNode(item.title));
-    if (item.heading) appendTagChips(text, item.heading, 'agenda');
+    if (item.heading) appendTagChips(text, item.heading, 'todo');
     const taskEffort = itemEffortText(item);
     if (taskEffort) {
       const effortBadge = document.createElement('span');

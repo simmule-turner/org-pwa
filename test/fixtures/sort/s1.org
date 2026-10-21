@@ -1,0 +1,17 @@
+#+CATEGORY: work
+#+TODO: TODO NEXT | DONE
+* TODO [#A] Alpha deploy :x:
+SCHEDULED: <2027-03-15 Mon 10:00>
+:PROPERTIES:
+:Effort: 2:00
+:END:
+* TODO Bravo plain
+SCHEDULED: <2027-03-15 Mon>
+* NEXT [#C] Charlie low :a:
+DEADLINE: <2027-03-15 Mon>
+* TODO [#B] Delta timed <2027-03-15 Mon 09:00>
+* NEXT [#A] Echo short :m:
+SCHEDULED: <2027-03-15 Mon>
+:PROPERTIES:
+:Effort: 0:30
+:END:

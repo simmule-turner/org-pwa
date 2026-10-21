@@ -36,13 +36,14 @@ const MODE_LABELS = /** @type {Record<string, string>} */ ({
  * @param {any[]} items  every item of the view, before filtering, so the choices cover all of them
  * @param {() => void} onChange
  * @param {HTMLElement[]} [extraChips]  more chips for the end of the row
+ * @param {import('../src/tag-inheritance.js').AgendaViewType} [view]
  * @returns {HTMLElement}
  */
-export function buildViewFilterRow(items, onChange, extraChips = []) {
+export function buildViewFilterRow(items, onChange, extraChips = [], view = 'agenda') {
   const row = document.createElement('div');
   row.setAttribute('data-view-filter', '');
   row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;';
-  addFilterTags(items);
+  addFilterTags(items, view);
   const choices = viewFilterChoices(items);
   const filter = S.viewFilter || (S.viewFilter = emptyViewFilter());
 
@@ -203,8 +204,8 @@ export function buildViewFilterRow(items, onChange, extraChips = []) {
 }
 
 /** The items that pass the chosen filter. */
-export function filterItemsForView(/** @type {any[]} */ items) {
-  addFilterTags(items);
+export function filterItemsForView(/** @type {any[]} */ items, /** @type {import('../src/tag-inheritance.js').AgendaViewType} */ view = 'agenda') {
+  addFilterTags(items, view);
   return applyViewFilter(items, S.viewFilter);
 }
 

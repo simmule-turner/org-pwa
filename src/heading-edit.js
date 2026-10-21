@@ -101,7 +101,7 @@ export function setPriority(heading, priority) {
     return true;
   }
   const normalized = String(priority).trim().toUpperCase();
-  if (!/^[A-Z]$/.test(normalized)) return false;
+  if (!/^([A-Z]|\d{1,2})$/.test(normalized)) return false;
   heading.priority = normalized;
   return true;
 }

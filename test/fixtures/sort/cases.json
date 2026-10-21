@@ -1,0 +1,18 @@
+[
+  ["priority-down", "category-keep", "alpha-up"],
+  ["time-up", "alpha-up"],
+  ["time-down", "alpha-up"],
+  ["priority-up", "alpha-up"],
+  ["category-down", "priority-down", "alpha-up"],
+  ["alpha-up"],
+  ["alpha-down"],
+  ["effort-down", "alpha-up"],
+  ["effort-up", "alpha-up"],
+  ["todo-state-up", "alpha-up"],
+  ["todo-state-down", "alpha-up"],
+  ["tag-up", "alpha-down"],
+  ["deadline-up", "priority-down", "alpha-up"],
+  ["scheduled-down", "alpha-up"],
+  ["category-up", "time-down", "alpha-up"],
+  ["time-up", "priority-down", "category-keep", "alpha-up"]
+]

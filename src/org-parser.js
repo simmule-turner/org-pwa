@@ -61,7 +61,7 @@ const LOGBOOK_DRAWER_END_RE = /^\s*:END:\s*$/i;
 // colons or plus signs it contains -- :ID:, :header-args+:, :header-args:emacs-lisp:, :Effort_ALL:.
 const PROPERTY_LINE_RE = /^\s*:(\S+):[ \t]*(.*?)[ \t]*$/;
 const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
-const PRIORITY_RE = /^\[#([A-Za-z0-9])\]\s*/;
+const PRIORITY_RE = /^\[#([A-Za-z]|\d{1,2})\]\s*/;
 
 const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g;
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;

@@ -106,7 +106,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, wh
 - *The general editor* (📋 *Edit details*) is a popup with five tabs, so nothing is a long scroll: *Dates*, *Tags*, *Props*, *Files* and *More* (priority and tables). A tab you have edited shows a dot, and a note beside the buttons names them ("Changed: Dates, Tags"). Each tab shows how many items it holds.
   - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers, a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
   - *Tags*: removable chips (tap to remove) and an input with an *Add* button (Enter also adds). Suggestions appear as you type: every tag used in the open document or a loaded agenda file (most used first) plus tags declared on a ~#+TAGS:~ line, narrowed to what you typed and excluding tags the heading already has. One tap adds one.
-  - *Priority*: buttons A, B, C and None. Priorities outside A to C aren't reachable here.
+  - *Priority*: a button for each priority of the range (A, B, C unless ~org-priority-highest~ and ~org-priority-lowest~ say otherwise) and None.
   - *Properties*: an editable key/value row for each, with a remove button and an *Add property* row. The Key field completes from every key used in the open document or a loaded agenda file (most used first) plus ones the app reads or writes (~CUSTOM_ID~, ~EFFORT~, ~Effort_ALL~, ~ID~, the ~ARCHIVE_*~ set); other keys still work. A row with a blank key is dropped on commit. This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style links (see [[#links-and-images][Links and images]]).
 
   Three buttons govern every tab: *Cancel* discards everything and closes, *Reset* restores every field to how it was when the editor opened, and *OK* commits every tab and closes. Nothing is written until *OK*. Above them are three immediate actions. *Add table* inserts a table into the body and closes the editor. *Delete table* removes the heading's most recently added table after a confirmation, and is disabled when there is none. *Attach* closes the editor and opens the attachment picker (see [[#attachments][Attachments]]). If any field has changed, these three first ask *Commit and continue*, *Discard and continue* or *Keep editing*; with no changes they act at once.
@@ -137,6 +137,8 @@ Org has no separate description field: everything after a heading, up to the nex
 :END:
 
 Every edit can be undone and redone: text, TODO state, priority, tags, properties, moving, archiving, capturing, all of it. The command palette's *Undo history* opens a panel with *‹ Undo* and *Redo ›* buttons, a list of every step since the file was opened (current position marked) and a *diff* toggle on each entry showing what it changed.
+
+Undo and redo keep the folds you see: a heading stays open or closed as it was, matched by its title and its parents' titles; a heading the text change renamed or added opens as the file's ~#+STARTUP~ says.
 
 Tap any entry to jump there. Entries past your position are dimmer. A new edit from an undone point discards what was ahead of it; browsing the list discards nothing.
 
@@ -616,17 +618,18 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
 | ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
-| ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
+| ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
 | ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
 | ~org-agenda-show-all-dates~ | ~t~ | Whether days with nothing on them show in the Agenda; the *g* button toggles it for the session (see [[#agenda][Agenda]]); also Settings → Quick Settings → *Agenda* |
-| ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title |
+| ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
-| ~org-agenda-sorting-strategy~ | unset | Only ~effort-up~ and ~effort-down~ are read, from the ~agenda~ and ~todo~ entries: ~((agenda effort-up) (todo effort-down))~ starts the list sorted by effort |
+| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list. Unset keeps the order the app uses |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
+| ~org-agenda-use-tag-inheritance~ | ~(todo search agenda)~ | The views that use tag inheritance: ~t~, ~nil~, or a list of ~agenda~, ~todo~ and ~search~ |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
@@ -653,6 +656,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
+| ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
+| ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
+| ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
 | ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
@@ -2162,9 +2168,9 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Folding* (see [[#editing-your-outline][Editing your outline]]): three flags per heading carry the visibility state. ~overview~, ~content~, ~showall~, ~showeverything~ and ~show2levels~ to ~show5levels~ are built on them.
 
-*Priority, tags, properties*: priority is an A/B/C/None row. ~CUSTOM_ID~ and the ~ARCHIVE_*~ set are the properties with special meaning.
+*Priority, tags, properties*: ~CUSTOM_ID~ and the ~ARCHIVE_*~ set are the properties with special meaning.
 
-*Inheritance* (see [[#local-variables][Local Variables]]): property inheritance is a boolean. ~org-agenda-show-inherited-tags~ reads ~t~ or ~nil~.
+*Inheritance* (see [[#local-variables][Local Variables]]): property inheritance is a boolean.
 
 *Tables* (see [[#table-formulas][Table formulas]]): ~#+TBLFM:~ covers arithmetic, conditionals, named constants, scalar and aggregate functions, date and time arithmetic and formatting, unit conversion, complex numbers, and basic vectors and matrices. Formulas recalculate on command, not on every keystroke.
 
@@ -2172,7 +2178,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Clocking* (see [[#clocking][Clocking]]): durations use org's default ~org-duration-units~; the modeline marks a clock that has passed its estimate.
 
-*Agenda* (see [[#agenda][Agenda]]): ~org-agenda-sorting-strategy~ reads the effort keys. ~org-agenda-prefix-format~ knows ~%c~, ~%t~, ~%s~ and ~%e~. The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips US and Christian holidays. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open. The diary shows its Gregorian entries.
+*Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips US and Christian holidays. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open. The diary shows its Gregorian entries.
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
 

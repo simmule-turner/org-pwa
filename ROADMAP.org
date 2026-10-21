@@ -4,41 +4,69 @@
 Where org-pwa still differs from Emacs org-mode, with a suggested priority. A is next, B follows, C waits for demand. Priorities rank how often the gap meets everyday use (agenda, diary, sync, capture), not effort. This is a plan, not a promise.
 
 * Agenda and diary
-** [#B] Refile and Replace into =local:= files from the web, and from GitHub or WebDAV documents
+** [#C] Refile and Replace into =local:= files from the web, and from GitHub or WebDAV documents
 The Android app writes into =local:= agenda files while a local file is open. In a browser, and from a document on another backend, those files stay read-only: the browser asks for permission per file, and the other adapter doesn't know them. The diary file is read for the agenda in the same way; its rows are changed by opening it.
-** [#B] More of =org-agenda-sorting-strategy= and =org-agenda-prefix-format=
-Only the effort keys are sorted, and four prefix specs are known. The other keys (priority, time, category) and specs are what Emacs users carry in their configuration.
-** [#B] =org-agenda-show-inherited-tags= values =always= and a list
-Today it reads =t= or =nil=.
+*** Design
+- Org: nothing to match; refile writes to any file Emacs can reach. The gap is only that our target adapter is the open document's.
+- Today: =writeToOtherFile= (buffers.js) writes through =activeDiskAdapter()=, the open document's backend, and opens the target as an unsaved tab buffer. =local:= entries are =readOnly= unless =localAgendaFilesWritable()= (Android folder and an open =filesystem= document).
+- Change: (1) route a write by the target's scheme, not the open document's: =local:= goes to a local-file adapter, =github:= and =webdav:= to theirs. (2) Key each open session by (kind, fileId), so two files of the same name on different backends cannot meet. (3) In a browser, the first Refile or Replace into a =local:= file calls =requestPermission({mode:'readwrite'})= inside the tap, and remembers the handle. (4) Keep the transaction order: write the target first, remove the source only after it succeeded; on a failed write leave the source untouched and say which file refused.
+- Edge cases: permission denied or revoked (keep read-only, show why); iOS and Firefox have no File System Access, so the entry stays read-only there and the panel says so; the target changed on disk since it was read (compare modified time, offer reload); the same file open in another tab.
+- Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
+- Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
+- Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
+** [#C] The rest of =org-agenda-sorting-strategy= and the prefix
+Not read yet: the =stats= and =user-defined= keys, the =tags= and =search= entries (the app has no view of those types), =%(function)= forms in =org-agenda-prefix-format=, and a Settings editor for the key list. When the variable is unset the rows keep the app's own order; Emacs's default (=habit-down time-up priority-down category-keep= for the Agenda, =priority-down category-keep= for TODO) would put priority first within a day.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
 ** [#C] Holidays for =org-class= beyond US and Christian
 ** [#C] Hebrew, Islamic and other non-Gregorian diary entries
 
 * Editing and structure
-** [#B] Priorities beyond A/B/C
-=org-priority-highest=, =org-priority-lowest= and the default.
-** [#B] Fold state kept across undo and redo
+** [#C] The rest of the priority variables
+=#+PRIORITIES: A E C= in a file, =org-priority-start-cycle-with-default=, =org-priority-get-priority-function= and =org-priority-faces=. The cycle goes none, highest to lowest, none; Emacs's first step lands on the default.
 ** [#C] An undo tree
 ** [#C] Structure-aware merge
 A subtree moved on one side and edited on the other is an ordinary clash today.
 
 * Tables and clocking
-** [#B] Clock-in reminder, =org-duration-units= and =Effort_ALL+=
+** [#B] =org-duration-units= and =Effort_ALL+=, and the [#C] clock-in reminder
+*** Design
+- Org: (1) =org-clock-notify-once-if-expired= notifies once when the clocked time reaches the effort: "Task `%s' should be finished by now. (%s)", sound via =org-clock-sound= (nil, t or a file). =org-clock-idle-time= asks what to do with an open clock after N idle minutes. (2) =org-duration-units= is an alist of unit names and minutes (default min 1, h 60, d 1440, w 10080, m 43200, y 525960); people set 8-hour days. (3) =Effort_ALL+= appends to the values of =Effort_ALL= from a lower level.
+- Today: the modeline shows "HH:MM / effort !" when over the estimate (chrome.js); =org-duration.js= has fixed =UNIT_MINUTES= and a fixed unit regex; =effort-values.js= reads =Effort_ALL= only (heading or ancestor, =#+PROPERTY:=, =org-global-properties=).
+- Change, three independent parts. (a) Units: parse =org-duration-units= into the table; build the regex from its names, and make =parseOrgDuration= and the formatter use it; all callers (clock, effort filter, clocktable) already go through org-duration.js. (b) =Effort_ALL+=: in =effort-values.js= concatenate the ancestors' values (outer first) with the +-property's values; add it to the property drawer completion. (c) Reminder: a timer armed on clock-in with the effort in minutes; at expiry post a Notification (service worker on Android and installed PWA, in-page toast otherwise), once per clock. Idle time: a setting, and on return ask Keep / Subtract idle / Subtract and clock out, using the visibility change event.
+- Edge cases: effort 0 or missing (no reminder); the app closed (a scheduled notification is not available on iOS, so only an in-page reminder there); a clock edited by hand; a unit name that is a prefix of another (longest first); a day of 8 h changes how "1d" in existing Effort values reads, which is Emacs's behavior too.
+- Tests: Emacs oracle for =org-duration-to-minutes= and =org-duration-from-minutes= under a changed units alist; Effort_ALL+ over three levels; fake-timer test for the once-only reminder.
+- Questions: sound on or off by default? Is idle resolution wanted at all, or only the reminder?
+- Effort: M for (a) and (b), L for (c) with idle time. Impact: M for (a) and (b), L–M for (c).
 ** [#C] A field's name as a formula target, and the =%= default format parameter
 Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
 ** [#C] Symbolic algebra from Emacs Calc
 
 * Babel and attachments
 ** [#B] Attachments: copy, move and link (=c= =m= =l=)
+*** Design
+Full design in [[file:docs/attachments-source-lines-inherited-tags-design.org][docs/attachments-source-lines-inherited-tags-design.org]], section 1. Summary: keep the attachment store as the target; =c= copies from a picked file, =m= copies and then offers to delete the source where the platform allows, =l= stores a link entry only where the platform can keep a handle (Android folder). The =a= method and =org-attach-method= are read. Effort: M. Impact: M on Android, L elsewhere.
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
 * Export
 ** [#B] Source block line numbers and references (LaTeX, ASCII, HTML)
+*** Design
+Full design in [[file:docs/attachments-source-lines-inherited-tags-design.org][docs/attachments-source-lines-inherited-tags-design.org]], section 2. Summary: parse =-n=, =+n=, =-r=, =-k=, =-l= and =(ref:label)=; number lines as =org-export-format-code-default= does; HTML =linenr= spans and coderef links, LaTeX =firstnumber=, ASCII right-aligned numbers. Effort: M. Impact: L–M, only when exporting code.
 ** [#C] =#+ATTR_ASCII:= and inline tasks in ASCII export
 ** [#C] =#+HTML_DOCTYPE:=
 ** [#C] Beamer
+
+* Order for the next release
+Impact = how often the gap meets everyday use. Effort: S under a day, M a day or two, L several days. Ranked by impact against effort, best first. Designs are in each item.
+
+| # | Item | Impact | Effort | Why this place |
+|---+------+--------+--------+----------------|
+| 1 | =org-duration-units= and =Effort_ALL+= (parts a, b of the clock item) | M | M | Pure functions, oracle-testable; changes how existing efforts read for 8-hour-day users |
+| 2 | Attachments: copy, move, link | M (Android) | M | Useful, but needs the Android folder to matter |
+| 3 | Source block line numbers and references | L–M | M | Export only |
+
+The clock-in reminder and idle time, and Refile and Replace into =local:= files from the web and other backends, are [#C]: they wait for demand.
 
 * Appendix: a Lisp interpreter
 :PROPERTIES:
@@ -80,3 +108,15 @@ These need Emacs's own libraries and are not part of "small standalone programs"
 
 ** Shared definitions for the diary
 A section in Extensions for Lisp that runs once per session and defines functions that diary entries can call. This is what makes =defun= worth having in the diary.
+
+** Order of work
+1. The interpreter core (stage 1), as its own module, with tests against Emacs 29.3.
+2. Move the diary evaluator (=src/sexp-eval.js=) onto it. The diary layer keeps the =date= binding, the diary and calendar functions as native builtins, and a tolerant mode in which a failing entry shows nothing, as today. The Emacs-checked sexp tests and the existing suite must pass unchanged. This replaces the hard-coded list of line forms with one reader, and gives diary entries real errors, =defun=, =setq= and loops.
+3. The =calendar-*=, =holiday-fixed=, =holiday-float= and =holiday-easter-etc= functions as builtins, under Emacs's names.
+4. Holidays as an editable =calendar-holidays= list, which also covers =org-class= beyond US and Christian holidays.
+5. =emacs-lisp= source blocks in Babel (stage 2).
+6. Shared definitions for the diary.
+
+What stays in JavaScript: the calendar grid and its layout (UI, redrawn often), and the agenda's per-day effort total and =+N?= count (computed while drawing, with no Org equivalent). A hook the interpreter can call may be added to the latter later.
+
+Emacs's own =calendar.el=, =holidays.el= and =solar.el= are not run: they need macros, =cl-lib=, =defcustom=, =require= and buffer functions. The library is written for this interpreter, under Emacs's function names.

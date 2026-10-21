@@ -1,0 +1,11 @@
+#+CATEGORY: home
+#+TODO: TODO NEXT | DONE
+* TODO [#A] Foxtrot early :b:
+SCHEDULED: <2027-03-15 Mon 08:30>
+* TODO [#C] Golf chore
+DEADLINE: <2027-03-15 Mon>
+:PROPERTIES:
+:Effort: 1:00
+:END:
+* NEXT Hotel unprioritized
+SCHEDULED: <2027-03-15 Mon>
