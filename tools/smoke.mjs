@@ -7498,6 +7498,44 @@ check('clock reminder: a clock that has reached its effort says so once, in Orgâ
   await context.close();
 });
 
+check('org-clock-sound: a file name is played from the org-pwa folder where the platform has one (Android), and beeps where there is none or the file is missing', async () => {
+  const { context, page, errors } = await freshPage();
+  const result = await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const { playClockSound } = await import('/src-browser/clock-watch.js');
+    const played = [];
+    const beeps = [];
+    window.Audio = class { constructor(src) { this.src = src; } play() { played.push(this.src); return Promise.resolve(); } };
+    window.AudioContext = class { constructor() { beeps.push(1); } createOscillator() { return { frequency: {}, connect() {}, start() {}, stop() {} }; } get destination() { return {}; } get currentTime() { return 0; } close() {} };
+    const files = new Map([['ding.wav', 'UklGRg==']]);
+    const out = {};
+    // a browser has no folder: the file name beeps
+    await playClockSound('"~/sounds/ding.wav"');
+    out.browser = { played: played.length, beeps: beeps.length };
+    installPlatform({ attachments: { supported: () => true, folder: async () => ({ name: 'org-pwa' }), adapter: { readBinary: async (path) => (files.has(path) ? { base64: files.get(path) } : null) } } });
+    played.length = 0; beeps.length = 0;
+    await playClockSound('"~/sounds/ding.wav"');
+    out.android = { played: played.slice(), beeps: beeps.length };
+    played.length = 0; beeps.length = 0;
+    await playClockSound('"missing.wav"');
+    out.missing = { played: played.length, beeps: beeps.length };
+    played.length = 0; beeps.length = 0;
+    await playClockSound('t');
+    out.t = { played: played.length, beeps: beeps.length };
+    played.length = 0; beeps.length = 0;
+    await playClockSound('nil');
+    out.nil = { played: played.length, beeps: beeps.length };
+    return out;
+  });
+  expect(result.browser.played === 0 && result.browser.beeps === 1, `a browser beeps: ${JSON.stringify(result.browser)}`);
+  expect(result.android.played.length === 1 && result.android.played[0] === 'data:audio/wav;base64,UklGRg==' && result.android.beeps === 0, `the folder's file is played: ${JSON.stringify(result.android)}`);
+  expect(result.missing.played === 0 && result.missing.beeps === 1, `a missing file beeps: ${JSON.stringify(result.missing)}`);
+  expect(result.t.played === 0 && result.t.beeps === 1, `t beeps: ${JSON.stringify(result.t)}`);
+  expect(result.nil.played === 0 && result.nil.beeps === 0, `nil is silent: ${JSON.stringify(result.nil)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attachments between headings: selected files are copied or moved to another heading, the original goes only after the copy, a name clash gets -1, and the emptied heading loses its ATTACH tag', async () => {
   dav.reset({ 'notes.org': '* Source\n* Target\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -7539,17 +7577,21 @@ check('attachments between headings: selected files are copied or moved to anoth
   await context.close();
 });
 
-check('display-line-numbers-mode: the outline numbers its rows with file lines, a folded heading skips what is hidden', async () => {
-  dav.reset({ 'notes.org': '* A\nbody\n** B\n* C\n' });
+check('display-line-numbers-mode: every file line in a row is numbered, hidden lines are skipped, a folded heading skips its body, and a narrowed outline counts from 1 unless display-line-numbers-widen is t', async () => {
+  dav.reset({ 'notes.org': '* A\nbody\n#+begin_verse\nl1\nl2\n#+end_verse\n* C\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
-  const numbers = () => page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js'); await commitGlobalVariableChange('display-line-numbers-mode', 't'); render(); return [...document.querySelectorAll('#outline .ln-num')].map((e) => e.textContent).join(','); })()`);
-  const shown = await numbers();
-  expect(shown === '1,2,3,4', `file lines beside the rows: ${shown}`);
-  const folded = await page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); S.state.doc.children[0].collapsed = true; render(); return [...document.querySelectorAll('#outline .ln-num')].map((e) => e.textContent).join(','); })()`);
-  expect(folded === '1,4', `a folded heading skips its hidden lines: ${folded}`);
-  const off = await page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js'); await commitGlobalVariableChange('display-line-numbers-mode', 'nil'); render(); return document.querySelectorAll('#outline .ln-num').length; })()`);
-  expect(off === 0, `no numbers with the mode off: ${off}`);
+  const run = (code) => page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js'); ${code}; render(); return [...document.querySelectorAll('#outline .ln-mark')].map((e) => e.dataset.n).join(','); })()`);
+  const shown = await run(`await commitGlobalVariableChange('display-line-numbers-mode', 't')`);
+  expect(shown === '1,2,3,4,5,7', `a number per file line, the #+end line skipped: ${shown}`);
+  const folded = await run(`S.state.doc.children[0].collapsed = true`);
+  expect(folded === '1,7', `a folded heading skips its body: ${folded}`);
+  const narrowed = await run(`S.state.doc.children[0].collapsed = false; S.narrowedHeading = S.state.doc.children[1]`);
+  expect(narrowed === '1', `narrowed: counts from 1: ${narrowed}`);
+  const widened = await run(`await commitGlobalVariableChange('display-line-numbers-widen', 't')`);
+  expect(widened === '7', `widen t keeps the file's line: ${widened}`);
+  const off = await run(`S.narrowedHeading = null; await commitGlobalVariableChange('display-line-numbers-mode', 'nil')`);
+  expect(off === '', `no numbers with the mode off: ${off}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -2,8 +2,8 @@
 // Extracted from app.js: render.
 import { findContainer } from '../src/archive-model.js';
 import { findHeadingLineNumber, headingLineIndex, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
-import { displayedLineNumber } from '../src/line-numbers.js';
-import { getDisplayLineNumbersMode, getDisplayLineNumbersType } from '../src/local-variables.js';
+import { beginRowMarks, finalizeMarks, nextMark, startMarks } from './line-marks.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden } from '../src/local-variables.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
@@ -247,11 +247,13 @@ export function render() {
   // on-screen, already-laid-out element.
   const fragment = document.createDocumentFragment();
   const numbering = displayLineNumbering(finalVisibleRows);
-  finalVisibleRows.forEach((row, i) => {
+  for (const row of finalVisibleRows) {
+    if (numbering) numbering.before(row);
     const el = renderRow(row, todoSequence);
-    if (numbering) numbering(el, row, i);
+    if (numbering) numbering.after(el, row);
     fragment.appendChild(el);
-  });
+  }
+  if (numbering) numbering.finish();
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
@@ -316,9 +318,9 @@ export function render() {
 }
 
 /**
- * `display-line-numbers-mode` for the outline: a function that puts the file line number of a row beside it, or null when the mode is off.
+ * `display-line-numbers-mode` for the outline. Returns the hooks render() calls around the rows, or null when the mode is off:
+ * `before` tells the renderers which file line a row starts at, `after` makes room for the numbers, and `finish` writes them.
  * @param {import('../src/types.js').OutlineRow[]} rows  the rows being shown
- * @returns {((el: HTMLElement, row: import('../src/types.js').OutlineRow, index: number) => void) | null}
  */
 function displayLineNumbering(rows) {
   const vars = /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
@@ -335,19 +337,27 @@ function displayLineNumbering(rows) {
     const own = row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex;
     return at && own !== undefined ? at.bodyStart + own + 1 : 0;
   };
-  const currentShown = rows.findIndex((r) => rowMatchesKeyboardFocus(r));
-  const current = currentShown >= 0 ? lineOf(rows[currentShown]) : 0;
-  const width = `${String(index.total).length}ch`;
-  return (el, row, i) => {
-    el.style.position = 'relative';
-    el.style.paddingLeft = `calc(${el.style.paddingLeft || '8px'} + ${width} + 6px)`;
-    const line = lineOf(row);
-    const num = document.createElement('span');
-    num.className = 'ln-num';
-    num.setAttribute('aria-hidden', 'true');
-    num.style.width = width;
-    if (line > 0) num.textContent = String(displayedLineNumber(type, line, current, i, currentShown));
-    el.insertBefore(num, el.firstChild);
+  const focused = rows.find((r) => rowMatchesKeyboardFocus(r));
+  // a narrowed outline counts from 1 at the narrowed heading, unless display-line-numbers-widen is t
+  const narrowedAt = S.narrowedHeading ? index.lines.get(S.narrowedHeading) : undefined;
+  const offset = narrowedAt && !getDisplayLineNumbersWiden(vars) ? narrowedAt.line : 0;
+  startMarks();
+  return {
+    /** @param {import('../src/types.js').OutlineRow} row */
+    before: (row) => beginRowMarks(lineOf(row)),
+    /** @param {HTMLElement} el @param {import('../src/types.js').OutlineRow} row */
+    after: (el, row) => {
+      if (row.rowType === 'heading' || row.rowType === 'list-item' || row.rowType === 'hr') {
+        const mark = nextMark();
+        if (mark) el.insertBefore(mark, el.firstChild);
+      }
+      el.style.position = 'relative';
+      el.style.paddingLeft = `calc(${el.style.paddingLeft || '8px'} + var(--ln-width, 3ch) + 6px)`;
+    },
+    finish: () => {
+      const digits = finalizeMarks({ type, currentLine: focused ? lineOf(focused) : 0, offset });
+      outlineEl.style.setProperty('--ln-width', `${digits}ch`);
+    },
   };
 }
 

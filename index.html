@@ -117,7 +117,8 @@
   .te-btn:disabled { opacity: 0.4; }
   .te-keys .te-btn { min-width: 40px; font-family: ui-monospace, monospace; font-size: 15px; }
   .te-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--bg); }
-  .ln-num { position: absolute; left: 4px; top: 8px; text-align: right; font: 11px/1.4 ui-monospace, monospace; color: var(--tk-gray, #888); pointer-events: none; }
+  .ln-mark { position: absolute; left: 4px; text-align: right; font: 11px/1.4 ui-monospace, monospace; color: var(--tk-gray, #888); pointer-events: none; user-select: none; }
+  .ln-mark::before { content: attr(data-n); }
   .te-gutter { position: absolute; top: 0; bottom: 0; left: 0; border-right: 1px solid var(--border); background: var(--surface); pointer-events: none; }
   .te-back { position: absolute; top: 0; left: 0; margin: 0; pointer-events: none; color: var(--fg); font-family: ui-monospace, monospace; will-change: transform; counter-reset: teln; }
   .te-back .te-ln { counter-increment: teln; position: relative; min-height: 1em; }

@@ -3,14 +3,15 @@
 // effort, a reminder (org-clock-notify-once-if-expired, with org-clock-sound), and, with org-clock-idle-time set, a question after
 // the person has been away that long (org-resolve-clocks-if-idle): keep the time, take the idle time off and go on, or take it
 // off and clock out. "Away" is no tap, key or scroll in the app; the clock of a device that slept counts the sleep as idle.
-import { clockOut, currentClockSessionMinutes } from '../src/clock.js';
+import { clockCancel, clockInSwitchingTasks, clockOut, currentClockSessionMinutes, runningClockStartMs } from '../src/clock.js';
 import { getProperty } from '../src/archive-model.js';
-import { effortReached, idleLimitMinutes, idlePrompt, reminderText, soundKind } from '../src/clock-reminder.js';
+import { effortReached, idleLimitMinutes, idlePrompt, reminderText, resolveIdleClock, soundFileName, soundKind } from '../src/clock-reminder.js';
+import { guessAudioMimeType } from '../src/link-resolve.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
-import { clockInHeading, findRunningClockAcrossSessions } from './clock-flow.js';
-import { openButtonChoiceModal } from './dialogs.js';
+import { clockGoto, clockInHeading, findRunningClockAcrossSessions } from './clock-flow.js';
+import { openGridChoiceModal, promptText } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { platform } from './platform.js';
 import { switchToTab } from './tabs.js';
@@ -35,10 +36,33 @@ function beep() {
   }
 }
 
+/**
+ * org-clock-sound: `t` beeps; a file name is played from the org-pwa folder where the platform has one (the Android app), and
+ * beeps where there is none, or the file is missing or will not play, as Emacs beeps when it cannot play the file.
+ * @param {string | undefined} raw
+ */
+export async function playClockSound(raw) {
+  const kind = soundKind(raw);
+  if (kind === 'none') return;
+  const name = soundFileName(raw);
+  if (name !== null && platform.attachments.supported() && platform.attachments.adapter) {
+    try {
+      const file = await platform.attachments.adapter.readBinary(name);
+      if (file && file.base64) {
+        await new Audio(`data:${guessAudioMimeType(name)};base64,${file.base64}`).play();
+        return;
+      }
+    } catch {
+      /* missing, unreadable or blocked: fall back to the beep */
+    }
+  }
+  beep();
+}
+
 /** @param {string} text */
 async function notify(text) {
   setStatus(text);
-  if (soundKind(S.globalVariables['org-clock-sound']) !== 'none') beep();
+  await playClockSound(S.globalVariables['org-clock-sound']);
   const n = platform.notifications;
   try {
     if (n.supported() && (await n.permission()) === 'granted') {
@@ -76,27 +100,89 @@ const stamp = (when) => {
   return formatOrgTimestamp({ date: d, time: d.toTimeString().slice(0, 5), active: false });
 };
 
-/** Asks what to do with the idle time. @param {RunningClock} running @param {number} idleStart */
+/** Org's question after idle time (`org-clock-resolve`): the same keys and the same results. @param {RunningClock} running @param {number} idleStart */
 function askIdle(running, idleStart) {
   const idleMinutes = (Date.now() - idleStart) / 60000;
-  const keepAll = () => {
-    watch.lastActive = Date.now();
-  };
-  const stop = async (/** @type {boolean} */ resume) => {
+  const defaultMinutes = Math.floor(idleMinutes);
+  const clockStart = runningClockStartMs(running.heading) ?? idleStart;
+
+  /** @param {string} key @param {{ keepMinutes?: number | null, gotBackMinutes?: number | null }} [extra] */
+  const apply = (key, extra = {}) => {
+    const now = Date.now();
+    const plan = resolveIdleClock({ key, idleStart, now, clockStart, ...extra });
+    watch.lastActive = now;
+    if (plan.type === 'none') return;
     if (!running.isActive) switchToTab(running.tabId ?? undefined);
     const heading = running.heading;
-    if (clockOut(heading, stamp(idleStart), new Date(idleStart))) {
-      commitAndRender(resume ? 'Idle time subtracted — clocking on' : 'Idle time subtracted — clocked out');
-      if (resume) clockInHeading(heading);
+    if (plan.type === 'jump') {
+      if (plan.clockOutNow) clockOut(heading, stamp(now), new Date(now));
+      clockGoto();
+      return;
     }
-    watch.lastActive = Date.now();
+    if (plan.type === 'cancel') {
+      clockCancel(heading);
+      if (plan.clockInNow) clockInHeading(heading);
+      else commitAndRender('Clock cancelled — time discarded');
+      return;
+    }
+    if (plan.type === 'now') {
+      if (plan.clockOut && clockOut(heading, stamp(now), new Date(now))) commitAndRender('Clocked out');
+      return;
+    }
+    if (clockOut(heading, stamp(plan.clockOutAt), new Date(plan.clockOutAt))) {
+      if (plan.clockInAt !== null && S.state.doc) {
+        clockInSwitchingTasks(S.state.doc, heading, stamp(plan.clockInAt), new Date(plan.clockInAt));
+        commitAndRender('Idle time resolved — clocking on');
+      } else commitAndRender('Idle time resolved — clocked out');
+    }
   };
-  watch.dialog = openButtonChoiceModal({
+
+  /** Asks for a number of minutes. @param {string} question */
+  const askMinutes = async (question) => {
+    const text = await promptText(question, String(defaultMinutes));
+    const n = text === null ? NaN : Number(text.trim());
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  /** @param {string} key */
+  const keep = (key) => async () => {
+    const minutes = await askMinutes('Keep how many minutes: ');
+    if (minutes !== null) apply(key, { keepMinutes: minutes });
+  };
+  /** @param {string} key */
+  const keepUntil = (key) => async () => {
+    const text = await promptText('Keep the idle time until (HH:MM today): ', '');
+    const m = text === null ? null : /^(\d{1,2}):(\d{2})$/.exec(text.trim());
+    if (!m) return;
+    const at = new Date();
+    at.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    if (at.getTime() <= idleStart || at.getTime() > Date.now()) {
+      setStatus('That time is outside the idle period');
+      return;
+    }
+    apply(key, { keepMinutes: Math.floor((at.getTime() - idleStart) / 60000) });
+  };
+  /** @param {string} key */
+  const gotBack = (key) => async () => {
+    const minutes = await askMinutes('Got back how many minutes ago: ');
+    if (minutes !== null) apply(key, { gotBackMinutes: minutes });
+  };
+
+  watch.dialog = openGridChoiceModal({
     label: idlePrompt(idleMinutes),
+    showKeys: true,
     buttons: [
-      { text: 'Keep the idle time', onClick: keepAll },
-      { text: 'Subtract it and keep clocking', onClick: () => stop(true) },
-      { text: 'Subtract it and clock out', onClick: () => stop(false) },
+      { key: 'i', text: 'Ignore this question (keep all the idle time)', onClick: () => apply('i') },
+      { key: 'k', text: 'Keep some of the idle time…', onClick: keep('k') },
+      { key: 'K', text: 'Keep some, and clock out…', onClick: keep('K') },
+      { key: 't', text: 'Keep until a time…', onClick: keepUntil('t') },
+      { key: 'T', text: 'Keep until a time, and clock out…', onClick: keepUntil('T') },
+      { key: 'g', text: 'I got back some minutes ago…', onClick: gotBack('g') },
+      { key: 'G', text: 'Got back, and clock out…', onClick: gotBack('G') },
+      { key: 's', text: 'Subtract the idle time and keep clocking', onClick: () => apply('s') },
+      { key: 'S', text: 'Subtract the idle time and clock out', onClick: () => apply('S') },
+      { key: 'C', text: 'Cancel the clock', onClick: () => apply('C') },
+      { key: 'j', text: 'Jump to the clock', onClick: () => apply('j') },
+      { key: 'J', text: 'Clock out, then jump to it', onClick: () => apply('J') },
     ],
   });
 }
@@ -133,6 +219,7 @@ function activity() {
 }
 
 export function startClockWatch() {
+  window.addEventListener('org-clock-started', () => setTimeout(tickClockWatch, 0));
   for (const type of ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll']) window.addEventListener(type, activity, { passive: true, capture: true });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) activity();

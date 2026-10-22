@@ -40,6 +40,7 @@ import { applySidePanelWidth, renderSettingsView } from './settings-view.js';
 import { setSidePanelWidth } from './settings.js';
 import { kv } from './singletons.js';
 import { tableFunctionsActive, warmTableFunctions } from './extension-flow.js';
+import { marksOn, nextMark, skipMarks } from './line-marks.js';
 import { recalculateOneTable } from './table-recalc.js';
 import { applyTodoTransition, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './ui-widgets.js';
@@ -651,10 +652,15 @@ export function renderTableRow(row) {
   tableEl.style.fontSize = 'var(--app-font-size-tables)';
 
   row.node.rows.forEach((tr, rowIndex) => {
-    if (tr.type === 'rule') return; // shown implicitly via the header row's styling, not as its own grid row
+    if (tr.type === 'rule') {
+      skipMarks(); // shown implicitly via the header row's styling, not as its own grid row
+      return;
+    }
     const trEl = document.createElement('tr');
+    const lineMark = nextMark();
     tr.cells.forEach((cellText, colIndex) => {
       const tdEl = document.createElement('td');
+      if (colIndex === 0 && lineMark) tdEl.appendChild(lineMark);
       tdEl.style.border = '1px solid #8886';
       tdEl.style.padding = '3px 6px';
       tdEl.style.cursor = 'text';
@@ -1025,6 +1031,7 @@ export function renderParagraphRow(row) {
   if (affiliatedPrefix) p.appendChild(affiliatedPrefix);
   const caption = captionText(affiliated);
   const hasContent = contentLines.some((l) => l.trim() !== '');
+  skipMarks(row.node.lines.length - contentLines.length); // the #+NAME and #+CAPTION lines are drawn as the caption, not as lines
   if (hasContent) {
     const strippedLines = contentLines.map((line, i) =>
       i === 0 && row.node.footnoteLabel !== null
@@ -1033,12 +1040,16 @@ export function renderParagraphRow(row) {
     );
     const { lines: extractedLines, fragments } = extractLatexFragments(strippedLines);
     const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
+    const numbered = marksOn();
     extractedLines.forEach((line, i) => {
       if (i > 0) {
         const prevLine = extractedLines[i - 1];
         const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
-        p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
+        // with line numbers every file line starts a new line on screen, as in Emacs
+        p.appendChild(prevForcedBreak || numbered ? document.createElement('br') : document.createTextNode(' '));
       }
+      const mark = nextMark();
+      if (mark) p.appendChild(mark);
       renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, null, row.heading);
     });
   } else if (!affiliated.length) {
@@ -1141,6 +1152,8 @@ export function renderBlockContent(block, container, linkContext) {
       } else {
         renderInlineNodes(parseInline(stripped, currentInlineOpts()), lineEl, linkContext);
       }
+      const mark = nextMark();
+      if (mark) lineEl.insertBefore(mark, lineEl.firstChild);
       verse.appendChild(lineEl);
     }
     container.appendChild(verse);
@@ -1170,8 +1183,11 @@ export function renderBlockContent(block, container, linkContext) {
     // is the one place in this app where the marker does something a
     // plain per-line join wouldn't already do on its own.
     /** @type {any[]} */ let currentParagraphLines = [];
+    /** @type {(HTMLElement | null)[]} */ let currentMarks = [];
     const flushParagraph = () => {
       if (currentParagraphLines.length === 0) return;
+      const marks = currentMarks;
+      currentMarks = [];
       const p = document.createElement('p');
       p.style.margin = PARAGRAPH_MARGIN; // prose inside a quote: the paragraph value
       const { lines: extractedLines, fragments } = extractLatexFragments(currentParagraphLines);
@@ -1180,8 +1196,10 @@ export function renderBlockContent(block, container, linkContext) {
         if (i > 0) {
           const prevLine = extractedLines[i - 1];
           const prevForcedBreak = stripLineBreakMarker(prevLine) !== prevLine;
-          p.appendChild(prevForcedBreak ? document.createElement('br') : document.createTextNode(' '));
+          p.appendChild(prevForcedBreak || marksOn() ? document.createElement('br') : document.createTextNode(' '));
         }
+        const mark = marks.length === extractedLines.length ? marks[i] : null;
+        if (mark) p.appendChild(mark);
         renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, linkContext);
       });
       wrap.appendChild(p);
@@ -1189,8 +1207,10 @@ export function renderBlockContent(block, container, linkContext) {
     };
     for (const line of block.lines) {
       if (line.trim() === '') {
+        skipMarks();
         flushParagraph();
       } else {
+        currentMarks.push(nextMark());
         currentParagraphLines.push(stripCommaEscapeApp(line.trim()));
       }
     }
@@ -1211,7 +1231,16 @@ export function renderBlockContent(block, container, linkContext) {
   pre.style.whiteSpace = 'pre-wrap';
   const code = document.createElement('code');
   code.style.fontFamily = 'monospace';
-  code.textContent = block.lines.map(stripCommaEscapeApp).join('\n');
+  const codeLines = block.lines.map(stripCommaEscapeApp);
+  if (marksOn()) {
+    codeLines.forEach((line, i) => {
+      const mark = nextMark();
+      if (mark) code.appendChild(mark);
+      code.appendChild(document.createTextNode(line + (i < codeLines.length - 1 ? '\n' : '')));
+    });
+  } else {
+    code.textContent = codeLines.join('\n');
+  }
   pre.appendChild(code);
   container.appendChild(pre);
 }
@@ -1246,6 +1275,8 @@ export function renderBlockRow(row) {
   header.style.fontFamily = 'monospace';
   header.style.cursor = 'pointer';
   header.textContent = '\u25be ' + label;
+  const beginMark = nextMark();
+  if (beginMark) header.insertBefore(beginMark, header.firstChild);
   header.onclick = () => {
     row.heading.drawersHidden = true;
     render();

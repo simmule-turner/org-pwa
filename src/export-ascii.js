@@ -25,6 +25,7 @@ import { getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { preambleBody } from './export-html.js';
 import { expandMacrosForExport } from './export-org.js';
 import { radioTargetRegExp } from './targets.js';
+import { BrokenLinkSignal, brokenLinkText, parseBrokenLinks } from './broken-links.js';
 import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 
@@ -119,7 +120,7 @@ export function normalizeAsciiCharset(value) {
  *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean,
  *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, drawers: boolean | string[],
  *   fixedWidth: boolean, tex: boolean,
- *   linksToNotes: boolean, sup: string, widen: boolean,
+ *   linksToNotes: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
  *   verbatimFormat: string,
  *   doc: Doc, scope: Heading | null, radioRe: RegExp | null,
  *   headlines: Node[], defs: Map<string, Node>, fnLabels: Map<string, number>, fnList: { number: number, label: string | null, inline: Item[] | null, def: Node | null }[],
@@ -137,7 +138,7 @@ function optionTable(doc) {
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'OPTIONS') continue;
     for (const token of kw.value.trim().split(/\s+/)) {
-      const m = /^(\\n|\^|-|:|<|\||[A-Za-z]+):(.*)$/.exec(token);
+      const m = /^(\\n|\^|-|:|<|\||[A-Za-z][A-Za-z-]*):(.*)$/.exec(token);
       if (m) map.set(m[1], m[2]);
     }
   }
@@ -148,10 +149,10 @@ function optionTable(doc) {
 const flag = (v, dflt) => (v === undefined ? dflt : v !== 'nil');
 
 /**
- * @param {Doc} doc @param {Heading | null} scope @param {number} textWidth @param {'ascii' | 'latin1' | 'utf-8'} charset @param {string} sup
+ * @param {Doc} doc @param {Heading | null} scope @param {number} textWidth @param {'ascii' | 'latin1' | 'utf-8'} charset @param {string} sup @param {import('./broken-links.js').BrokenLinks} broken
  * @returns {Info}
  */
-function makeInfo(doc, scope, textWidth, charset, sup) {
+function makeInfo(doc, scope, textWidth, charset, sup, broken) {
   const o = optionTable(doc);
   const numValue = o.get('num');
   const tocValue = o.get('toc');
@@ -187,6 +188,7 @@ function makeInfo(doc, scope, textWidth, charset, sup) {
     linksToNotes: true,
     sup: o.has('^') ? (o.get('^') === 'nil' || o.get('^') === '{}' ? /** @type {string} */ (o.get('^')) : 't') : sup,
     widen: true,
+    broken: /** @type {import('./broken-links.js').BrokenLinks} */ (parseBrokenLinks(o.get('broken-links'), broken)),
     verbatimFormat: "`%s'",
     doc,
     scope,
@@ -772,7 +774,16 @@ function exportData(item, I) {
   if (item.type === 'headline') exportItems(item.title || [], I); // marks the links of the title as exported
   const contents = item.contents.map((c) => exportData(c, I)).join('');
   const greater = GREATER.has(item.type);
-  const results = transcode(item, greater ? normalizeString(contents) : contents, I);
+  /** @type {string | null | undefined} */
+  let results;
+  try {
+    results = transcode(item, greater ? normalizeString(contents) : contents, I);
+  } catch (err) {
+    // a broken link found while describing links is handled by the element around it (ox.el's `broken-link-handler`)
+    if (!(err instanceof BrokenLinkSignal)) throw err;
+    if (I.broken === 'nil') throw err;
+    results = I.broken === 'mark' ? brokenLinkText('mark', err.path) : null;
+  }
   if (results === null || results === undefined) return '';
   let out;
   if (ELEMENTS.has(item.type) && item.type !== 'table-cell') out = normalizeString(results) + '\n'.repeat(item.postBlank);
@@ -925,7 +936,7 @@ function linkText(n, I) {
   if (n.linkType === 'radio') return desc || '';
   if (n.linkType === 'coderef') {
     const found = resolveCodeRef(I.codeBlocks, n.path || '');
-    return found === null ? `<${n.raw}>` : coderefText(n.path || '', found, desc);
+    return found === null ? brokenLinkText(I.broken, n.path || '', false) : coderefText(n.path || '', found, desc);
   }
   if (n.linkType === 'custom-id' || n.linkType === 'fuzzy' || n.linkType === 'id') {
     const dest = resolveLink(n, I);
@@ -936,6 +947,7 @@ function linkText(n, I) {
       if (number !== null) return Array.isArray(number) ? number.join('.') : String(number);
       return '???';
     }
+    return brokenLinkText(I.broken, n.linkType === 'fuzzy' ? n.raw || '' : n.path || '', false);
   }
   const raw = n.raw || '';
   if (desc === null || desc === '') return `<${raw}>`;
@@ -985,6 +997,8 @@ function describeLinks(links, width, I) {
           if (!description) return '';
           return fillString(`[${anchor}] ${describeDatum(dest, I)}`, width, 'left', I.preserveBreaks) + '\n\n';
         }
+        if (type === 'fuzzy' && description) throw new BrokenLinkSignal(link.raw || '');
+        if (type !== 'fuzzy') return '';
       }
       if (!description) return '';
       return fillString(`[${anchor}] <${link.raw}>`, width, 'left', I.preserveBreaks) + '\n\n';
@@ -1432,11 +1446,11 @@ function footnoteSection(I) {
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  * @param {number} [textWidth]
- * @param {{ charset?: string, sup?: string }} [options]
+ * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} [options]
  */
-export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't' } = {}) {
+export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil' } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
-  const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup);
+  const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup, brokenLinks);
   const skip = exclusion(doc);
   const roots = scope ? scope.children || [] : doc.children || [];
   I.cite = citeExportFor(doc, roots.filter((h) => !skip(h)), parseInline, !scope);

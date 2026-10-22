@@ -689,7 +689,7 @@ test('radio targets link every other mention, but not inside links', () => {
 });
 
 test('targets written inside =verbatim=, ~code~ or a source block are not targets, so nothing links to them', () => {
-  const out = body('* A\nSay =<<<pear>>>= and ~<<spot>>~ and a pear, then [[spot]].\n#+BEGIN_SRC org\n<<<apple>>>\n#+END_SRC\nAn apple.');
+  const out = body('#+OPTIONS: broken-links:t\n* A\nSay =<<<pear>>>= and ~<<spot>>~ and a pear, then [[spot]].\n#+BEGIN_SRC org\n<<<apple>>>\n#+END_SRC\nAn apple.');
   assert.ok(!/org-target-pear|org-target-apple|org-target-spot/.test(out), out);
   assert.match(out, /<code>&lt;&lt;&lt;pear&gt;&gt;&gt;<\/code>/);
 });

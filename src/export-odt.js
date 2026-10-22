@@ -36,6 +36,8 @@ import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './exp
 import { getProperty } from './archive-model.js';
 import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 import { expandMacrosForExport } from './export-org.js';
+import { brokenLinkPath, brokenLinkText, finishDropped } from './broken-links.js';
+import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText } from './code-lines.js';
 
 // ---- escaping -------------------------------------------------------------
 
@@ -56,6 +58,8 @@ let footnoteCounterOdt = 0;
 /** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
 let supOdt = 't';
 let numberingEnabledOdt = true;
+/** What the export does with a link that leads nowhere (org-export-with-broken-links). @type {import('./broken-links.js').BrokenLinks} */
+let brokenOdt = 'nil';
 
 /** @param {number} level */
 function nextSectionNumberOdt(level) {
@@ -151,7 +155,16 @@ function renderInlineNodeOdt(node) {
     case 'superscript':
       return `<text:span text:style-name="Superscript">${escapeXml(node.value)}</text:span>`;
     case 'link': {
+      const coderef = /^\((.*)\)$/.exec(node.target.trim());
+      if (coderef) {
+        const found = resolveCodeRef(codeBlocksOdt, coderef[1]);
+        if (found === null) return escapeXml(brokenLinkText(brokenOdt, coderef[1]));
+        const shown = /^\d+$/.test(found) ? `<text:bookmark-ref text:reference-format="number" text:ref-name="OrgXref.${escapeXml('coderef-' + coderef[1])}">${found}</text:bookmark-ref>` : escapeXml(found);
+        return node.description ? escapeXml(coderefText(coderef[1], '\u0000', node.description)).replace('\u0000', shown) : shown;
+      }
       const info = linkCtxOdt ? internalLink(linkCtxOdt, node.target) : null;
+      const broken = node.radio || info ? null : brokenLinkPath(/** @type {Doc} */ (docForLinkResolutionOdt), node.target);
+      if (broken !== null) return escapeXml(brokenLinkText(brokenOdt, broken));
       if (info && info.anchor) {
         const text = node.description ? renderTextOdt(node.description, false) : info.label !== null ? escapeXml(info.label) : escapeXml(node.target);
         return `<text:a xlink:type="simple" xlink:href="#${escapeXml(info.anchor)}">${text}</text:a>`;
@@ -303,6 +316,69 @@ function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
+// ---- source and example blocks (numbers and references) ---------------------------------------
+
+/** @typedef {import('./code-lines.js').CodeBlock & { start: number | null }} CodeEntry */
+/** @type {WeakMap<object, CodeEntry>} */
+let codeOdt = new WeakMap();
+/** @type {CodeEntry[]} */
+let codeBlocksOdt = [];
+
+/**
+ * Reads every source and example block once, in order, so that a reference can point forward.
+ * @param {Doc} doc
+ * @param {Heading[]} roots
+ * @param {boolean} withPreamble
+ */
+function scanCodeOdt(doc, roots, withPreamble) {
+  codeOdt = new WeakMap();
+  codeBlocksOdt = [];
+  const counter = newCodeCounter();
+  /** @param {import('./types.js').BodyNode[] | undefined} body */
+  const scanBody = (body) => {
+    for (const node of body || []) {
+      if (node.type !== 'block' || (node.name !== 'SRC' && node.name !== 'EXAMPLE')) continue;
+      const lines = node.lines.map(stripCommaEscape);
+      const block = unravelCode(lines, blockSwitchText(node.name.toLowerCase(), node.params || ''));
+      const entry = { ...block, start: codeStart(counter, block.switches, lines.length) };
+      codeOdt.set(node, entry);
+      codeBlocksOdt.push(entry);
+    }
+  };
+  /** @param {Heading[]} headings */
+  const scanHeadings = (headings) => {
+    for (const h of headings) {
+      scanBody(h.body);
+      scanHeadings(h.children || []);
+    }
+  };
+  if (withPreamble) scanBody(doc.body);
+  scanHeadings(roots);
+}
+
+/**
+ * The lines of a source or example block (`org-odt-do-format-code`): a numbered block is a list that continues the previous
+ * one unless it starts at 0, and a line with a reference is a bookmark that references link to.
+ * @param {import('./types.js').Block} block
+ */
+function codeBlockOdt(block) {
+  const entry = codeOdt.get(block);
+  if (!entry) return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
+  const { lines, refs, switches, start } = entry;
+  const rows = lines.map((line, i) => {
+    const ref = refs.get(i + 1);
+    let text = escapeXml(line) || '<text:s/>';
+    if (ref !== undefined && switches.retainLabels) text += escapeXml(` (${ref})`);
+    if (ref !== undefined) {
+      const name = escapeXml(`coderef-${ref}`);
+      text = `<text:bookmark-start text:name="OrgXref.${name}"/><text:bookmark text:name="${name}"/>${text}<text:bookmark-end text:name="OrgXref.${name}"/>`;
+    }
+    const para = `<text:p text:style-name="Code">${text}</text:p>`;
+    return start === null ? para : `<text:list-item>${para}</text:list-item>`;
+  });
+  return start === null ? rows.join('') : `<text:list text:style-name="OrgSrcBlockNumberedLine" text:continue-numbering="${start === 0 ? 'false' : 'true'}">${rows.join('')}</text:list>`;
+}
+
 /** @param {import('./types.js').Block} block */
 function renderBlockOdt(block) {
   const name = block.name;
@@ -313,7 +389,8 @@ function renderBlockOdt(block) {
   if (name === 'QUOTE') {
     return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Quote">${renderTextOdt(l)}</text:p>`).join('');
   }
-  // SRC and every other/unrecognized block type: preserve verbatim in
+  if (name === 'SRC' || name === 'EXAMPLE') return codeBlockOdt(block);
+  // every other/unrecognized block type: preserve verbatim in
   // a monospaced paragraph per line, same "don't try to reinterpret
   // content this app has no specific handling for" reasoning
   // export-markdown.js's own renderBlockMd already documents.
@@ -459,6 +536,7 @@ function stylesXml() {
     '<style:style style:name="TodoKeywordActive" style:family="text"><style:text-properties fo:font-weight="bold" fo:color="#a83232"/></style:style>' +
     '<style:style style:name="TodoKeywordDone" style:family="text"><style:text-properties fo:font-weight="bold" fo:color="#2f8f3f"/></style:style>' +
     '<text:list-style style:name="UnorderedList"><text:list-level-style-bullet text:level="1" text:bullet-char="\u2022"><style:list-level-properties text:space-before="0.25in"/></text:list-level-style-bullet></text:list-style>' +
+    '<text:list-style style:name="OrgSrcBlockNumberedLine"><text:list-level-style-number text:level="1" style:num-format="1"><style:list-level-properties text:space-before="0.635cm" text:min-label-width="0.635cm" text:min-label-distance="0.101cm" fo:text-align="end"/></text:list-level-style-number></text:list-style>' +
     '<text:list-style style:name="OrderedList"><text:list-level-style-number text:level="1" style:num-format="1" style:num-suffix="."><style:list-level-properties text:space-before="0.25in"/></text:list-level-style-number></text:list-style>' +
     '</office:styles>\n' +
     '</office:document-styles>\n'
@@ -558,20 +636,22 @@ function buildTocOdt(roots, toc, numberingEnabled) {
 }
 
 /** @param {Doc} doc */
-export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't' } = {}) {
+export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't', brokenLinks = /** @type {import('./broken-links.js').BrokenLinks} */ ('nil') } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;
   sectionNumbersOdt = [];
-  const options = parseExportOptions(doc, sup);
+  const options = parseExportOptions(doc, sup, brokenLinks);
   supOdt = options.sup;
+  brokenOdt = options.broken;
   numberingEnabledOdt = options.num;
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsOdt(roots, new Set());
   citeOdt = citeExportFor(doc, roots, parseInline, !scope);
   linkCtxOdt = buildLinkContext(doc, roots, options.num);
+  scanCodeOdt(doc, roots, !scope);
   const levelOffset = scope ? scope.level - 1 : 0;
   const { doneKeywords } = resolveTodoSequence(doc);
   const out = [];
@@ -606,7 +686,7 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't' 
   const zip = createZip([
     { name: 'mimetype', content: MIMETYPE },
     { name: 'META-INF/manifest.xml', content: MANIFEST_XML },
-    { name: 'content.xml', content: contentXml(out.join('')) },
+    { name: 'content.xml', content: contentXml(finishDropped(out.join(''))) },
     { name: 'styles.xml', content: stylesXml() },
     { name: 'meta.xml', content: metaXml(title, author, date) },
   ]);

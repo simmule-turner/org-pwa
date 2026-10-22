@@ -11,7 +11,7 @@
  *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: OutlineNode | null,
  *   parsed: Map<Heading, import('./org-elements.js').OrgElement[]>, fnDefsCollect?: any, outline: OutlineNode[], captioned: { kind: string, n: number, id: string, html: string }[],
  *   headingNodes: Map<Heading, OutlineNode>, targetHeadings: Map<string, OutlineNode>, cite: any,
- *   codeCounter: { loc: number }, codeBlocks: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null }[], usesCoderef: boolean,
+ *   nested: Map<string[], import('./org-elements.js').OrgElement[]>, codeCounter: { loc: number }, codeBlocks: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null }[], usesCoderef: boolean,
  * }} ExportState
  */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -41,6 +41,7 @@ import { KATEX_EXPORT_CSS } from './katex-export-css.js';
 import { getHtmlHead } from './export-options.js';
 import { getProperty } from './archive-model.js';
 import { highlightToHtml } from './syntax-highlight.js';
+import { brokenLinkPath, brokenLinkText, finishDropped, parseBrokenLinks } from './broken-links.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText } from './code-lines.js';
 
 /** Org's hover script for code references (`org-html-scripts`): highlights a reference and its line together. */
@@ -77,6 +78,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     pri: false,
     brk: false,
     sup: defaults.sup ?? 't', // org-use-sub-superscripts, unless the file's #+OPTIONS: ^: says otherwise
+    broken: parseBrokenLinks(defaults.brokenLinks), // org-export-with-broken-links, unless the file's #+OPTIONS: broken-links: says otherwise
     special: true,
     emph: true,
     entities: true,
@@ -131,6 +133,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'pri': o.pri = v === 't'; break;
       case '\\n': o.brk = v === 't'; break;
       case '^': o.sup = v === 'nil' || v === '{}' ? v : 't'; break;
+      case 'broken-links': o.broken = parseBrokenLinks(v, o.broken); break;
       case '-': o.special = !isNil(v); break;
       case '*': o.emph = !isNil(v); break;
       case 'e': o.entities = !isNil(v); break;
@@ -235,6 +238,7 @@ function createState(doc, scope, defaults = {}) {
     fnDefs: new Map(),
     fnInline: new Map(),
     counters: { table: 0, listing: 0, figure: 0 },
+    nested: new Map(),
     codeCounter: newCodeCounter(),
     codeBlocks: [],
     usesCoderef: false,
@@ -689,11 +693,15 @@ function linkHtml(state, node) {
   const coderef = /^\((.+)\)$/.exec(target.trim());
   if (coderef) {
     const found = resolveCodeRef(state.codeBlocks, coderef[1]);
-    if (found === null) return escapeHtml(target);
+    if (found === null) return escapeHtml(brokenLinkText(state.options.broken, coderef[1]));
     state.usesCoderef = true;
     const id = `coderef-${escapeAttr(coderef[1])}`;
     const text = desc ? renderInline(state, coderefText(coderef[1], found, desc)) : escapeHtml(found);
     return `<a href="#${id}" class="coderef" onmouseover="CodeHighlightOn(this, '${id}');" onmouseout="CodeHighlightOff(this, '${id}');">${text}</a>`;
+  }
+  if (!node.radio && !isImageTarget(target)) {
+    const broken = brokenLinkPath(state.doc, target, (n) => state.namedElements.has(n));
+    if (broken !== null) return escapeHtml(brokenLinkText(state.options.broken, broken));
   }
   if (desc === null || desc === undefined || desc === '') {
     if (isImageTarget(target)) return imageHtml(target);
@@ -894,6 +902,21 @@ function tableHtml(state, el) {
 }
 
 /**
+ * The elements inside a quote, special block or drawer, parsed once so that the scan and the rendering see the same objects
+ * (a block's number and its place in the running line count belong to the object).
+ * @param {ExportState} state
+ * @param {string[]} lines
+ */
+function nestedElements(state, lines, unescape = true) {
+  let parsed = state.nested.get(lines);
+  if (!parsed) {
+    parsed = parseElements(unescape ? lines.map(unescapeLine) : lines);
+    state.nested.set(lines, parsed);
+  }
+  return parsed;
+}
+
+/**
  * The unravelled code of a source or example block with its line-number start, computed once per block.
  * @param {ExportState} state
  * @param {any} el
@@ -955,7 +978,7 @@ function blockHtml(state, el, ctx) {
    * @param {string[]} lines
    * @param {any} [sub]
    */
-  const inner = (lines, sub) => elementsHtml(state, parseElements(lines.map(unescapeLine)), { ...ctx, ...sub, first: undefined, bare: false });
+  const inner = (lines, sub) => elementsHtml(state, nestedElements(state, lines), { ...ctx, ...sub, first: undefined, bare: false });
   switch (name) {
     case 'comment':
       return '';
@@ -1002,7 +1025,7 @@ function drawerHtml(state, el, ctx) {
   const name = el.name.toUpperCase();
   const allowed = d.all || (d.include ? d.include.some((/** @type {any} */ x) => x.toUpperCase() === name) : !(d.exclude || []).some((/** @type {any} */ x) => x.toUpperCase() === name));
   if (!allowed || name === 'PROPERTIES') return '';
-  return elementsHtml(state, parseElements(el.lines), ctx);
+  return elementsHtml(state, nestedElements(state, el.lines, false), ctx);
 }
 
 /**
@@ -1414,10 +1437,20 @@ const PAGE_CSS = `
 
 /**
  * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.
+ * @param {Doc} doc
+ * @param {Heading | null} [scope]
+ * @param {Parameters<typeof exportToHtmlDocument>[2]} [options]
+ */
+export function exportToHtml(doc, scope = null, options = {}) {
+  return finishDropped(exportToHtmlDocument(doc, scope, options));
+}
+
+/**
+ * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.
  * A subtree export is titled after its heading; the heading's own text comes first, then its children as sections.
  * @param {Doc} doc
  */
-export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
+function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
   activeImages = images instanceof Map ? images : new Map();
   const state = createState(doc, scope, defaults);
   state.namedElements = new Map();
@@ -1474,8 +1507,8 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
         if (el.aff && el.aff.name) state.namedElements.set(el.aff.name, el.__id);
         if (cap !== null) state.captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
       } else if (el.type === 'list') for (const item of el.items) scan(item.children);
-      else if (el.type === 'drawer') scan(parseElements(el.lines));
-      else if (el.type === 'block' && ['quote', 'center'].includes(el.name)) scan(parseElements(el.lines));
+      else if (el.type === 'drawer') scan(nestedElements(state, el.lines, false));
+      else if (el.type === 'block' && !['src', 'example', 'comment', 'export', 'verse'].includes(el.name)) scan(nestedElements(state, el.lines));
     }
   };
   scan(preElements);

@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v603 — Broken links in export, numbered code in ODT, and a clock sound on Android
+Export now treats a link that leads nowhere as Emacs does: =org-export-with-broken-links= (and =#+OPTIONS: broken-links:=) stops with "Unable to resolve link" by default, =t= leaves the link out, and =mark= writes =[BROKEN LINK: path]=, in HTML, ASCII, Markdown, LaTeX and ODT. ODT now numbers source and example blocks and resolves =[[(label)]]= references the way ox-odt does. In the Android app, =org-clock-sound= can name a sound file in the org-pwa folder.
+Verified: every format compared with Emacs 29.3 for nil, t and mark; ODT lists and references compared with ox-odt.
+
+* v602 — Line numbers on every line, and Emacs's idle-clock keys
+The outline's line numbers now count every file line (each line of a paragraph, verse, source block or table), skip lines that are not drawn, and count from 1 in a narrowed outline unless =display-line-numbers-widen= is =t=. Idle clocks ask the full Org question (=i k K t T g G s S C j J=), and a reminder also checks when a clock starts. Source blocks nested in quotes and special blocks now number and link correctly in HTML, ASCII and LaTeX, and Markdown export numbers lines too.
+Verified: nested blocks compared with Emacs 29.3 in HTML, ASCII and LaTeX; the line-number and clock smoke checks.
+
 * v601 — Custom duration units, clock reminder, attachment moves, code line numbers
 =org-duration-units= and =Effort_ALL+= now work as in Emacs; a running clock reminds you when it passes its estimate (=org-clock-sound=) and asks what to do after =org-clock-idle-time= minutes away. Attachments can be copied or moved to another heading from the folder panel. Source and example blocks export with =-n=, =+n=, =-r=, =-k=, =-l= and =(ref:label)= references in HTML (with Org's hover highlight), ASCII and LaTeX, checked against Emacs. =display-line-numbers-mode= shows file line numbers in the outline and Text view.
 Verified: HTML, ASCII and LaTeX output compared with Emacs 29.3; the clock, attachment and line-number smoke checks.

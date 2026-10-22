@@ -84,6 +84,7 @@ export function clockInHeading(heading) {
   }
   const finalSwitchedFrom = switchedFrom || crossTabSwitchedFrom;
   commitAndRender(finalSwitchedFrom ? `Clocked in (stopped the clock on "${finalSwitchedFrom.title}")` : 'Clocked in');
+  window.dispatchEvent(new Event('org-clock-started')); // org-clock-in also checks the estimate at once
 }
 
 /** org-clock-in-last: resumes clocking on whichever heading was most

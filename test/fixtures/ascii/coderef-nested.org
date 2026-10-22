@@ -1,0 +1,29 @@
+* H
+#+begin_quote
+#+begin_src python -n
+a
+b
+#+end_src
+#+end_quote
+
+#+begin_src python +n
+c
+#+end_src
+See [[(x)]]
+#+begin_center
+#+begin_example
+z (ref:x)
+#+end_example
+#+end_center
+
+#+begin_note
+#+begin_src python +n
+q
+#+end_src
+#+end_note
+
+- item
+  #+begin_src python -n 20
+  in list (ref:li)
+  #+end_src
+Later [[(li)]]

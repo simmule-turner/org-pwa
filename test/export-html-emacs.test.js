@@ -27,7 +27,7 @@ function skeleton(h) {
   return h.replace(/></g, '>\n<').trim();
 }
 
-for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) {
+for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
   test(`HTML export of fixture p${n} has the structure ox-html gives it`, () => {
     // citations read the bibliography files named in the fixture, which sit beside it
     for (const m of fixture(`p${n}.org`).matchAll(/^#\+BIBLIOGRAPHY:\s*"?([^"\n]+?)"?\s*$/gim)) cacheBibliography(m[1], fixture(m[1]));

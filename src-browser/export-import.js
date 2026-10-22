@@ -17,7 +17,7 @@ import { exportAsOrg } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
-import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases, getUseSubSuperscripts } from '../src/local-variables.js';
+import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases, getUseSubSuperscripts, getExportWithBrokenLinks } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -82,14 +82,15 @@ export async function performExport(format, scope) {
   if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'latex') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
+    try {
     if (format === 'ascii') {
-      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables) }), 'text/plain');
+      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
     } else if (format === 'markdown') {
-      saveOut(baseName + '.md', exportToMarkdown(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables) }), 'text/markdown');
+      saveOut(baseName + '.md', exportToMarkdown(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/markdown');
     } else if (format === 'html') {
-      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables) } }), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex') {
-      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables) };
+      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) };
       const heading = scope && typeof scope === 'object' ? scope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);
@@ -100,7 +101,12 @@ export async function performExport(format, scope) {
         saveOut(baseName + '.tex', exportToLatex(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
-      saveOut(baseName + '.odt', exportToOdt(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables) }), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'application/vnd.oasis.opendocument.text');
+    }
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err)); // e.g. "Unable to resolve link: ..." (org-export-with-broken-links)
+      renderMoreMenu();
+      return;
     }
   } else if (format === 'vcard') {
     const docs = scope === 'contacts-files' ? aggregateContactsDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];

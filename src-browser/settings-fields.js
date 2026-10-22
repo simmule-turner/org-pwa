@@ -429,6 +429,19 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
+    key: 'org-export-with-broken-links',
+    label: 'Links that lead nowhere',
+    section: 'Export',
+    type: 'select',
+    default: 'nil',
+    options: [
+      { value: 'nil', label: 'Stop with an error' },
+      { value: 't', label: 'Leave out' },
+      { value: 'mark', label: 'Mark [BROKEN LINK: …]' },
+    ],
+    helpAnchor: '#export',
+  },
+  {
     key: 'org-xx-god-mode-button',
     label: 'Show the floating [g] god-mode button',
     section: 'Keyboard',
@@ -476,6 +489,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#source-blocks',
   },
   { key: 'display-line-numbers-mode', label: 'Show file line numbers (outline and Text view)', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#line-numbers' },
+  { key: 'display-line-numbers-widen', label: 'Line numbers: count the whole file when narrowed', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#line-numbers' },
   {
     key: 'display-line-numbers-type',
     label: 'Line number type',

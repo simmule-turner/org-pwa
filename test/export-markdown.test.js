@@ -94,9 +94,9 @@ test('an image becomes ![](target)', () => {
   assert.ok(exportToMarkdown(doc).includes('![](https://example.com/x.png)'));
 });
 
-test('an internal link keeps the raw org target verbatim rather than guessing an anchor', () => {
+test('a link to a heading that is not there stops the export, as in Emacs', () => {
   const doc = parseOrg('* A\n[[*Some Heading]]');
-  assert.ok(exportToMarkdown(doc).includes('(*Some Heading)'));
+  assert.throws(() => exportToMarkdown(doc), { message: 'Unable to resolve link: "*Some Heading"' });
 });
 
 test('an export-comment is dropped entirely from the output', () => {
@@ -340,10 +340,9 @@ test('a link resolving to a heading OUTSIDE the exported scope falls back to the
   assert.match(md, /\[Link out\]\(#outside\)/); // best-effort fallback, unchanged from before this fix
 });
 
-test('an unresolved link (matches nothing) falls back to the original literal target, unchanged', () => {
-  const doc = parseOrg('* Intro\n[[Nonexistent Heading][Broken]]\n');
-  const md = exportToMarkdown(doc);
-  assert.match(md, /\[Broken\]\(Nonexistent Heading\)/);
+test('an unresolved link (matches nothing) is marked when broken-links is mark', () => {
+  const doc = parseOrg('#+OPTIONS: broken-links:mark\n* Intro\n[[Nonexistent Heading][Broken]]\n');
+  assert.match(exportToMarkdown(doc), /\[BROKEN LINK: Nonexistent Heading\]/);
 });
 
 test('a whole realistic document with multiple internal links resolves every single one', () => {

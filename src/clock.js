@@ -182,6 +182,16 @@ function currentClockSessionMinutes(heading, now = new Date()) {
   return Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
 }
 
+/** When the running clock on `heading` started (minute precision, as the CLOCK line has it), or null.
+ * @param {Heading} heading @returns {number | null} */
+function runningClockStartMs(heading) {
+  const runningIdx = findRunningClockLineIndex(heading);
+  if (runningIdx === -1) return null;
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
+  const startDate = parseClockTimestampToDate(m[1]);
+  return startDate ? startDate.getTime() : null;
+}
+
 /** A minimal, dependency-free parse of a bracketed/angled org
  *  timestamp string into a JS Date -- deliberately not reusing
  *  org-timestamp.js's own fuller parseOrgTimestamp here, since that
@@ -341,6 +351,7 @@ export {
   isClockRunning,
   clockIn,
   clockInSwitchingTasks,
+  runningClockStartMs,
   clockOut,
   clockCancel,
   formatClockDuration,

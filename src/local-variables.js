@@ -1,4 +1,5 @@
 // @ts-check
+import { parseBrokenLinks } from './broken-links.js';
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 /**
  * Parses an Emacs "Local Variables" block:
@@ -282,6 +283,16 @@ export function getAsciiTextWidth(vars) {
 export function getAsciiCharset(vars) {
   const v = String((vars || {})['org-ascii-charset'] || '').trim().replace(/^'/, '').toLowerCase();
   return v === 'utf-8' || v === 'utf8' ? 'utf-8' : v === 'latin1' || v === 'latin-1' || v === 'iso-8859-1' ? 'latin1' : 'ascii';
+}
+
+/**
+ * org-export-with-broken-links: what export does with a link that leads nowhere. `nil` (default) stops with an error, `t`
+ * leaves the link out, `mark` writes "[BROKEN LINK: path]". A file's #+OPTIONS: broken-links: wins.
+ * @param {LocalVars} vars
+ * @returns {import('./broken-links.js').BrokenLinks}
+ */
+export function getExportWithBrokenLinks(vars) {
+  return /** @type {import('./broken-links.js').BrokenLinks} */ (parseBrokenLinks((vars || {})['org-export-with-broken-links']));
 }
 
 /** org-refile-targets: this app's own plain-text translation (see
@@ -826,6 +837,12 @@ export function getTextLineNumbers(vars) {
  * @param {LocalVars} vars */
 export function getDisplayLineNumbersMode(vars) {
   return parseLispBoolean((vars || {})['display-line-numbers-mode'], false);
+}
+
+/** display-line-numbers-widen: Emacs's own variable. `t` numbers a narrowed outline with the file's real lines; `nil` counts from 1 at the narrowed heading. Default nil.
+ * @param {LocalVars} vars */
+export function getDisplayLineNumbersWiden(vars) {
+  return parseLispBoolean((vars || {})['display-line-numbers-widen'], false);
 }
 
 /** display-line-numbers-type: Emacs's own variable. `t` (absolute), `relative` or `visual`. Default t.

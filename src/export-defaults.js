@@ -3,7 +3,7 @@
 // The items are Org's own variables, set in the Global Variables. Off unless set. A value written in the file
 // itself (#+OPTIONS:, #+HTML_HEAD:) always wins over these.
 
-/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, sup?: string }} HtmlExportDefaults */
+/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} HtmlExportDefaults */
 
 /** The items, with the text offered before the person has typed anything. `key` is the Global Variable that holds the text.
  *  The items are Org's own variables (org-html-preamble, -postamble, -head): the value is a quoted string and being set

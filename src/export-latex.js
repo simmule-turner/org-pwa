@@ -25,6 +25,7 @@ import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, bl
 import { parseElements, parseAttributes } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { brokenPathOf, brokenLinkText, finishDropped } from './broken-links.js';
 import { preambleBody } from './export-html.js';
 import { expandMacrosForExport } from './export-org.js';
 import { LATEX_ENTITIES } from './entities-latex.js';
@@ -43,6 +44,7 @@ import { latexConfig } from './latex-config.js';
 /**
  * @typedef {{
  *   sup: string,
+ *   broken: import('./broken-links.js').BrokenLinks,
  *   footnotes: Map<string, OrgElement[]>,
  *   footnoteLabels: Map<string, string>,
  *   footnoteRefs: Map<string, number>,
@@ -79,7 +81,7 @@ let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined) };
+  return { sup: 't', broken: 'nil', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined) };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -283,7 +285,7 @@ function link(n) {
   const coderef = /^\((.*)\)$/.exec(target);
   if (coderef) {
     const found = resolveCodeRef(S.codeBlocks, coderef[1]);
-    if (found === null) return protect(target);
+    if (found === null) return protect(brokenLinkText(S.broken, coderef[1]));
     return inline(coderefText(coderef[1], found, n.description || null));
   }
   S.inLink = true;
@@ -301,6 +303,8 @@ function link(n) {
   if (isExternal(target)) return description === null ? '\\url{' + target + '}' : '\\href{' + protect(target) + '}{' + description + '}';
   const ref = resolveInternal(target);
   if (ref) return reference(ref.label, description);
+  const path = brokenPathOf(target);
+  if (path !== null) return protect(brokenLinkText(S.broken, path));
   return description === null ? protect(target) : description;
 }
 
@@ -383,10 +387,10 @@ function footnoteRef(label, inlineDef) {
 // ---- elements -------------------------------------------------------------
 
 /** @param {string[]} lines */
-function parsedLines(lines) {
+function parsedLines(lines, text = lines) {
   let parsed = S.parsed.get(lines);
   if (!parsed) {
-    parsed = parseElements(lines);
+    parsed = parseElements(text);
     S.parsed.set(lines, parsed);
   }
   return parsed;
@@ -467,12 +471,22 @@ function prepareCode(el) {
   return el.__code;
 }
 
+/** The lines of a block with the indentation they share removed. @param {string[]} lines */
+function unindented(lines) {
+  const lead = Math.min(Infinity, ...lines.filter((l) => l.trim()).map((l) => (/^[ \t]*/.exec(l) || [''])[0].length));
+  return lines.map((l) => l.slice(Number.isFinite(lead) ? Math.min(lead, (/^[ \t]*/.exec(l) || [''])[0].length) : 0));
+}
+
+/** The elements inside a quote, center or special block, parsed once so the scan for code references and the export see the same objects. @param {string[]} lines */
+function bodyElements(lines) {
+  return parsedLines(lines, unindented(lines));
+}
+
 /** @param {Extract<OrgElement, { type: 'block' }>} el */
 function block(el) {
-  const lead = Math.min(Infinity, ...el.lines.filter((l) => l.trim()).map((l) => (/^[ \t]*/.exec(l) || [''])[0].length));
-  const lines = el.lines.map((l) => l.slice(Number.isFinite(lead) ? Math.min(lead, (/^[ \t]*/.exec(l) || [''])[0].length) : 0));
+  const lines = unindented(el.lines);
   const attrs = parseAttributes(el.aff && el.aff.attr.latex);
-  const wrapIn = (/** @type {string} */ env, /** @type {string} */ options) => '\\begin{' + env + '}' + options + '\n' + trimEnd(elements(parsedLines(lines))) + '\\end{' + env + '}\n';
+  const wrapIn = (/** @type {string} */ env, /** @type {string} */ options) => '\\begin{' + env + '}' + options + '\n' + trimEnd(elements(bodyElements(el.lines))) + '\\end{' + env + '}\n';
   switch (el.name) {
     case 'src':
     case 'example': {
@@ -754,7 +768,7 @@ function indexNames(list) {
         indexNames(item.children);
       }
     } else if (el.type === 'drawer') indexNames(parsedLines(el.lines));
-    else if (el.type === 'block' && ['quote', 'center'].includes(el.name)) indexNames(parsedLines(el.lines));
+    else if (el.type === 'block' && !['src', 'example', 'comment', 'export', 'verse'].includes(el.name)) indexNames(bodyElements(el.lines));
     else if (el.type === 'footnote-def') indexNames(el.children);
     for (const m of texts.join('\n').matchAll(/<<<([^<>\n]+)>>>|<<([^<>\n]+)>>/g)) {
       const name = m[1] || m[2];
@@ -836,13 +850,14 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, header?: string, init?: string }} */ ({}) } = {}) {
+export function exportToLatex(doc, scope = null, { images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, header?: string, init?: string }} */ ({}) } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   S = newState();
   activeDoc = doc;
   if (images) S.images = images;
-  const options = parseExportOptions(doc, defaults.sup);
+  const options = parseExportOptions(doc, defaults.sup, defaults.brokenLinks);
   S.sup = options.sup;
+  S.broken = options.broken;
   S.radioRe = radioTargetRegExp(doc);
   S.processor = citeExportSetting(doc).processor;
   S.base = scope ? scope.level : 0;
@@ -912,7 +927,7 @@ export function exportToLatex(doc, scope = null, { images = /** @type {Map<strin
   // a section with nothing to write still keeps the blank lines that followed its keywords (Org counts them as the elements' post-blank)
   const zeroth = elements(parsedLines(preamble));
   const body = (zeroth === '' ? '\n'.repeat(preamble.filter((l) => !l.trim()).length) : zeroth) + headings(roots, ctx, base);
-  return head.join('\n') + '\n' + (body ? trimEnd(body) : '') + '\\end{document}\n';
+  return finishDropped(head.join('\n') + '\n' + (body ? trimEnd(body) : '') + '\\end{document}\n');
 }
 
 /** The exported headings as a tree of copies, for the citation scan. @param {Heading[]} roots @param {(h: Heading) => boolean} skip @returns {Heading[]} */

@@ -40,9 +40,11 @@
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { citeExportFor, dropSilentCitations, replaceCitationsInText, segmentsText, splitBibliography } from './cite.js';
 import { resolveLinkTarget } from './link-resolve.js';
+import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 import { isWidthCookieRow } from './table-cookies.js';
 import { parseExportOptions } from './export-options.js';
+import { brokenLinkPath, brokenLinkText, finishDropped } from './broken-links.js';
 import { expandMacrosForExport } from './export-org.js';
 
 // Footnote definitions accumulated during a single exportToMarkdown()
@@ -64,6 +66,8 @@ let anonymousFootnoteCounterMd = 0;
 // resolving a link that points TO that heading.
 /** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
 let supMd = 't';
+/** What the export does with a link that leads nowhere (org-export-with-broken-links). @type {import('./broken-links.js').BrokenLinks} */
+let brokenMd = 'nil';
 /** @type {any} */
 let docForLinkResolutionMd = null;
 /** @type {import('./export-links.js').LinkContext | null} */ let linkCtxMd = null; // section numbers, targets and radio-target pattern for this export
@@ -194,7 +198,14 @@ function renderInlineNodeMd(node) {
     case 'superscript':
       return `<sup>${node.value}</sup>`;
     case 'link': {
+      const coderef = /^\((.*)\)$/.exec(node.target);
+      if (coderef) {
+        const found = resolveCodeRef(codeBlocksMd, coderef[1]);
+        return found !== null ? escapeMarkdownText(coderefText(coderef[1], found, node.description || null)) : brokenTextMd(coderef[1]);
+      }
       const info = linkCtxMd ? internalLink(linkCtxMd, node.target) : null;
+      const broken = node.radio || info ? null : brokenLinkPath(docForLinkResolutionMd, node.target);
+      if (broken !== null) return brokenTextMd(broken);
       if (node.radio && info && info.anchor) return `<a href="#${info.anchor}">${escapeHtmlMd(/** @type {string} */ (node.description))}</a>`; // a plain mention of a radio target
       if (info && info.anchor) {
         const text = node.description ? escapeMarkdownText(node.description) : info.label !== null ? info.label : node.target;
@@ -365,6 +376,50 @@ function stripCommaEscape(line) {
   return line.replace(/^(\s*),(?=\*|#\+)/, '$1');
 }
 
+/** The numbered code of each source and example block, in document order (`org-export-unravel-code`, `org-export-get-loc`). */
+let codeMd = new WeakMap();
+/** @type {{ lines: string[], switches: import('./code-lines.js').CodeSwitches, refs: Map<number, string>, start: number | null }[]} */
+let codeBlocksMd = [];
+
+/** Reads every source and example block once, in order, so that a reference can point forward. @param {import('./types.js').Doc} doc @param {import('./types.js').Heading[]} roots @param {boolean} withPreamble */
+function scanCodeMd(doc, roots, withPreamble) {
+  codeMd = new WeakMap();
+  codeBlocksMd = [];
+  const counter = newCodeCounter();
+  /** @param {import('./types.js').BodyNode[] | undefined} body */
+  const scanBody = (body) => {
+    for (const node of body || []) {
+      if (node.type !== 'block' || (node.name !== 'SRC' && node.name !== 'EXAMPLE')) continue;
+      const lines = node.lines.map(stripCommaEscape);
+      const block = unravelCode(lines, blockSwitchText(node.name.toLowerCase(), node.params || ''));
+      const entry = { ...block, start: codeStart(counter, block.switches, lines.length) };
+      codeMd.set(node, entry);
+      codeBlocksMd.push(entry);
+    }
+  };
+  /** @param {import('./types.js').Heading[]} headings */
+  const scanHeadings = (headings) => {
+    for (const h of headings) {
+      scanBody(h.body);
+      scanHeadings(h.children || []);
+    }
+  };
+  if (withPreamble) scanBody(doc.body);
+  scanHeadings(roots);
+}
+
+/** The code lines of a source or example block as Org writes them: numbers on the left, labels flush right. @param {import('./types.js').Block} block */
+function codeLinesMd(block) {
+  const entry = codeMd.get(block);
+  return entry ? formatCodePlain(entry, entry.start).join('\n') : block.lines.map(stripCommaEscape).join('\n');
+}
+
+/** The stand-in for a link that leads nowhere: its brackets are not escaped, the path is. @param {string} path */
+function brokenTextMd(path) {
+  const text = brokenLinkText(brokenMd, path);
+  return brokenMd === 'mark' ? `[BROKEN LINK: ${escapeMarkdownText(path)}]` : text;
+}
+
 /** @param {import('./types.js').Block} block */
 function renderBlockMd(block) {
   const name = block.name;
@@ -378,12 +433,12 @@ function renderBlockMd(block) {
   }
   if (name === 'SRC') {
     const lang = block.params.split(/\s+/)[0] || '';
-    return '```' + lang + '\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
+    return '```' + lang + '\n' + codeLinesMd(block) + '\n```';
   }
   // EXAMPLE and any other/unrecognized block type: preserve verbatim as
   // a fenced block with no language hint, rather than trying to
   // reinterpret content this app doesn't have specific handling for.
-  return '```\n' + block.lines.map(stripCommaEscape).join('\n') + '\n```';
+  return '```\n' + (name === 'EXAMPLE' ? codeLinesMd(block) : block.lines.map(stripCommaEscape).join('\n')) + '\n```';
 }
 
 /** @param {import('./types.js').BodyNode} node */
@@ -506,16 +561,18 @@ function buildTocMd(headings, toc, numberingEnabled) {
 }
 
 /** @param {Doc} doc */
-export function exportToMarkdown(doc, scope = /** @type {any} */ (null), { sup = 't' } = {}) {
+export function exportToMarkdown(doc, scope = /** @type {any} */ (null), { sup = 't', brokenLinks = /** @type {import('./broken-links.js').BrokenLinks} */ ('nil') } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
   docForLinkResolutionMd = doc;
   headingSlugMapMd = new Map();
-  supMd = parseExportOptions(doc, sup).sup;
+  supMd = parseExportOptions(doc, sup, brokenLinks).sup;
+  brokenMd = parseExportOptions(doc, sup, brokenLinks).broken;
 
   const roots = scope ? [scope] : doc.children || [];
   citeMd = citeExportFor(doc, roots, parseInline, !scope);
+  scanCodeMd(doc, roots, !scope);
   assignHeadingSlugsMd(roots, new Set());
   linkCtxMd = buildLinkContext(doc, roots, parseExportOptions(doc, sup).num);
   const levelOffset = scope ? scope.level - 1 : 0;
@@ -551,6 +608,6 @@ export function exportToMarkdown(doc, scope = /** @type {any} */ (null), { sup =
   // triple-or-more blank lines (e.g. an empty paragraph node) down to
   // exactly one blank line, and ensure the file ends with exactly one
   // trailing newline.
-  const joined = out.filter((s) => s !== '').join('\n\n');
+  const joined = finishDropped(out.filter((s) => s !== '').join('\n\n'));
   return joined.replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }

@@ -628,6 +628,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~diary-show-holidays-flag~ | ~t~ | ~t~ lists the day's holidays with its diary entries (see [[#diary-file][Diary file]]) |
 | ~display-line-numbers-mode~ | ~nil~ | ~t~ shows each row's line number in the file beside it in the outline, and in the Text view (see [[#line-numbers][Line numbers]]) |
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
+| ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
@@ -652,13 +653,14 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
 | ~org-clock-idle-time~ | ~nil~ | A whole number of minutes. While a clock runs, after that long without a tap, key press or scroll in the app you are asked whether to keep the time, subtract it and keep clocking, or subtract it and clock out |
-| ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate; a file name also beeps, as in Emacs when the file cannot be played |
+| ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); it beeps if the file is not there, and in the browser |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~); also Settings → Quick Settings → *Diary* |
 | ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
 | ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. It must contain ~("min" . 1)~; an invalid value is ignored |
+| ~org-export-with-broken-links~ | ~nil~ | What export does with a link that leads nowhere (a heading, target, custom id or code reference that is not there): ~nil~ stops with "Unable to resolve link: …", ~t~ leaves the link out, ~mark~ writes ~[BROKEN LINK: path]~; also Settings → Export. A file's ~#+OPTIONS: broken-links:~ wins |
 | ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
@@ -1001,13 +1003,13 @@ Clock lines live in a ~:LOGBOOK:~ drawer from the first one. Org itself keeps th
 - *org-clock-report*: a ~#+BEGIN: clocktable ... #+END:~ block, computed for a date range and shown read-only under *View → TODO*'s *Clock report* (see [[#the-todo-view][The TODO view]]).
 - While a clock runs, the modeline (see [[#modeline][Modeline and minibuffer]]) shows ~[⏱ H:MM] Heading title~, refreshed every 30 seconds.
 
-*Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~; ~2h~, ~45min~, ~1d 3h~; ~2.35h~; or a bare number of minutes. Units are Emacs's defaults unless ~org-duration-units~ says otherwise: ~min~, ~h~, ~d~ (24 h), ~w~ (7 d), ~m~ (a *month* of 30 days, so write ~30min~ for half an hour) and ~y~. Setting ~(("min" . 1) ("h" . 60) ("d" . 480) ("w" . 2400))~ makes a day eight hours, and a unit of your own such as ~("sprint" . 4800)~ can be used in an effort and in the clock total. A blank value clears it; an invalid one is refused. You can also type it into *Edit details → Properties*.
+*Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~; ~2h~, ~45min~, ~1d 3h~; ~2.35h~; or a bare number of minutes. Units are Emacs's defaults unless ~org-duration-units~ says otherwise: ~min~, ~h~, ~d~ (24 h), ~w~ (7 d), ~m~ (a *month* of 30 days, so write ~30min~ for half an hour) and ~y~. Setting ~(("min" . 1) ("h" . 60) ("d" . 480) ("w" . 2400))~ makes a day eight hours, and a unit of your own such as ~("sprint" . 4800)~ can be used in an effort. A blank value clears it; an invalid one is refused. You can also type it into *Edit details → Properties*.
 
 An ~EFFORT~ shows beside the title as a ~⏱~ badge; tapping it opens the same prompt. While that heading is clocked in, the modeline shows ~[⏱ 0:45 / 2:00] Heading title~, with a trailing ~!~ once the estimate is passed.
 
-*Reminder*: the first time a running clock passes its estimate, the status line says "Task ‘Title’ should be finished by now. (2:00)", and a notification is shown if you allowed them. ~org-clock-sound~ ~t~ adds a beep. The check runs every 30 seconds while the app is open.
+*Reminder*: the first time a running clock passes its estimate, the status line says "Task ‘Title’ should be finished by now. (2:00)", and a notification is shown if you allowed them. ~org-clock-sound~ ~t~ adds a beep, and in the Android app a file name in the org-pwa folder plays that sound. The check runs when a clock starts and then every 30 seconds while the app is open, and the reminder can fire again if the estimate is raised and passed again.
 
-*Idle time*: with ~org-clock-idle-time~ set, a running clock that has seen no activity in the app for that many minutes (also after the device was asleep) asks "Clocked in & idle for N mins": *Keep* the time, *Subtract and keep clocking*, or *Subtract and clock out*. Only activity inside the app counts; the app cannot see the rest of the device.
+*Idle time*: with ~org-clock-idle-time~ set, a running clock that has seen no activity in the app for that many minutes (also after the device was asleep) asks "Clocked in & idle for N mins" and offers Org's keys: ~i~ ignore, ~k~ keep some minutes, ~t~ keep until a time, ~g~ got back some minutes ago, ~s~ subtract the idle time, ~C~ cancel the clock, ~j~ jump to it; a capital letter (~K~ ~T~ ~G~ ~S~ ~J~) also clocks out. A clock that had barely started when the idle time began is dropped by ~s~ and restarted. Only activity inside the app counts; the app cannot see the rest of the device.
 
 -----
 
@@ -1032,7 +1034,7 @@ Values are space-separated, and each must be a valid ~org-duration~ (see [[#cloc
 :CUSTOM_ID: line-numbers
 :END:
 
-As in Emacs, ~display-line-numbers-mode~ shows the file's own line numbers; ~-n~ on a source block does not (that only numbers the block when it is exported, see [[#export-line-numbers][Line numbers and references in source blocks]]). Set ~display-line-numbers-mode~ to ~t~ (Settings → Editing) and every outline row, heading or body, shows the number of its first line in the file, including the planning and drawer lines that sit above a body. A folded heading shows its own line, so the numbers skip what is hidden. The Text view shows the numbers when either this or its own ~org-xx-text-line-numbers~ is on.
+As in Emacs, ~display-line-numbers-mode~ shows the file's own line numbers; ~-n~ on a source block does not (that only numbers the block when it is exported, see [[#export-line-numbers][Line numbers and references in source blocks]]). Set ~display-line-numbers-mode~ to ~t~ (Settings → Editing) and every file line the outline shows gets its own number: each line of a paragraph, verse, quote, source block or table, and the ~#+begin~ line of a block. Paragraph lines then break where they do in the file. A line that wraps keeps one number. Lines that are not drawn (the ~#+end~ line, planning and drawer lines, a folded heading's body) are skipped, so the numbers jump over them like folded text in Emacs. A narrowed outline counts from 1 at the narrowed heading unless ~display-line-numbers-widen~ is ~t~. The Text view shows the numbers when either this or its own ~org-xx-text-line-numbers~ is on.
 
 ~display-line-numbers-type~ is ~t~ (numbers from the top), ~relative~ (file lines away from the current row; hidden lines count) or ~visual~ (rows shown away from it). In both of those the current row keeps its absolute number. The current row is the keyboard-focused one in the outline, and the line the cursor is on in the Text view.
 
@@ -1741,6 +1743,9 @@ The open tabs persist across restarts, each restored as left.
 | ~^:~ | Sub/superscript strictness, as ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]); overrides it for this export |
 | ~author:~, ~date:~ | Show each field or not |
 | ~creator:~ | A "Generated by org-pwa" notice, off by default |
+| ~broken-links:~ | What to do with a link that leads nowhere: ~nil~ stops the export, ~t~ leaves the link out, ~mark~ writes ~[BROKEN LINK: path]~. Overrides ~org-export-with-broken-links~ |
+
+*Links that lead nowhere*: a link to a heading, target, custom id, ID or code reference that is not in the export stops it with ~Unable to resolve link: "path"~, as in Emacs. ~#+OPTIONS: broken-links:mark~ writes ~[BROKEN LINK: path]~ in its place instead, and ~broken-links:t~ leaves the link out. URLs and file links are not checked.
 
 HTML export also takes these, with Org's defaults:
 
@@ -1809,9 +1814,9 @@ A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Go
 :CUSTOM_ID: export-line-numbers
 :END:
 
-Source and example blocks follow Org's switches in HTML, ASCII and LaTeX export, and the results were compared with Emacs 29.3. ~-n~ numbers the lines from 1 and ~-n 10~ from 10; ~+n~ continues from the previous numbered block, and ~+n 5~ adds 5 to that. ~-i~ keeps the indentation. A line that ends in ~(ref:label)~ is a reference: ~[[(label)]]~ links to it and shows the line number, or the label itself when the block shows labels. ~-r~ removes the label from the printed line and makes links show numbers; ~-k~ keeps it and also makes links show numbers; ~-l "[ref:%s]"~ changes how a label is written. ~[[(label)][see (label)]]~ replaces ~(label)~ in the description with the number.
+Source and example blocks follow Org's switches in HTML, ASCII, Markdown, LaTeX and ODT export, and the results were compared with Emacs 29.3. ~-n~ numbers the lines from 1 and ~-n 10~ from 10; ~+n~ continues from the previous numbered block, and ~+n 5~ adds 5 to that. ~-i~ keeps the indentation. A line that ends in ~(ref:label)~ is a reference: ~[[(label)]]~ links to it and shows the line number, or the label itself when the block shows labels. ~-r~ removes the label from the printed line and makes links show numbers; ~-k~ keeps it and also makes links show numbers; ~-l "[ref:%s]"~ changes how a label is written. ~[[(label)][see (label)]]~ replaces ~(label)~ in the description with the number.
 
-HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lines with a label, and links get Org's hover highlight (the page includes Org's small ~CodeHighlightOn~ script when it has such a link; Emacs leaves the script out unless ~org-html-head-include-scripts~ is on). ASCII and the plain ~verbatim~ environment put the number at the left and the label flush right; with ~listings~ or ~minted~ the package numbers the lines (~numbers=left~ and ~firstnumber~, or ~linenos~ and ~firstnumber~), and an ~org-latex-listings-options~ or ~org-latex-minted-options~ entry for numbering wins. Markdown and ODT export do not number lines.
+HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lines with a label, and links get Org's hover highlight (the page includes Org's small ~CodeHighlightOn~ script when it has such a link; Emacs leaves the script out unless ~org-html-head-include-scripts~ is on). ASCII and the plain ~verbatim~ environment put the number at the left and the label flush right; with ~listings~ or ~minted~ the package numbers the lines (~numbers=left~ and ~firstnumber~, or ~linenos~ and ~firstnumber~), and an ~org-latex-listings-options~ or ~org-latex-minted-options~ entry for numbering wins. Markdown puts the numbers in the code text, as ASCII does. ODT writes a numbered list, with a bookmark on each line that has a label; links show that line's number.
 
 *** LaTeX
 
@@ -2255,7 +2260,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Footnotes* (see [[#footnotes][Footnote commands]]): in the outline a footnote goes in through the Footnote button of the paragraph editor.
 
-*Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and the sound is a beep, never a file.
+*Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and a sound file plays in the Android app only.
 
 *Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips US and Christian holidays. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open. The diary shows its Gregorian entries.
 
