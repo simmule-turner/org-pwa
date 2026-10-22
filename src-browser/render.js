@@ -1,9 +1,11 @@
 // @ts-check
 // Extracted from app.js: render.
 import { findContainer } from '../src/archive-model.js';
-import { findHeadingLineNumber, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
+import { findHeadingLineNumber, headingLineIndex, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
+import { displayedLineNumber } from '../src/line-numbers.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType } from '../src/local-variables.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
-import { repairBodyFocus } from './keyboard-focus.js';
+import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { renderAgendaView, renderTaskListView } from './agenda-view.js';
@@ -244,7 +246,12 @@ export function render() {
   // outlineEl and appendChild-ing each row directly onto an already
   // on-screen, already-laid-out element.
   const fragment = document.createDocumentFragment();
-  for (const row of finalVisibleRows) fragment.appendChild(renderRow(row, todoSequence));
+  const numbering = displayLineNumbering(finalVisibleRows);
+  finalVisibleRows.forEach((row, i) => {
+    const el = renderRow(row, todoSequence);
+    if (numbering) numbering(el, row, i);
+    fragment.appendChild(el);
+  });
   outlineEl.innerHTML = '';
   outlineEl.appendChild(fragment);
 
@@ -306,6 +313,42 @@ export function render() {
       }
     });
   }
+}
+
+/**
+ * `display-line-numbers-mode` for the outline: a function that puts the file line number of a row beside it, or null when the mode is off.
+ * @param {import('../src/types.js').OutlineRow[]} rows  the rows being shown
+ * @returns {((el: HTMLElement, row: import('../src/types.js').OutlineRow, index: number) => void) | null}
+ */
+function displayLineNumbering(rows) {
+  const vars = /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
+  if (!getDisplayLineNumbersMode(vars) || !S.state.doc) return null;
+  const type = getDisplayLineNumbersType(vars);
+  const index = headingLineIndex(S.state.doc);
+  /** @param {import('../src/types.js').OutlineRow} row */
+  const lineOf = (row) => {
+    if (row.rowType === 'heading') {
+      const at = index.lines.get(row.node);
+      return at ? at.line + 1 : 0;
+    }
+    const at = index.lines.get(row.heading);
+    const own = row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex;
+    return at && own !== undefined ? at.bodyStart + own + 1 : 0;
+  };
+  const currentShown = rows.findIndex((r) => rowMatchesKeyboardFocus(r));
+  const current = currentShown >= 0 ? lineOf(rows[currentShown]) : 0;
+  const width = `${String(index.total).length}ch`;
+  return (el, row, i) => {
+    el.style.position = 'relative';
+    el.style.paddingLeft = `calc(${el.style.paddingLeft || '8px'} + ${width} + 6px)`;
+    const line = lineOf(row);
+    const num = document.createElement('span');
+    num.className = 'ln-num';
+    num.setAttribute('aria-hidden', 'true');
+    num.style.width = width;
+    if (line > 0) num.textContent = String(displayedLineNumber(type, line, current, i, currentShown));
+    el.insertBefore(num, el.firstChild);
+  };
 }
 
 /** Single source of truth for the filename display, including the

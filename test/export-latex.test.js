@@ -29,7 +29,7 @@ export function normalize(tex) {
 
 // readme.org is README.org itself (tools/make-readme-fixture.mjs refreshes it); the other fixtures are small and each aims at one feature.
 // Covered by the first release; the rest of the fixtures (images, entities, citations ...) wait for the next one.
-const covered = ['babel', "attr2", "footsec", "comments", "entities", "links2", "images", "attr", "toc", "extras", "notitle-notoc", "cite-natbib", "cite-biblatex", "refnamed", 'fixed', 'texttt', 'readme', 'headings', 'options-nonum', 'options-nonum-toc', 'options-toc2', 'inline', 'lists', 'tables', 'tables2', 'blocks', 'planning', 'math', 'specials', 'headers', 'noexport', 'latex-env', 'timestamps', 'notitle', 'footnotes-basic', 'links', 'classes', 'classes-koma', 'listings', 'minted'];
+const covered = ['babel', "attr2", "footsec", "comments", "entities", "links2", "images", "attr", "toc", "extras", "notitle-notoc", "cite-natbib", "cite-biblatex", "refnamed", 'fixed', 'texttt', 'readme', 'headings', 'options-nonum', 'options-nonum-toc', 'options-toc2', 'inline', 'lists', 'tables', 'tables2', 'blocks', 'planning', 'math', 'specials', 'headers', 'noexport', 'latex-env', 'timestamps', 'notitle', 'footnotes-basic', 'links', 'classes', 'classes-koma', 'listings', 'minted', 'coderef', 'coderef-listings', 'coderef-minted'];
 
 for (const name of covered) {
   test(`LaTeX export matches Emacs: ${name}`, () => {

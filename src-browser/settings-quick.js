@@ -1,5 +1,6 @@
 // @ts-check
 // The Quick Settings section of Settings: reading a setting's value, saving a change, and drawing each field.
+import { applyDurationVariables } from '../src/org-duration.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
 import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
@@ -102,6 +103,7 @@ export async function commitGlobalVariableChange(key, rawValue) {
   }
   S.globalVariablesText = serializeGlobalVariables(vars);
   S.globalVariables = vars;
+  applyDurationVariables(vars);
   await setGlobalVariables(kv, S.globalVariablesText);
   if (S.state.doc) {
     S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));

@@ -11,6 +11,7 @@
  *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: OutlineNode | null,
  *   parsed: Map<Heading, import('./org-elements.js').OrgElement[]>, fnDefsCollect?: any, outline: OutlineNode[], captioned: { kind: string, n: number, id: string, html: string }[],
  *   headingNodes: Map<Heading, OutlineNode>, targetHeadings: Map<string, OutlineNode>, cite: any,
+ *   codeCounter: { loc: number }, codeBlocks: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null }[], usesCoderef: boolean,
  * }} ExportState
  */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -40,6 +41,24 @@ import { KATEX_EXPORT_CSS } from './katex-export-css.js';
 import { getHtmlHead } from './export-options.js';
 import { getProperty } from './archive-model.js';
 import { highlightToHtml } from './syntax-highlight.js';
+import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText } from './code-lines.js';
+
+/** Org's hover script for code references (`org-html-scripts`): highlights a reference and its line together. */
+const CODE_HIGHLIGHT_SCRIPT = `function CodeHighlightOn(elem, id) {
+  var target = document.getElementById(id);
+  if (null != target) {
+    elem.classList.add("code-highlighted");
+    target.classList.add("code-highlighted");
+  }
+}
+function CodeHighlightOff(elem, id) {
+  var target = document.getElementById(id);
+  if (null != target) {
+    elem.classList.remove("code-highlighted");
+    target.classList.remove("code-highlighted");
+  }
+}
+`;
 
 // ---- options ------------------------------------------------------------------
 
@@ -216,6 +235,9 @@ function createState(doc, scope, defaults = {}) {
     fnDefs: new Map(),
     fnInline: new Map(),
     counters: { table: 0, listing: 0, figure: 0 },
+    codeCounter: newCodeCounter(),
+    codeBlocks: [],
+    usesCoderef: false,
     math: false,
     tokens: [],
     tokenSources: [],
@@ -664,6 +686,15 @@ function internalLinkLabel(state, rawTarget) {
 function linkHtml(state, node) {
   const target = node.target;
   const desc = node.description;
+  const coderef = /^\((.+)\)$/.exec(target.trim());
+  if (coderef) {
+    const found = resolveCodeRef(state.codeBlocks, coderef[1]);
+    if (found === null) return escapeHtml(target);
+    state.usesCoderef = true;
+    const id = `coderef-${escapeAttr(coderef[1])}`;
+    const text = desc ? renderInline(state, coderefText(coderef[1], found, desc)) : escapeHtml(found);
+    return `<a href="#${id}" class="coderef" onmouseover="CodeHighlightOn(this, '${id}');" onmouseout="CodeHighlightOff(this, '${id}');">${text}</a>`;
+  }
   if (desc === null || desc === undefined || desc === '') {
     if (isImageTarget(target)) return imageHtml(target);
     const internal = internalLinkLabel(state, target);
@@ -863,17 +894,49 @@ function tableHtml(state, el) {
 }
 
 /**
+ * The unravelled code of a source or example block with its line-number start, computed once per block.
+ * @param {ExportState} state
+ * @param {any} el
+ * @returns {import('./code-lines.js').CodeBlock & { start: number | null }}
+ */
+function prepareCode(state, el) {
+  if (el.__code) return el.__code;
+  const lines = el.lines.map(unescapeLine);
+  const block = unravelCode(lines, blockSwitchText(el.name, el.params));
+  el.__code = { ...block, start: codeStart(state.codeCounter, block.switches, lines.length) };
+  state.codeBlocks.push(el.__code);
+  return el.__code;
+}
+
+/**
+ * Lines of already escaped or highlighted code with Org's number and reference markup (`org-html-do-format-code`).
+ * @param {import('./code-lines.js').CodeBlock & { start: number | null }} block
+ * @param {string[]} htmlLines
+ */
+function formatCodeHtml(block, htmlLines) {
+  const { start, refs, switches } = block;
+  const width = start === null ? 0 : String(htmlLines.length + start).length;
+  return htmlLines
+    .map((loc, i) => {
+      const ref = refs.get(i + 1);
+      const text =
+        (start === null ? '' : `<span class="linenr">${String(start + i + 1).padStart(width)}: </span>`) +
+        loc +
+        (ref !== undefined && switches.retainLabels ? ` (${escapeHtml(ref)})` : '');
+      return ref === undefined ? text : `<span id="coderef-${escapeAttr(ref)}" class="coderef-off">${text}</span>`;
+    })
+    .join('\n');
+}
+
+/**
  * @param {ExportState} state
  * @param {OrgEl<'block'>} el
  */
 function srcBlockHtml(state, el) {
   const params = el.params.trim();
   const lang = params.split(/\s+/)[0] || '';
-  const lines = removeIndentation(el.lines.map(unescapeLine));
-  const numbered = /(^|\s)[-+]n(\s|$)/.test(params);
-  const start = numbered && /[-+]n\s+(\d+)/.exec(params) ? Number((/[-+]n\s+(\d+)/.exec(params) || [])[1]) : 1;
-  const colored = highlightToHtml(lines.join('\n'), lang).split('\n');
-  const code = colored.map((/** @type {any} */ l, /** @type {number} */ i) => (numbered ? `<span class="linenr">${start + i}: </span>` : '') + l).join('\n');
+  const block = prepareCode(state, el);
+  const code = formatCodeHtml(block, highlightToHtml(block.lines.join('\n'), lang).split('\n'));
   const caption = captionHtml(state, el.aff);
   const cls = lang ? `src src-${escapeAttr(lang)}` : 'src';
   const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">Listing ${++state.counters.listing}: </span>${caption}</label>` : '';
@@ -904,7 +967,10 @@ function blockHtml(state, el, ctx) {
       if (!el.params.trim().split(/\s+/)[0] || /^[-+]/.test(el.params.trim())) return blockHtml(state, { ...el, name: 'example' }, ctx);
       return srcBlockHtml(state, el);
     case 'example':
-      return `<pre class="example"${el.aff && el.aff.name ? ` id="${escapeAttr(el.aff.name)}"` : ''}>\n${escapeHtml(removeIndentation(el.lines.map(unescapeLine)).join('\n'))}\n</pre>`;
+    {
+      const block = prepareCode(state, el);
+      return `<pre class="example"${el.aff && el.aff.name ? ` id="${escapeAttr(el.aff.name)}"` : ''}>\n${formatCodeHtml(block, block.lines.map(escapeHtml))}\n</pre>`;
+    }
     case 'quote':
       return `<blockquote${htmlAttributes(el.aff)}>\n${inner(el.lines)}\n</blockquote>`;
     case 'center':
@@ -1307,6 +1373,7 @@ const PAGE_CSS = `
   pre.src { position: relative; }
   .org-src-name { display: block; font-size: 0.85em; color: #555; margin-top: 1em; }
   .linenr { font-size: smaller; color: #888; }
+  .code-highlighted { background-color: #ffff00; }
   code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 0.9em; }
   p code, li code { background: #f0f0f0; border-radius: 3px; padding: 0.1em 0.3em; }
   hr { border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }
@@ -1396,6 +1463,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
   /** @param {any} [elements] */
   const scan = (elements) => {
     for (const el of elements) {
+      if (el.type === 'block' && (el.name === 'src' || el.name === 'example')) prepareCode(state, el);
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
       if (el.type === 'table' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'table-' + (tableN + 1));
@@ -1524,6 +1592,7 @@ export function exportToHtml(doc, scope = /** @type {any} */ (null), { images = 
     out.join('\n') +
     '\n</div>\n' +
     postamble +
+    (state.usesCoderef ? `<script>\n${CODE_HIGHLIGHT_SCRIPT}</script>\n` : '') +
     '</body>\n' +
     '</html>\n'
   );

@@ -33,6 +33,7 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#source-blocks][Source blocks]]
 - [[#attachments][Attachments]]
 - [[#clocking][Clocking]]
+- [[#line-numbers][Line numbers]]
 - [[#narrowing][Narrowing]]
 - [[#the-plain-text-editor][The plain-text editor]]
 - [[#agenda][Agenda]]
@@ -625,6 +626,8 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~diary-nonmarking-symbol~ | ~"&"~ | The character that may come before a date |
 | ~diary-sexp-entry-symbol~ | ~"%%"~ | What starts a sexp line |
 | ~diary-show-holidays-flag~ | ~t~ | ~t~ lists the day's holidays with its diary entries (see [[#diary-file][Diary file]]) |
+| ~display-line-numbers-mode~ | ~nil~ | ~t~ shows each row's line number in the file beside it in the outline, and in the Text view (see [[#line-numbers][Line numbers]]) |
+| ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
@@ -648,11 +651,14 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
+| ~org-clock-idle-time~ | ~nil~ | A whole number of minutes. While a clock runs, after that long without a tap, key press or scroll in the app you are asked whether to keep the time, subtract it and keep clocking, or subtract it and clock out |
+| ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate; a file name also beeps, as in Emacs when the file cannot be played |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~); also Settings → Quick Settings → *Diary* |
 | ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
+| ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. It must contain ~("min" . 1)~; an invalid value is ignored |
 | ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
@@ -969,7 +975,9 @@ Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now 
 
 *Filenames*: unsafe characters become ~_~; a duplicate gets ~-1~, ~-2~ before the extension.
 
-*Not built*: Org's copy/move/link variants (~c~, ~m~, ~l~) and absolute ~DIR~ paths outside the storage.
+*Between headings*: in the folder panel, select files and tap *Copy to heading…* or *Move to heading…*, then pick a heading from the open document. The files are written to that heading's folder first (it gets an ~ID~, a folder and the ~:ATTACH:~ tag if it had none) and a move deletes the originals only afterwards; the link setting above decides whether a link is added. A name already there gets ~-1~, ~-2~.
+
+*Not built*: attaching from a URL, ~org-attach-method~ (the copy/move/link choice for a new file), and absolute ~DIR~ paths outside the storage.
 
 -----
 
@@ -993,11 +1001,13 @@ Clock lines live in a ~:LOGBOOK:~ drawer from the first one. Org itself keeps th
 - *org-clock-report*: a ~#+BEGIN: clocktable ... #+END:~ block, computed for a date range and shown read-only under *View → TODO*'s *Clock report* (see [[#the-todo-view][The TODO view]]).
 - While a clock runs, the modeline (see [[#modeline][Modeline and minibuffer]]) shows ~[⏱ H:MM] Heading title~, refreshed every 30 seconds.
 
-*Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~; ~2h~, ~45min~, ~1d 3h~; ~2.35h~; or a bare number of minutes. Units are Emacs's defaults: ~min~, ~h~, ~d~ (24 h), ~w~ (7 d), ~m~ (a *month* of 30 days, so write ~30min~ for half an hour) and ~y~. A blank value clears it; an invalid one is refused. You can also type it into *Edit details → Properties*.
+*Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~; ~2h~, ~45min~, ~1d 3h~; ~2.35h~; or a bare number of minutes. Units are Emacs's defaults unless ~org-duration-units~ says otherwise: ~min~, ~h~, ~d~ (24 h), ~w~ (7 d), ~m~ (a *month* of 30 days, so write ~30min~ for half an hour) and ~y~. Setting ~(("min" . 1) ("h" . 60) ("d" . 480) ("w" . 2400))~ makes a day eight hours, and a unit of your own such as ~("sprint" . 4800)~ can be used in an effort and in the clock total. A blank value clears it; an invalid one is refused. You can also type it into *Edit details → Properties*.
 
 An ~EFFORT~ shows beside the title as a ~⏱~ badge; tapping it opens the same prompt. While that heading is clocked in, the modeline shows ~[⏱ 0:45 / 2:00] Heading title~, with a trailing ~!~ once the estimate is passed.
 
-Not built: custom duration units (~org-duration-units~), the ~Effort_ALL+~ append form, and a reminder tied to the estimate beyond the modeline's ~!~. See [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
+*Reminder*: the first time a running clock passes its estimate, the status line says "Task ‘Title’ should be finished by now. (2:00)", and a notification is shown if you allowed them. ~org-clock-sound~ ~t~ adds a beep. The check runs every 30 seconds while the app is open.
+
+*Idle time*: with ~org-clock-idle-time~ set, a running clock that has seen no activity in the app for that many minutes (also after the device was asleep) asks "Clocked in & idle for N mins": *Keep* the time, *Subtract and keep clocking*, or *Subtract and clock out*. Only activity inside the app counts; the app cannot see the rest of the device.
 
 -----
 
@@ -1006,7 +1016,7 @@ Not built: custom duration units (~org-duration-units~), the ~Effort_ALL+~ appen
 :CUSTOM_ID: effort-all
 :END:
 
-Org's effort prompt completes against a list of allowed values, ~Effort_ALL~. It looks in this order, and the first source that gives at least one usable value wins:
+Org's effort prompt completes against a list of allowed values, ~Effort_ALL~. It looks in this order, and the first source that gives at least one usable value wins (an ~Effort_ALL+~ property adds to what the levels above it give):
 
 1. an ~Effort_ALL~ property on the heading itself, or on the nearest ancestor that has one;
 2. the file's ~#+PROPERTY: Effort_ALL 0 0:10 0:30 1:00 2:00~ line;
@@ -1014,8 +1024,17 @@ Org's effort prompt completes against a list of allowed values, ~Effort_ALL~. It
 
 Values are space-separated, and each must be a valid ~org-duration~ (see [[#clocking][Clocking]]); anything else is skipped. When a list applies, *Set effort estimate* shows its values as buttons above the text box: one tap saves that value, and the box still takes any other duration. With no list the prompt is plain free text. The same list supplies the Agenda's effort filter (see [[#agenda][Agenda]]); with none defined, the filter uses org's own fallback set (~0 0:10 0:30 1:00 2:00 3:00 4:00 5:00 6:00 7:00~).
 
-Not supported: ~Effort_ALL+~, and quoted values containing spaces.
+~Effort_ALL+~ appends to the list, as in Emacs: on a heading it adds its values to the list inherited from above, and a ~+~ above a deeper plain ~Effort_ALL~ is dropped. Not supported: quoted values containing spaces.
 
+
+** Line numbers
+:PROPERTIES:
+:CUSTOM_ID: line-numbers
+:END:
+
+As in Emacs, ~display-line-numbers-mode~ shows the file's own line numbers; ~-n~ on a source block does not (that only numbers the block when it is exported, see [[#export-line-numbers][Line numbers and references in source blocks]]). Set ~display-line-numbers-mode~ to ~t~ (Settings → Editing) and every outline row, heading or body, shows the number of its first line in the file, including the planning and drawer lines that sit above a body. A folded heading shows its own line, so the numbers skip what is hidden. The Text view shows the numbers when either this or its own ~org-xx-text-line-numbers~ is on.
+
+~display-line-numbers-type~ is ~t~ (numbers from the top), ~relative~ (file lines away from the current row; hidden lines count) or ~visual~ (rows shown away from it). In both of those the current row keeps its absolute number. The current row is the keyboard-focused one in the outline, and the line the cursor is on in the Text view.
 
 ** Narrowing
 :PROPERTIES:
@@ -1044,7 +1063,7 @@ Tap *View → Text* to replace the outline with one textarea holding the raw org
 
 *Line…* (in the tool row) also has *Select all* and *Copy all*, one tap each for devices without a keyboard (Copy all falls back to selecting if the clipboard is denied). While narrowed they act on the narrowed text.
 
-The text is colored: Org headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links and emphasis, and the code in a source block when it is JavaScript or Lisp. A row of tools sits above the text: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, and duplicates, deletes, moves, indents or outdents the lines you have selected. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The three settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]].
+The text is colored: Org headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links and emphasis, and the code in a source block when it is JavaScript or Lisp. A row of tools sits above the text: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, and duplicates, deletes, moves, indents or outdents the lines you have selected. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]]; ~display-line-numbers-mode~ also turns the numbers on (see [[#line-numbers][Line numbers]]).
 
 *Other files*: in *File → Open*, *All files* lists every file, not only ~.org~. A file that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only, with no outline: a ~#+~ line or a Local Variables block in it means nothing. Colored for ~.md~, ~.js~, ~.json~ and ~.el~; ~.txt~ is plain.
 
@@ -1314,7 +1333,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line.
 - ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) "Payday")>~ shows "Payday" only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
-- ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip public holidays as well: the US holidays of Emacs's ~holiday-general-holidays~ and the Christian ones (Ash Wednesday, Good Friday, Easter, Christmas). ~(calendar-check-holidays date)~ gives a day's holiday names. Hebrew, Islamic and other calendars' holidays aren't included.
+- ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip public holidays as well: the US holidays of Emacs's ~holiday-general-holidays~ and the Christian ones (Ash Wednesday, Good Friday, Easter, Christmas). ~(calendar-check-holidays date)~ gives a day's holiday names. Hebrew, Islamic and other calendars' holidays aren't included. Example: ~<%%(org-class 2026 9 1 2026 12 15 1 'holidays)> Class meets~ is every Monday from September 1 to December 15 except those that are holidays, so September 7 (Labor Day) and October 12 (Columbus Day) have no "Class meets".
 - ~(org-cyclic ...)~, ~(org-anniversary ...)~ and ~(diary-float ...)~, as above, work as sub-expressions. So do ~(solar-sunrise-sunset)~, ~(solar-time-string)~ and ~(apply)~ (see [[#solar-times][Sun times]]) and ~(org-weather)~, which return a formatted string; a string result becomes the displayed text ("Weekly Sync: Weekly sync"). ~org-contacts-anniversaries~ isn't recognized inside a sexp timestamp.
 - ~(format FORMAT-STRING ARG...)~ combines strings and numbers into one line: ~<%%(when (today-p) (format "%d days until Christmas" (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date))))>~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
 - Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
@@ -1785,11 +1804,20 @@ For a table of contents with page numbers, tick *Add TOC with page numbers* in S
 
 A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs. Headings are outline levels; bold, italic, underline, strikethrough and code use named character styles; checkboxes show as ☐ and ☑; footnotes are real, editable ODF footnotes; and internal links are bookmark references. Images are referenced by path, not embedded.
 
+*** Line numbers and references in source blocks
+:PROPERTIES:
+:CUSTOM_ID: export-line-numbers
+:END:
+
+Source and example blocks follow Org's switches in HTML, ASCII and LaTeX export, and the results were compared with Emacs 29.3. ~-n~ numbers the lines from 1 and ~-n 10~ from 10; ~+n~ continues from the previous numbered block, and ~+n 5~ adds 5 to that. ~-i~ keeps the indentation. A line that ends in ~(ref:label)~ is a reference: ~[[(label)]]~ links to it and shows the line number, or the label itself when the block shows labels. ~-r~ removes the label from the printed line and makes links show numbers; ~-k~ keeps it and also makes links show numbers; ~-l "[ref:%s]"~ changes how a label is written. ~[[(label)][see (label)]]~ replaces ~(label)~ in the description with the number.
+
+HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lines with a label, and links get Org's hover highlight (the page includes Org's small ~CodeHighlightOn~ script when it has such a link; Emacs leaves the script out unless ~org-html-head-include-scripts~ is on). ASCII and the plain ~verbatim~ environment put the number at the left and the label flush right; with ~listings~ or ~minted~ the package numbers the lines (~numbers=left~ and ~firstnumber~, or ~linenos~ and ~firstnumber~), and an ~org-latex-listings-options~ or ~org-latex-minted-options~ entry for numbering wins. Markdown and ODT export do not number lines.
+
 *** LaTeX
 
 A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep section numbers such as 1.11.1 from running into their titles in the PDF's table of contents.
 
-~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Not included: Beamer, line numbers in source blocks, and the ~engraved~ backend.
+~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Source block line numbers and references are included (see [[#export-line-numbers][Line numbers and references in source blocks]]). Not included: Beamer and the ~engraved~ backend.
 
 *** As-org
 
@@ -2227,7 +2255,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Footnotes* (see [[#footnotes][Footnote commands]]): in the outline a footnote goes in through the Footnote button of the paragraph editor.
 
-*Clocking* (see [[#clocking][Clocking]]): durations use org's default ~org-duration-units~; the modeline marks a clock that has passed its estimate.
+*Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and the sound is a beep, never a file.
 
 *Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips US and Christian holidays. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open. The diary shows its Gregorian entries.
 

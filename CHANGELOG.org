@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v601 — Custom duration units, clock reminder, attachment moves, code line numbers
+=org-duration-units= and =Effort_ALL+= now work as in Emacs; a running clock reminds you when it passes its estimate (=org-clock-sound=) and asks what to do after =org-clock-idle-time= minutes away. Attachments can be copied or moved to another heading from the folder panel. Source and example blocks export with =-n=, =+n=, =-r=, =-k=, =-l= and =(ref:label)= references in HTML (with Org's hover highlight), ASCII and LaTeX, checked against Emacs. =display-line-numbers-mode= shows file line numbers in the outline and Text view.
+Verified: HTML, ASCII and LaTeX output compared with Emacs 29.3; the clock, attachment and line-number smoke checks.
+
 * v600 — Logins decrypted only while a request runs
 With a passphrase on, the app now keeps your GitHub, WebDAV, calendar and contacts logins masked in memory and decrypts them only for the length of each request or sync run, so a plain token or password is no longer sitting in the page between requests. Prompts are unchanged: once per page load.
 Verified: a WebDAV file opened with protection on carried the right login; the settings and sync checks.

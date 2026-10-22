@@ -382,7 +382,30 @@ function generateRecordingFilename(mimeType, now = new Date()) {
   return `recording-${stamp}.${extensionForRecordedMimeType(mimeType)}`;
 }
 
+/**
+ * Copying or moving files from one heading's folder to another's: the name each file gets in the target (a clash gets -1, -2, as for any
+ * attach) and the steps in order. Write comes before delete, so a failure part way never loses the original. Refuses when both
+ * folders are the same.
+ * @param {string[]} names
+ * @param {string} fromDir
+ * @param {string} toDir
+ * @param {string[]} targetExisting  names already in the target folder
+ * @param {boolean} move
+ * @returns {{ refuse?: string, files: { name: string, finalName: string, from: string, to: string, deleteSource: boolean }[] }}
+ */
+function planAttachTransfer(names, fromDir, toDir, targetExisting, move) {
+  if (fromDir === toDir) return { refuse: 'That is the same folder.', files: [] };
+  const taken = [...targetExisting];
+  const files = names.map((name) => {
+    const finalName = disambiguateAttachmentFilename(name, taken);
+    taken.push(finalName);
+    return { name, finalName, from: `${fromDir}/${name}`, to: `${toDir}/${finalName}`, deleteSource: move };
+  });
+  return { files };
+}
+
 export {
+  planAttachTransfer,
   prefersInAppCamera,
   attachmentSizeCheck,
   generateCaptureFilename,

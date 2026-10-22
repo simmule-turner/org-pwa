@@ -21,6 +21,7 @@ function skeleton(h) {
   const i = h.indexOf('<div id="content"');
   h = h.slice(i, h.lastIndexOf('</body>'));
   h = h.replace(/<div id="postamble"[\s\S]*$/, '');
+  h = h.replace(/<script>[\s\S]*?<\/script>\s*/g, '');
   h = h.replace(/ (id|for)="[^"]*"/g, '').replace(/ href="#[^"]*"/g, ' href="#"');
   h = h.replace(/<span class="org-[a-z-]+">([^<]*)<\/span>/g, '$1');
   h = h.replace(/<br \/>/g, '<br>').replace(/ \/>/g, '>');

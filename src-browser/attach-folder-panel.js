@@ -2,14 +2,14 @@
 // org-attach-reveal for this app: the heading's attachment folder as a list, the Dired of a browser. One compact row per file:
 // `[ ] [O] [S] [D] filename` -- the checkbox selects, O opens, S saves, D deletes. A strip above the list selects all, shows the
 // count, deletes the selection and adds files. `load()` resolves the names (or null if it could not say), `act(action, name)` runs
-// one action, `saveMany(names)` saves and `removeMany(names)` deletes the selection (asking once) and `add()` attaches more files; each resolves when done.
+// one action, `saveMany(names)` saves, `transferMany(names, 'copy' | 'move')` copies or moves them to another heading, and `removeMany(names)` deletes the selection (asking once) and `add()` attaches more files; each resolves when done.
 import { S } from './app-state.js';
 import { lockBackgroundScroll } from './dialogs.js';
 import { keepOverlayInVisibleViewport, menuButton } from './ui-widgets.js';
 
 const SMALL_BUTTON = 'font:inherit;font-size:12px;font-weight:600;min-width:28px;height:28px;padding:0 4px;border:1px solid var(--border-strong);border-radius:6px;background:transparent;color:var(--fg);cursor:pointer;flex:none;';
 
-export function showAttachmentFolder(/** @type {any} */ { title, load, act, removeMany, saveMany, add }) {
+export function showAttachmentFolder(/** @type {any} */ { title, load, act, removeMany, saveMany, add, transferMany }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
   overlay.style.overflow = 'hidden';
@@ -92,6 +92,18 @@ export function showAttachmentFolder(/** @type {any} */ { title, load, act, remo
         })
       );
       /** @type {HTMLElement} */ (strip.lastChild).style.padding = '0 8px';
+    }
+    if (selected.size && transferMany) {
+      for (const [text, method] of [['Copy to heading\u2026', 'copy'], ['Move to heading\u2026', 'move']]) {
+        strip.appendChild(
+          smallButton(text, text, async () => {
+            await transferMany([...selected], method);
+            if (method === 'move') selected.clear();
+            await refresh();
+          })
+        );
+        /** @type {HTMLElement} */ (strip.lastChild).style.padding = '0 8px';
+      }
     }
     if (selected.size && removeMany) {
       strip.appendChild(

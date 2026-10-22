@@ -2,6 +2,7 @@
 // Undo and redo for settings. Every write to a followed setting is noticed (settings.js tells us), and a moment later the whole set of
 // followed settings is kept as one step, named by what changed. Going to a step writes back only what differs, then re-applies it.
 // The history lives in memory for the session; logins, their passphrase, and what was open last are not part of it (src/settings-history.js).
+import { applyDurationVariables } from '../src/org-duration.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
 import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -65,6 +66,7 @@ export async function reapplySettings(names) {
   if (names.includes('globalVariables')) {
     S.globalVariablesText = await getGlobalVariables(kv);
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
+    applyDurationVariables(S.globalVariables);
     if (S.state.doc) {
       S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
     }

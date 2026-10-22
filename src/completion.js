@@ -112,7 +112,7 @@ function suggestTags(/** @type {any} */ { docs, applied = /** @type {string[]} *
 }
 
 /** Property keys this app itself writes or reads, offered even if no heading has them yet. */
-const KNOWN_PROPERTY_KEYS = ['CUSTOM_ID', 'EFFORT', 'Effort_ALL', 'ID', 'ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS', 'ARCHIVE_OLPATH'];
+const KNOWN_PROPERTY_KEYS = ['CUSTOM_ID', 'EFFORT', 'Effort_ALL', 'Effort_ALL+', 'ID', 'ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS', 'ARCHIVE_OLPATH'];
 
 /** Property keys to offer: those on any heading (most used first), then the known ones. */
 function suggestPropertyKeys(/** @type {any} */ { docs, applied = [] }) {

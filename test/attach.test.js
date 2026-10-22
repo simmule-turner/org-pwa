@@ -357,3 +357,18 @@ test('prefersInAppCamera: ChromeOS and desktop yes; Android, iPhone, iPad (even 
 test('generateCaptureFilename: a type with parameters (a MediaRecorder\u2019s webm;codecs=vp9) still gives its extension', () => {
   assert.equal(generateCaptureFilename('video', '', 'video/webm;codecs=vp9,opus', new Date(2026, 9, 9, 8, 5, 1)), 'video-2026-10-09-080501.webm');
 });
+
+import { planAttachTransfer } from '../src/attach.js';
+
+test('planAttachTransfer: names clash with the target and with each other, write before delete', () => {
+  const plan = planAttachTransfer(['a.png', 'b.pdf'], 'data/aa/1', 'data/bb/2', ['a.png', 'a-1.png'], true);
+  assert.deepEqual(plan.files, [
+    { name: 'a.png', finalName: 'a-2.png', from: 'data/aa/1/a.png', to: 'data/bb/2/a-2.png', deleteSource: true },
+    { name: 'b.pdf', finalName: 'b.pdf', from: 'data/aa/1/b.pdf', to: 'data/bb/2/b.pdf', deleteSource: true },
+  ]);
+  assert.equal(planAttachTransfer(['a.png'], 'x', 'y', [], false).files[0].deleteSource, false);
+});
+
+test('planAttachTransfer: the same folder is refused', () => {
+  assert.equal(planAttachTransfer(['a.png'], 'data/aa/1', 'data/aa/1', [], true).refuse, 'That is the same folder.');
+});

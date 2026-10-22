@@ -21,6 +21,7 @@
  * Not yet: Beamer, line numbers and references in source blocks, custom language environments, `engraved`.
  */
 
+import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 import { parseElements, parseAttributes } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
@@ -58,6 +59,8 @@ import { latexConfig } from './latex-config.js';
  *   anon: number,
  *   inLink: boolean,
  *   parsed: Map<string[], OrgElement[]>,
+ *   codeCounter: { loc: number },
+ *   codeBlocks: { lines: string[], switches: import('./code-lines.js').CodeSwitches, refs: Map<number, string>, start: number | null }[],
  *   cfg: import('./latex-config.js').LatexConfig,
  * }} LatexState
  */
@@ -76,7 +79,7 @@ let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), cfg: latexConfig(undefined) };
+  return { sup: 't', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined) };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -277,6 +280,12 @@ function link(n) {
     const ref = S.targets.get('target:' + norm(target));
     return ref ? reference(ref.label, protect(n.description || target)) : protect(n.description || target);
   }
+  const coderef = /^\((.*)\)$/.exec(target);
+  if (coderef) {
+    const found = resolveCodeRef(S.codeBlocks, coderef[1]);
+    if (found === null) return protect(target);
+    return inline(coderefText(coderef[1], found, n.description || null));
+  }
   S.inLink = true;
   const description = n.description === null ? null : inline(n.description);
   S.inLink = false;
@@ -444,6 +453,20 @@ function namedLabel(el) {
   return el.aff && el.aff.name ? '\\phantomsection\n\\label{org' + hash7('name:' + el.aff.name) + '}\n' : '';
 }
 
+/**
+ * The code of a source or example block without indentation and references, numbered in document order (`org-export-unravel-code`, `org-export-get-loc`).
+ * @param {Extract<OrgElement, { type: 'block' }> & { __code?: import('./code-lines.js').CodeBlock & { start: number | null } }} el
+ * @returns {import('./code-lines.js').CodeBlock & { start: number | null }}
+ */
+function prepareCode(el) {
+  if (el.__code) return el.__code;
+  const lines = el.lines.map((/** @type {string} */ l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2'));
+  const block = unravelCode(lines, blockSwitchText(el.name, el.params));
+  el.__code = { ...block, start: codeStart(S.codeCounter, block.switches, lines.length) };
+  S.codeBlocks.push(el.__code);
+  return el.__code;
+}
+
 /** @param {Extract<OrgElement, { type: 'block' }>} el */
 function block(el) {
   const lead = Math.min(Infinity, ...el.lines.filter((l) => l.trim()).map((l) => (/^[ \t]*/.exec(l) || [''])[0].length));
@@ -453,9 +476,10 @@ function block(el) {
   switch (el.name) {
     case 'src':
     case 'example': {
-      const raw = lines.map((l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2'));
+      const code = prepareCode(el);
+      const raw = formatCodePlain(code, code.start);
       if (attrs.environment) return namedLabel(el) + '\\begin{' + attrs.environment + '}\n' + raw.join('\n') + '\n\\end{' + attrs.environment + '}\n';
-      const coded = el.name === 'src' ? codeBlock(el, raw, attrs) : null;
+      const coded = el.name === 'src' ? codeBlock(el, code, attrs) : null;
       if (coded !== null) return coded;
       const caption = el.name === 'src' && el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
       return (el.name === 'example' ? namedLabel(el) : '') + verbatim(raw) + (caption ? '\\captionof{figure}{' + inline(caption.text) + '}\n' : '');
@@ -479,9 +503,10 @@ function optionString(options) {
 /**
  * A source block through the listings or minted package, as `org-latex-src-block--listings` and `--minted` write it; null when the
  * block is written as verbatim text (the backend says so, the block has no language, or it is empty).
- * @param {Extract<OrgElement, { type: 'block' }>} el @param {string[]} raw @param {Record<string, string>} attrs
+ * @param {Extract<OrgElement, { type: 'block' }>} el @param {import('./code-lines.js').CodeBlock & { start: number | null }} unravelled @param {Record<string, string>} attrs
  */
-function codeBlock(el, raw, attrs) {
+function codeBlock(el, unravelled, attrs) {
+  const raw = formatCodePlain(unravelled, null);
   const backend = S.cfg.backend;
   const lang = el.params.trim().split(/\s+/)[0];
   if ((backend !== 'listings' && backend !== 'minted') || !lang || !raw.some((l) => l.trim())) return null;
@@ -502,12 +527,18 @@ function codeBlock(el, raw, attrs) {
     all.push(['label', label || ' ']);
     all.push(['caption', cap ? (cap.short ? '{[' + inline(cap.short) + ']' + inline(cap.text) + '}' : '{' + inline(cap.text) + '}') : ' ']);
     all.push(['captionpos', 'b']);
-    if (!has('numbers')) all.push(['numbers', 'none']);
+    if (!has('numbers')) {
+      if (unravelled.start === null) all.push(['numbers', 'none']);
+      else all.push(['firstnumber', String(unravelled.start + 1)], ['numbers', 'left']);
+    }
     return '\\begin{lstlisting}[' + optionString(all) + local + ']\n' + code + '\\end{lstlisting}\n';
   }
   const multicolumn = attrs.float === 'multicolumn';
   const captionText = cap ? '\\caption' + (cap.short ? '[' + inline(cap.short) + ']' : '') + '{' + (label ? '\\label{' + label + '}' : '') + inline(cap.text) + '}\n' : label ? '\\label{' + label + '}\n' : '';
-  const body = '\\begin{minted}[' + optionString(S.cfg.mintedOptions) + local + ']{' + (S.cfg.mintedLangs.get(lang) || lang.toLowerCase()) + '}\n' + code + '\\end{minted}';
+  /** @type {[string, string | null][]} */
+  const mintedOptions = [...S.cfg.mintedOptions];
+  if (unravelled.start !== null && !mintedOptions.some(([k]) => k === 'linenos')) mintedOptions.unshift(['linenos', null], ['firstnumber', String(unravelled.start + 1)]);
+  const body = '\\begin{minted}[' + optionString(mintedOptions) + local + ']{' + (S.cfg.mintedLangs.get(lang) || lang.toLowerCase()) + '}\n' + code + '\\end{minted}';
   if (cap || multicolumn) return '\\begin{listing' + (multicolumn ? '*' : '') + '}[' + position + ']\n' + body + '\n' + captionText + '\\end{listing' + (multicolumn ? '*' : '') + '}\n';
   if (attrs.float === 't') return '\\begin{listing}[' + position + ']\n' + body + '\n\\end{listing}\n';
   return body + '\n';
@@ -704,6 +735,7 @@ function indexHeadings(children, ctx) {
  * @param {OrgElement[]} list */
 function indexNames(list) {
   for (const el of list) {
+    if (el.type === 'block' && (el.name === 'src' || el.name === 'example')) prepareCode(el);
     if (el.aff && el.aff.name) {
       const name = el.aff.name;
       const caption = el.aff.caption.length > 0;

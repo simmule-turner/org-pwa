@@ -16,6 +16,7 @@ function skeleton(h) {
   const i = h.indexOf('<div id="content"');
   h = h.slice(i, h.lastIndexOf('</body>'));
   h = h.replace(/<div id="postamble"[\s\S]*$/, '');
+  h = h.replace(/<script>[\s\S]*?<\/script>\s*/g, '');
   h = h.replace(/ (id|for)="[^"]*"/g, '').replace(/ href="#[^"]*"/g, ' href="#"');
   h = h.replace(/<span class="org-[a-z-]+">([^<]*)<\/span>/g, '$1');
   h = h.replace(/<br \/>/g, '<br>').replace(/ \/>/g, '>');
@@ -26,7 +27,7 @@ function skeleton(h) {
   return h.replace(/></g, '>\n<').trim();
 }
 
-for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) {
   test(`HTML export of fixture p${n} has the structure ox-html gives it`, () => {
     // citations read the bibliography files named in the fixture, which sit beside it
     for (const m of fixture(`p${n}.org`).matchAll(/^#\+BIBLIOGRAPHY:\s*"?([^"\n]+?)"?\s*$/gim)) cacheBibliography(m[1], fixture(m[1]));

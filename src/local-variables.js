@@ -822,6 +822,19 @@ export function getTextLineNumbers(vars) {
   return parseLispBoolean((vars || {})['org-xx-text-line-numbers'], true);
 }
 
+/** display-line-numbers-mode: Emacs's own variable. Whether the outline (and the Text view) number the file's lines. Default nil.
+ * @param {LocalVars} vars */
+export function getDisplayLineNumbersMode(vars) {
+  return parseLispBoolean((vars || {})['display-line-numbers-mode'], false);
+}
+
+/** display-line-numbers-type: Emacs's own variable. `t` (absolute), `relative` or `visual`. Default t.
+ * @param {LocalVars} vars @returns {'absolute' | 'relative' | 'visual'} */
+export function getDisplayLineNumbersType(vars) {
+  const raw = String((vars || {})['display-line-numbers-type'] ?? 't').trim().replace(/^'/, '').toLowerCase();
+  return raw === 'relative' || raw === 'visual' ? raw : 'absolute';
+}
+
 /** org-xx-text-wrap: this app's own variable. Whether the Text view wraps long lines. Default nil.
  * @param {LocalVars} vars */
 export function getTextWrap(vars) {

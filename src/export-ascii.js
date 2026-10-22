@@ -26,6 +26,7 @@ import { preambleBody } from './export-html.js';
 import { expandMacrosForExport } from './export-org.js';
 import { radioTargetRegExp } from './targets.js';
 import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
+import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -40,6 +41,7 @@ import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLi
  *   contents: Item[],
  *   postBlank: number,
  *   value?: string,
+ *   code?: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null },
  *   lines?: string[],
  *   level?: number,
  *   title?: Item[],
@@ -121,6 +123,7 @@ export function normalizeAsciiCharset(value) {
  *   verbatimFormat: string,
  *   doc: Doc, scope: Heading | null, radioRe: RegExp | null,
  *   headlines: Node[], defs: Map<string, Node>, fnLabels: Map<string, number>, fnList: { number: number, label: string | null, inline: Item[] | null, def: Node | null }[],
+ *   codeCounter: { loc: number }, codeBlocks: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null }[],
  *   named: Map<string, Node>, targets: Map<string, Node>, ordinals: Map<Node, number>,
  *   cite: ReturnType<typeof citeExportFor> | null,
  *   tableCache: Map<Node, TableInfo>,
@@ -193,6 +196,8 @@ function makeInfo(doc, scope, textWidth, charset, sup) {
     fnLabels: new Map(),
     fnList: [],
     named: new Map(),
+    codeCounter: newCodeCounter(),
+    codeBlocks: [],
     targets: new Map(),
     ordinals: new Map(),
     cite: null,
@@ -345,6 +350,7 @@ function linkNode(raw, description, radio, parent, I) {
   /** @type {string} */
   let linkType;
   if (radio) linkType = 'radio';
+  else if (/^\(.*\)$/.test(raw)) linkType = 'coderef';
   else if (raw.startsWith('*')) linkType = 'fuzzy';
   else if (raw.startsWith('#')) linkType = 'custom-id';
   else if (/^id:/i.test(raw)) linkType = 'id';
@@ -354,7 +360,7 @@ function linkNode(raw, description, radio, parent, I) {
   return mk('link', parent, {
     linkType,
     raw,
-    path: linkType === 'fuzzy' || linkType === 'custom-id' || linkType === 'id' ? raw.replace(/^(?:id:|#|\*)/i, '') : raw,
+    path: linkType === 'coderef' ? raw.slice(1, -1) : linkType === 'fuzzy' || linkType === 'custom-id' || linkType === 'id' ? raw.replace(/^(?:id:|#|\*)/i, '') : raw,
     desc: description === null ? null : objects(description, parent, I, false),
     descRaw: description === null ? '' : description.replace(/\s+/g, ' ').trim(),
     kind: raw.startsWith('*') ? 'headline' : '',
@@ -467,14 +473,26 @@ function buildElement(el, parent, I) {
   }
 }
 
+/**
+ * Unravels the code of a source or example block and numbers it, in document order (`org-export-unravel-code`, `org-export-get-loc`).
+ * @param {Node} node @param {string} name @param {string} params @param {Info} I
+ */
+function codeNode(node, name, params, I) {
+  const lines = node.lines || [];
+  const block = unravelCode(lines, blockSwitchText(name, params));
+  node.code = { ...block, start: codeStart(I.codeCounter, block.switches, lines.length) };
+  I.codeBlocks.push(node.code);
+  return node;
+}
+
 /** @param {Extract<OrgElement, { type: 'block' }>} el @param {Node} parent @param {Info} I @returns {Node | null} */
 function buildBlock(el, parent, I) {
   const name = el.name.toLowerCase();
   switch (name) {
     case 'src':
-      return mk('src-block', parent, { lines: unescapeCode(el.lines), params: el.params });
+      return codeNode(mk('src-block', parent, { lines: unescapeCode(el.lines), params: el.params }), name, el.params, I);
     case 'example':
-      return mk('example-block', parent, { lines: unescapeCode(el.lines) });
+      return codeNode(mk('example-block', parent, { lines: unescapeCode(el.lines) }), name, el.params, I);
     case 'comment':
       return null;
     case 'export':
@@ -730,7 +748,8 @@ function boxString(s, I) {
 /** The text of a code or example block. @param {Node} n */
 function codeOf(n) {
   const lines = n.lines || [];
-  return lines.length ? lines.join('\n') + '\n' : '';
+  const code = n.code;
+  return lines.length && code ? formatCodePlain(code, code.start).join('\n') + '\n' : '';
 }
 
 // ---- export ------------------------------------------------------------------------
@@ -904,6 +923,10 @@ function titleText(h, I) {
 function linkText(n, I) {
   const desc = n.desc ? exportItems(n.desc, I) : null;
   if (n.linkType === 'radio') return desc || '';
+  if (n.linkType === 'coderef') {
+    const found = resolveCodeRef(I.codeBlocks, n.path || '');
+    return found === null ? `<${n.raw}>` : coderefText(n.path || '', found, desc);
+  }
   if (n.linkType === 'custom-id' || n.linkType === 'fuzzy' || n.linkType === 'id') {
     const dest = resolveLink(n, I);
     if (dest) {

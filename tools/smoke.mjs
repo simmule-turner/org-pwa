@@ -7484,6 +7484,76 @@ check('protected connections: the login is masked in the app between requests, u
   await context.close();
 });
 
+check('clock reminder: a clock that has reached its effort says so once, in Org’s words', async () => {
+  const start = new Date(Date.now() - 2 * 3600 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} Mon ${pad(start.getHours())}:${pad(start.getMinutes())}`;
+  dav.reset({ 'notes.org': `* TODO Write report\n:PROPERTIES:\n:EFFORT: 1:00\n:END:\n:LOGBOOK:\nCLOCK: [${stamp}]\n:END:\n` });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await page.waitForFunction(() => /should be finished by now/.test(document.getElementById('status').innerText), null, { timeout: 40000 });
+  const text = await page.locator('#status').innerText();
+  expect(text.includes('Write report') && text.includes('(1:00)'), `the reminder names the task and the effort: ${text}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('attachments between headings: selected files are copied or moved to another heading, the original goes only after the copy, a name clash gets -1, and the emptied heading loses its ATTACH tag', async () => {
+  dav.reset({ 'notes.org': '* Source\n* Target\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const h = (i) => `(await import('/src-browser/app-state.js')).S.state.doc.children[${i}]`;
+  const up = (name) => page.evaluate(`(async () => { const { uploadAttachmentToHeading } = await import('/src-browser/attachments-flow.js'); await uploadAttachmentToHeading(${h(0)}, { name: '${name}', type: 'application/pdf', base64: 'aGk=' }); })()`);
+  await up('a.pdf');
+  await up('b.pdf');
+  await page.evaluate(`(async () => { const { uploadAttachmentToHeading } = await import('/src-browser/attachments-flow.js'); await uploadAttachmentToHeading(${h(1)}, { name: 'a.pdf', type: 'application/pdf', base64: 'aGk=' }); })()`);
+  const folderOf = (i) => page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { resolveAttachmentDirectory } = await import('/src/link-resolve.js'); return resolveAttachmentDirectory(S.state.doc, ${h(i)}, S.state.documentId); })()`);
+  const from = await folderOf(0);
+  const to = await folderOf(1);
+  expect(from && to && from !== to, `two folders: ${from} ${to}`);
+  const open = async () => {
+    await page.evaluate(`(async () => { const { revealAttachmentFolder } = await import('/src-browser/attachments-flow.js'); await revealAttachmentFolder(${h(0)}); })()`);
+    await page.waitForFunction(() => document.body.innerText.includes('b.pdf'), null, { timeout: 5000 });
+  };
+  // copy a.pdf: it clashes with the target's own a.pdf
+  await open();
+  await page.getByLabel('Select a.pdf').check();
+  await page.getByRole('button', { name: 'Copy to heading…' }).click();
+  await page.getByLabel('Filter headings').fill('target');
+  await page.getByRole('button', { name: 'Target', exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Copied 1'), null, { timeout: 8000 });
+  expect(dav.files.has(`${to}/a-1.pdf`) && dav.files.has(`${from}/a.pdf`), `copied as a-1.pdf and the original stays: ${[...dav.files.keys()].join(',')}`);
+  // move both: nothing left behind, and the source loses its tag
+  await page.keyboard.press('Escape');
+  await open();
+  await page.getByLabel('Select all').check();
+  await page.getByRole('button', { name: 'Move to heading…' }).click();
+  await page.getByRole('button', { name: 'Target', exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Moved 2'), null, { timeout: 8000 });
+  const keys = [...dav.files.keys()];
+  expect(!keys.some((k) => k.startsWith(`${from}/`)), `nothing left in the source folder: ${keys.join(',')}`);
+  expect(keys.filter((k) => k.startsWith(`${to}/`)).length === 4, `four files in the target: ${keys.join(',')}`);
+  const tags = await page.evaluate(`(async () => [${h(0)}.tags.join(','), ${h(1)}.tags.join(',')])()`);
+  expect(!tags[0].includes('ATTACH') && tags[1].includes('ATTACH'), `ATTACH follows the files: ${JSON.stringify(tags)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('display-line-numbers-mode: the outline numbers its rows with file lines, a folded heading skips what is hidden', async () => {
+  dav.reset({ 'notes.org': '* A\nbody\n** B\n* C\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const numbers = () => page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js'); await commitGlobalVariableChange('display-line-numbers-mode', 't'); render(); return [...document.querySelectorAll('#outline .ln-num')].map((e) => e.textContent).join(','); })()`);
+  const shown = await numbers();
+  expect(shown === '1,2,3,4', `file lines beside the rows: ${shown}`);
+  const folded = await page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); S.state.doc.children[0].collapsed = true; render(); return [...document.querySelectorAll('#outline .ln-num')].map((e) => e.textContent).join(','); })()`);
+  expect(folded === '1,4', `a folded heading skips its hidden lines: ${folded}`);
+  const off = await page.evaluate(`(async () => { const { S } = await import('/src-browser/app-state.js'); const { render } = await import('/src-browser/render.js'); const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js'); await commitGlobalVariableChange('display-line-numbers-mode', 'nil'); render(); return document.querySelectorAll('#outline .ln-num').length; })()`);
+  expect(off === 0, `no numbers with the mode off: ${off}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
 // SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long

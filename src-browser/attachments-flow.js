@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -11,6 +11,7 @@ import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
 import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFiles, showModalOverlay } from './dialogs.js';
+import { pickHeading } from './heading-pick.js';
 import { showAttachmentFolder } from './attach-folder-panel.js';
 import { cameraAvailable, openCameraPanel } from './camera-capture.js';
 import { utf8ToBase64 } from './github-adapter.js';
@@ -571,11 +572,83 @@ export async function revealAttachmentFolder(heading) {
     saveMany: async (/** @type {any} */ names) => {
       for (const name of names) await performAttachmentAction(heading, name, 'save');
     },
+    transferMany: (/** @type {string[]} */ names, /** @type {'copy' | 'move'} */ method) => transferAttachments(heading, dir, names, method),
     removeMany: async (/** @type {any} */ names) => {
       if (!(await confirmDialog(`Delete ${names.length} attachment${names.length === 1 ? '' : 's'}? This removes the actual files, not just the links.`))) return;
       for (const name of names) await deleteAttachment(heading, name);
     },
   });
+}
+
+/**
+ * Copies or moves files from `heading`'s folder to another heading's: the target is picked from the open document's headings, the file is
+ * written there first and, for a move, deleted from here only after that worked. The target gets its ID (and so its folder), the ATTACH
+ * tag and, as for any attach, a link when Settings → Attachments says so; a move that empties this folder switches its ATTACH tag off.
+ * @param {Heading} heading
+ * @param {string} fromDir
+ * @param {string[]} names
+ * @param {'copy' | 'move'} method
+ */
+async function transferAttachments(heading, fromDir, names, method) {
+  const move = method === 'move';
+  const target = await pickHeading(`${move ? 'Move' : 'Copy'} ${names.length} attachment${names.length === 1 ? '' : 's'} to which heading?`, heading);
+  if (!target) return;
+  let toDir = ownAttachmentDirectory(target, S.state.documentId);
+  const createdId = !toDir;
+  if (!toDir) {
+    const id = generateAttachmentId();
+    setProperty(target, 'ID', id);
+    toDir = attachmentDir(id, S.state.documentId);
+  }
+  const plan = planAttachTransfer(names, fromDir, toDir, (await listFolder(toDir)) || [], move);
+  if (plan.refuse) {
+    if (createdId) deleteProperty(target, 'ID');
+    setStatus(plan.refuse);
+    render();
+    return;
+  }
+  const adapter = activeDiskAdapter();
+  let done = 0;
+  /** @type {string[]} */ const placed = [];
+  for (const file of plan.files) {
+    try {
+      const bytes = await adapter.readBinary(file.from);
+      if (!bytes) throw new Error('not found');
+      const tooBig = attachmentSizeCheck(String(bytes.base64 || '').length, S.state.storageKind);
+      if (tooBig && tooBig.refuse) throw new Error(tooBig.refuse);
+      if (tooBig && tooBig.warn && !(await confirmDialog(tooBig.warn, { confirmLabel: move ? 'Move' : 'Copy', danger: false }))) continue;
+      await adapter.writeBinary(file.to, bytes.base64);
+      placed.push(file.finalName);
+      if (file.deleteSource) {
+        try {
+          await adapter.delete(file.from);
+        } catch (err) {
+          setStatus(`Copied "${file.finalName}", but could not remove the original: ${err.message}. The original is still in ${fromDir}.`);
+          render();
+          break;
+        }
+      }
+      done++;
+    } catch (err) {
+      setStatus(`Could not ${move ? 'move' : 'copy'} "${file.name}": ${err.message}`);
+      render();
+      break;
+    }
+  }
+  if (placed.length > 0) {
+    addAttachTag(target);
+    const mode = await getAttachLinkMode(kv);
+    for (const name of placed) {
+      if (shouldInsertAttachmentLink(name, mode)) target.bodyLines.push(formatAttachmentLink(name));
+    }
+    target.body = parseBody(target.bodyLines);
+  } else if (createdId) {
+    deleteProperty(target, 'ID');
+  }
+  if (move) await syncAttachTag(heading);
+  const message = `${move ? 'Moved' : 'Copied'} ${done} attachment${done === 1 ? '' : 's'} to "${target.title}".`;
+  setStatus(message);
+  commitAndRender(message);
 }
 
 /**

@@ -4,7 +4,8 @@
 //
 // The textarea stays the real editor (its caret, selection, undo and input methods are the browser's own); its text is made
 // transparent and the colored copy of the same text is drawn underneath, so what is typed is never rewritten by this code.
-import { getTextFontSize, getTextLineNumbers, getTextWrap } from '../src/local-variables.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getTextFontSize, getTextLineNumbers, getTextWrap } from '../src/local-variables.js';
+import { displayedLineNumber } from '../src/line-numbers.js';
 import { deleteLines, duplicateLines, indentLines, lineCount, lineNumberAt, lineRange, moveLines, newlineWithIndent } from '../src/text-edit.js';
 import { locateDiaryEntry } from '../src/diary-entry.js';
 import { highlight } from '../src/text-syntax.js';
@@ -237,13 +238,28 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   const drawn = { text: null };
   const vars = () => /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
 
+  /** Line numbers show when the Text view's own setting says so, or when `display-line-numbers-mode` is on. */
+  const showNumbers = () => getTextLineNumbers(vars()) || getDisplayLineNumbersMode(vars());
+
+  /** `relative` and `visual` count from the line the cursor is on, which keeps its absolute number; `t` leaves it to the CSS counter. */
+  function renumber() {
+    const type = getDisplayLineNumbersType(vars());
+    wrap.classList.toggle('te-attr', type !== 'absolute');
+    if (type === 'absolute') return;
+    const current = textarea.value.slice(0, textarea.selectionStart).split('\n').length;
+    Array.from(back.children).forEach((ln, i) => {
+      /** @type {HTMLElement} */ (ln).dataset.n = String(displayedLineNumber(type, i + 1, current, i, current - 1));
+    });
+  }
+  for (const ev of ['keyup', 'click', 'focus']) textarea.addEventListener(ev, renumber);
+
   function layout() {
     // iOS zooms the page when a field under 16px is focused, so there the text is never smaller than that
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const size = ios ? Math.max(16, getTextFontSize(vars())) : getTextFontSize(vars());
     const lh = Math.round(size * 1.5);
     const wrapOn = getTextWrap(vars());
-    const numbers = getTextLineNumbers(vars()) && !compact;
+    const numbers = showNumbers() && !compact;
     const digits = Math.max(2, String(lineCount(textarea.value)).length);
     wrap.style.fontSize = `${size}px`;
     wrap.style.setProperty('--te-fs', `${size}px`);
@@ -295,7 +311,8 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     }
     back.replaceChildren(frag);
     const digits = Math.max(2, String(lines.length).length);
-    if (!compact && getTextLineNumbers(vars()) && wrap.style.getPropertyValue('--te-gutter') !== `calc(${digits}ch + 12px)`) layout();
+    renumber();
+    if (!compact && showNumbers() && wrap.style.getPropertyValue('--te-gutter') !== `calc(${digits}ch + 12px)`) layout();
   }
 
   /** @type {{ frame: number }} */
@@ -343,7 +360,14 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   const undo = iconButton('Undo', SVG.undo, undoable(() => document.execCommand('undo')));
   const redo = iconButton('Redo', SVG.redo, undoable(() => document.execCommand('redo')));
   undo.disabled = redo.disabled = !editable;
-  const numbersBtn = iconButton('Line numbers', SVG.numbers, () => void commitGlobalVariableChange('org-xx-text-line-numbers', getTextLineNumbers(vars()) ? 'nil' : 't').then(() => (numbersBtn.setAttribute('aria-pressed', String(getTextLineNumbers(vars()))), layout())), getTextLineNumbers(vars()));
+  const numbersBtn = iconButton('Line numbers', SVG.numbers, () =>
+      void (async () => {
+        const shown = showNumbers();
+        await commitGlobalVariableChange('org-xx-text-line-numbers', shown ? 'nil' : 't');
+        if (shown && getDisplayLineNumbersMode(vars())) await commitGlobalVariableChange('display-line-numbers-mode', 'nil');
+        numbersBtn.setAttribute('aria-pressed', String(showNumbers()));
+        layout();
+      })(), showNumbers());
   const wrapBtn = iconButton('Wrap lines', SVG.wrap, () => void commitGlobalVariableChange('org-xx-text-wrap', getTextWrap(vars()) ? 'nil' : 't').then(() => (wrapBtn.setAttribute('aria-pressed', String(getTextWrap(vars()))), layout())), getTextWrap(vars()));
   /** @param {number} delta */
   const resize = (delta) => () =>

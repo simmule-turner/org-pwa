@@ -1,0 +1,68 @@
+Table of Contents
+_________________
+
+1. H
+
+
+1 H
+===
+
+  ,----
+  | 1  def f():
+  | 2      return 1
+  `----
+
+  ,----
+  | 10  a = 1
+  | 11  b = 2
+  `----
+
+  ,----
+  | 16  c = 3
+  `----
+
+  ,----
+  | 1  (save-excursion
+  | 2    (goto-char (point-min))
+  `----
+  See 1 and 2 and the first.
+
+  ,----
+  | 1  (foo)      (a)
+  | 2  (bar)      (b)
+  `----
+  Ref a
+
+  ,----
+  | 1  (x)      (kx)
+  `----
+  1
+
+  ,----
+  | (y)      (ly)
+  `----
+  ly
+
+  ,----
+  | 1  one
+  | 2  two
+  `----
+
+  ,----
+  |  1  l1
+  |  2  l2
+  |  3  l3
+  |  4  l4
+  |  5  l5
+  |  6  l6
+  |  7  l7
+  |  8  l8
+  |  9  l9
+  | 10  l10
+  `----
+
+  ,----
+  | 3  (indented)      (ind)
+  | 4    (more)
+  `----
+  Look at line ind here.

@@ -562,6 +562,27 @@ function findHeadingLineNumber(doc, targetHeading) {
 }
 
 /**
+ * Where every heading sits in the file: the 0-based line of its heading line, and of the first line of its body
+ * (what a body element's `lineIndex` counts from). One pass, in the same terms as findHeadingLineNumber.
+ * @param {Doc} doc
+ * @returns {{ lines: Map<Heading, { line: number, bodyStart: number }>, total: number }}
+ */
+function headingLineIndex(doc) {
+  /** @type {Map<Heading, { line: number, bodyStart: number }>} */
+  const lines = new Map();
+  let count = doc.keywords.filter((kw) => !kw.virtual).length + (doc.bodyLines ? doc.bodyLines.length : 0);
+  /** @param {Heading} node */
+  const walk = (node) => {
+    const preamble = headingPreambleLines(node).length;
+    lines.set(node, { line: count, bodyStart: count + preamble });
+    count += preamble + (node.bodyLines || []).length;
+    for (const child of node.children || []) walk(child);
+  };
+  for (const child of doc.children) walk(child);
+  return { lines, total: count };
+}
+
+/**
  * The inverse of findHeadingLineNumber: given a 0-indexed line number
  * (within serializeOrg(doc)'s own output), returns whichever heading's
  * own "* Title" line starts exactly there, or null if no heading
@@ -601,6 +622,7 @@ export {
   serializeHeadingSubtree,
   serializeHeadingLine,
   findHeadingLineNumber,
+  headingLineIndex,
   findHeadingAtLine,
   DEFAULT_TODO_KEYWORDS,
   DEFAULT_DONE_KEYWORDS,

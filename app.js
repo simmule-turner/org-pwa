@@ -1,4 +1,6 @@
 // @ts-check
+import { startClockWatch, tickClockWatch } from './src-browser/clock-watch.js';
+import { applyDurationVariables } from './src/org-duration.js';
 import { hasPendingChange } from './src/outbox.js';
 import { parseOrg } from './src/org-parser.js';
 import { cycleFoldLevel } from './src/fold-state.js';
@@ -227,7 +229,9 @@ S.historyRenderTarget = outlineEl;
 
 window.addEventListener('resize', syncContentOffset);
 
+startClockWatch();
 setInterval(() => {
+  tickClockWatch(); // the clock's effort reminder and idle question
   apptTick(); // announces what has come due and keeps the countdown, before the modeline is drawn
   if (S.state.doc) renderModeline();
   checkWeatherAutoRefresh();
@@ -1193,6 +1197,7 @@ async function bootstrap() {
   await loadCachedWeatherData();
   S.globalVariablesText = await getGlobalVariables(kv);
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
+  applyDurationVariables(S.globalVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   loadExtensions().catch((err) => console.error('extensions:', err));

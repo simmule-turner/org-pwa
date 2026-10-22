@@ -72,3 +72,50 @@ test('a source with no usable value falls through to the next rather than hiding
 test('the agenda filter default is the set org-agenda-filter-by-effort itself uses', () => {
   assert.deepEqual(DEFAULT_EFFORT_FILTER_VALUES, ['0', '0:10', '0:30', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00']);
 });
+
+// Effort_ALL+ -- every expected list below is what Emacs 29.3's org-property-get-allowed-values answered for the same text.
+const allowed = (text, title, globalProperties = '') => {
+  const d = doc(text);
+  const find = (nodes) => {
+    for (const n of nodes) {
+      if (n.title === title) return n;
+      const f = find(n.children || []);
+      if (f) return f;
+    }
+    return null;
+  };
+  return getAllowedEffortValues({ doc: d, heading: find(d.children), globalProperties });
+};
+const P = (name, value) => `:PROPERTIES:\n:${name}: ${value}\n:END:\n`;
+
+test('Effort_ALL+ appends to the Effort_ALL of an outer level, outer first', () => {
+  const text = `* A\n${P('Effort_ALL', '1:00 2:00')}** B\n${P('Effort_ALL+', '3:00')}*** C\n${P('Effort_ALL+', '4:00 5:00')}`;
+  assert.deepEqual(allowed(text, 'A'), ['1:00', '2:00']);
+  assert.deepEqual(allowed(text, 'B'), ['1:00', '2:00', '3:00']);
+  assert.deepEqual(allowed(text, 'C'), ['1:00', '2:00', '3:00', '4:00', '5:00']);
+});
+
+test('the file’s #+PROPERTY lines are one level: Effort_ALL and Effort_ALL+ together, then the headings’ +', () => {
+  const text = `#+PROPERTY: Effort_ALL 0 0:10\n#+PROPERTY: Effort_ALL+ 0:20\n* D\n${P('Effort_ALL+', '9:00')}** E\n`;
+  assert.deepEqual(allowed(text, 'D'), ['0', '0:10', '0:20', '9:00']);
+  assert.deepEqual(allowed(text, 'E'), ['0', '0:10', '0:20', '9:00']);
+});
+
+test('a nearer Effort_ALL drops what lies outside it, including the + values there', () => {
+  assert.deepEqual(allowed(`* A\n${P('Effort_ALL+', '7:00')}** B\n${P('Effort_ALL', '1:00')}*** C\n`, 'C'), ['1:00']);
+  const text = `* A\n:PROPERTIES:\n:Effort_ALL: 1:00\n:Effort_ALL+: 7:00\n:END:\n** B\n${P('Effort_ALL', '2:00')}*** C\n${P('Effort_ALL+', '3:00')}`;
+  assert.deepEqual(allowed(text, 'A'), ['1:00', '7:00']);
+  assert.deepEqual(allowed(text, 'B'), ['2:00']);
+  assert.deepEqual(allowed(text, 'C'), ['2:00', '3:00']);
+});
+
+test('Effort_ALL+ alone is a list, and at one level the + follows the base whichever line comes first', () => {
+  assert.deepEqual(allowed(`* A\n${P('Effort_ALL+', '7:00')}`, 'A'), ['7:00']);
+  assert.deepEqual(allowed('* A\n:PROPERTIES:\n:Effort_ALL+: 2:00\n:Effort_ALL: 1:00\n:END:\n', 'A'), ['1:00', '2:00']);
+});
+
+test('the global setting is the base only when the file says nothing about Effort_ALL', () => {
+  const global = 'Effort_ALL: 0:05 0:15';
+  assert.deepEqual(allowed(`* A\n${P('Effort_ALL+', '9:00')}`, 'A', global), ['0:05', '0:15', '9:00']);
+  assert.deepEqual(allowed('#+PROPERTY: Effort_ALL+ 0:20\n* A\n', 'A', global), ['0:20']);
+});

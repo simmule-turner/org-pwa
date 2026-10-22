@@ -25,6 +25,7 @@ import { getProperty, findAncestorPath } from './archive-model.js';
 import { parseOrgDuration } from './org-duration.js';
 
 const PROPERTY_NAME = 'Effort_ALL';
+const PLUS_NAME = 'Effort_ALL+';
 
 /** org-agenda-filter-by-effort's own fallback when Effort_ALL isn't set. */
 const DEFAULT_EFFORT_FILTER_VALUES = ['0', '0:10', '0:30', '1:00', '2:00', '3:00', '4:00', '5:00', '6:00', '7:00'];
@@ -66,25 +67,55 @@ function parseGlobalProperties(text) {
  * @param {{ doc?: any, heading?: any, globalProperties?: string }} [options]
  */
 function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } = {}) {
-  const candidates = [];
+  // Walk outward from the heading. A level with Effort_ALL starts the list (the nearest one wins; what lies outside it is dropped); a
+  // level's Effort_ALL+ is appended after it, outer levels first. The file's #+PROPERTY lines are one level, and the global setting
+  // is the base only when the file says nothing about Effort_ALL at all, as Emacs's org-property-get-allowed-values does.
+  /** @type {string[][]} */
+  const appended = [];
+  /** @param {string | null | undefined} plain @param {string | null | undefined} plus @returns {string[] | null} */
+  const level = (plain, plus) => {
+    const base = parseEffortValues(plain || '');
+    if (plus) appended.unshift(parseEffortValues(plus));
+    return base.length > 0 ? base : null;
+  };
+  /** @type {string[] | null} */
+  let base = null;
   if (doc && heading) {
     const ancestors = findAncestorPath(doc, heading) || [];
-    for (const node of [heading, ...[...ancestors].reverse()]) candidates.push(getProperty(node, PROPERTY_NAME));
+    for (const node of [heading, ...[...ancestors].reverse()]) {
+      base = level(getProperty(node, PROPERTY_NAME), getProperty(node, PLUS_NAME));
+      if (base) break;
+    }
   }
-  if (doc) {
+  if (!base && doc) {
+    let filePlain = null;
+    let filePlus = '';
+    let fileMentions = false;
     for (const keyword of doc.keywords || []) {
       if (String(keyword.key).toUpperCase() !== 'PROPERTY') continue;
       const m = /^\s*(\S+)\s+([\s\S]*)$/.exec(String(keyword.value == null ? '' : keyword.value));
-      if (m && m[1].toLowerCase() === PROPERTY_NAME.toLowerCase()) candidates.push(m[2]);
+      if (!m) continue;
+      const name = m[1].toLowerCase();
+      if (name === PROPERTY_NAME.toLowerCase()) {
+        fileMentions = true;
+        if (filePlain === null && parseEffortValues(m[2]).length > 0) filePlain = m[2];
+      } else if (name === PLUS_NAME.toLowerCase()) {
+        fileMentions = true;
+        filePlus += ' ' + m[2];
+      }
     }
+    base = level(filePlain, filePlus.trim() || null);
+    if (!base && !fileMentions) base = level(/** @type {any} */ (parseGlobalProperties(globalProperties))[PROPERTY_NAME.toLowerCase()], null);
   }
-  candidates.push(/** @type {any} */ (parseGlobalProperties(globalProperties))[PROPERTY_NAME.toLowerCase()]);
-
-  for (const raw of candidates) {
-    const values = parseEffortValues(raw);
-    if (values.length > 0) return values;
+  const seen = new Set();
+  /** @type {string[]} */
+  const values = [];
+  for (const v of [...(base || []), ...appended.flat()]) {
+    if (seen.has(v)) continue;
+    seen.add(v);
+    values.push(v);
   }
-  return [];
+  return values;
 }
 
-export { PROPERTY_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, parseGlobalProperties, getAllowedEffortValues };
+export { PROPERTY_NAME, PLUS_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, parseGlobalProperties, getAllowedEffortValues };

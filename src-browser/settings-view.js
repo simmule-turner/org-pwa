@@ -1,5 +1,6 @@
 // @ts-check
 // Extracted from app.js: settings view (the theme part is in settings-theme.js, Quick Settings in settings-quick.js).
+import { applyDurationVariables } from '../src/org-duration.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
 import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -396,6 +397,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     await setGlobalVariables(kv, normalizedText);
     S.globalVariablesText = normalizedText;
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
+    applyDurationVariables(S.globalVariables);
     // Re-merge immediately so the currently open document (if any)
     // reflects the change right away -- no reload needed, matching
     // how the theme/font settings already apply on save.

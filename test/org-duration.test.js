@@ -51,3 +51,38 @@ test('invalid input is null', () => {
     assert.equal(parseOrgDuration(bad), null, `expected null for ${JSON.stringify(bad)}`);
   }
 });
+
+// org-duration-units, with the answers Emacs 29.3 gives (org-duration-to-minutes after org-duration-set-regexps).
+import { applyDurationVariables as applyUnits } from '../src/org-duration.js';
+import { parseOrgDuration as parseDur, parseDurationUnits } from '../src/org-duration.js';
+
+test('org-duration-units: an 8-hour day changes d, w, m and y, as in Emacs', () => {
+  applyUnits({ 'org-duration-units': '(("min" . 1) ("h" . 60) ("d" . 480) ("w" . 2400) ("m" . 9600) ("y" . 115200))' });
+  try {
+    for (const [text, want] of [['1d', 480], ['2d 3h', 1140], ['1w', 2400], ['1m', 9600], ['1y', 115200], ['3d 13:35', 2255], ['2.5d', 1200], ['1d3h5min', 665]]) {
+      assert.equal(parseDur(text), want, text);
+    }
+    assert.equal(parseDur('1D'), null);
+  } finally {
+    applyUnits({});
+  }
+  assert.equal(parseDur('1d'), 1440);
+});
+
+test('org-duration-units: custom names work and removed ones are invalid, as in Emacs', () => {
+  applyUnits({ 'org-duration-units': "'((\"min\" . 1) (\"h\" . 60) (\"d\" . 480) (\"sprint\" . 4800) (\"fortnight\" . 20160))" });
+  try {
+    assert.equal(parseDur('1sprint'), 4800);
+    assert.equal(parseDur('2fortnight'), 40320);
+    assert.equal(parseDur('1sprint 2d'), 5760);
+    assert.equal(parseDur('1w'), null);
+  } finally {
+    applyUnits({});
+  }
+});
+
+test('org-duration-units: an unusable value leaves Emacs’s default in force', () => {
+  for (const bad of ['', 'nil', '(("h" . 60))', '(("min" . 1) ("h" . 0))', '(("min" . 1) ("min" . 1))', '("min" "h")', '(("min" . 1)']) assert.equal(parseDurationUnits(bad), null, bad);
+  applyUnits({ 'org-duration-units': '(("h" . 60))' });
+  assert.equal(parseDur('1d'), 1440);
+});

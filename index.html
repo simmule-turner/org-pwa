@@ -117,9 +117,11 @@
   .te-btn:disabled { opacity: 0.4; }
   .te-keys .te-btn { min-width: 40px; font-family: ui-monospace, monospace; font-size: 15px; }
   .te-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--bg); }
+  .ln-num { position: absolute; left: 4px; top: 8px; text-align: right; font: 11px/1.4 ui-monospace, monospace; color: var(--tk-gray, #888); pointer-events: none; }
   .te-gutter { position: absolute; top: 0; bottom: 0; left: 0; border-right: 1px solid var(--border); background: var(--surface); pointer-events: none; }
   .te-back { position: absolute; top: 0; left: 0; margin: 0; pointer-events: none; color: var(--fg); font-family: ui-monospace, monospace; will-change: transform; counter-reset: teln; }
   .te-back .te-ln { counter-increment: teln; position: relative; min-height: 1em; }
+  .te-nums.te-attr .te-back .te-ln::before { content: attr(data-n); }
   .te-nums .te-back .te-ln::before { content: counter(teln); position: absolute; left: calc(-1 * (var(--te-gutter) + 8px)); width: calc(var(--te-gutter) - 6px); text-align: right; color: var(--tk-gray); }
   .te-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: none; border-radius: 0; background: transparent; resize: none; outline: none; font-family: ui-monospace, monospace; overflow: auto; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--fg); }
   /* The Text view draws the colored text behind this textarea, so both must use the same size: this beats the 16px floor above (which is there for iOS; text-view.js raises the size to 16 on iOS itself). */

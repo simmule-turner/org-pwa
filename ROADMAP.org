@@ -18,7 +18,20 @@ The Android app writes into =local:= agenda files while a local file is open. In
 Not read yet: the =stats= and =user-defined= keys, the =tags= and =search= entries (the app has no view of those types), =%(function)= forms in =org-agenda-prefix-format=, and a Settings editor for the key list. When the variable is unset the rows keep the app's own order; Emacs's default (=habit-down time-up priority-down category-keep= for the Agenda, =priority-down category-keep= for TODO) would put priority first within a day.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
-** [#C] Holidays for =org-class= beyond US and Christian
+** [#C] Holidays as Emacs's =holiday-*= lists: your own, and switching groups off
+Today the app knows one fixed list, the US holidays of =holiday-general-holidays= plus the Christian ones (src/holidays.js). It feeds =org-class= (the symbol =holidays=), =calendar-check-holidays= and the holidays listed with the diary (=diary-show-holidays-flag=). There is no way to add a holiday, remove one, or turn a group off.
+- Org and Emacs: the holidays are the variable =calendar-holidays=, built from the lists =holiday-general-holidays=, =holiday-local-holidays=, =holiday-other-holidays=, =holiday-christian-holidays=, =holiday-hebrew-holidays=, =holiday-islamic-holidays=, =holiday-bahai-holidays=, =holiday-oriental-holidays= and =holiday-solar-holidays=. Setting a list to =nil= switches that group off; a list holds forms such as =(holiday-fixed 10 31 "Halloween")=, =(holiday-float 11 4 4 "Thanksgiving")= (month, weekday with 0 = Sunday, the nth one, =-1= the last) and =(holiday-easter-etc 0 "Easter Sunday")=.
+- Approach, in slices that each stand alone and need no Lisp interpreter:
+  1. *A Lisp section in Settings (Advanced).* One place for Emacs configuration written in Lisp, the app's =init.el=: a text box where it is typed directly, and a list of files (=github:init.el=, =webdav:init-2.el=, =local:init-3.el=, written as =path:file; path:file=, as the other file lists are) loaded in order after the box, so a later file wins over an earlier one and over the box. It is read at start-up and again on the next refresh or reload, whichever comes first, and a *Reload* button on the section reads the box and the files at once. A form that fails is named in a message and skipped; the rest still load. The holiday lists are its first use: your =(setq holiday-local-holidays '(...))= goes here, exactly as written for Emacs. The section is the same one the appendix calls "shared definitions for the diary", so =defun= and the rest land in it later without a second place to configure.
+  2. *Data first, interpreter later.* Until the interpreter exists the section understands =setq= (and =setq-default=) of the variables the app supports, with quoted data on the right, read by =src/lisp-read.js=. A holiday list is data of this kind, so a small evaluator for =holiday-fixed=, =holiday-float=, =holiday-easter-etc= and =holiday-sexp= turns it into dates. The built-in lists are written as the same data (the US and Christian ones first), so what the app ships and what you write are one mechanism. When the interpreter lands it takes over the same section and nothing the person wrote has to change.
+  3. *=holiday-sexp= in the first version.* =(holiday-sexp SEXP STRING)= evaluates SEXP once a year with =year= bound; the result is a date, =(month day year)=, or nil, and STRING names it. It runs on the diary's sexp evaluator (=src/sexp-eval.js=) with =year= added, so it can use exactly the calendar functions that evaluator has; the rest of Emacs's =calendar-*= functions (for example =calendar-nth-named-day=) arrive with the stage 3 builtins, and a sexp that uses one that is missing is skipped with a message naming it. The holiday's name is a plain string in the first version; Emacs also accepts an expression there that uses =date=, which is added once it has been checked against Emacs.
+  4. *Variables.* =holiday-local-holidays= and =holiday-other-holidays= hold your forms; each built-in group is read as =t= (Emacs's default) or =nil=. A group set to =nil= disappears from =org-class=, =calendar-check-holidays=, the diary and the Agenda. =calendar-holidays= itself may be set for full control.
+  5. *No switches.* Groups are turned off in the Lisp section (=(setq holiday-hebrew-holidays nil)=), in the box or in a file, so there is one way and nothing to keep in step.
+  6. *More groups*, cheapest first: the Hebrew, Islamic and Bahá'í calendars are date arithmetic and can be checked against Emacs exactly; the Chinese and solar groups need astronomy (solstices, moon phases, sunrise) and come last or not at all.
+- Example of what the lists change: =%%(org-class 2026 9 1 2026 12 15 1 'holidays) Class meets= shows on every Monday from September 1 to December 15 except Mondays that are holidays. With the built-in lists those are Labor Day (September 7) and Columbus Day (October 12); a Monday holiday the person adds, such as one defined with =holiday-sexp=, is skipped too, and a group set to =nil= no longer causes a skip.
+- Default: until a group exists in the app its variable has no effect, and the default stays what it is today (general and Christian). Emacs's full default adds the other groups, so the default widens as each lands, and the README says which groups are available.
+- The check: for each group, each date of several years against =calendar-check-holidays= in Emacs 29.3, as for the diary sexps. The three forms get their own tests (the last weekday of a month, a floating holiday that falls on the fifth week, Easter offsets).
+- Decided: the Lisp section is edited directly or read from files; a list of files after one box; changes are picked up on the next refresh, reload or start-up, and a *Reload* button reads them now.
 ** [#C] Hebrew, Islamic and other non-Gregorian diary entries
 
 * Editing and structure
@@ -29,30 +42,18 @@ Alone they add little: each diary entry is evaluated by itself, so a =defun= van
 A subtree moved on one side and edited on the other is an ordinary clash today.
 
 * Tables and clocking
-** [#B] =org-duration-units= and =Effort_ALL+=, and the [#C] clock-in reminder
-*** Design
-- Org: (1) =org-clock-notify-once-if-expired= notifies once when the clocked time reaches the effort: "Task `%s' should be finished by now. (%s)", sound via =org-clock-sound= (nil, t or a file). =org-clock-idle-time= asks what to do with an open clock after N idle minutes. (2) =org-duration-units= is an alist of unit names and minutes (default min 1, h 60, d 1440, w 10080, m 43200, y 525960); people set 8-hour days. (3) =Effort_ALL+= appends to the values of =Effort_ALL= from a lower level.
-- Today: the modeline shows "HH:MM / effort !" when over the estimate (chrome.js); =org-duration.js= has fixed =UNIT_MINUTES= and a fixed unit regex; =effort-values.js= reads =Effort_ALL= only (heading or ancestor, =#+PROPERTY:=, =org-global-properties=).
-- Change, three independent parts. (a) Units: parse =org-duration-units= into the table; build the regex from its names, and make =parseOrgDuration= and the formatter use it; all callers (clock, effort filter, clocktable) already go through org-duration.js. (b) =Effort_ALL+=: in =effort-values.js= concatenate the ancestors' values (outer first) with the +-property's values; add it to the property drawer completion. (c) Reminder: a timer armed on clock-in with the effort in minutes; at expiry post a Notification (service worker on Android and installed PWA, in-page toast otherwise), once per clock. Idle time: a setting, and on return ask Keep / Subtract idle / Subtract and clock out, using the visibility change event.
-- Edge cases: effort 0 or missing (no reminder); the app closed (a scheduled notification is not available on iOS, so only an in-page reminder there); a clock edited by hand; a unit name that is a prefix of another (longest first); a day of 8 h changes how "1d" in existing Effort values reads, which is Emacs's behavior too.
-- Tests: Emacs oracle for =org-duration-to-minutes= and =org-duration-from-minutes= under a changed units alist; Effort_ALL+ over three levels; fake-timer test for the once-only reminder.
-- Questions: sound on or off by default? Is idle resolution wanted at all, or only the reminder?
-- Effort: M for (a) and (b), L for (c) with idle time. Impact: M for (a) and (b), L–M for (c).
 ** [#C] A field's name as a formula target, and the =%= default format parameter
 Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
 ** [#C] Symbolic algebra from Emacs Calc
 
 * Babel and attachments
-** [#B] Attachments: copy, move and link (=c= =m= =l=)
+** [#B] Attachments: a storage chooser, attaching from a URL, and link entries
 *** Design
-Full design in [[file:docs/attachments-source-lines-inherited-tags-design.org][docs/attachments-source-lines-inherited-tags-design.org]], section 1. Summary: keep the attachment store as the target; =c= copies from a picked file, =m= copies and then offers to delete the source where the platform allows, =l= stores a link entry only where the platform can keep a handle (Android folder). The =a= method and =org-attach-method= are read. Effort: M. Impact: M on Android, L elsewhere.
+Done: copying and moving files between headings, from the folder panel. Left: =org-attach-method= (=cp=, =mv=, =ln=) as a choice when a new file is attached; =u= attach from a URL; =l= stores a link entry only where the platform can keep a handle (Android folder); and moving a file out to the device with a delete-the-source offer where the platform allows. Full design in [[file:docs/attachments-source-lines-inherited-tags-design.org][docs/attachments-source-lines-inherited-tags-design.org]], section 1. Effort: M. Impact: M on Android, L elsewhere.
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
 * Export
-** [#B] Source block line numbers and references (LaTeX, ASCII, HTML)
-*** Design
-Full design in [[file:docs/attachments-source-lines-inherited-tags-design.org][docs/attachments-source-lines-inherited-tags-design.org]], section 2. Summary: parse =-n=, =+n=, =-r=, =-k=, =-l= and =(ref:label)=; number lines as =org-export-format-code-default= does; HTML =linenr= spans and coderef links, LaTeX =firstnumber=, ASCII right-aligned numbers. Effort: M. Impact: L–M, only when exporting code.
 ** [#C] =#+ATTR_ASCII:= and inline tasks in ASCII export
 ** [#C] =#+HTML_DOCTYPE:=
 ** [#C] Beamer
@@ -62,11 +63,9 @@ Impact = how often the gap meets everyday use. Effort: S under a day, M a day or
 
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
-| 1 | =org-duration-units= and =Effort_ALL+= (parts a, b of the clock item) | M | M | Pure functions, oracle-testable; changes how existing efforts read for 8-hour-day users |
-| 2 | Attachments: copy, move, link | M (Android) | M | Useful, but needs the Android folder to matter |
-| 3 | Source block line numbers and references | L–M | M | Export only |
+| 1 | Attachments: storage chooser, URL, link | M (Android) | M | Useful, but needs the Android folder to matter |
 
-The clock-in reminder and idle time, and Refile and Replace into =local:= files from the web and other backends, are [#C]: they wait for demand.
+Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
 
 * Appendix: a Lisp interpreter
 :PROPERTIES:

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v600';
+const CACHE_NAME = 'org-pwa-shell-v601';
 
 const SHELL_FILES = [
   './',
@@ -69,6 +69,9 @@ const SHELL_FILES = [
   './src/clock.js',
   './src/org-duration.js',
   './src/effort-values.js',
+  './src/clock-reminder.js',
+  './src/code-lines.js',
+  './src/line-numbers.js',
   './src/completion.js',
   './src/merge3.js',
   './src/command-palette.js',
@@ -197,6 +200,8 @@ const SHELL_FILES = [
   './src-browser/attachments-flow.js',
   './src-browser/attach-preview.js',
   './src-browser/attach-folder-panel.js',
+  './src-browser/clock-watch.js',
+  './src-browser/heading-pick.js',
   './src-browser/camera-capture.js',
   './src-browser/attachments-store.js',
   './src-browser/audio-recording.js',
