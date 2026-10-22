@@ -231,6 +231,26 @@ const UNICODE_SPECIAL = [
   [/\.\.\./g, '…'],
 ];
 
+const TIMESTAMP_RE = /([<[])(\d{4})-(\d{1,2})-(\d{1,2})(?: +[^\s\d>\]+-][^\s>\]]*)?(?: +(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?)?((?: +(?:[.+]\+?|-{1,2})\d+[hdwmy](?:\/\d+[hdwmy])?)*) *([>\]])/g;
+const DAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Timestamps as ox-ascii writes them: the date with its day name (a day past the end of a month rolls over, as encode-time does),
+ * a time range as two timestamps, and a repeater without its habit part.
+ * @param {string} text
+ */
+function translateTimestamps(text) {
+  const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
+  return text.replace(TIMESTAMP_RE, (whole, open, y, mo, d, h1, m1, h2, m2, marks, close) => {
+    if (open === '<' !== (close === '>')) return whole;
+    const date = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+    const day = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${DAY_ABBREVIATIONS[date.getUTCDay()]}`;
+    const tail = marks.replace(/\/\d+[hdwmy]/g, '');
+    const stamp = (/** @type {string | undefined} */ hh, /** @type {string | undefined} */ mm) => `${open}${day}${hh === undefined ? '' : ` ${pad(Number(hh))}:${mm}`}${tail}${close}`;
+    return h2 === undefined ? stamp(h1, m1) : `${stamp(h1, m1)}--${stamp(h2, m2)}`;
+  });
+}
+
 /**
  * A run of plain text as ox-ascii writes it: entities in the character set's own spelling, `\-` dropped, and in UTF-8 the dashes and ellipsis.
  * @param {string} text @param {Info} I
@@ -252,7 +272,7 @@ function plainText(text, I) {
   return pieces
     .map((p) => {
       if (p.entity) return p.text;
-      let t = p.text;
+      let t = translateTimestamps(p.text);
       if (I.specialStrings) {
         t = t.replace(/\\-/g, '');
         if (I.cs.utf8) for (const [re, to] of UNICODE_SPECIAL) t = t.replace(/** @type {RegExp} */ (re), /** @type {string} */ (to));

@@ -1,0 +1,98 @@
+#+TITLE: Contacts as vCards (flat style)
+#+STARTUP: overview
+
+Each heading that has a contact property is one contact. Export it with More → Export → Contacts (.vcf), choosing *Flat*; the vCard 3.0 file opens in any contacts app. The expected file is at the bottom.
+
+This file follows the property names of =org-contacts.el=. Emacs does not ship that package or an exporter: with =org-contacts= and =org-vcard= installed, Emacs reads the same properties and writes a similar card. Neither is installed with Emacs, so this example was checked in the app only.
+
+* People
+** Ada Lovelace                                                  :friends:
+:PROPERTIES:
+:EMAIL:    ada@example.org
+:CELL:     +1 555 0100
+:WORK_PHONE: +1 555 0111
+:ADDRESS:  12 Analytical Way, London
+:ORG:      Analytical Engines Ltd
+:JOB_TITLE: Mathematician
+:URL:      https://example.org/ada
+:BIRTHDAY: 1815-12-10
+:NOTE:     Wrote the first program.
+:END:
+
+** Grace Hopper
+:PROPERTIES:
+:EMAIL:    grace@example.org
+:NICKNAME: Amazing Grace
+:ANNIVERSARY: 1930-06-15
+:SPOUSE:   Vincent Hopper
+:END:
+
+** Alan Turing                                                      :work:
+:PROPERTIES:
+:EMAIL:    alan@example.org
+:N:        Turing;Alan;Mathison;;
+:END:
+
+** Draft: not a contact yet
+:PROPERTIES:
+:EMAIL:    draft@example.org
+:IGNORE:   t
+:END:
+=:IGNORE: t= keeps this heading out of the export.
+
+** Notes on the project
+A heading with no contact property is skipped.
+
+* Property reference
+| Property            | vCard field        |
+|---------------------+--------------------|
+| heading title       | FN                 |
+| =:N:=               | N                  |
+| =:EMAIL:=           | EMAIL              |
+| =:PHONE:= =:CELL:=  | TEL                |
+| =:WORK_PHONE:=      | TEL;TYPE=WORK      |
+| =:ADDRESS:=         | ADR                |
+| =:NICKNAME:=        | NICKNAME           |
+| =:ORG:= =:JOB_TITLE:= | ORG, TITLE       |
+| =:URL:=             | URL                |
+| =:NOTE:=            | NOTE               |
+| =:BIRTHDAY:=        | BDAY               |
+| =:ANNIVERSARY:= =:SPOUSE:= | ANNIVERSARY, RELATED |
+| tags                | CATEGORIES         |
+
+* Expected export
+This is the file the export writes (Flat, *This file*). *Import* reads it back to the same headings, with one change: the address also gets an =:ADDRESS_RAW:= property so the structured parts survive another export.
+
+#+begin_example
+BEGIN:VCARD
+VERSION:3.0
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+EMAIL:ada@example.org
+TEL:+1 555 0100
+TEL;TYPE=WORK:+1 555 0111
+ADR:;;12 Analytical Way\, London;;;;
+ORG:Analytical Engines Ltd
+TITLE:Mathematician
+URL:https://example.org/ada
+NOTE:Wrote the first program.
+CATEGORIES:friends
+BDAY:1815-12-10
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Grace Hopper
+N:Hopper;Grace;;;
+EMAIL:grace@example.org
+NICKNAME:Amazing Grace
+ANNIVERSARY:19300615
+RELATED;TYPE=spouse;VALUE=text:Vincent Hopper
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Alan Turing
+N:Turing;Alan;Mathison;;
+EMAIL:alan@example.org
+CATEGORIES:work
+END:VCARD
+#+end_example

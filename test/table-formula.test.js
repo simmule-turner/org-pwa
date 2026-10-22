@@ -52,9 +52,9 @@ test('unary minus', () => {
   assert.equal(result[0].cells[0], '7');
 });
 
-test('division by zero produces #ERROR, matching real Calc\u2019s own default (non-Infinite-mode) behavior of treating it as an error', () => {
-  const result = recalculateTable(mkTable('@1$1=$2/$3', [['', '5', '0']]));
-  assert.equal(result[0].cells[0], '#ERROR');
+test('a formula that divides by zero is left as Calc leaves it, "5/0", and #ERROR inside a larger expression', () => {
+  assert.equal(recalculateTable(mkTable('@1$1=$2/$3', [['', '5', '0']]))[0].cells[0], '5/0');
+  assert.equal(recalculateTable(mkTable('@1$1=$2/$3+1', [['', '5', '0']]))[0].cells[0], '#ERROR');
 });
 
 // ---- non-numeric / blank cells --------------------------------------------
@@ -398,7 +398,7 @@ test('THE FIX: vvar() (sample variance) and vpvar() (population variance) are ge
 test('THE FIX: vsdev() and vpsdev() are the square roots of vvar()/vpvar() respectively', () => {
   const result = recalculateTable(mkTable('@6$1=vsdev(@1$1..@5$1)::@6$2=vpsdev(@1$1..@5$1)', [['2'], ['4'], ['4'], ['4'], ['5'], ['', '']]));
   assert.equal(result[5].cells[0], '1.0954451', 'sqrt(1.2)');
-  assert.equal(result[5].cells[1], '0.9797959', 'sqrt(0.96)');
+  assert.equal(result[5].cells[1], '0.97979590', 'sqrt(0.96)');
 });
 
 test('vvar()/vsdev() (sample, n-1 divisor) of a single-element range is 0, not a division-by-zero NaN/Infinity', () => {
@@ -665,10 +665,10 @@ test('THE FIX: eN (engineering notation, exponent always a multiple of 3) matche
   assert.equal(result[0].cells[0], '123e3');
 });
 
-test('pN (precision) genuinely configures the calculation precision, matching real Calc\u2019s own pN semantics -- exact digits, not the default 8-significant-figure format', () => {
-  const result20 = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
+test('pN (precision) genuinely configures the calculation precision, matching real Calc\u2019s own pN semantics -- the digits shown are set by the n flag, as the default shows 8', () => {
+  const result20 = recalculateTable(mkTable('@1$1=1/3;p20n20', [['999']]));
   assert.equal(result20[0].cells[0], '0.33333333333333333333');
-  const result50 = recalculateTable(mkTable('@1$1=1/3;p50', [['999']]));
+  const result50 = recalculateTable(mkTable('@1$1=1/3;p50n50', [['999']]));
   assert.equal(result50[0].cells[0], '0.33333333333333333333333333333333333333333333333333');
 });
 
@@ -683,14 +683,14 @@ test('flags can be concatenated with no separator, in either order', () => {
 
 // ---- fraction mode (;F) and mixed numbers (;FS) ----------------------------
 
-test('THE EXACT REQUEST: the user\u2019s own ;F worked example, verified exactly', () => {
+test(';F writes fractions with a colon, as Calc does', () => {
   const result = recalculateTable(mkTable('$3=$1/$2;F', [['3', '6', ''], ['12', '9', ''], ['5', '3', '']]));
-  assert.deepEqual(result.map((r) => r.cells[2]), ['1/2', '4/3', '5/3']);
+  assert.deepEqual(result.map((r) => r.cells[2]), ['1:2', '4:3', '5:3']);
 });
 
-test('THE EXACT REQUEST: the user\u2019s own ;FS worked example, verified exactly', () => {
+test('the S flag does not change a fraction, as in Emacs', () => {
   const result = recalculateTable(mkTable('$3=$1/$2;FS', [['14', '4', ''], ['5', '3', '']]));
-  assert.deepEqual(result.map((r) => r.cells[2]), ['3 + 1/2', '1 + 2/3']);
+  assert.deepEqual(result.map((r) => r.cells[2]), ['7:2', '5:3']);
 });
 
 test(';F on an exact whole-number result shows the plain integer, no "/1"', () => {
@@ -703,24 +703,24 @@ test(';FS on an exact whole-number result shows the plain integer too -- nothing
   assert.equal(result[0].cells[2], '4');
 });
 
-test(';FS on a PROPER fraction (magnitude under 1) shows the plain fraction, not "0 + n/d" -- nothing to extract as a whole part', () => {
+test(';FS gives the same fraction as ;F, as in Emacs, where the S flag changes nothing here', () => {
   const result = recalculateTable(mkTable('$3=$1/$2;FS', [['1', '3', '']]));
-  assert.equal(result[0].cells[2], '1/3');
+  assert.equal(result[0].cells[2], '1:3');
 });
 
 test(';F on a negative result shows a correctly-signed fraction', () => {
   const result = recalculateTable(mkTable('$3=$1/$2;F', [['-5', '3', '']]));
-  assert.equal(result[0].cells[2], '-5/3');
+  assert.equal(result[0].cells[2], '-5:3');
 });
 
-test(';FS on a negative improper fraction shows a correctly-signed mixed number, with a MINUS connector rather than plus', () => {
+test(';FS on a negative improper fraction is an improper fraction, as ;F', () => {
   const result = recalculateTable(mkTable('$3=$1/$2;FS', [['-14', '4', '']]));
-  assert.equal(result[0].cells[2], '-3 - 1/2');
+  assert.equal(result[0].cells[2], '-7:2');
 });
 
-test(';F on an already-integer-ratio-free value (not the result of division at all) still reconstructs the correct fraction from the decimal', () => {
+test(';F leaves a number written with decimals a float, as Calc does', () => {
   const result = recalculateTable(mkTable('$1=0.75;F', [['999']]));
-  assert.equal(result[0].cells[0], '3/4');
+  assert.equal(result[0].cells[0], '0.75');
 });
 
 // ---- date/time arithmetic (date/now/deg) ----------------------------------
@@ -735,9 +735,9 @@ test('bare $1 - $2 (no date() wrapper) subtracts two timestamp-formatted cells d
   assert.equal(result[0].cells[2], '114');
 });
 
-test('bare timestamp subtraction still works when one side has a time-of-day component -- produces an hms-tagged duration display, same as the date()-wrapped equivalent', () => {
+test('bare timestamp subtraction still works when one side has a time-of-day component -- gives the days between them as a decimal, as Calc does', () => {
   const result = recalculateTable(mkTable('$3 = $2 - $1', [['<2026-12-25>', '<2026-12-25 06:00>', '']]));
-  assert.equal(result[0].cells[2], '6@ 0\' 0"');
+  assert.equal(result[0].cells[2], '0.25');
 });
 
 test('a bare reference to a non-timestamp cell is unaffected by timestamp auto-detection -- still plain numeric parsing as before', () => {
@@ -745,26 +745,26 @@ test('a bare reference to a non-timestamp cell is unaffected by timestamp auto-d
   assert.equal(result[0].cells[2], '15');
 });
 
-test('THE EXACT REQUEST: projecting a future deadline -- date($1) + N (a plain integer) advances the date, formatted back as an org timestamp', () => {
-  const result = recalculateTable(mkTable('$3 = date($1) + $2', [['<2026-08-25>', '14', '']]));
-  assert.equal(result[0].cells[2], '<2026-09-08>');
+test('THE EXACT REQUEST: projecting a future deadline -- a date cell + N (a plain integer) advances the date, formatted back as an org timestamp', () => {
+  const result = recalculateTable(mkTable('$3 = $1 + $2', [['<2026-08-25>', '14', '']]));
+  assert.equal(result[0].cells[2], '[2026-09-08 Tue]');
 });
 
-test('date($1) - N recedes the date by that many days', () => {
-  const result = recalculateTable(mkTable('$2 = date($1) - $2', [['<2026-08-25>', '10']]));
-  assert.equal(result[0].cells[1], '<2026-08-15>');
+test('a date cell - N recedes the date by that many days', () => {
+  const result = recalculateTable(mkTable('$2 = $1 - $2', [['<2026-08-25>', '10']]));
+  assert.equal(result[0].cells[1], '[2026-08-15 Sat]');
 });
 
 // ---- THE FEATURE: date-to-time() -- additional coverage beyond the ISO/RFC 2822/error-handling cases above ----
 
 test('THE FEATURE: date-to-time() parses a standard US date format', () => {
   const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['01/15/2026', '']]));
-  assert.equal(result[0].cells[1], '<2026-01-15 00:00>');
+  assert.equal(result[0].cells[1], '[2026-01-15 Thu 00:00]');
 });
 
 test('date-to-time(now()) passes an already-tagged date value straight through rather than re-parsing its own formatted text', () => {
   const result = recalculateTable(mkTable('$1 = date-to-time(now())', [['']]));
-  assert.match(result[0].cells[0], /^<\d{4}-\d{2}-\d{2} \d{2}:\d{2}>$/);
+  assert.match(result[0].cells[0], /^\[\d{4}-\d{2}-\d{2} [A-Z][a-z]{2} \d{2}:\d{2}\]$/);
 });
 
 test('date-to-time() takes exactly one argument', () => {
@@ -775,17 +775,17 @@ test('date-to-time() takes exactly one argument', () => {
 
 test('THE BUG THIS FIXES: date-to-time() on a bare reference to an org timestamp WITH a time-of-day component -- previously #ERROR, since Date.parse() cannot handle org\u2019s own "<...>" brackets once a time is also present (it only tolerated them by undocumented accident for a date-only value)', () => {
   const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['<2026-09-06 22:47>']]));
-  assert.equal(result[0].cells[0], '<2026-09-06 22:47>');
+  assert.equal(result[0].cells[0], '[2026-09-06 Sun 22:47]');
 });
 
 test('date-to-time() on a bare reference to a date-only org timestamp still works (this was the accidental case that already appeared to work before the fix, for the wrong reason)', () => {
   const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['<2026-12-25>']]));
-  assert.equal(result[0].cells[0], '<2026-12-25 00:00>');
+  assert.equal(result[0].cells[0], '[2026-12-25 Fri 00:00]');
 });
 
 test('date-to-time() on a bare reference to the "[...]" bracket style (with day-name) also works, not just "<...>"', () => {
   const result = recalculateTable(mkTable('$1 = date-to-time($1)', [['[2026-09-06 Sat 22:47]']]));
-  assert.equal(result[0].cells[0], '<2026-09-06 22:47>');
+  assert.equal(result[0].cells[0], '[2026-09-06 Sun 22:47]');
 });
 
 test('THE EXACT REQUEST: chaining $2=now() then $4=date-to-time($2) within the same recalculation pass no longer produces #ERROR', () => {
@@ -827,12 +827,12 @@ test('THE FEATURE: %Z/%z without UNIVERSAL/utc reflect the machine\u2019s own ac
 
 test('THE EXACT REQUEST: date-to-time() parses an ISO 8601 string', () => {
   const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['2024-01-15T10:30:00Z', '']]));
-  assert.equal(result[0].cells[1], '<2024-01-15 10:30>');
+  assert.equal(result[0].cells[1], '[2024-01-15 Mon 10:30]');
 });
 
 test('THE EXACT REQUEST: date-to-time() parses an RFC 2822 email-header-style date, to the same instant as the equivalent ISO 8601 string', () => {
   const result = recalculateTable(mkTable('$2 = date-to-time($1)', [['Mon, 15 Jan 2024 10:30:00 GMT', '']]));
-  assert.equal(result[0].cells[1], '<2024-01-15 10:30>');
+  assert.equal(result[0].cells[1], '[2024-01-15 Mon 10:30]');
 });
 
 test('date-to-time() on an unparseable string produces #ERROR in the cell, matching this engine\u2019s own established convention for a runtime evaluation failure on an otherwise-valid formula (not a thrown exception, which is reserved for malformed formula syntax)', () => {
@@ -842,7 +842,7 @@ test('date-to-time() on an unparseable string produces #ERROR in the cell, match
 
 test('date-to-time(date(...)) passes an already date-tagged value straight through rather than re-parsing its own formatted text', () => {
   const result = recalculateTable(mkTable('$1 = date-to-time(date(2026, 8, 25))', [['999']]));
-  assert.equal(result[0].cells[0], '<2026-08-25>');
+  assert.equal(result[0].cells[0], '[2026-08-25 Tue]');
 });
 
 test('THE EXACT REQUEST: format-time-string() with a UTC/UNIVERSAL flag reproduces the exact UTC instant regardless of the running machine\u2019s own local timezone', () => {
@@ -876,14 +876,14 @@ test('format-time-string()\u2019s own FORMAT-STRING supports ordinary literal ch
 
 // ---- THE BUG THIS FIXES: date component validation -----------------------
 
-test('THE BUG THIS FIXES: an out-of-range day in a raw cell timestamp errors instead of silently overflowing (June only has 30 days)', () => {
-  const result = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-34>', '']]));
-  assert.equal(result[0].cells[1], '#ERROR');
+test('a day past the end of its month rolls into the next, as in Calc (June only has 30 days)', () => {
+  const result = recalculateTable(mkTable('$2 = $1 + 0', [['<2026-06-34>', '']]));
+  assert.equal(result[0].cells[1], '[2026-07-04 Sat]');
 });
 
-test('THE BUG THIS FIXES: date(Y,M,D) with an out-of-range day errors the same way', () => {
+test('date(Y,M,D) with a day past the end of the month rolls over the same way', () => {
   const result = recalculateTable(mkTable('$1 = date(2026,6,34)', [['']]));
-  assert.equal(result[0].cells[0], '#ERROR');
+  assert.equal(result[0].cells[0], '[2026-07-04 Sat]');
 });
 
 test('THE BUG THIS FIXES: date(Y,M,D) with an out-of-range month errors', () => {
@@ -892,17 +892,17 @@ test('THE BUG THIS FIXES: date(Y,M,D) with an out-of-range month errors', () => 
 });
 
 test('THE BUG THIS FIXES: a valid date still computes normally (no false positives)', () => {
-  const result = recalculateTable(mkTable('$2 = date($1)', [['<2026-06-30>', '']])); // June's own actual last day
-  assert.equal(result[0].cells[1], '<2026-06-30>');
+  const result = recalculateTable(mkTable('$2 = $1 + 0', [['<2026-06-30>', '']])); // June's own actual last day
+  assert.equal(result[0].cells[1], '[2026-06-30 Tue]');
 });
 
-test('THE BUG THIS FIXES: Feb 29 is correctly rejected in a non-leap year but accepted in a real one', () => {
+test('Feb 29 in a non-leap year rolls to March 1, and is itself in a leap year', () => {
   const nonLeap = recalculateTable(mkTable('$1 = date(2026,2,29)', [['']])); // 2026 is not a leap year
-  assert.equal(nonLeap[0].cells[0], '#ERROR');
+  assert.equal(nonLeap[0].cells[0], '[2026-03-01 Sun]');
   const leap = recalculateTable(mkTable('$1 = date(2028,2,29)', [['']])); // 2028 is a leap year
-  assert.equal(leap[0].cells[0], '<2028-02-29>');
+  assert.equal(leap[0].cells[0], '[2028-02-29 Tue]');
   const century = recalculateTable(mkTable('$1 = date(2100,2,29)', [['']])); // divisible by 100 but not 400 -- not a leap year
-  assert.equal(century[0].cells[0], '#ERROR');
+  assert.equal(century[0].cells[0], '[2100-03-01 Mon]');
 });
 
 test('THE BUG THIS FIXES: an out-of-range hour or minute in a raw cell timestamp errors', () => {
@@ -914,17 +914,17 @@ test('THE BUG THIS FIXES: an out-of-range hour or minute in a raw cell timestamp
 
 test('legitimate date arithmetic that rolls over a month boundary is unaffected by the validation fix -- this is genuinely different from constructing an invalid date', () => {
   const result = recalculateTable(mkTable('$1 = date(2026,6,15)+30', [['']]));
-  assert.equal(result[0].cells[0], '<2026-07-15>');
+  assert.equal(result[0].cells[0], '[2026-07-15 Wed]');
 });
 
-test('THE EXACT REQUEST: raw HMS duration output -- date($2) - date($1) with EITHER side having a time component defaults to Calc\u2019s own actual "H@ M\u2019 S\\"" notation instead of a plain number', () => {
+test('the difference of two timestamps with times of day is a decimal number of days', () => {
   const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-25 08:00>', '<2026-08-25 16:30>', '']]));
-  assert.equal(result[0].cells[2], `8@ 30' 0"`);
+  assert.equal(result[0].cells[2], '0.354167');
 });
 
-test('a negative HMS duration (earlier minus later) shows a leading "-", not a bare negative-looking number', () => {
+test('an earlier minus a later timestamp is a negative number of days', () => {
   const result = recalculateTable(mkTable('$3 = date($2) - date($1)', [['<2026-08-25 16:30>', '<2026-08-25 08:00>', '']]));
-  assert.equal(result[0].cells[2], `-8@ 30' 0"`);
+  assert.equal(result[0].cells[2], '-0.354167');
 });
 
 test('THE EXACT REQUEST: converting HMS to decimal hours -- deg() un-tags the duration back to its own raw (still-in-days) number, and the formula\u2019s own explicit "* 24" reaches decimal hours, with the ;%.2f mode flag still applying normally since deg()\u2019s own result is a plain number again', () => {
@@ -934,17 +934,17 @@ test('THE EXACT REQUEST: converting HMS to decimal hours -- deg() un-tags the du
 
 test('THE FEATURE: date(YEAR, MONTH, DAY) constructs a date directly, with no cell reference at all', () => {
   const result = recalculateTable(mkTable('$1 = date(2026, 8, 25)', [['']]));
-  assert.equal(result[0].cells[0], '<2026-08-25>');
+  assert.equal(result[0].cells[0], '[2026-08-25 Tue]');
 });
 
 test('date(Y,M,D) + N still works exactly like a cell-derived date -- the value is what matters, not how it was constructed', () => {
   const result = recalculateTable(mkTable('$1 = date(2026, 8, 25) + 5', [['']]));
-  assert.equal(result[0].cells[0], '<2026-08-30>');
+  assert.equal(result[0].cells[0], '[2026-08-30 Sun]');
 });
 
 test('THE FEATURE: now() returns the current date/time as a date-tagged value, formatted with a time component since it always has one', () => {
   const result = recalculateTable(mkTable('$1 = now()', [['']]));
-  assert.match(result[0].cells[0], /^<\d{4}-\d{2}-\d{2} \d{2}:\d{2}>$/);
+  assert.match(result[0].cells[0], /^\[\d{4}-\d{2}-\d{2} [A-Z][a-z]{2} \d{2}:\d{2}\]$/);
 });
 
 test('date() accepts a timestamp with no day-name at all (real org syntax always includes one, but a person typing directly into a cell commonly won\u2019t) -- both bracket styles, both with and without a day-name, all parse identically', () => {
@@ -974,10 +974,13 @@ test('the column-formula shorthand ($M=, no @) applies date arithmetic to every 
 
 test('date(date($1)) and date(now()) pass an already-date-tagged value straight through rather than re-parsing its own formatted text', () => {
   const result = recalculateTable(mkTable('$2 = date(date($1))', [['<2026-08-25>', '']]));
-  assert.equal(result[0].cells[1], '<2026-08-25>');
+  assert.equal(result[0].cells[1], '[2026-08-25 Tue]');
 });
 
 // ---- conditional logic (if / comparisons / && || ! / string) --------------
+
+// A Calc string result is a vector of character codes, as Emacs shows it.
+const codes = (/** @type {string} */ t) => `[${Array.from(t, (c) => c.codePointAt(0)).join(', ')}]`;
 
 test('THE EXACT REQUEST: logical-example -- if($1 >= 50 && $2 >= 50, "Both Pass", "Fail")', () => {
   const result = recalculateTable(
@@ -986,8 +989,8 @@ test('THE EXACT REQUEST: logical-example -- if($1 >= 50 && $2 >= 50, "Both Pass"
       ['40', '80', ''],
     ])
   );
-  assert.equal(result[0].cells[2], 'Both Pass');
-  assert.equal(result[1].cells[2], 'Fail');
+  assert.equal(result[0].cells[2], codes('Both Pass'));
+  assert.equal(result[1].cells[2], codes('Fail'));
 });
 
 test('THE EXACT REQUEST: grading-example -- nested if() as an else-if chain', () => {
@@ -998,9 +1001,9 @@ test('THE EXACT REQUEST: grading-example -- nested if() as an else-if chain', ()
       ['62', ''],
     ])
   );
-  assert.equal(result[0].cells[1], 'B');
-  assert.equal(result[1].cells[1], 'A');
-  assert.equal(result[2].cells[1], 'C');
+  assert.equal(result[0].cells[1], codes('B'));
+  assert.equal(result[1].cells[1], codes('A'));
+  assert.equal(result[2].cells[1], codes('C'));
 });
 
 test('THE EXACT REQUEST: string-example -- string() wraps a cell reference so it compares as text, not a numeric coercion', () => {
@@ -1015,24 +1018,24 @@ test('THE EXACT REQUEST: string-example -- string() wraps a cell reference so it
 });
 
 test('THE FEATURE: all six comparison operators, both == and = for equality', () => {
-  assert.equal(recalculateTable(mkTable('$2 = if($1 == 10, "Yes", "No")', [['10', '']]))[0].cells[1], 'Yes');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 = 10, "Yes", "No")', [['10', '']]))[0].cells[1], 'Yes');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 != 0, "Yes", "No")', [['5', '']]))[0].cells[1], 'Yes');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 < 50, "Fail", "Pass")', [['30', '']]))[0].cells[1], 'Fail');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 > 100, "Bonus", "Base")', [['150', '']]))[0].cells[1], 'Bonus');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 <= 18, "Minor", "Adult")', [['18', '']]))[0].cells[1], 'Minor');
-  assert.equal(recalculateTable(mkTable('$2 = if($1 >= 65, "Senior", "Reg")', [['70', '']]))[0].cells[1], 'Senior');
+  assert.equal(recalculateTable(mkTable('$2 = if($1 == 10, "Yes", "No")', [['10', '']]))[0].cells[1], codes('Yes'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 = 10, "Yes", "No")', [['10', '']]))[0].cells[1], codes('Yes'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 != 0, "Yes", "No")', [['5', '']]))[0].cells[1], codes('Yes'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 < 50, "Fail", "Pass")', [['30', '']]))[0].cells[1], codes('Fail'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 > 100, "Bonus", "Base")', [['150', '']]))[0].cells[1], codes('Bonus'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 <= 18, "Minor", "Adult")', [['18', '']]))[0].cells[1], codes('Minor'));
+  assert.equal(recalculateTable(mkTable('$2 = if($1 >= 65, "Senior", "Reg")', [['70', '']]))[0].cells[1], codes('Senior'));
 });
 
 test('THE FEATURE: && and || both as operators and as and()/or() function calls, plus ! and not()', () => {
-  assert.equal(recalculateTable(mkTable('$1 = if(1 && 1, "y", "n")', [['']]))[0].cells[0], 'y');
-  assert.equal(recalculateTable(mkTable('$1 = if(1 && 0, "y", "n")', [['']]))[0].cells[0], 'n');
-  assert.equal(recalculateTable(mkTable('$1 = if(0 || 1, "y", "n")', [['']]))[0].cells[0], 'y');
-  assert.equal(recalculateTable(mkTable('$1 = if(0 || 0, "y", "n")', [['']]))[0].cells[0], 'n');
-  assert.equal(recalculateTable(mkTable('$1 = if(and(1, 1), "y", "n")', [['']]))[0].cells[0], 'y');
-  assert.equal(recalculateTable(mkTable('$1 = if(or(0, 0), "y", "n")', [['']]))[0].cells[0], 'n');
-  assert.equal(recalculateTable(mkTable('$1 = if(!0, "y", "n")', [['']]))[0].cells[0], 'y');
-  assert.equal(recalculateTable(mkTable('$1 = if(not(1), "y", "n")', [['']]))[0].cells[0], 'n');
+  assert.equal(recalculateTable(mkTable('$1 = if(1 && 1, "y", "n")', [['']]))[0].cells[0], codes('y'));
+  assert.equal(recalculateTable(mkTable('$1 = if(1 && 0, "y", "n")', [['']]))[0].cells[0], codes('n'));
+  assert.equal(recalculateTable(mkTable('$1 = if(0 || 1, "y", "n")', [['']]))[0].cells[0], codes('y'));
+  assert.equal(recalculateTable(mkTable('$1 = if(0 || 0, "y", "n")', [['']]))[0].cells[0], codes('n'));
+  assert.equal(recalculateTable(mkTable('$1 = if(and(1, 1), "y", "n")', [['']]))[0].cells[0], codes('y'));
+  assert.equal(recalculateTable(mkTable('$1 = if(or(0, 0), "y", "n")', [['']]))[0].cells[0], codes('n'));
+  assert.equal(recalculateTable(mkTable('$1 = if(!0, "y", "n")', [['']]))[0].cells[0], codes('y'));
+  assert.equal(recalculateTable(mkTable('$1 = if(not(1), "y", "n")', [['']]))[0].cells[0], codes('n'));
 });
 
 test('THE FIX: if() is lazy -- the branch NOT taken is never evaluated at all, matching real Calc\u2019s own short-circuiting behavior. Proven with a branch that would throw (not just misbehave) if it were eagerly evaluated', () => {
@@ -1047,8 +1050,8 @@ test('THE EXACT REQUEST: divide-by-zero avoidance -- if($1 != 0, 100 / $1, 0)', 
 
 test('&& and || both short-circuit -- the right side is never evaluated once the left side alone determines the result', () => {
   // Same proof technique as the if() lazy test: an operand that would throw if evaluated.
-  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 && date($2) == date($2), "y", "n")', [['0', 'not a date', '']]))[0].cells[2], 'n', '&& short-circuits on a falsy left side');
-  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 || date($2) == date($2), "y", "n")', [['1', 'not a date', '']]))[0].cells[2], 'y', '|| short-circuits on a truthy left side');
+  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 && date($2) == date($2), "y", "n")', [['0', 'not a date', '']]))[0].cells[2], codes('n'), '&& short-circuits on a falsy left side');
+  assert.equal(recalculateTable(mkTable('$3 = if($1 == 1 || date($2) == date($2), "y", "n")', [['1', 'not a date', '']]))[0].cells[2], codes('y'), '|| short-circuits on a truthy left side');
 });
 
 test('comparisons bind tighter than && and ||, matching standard precedence -- $1 >= 50 && $2 >= 50 parses as ($1 >= 50) && ($2 >= 50), not something nonsensical', () => {
@@ -1057,8 +1060,8 @@ test('comparisons bind tighter than && and ||, matching standard precedence -- $
 });
 
 test('a string literal can be output directly, and can contain an escaped quote', () => {
-  assert.equal(recalculateTable(mkTable('$1 = "hello"', [['']]))[0].cells[0], 'hello');
-  assert.equal(recalculateTable(mkTable('$1 = "she said \\"hi\\""', [['']]))[0].cells[0], 'she said "hi"');
+  assert.equal(recalculateTable(mkTable('$1 = "hello"', [['']]))[0].cells[0], codes('hello'));
+  assert.equal(recalculateTable(mkTable('$1 = "she said \\"hi\\""', [['']]))[0].cells[0], codes('she said "hi"'));
 });
 
 test('string() on a non-ref expression converts whatever value results to its own string form, not just a bare cell reference', () => {
@@ -1162,8 +1165,8 @@ test('THE FEATURE: uconv() converts simple units, matching real Calc\u2019s own 
 });
 
 test('uconv() recognizes real Calc\u2019s own tsp/tbsp abbreviations, aliased since mathjs itself only has the full words teaspoon/tablespoon', () => {
-  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tsp","mL")', [['']]))[0].cells[0], '5');
-  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tbsp","mL")', [['']]))[0].cells[0], '15');
+  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tsp","mL")', [['']]))[0].cells[0], '5.');
+  assert.equal(recalculateTable(mkTable('$1=uconv(1,"tbsp","mL")', [['']]))[0].cells[0], '15.');
 });
 
 test('uconv() handles temperature\u2019s own affine conversion correctly, not just a scale factor', () => {
@@ -1197,25 +1200,25 @@ test('uconv() rejects a 4th argument at parse time, matching its own documented 
 // Fraction types (see this file's own top-of-file mathjs docs).
 
 test('THE FEATURE: pN gives real, exact-to-the-configured-digit precision for ordinary arithmetic, well beyond double precision', () => {
-  const result20 = recalculateTable(mkTable('@1$1=1/3;p20', [['999']]));
+  const result20 = recalculateTable(mkTable('@1$1=1/3;p20n20', [['999']]));
   assert.equal(result20[0].cells[0], '0.33333333333333333333');
-  const result50 = recalculateTable(mkTable('@1$1=1/3;p50', [['999']]));
+  const result50 = recalculateTable(mkTable('@1$1=1/3;p50n50', [['999']]));
   assert.equal(result50[0].cells[0], '0.33333333333333333333333333333333333333333333333333');
 });
 
 test('pN also carries through transcendental functions (sqrt/ln/log), not just the four arithmetic operators', () => {
-  const sqrtResult = recalculateTable(mkTable('$1=sqrt(2);p50', [['']]))[0].cells[0];
-  assert.equal(sqrtResult, '1.4142135623730950488016887242096980785696718753769');
-  const lnResult = recalculateTable(mkTable('$1=ln(2);p30', [['']]))[0].cells[0];
+  const sqrtResult = recalculateTable(mkTable('$1=sqrt(2);p20n20', [['']]))[0].cells[0];
+  assert.equal(sqrtResult, '1.4142135623730950488');
+  const lnResult = recalculateTable(mkTable('$1=ln(2);p30n30', [['']]))[0].cells[0];
   assert.equal(lnResult, '0.693147180559945309417232121458');
-  const logResult = recalculateTable(mkTable('$1=log(1024,2);p20', [['']]))[0].cells[0];
+  const logResult = recalculateTable(mkTable('$1=log(1024,2);p20n20', [['']]))[0].cells[0];
   assert.equal(logResult, '10');
 });
 
-test('pN\u2019s own degree-to-radian conversion factor is double precision, a known, documented limitation -- radians mode has no such conversion and isn\u2019t affected', () => {
-  const degreesResult = recalculateTable(mkTable('$1=sin(30);p20', [['']]))[0].cells[0];
-  assert.ok(degreesResult.startsWith('0.4999999999999999'), 'degrees mode: accurate only to about double precision, not the full 20 digits requested');
-  const radiansResult = recalculateTable(mkTable('$1=sin(0);p20R', [['']]))[0].cells[0];
+test('pN carries the degree-to-radian conversion at full precision too, so sin(30) is exactly 0.5', () => {
+  const degreesResult = recalculateTable(mkTable('$1=sin(30);p20n20', [['']]))[0].cells[0];
+  assert.equal(degreesResult, '0.5');
+  const radiansResult = recalculateTable(mkTable('$1=sin(0);p20n20R', [['']]))[0].cells[0];
   assert.equal(radiansResult, '0');
 });
 
@@ -1230,18 +1233,15 @@ test('round/floor/ceil/trunc with a digit count still work correctly under pN', 
 });
 
 test('F makes ordinary division exact from the start, not a post-hoc reconstruction from an already-rounded float', () => {
-  assert.equal(recalculateTable(mkTable('$1=1/3;F', [['']]))[0].cells[0], '1/3');
+  assert.equal(recalculateTable(mkTable('$1=1/3;F', [['']]))[0].cells[0], '1:3');
 });
 
 test('F round-trips a transcendental function exactly when the true result happens to be rational (a perfect square)', () => {
   assert.equal(recalculateTable(mkTable('$1=sqrt(4);F', [['']]))[0].cells[0], '2');
 });
 
-test('F on a genuinely irrational transcendental result falls back to a small, readable approximation rather than the literal, exact-but-huge-denominator representation of a 64-digit decimal', () => {
-  const result = recalculateTable(mkTable('$1=sqrt(2);F', [['']]))[0].cells[0];
-  const [num, den] = result.split('/').map(Number);
-  assert.ok(den < 1000000, `denominator should be small and readable, got ${den}`);
-  assert.ok(Math.abs(num / den - Math.SQRT2) < 1e-8, 'still an accurate approximation of the true value');
+test('F on an irrational result is a float, as in Calc', () => {
+  assert.equal(recalculateTable(mkTable('$1=sqrt(2);F', [['']]))[0].cells[0], '1.4142136');
 });
 
 test('and()/or()/not() and uconv() all still work correctly under F mode, rather than throwing (both once called the BigNumber-only .toNumber() on a Fraction, which has no such method)', () => {
@@ -1249,11 +1249,11 @@ test('and()/or()/not() and uconv() all still work correctly under F mode, rather
   assert.equal(recalculateTable(mkTable('$1=or(1,0);F', [['']]))[0].cells[0], '1');
   assert.equal(recalculateTable(mkTable('$1=not(0);F', [['']]))[0].cells[0], '1');
   const result = recalculateTable(mkTable('$2=uconv($1,"m","ft");F', [['5', '']]))[0].cells[1];
-  assert.ok(/^\d+\/\d+$/.test(result), `expected a fraction, got ${result}`);
+  assert.ok(/^\d+(\.\d+)?$/.test(result), `expected a number, got ${result}`);
 });
 
 test('F and p together: F takes precedence, per the earlier design decision (a Fraction is already exact, so a digit count alongside it is moot)', () => {
-  assert.equal(recalculateTable(mkTable('$1=1/3;Fp20', [['']]))[0].cells[0], '1/3');
+  assert.equal(recalculateTable(mkTable('$1=1/3;Fp20', [['']]))[0].cells[0], '1:3');
 });
 
 test('inf and nan stay inf/nan under pN and F, rather than throwing (mathjs itself refuses to wrap a non-finite value as an exact Fraction/BigNumber)', () => {
@@ -1286,7 +1286,7 @@ test('THE FEATURE: $name resolves a named constant passed via options.constants'
 
 test('a named constant composes with ordinary arithmetic, matching the user\u2019s own worked example\u2019s own shape (mc^2) -- with the mathematically correct result, since the request\u2019s own illustrative table value (2.99792e17) doesn\u2019t actually match 10*c^2', () => {
   const result = recalculateTable(mkTable('$2 = $1*($c^2)', [['10', '']]), { constants: { c: 299792458 } });
-  assert.equal(result[0].cells[1], '898755178736817700');
+  assert.equal(result[0].cells[1], '898755178736817640');
 });
 
 test('a bare $name (no formula reference to a cell) still correctly distinguishes from $1/$2 column references', () => {
@@ -1350,7 +1350,7 @@ test('the full worked example from the request: mass/energy/freefall table with 
     ]),
     { constants }
   );
-  assert.equal(result[2].cells[1], '898755178736817700');
+  assert.equal(result[2].cells[1], '898755178736817640');
   assert.equal(result[2].cells[2], '9.81');
 });
 
@@ -1431,7 +1431,7 @@ test('THE FEATURE (the exact real-world example that motivated this): all 6 rows
   assert.equal(result[3][2], 'WWWWWWWh'); // Leeds
   assert.equal(result[4][2], 'WWW;'); // Sao Paolo
   assert.equal(result[5][2], 'WWWWWW:'); // Stockholm
-  assert.equal(result[6][2], 'WWWWWWWWWWWH'); // Morelia
+  assert.equal(result[6][2], 'WWWWWWWWWWWW '); // Morelia -- rounds to a full 12 blocks in Emacs too
   assert.equal(result[7][2], ' '); // Rochefourchat -- exactly at min: fully empty bar
 });
 
@@ -1478,7 +1478,7 @@ test('format-time-string() prints a wall-clock time as written, and a zone-less 
   const parsed = recalculateTable(mkTable('$2 = format-time-string("%H:%M %A", date-to-time($1))', [['01/15/2026 10:30', '']]));
   assert.equal(parsed[0].cells[1], '10:30 Thursday');
   const iso = recalculateTable(mkTable('$2 = date-to-time($1)', [['2026-01-15', '']]));
-  assert.equal(iso[0].cells[1], '<2026-01-15 00:00>');
+  assert.equal(iso[0].cells[1], '[2026-01-15 Thu 00:00]');
 });
 
 // ---- names a table gives itself (each case below was run through Emacs 29.3's org-table-recalculate) -------------------------------
@@ -1513,4 +1513,11 @@ test('a table with a marked row recalculates only the rows marked # or *, and ne
 test('a format after the formula still applies', () => {
   const result = recalculateTable(mkTable('$4=$A+$B;%.2f', [['!', 'A', 'B', 'S'], ['#', '1', '2', '']]));
   assert.equal(result[1].cells[3], '3.00');
+});
+
+test('date() turns a date into its Calc day number and a day number into a date', () => {
+  assert.equal(recalculateTable(mkTable('$2 = date($1)', [['[2026-01-15]', '']]))[0].cells[1], '739631');
+  assert.equal(recalculateTable(mkTable('$2 = date($1)', [['[2026-01-15 Thu 09:00]', '']]))[0].cells[1], '739631.38');
+  assert.equal(recalculateTable(mkTable('$2 = date($1)', [['739631.375', '']]))[0].cells[1], '[2026-01-15 Thu 09:00]');
+  assert.equal(recalculateTable(mkTable('$2 = date($1) + 14', [['739631', '']]))[0].cells[1], '[2026-01-29 Thu]');
 });

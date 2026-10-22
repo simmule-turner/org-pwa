@@ -1,0 +1,95 @@
+#+TITLE: Capture a contact
+#+STARTUP: showall
+
+A guided example: add a capture template that files a new contact, fill its form, and export the result as a vCard. Two templates follow. The first writes the contact as properties, the layout of =org-contacts=, and the second writes a vCard as the heading's body.
+
+* Try it
+1. Open Settings → Capture Templates and add one of the JSON objects below to the array (keep the straight quotes).
+2. Make a file containing a heading =* New=, or use this one.
+3. Run the palette's *Capture* command (or =C-c c=) and pick the template. Fill the form; the preview shows the result as you type.
+4. Choose More → Export → Contacts (.vcf), *Flat*, *This file*.
+
+* New
+
+* Template 1: contact with properties
+Asks for a name, a tag, an email, a mobile number and a birthday. =omitEmptyEntries= leaves out any property you left blank.
+
+#+begin_src json
+{
+  "key": "p",
+  "description": "Contact (properties)",
+  "type": "plain",
+  "olp": ["New"],
+  "omitEmptyEntries": true,
+  "template": "* %^{Name} :%^{Tag}:\n:PROPERTIES:\n:EMAIL: %^{Email}\n:CELL: %^{Mobile}\n:BIRTHDAY: %^{Birthday (YYYY-MM-DD)}\n:END:\n%?"
+}
+#+end_src
+
+Answering =Ada Lovelace=, =friends=, =ada@example.org=, =+1 555 0100= and =1815-12-10= files:
+
+#+begin_example
+,** Ada Lovelace                                                   :friends:
+:PROPERTIES:
+:EMAIL: ada@example.org
+:CELL: +1 555 0100
+:BIRTHDAY: 1815-12-10
+:END:
+#+end_example
+
+and the export writes:
+
+#+begin_example
+BEGIN:VCARD
+VERSION:3.0
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+EMAIL:ada@example.org
+TEL:+1 555 0100
+CATEGORIES:friends
+BDAY:1815-12-10
+END:VCARD
+#+end_example
+
+** In Emacs
+The same template in Emacs, in =org-capture-templates=, files the same heading and drawer (checked in Emacs 29.3):
+
+#+begin_src emacs-lisp
+(add-to-list 'org-capture-templates
+ '("p" "Contact (properties)" entry (file+headline "contacts.org" "New")
+   "* %^{Name} :%^{Tag}:\n:PROPERTIES:\n:EMAIL: %^{Email}\n:CELL: %^{Mobile}\n:BIRTHDAY: %^{Birthday (YYYY-MM-DD)}\n:END:\n%?"))
+#+end_src
+
+Emacs keeps a property whose answer is blank (=:CELL:= with nothing after it); the app's =omitEmptyEntries= leaves it out. The JSON form is the app's own; Emacs has no vCard export without the =org-vcard= package.
+
+* Template 2: a vCard as the body
+This one writes the vCard text itself, so the heading is a bare name and the card is in its body. =%\1= and =%\2= reuse the first two answers.
+
+#+begin_src json
+{
+  "key": "v",
+  "description": "vCard Contact",
+  "type": "plain",
+  "olp": ["New"],
+  "omitEmptyEntries": true,
+  "template": "* %^{First Name} %^{Last Name} :%^{Category/Tag}:\nBEGIN:VCARD\nVERSION:3.0\nFN:%\\1 %\\2\nN:%\\2;%\\1;;;\nEMAIL:%^{Email}\nTEL;TYPE=voice:%^{Phone Number}\nTEL;TYPE=cell:%^{Mobile Number}\nADR;TYPE=home:;;%^{Street};%^{City};%^{State};%^{Postal Code};%^{Country}\nBDAY:%^{Birthday (YYYY-MM-DD)}\nNOTE:%^{Note}\nORG:%^{Company/Organization}\nTITLE:%^{Job Title}\nEND:VCARD\n\n%?"
+}
+#+end_src
+
+Answering Grace, Hopper, navy, =grace@example.org=, a mobile number, a birthday, a note, an organization and a title (blank for the rest) files:
+
+#+begin_example
+,** Grace Hopper                                                       :navy:
+BEGIN:VCARD
+VERSION:3.0
+FN:Grace Hopper
+N:Hopper;Grace;;;
+EMAIL:grace@example.org
+TEL;TYPE=cell:+1 555 0123
+BDAY:1906-12-09
+NOTE:Pioneer
+ORG:US Navy
+TITLE:Rear Admiral
+END:VCARD
+#+end_example
+
+Lines for questions left blank are dropped. *Import* (More → Import) reads this shape back as a contact, and the vCard text can be copied into a contacts app as it stands. This template is the app's own, so Emacs cannot run it.

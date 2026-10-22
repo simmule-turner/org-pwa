@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v613 — Table formulas that match Emacs Calc, and the first cookbook examples
+A formula gives what Emacs gives: operator precedence, ~%~ and ~\~, exact large integers, fractions written ~1:2~, dates as day numbers or timestamps with day names, text results as character codes, floats like ~3.~ and ~4e-3~, and every number flag (~n f s e p~, ~%e~, ~%g~). A division by zero is left as written. ASCII export gives timestamps their day names, and LaTeX export joins touching inline math as Emacs does. The =examples/= folder starts the cookbook (Beamer, outlines, table formulas, vCards, capture).
+Verified: about 900 formula cases, plus the ASCII and LaTeX fixtures, compared with Emacs 29.3.
+
 * v612 — Hebrew diary functions, and sunrise and sunset as Emacs computes them
 =diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles= work in diary sexps, with =diary-hebrew-sabbath-candles-minutes= for the candle-lighting offset. Sunrise, sunset, twilight and day length now use the algorithm of Emacs's =solar.el=, so they agree with it to the minute (before, they could differ by one).
 Verified: every day of 1900–2100 for each Hebrew function, and 3,050 sunrise and sunset days at five places, compared with Emacs 29.3.

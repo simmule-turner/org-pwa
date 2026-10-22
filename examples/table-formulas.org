@@ -1,0 +1,185 @@
+#+TITLE: Table formulas
+#+STARTUP: showall
+#+CONSTANTS: tax=0.08 g=9.81
+
+A cookbook for =#+TBLFM:= formulas. Each table holds its formula on the line below it. Use *🔢 Calc* under a table (or the command palette's *Recalculate all tables*; in Emacs, =C-c C-c= on the formula line or =C-u C-c *=). The results stored here are what Emacs 29.3 (Org 9.6.15) computes, and the app gives the same; the last section says where the two differ.
+
+* Row and column totals
+Column formulas (=$N=) skip the rows above the first rule. A cell formula (=@N$M=) writes one cell.
+
+| Item   | Price | Qty | Total |
+|--------+-------+-----+-------|
+| Pens   |  1.50 |   4 |  6.00 |
+| Books  | 12.00 |   2 | 24.00 |
+| Paper  |  4.25 |   3 | 12.75 |
+|--------+-------+-----+-------|
+| Totals |       |   9 | 42.75 |
+#+TBLFM: $4=$2*$3;%.2f::@5$3=vsum(@2..@4)::@5$4=vsum(@2..@4);%.2f
+
+* Named columns and parameters
+A row marked =!= names the columns, a row marked =$= holds parameters, and =#= marks the rows to calculate. =tax= below also comes from the =#+CONSTANTS:= line at the top; the table's own parameter wins.
+
+| ! | Item              | Price | Qty |   Tot |
+|---+-------------------+-------+-----+-------|
+| $ | tax=0.1           |       |     |       |
+| # | Pen               |  1.50 |   4 |  6.60 |
+| # | Book              | 12.00 |   2 | 26.40 |
+| / | note: not counted |       |     |       |
+#+TBLFM: $5=$Price*$Qty*(1+$tax);%.2f
+
+* Ranges between rules
+=@I..@II= is the data between the first two rules. =@>= is the last row and =$>= the last column.
+
+| Region | Q1 | Q2 | Q3 | Q4 | Year |
+|--------+----+----+----+----+------|
+| North  | 12 | 15 | 11 | 18 |   56 |
+| South  |  9 | 14 | 10 | 13 |   46 |
+| West   | 20 | 18 | 22 | 25 |   85 |
+|--------+----+----+----+----+------|
+| All    | 41 | 47 | 43 | 56 |  187 |
+#+TBLFM: $6=vsum($2..$5)::@>$2..@>$6=vsum(@I..@II)
+
+* Statistics
+| Test | Score |
+|------+-------|
+| A    |    72 |
+| B    |    88 |
+| C    |    95 |
+| D    |    61 |
+| E    |       |
+|------+-------|
+| Sum  |   316 |
+| Mean | 79.00 |
+| Min  |    61 |
+| Max  |    95 |
+| Mid  |    80 |
+| N    |     4 |
+| SD   | 15.38 |
+#+TBLFM: @7$2=vsum(@2..@6)::@8$2=vmean(@2..@6);%.2f::@9$2=vmin(@2..@6)::@10$2=vmax(@2..@6)::@11$2=vmedian(@2..@6)::@12$2=vcount(@2..@6)::@13$2=vsdev(@2..@6);%.2f
+
+The blank score in row E is left out of every aggregate, so the mean is over four scores.
+
+* Number formats
+|      Value |     Fixed | Scientific | Engineering |
+|------------+-----------+------------+-------------|
+| 123456.789 | 123456.79 |     1.23e5 |       123e3 |
+| 3.14159265 |      3.14 |     3.14e0 |      3.14e0 |
+#+TBLFM: $2=$1;f2::$3=$1;s3::$4=$1;e3
+
+* Rounding and math functions
+|    x | floor | ceil | round |  sqrt |     x^2 |    ln |
+|------+-------+------+-------+-------+---------+-------|
+|  2.5 |     2 |    3 |     3 | 1.581 |    6.25 | 0.916 |
+| 7.25 |     7 |    8 |     7 | 2.693 | 52.5625 | 1.981 |
+|   16 |    16 |   16 |    16 | 4.000 |     256 | 2.773 |
+#+TBLFM: $2=floor($1)::$3=ceil($1)::$4=round($1)::$5=sqrt($1);%.3f::$6=$1^2::$7=ln($1);%.3f
+
+* Conditions and grades
+Comparisons give 1 or 0. Nested =if= is an else-if chain; here it gives grade points.
+
+| Student | Exam | Lab | Points |
+|---------+------+-----+--------|
+| Ana     |   92 |  88 |      4 |
+| Ben     |   81 |  60 |      3 |
+| Cy      |   55 |  90 |      0 |
+| Dee     |   74 |  71 |      2 |
+#+TBLFM: $4=if($2 >= 90 && $3 >= 80, 4, if($2 >= 80, 3, if($2 >= 60 && $3 >= 60, 2, 0)))
+
+* Dates
+Subtracting two timestamps gives the days between them.
+
+| Start            | End              | Days |
+|------------------+------------------+------|
+| [2026-01-05 Mon] | [2026-03-20 Fri] |   74 |
+| [2026-02-10 Tue] | [2026-02-24 Tue] |   14 |
+#+TBLFM: $3=$2-$1
+
+* Durations
+Flags =T=, =U= and =t= read =H:MM= cells as durations and show =H:MM:SS=, =H:MM= or decimal hours.
+
+| Task 1 | Task 2 | Total (T) | Total (U) | Hours (t) |
+|--------+--------+-----------+-----------+-----------|
+|   2:12 |   1:47 |  03:59:00 |     03:59 |      3.98 |
+|   0:45 |   3:30 |  04:15:00 |     04:15 |      4.25 |
+#+TBLFM: $3=$1+$2;T::$4=$1+$2;U::$5=$1+$2;t
+
+* Constants
+=g= comes from the =#+CONSTANTS:= line at the top of this file.
+
+| Mass kg | Weight N |
+|---------+----------|
+|       2 |    19.62 |
+|      10 |    98.10 |
+#+TBLFM: $2=$1*$g;%.2f
+
+* Several formulas, in order
+Formulas run left to right, and each sees the earlier results.
+
+| Base | Doubled | Plus ten |
+|------+---------+----------|
+|    3 |       6 |       16 |
+|    8 |      16 |       26 |
+#+TBLFM: $2=$1*2::$3=$2+10
+
+* Complex numbers
+| z1     | z2     | Product  |
+|--------+--------+----------|
+| (1, 2) | (3, 4) | (-5, 10) |
+#+TBLFM: $3=$1*$2
+
+* Bars in cells
+=orgtbl-ascii-draw= draws a bar for a value between a minimum and a maximum.
+
+| Item | Sales | Bar          |
+|------+-------+--------------|
+| Mon  |    12 | WWWWV        |
+| Tue  |    30 | WWWWWWWWWWWW |
+| Wed  |    24 | WWWWWWWWWl   |
+#+TBLFM: $3='(orgtbl-ascii-draw $2 0 30 12)
+
+* Text from if
+Calc writes a text result as character codes, so ="P"= shows as =[80]=. Use numbers when the result should read well (the grades table above does).
+
+| Score | Result |
+|-------+--------|
+|    95 | [80]   |
+|    40 | [70]   |
+#+TBLFM: $2=if($1>=50,"P","F")
+
+* Number formats
+=f=, =n=, =s= and =e= format a float with that many decimals or digits, in fixed, normal, scientific and engineering style. A result that is a whole number is left alone. A float shows 8 digits by default, a whole float keeps its dot, and very small or large floats switch to scientific. =%.Ne= and =%g= are C-style.
+
+|      Value |        f2 |      n3 |      s3 |     e3 |     %.2e |   Default |
+|------------+-----------+---------+---------+--------+----------+-----------|
+| 123456.789 | 123456.79 | 123000. |  1.23e5 |  123e3 | 1.23e+05 | 123456.79 |
+|   0.000314 |    3.1e-4 | 3.14e-4 | 3.14e-4 | 314e-6 | 3.14e-04 |   3.14e-4 |
+|        2.5 |      2.50 |     2.5 |   2.5e0 |  2.5e0 | 2.50e+00 |       2.5 |
+#+TBLFM: $2=$1;f2::$3=$1;n3::$4=$1;s3::$5=$1;e3::$6=$1;%.2e::$7=$1*1
+
+* Division, remainder and fractions
+=/= and =%= bind looser than =*=. =%= takes the sign of the divisor, =\= divides and rounds down, and a division by zero is left as written. =F= keeps fractions exact, written with a colon.
+
+|  A | B |  A/B |   A%B |   A\B | A/B (F) |
+|----+---+------+-------+-------+---------|
+| 14 | 4 |  3.5 |     2 |     3 |     7:2 |
+| -7 | 2 | -3.5 |     1 |    -4 |    -7:2 |
+|  5 | 0 |  5/0 | 5 % 0 | 5 \ 0 |     5/0 |
+#+TBLFM: $3=$1/$2::$4=$1%$2::$5=$1\$2::$6=$1/$2;F
+
+* Dates and day numbers
+A day number is counted from 1 January of year 1. =date= turns a date into that number and a number back into a date; adding to the bare date keeps it a date.
+
+| Date             | Plus 30          | Day number | Back to date     |
+|------------------+------------------+------------+------------------|
+| [2026-01-15 Thu] | [2026-02-14 Sat] |     739631 | [2026-01-15 Thu] |
+| [2026-03-31 Tue] | [2026-04-30 Thu] |     739706 | [2026-03-31 Tue] |
+#+TBLFM: $2=$1+30::$3=date($1)::$4=date($3)
+
+* Where Emacs and the app differ
+Everything above gives the same result in both. These give a different result in Emacs 29.3:
+- Symbols: Emacs keeps =pi= and =e= symbolic (=2*pi= is =2 pi=, =sin(pi)= stays as written); the app evaluates =pi= as 3.14159265.
+- Text that is not a number, or a function Calc cannot evaluate: Emacs leaves the formula as written (=date(hello)=); the app writes =#ERROR=.
+- Day numbers of zero or less: =date(0)= gives =<-1-12-31 Sun>= in Emacs and =#ERROR= in the app.
+- Digits above Calc's own accuracy: =sqrt(2);p50n50= ends in =...875377= in Emacs and =...8753769= in the app, which is the correct root.
+
+App only: =uconv($1, "mi/hr", "m/s")= converts units (Emacs uses Calc's =u c= command); =#+PLOT:= draws inline (Emacs needs gnuplot and writes an image file); =date-to-time=, =format-time-string= and =now()= follow the device clock and the browser's date parser.

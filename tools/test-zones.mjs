@@ -9,7 +9,7 @@ let failed = 0;
 const started = Date.now();
 for (const [n, TZ] of ZONES.entries()) {
   console.log(`[${n + 1}/${ZONES.length}] ${TZ} ... (${Math.round((Date.now() - started) / 1000)}s elapsed)`);
-  const run = spawnSync(process.execPath, ['--import', './test/support/fixed-clock.mjs', '--test', ...files], { env: { ...process.env, TZ }, encoding: 'utf8' });
+  const run = spawnSync(process.execPath, ['--import', './test/support/fixed-clock.mjs', '--test', ...files], { env: { ...process.env, TZ }, encoding: 'utf8', maxBuffer: 1 << 28 });
   const line = (name) => new RegExp(`^# ${name} (\\d+)$`, 'm').exec(run.stdout)?.[1] ?? '?';
   console.log(`${TZ.padEnd(18)} pass ${line('pass')}  fail ${line('fail')}`);
   if (run.status !== 0) failed += 1;

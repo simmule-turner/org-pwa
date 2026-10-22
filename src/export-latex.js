@@ -251,8 +251,33 @@ function parseText(text) {
 
 const LATEX_DROPPED = String.fromCharCode(0xe004);
 
+/** Inline math fragments that touch (`\(a\)\(b\)`, `$a$\(b\)`) become one `\(a b\)`, and the blanks inside any `\( a \)` go, as ox-latex's math block does.
+ * @param {InlineNode[]} list @returns {InlineNode[]} */
+function mergeInlineMath(list) {
+  if (S.raw.tex === 'nil' || S.raw.tex === 'verbatim') return list;
+  const isMath = (/** @type {InlineNode | undefined} */ n) => !!n && n.type === 'latex' && !n.displayMode && typeof n.raw === 'string' && (n.raw.startsWith('\\(') || /^\$[^$]/.test(n.raw));
+  /** @type {InlineNode[]} */
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    if (!isMath(list[i])) {
+      out.push(list[i]);
+      continue;
+    }
+    const parts = [];
+    for (; i < list.length && isMath(list[i]); i++) {
+      const raw = /** @type {string} */ (/** @type {Extract<InlineNode, { type: 'latex' }>} */ (list[i]).raw);
+      parts.push(raw.startsWith('\\(') ? raw.slice(2, -2) : raw.slice(1, -1));
+    }
+    i--;
+    const inner = parts.join(' ').trim();
+    out.push(inner === '' ? { type: 'text', value: LATEX_DROPPED } : { type: 'latex', displayMode: false, source: inner, raw: '\\(' + inner + '\\)' });
+  }
+  return out;
+}
+
 /** @param {InlineNode[]} list */
 function nodes(list) {
+  list = mergeInlineMath(list);
   const quotes = S.raw["'"] === 't' ? quoteStatuses(list) : null; // #+OPTIONS: ':t
   const out = list.map((n) => {
     const written = node(n);

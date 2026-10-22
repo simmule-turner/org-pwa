@@ -204,3 +204,54 @@ export const VECTOR_CASES = [
   [['[1, 2]', '[3, 4]'], '@1$3=trn($1..$2)'],
   [['[1, 2]', '[3, 4]'], '@1$3=det($1..$2)'],
 ];
+
+// Operator precedence and associativity, as Emacs Calc has them: "/" and "%" bind more loosely than "*", unary minus more loosely than "^".
+const OPERAND_OPS = ['+', '-', '*', '/', '%', '^'];
+export const OPERATOR_CASES = (() => {
+  /** @type {[string[], string][]} */ const cases = [];
+  const cells = ['14', '4', '2', '3'];
+  for (const a of OPERAND_OPS) for (const b of OPERAND_OPS) cases.push([cells, `@1$5=$1${a}$2${b}$3`]);
+  for (const a of OPERAND_OPS.slice(0, 5)) for (const b of OPERAND_OPS.slice(0, 5)) for (const c of OPERAND_OPS.slice(0, 5)) cases.push([cells, `@1$5=$1${a}$2${b}$3${c}$4`]);
+  for (const e of ['-$1^$3', '-$1*$2', '2^-$3', '-$1-$2', '$1--$2', '-(-$1)', '-$1/$2', '$1/-$2', '-$3^-$3', '$1^$3^$3', '($1+$2)/$3*$3', '$1/($2)*($3)',
+    '$1*$2^$3', '-$1%$2', '$1%-$2', '$1/$2*$3/$4', '$1*$2/$3*$4', '$1-$2+$3', '$1/$2/$3/$4']) cases.push([cells, `@1$5=${e}`]);
+  return cases;
+})();
+
+// A division or remainder by zero is left unevaluated by Calc and shown as written.
+export const ZERO_DIVISION_CASES = ['$1/$2', '$3/$2', '-$1/$2', '$4/$2', '$1/$2*2', '$1%$2', '$1/($2-$2)', '0/$2', '$2/$2', '$1*$2/$2', '($1+1)/$2', '$1/0', '$1/$2;F', '$1/$2;N'].map(
+  (e) => /** @type {[string[], string]} */ ([['5', '0', '-3', '2.5'], `@1$5=${e}`]),
+);
+
+// Fractions (F), written with a colon; a float stays a float. The S flag changes nothing.
+export const FRACTION_CASES = ['$1/$2;F', '$2/$1;F', '-$1/$2;F', '$1/$2;FS', '$3/$2;FS', '$1/$2+$2/$1;F', '$1/$2*$1;F', 'sqrt(4);F', 'sqrt(2);F', '$1/$3;F', '1/3+1/6;F', '$4/$2;F',
+  '$3/$4;F', '0.5;F', '$5/7;F'].map((e) => /** @type {[string[], string]} */ ([['3', '6', '-14', '4', '22'], `@1$6=${e}`]));
+
+// Date arithmetic: a result is an inactive timestamp with its day name; a difference is a number of days.
+export const DATE_CASES = ['$1+30', '$2+30', '$3+1', '$1-7', '$4+1', '$4-$1', '$1-$4', '$3-$1', '$3-$5', '$1+1.5', '$3+0.5', 'date(2026,1,5)+1', 'date(2026,3,1)-1', '$6+1', '$1-$2', '$2-$1',
+  'date(2026,2,29)', 'date(2026,2,30)', '$7+1', '$8+1', '$9+1', '$5-$3', '$3-$6'].map((e) => /** @type {[string[], string]} */ ([
+  ['[2026-01-05 Mon]', '<2026-01-05 Mon>', '[2026-01-05 Mon 10:30]', '[2026-03-20 Fri]', '[2026-01-05 Mon 08:00]', '[2026-01-05]', '<2026-06-34>', '[2026-02-30]', '[2026-13-05]'], `@1$10=${e}`]));
+
+// orgtbl-ascii-draw: the partial-cell gradient, rounding, and the too small / too large limits.
+export const ASCII_DRAW_CASES = [...Array.from({ length: 31 }, (_, i) => `'(orgtbl-ascii-draw ${i} 0 30 12)`),
+  "'(orgtbl-ascii-draw -1 0 10 10)", "'(orgtbl-ascii-draw 11 0 10 10)", "'(orgtbl-ascii-draw 10 0 10 10)", "'(orgtbl-ascii-draw 5 0 10 7)", "'(orgtbl-ascii-draw $1 0 10 5)",
+].map((e) => /** @type {[string[], string]} */ ([['4'], `@1$2=${e}`]));
+
+// Floats: a whole float keeps its ".", very small and very large ones are scientific, strings are character codes, \ is integer division.
+export const FLOAT_CASES = [
+  ...["$1+$2", "$1*1.", "$2*2", "$2+$2", "$2/4", "$2/3", "$3", "$3*1", "$3+0", "$3*2", "$3/1", "$4", "$4*1", "$4+0", "$5*1", "$5+0", "$5*$5", "$5*$5*$5", "$6+0", "$6*10", "$6*1000000000000", "$7*$7", "$7+0", "$3*1000000000", "$3*1000000000000", "$8+0", "$9+0", "$9*1", "$1*0.1", "0.1+0.2", "1/3.", "2.0*3", "2.0+3", "10.0/4", "sqrt(16)", "sqrt(16.0)", "sqrt(2)", "$2^0.5", "$2^2", "$2^2.", "exp(0)", "ln(1)", "abs($3)", "abs(-3.0)", "round($4)", "floor($4)", "floor(3.0)", "$3-0.5", "$3+$3", "vsum($1..$2)"].map((e) => /** @type {[string[], string]} */ ([["3", "4", "2.5", "3.0", "7.25", "0.004", "123456789012", "1e15", "0.00001"], `@1$10=${e}`])),
+  ...["$1+0", "$2+0", "$3+0", "$4+0", "$5+0", "$6+0", "$7+0", "$8+0", "$9+0", "$1*1", "$2*1", "$3*1", "$4*1", "$5*1", "$6*1", "$7*1", "$8*1", "$9*1", "$1/7", "$2/7", "$3/7", "$4/7", "$5/7", "$6/7", "$7/7", "$8/7", "$9/7", "-$1", "-$4"].map((e) => /** @type {[string[], string]} */ ([["0.005", "0.0099", "0.01", "0.0123456789", "0.001234", "123456.789012", "99999999999.5", "999999999999.5", "1234567890123.5"], `@1$10=${e}`])),
+  ...["vsum($1..$3)", "vmean($1..$3)", "vmean($1..$2)", "vmax($1..$3)", "vmin($1..$3)", "vsum($4..$5)", "vmean($4..$5)", "vmax($4..$5)", "vcount($1..$5)", "sqrt($1)", "sqrt($4)", "sqrt($4*$4)", "sin(0)", "sin(0.)", "cos(0)", "sin(30)", "exp(1)", "ln(10)", "log10(100)", "log10(100.)", "abs($3)", "abs(-$3)", "$1^2", "$4^2", "$4^2.", "$1^0.5", "2^10", "2^0.5", "2^-1", "$1*$5", "$5*$5", "floor($5)", "ceil($5)", "round($5)", "round($5,1)", "round(2.567,1)", "round(3.0,1)", "idiv($1,2)", "$1+$5", "$5+$5", "$5-$5", "$4-$4", "$4*0", "0*$4", "$4/$4", "$4/2", "$1/$4", "$4/$1", "if($1>2,1,0)", "if($1>2,$4,0)", "if($1>2,$5,0)", "if($1>2,\"yes\",\"no\")", "if($1>20,\"yes\",\"no\")", "$1==3", "$4==3"].map((e) => /** @type {[string[], string]} */ ([["3", "2", "4", "3.0", "2.5"], `@1$6=${e}`])),
+  ...["exp(1)*1", "idiv(7,2)", "idiv(-7,2)", "idiv(7.5,2)", "$1\\2", "$1\\2.", "$4\\2", "floor(-2.5)", "ceil(-2.5)", "round(-2.5)", "round(2.5)", "trunc(2.7)", "$1%2", "$4%2", "$5%2", "1e3", "1e3*1", "1e-3", "1e-3*1", "1.5e3", "1.5e3*1"].map((e) => /** @type {[string[], string]} */ ([["3", "2", "4", "3.0", "2.5"], `@1$6=${e}`])),
+];
+
+// Number flags (n f s e p) and printf-style flags on integers and floats, small and large.
+const FLAG_VALUES = ['123456.789', '0.000314', '3', '3.5', '-2.5', '1234567890', '0.5', '100.25', '0', '12345678.9', '0.01', '1e15'];
+const FLAGS = ['n3', 'f2', 's3', 'e3', 'n0', 'f0', 'n8', 'f5', 's0', 'e0', 'f10', 'n1', 'n12', 'f1', 's1', 'e1', 'p3', 'F', '%.2f', '%.3e', '%g'];
+export const FLAG_CASES = FLAG_VALUES.flatMap((v) => FLAGS.map((f) => /** @type {[string[], string]} */ ([[v], `@1$2=$1;${f}`])));
+export const PRECISION_CASES = ['$1/3;p20', '$1/3;p20n20', '$1/3;n20', '$1/3;p3', '$1/3;p15', '$1*2;p20', '$1;p3', '1/3;p50n50', 'sqrt(2);p20n20', 'ln(2);p30n30', 'sin(30);p20n20', 'sin(0);p20n20R']
+  .map((e) => /** @type {[string[], string]} */ ([['123456.789'], `@1$2=${e}`]));
+
+// date(): a date becomes its day number and a day number becomes a date.
+export const DATE_FUNCTION_CASES = ['date($1)', 'date($2)', 'date($1)+14', 'date($1)-date($1)', 'date($2)+1', 'date(date($1))', 'date(date($1)+14)', 'date($4)', 'date($5)', 'date($4)+1',
+  'date(2026,1,15)', 'date(2026,1,15)+0.5', 'date(739631.375)', 'date(739631)', 'date($1)-date($6)', '(date($1)-date($6))*24;%.2f', '$1-$6', '($1-$6)*24;%.2f']
+  .map((e) => /** @type {[string[], string]} */ ([['[2026-01-15 Thu 09:00]', '739631.375', 'hello', '<2026-01-15 Thu>', '[2026-01-15]', '[2026-01-14 Wed 23:15]'], `@1$7=${e}`]));

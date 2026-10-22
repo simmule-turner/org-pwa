@@ -1,0 +1,111 @@
+#+TITLE: Contacts as vCards (tree style)
+#+STARTUP: overview
+
+In Tree style a contact heading says =:KIND: individual= and =:FIELDTYPE: name=, and each field is a heading below it with its own =:FIELDTYPE:=. This is the layout of =org-vcard=. Export it with More → Export → Contacts (.vcf), choosing *Tree*. The expected file is at the bottom.
+
+Emacs does not ship =org-vcard=; with the package installed, Emacs reads this layout. It was checked in the app only.
+
+* Contacts
+** Ada Lovelace                                                  :friends:
+:PROPERTIES:
+:KIND:      individual
+:FIELDTYPE: name
+:END:
+*** ada@example.org
+:PROPERTIES:
+:FIELDTYPE: email
+:END:
+*** ada@analytical.example
+:PROPERTIES:
+:FIELDTYPE: email-work
+:END:
+*** +1 555 0100
+:PROPERTIES:
+:FIELDTYPE: cell
+:END:
+*** +1 555 0111
+:PROPERTIES:
+:FIELDTYPE: phone-work
+:END:
+*** 12 Analytical Way, London
+:PROPERTIES:
+:FIELDTYPE: address-home
+:END:
+*** Analytical Engines Ltd
+:PROPERTIES:
+:FIELDTYPE: org
+:END:
+*** Mathematician
+:PROPERTIES:
+:FIELDTYPE: job-title
+:END:
+*** https://example.org/ada
+:PROPERTIES:
+:FIELDTYPE: url
+:END:
+*** 1815-12-10
+:PROPERTIES:
+:FIELDTYPE: birthday
+:END:
+*** Note
+:PROPERTIES:
+:FIELDTYPE: note
+:END:
+#+begin_verse
+Wrote the first program.
+#+end_verse
+
+** Grace Hopper
+:PROPERTIES:
+:KIND:      individual
+:FIELDTYPE: name
+:END:
+*** grace@example.org
+:PROPERTIES:
+:FIELDTYPE: email
+:END:
+*** Amazing Grace
+:PROPERTIES:
+:FIELDTYPE: nickname
+:END:
+
+** Alan Turing
+:PROPERTIES:
+:KIND:      individual
+:FIELDTYPE: name
+:END:
+A contact with no field headings still exports a minimal card: its name only.
+
+* Expected export
+This is the file the export writes (Tree, *This file*). *Import* reads it back into the same tree layout; on the next export the birthday line moves after the note.
+
+#+begin_example
+BEGIN:VCARD
+VERSION:3.0
+FN:Ada Lovelace
+N:Lovelace;Ada;;;
+EMAIL:ada@example.org
+EMAIL;TYPE=WORK:ada@analytical.example
+TEL;TYPE=CELL:+1 555 0100
+TEL;TYPE=WORK:+1 555 0111
+ADR;TYPE=HOME:;;12 Analytical Way\, London;;;;
+ORG:Analytical Engines Ltd
+TITLE:Mathematician
+URL:https://example.org/ada
+BDAY:1815-12-10
+NOTE:Wrote the first program.
+CATEGORIES:friends
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Grace Hopper
+N:Hopper;Grace;;;
+EMAIL:grace@example.org
+NICKNAME:Amazing Grace
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Alan Turing
+N:Turing;Alan;;;
+END:VCARD
+#+end_example

@@ -1036,8 +1036,7 @@ function digitsOf(x) {
  *  very large and very small, a trailing "." on a whole float, and trailing zeros only where rounding left them. */
 function floatText(x, D, /** @type {any} */ { spec, applySpec }) {
   if (spec && applySpec) {
-    const text = applySpec(D.toNumber(x), spec);
-    return /^-?\d+$/.test(text) ? `${text}.` : text;
+    return applySpec(D.toNumber(x), spec, true, D.digits);
   }
   const shown = Math.min(8, D.digits);
   if (x.isZero()) return '0.';

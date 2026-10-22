@@ -175,7 +175,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 
 | Name | What it does |
 |---+---|
-| ~+ - * /~ | Arithmetic. Division by zero gives ~#ERROR~ |
+| ~+ - * / % \~ | Arithmetic, as in Calc: ~/~, ~%~ and ~\~ bind looser than ~*~ (~14/4*2~ is ~14/8~) and a minus sign looser than ~^~ (~-2^2~ is ~-4~). ~%~ takes the sign of the divisor, ~\~ divides and rounds down, whole numbers stay exact at any size, and a division by zero is left as written (~5/0~) |
 | ~^~ | Exponent, right-associative (~2^3^2~ is 512) |
 | ~sqrt(x)~ | Square root; a negative input gives a complex number, ~sqrt(-4)~ is ~(0, 2)~ |
 | ~floor(x)~, ~ceil(x)~, ~round(x)~, ~trunc(x)~ | Round toward −∞, toward +∞, to nearest (an exact .5 goes away from zero), toward zero. An optional second argument keeps that many decimals: ~round($1, 2)~ |
@@ -183,21 +183,21 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 | ~arcsin(x)~, ~arccos(x)~, ~arctan(x)~ | Inverse trig, under Calc's names (not ~asin~); outside −1 to 1 the result is complex |
 | ~ln(x)~, ~log10(x)~, ~log(x, base)~ | Logarithms; ~log(x)~ is natural. ~x~ of 0, or a ~base~ of exactly 1, gives ~#ERROR~; a negative number gives a complex result |
 | ~exp(x)~, ~exp10(x)~ | e^x and 10^x |
-| ~pi~, ~inf~ | Constants, written bare; ~-inf~ works |
+| ~pi~, ~inf~ | Constants, written bare; ~-inf~ works. Org keeps ~pi~ symbolic (~2 pi~); here it is the number |
 | ~$name~ | A constant from a ~#+CONSTANTS:~ line |
 | ~vsum~, ~vmean~, ~vcount~, ~vmin~, ~vmax~, ~vmedian~ (~range~) | Sum, mean, count of non-blank cells, minimum, maximum, median |
 | ~vvar~, ~vpvar~, ~vsdev~, ~vpsdev~ (~range~) | Sample and population variance and standard deviation. As in Calc, there is no plain ~variance~ or ~stddev~ |
 | ~if(c,t,f)~ | ~t~ if ~c~ is true (non-zero or non-empty), else ~f~; only the chosen branch is evaluated |
 | ~and(a,b)~, ~or(a,b)~, ~not(a)~ | Function forms of the logical operators; they don't short-circuit |
 | ~string(ref)~ | A cell's raw text as a string |
-| ~"text"~ | A string literal (~\"~ for a quote inside it) |
+| ~"text"~ | A string literal (~\"~ for a quote inside it). As in Calc, a string result shows as character codes: ~"hi"~ is ~[104, 105]~ |
 | ~date(ref)~, ~date(Y,M,D)~, ~now()~ | Date values (see below) |
 | ~deg(x)~ | Turns an HMS duration back into a plain number of days |
 | ~date-to-time(ref)~ | A date value from a wider range of date strings |
 | ~format-time-string(fmt, time, utc)~ | Formats a time with ~%~ codes (see [[#capture-templates][Capture templates]]) |
 | ~uconv(value, "from", "to")~ | Unit conversion (see below) |
 
-*Logic*: comparisons (~==~ or ~=~, ~!=~, ~<~, ~>~, ~<=~, ~>=~) give ~1~ or ~0~. They bind tighter than ~&&~ and ~||~, which bind looser than ~+ - * /~, so ~$1 >= 50 && $2 >= 50~ means ~($1 >= 50) && ($2 >= 50)~. ~!x~ is logical NOT. ~&&~, ~||~ and ~if~ short-circuit, so ~if($1 != 0, 100 / $1, 0)~ never divides by zero. Nested ~if~ calls make an else-if chain: ~if($1 >= 90, "A", if($1 >= 80, "B", "C"))~. A string literal is text and ~string(ref)~ reads a cell as text, so ~string($1) == "Sales"~ compares text, where a bare ~$1 == "Sales"~ would try to read the cell as a number.
+*Logic*: comparisons (~==~ or ~=~, ~!=~, ~<~, ~>~, ~<=~, ~>=~) give ~1~ or ~0~. They bind tighter than ~&&~ and ~||~, which bind looser than ~+ - * /~, so ~$1 >= 50 && $2 >= 50~ means ~($1 >= 50) && ($2 >= 50)~. ~!x~ is logical NOT. ~&&~, ~||~ and ~if~ short-circuit, so ~if($1 != 0, 100 / $1, 0)~ never divides by zero. Nested ~if~ calls make an else-if chain: ~if($1 >= 90, 4, if($1 >= 80, 3, 2))~. A string literal is text and ~string(ref)~ reads a cell as text, so ~string($1) == "Sales"~ compares text, where a bare ~$1 == "Sales"~ would try to read the cell as a number.
 
 *Named constants*: a ~#+CONSTANTS:~ line anywhere in the file defines constants, used as ~$name~: ~#+CONSTANTS: c=299792458 g=9.81~. Names are space-separated, several lines combine, and a later value wins. An undefined ~$name~ gives ~#ERROR~. There is no built-in physical-constants library (org's optional ~constants.el~); only ~pi~ and ~inf~ are built in.
 
@@ -217,11 +217,11 @@ For example, after *Recalculate* the ~Tot~ column below holds price × quantity 
 #+TBLFM: $5=$Price*$Qty*(1+$tax);%.2f
 #+end_example
 
-*Dates and times*: a cell holding an org timestamp (~[YYYY-MM-DD]~ or ~<YYYY-MM-DD>~, with an optional time and day name) is read as a date as soon as it is referenced, so ~$3 = $1 - $2~ subtracts two timestamp cells. Every component is range-checked (month 1 to 12, a day within that month's length with leap years, hour 0 to 23, minute 0 to 59), so ~<2026-06-34>~ gives ~#ERROR~. ~date(ref)~ differs from a bare reference only for a cell that isn't a timestamp: bare, it reads as an ordinary number; wrapped, it gives ~#ERROR~, which is useful when a formula should fail loudly. ~date(Y, M, D)~ builds a date from three numbers (~date(2028, 2, 29)~ is valid, ~date(2026, 2, 29)~ is not).
+*Dates and times*: a cell holding an org timestamp (~[YYYY-MM-DD]~ or ~<YYYY-MM-DD>~, with an optional time and day name) is read as a date as soon as it is referenced, so ~$3 = $1 - $2~ subtracts two timestamp cells. A day past the end of its month rolls into the next, as in Calc (~<2026-06-34>~ is ~[2026-07-04 Sat]~); an hour above 23 or a minute above 59 gives ~#ERROR~. ~date(ref)~ is Calc's own date function: it turns a timestamp into its day number (~date($1)~ on ~[2026-01-15]~ is ~739631~, counted from 1 January of year 1, with the time of day as a fraction) and a day number back into a date (~date(739631)~ is ~[2026-01-15 Thu]~), so ~date($1) + 14~ is a number; add to the bare ~$1~ to stay a date. ~date(Y, M, D)~ builds a date from three numbers (~date(2026, 2, 29)~ rolls over to 1 March; a month outside 1 to 12 or a day below 1 gives ~#ERROR~).
 
-- Subtracting two dates gives days as an integer, or, if either has a time of day, a duration in Calc's HMS form (~8@ 30' 0"~ for 8.5 hours).
-- Adding or subtracting a number shifts a date by that many days and writes it back as a timestamp: ~date($1) + 14~ gives ~<2026-09-08>~.
-- ~deg()~ turns an HMS duration back into days for further arithmetic: ~deg(date($2) - date($1)) * 24;%.2f~ gives ~8.50~ hours. ~now()~ is the current date and time.
+- Subtracting two dates gives a number of days, with decimals when either has a time of day (~0.354167~ for 8 hours 30 minutes).
+- Adding or subtracting a number shifts a date by that many days and writes it back as a timestamp with its day name: ~$1 + 14~ on ~<2026-08-25>~ gives ~[2026-09-08 Tue]~. A day past the end of the month rolls into the next.
+- Hours between two timestamps: ~($2 - $1) * 24;%.2f~ gives ~8.50~. ~now()~ is the current date and time.
 - ~date-to-time(ref)~ accepts every timestamp ~date()~ does, plus ISO 8601 (~2026-01-15T10:30:00Z~), RFC 822 and US (~01/15/2026~) strings, parsed by the browser. An unparseable string gives ~#ERROR~.
 - ~format-time-string(fmt, time, utc)~ uses the capture-template ~%~ codes: ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~. ~time~ defaults to now and takes a date value or Unix seconds; a non-zero ~utc~ formats in UTC, otherwise the device's time zone is used.
 
@@ -239,18 +239,19 @@ For example, after *Recalculate* the ~Tot~ column below holds price × quantity 
 
 | Flag | Effect |
 |---+---|
-| ~%.Nf~, ~fN~ | Fixed, N decimals (~%0.Nf~ also works): ~4.85;f2~ gives ~4.85~ |
+| ~%.Nf~, ~fN~ | Fixed, N decimals (~%0.Nf~ also works): ~$1/3;f2~ gives ~0.33~. Like Calc's number flags, ~fN~ ~nN~ ~sN~ ~eN~ format a float and leave a whole-number result alone |
+| ~%.Ne~, ~%g~ | C-style exponent and general formats: ~12345.678;%.2e~ gives ~1.23e+04~ |
 | ~%d~ | Truncates toward zero: ~4.85~ gives ~4~ |
 | ~nN~ | Normal notation, N significant figures: ~3.14159265;n5~ gives ~3.1416~ |
 | ~sN~ | Scientific notation, N figures: ~123456.789;s3~ gives ~1.23e5~ |
 | ~eN~ | Engineering notation (exponent a multiple of 3): ~123456.789;e3~ gives ~123e3~ |
-| ~pN~ | Computes at N significant digits, in arbitrary precision (see [[#development][Development]]). Degree-mode trig is limited to about double precision, and sqrt of a negative still errors |
+| ~pN~ | Computes at N significant digits, in arbitrary precision (see [[#development][Development]]). The result still shows 8 digits unless an ~nN~ asks for more: ~1/3;p20n20~ |
 | ~E~ | Keeps a blank cell in a range (as ~nan~) and reads a blank direct reference as ~nan~ |
 | ~N~ | Non-numeric text (with ~E~, blanks too) reads as 0 instead of ~nan~ |
 | ~D~, ~R~ | Angle mode for the trig functions: degrees or radians. Degrees is the default, so ~D~ changes nothing |
 | ~T~, ~U~, ~t~ | Duration mode. Cells matching ~HH:MM[:SS]~ (or a bare integer, in seconds) are read as durations, and the result is ~HH:MM:SS~ (~T~), ~HH:MM~ (~U~) or decimal hours to two places (~t~). Without a flag, ~HH:MM~ text isn't a duration. Negative durations work, and ~org-table-duration-hour-zero-padding~ (see [[#local-variables][Local Variables]], default on) pads the hours |
-| ~F~ | Fraction mode: exact rational results (~1/3;F~ is exactly ~1/3~, and ~$1/$2;F~ on 3 and 6 is ~1/2~; a whole result shows without ~/1~). A function with a rational result stays exact (~sqrt(4);F~ is ~2~); otherwise a short approximation (denominator under 1,000,000) is shown |
-| ~FS~ | Fraction mode as a mixed number: ~14/4;FS~ is ~3 + 1/2~. ~S~ alone does nothing, since general Symbolic mode isn't implemented |
+| ~F~ | Fraction mode: exact rational results (~1/3;F~ is exactly ~1:3~, written with a colon as Calc does, and ~$1/$2;F~ on 3 and 6 is ~1:2~; a whole result shows without ~:1~; a result with decimals stays a float). A function with a rational result stays exact (~sqrt(4);F~ is ~2~); otherwise a short approximation (denominator under 1,000,000) is shown |
+| ~FS~ | The same as ~F~: ~S~ asks for Symbolic mode, which is not implemented |
 
 An unrecognized flag is ignored. Examples:
 
@@ -264,12 +265,12 @@ An unrecognized flag is ignored. Examples:
 #+end_example
 
 #+begin_example
-| Top | Bottom | Fraction | Mixed number |
-|-----+--------+----------+--------------|
-|   3 |      6 | 1/2      | 1/2          |
-|  12 |      9 | 4/3      | 1 + 1/3      |
-|  14 |      4 | 7/2      | 3 + 1/2      |
-#+TBLFM: $3=$1/$2;F::$4=$1/$2;FS
+| Top | Bottom | Fraction |
+|-----+--------+----------|
+|   3 |      6 | 1:2      |
+|  12 |      9 | 4:3      |
+|  14 |      4 | 7:2      |
+#+TBLFM: $3=$1/$2;F
 #+end_example
 
 *Errors*: a formula that fails when evaluated (an out-of-range reference, a range where one value is expected) writes ~#ERROR~ into that one cell, and the rest of the table still updates. A formula that can't be parsed (bad syntax, an unknown function) is reported for the whole recalculation.

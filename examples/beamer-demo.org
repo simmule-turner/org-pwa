@@ -1,0 +1,87 @@
+#+TITLE: Org in Your Pocket
+#+SUBTITLE: A Beamer presentation written in Org
+#+AUTHOR: Your Name
+#+DATE: 2026
+#+OPTIONS: H:2 toc:t num:nil
+#+BEAMER_THEME: Madrid
+#+BEAMER_COLOR_THEME: beaver
+#+STARTUP: beamer
+
+Export it with More → Export → Beamer and compile the .tex with a TeX distribution.
+
+* Why Org
+** Plain text, rich result
+- Headings are slides
+- Lists build up on request
+- *Bold text* is highlighted with \alert
+- Math works inline, \(e^{i\pi} + 1 = 0\), and in display form
+** Overlays
+:PROPERTIES:
+:BEAMER_opt: t
+:END:
+#+ATTR_BEAMER: :overlay <+->
+- First this
+- Then this
+- And finally this
+
+* Blocks and columns
+** Three kinds of block
+*** A plain block
+Used for definitions and notes.
+*** An alert block
+:PROPERTIES:
+:BEAMER_env: alertblock
+:END:
+Used for warnings.
+*** An example block
+:PROPERTIES:
+:BEAMER_env: exampleblock
+:END:
+Used for worked examples.
+** Side by side
+*** Text
+:PROPERTIES:
+:BEAMER_col: 0.5
+:END:
+- Left column
+- Lists, text or code
+*** A table
+:PROPERTIES:
+:BEAMER_col: 0.5
+:END:
+| Item  | Qty |
+|-------+-----|
+| Apple |   3 |
+| Pear  |   5 |
+
+* Code and math
+** A source block
+#+begin_src python
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+#+end_src
+** A theorem
+*** Theorem
+:PROPERTIES:
+:BEAMER_env: theorem
+:END:
+For every $n \ge 1$, $\sum_{k=1}^{n} k = \frac{n(n+1)}{2}$.
+*** Proof
+:PROPERTIES:
+:BEAMER_env: proof
+:END:
+By induction on $n$.
+
+* Closing
+** Speaker notes
+Slides can carry notes that stay out of the page.
+*** Note
+:PROPERTIES:
+:BEAMER_env: note
+:END:
+Remind the audience to try the example file.
+** Thank you
+Questions?

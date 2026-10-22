@@ -362,7 +362,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -501,6 +501,10 @@ const SCALAR_FUNCTIONS = {
     if (x < 0) throw new Error('sqrt of a negative number has no real result');
     return Math.sqrt(x);
   },
+  idiv: (/** @type {number} */ x, /** @type {number} */ y) => {
+    if (y === 0) throw new Error('idiv by zero');
+    return Math.floor(x / y);
+  },
   floor: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.floor),
   ceil: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.ceil),
   round: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
@@ -632,42 +636,21 @@ function unescapeStringLiteral(tok) {
   return inner.replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
 }
 
-const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-/** @param {any} [year] */
-function isLeapYear(year) {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
-
-/**
- * @param {any} [year]
- * @param {any} [month]
- */
-function daysInMonth(year, month) {
-  if (month === 2 && isLeapYear(year)) return 29;
-  return DAYS_IN_MONTH[month - 1];
-}
-
 /**
  * @param {any} [year]
  * @param {any} [month]
  * @param {any} [day]
  */
 function dateToDays(year, month, day, hour = 0, minute = 0) {
-  if (month < 1 || month > 12) {
-    throw new Error(`Invalid date: month ${month} is out of range (must be 1-12)`);
-  }
-  const maxDay = daysInMonth(year, month);
-  if (day < 1 || day > maxDay) {
-    throw new Error(`Invalid date: day ${day} is out of range for ${year}-${String(month).padStart(2, '0')} (must be 1-${maxDay})`);
-  }
+  // a month or day past its end rolls over into the next, as Calc's date parser does
   if (hour < 0 || hour > 23) {
     throw new Error(`Invalid date: hour ${hour} is out of range (must be 0-23)`);
   }
   if (minute < 0 || minute > 59) {
     throw new Error(`Invalid date: minute ${minute} is out of range (must be 0-59)`);
   }
-  return Date.UTC(year, month - 1, day, hour, minute, 0, 0) / 86400000;
+  // Calc keeps a time of day as a fraction of a day to six decimals
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000) + Math.round(((hour * 60 + minute) / 1440) * 1e6) / 1e6;
 }
 
 /** The inverse of dateToDays -- a date-tagged value's own "days since
@@ -676,7 +659,7 @@ function dateToDays(year, month, day, hour = 0, minute = 0) {
  * @param {any} [days]
  *  timestamp string for the cell. */
 function daysToDateParts(days) {
-  const d = new Date(Math.round(days * 86400000));
+  const d = new Date(Math.floor(days * 1440 + 0.01) * 60000); // whole minutes, as Calc shows them
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
 }
 
@@ -762,8 +745,9 @@ function parseCellTimestamp(rawText) {
 function formatDateValue(value) {
   const { year, month, day, hour, minute } = daysToDateParts(value.days);
   const datePart = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  if (!value.hasTime) return `<${datePart}>`;
-  return `<${datePart} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}>`;
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  if (!value.hasTime) return `[${datePart} ${weekday}]`; // Calc's result is always an inactive timestamp with its day name
+  return `[${datePart} ${weekday} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}]`;
 }
 
 /** Formats an hms-tagged duration back into Calc's own actual default
@@ -811,10 +795,12 @@ function parseRef(token) {
   return null;
 }
 
-/** Recursive-descent parser: expr := term (('+'|'-') term)*
- *                             term := power (('*'|'/') power)*
- *                             power := unary ('^' power)?  (right-assoc)
- *                             unary := '-' unary | atom
+/** Recursive-descent parser: expr := division (('+'|'-') division)*
+ *                             division := term (('/'|'%'|'\\') term)*   (looser than '*', as in Calc)
+ *                             term := negation ('*' negation)*
+ *                             negation := '-' negation | power   (looser than '^')
+ *                             power := unary ('^' negation)?  (right-assoc)
+ *                             unary := '!' unary | atom
  *                             atom  := number | ref | range | func '(' args ')' | '(' expr ')'
  *  Builds a plain AST of tagged objects; see evaluateAst for the
  *  actual evaluation. Throws with a position-free but otherwise
@@ -863,34 +849,47 @@ function parseExpression(tokens) {
     return node;
   }
   function parseAdditive() {
-    /** @type {any} */ let node = parseTerm();
+    let node = parseDivision();
     while (peek() === '+' || peek() === '-') {
+      const op = next();
+      node = { type: 'binop', op, left: node, right: parseDivision() };
+    }
+    return node;
+  }
+  // As in Calc, "/" and "%" bind more loosely than "*": 14/4*2 is 14/(4*2).
+  function parseDivision() {
+    let node = parseTerm();
+    while (peek() === '/' || peek() === '%' || peek() === '\\') {
       const op = next();
       node = { type: 'binop', op, left: node, right: parseTerm() };
     }
     return node;
   }
   function parseTerm() {
-    /** @type {any} */ let node = parsePower();
-    while (peek() === '*' || peek() === '/') {
-      const op = next();
-      node = { type: 'binop', op, left: node, right: parsePower() };
+    let node = parseNegation();
+    while (peek() === '*') {
+      next();
+      node = { type: 'binop', op: '*', left: node, right: parseNegation() };
     }
     return node;
+  }
+  // Unary minus binds more loosely than "^", as in Calc: -2^2 is -4.
+  /** @returns {any} */ function parseNegation() {
+    if (peek() === '-') {
+      next();
+      return { type: 'neg', operand: parseNegation() };
+    }
+    return parsePower();
   }
   /** @returns {any} */ function parsePower() {
     /** @type {any} */ const node = parseUnary();
     if (peek() === '^') {
       next();
-      return { type: 'binop', op: '^', left: node, right: parsePower() }; // right-associative: 2^3^2 = 2^(3^2)
+      return { type: 'binop', op: '^', left: node, right: parseNegation() }; // right-associative: 2^3^2 = 2^(3^2); 2^-1 is allowed
     }
     return node;
   }
   /** @returns {any} */ function parseUnary() {
-    if (peek() === '-') {
-      next();
-      return { type: 'neg', operand: parseUnary() };
-    }
     if (peek() === '!') {
       next();
       return { type: 'not', operand: parseUnary() };
@@ -931,11 +930,11 @@ function parseExpression(tokens) {
     }
     if (/^\d/.test(tok)) {
       next();
-      return { type: 'number', value: Number(tok) };
+      return { type: 'number', value: Number(tok), float: /[.eE]/.test(tok) };
     }
     if (/^[A-Za-z_]/.test(tok)) {
       const name = next().toLowerCase();
-      if (name === 'pi') return { type: 'number', value: Math.PI };
+      if (name === 'pi') return { type: 'number', value: Math.PI, float: true };
       if (name === 'i') return { type: 'complexLiteral', re: { type: 'number', value: 0 }, im: { type: 'number', value: 1 } };
       if (name === 'inf') return { type: 'number', value: Infinity };
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
@@ -1290,8 +1289,8 @@ function evaluateDateArithmetic(l, r, op) {
   const rTagged = isTaggedValue(r);
   if (lTagged && rTagged) {
     if (l.type === 'date' && r.type === 'date' && op === '-') {
-      const diff = l.days - r.days;
-      return !l.hasTime && !r.hasTime ? diff : { type: 'hms', days: diff };
+      const diff = Math.round((l.days - r.days) * 1e6) / 1e6; // a time of day is kept to 6 decimals
+      return diff; // days, a decimal when a time of day is involved
     }
     const combined = op === '+' ? l.days + r.days : l.days - r.days;
     const resultType = l.type === 'date' ? l.type : r.type;
@@ -1300,16 +1299,30 @@ function evaluateDateArithmetic(l, r, op) {
   }
   const tagged = lTagged ? l : r;
   const days = lTagged ? (op === '+' ? tagged.days + r : tagged.days - r) : op === '+' ? l + tagged.days : l - tagged.days;
-  return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime } : { type: 'hms', days };
+  return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime || !Number.isInteger(days) } : { type: 'hms', days };
+}
+
+/** Calc's date(): a date turns into its day number (days since 1 January of year 1, with the time of day as a fraction), and a
+ *  day number turns into a date.
+ * @param {any} value */
+function calcDate(value) {
+  const EPOCH_OFFSET = 719163; // 1 Jan 1970 is day 719163 in Calc
+  if (isTaggedValue(value) && value.type === 'date') return Number((value.days + EPOCH_OFFSET).toPrecision(12));
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 1) {
+    return { type: 'date', days: value - EPOCH_OFFSET, hasTime: !Number.isInteger(value) };
+  }
+  throw new Error('date() needs a date or a day number');
 }
 
 /**
  * @param {any} value
  * @param {FormulaCtx} ctx
  */
-function wrapNumericLiteral(value, ctx) {
+function wrapNumericLiteral(value, ctx, isFloat = false) {
   if (!ctx.numericMode || typeof value !== 'number' || !Number.isFinite(value)) return value;
-  return ctx.numericMode.kind === 'fraction' ? ctx.numericMode.instance.fraction(value) : ctx.numericMode.instance.bignumber(value);
+  if (ctx.numericMode.kind === 'fraction') return Number.isInteger(value) && !isFloat ? ctx.numericMode.instance.fraction(value) : value; // as in Calc, a number written with decimals stays a float
+  const wrapped = ctx.numericMode.instance.bignumber(value);
+  return Number.isInteger(value) ? wrapped : wrapped.toSD(ctx.numericMode.instance.config().precision); // Calc reads a number at its working precision
 }
 
 const MATHJS_SCALAR_FUNCTION_NAMES = new Set(['sqrt', 'floor', 'ceil', 'round', 'trunc', 'ln', 'log10', 'exp', 'exp10', 'log', 'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan']);
@@ -1331,7 +1344,7 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
   const x = isFractionMode ? m.bignumber(argValues[0]) : argValues[0];
   const xNum = x.toNumber(); // quick, approximate read for domain/sign checks only
   /** @param {any} [result] */
-  const finish = (result) => (isFractionMode ? m.fraction(result) : result);
+  const finish = (result) => (isFractionMode ? (result.isInteger() ? m.fraction(result) : result.toNumber()) : result); // a result that is not a whole number is a float, as in Calc
 
   switch (name) {
     case 'sqrt':
@@ -1359,7 +1372,7 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
     case 'cos':
     case 'tan': {
       const isDegrees = ctx.angleMode === 'degrees';
-      const radians = isDegrees ? m.multiply(x, m.bignumber(DEG_TO_RAD)) : x;
+      const radians = isDegrees ? m.divide(m.multiply(x, m.acos(m.bignumber(-1))), 180) : x; // pi at the working precision
       return finish(m[name](radians));
     }
     case 'arcsin':
@@ -1367,11 +1380,11 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
       if (xNum < -1 || xNum > 1) throw new Error(`${name} input must be between -1 and 1`);
       const mathjsName = name === 'arcsin' ? 'asin' : 'acos';
       const radians = m[mathjsName](x);
-      return finish(ctx.angleMode === 'degrees' ? m.divide(radians, m.bignumber(DEG_TO_RAD)) : radians);
+      return finish(ctx.angleMode === 'degrees' ? m.divide(m.multiply(radians, 180), m.acos(m.bignumber(-1))) : radians);
     }
     case 'arctan': {
       const radians = m.atan(x);
-      return finish(ctx.angleMode === 'degrees' ? m.divide(radians, m.bignumber(DEG_TO_RAD)) : radians);
+      return finish(ctx.angleMode === 'degrees' ? m.divide(m.multiply(radians, 180), m.acos(m.bignumber(-1))) : radians);
     }
     case 'floor':
     case 'ceil':
@@ -1555,7 +1568,7 @@ function complexScalarCall(name, argValues, ctx) {
 /** @returns {any} */ function evaluateAst(/** @type {any} */ node, /** @type {any} */ ctx) {
   switch (node.type) {
     case 'number':
-      return wrapNumericLiteral(node.value, ctx);
+      return wrapNumericLiteral(node.value, ctx, node.float === true);
     case 'string':
       return node.value;
     case 'vectorLiteral': {
@@ -1588,8 +1601,8 @@ function complexScalarCall(name, argValues, ctx) {
         if (isTruthyValue(l)) return 1;
         return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
       }
-      /** @type {any} */ const l = evaluateAst(node.left, ctx);
-      /** @type {any} */ const r = evaluateAst(node.right, ctx);
+      let l = evaluateAst(node.left, ctx);
+      let r = evaluateAst(node.right, ctx);
       if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op, ctx);
       if (isVector(l) || isVector(r)) return vectorBinop(node.op, l, r, ctx);
       if (isComplex(l) || isComplex(r)) return complexBinop(node.op, l, r, ctx);
@@ -1601,33 +1614,60 @@ function complexScalarCall(name, argValues, ctx) {
       if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
         return evaluateDateArithmetic(l, r, node.op);
       }
+      if (ctx.numericMode && ctx.numericMode.kind === 'fraction' && (isMathjsValue(l) || isMathjsValue(r)) && ((typeof l === 'number' && !Number.isInteger(l)) || (typeof r === 'number' && !Number.isInteger(r)))) {
+        l = isMathjsValue(l) ? l.valueOf() : l; // a float among the fractions makes the result a float
+        r = isMathjsValue(r) ? r.valueOf() : r;
+      }
       if (isMathjsValue(l) || isMathjsValue(r)) {
         const m = ctx.numericMode.instance;
         if (node.op === '+') return m.add(l, r);
         if (node.op === '-') return m.subtract(l, r);
         if (node.op === '*') return m.multiply(l, r);
         if (node.op === '/') {
-          if (m.equal(r, 0)) throw new Error('Division by zero');
+          if (m.equal(r, 0)) throw new DivisionByZero(node, l);
           return m.divide(l, r);
+        }
+        if (node.op === '%') {
+          if (m.equal(r, 0)) throw new DivisionByZero(node, l);
+          return m.mod(l, r);
+        }
+        if (node.op === '\\') {
+          if (m.equal(r, 0)) throw new DivisionByZero(node, l);
+          return m.floor(m.divide(l, r));
         }
         if (node.op === '^') return m.pow(l, r);
         throw new Error(`Unknown operator "${node.op}"`);
       }
-      const lNum = isTaggedValue(l) ? l.days : l;
-      const rNum = isTaggedValue(r) ? r.days : r;
-      if (node.op === '+') return lNum + rNum;
-      if (node.op === '-') return lNum - rNum;
-      if (node.op === '*') return lNum * rNum;
+      const exact = exactIntegerBinop(node.op, l, r);
+      if (exact !== undefined) return exact;
+      const lNum = isTaggedValue(l) ? l.days : typeof l === 'bigint' ? Number(l) : l;
+      const rNum = isTaggedValue(r) ? r.days : typeof r === 'bigint' ? Number(r) : r;
+      // Calc works to 12 digits, so a float result is rounded there: 739631.354167 - 739631 is exactly 0.354167.
+      const twelve = (/** @type {number} */ x) => (Number.isFinite(x) && !Number.isInteger(x) ? Number(x.toPrecision(12)) : x);
+      // A sum or difference of decimals is exact in Calc, so keep the decimal places of the more precise operand.
+      const places = (/** @type {number} */ x) => (Number.isInteger(x) || !Number.isFinite(x) || /e/.test(x.toPrecision(12)) ? 0 : (x.toPrecision(12).split('.')[1] || '').replace(/0+$/, '').length);
+      const exactSum = (/** @type {number} */ x) => (Number.isFinite(x) && !Number.isInteger(x) && Math.max(places(lNum), places(rNum)) <= 20 ? Number(x.toFixed(Math.max(places(lNum), places(rNum)))) : x);
+      if (node.op === '+') return twelve(exactSum(lNum + rNum));
+      if (node.op === '-') return twelve(exactSum(lNum - rNum));
+      if (node.op === '*') return twelve(lNum * rNum);
       if (node.op === '/') {
-        if (rNum === 0) throw new Error('Division by zero');
-        return lNum / rNum;
+        if (rNum === 0) throw new DivisionByZero(node, lNum);
+        return twelve(lNum / rNum);
       }
-      if (node.op === '^') return Math.pow(lNum, rNum);
+      if (node.op === '%') {
+        if (rNum === 0) throw new DivisionByZero(node, lNum);
+        return twelve(lNum - rNum * Math.floor(lNum / rNum)); // Calc's mod takes the sign of the divisor
+      }
+      if (node.op === '\\') {
+        if (rNum === 0) throw new DivisionByZero(node, lNum);
+        return Math.floor(lNum / rNum); // Calc's integer division rounds down
+      }
+      if (node.op === '^') return twelve(Math.pow(lNum, rNum));
       throw new Error(`Unknown operator "${node.op}"`);
     }
     case 'ref': {
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
-      return readCellValue(ctx.dataRows, row, col, ctx);
+      return wrapNumericLiteral(readCellValue(ctx.dataRows, row, col, ctx), ctx, cellTextIsFloat(ctx.dataRows, row, col));
     }
     case 'namedConstant': {
       const value = (ctx.constants || {})[node.name];
@@ -1642,6 +1682,7 @@ function complexScalarCall(name, argValues, ctx) {
     case 'call': {
       const fn = /** @type {any} */ (AGGREGATE_FUNCTIONS)[node.name];
       /** @type {any} */ let values = collectRangeValues(node.arg, ctx);
+      values = values.map((/** @type {any} */ v) => (typeof v === 'bigint' ? Number(v) : v));
       if (values.some(isVector)) values = flattenForAggregate(values, ctx);
       if (values.some(isComplex)) return complexResult(cAggregate(node.name, values, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
       return fn(values);
@@ -1654,7 +1695,7 @@ function complexScalarCall(name, argValues, ctx) {
     }
     case 'scalarCall': {
       const fn = /** @type {any} */ (SCALAR_FUNCTIONS)[node.name];
-      const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
+      const argValues = node.args.map((/** @type {any} */ a) => { const v = evaluateAst(a, ctx); return typeof v === 'bigint' ? Number(v) : v; });
       const vectorOutcome = vectorScalarCall(node.name, argValues, ctx);
       if (vectorOutcome !== undefined) return vectorOutcome;
       const complexOutcome = complexScalarCall(node.name, argValues, ctx);
@@ -1679,7 +1720,8 @@ function complexScalarCall(name, argValues, ctx) {
         /** @type {any} */ const year = evaluateAst(node.args[0], ctx);
         /** @type {any} */ const month = evaluateAst(node.args[1], ctx);
         /** @type {any} */ const day = evaluateAst(node.args[2], ctx);
-        return { type: 'date', days: dateToDays(year, month, day), hasTime: false };
+        if (typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' || month < 1 || month > 12 || day < 1) throw new Error(`Invalid date: ${year}-${month}-${day}`); // Calc leaves date() with such arguments unevaluated
+        return { type: 'date', days: Date.UTC(year, month - 1, day) / 86400000, hasTime: false }; // as in Calc, a day past the month's end rolls into the next
       }
       const argNode = node.args[0];
       let rawText;
@@ -1688,8 +1730,16 @@ function complexScalarCall(name, argValues, ctx) {
         rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
       } else {
         /** @type {any} */ const val = evaluateAst(argNode, ctx);
-        if (isTaggedValue(val) && val.type === 'date') return val; // date(date(...)) or date(now()) -- already a date value, pass through rather than re-parsing its own formatted text
+        if (node.name === 'date') return calcDate(val);
+        if (isTaggedValue(val) && val.type === 'date') return val;
         rawText = String(val);
+      }
+      if (node.name === 'date') {
+        const stamp = parseCellTimestamp(rawText);
+        if (stamp) return calcDate(stamp);
+        const number = Number(rawText.trim());
+        if (rawText.trim() !== '' && !Number.isNaN(number)) return calcDate(number);
+        throw new Error(`date(): "${rawText.trim()}" is not a date or a day number`);
       }
       if (node.name === 'date-to-time') {
         const parsed = parseFlexibleDateString(rawText);
@@ -1814,7 +1864,7 @@ function complexScalarCall(name, argValues, ctx) {
  *  this default is only ever used when a formula has no format flag
  *  of its own. */
 
-const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSDR]/y;
+const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|%\.(\d+)[eg]|%[eg]|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSDR]/y;
 
 /** Parses a formula's own trailing mode string (everything after the
  *  ";", already split off by parseFormulaStatement below) into a
@@ -1878,13 +1928,14 @@ function parseModeString(suffix) {
   let m;
   while ((m = MODE_TOKEN_RE.exec(suffix))) {
     const token = m[0];
-    if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]) }; // %.Nf
+    if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]), printf: true }; // %.Nf
+    else if (token.startsWith('%') && /[eg]$/.test(token)) mode.format = { type: 'exponential', printf: true, conversion: token.slice(-1), digits: m[2] === undefined ? undefined : Number(m[2]) }; // %e %g %.Ne %.Ng
     else if (token === '%d') mode.format = { type: 'integer' };
     else if (token.startsWith('p')) mode.precision = Number(token.slice(1));
-    else if (m[2] !== undefined) mode.format = { type: 'normal', digits: Number(m[2]) };
-    else if (m[3] !== undefined) mode.format = { type: 'scientific', digits: Number(m[3]) };
-    else if (m[4] !== undefined) mode.format = { type: 'engineering', digits: Number(m[4]) };
-    else if (m[5] !== undefined) mode.format = { type: 'fixed', digits: Number(m[5]) }; // fN
+    else if (m[3] !== undefined) mode.format = { type: 'normal', digits: Number(m[3]) };
+    else if (m[4] !== undefined) mode.format = { type: 'scientific', digits: Number(m[4]) };
+    else if (m[5] !== undefined) mode.format = { type: 'engineering', digits: Number(m[5]) };
+    else if (m[6] !== undefined) mode.format = { type: 'fixed', digits: Number(m[6]) }; // fN
     else if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
     else if (token === 'E') mode.emptyMode = 'nan';
     else if (token === 'N') mode.forceNumeric = true;
@@ -1945,55 +1996,122 @@ function formatDuration(totalSeconds, flag, hourZeroPad) {
   return `${sign}${hoursStr}:${minutesStr}:${secondsStr}`;
 }
 
-/** Formats `n` to `digits` significant figures in "normal" notation
- *  (plain decimal, no exponent) -- real org's own "nN" mode letter.
- *  Falls back to formatResult's own default rounding/cleanup logic at
- * @param {any} [n]
- * @param {any} [digits]
- *  `digits` significant figures instead of the usual 8. */
-function formatNormal(n, digits) {
-  if (n === 0) return '0';
-  const precise = n.toPrecision(digits);
-  return cleanupPrecision(precise);
+/** A port of Calc's own float formatter (math-format-number in calc.el), so a number shows exactly as it does in Emacs.
+ *  `fmt` is 'float' (the n flag), 'fix' (f), 'sci' (s) or 'eng' (e); `figs` is the flag's number; `prec` is Calc's internal
+ *  precision (12, or the p flag). Calc keeps a float as an integer mantissa and a power of ten.
+ * @param {any} value a number, or a mathjs BigNumber when the p flag asks for more digits than a double holds
+ * @param {'float' | 'fix' | 'sci' | 'eng'} fmt
+ * @param {number} figs
+ * @param {number} [prec]
+ * @returns {string} */
+function calcFloatString(value, fmt, figs, prec = 12) {
+  const big = typeof value !== 'number';
+  if (big ? value.isNaN() : Number.isNaN(value)) return 'nan';
+  if (big ? !value.isFinite() : !Number.isFinite(value)) return (big ? value.isNegative() : value < 0) ? '-inf' : 'inf';
+  if (big ? value.isNegative() && !value.isZero() : value < 0) return `-${calcFloatString(big ? value.abs() : -value, fmt, figs, prec)}`;
+  const SCI_HIGH = 0; // calc-display-sci-high
+  const SCI_LOW = -3; // calc-display-sci-low
+  // Round to the internal precision, then drop trailing zeros, as Calc's float normalization does.
+  const [digitText, exponentText] = value.toExponential((big ? prec : Math.min(prec, 17)) - 1).split('e');
+  let mant = BigInt(digitText.replace('.', ''));
+  let exp = Number(exponentText) - (digitText.length - 2);
+  while (mant !== 0n && mant % 10n === 0n) {
+    mant /= 10n;
+    exp += 1;
+  }
+  if (mant === 0n) exp = 0;
+  /** @param {bigint} m @param {number} k */
+  const scaleRounding = (m, k) => {
+    if (k >= 0) return m * 10n ** BigInt(k);
+    const divisor = 10n ** BigInt(-k);
+    return (m + divisor / 2n) / divisor;
+  };
+  const numdigs = (/** @type {bigint} */ m) => (m === 0n ? 1 : m.toString().length);
+  let places = figs;
+  if (fmt === 'fix' && (places < 0 || exp + numdigs(mant) > -places)) {
+    if (places < 0) places = -places;
+    let text = scaleRounding(mant, exp + places).toString();
+    if (text.length <= places) text = '0'.repeat(1 + places - text.length) + text;
+    return places > 0 ? `${text.slice(0, -places)}.${text.slice(-places)}` : `${text}.`;
+  }
+  if (places < 0) places = prec + places;
+  if (places > 0) {
+    const adj = places - numdigs(mant);
+    if (adj < 0) {
+      mant = scaleRounding(mant, adj);
+      exp -= adj;
+    }
+  }
+  let text = mant.toString();
+  const len = text.length;
+  const dpos = exp + len;
+  if (fmt === 'float' && dpos <= prec + SCI_HIGH && dpos >= SCI_LOW + 2) {
+    if (dpos === 0) return `0.${text}`;
+    if (exp <= 0 && dpos > 0) return `${text.slice(0, dpos)}.${text.slice(dpos)}`;
+    if (exp > 0) return `${text}${'0'.repeat(exp)}.`;
+    return `0.${'0'.repeat(-dpos)}${text}`;
+  }
+  const exponentAdjusted = exp + len;
+  const scale = fmt === 'eng' ? 1 + (((exponentAdjusted + 300002) % 3 + 3) % 3) : 1;
+  if (scale > text.length) text += '0'.repeat(scale - text.length);
+  if (scale < text.length) text = `${text.slice(0, scale)}.${text.slice(scale)}`;
+  return `${text}e${exponentAdjusted - scale}`;
 }
 
-/** Formats `n` in scientific notation -- one digit before the decimal
- *  point, `digits` significant figures total, real org's own "sN"
- * @param {any} [n]
- * @param {any} [digits]
- *  mode letter. */
-function formatScientific(n, digits) {
-  if (n === 0) return '0e0';
-  return cleanupPrecision(n.toExponential(digits - 1));
+/** Digits of |n| rounded the way C's printf does it: exactly, with a tie going to the even digit.
+ * @param {number} n @param {'f' | 'e'} kind @param {number} digits decimals for f, digits after the point for e
+ * @returns {{digits: string, exponent: number}} `digits` are the kept significant digits, `exponent` the power of ten of the first one */
+function cRound(n, kind, digits) {
+  const [text, exponentText] = Math.abs(n).toExponential(100).split('e');
+  let all = text.replace('.', '');
+  let exponent = Number(exponentText);
+  if (/^0+$/.test(all)) return { digits: '0'.repeat(kind === 'e' ? digits + 1 : Math.max(1, digits + 1)), exponent: 0 };
+  let keep = kind === 'e' ? digits + 1 : exponent + 1 + digits;
+  if (keep < 0) return { digits: '0', exponent: -digits };
+  if (keep === 0) {
+    all = `0${all}`;
+    exponent += 1;
+    keep = 1;
+  }
+  const rest = all.slice(keep);
+  const kept = all.slice(0, keep);
+  const up = rest[0] > '5' || (rest[0] === '5' && (/[1-9]/.test(rest.slice(1)) || Number(kept.slice(-1)) % 2 === 1));
+  let result = (BigInt(kept) + (up ? 1n : 0n)).toString().padStart(keep, '0');
+  if (result.length > keep) {
+    exponent += 1;
+    if (kind === 'e') result = result.slice(0, keep);
+  }
+  return { digits: result, exponent };
 }
 
-/** Formats `n` in engineering notation -- like scientific, but the
- *  exponent is always a multiple of 3 (so the mantissa can have 1-3
- * @param {any} [n]
- * @param {any} [digits]
- *  digits before the decimal point), real org's own "eN" mode letter. */
-function formatEngineering(n, digits) {
-  if (n === 0) return '0e0';
-  const sign = n < 0 ? -1 : 1;
-  const abs = Math.abs(n);
-  const rawExp = Math.floor(Math.log10(abs));
-  const engExp = Math.floor(rawExp / 3) * 3;
-  const mantissa = (abs / Math.pow(10, engExp)) * sign;
-  const precise = mantissa.toPrecision(digits);
-  const cleaned = cleanupPrecision(precise);
-  return `${cleaned}e${engExp}`;
+/** C's %.Nf.
+ * @param {number} n @param {number} decimals */
+function printfFixed(n, decimals) {
+  const sign = n < 0 || Object.is(n, -0) ? '-' : '';
+  const { digits, exponent } = cRound(n, 'f', decimals);
+  const intLen = exponent + 1;
+  const whole = intLen > 0 ? digits.slice(0, intLen).padEnd(intLen, '0') : '0';
+  const fraction = (intLen > 0 ? digits.slice(intLen) : '0'.repeat(-intLen) + digits).padEnd(decimals, '0').slice(0, decimals);
+  return `${sign}${whole}${decimals > 0 ? `.${fraction}` : ''}`;
 }
 
-/** Shared trailing-zero/decimal-point cleanup for a toPrecision or
- *  toExponential string -- both a plain and an exponential result get
- * @param {any} [precise]
- *  the same treatment, matching formatResult's own existing default. */
-function cleanupPrecision(precise) {
-  const eIndex = precise.search(/e/i);
-  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
-  let suffix = eIndex === -1 ? '' : precise.slice(eIndex).replace('+', '');
-  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
-  return cleanedMantissa + suffix;
+/** C-style %e and %g, as Emacs's format does for a printf-type flag.
+ * @param {number} n @param {'e' | 'g'} conversion @param {number} [precision] */
+function printfExponential(n, conversion, precision = 6) {
+  if (!Number.isFinite(n)) return Number.isNaN(n) ? 'nan' : n > 0 ? 'inf' : '-inf';
+  const sign = n < 0 ? '-' : '';
+  /** @param {number} p */
+  const e = (p) => {
+    const { digits, exponent } = n === 0 ? { digits: '0'.repeat(p + 1), exponent: 0 } : cRound(n, 'e', p);
+    const mantissa = p > 0 ? `${digits[0]}.${digits.slice(1)}` : digits[0];
+    return `${sign}${mantissa}e${exponent < 0 ? '-' : '+'}${String(Math.abs(exponent)).padStart(2, '0')}`;
+  };
+  if (conversion === 'e') return e(precision);
+  const p = precision === 0 ? 1 : precision;
+  const x = n === 0 ? 0 : cRound(n, 'e', p - 1).exponent;
+  const trim = (/** @type {string} */ t) => (t.includes('.') ? t.replace(/\.?0+$/, '') : t);
+  if (x < -4 || x >= p) return e(p - 1).replace(/(\.\d*?)0*e/, (_, f) => `${f === '.' ? '' : f}e`);
+  return trim(printfFixed(n, p - 1 - x));
 }
 
 /** Formats `n` per an explicit, real org format specifier -- "%.Nf"
@@ -2005,13 +2123,20 @@ function cleanupPrecision(precise) {
  * @param {any} [n]
  * @param {any} [spec]
  *  match to real Calc's own exact behavior). */
-function applyFormatSpec(n, spec) {
+function applyFormatSpec(n, spec, isFloat = false, prec = 12) {
   if (Number.isNaN(n)) return 'nan';
   if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention -- a digit count is meaningless for an infinite value, so no format spec (fixed/normal/scientific/engineering/%d) applies to it at all
-  if (spec.type === 'fixed') return n.toFixed(spec.digits);
-  if (spec.type === 'normal') return formatNormal(n, spec.digits);
-  if (spec.type === 'scientific') return formatScientific(n, spec.digits);
-  if (spec.type === 'engineering') return formatEngineering(n, spec.digits);
+  if (spec.printf) {
+    // A printf-style flag formats the number Calc has already displayed to its default 8 digits.
+    const shown = Number.isInteger(n) && !isFloat ? n : Number(calcFloatString(n, 'float', 8, prec).replace(/\.$/, ''));
+    if (spec.type === 'fixed') return printfFixed(shown, spec.digits);
+    return printfExponential(shown, spec.conversion, spec.digits);
+  }
+  const calcFormats = { fixed: 'fix', normal: 'float', scientific: 'sci', engineering: 'eng' };
+  if (spec.type in calcFormats) {
+    if (Number.isInteger(n) && !isFloat) return String(n); // an integer is not a float, so the float format does not touch it
+    return calcFloatString(n, /** @type {'float' | 'fix' | 'sci' | 'eng'} */ (/** @type {any} */ (calcFormats)[spec.type]), spec.digits, prec);
+  }
   // Truncates toward zero, not round-to-nearest -- unlike "%.Nf"
   // above (confirmed directly against both the Org Manual's own
   // wording and a real, published org file using that exact syntax),
@@ -2028,24 +2153,133 @@ function applyFormatSpec(n, spec) {
   return String(Math.trunc(n));
 }
 
-/** @param {any} [n] */
-function formatResult(n) {
+/** A division or remainder by zero. Calc leaves such a formula unevaluated; when it is the whole formula, the cell shows it ("5/0"). */
+class DivisionByZero extends Error {
+  /** @param {any} node @param {any} numerator */
+  constructor(node, numerator) {
+    super('Division by zero');
+    this.node = node;
+    this.numerator = numerator;
+  }
+}
+
+/** @param {DivisionByZero} err @returns {string | null} */
+function unevaluatedDivision(err) {
+  const n = err.numerator;
+  const value = typeof n === 'bigint' || typeof n === 'number' ? formatResult(n) : isMathjsValue(n) && n.isFraction ? formatAsFraction(n) : null;
+  if (value === null) return null;
+  if (err.node.op === '%') return `${value} % 0`;
+  if (err.node.op === '\\') return `${value} \\ 0`;
+  return /^-?\d+(:\d+)?$/.test(value) ? `${value}/0` : `${value} / 0`;
+}
+
+/** Whole-number arithmetic that stays exact however large, as Calc's integers do: a BigInt once the result passes 2^53, else a number.
+ *  Undefined when an operand isn't a whole number or the operation isn't one this covers (division that leaves a remainder, a negative power).
+ * @param {string} op @param {any} l @param {any} r @returns {number | bigint | undefined} */
+function exactIntegerBinop(op, l, r) {
+  if (op !== '+' && op !== '-' && op !== '*' && op !== '^' && op !== '%' && op !== '/' && op !== '\\') return undefined;
+  /** @param {any} v */
+  const whole = (v) => typeof v === 'bigint' || (typeof v === 'number' && Number.isInteger(v));
+  if (!whole(l) || !whole(r)) return undefined;
+  const a = BigInt(l);
+  const b = BigInt(r);
+  /** @type {bigint} */ let e;
+  if (op === '+') e = a + b;
+  else if (op === '-') e = a - b;
+  else if (op === '*') e = a * b;
+  else if (op === '^') {
+    if (b < 0n || b > 4096n) return undefined;
+    e = a ** b;
+  } else if (op === '%') {
+    if (b === 0n) return undefined;
+    e = a % b;
+    if (e !== 0n && e < 0n !== b < 0n) e += b; // the result takes the sign of the divisor
+  } else if (op === '\\') {
+    if (b === 0n) return undefined;
+    e = a / b;
+    if (a % b !== 0n && a < 0n !== b < 0n) e -= 1n; // rounds down
+  } else {
+    if (b === 0n || a % b !== 0n) return undefined;
+    e = a / b;
+  }
+  const SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+  return e >= -SAFE && e <= SAFE ? Number(e) : e;
+}
+
+/** A string in a Calc formula is a vector of character codes: "yes" is [121, 101, 115].
+ * @param {string} text */
+function charCodeVector(text) {
+  return `[${Array.from(text, (ch) => ch.codePointAt(0)).join(', ')}]`;
+}
+
+/** Names whose result is a whole number even from a float argument. */
+const INTEGER_RESULT_FUNCTIONS = new Set(['floor', 'ceil', 'round', 'trunc', 'idiv', 'ceiling']);
+
+/** Calc keeps a float a float even when it is whole, so 3.0*2 shows 6. and 3*2 shows 6. This asks whether the value
+ *  of `node` is a float: a literal or cell holding a decimal point or exponent, or any operation on one.
+ * @param {any} node
+ * @param {any} ctx
+ * @returns {boolean} */
+function exprIsFloat(node, ctx) {
+  switch (node.type) {
+    case 'number': return node.float === true;
+    case 'neg': case 'not': return exprIsFloat(node.operand, ctx);
+    case 'binop':
+      if (['==', '!=', '<', '>', '<=', '>=', '&&', '||', '\\'].includes(node.op)) return false;
+      return exprIsFloat(node.left, ctx) || exprIsFloat(node.right, ctx);
+    case 'ifCall': {
+      try {
+        return exprIsFloat(isTruthyValue(evaluateAst(node.condition, ctx)) ? node.trueExpr : node.falseExpr, ctx);
+      } catch {
+        return false;
+      }
+    }
+    case 'ref': {
+      const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+      return cellTextIsFloat(ctx.dataRows, row, col);
+    }
+    case 'dateCall': {
+      if (node.name !== 'date' || node.args.length !== 1) return false;
+      const arg = node.args[0];
+      if (arg.type === 'number') return arg.float === true;
+      if (arg.type !== 'ref') return false;
+      const { row, col } = resolveRef(arg.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+      return /\d:\d/.test(String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '')) || cellTextIsFloat(ctx.dataRows, row, col);
+    }
+    case 'call': {
+      if (node.name === 'vcount') return false;
+      const arg = node.arg;
+      if (arg.type === 'ref') {
+        const { row, col } = resolveRef(arg.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        return cellTextIsFloat(ctx.dataRows, row, col);
+      }
+      if (arg.type !== 'range') return exprIsFloat(arg, ctx);
+      const from = resolveRef(arg.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
+      const to = resolveRef(arg.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+      for (let r = Math.min(from.row, to.row); r <= Math.max(from.row, to.row); r++) {
+        for (let c = Math.min(from.col, to.col); c <= Math.max(from.col, to.col); c++) if (cellTextIsFloat(ctx.dataRows, r, c)) return true;
+      }
+      return false;
+    }
+    case 'scalarCall':
+      return !INTEGER_RESULT_FUNCTIONS.has(node.name) && node.args.some((/** @type {object} */ a) => exprIsFloat(a, ctx));
+    default: return false;
+  }
+}
+
+/** @param {{cells: string[]}[]} dataRows @param {number} row @param {number} col */
+function cellTextIsFloat(dataRows, row, col) {
+  const text = String((dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '').trim();
+  return /^[-+]?(\d+\.\d*|\.\d+|\d+(\.\d*)?[eE][-+]?\d+)$/.test(text);
+}
+
+/** @param {any} [n] @param {boolean} [isFloat] a whole number that came from a float shows a trailing "." */
+function formatResult(n, isFloat = false) {
+  if (typeof n === 'bigint') return n.toString();
   if (Number.isNaN(n)) return 'nan';
-  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention for the inf constant, matching the input syntax round-trip
-  if (Number.isInteger(n)) return String(n);
-  const SIGNIFICANT_FIGURES = 8;
-  const precise = n.toPrecision(SIGNIFICANT_FIGURES);
-  // toPrecision always pads to exactly 8 significant figures
-  // ("1.5000000"), and switches to exponential notation for an
-  // extreme magnitude ("1.234e-7") -- trailing zeros are stripped
-  // from the mantissa either way (a plain result and an exponential
-  // one both get the same cleanup), for a cleaner, still-equivalent
-  // result rather than always showing every padded digit.
-  const eIndex = precise.search(/e/i);
-  const mantissa = eIndex === -1 ? precise : precise.slice(0, eIndex);
-  const suffix = eIndex === -1 ? '' : precise.slice(eIndex);
-  const cleanedMantissa = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
-  return cleanedMantissa + suffix;
+  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // Calc's own display of the inf constant
+  if (Number.isInteger(n) && !isFloat) return String(n);
+  return calcFloatString(n, 'float', 8);
 }
 
 // ---- formula-line parsing ------------------------------------------------
@@ -2075,22 +2309,21 @@ function formatResult(n) {
  *  original org-table.el patch that introduced this function) and a
  *  real-world example table (Org Plot's own documented "Sede / Max
  *  cites" example, every one of its 6 rows hand-traced and confirmed
- * @param {any} [value]
- * @param {any} [min]
- * @param {any} [max]
- * @param {any} [width]
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ * @param {number} [width]
  *  to match exactly), not derived from the docstring alone. */
 function orgtblAsciiDraw(value, min, max, width) {
   const characters = ' .:;c!lhVHW';
-  width = width === undefined ? 12 : width;
-  const scaled = ((value - min) / (max - min)) * width;
-  if (scaled < 0) return 'too small';
-  if (scaled > width) return 'too large';
+  const columns = Math.ceil(width === undefined ? 12 : width);
   const len = characters.length - 1; // 10 -- index of the final, full-block character
-  const whole = Math.floor(scaled);
-  const frac = scaled - whole;
-  const fracChar = characters[Math.floor(frac * len)];
-  return characters[len].repeat(whole) + fracChar;
+  const relative = (value - min) / (max - min);
+  const steps = Math.round(relative * columns * len); // as Emacs's own rounding does for a value half way between two steps
+  if (steps < 0) return 'too small';
+  if (steps > columns * len) return 'too large';
+  const whole = Math.floor(steps / len);
+  return characters[len].repeat(whole) + characters[steps - whole * len];
 }
 
 /** Real functions this app supports through the '(function ...) raw
@@ -2152,6 +2385,10 @@ function parseLispCall(rhs) {
       if (depth !== 0) throw new Error(`Unbalanced parentheses in Lisp call: "${rhs}"`);
       args.push(parseExpression(tokens.slice(i + 1, j - 1)));
       i = j;
+    } else if (tokens[i] === '-' && i + 1 < tokens.length && tokens[i + 1] !== '(') {
+      // A negative literal such as -1 is one argument, as in Lisp.
+      args.push(parseExpression([tokens[i], tokens[i + 1]]));
+      i += 2;
     } else {
       args.push(parseExpression([tokens[i]]));
       i += 1;
@@ -2233,41 +2470,6 @@ function parseTblfm(tblfm) {
  * `table.rows` reference, so the caller's own input is never mutated
  * regardless of whether this throws partway through.
  */
-/** Converts `x` to the "best" rational approximation with a
- *  reasonably small denominator -- a standard continued-fraction
- *  convergents algorithm. This app's own arithmetic doesn't carry
- *  true rational values through every operation the way real Calc's
- *  own internal representation does, so this reconstructs one from
- *  the final floating-point result instead; for any expression that
- *  mathematically reduces to a clean fraction (not merely one that
- *  happens to look clean after this app's own rounding), the
- *  reconstruction recovers the exact same fraction Calc's own native
- * @param {any} [x]
- *  rational arithmetic would have produced directly. */
-function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) {
-  const sign = x < 0 ? -1 : 1;
-  const abs = Math.abs(x);
-  if (abs === 0) return { numerator: 0, denominator: 1 };
-  let h1 = 1,
-    h2 = 0,
-    k1 = 0,
-    k2 = 1;
-  let b = abs;
-  for (let i = 0; i < 64; i++) {
-    const a = Math.floor(b);
-    const h = a * h1 + h2;
-    h2 = h1;
-    h1 = h;
-    const k = a * k1 + k2;
-    k2 = k1;
-    k1 = k;
-    if (Math.abs(abs - h1 / k1) < tolerance * abs || k1 > maxDenominator) break;
-    if (Math.abs(b - a) < 1e-12) break;
-    b = 1 / (b - a);
-  }
-  return { numerator: sign * h1, denominator: k1 };
-}
-
 /** Formats `n` per the F (Fraction Mode) / FS (Fraction + mixed-number)
  *  flags -- confirmed directly against real org's own documented
  *  examples: 3/6;F -> "1/2", 12/9;F -> "4/3", 14/4;FS -> "3 + 1/2".
@@ -2277,43 +2479,20 @@ function toRationalApproximation(x, tolerance = 1e-9, maxDenominator = 1000000) 
  *  default. A proper fraction (|numerator| < denominator) has no
  *  whole part to extract regardless of `mixedNumber`, so it's always
  *  shown the same plain way either way. */
-const FRACTION_DISPLAY_MAX_DENOMINATOR = 1000000n; // matches toRationalApproximation's own default maxDenominator below -- beyond this, an exact mathjs Fraction is almost certainly the literal representation of a high-precision transcendental result, not a fraction anyone would want to read as-is
+const FRACTION_DISPLAY_MAX_DENOMINATOR = 1000000n; // a denominator past this an exact mathjs Fraction is almost certainly the literal representation of a high-precision transcendental result, not a fraction anyone would want to read as-is
 
 /**
  * @param {any} [n]
- * @param {any} [mixedNumber]
+ * @param {boolean} [mixedNumber]
  */
 function formatAsFraction(n, mixedNumber) {
   if (isMathjsValue(n) && n.isFraction && n.d <= FRACTION_DISPLAY_MAX_DENOMINATOR) {
-    /** @type {bigint} */
-    const numerator = n.n; // BigInt, unsigned
-    /** @type {bigint} */
     const denominator = n.d; // BigInt, unsigned
-    const sign = n.s; // BigInt, 1n or -1n
-    if (denominator === 1n) return String(sign * numerator);
-    if (!mixedNumber) return `${sign * numerator}/${denominator}`;
-    const whole = numerator / denominator; // BigInt division truncates toward zero
-    if (whole === 0n) return `${sign * numerator}/${denominator}`; // proper fraction -- nothing to extract
-    const remainder = numerator % denominator;
-    if (remainder === 0n) return String(sign * whole); // reduces to an exact whole number after all
-    const connector = sign < 0n ? ' - ' : ' + ';
-    return `${sign * whole}${connector}${remainder}/${denominator}`;
+    const signed = n.s * n.n; // BigInt
+    return denominator === 1n ? String(signed) : `${signed}:${denominator}`; // Calc writes a fraction with a colon
   }
-  if (isMathjsValue(n)) n = n.isFraction ? n.valueOf() : n.toNumber(); // an exact Fraction with an unreasonably large denominator (uses valueOf(), a plain number -- Fraction has no toNumber()), or a BigNumber (formatFinalValue only routes a BigNumber here when F is combined with another format spec; toNumber(), NOT valueOf(), which returns a string for BigNumber) -- either way, approximate from here down exactly like an ordinary double would
-  if (Number.isNaN(n)) return 'nan';
-  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // inf isn't a ratio of two finite integers -- no fraction to show
-  const { numerator, denominator } = toRationalApproximation(n);
-  if (denominator === 1) return String(numerator); // an exact whole number -- no "/1" to show
-  if (!mixedNumber) return `${numerator}/${denominator}`;
-
-  const sign = numerator < 0 ? -1 : 1;
-  const absNumerator = Math.abs(numerator);
-  const whole = Math.floor(absNumerator / denominator);
-  if (whole === 0) return `${numerator}/${denominator}`; // proper fraction -- nothing to extract
-  const remainder = absNumerator % denominator;
-  if (remainder === 0) return String(sign * whole); // reduces to an exact whole number after all
-  const connector = sign < 0 ? ' - ' : ' + ';
-  return `${sign * whole}${connector}${remainder}/${denominator}`;
+  if (isMathjsValue(n)) n = n.isFraction ? n.valueOf() : n.toNumber(); // an exact Fraction with an unreasonably large denominator, or a BigNumber: shown as a float
+  return formatResult(n); // a float stays a float in Calc's fraction mode
 }
 
 /** Formats one formula's own final computed value into cell text --
@@ -2326,18 +2505,27 @@ function formatAsFraction(n, mixedNumber) {
  * @param {any} [hourZeroPad]
  * @param {any} [complexDomain]
  *  own default. */
-function formatFinalValue(value, mode, hourZeroPad, complexDomain) {
+function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = false) {
   if (typeof value === 'string') return value;
+  if (typeof value === 'bigint') {
+    if (!mode.duration && !mode.fraction && !mode.format) return value.toString();
+    value = Number(value);
+  }
   if (isComplex(value) || isVector(value)) return formatCalcValue(value, complexDomain, { spec: mode.format, applySpec: applyFormatSpec });
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (isMathjsValue(value) && value.isBigNumber) {
-    if (!mode.duration && !mode.format) return value.toString(); // the common case -- full, exact configured precision, no other format spec to combine with
+    if (!mode.duration && !(mode.format && mode.format.printf) && mode.format?.type !== 'integer') {
+      const asInteger = value.isInteger() && !isFloat;
+      const named = { fixed: 'fix', normal: 'float', scientific: 'sci', engineering: 'eng' };
+      const kind = mode.format ? /** @type {any} */ (named)[mode.format.type] : 'float';
+      return asInteger ? value.toFixed() : calcFloatString(value, kind, mode.format ? mode.format.digits : 8, mode.precision ?? 12); // Calc still shows 8 digits unless an n/f/s/e flag says otherwise
+    }
     value = value.toNumber(); // pN combined with a duration mode or another format spec: an honest, documented precision loss at this specific display step -- see this function's own docs above
   }
   if (mode.duration) return formatDuration(value, mode.duration, hourZeroPad);
-  if (mode.fraction) return formatAsFraction(value, mode.mixedNumber);
-  if (mode.format) return applyFormatSpec(value, mode.format);
-  return formatResult(value);
+  if (mode.fraction) return typeof value === 'number' ? formatResult(value, isFloat) : formatAsFraction(value, mode.mixedNumber);
+  if (mode.format) return applyFormatSpec(value, mode.format, isFloat, mode.precision ?? 12);
+  return mode.precision !== null && typeof value === 'number' && (isFloat || !Number.isInteger(value)) ? calcFloatString(value, 'float', 8, mode.precision) : formatResult(value, isFloat);
 }
 
 /** Extracts and parses every #+CONSTANTS: line in `doc` into a single
@@ -2501,9 +2689,10 @@ export function recalculateTable(table, options = {}) {
     function evalCell(row, col) {
       try {
         const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
-        dataRows[row - 1].cells[col - 1] = formatFinalValue(value, mode, hourZeroPad, complexDomain);
-      } catch {
-        dataRows[row - 1].cells[col - 1] = '#ERROR';
+        dataRows[row - 1].cells[col - 1] = typeof value === 'string' && (expr.type === 'string' || expr.type === 'ifCall') ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, { ...evalCtx, currentRow: row, currentCol: col }));
+      } catch (err) {
+        const shown = err instanceof DivisionByZero && err.node === expr && !mode.format && !mode.forceNumeric && !mode.duration ? unevaluatedDivision(err) : null;
+        dataRows[row - 1].cells[col - 1] = shown ?? '#ERROR';
       }
     }
     if (target.type === 'cell') {
