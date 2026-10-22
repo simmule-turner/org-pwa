@@ -13,7 +13,7 @@ import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, re
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
 import { agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
-import { parseSortingStrategy, sortAgendaItems } from '../src/agenda-sort.js';
+import { strategyFor, sortAgendaItems } from '../src/agenda-sort.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -56,11 +56,11 @@ export function agendaRangeFor(viewType, anchorDate) {
   return { start, end };
 }
 
-/** The rows in the order of org-agenda-sorting-strategy for this view; as they are when the variable is unset or has no entry for it.
+/** The rows in the order of org-agenda-sorting-strategy for this view (Emacs's default when it is unset); as they are when the variable has no entry for it.
  * @param {import('../src/agenda.js').AgendaItem[]} items
  * @param {'agenda' | 'todo'} view */
 function applySortingStrategy(items, view) {
-  const keys = parseSortingStrategy(S.state.localVariables['org-agenda-sorting-strategy'], view);
+  const keys = strategyFor(S.state.localVariables['org-agenda-sorting-strategy'], view);
   if (!keys || !keys.length) return items;
   const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
   return sortAgendaItems(items, keys, {

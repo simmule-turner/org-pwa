@@ -26,7 +26,7 @@ import { parseBrokenLinks } from './broken-links.js';
  */
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
-import { readPriorityRange } from './priorities.js';
+import { readPriorityRange, prioritiesKeyword } from './priorities.js';
 import { parseLispTagList, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
@@ -64,8 +64,14 @@ function parseFirstLineCookie(text) {
   return vars;
 }
 
-/** @param {string} text */
+/** The file's own variables: its first line, its Local Variables block, and `#+PRIORITIES:` (which sets the priority range).
+ * @param {string} text */
 export function parseLocalVariables(text) {
+  return Object.assign(parseBlockVariables(text), prioritiesKeyword(text));
+}
+
+/** @param {string} text */
+function parseBlockVariables(text) {
   const vars = parseFirstLineCookie(text);
   if (!text) return vars;
   const lines = joinContinuedLines(text);

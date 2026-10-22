@@ -18,7 +18,7 @@ export const DEFAULT_STRATEGY = Object.freeze({
   search: ['category-keep'],
 });
 
-const KEY_RE = /^(timestamp|scheduled|deadline|tsia|ts|time|stats|priority|effort|category|tag|todo-state|habit|alpha|user-defined)-(up|down)$/;
+const KEY_RE = /^(timestamp|scheduled|deadline|tsia|ts|time|priority|effort|category|tag|todo-state|habit|alpha|user-defined)-(up|down)$/;
 
 /**
  * The key list of one view from the variable's text, e.g. `((agenda habit-down time-up) (todo priority-down))`; null when the
@@ -55,6 +55,18 @@ function timestampDay(item, type) {
 /** @param {number | string} a @param {number | string} b @returns {-1 | 1 | null} */
 function three(a, b) {
   return a < b ? -1 : a > b ? 1 : null;
+}
+
+/**
+ * The keys of one view: those the variable names, or Emacs's own default when the variable is not set. A variable that is set
+ * but has no entry for the view leaves the rows as they are (null), as Emacs does.
+ * @param {string | null | undefined} raw
+ * @param {StrategyView} view
+ * @returns {string[] | null}
+ */
+export function strategyFor(raw, view) {
+  if (!raw || !String(raw).trim() || String(raw).trim().toLowerCase() === 'nil') return [...DEFAULT_STRATEGY[view]];
+  return parseSortingStrategy(raw, view);
 }
 
 /**
@@ -118,7 +130,7 @@ export function agendaComparator(keys, context = {}) {
       const da = timestampDay(a, type) ?? lateDay;
       const db = timestampDay(b, type) ?? lateDay;
       up = three(da, db);
-    } else return null; // stats, user-defined: no opinion
+    } else return null; // user-defined: org-agenda-cmp-user-defined is nil, so no opinion
     if (up === null) return null;
     return direction === 'down' ? /** @type {-1 | 1} */ (-up) : up;
   };

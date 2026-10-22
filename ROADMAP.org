@@ -14,16 +14,16 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] The rest of =org-agenda-sorting-strategy= and the prefix
-Not read yet: the =stats= and =user-defined= keys, the =tags= and =search= entries (the app has no view of those types), =%(function)= forms in =org-agenda-prefix-format=, and a Settings editor for the key list. When the variable is unset the rows keep the app's own order; Emacs's default (=habit-down time-up priority-down category-keep= for the Agenda, =priority-down category-keep= for TODO) would put priority first within a day.
+** [#C] The =tags= and =search= entries of =org-agenda-sorting-strategy=
+Read, with no view of those types to apply them to; they follow if the Agenda gains a tags-match or search view. Effort: S. Impact: S.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
-** [#C] Chinese holidays, and more Hebrew and Islamic diary functions
-Not built: =holiday-oriental-holidays= (it needs astronomy), =diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles=, the Bahá'í and Islamic equivalents, and a string that is an expression in =holiday-sexp=. Effort: M. Impact: S.
+** [#B] More Hebrew and Islamic diary functions
+=diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles=, and the Bahá'í and Islamic equivalents. The date arithmetic is there; =-parasha= and =-sabbath-candles= also need sunset times. Effort: M. Impact: S.
+** [#C] Chinese holidays
+=holiday-oriental-holidays= and =diary-chinese-date= need the Chinese calendar's new-moon and solar-term calculation, which the solar holidays' equinox and solstice code does not cover. Effort: L. Impact: S.
 
 * Editing and structure
-** [#C] The rest of the priority variables
-=#+PRIORITIES: A E C= in a file, =org-priority-start-cycle-with-default=, =org-priority-get-priority-function= and =org-priority-faces=. The cycle goes none, highest to lowest, none; Emacs's first step lands on the default.
 ** [#C] An undo tree
 ** [#C] Structure-aware merge
 A subtree moved on one side and edited on the other is an ordinary clash today.
@@ -34,8 +34,6 @@ Org's =_= and =^= rows name fields for use on the right of a formula; naming one
 ** [#C] Symbolic algebra from Emacs Calc
 
 * Babel and attachments
-** [#C] Android shell: move and link for attachments
-The app offers =m= and =l= when the shell supplies =attachments.removeSource(uri)=, =attachments.adapter.link(path, uri)= and a =uri= on the file =pickFile= returns (see =src-browser/platform.js=). The Android app has to implement them. Effort: M. Impact: M on Android.
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
@@ -49,7 +47,8 @@ Impact = how often the gap meets everyday use. Effort: S under a day, M a day or
 
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
-| 1 | Android shell: move and link for attachments | M (Android) | M | Native work in the Android app; the web side is done |
+| 1 | More Hebrew and Islamic diary functions | S | M | Date arithmetic is in place; sunset-based ones are the larger part |
+| 2 | Chinese holidays | S | L | Needs a new astronomical calculation for little everyday use |
 
 Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
 
@@ -83,6 +82,15 @@ What it would take for small standalone programs to run, in the diary and in =em
 | Runs when =(emacs-lisp . t)= is in =org-babel-load-languages= | Org | That is already the default, so a stricter switch may be wanted |
 | Worker sandbox, timeout, no I/O | App | Same sandbox as =js= blocks |
 
+** Stage 3: settings that call a function
+Each of these is complete in the app except for the function it calls, and needs stage 1 plus the shared definitions below.
+| Setting | What it needs | Today |
+|---+---+---|
+| =user-defined-up= and =-down= in =org-agenda-sorting-strategy= | =org-agenda-cmp-user-defined=, a function of two agenda lines that returns =-1=, =1= or =nil= | The keys are read and have no opinion, as in Emacs when the function is =nil= |
+| =%(function)= in =org-agenda-prefix-format= | A function called for each agenda line, its result put in the prefix | The other =%= forms work; this one adds nothing |
+| =org-priority-get-priority-function= | A function of no arguments that returns a heading's priority number | The priority comes from the cookie and the default |
+| A =holiday-sexp= expression beyond the subset in the table above | The full evaluator, with =date= bound | The app's own Lisp subset |
+
 ** Later: Emacs and Org specific
 These need Emacs's own libraries and are not part of "small standalone programs":
 - Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-entry-get=, =org-todo=.
@@ -100,6 +108,7 @@ A section in Extensions for Lisp that runs once per session and defines function
 3. The =calendar-*=, =holiday-fixed=, =holiday-float= and =holiday-easter-etc= functions as builtins, under Emacs's names.
 4. =emacs-lisp= source blocks in Babel (stage 2).
 5. Shared definitions for the diary.
+6. The settings that call a function (stage 3).
 
 What stays in JavaScript: the calendar grid and its layout (UI, redrawn often), and the agenda's per-day effort total and =+N?= count (computed while drawing, with no Org equivalent). A hook the interpreter can call may be added to the latter later.
 

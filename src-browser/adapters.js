@@ -50,6 +50,8 @@ const localFileAdapter = {
   // attachments live in the same folder (see attachments-store.js), not beside the document
   readBinary: (/** @type {any[]} */ ...args) => platform.attachments.adapter.readBinary(...args),
   writeBinary: (/** @type {any[]} */ ...args) => platform.attachments.adapter.writeBinary(...args),
+  // org-attach-method ln: a link to a picked file where a copy would go, if the platform can keep one
+  link: (/** @type {string} */ path, /** @type {string} */ uri) => platform.attachments.adapter.link(path, uri),
   delete: (/** @type {any[]} */ ...args) => platform.attachments.adapter.delete(...args),
   list: (/** @type {any[]} */ ...args) => platform.attachments.adapter.list(...args),
 };

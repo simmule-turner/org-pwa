@@ -1101,7 +1101,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
     syncContentOffset();
     noteUpdate('banner: a new version is waiting');
     updateReloadBtn.onclick = () => {
-      noteUpdate('Reload tapped: asking the waiting worker to take over');
+      noteUpdate('Reload tapped: asking the waiting worker to take over', { workerState: waitingWorker.state });
       waitingWorker.postMessage('SKIP_WAITING');
     };
     S.updateCheckStatus = 'found';

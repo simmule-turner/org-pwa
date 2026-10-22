@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { buildAgendaItems, itemsForDate } from '../src/agenda.js';
-import { sortAgendaItems, parseSortingStrategy, DEFAULT_STRATEGY } from '../src/agenda-sort.js';
+import { sortAgendaItems, parseSortingStrategy, strategyFor, DEFAULT_STRATEGY } from '../src/agenda-sort.js';
 
 // Emacs 29.3's order of one day's rows for each strategy (tools/gen-sort-oracle.mjs), over s1.org and s2.org.
 const read = (name) => fs.readFileSync(new URL(`./fixtures/sort/${name}`, import.meta.url), 'utf8');
@@ -40,4 +40,12 @@ test('the strategy is read per view, and unknown words are dropped', () => {
   assert.equal(parseSortingStrategy(raw, 'search'), null);
   assert.equal(parseSortingStrategy('', 'agenda'), null);
   assert.deepEqual(DEFAULT_STRATEGY.agenda, ['habit-down', 'time-up', 'priority-down', 'category-keep']);
+});
+
+test('an unset variable gives Emacs\'s default, a set one without the view keeps the rows', () => {
+  assert.deepEqual(strategyFor(undefined, 'agenda'), ['habit-down', 'time-up', 'priority-down', 'category-keep']);
+  assert.deepEqual(strategyFor('', 'todo'), ['priority-down', 'category-keep']);
+  assert.deepEqual(strategyFor('((agenda time-up))', 'agenda'), ['time-up']);
+  assert.equal(strategyFor('((agenda time-up))', 'todo'), null);
+  assert.deepEqual(parseSortingStrategy('((agenda stats-up user-defined-up))', 'agenda'), ['user-defined-up']);
 });

@@ -249,7 +249,25 @@
           }
         );
       },
+      // org-attach-method mv: delete the file the person picked (its `uri`, from pickFile) once the copy is attached
+      removeSource: function (uri) {
+        return attachments.removeSource({ uri: uri }).then(
+          function () {},
+          function (error) {
+            throw failure(error);
+          }
+        );
+      },
       adapter: {
+        // org-attach-method ln: a link at `path` to the picked file instead of a copy; readBinary then reads through it
+        link: function (path, uri) {
+          return attachments.link({ path: path, uri: uri }).then(
+            function () {},
+            function (error) {
+              throw failure(error);
+            }
+          );
+        },
         readBinary: function (path) {
           return attachments.read({ path: path }).then(function (result) {
             return result.found === false ? null : { base64: result.base64 };
@@ -369,8 +387,9 @@
     // Attaching: Android's chooser, with the camera apps beside the files (LocalFilesPlugin.pickAttachment). Whatever is chosen
     // waits in the app's cache and is read from there through the local web server, so a long video never crosses the bridge as
     // one huge string. Resolves { name, type, base64 }; backing out is an AbortError.
-    platform.pickFile = function (kind) {
-      return localFiles.pickAttachment({ mode: kind === 'photo' || kind === 'video' ? kind : '' }).then(
+    // `options.keep` (org-attach-method mv or ln) asks for the document picker instead, and the file's `uri` comes back with it.
+    platform.pickFile = function (kind, options) {
+      return localFiles.pickAttachment({ mode: kind === 'photo' || kind === 'video' ? kind : '', keep: !!(options && options.keep) }).then(
         function (picked) {
           return fetch(capacitor.convertFileSrc(picked.path))
             .then(function (response) {
@@ -379,7 +398,9 @@
             })
             .then(function (blob) {
               return toBase64(blob).then(function (base64) {
-                return { name: picked.name, type: picked.type || blob.type, base64: base64 };
+                var file = { name: picked.name, type: picked.type || blob.type, base64: base64 };
+                if (picked.uri) file.uri = picked.uri;
+                return file;
               });
             });
         },

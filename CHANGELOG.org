@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v607 — Emacs's default agenda order, priority variables, and move and link on Android
+The Agenda now orders rows by Emacs's default strategy until you set =org-agenda-sorting-strategy= (Settings → Advanced has a field for it). Priorities step as =org-priority-down= does, =#+PRIORITIES:=, =org-priority-start-cycle-with-default= and =org-priority-faces= are read, and the Android app can move and link attachments. *Attach a link* now works on local documents. The update log records each phase of a worker's take-over, to find why some updates wait.
+Verified: sorting orders compared with Emacs 29.3; the Android code was written without a device to run it on.
+
 * v606 — Solar holidays, and a holidays file you can share
 =holiday-solar-holidays= joins the groups: the equinoxes, the solstices and the days daylight saving time starts and ends, for this device's time zone and =calendar-latitude=. =(load "github:org/holidays.el")= in the Lisp init box reads one file, so a repository can hold your holidays for every device; the last copy read is kept for offline use and the Agenda's refresh reads it again. The README's Holidays section links Emacs's list and explains the shorter and longer lists.
 Verified: equinoxes, solstices and daylight saving compared with Emacs 29.3 in eight time zones.

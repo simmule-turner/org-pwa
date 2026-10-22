@@ -93,19 +93,22 @@ export async function attachFileToHeading(heading, method = attachMethod(S.globa
  * @param {'mv' | 'ln'} method */
 function platformCan(method) {
   const a = platform.attachments || {};
-  return method === 'mv' ? typeof a.removeSource === 'function' : !!(a.adapter && typeof a.adapter.link === 'function');
+  // a link is kept by the adapter the attachments are written through: the platform's, for a local document
+  return method === 'mv' ? typeof a.removeSource === 'function' : !!(a.adapter && typeof a.adapter.link === 'function') && 'link' in activeDiskAdapter();
 }
 
 /** @param {Heading} heading @param {'cp' | 'mv' | 'ln' | 'lns'} method */
 async function pickAndUpload(heading, method) {
+  const wanted = method === 'lns' ? 'ln' : method;
+  // a move or a link needs the file itself, so a shell that can do it is asked for one it keeps access to (no camera then)
+  const keep = (wanted === 'mv' || wanted === 'ln') && platformCan(wanted);
   let picked;
   try {
     // a shell may offer the camera beside the files; the browser's chooser takes several at once
-    picked = await (platform.pickFile ? platform.pickFile() : pickBinaryFiles());
+    picked = await (platform.pickFile ? platform.pickFile(undefined, { keep }) : pickBinaryFiles());
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
-  const wanted = method === 'lns' ? 'ln' : method;
   const files = Array.isArray(picked) ? picked : [picked];
   for (const file of files) {
     const can = wanted === 'cp' || (wanted === 'mv' && (!!file.remove || (platformCan('mv') && !!file.uri))) || (wanted === 'ln' && platformCan('ln') && !!file.uri);

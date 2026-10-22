@@ -17,9 +17,10 @@
 //   clipboard          { readText(), writeText(text) }
 //   usesServiceWorker  whether the app registers its service worker; a shell that bundles the app has no use for it
 //   versionInfo        versionInfo(): the version being run, as text, for a platform that has no service worker to ask
-//   pickFile           (optional) pickFile(kind): `kind` is 'photo' or 'video' to open the camera for one, else the chooser; resolves { name, type, base64 } for a file the person picks or captures, for an
+//   pickFile           (optional) pickFile(kind, { keep }): `kind` is 'photo' or 'video' to open the camera for one, else the chooser; resolves { name, type, base64 } for a file the person picks or captures, for an
 //                      attachment; a shell uses it to put the camera beside the files, as a browser's own chooser does. null
-//                      means use the browser's file input. An AbortError means they backed out.
+//                      means use the browser's file input. An AbortError means they backed out. `keep` is true for a move or a link: the shell then offers its
+//                      document picker and returns a `uri` for the file (access kept), which removeSource and adapter.link take.
 //   attachments        the org-pwa folder, which a browser has none of: where a LOCAL document's attachments go, and where
 //                      `local:` files are found by name. supported(); folder() -- the folder chosen, { name }, or null;
 //                      pickFolder() -- ask the person, resolving { name } (an AbortError if they back out); adapter --

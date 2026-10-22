@@ -646,7 +646,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
-| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list. Unset keeps the order the app uses |
+| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list. Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined~ keys have no opinion (~org-agenda-cmp-user-defined~ is ~nil~) |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
@@ -683,8 +683,10 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
 | ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
+| ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
 | ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
+| ~org-priority-start-cycle-with-default~ | ~t~ | ~t~: the first step from no priority is the default; ~nil~: one step below it |
 | ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
@@ -1107,7 +1109,7 @@ The chips start from ~org-agenda-tag-filter-preset~, ~org-agenda-category-filter
 # End:
 #+end_example
 
-Within each Agenda day the rows are ordered by time, then by priority with ~[#A]~ first; the TODO list puts ~[#A]~ first. A row for ~** Call bank~ under ~* Errands~ in a file with category ~home~ starts with ~home:     Errands->~ in the Agenda.
+Within each Agenda day the rows are ordered by Emacs's default strategy: habits last, then time, then priority with ~[#A]~ first, then category; the TODO list puts ~[#A]~ first. A row for ~** Call bank~ under ~* Errands~ in a file with category ~home~ starts with ~home:     Errands->~ in the Agenda.
 
 *Priorities*: the range is ~org-priority-highest~ to ~org-priority-lowest~, with ~org-priority-default~ for a heading without a cookie. Numbers give ~[#1]~ cookies:
 
@@ -1117,7 +1119,9 @@ Within each Agenda day the rows are ordered by time, then by priority with ~[#A]
 # org-priority-default: 3
 #+end_example
 
-The priority buttons, the cycle and the Agenda's Priority menu then offer 1 to 5, and ~priority-down~ puts ~[#1]~ first and a heading without a cookie in the middle.
+The priority buttons, the cycle and the Agenda's Priority menu then offer 1 to 5, and ~priority-down~ puts ~[#1]~ first and a heading without a cookie in the middle. A file can set the same range with one line, ~#+PRIORITIES: 1 5 3~ (highest, lowest and, optionally, default).
+
+Tapping a priority badge steps down as ~org-priority-down~ does: from none to the default, then each lower priority, then none. With ~org-priority-start-cycle-with-default~ set to ~nil~ the first step is one below the default. ~org-priority-faces~ colors the badges: ~((?A . error) (?B . "orange") (?C . (:foreground "green" :weight bold)))~ (a color name, ~error~, ~warning~ or ~success~, or a list with ~:foreground~, ~:weight bold~ and ~:inherit~).
 
 *Inherited tags*: ~org-agenda-show-inherited-tags~ chooses where rows show them. With ~(todo)~ the TODO list does and the Agenda does not; ~always~ shows them in every view, ~nil~ in none:
 
@@ -2086,7 +2090,7 @@ The Android app is the same app in a native wrapper, with a few things done the 
 
 - *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
 - *Agenda files*: ~local:name.org~ names a file in the org-pwa folder (below), like ~github:journal.org;local:home.org~. It loads silently, and Refile and Replace can write into it while a local file is open; a file you opened with *Open → Local file* works too, and so does one added with the command *Add a local file* (command palette), which remembers the file without opening it.
-- *Attaching a file*: *Attach* opens Android's chooser with the camera apps beside your files, as the browser's does. Pick *Take a photo* or *Record a video*, and the result is attached.
+- *Attaching a file*: *Attach* opens Android's chooser with the camera apps beside your files, as the browser's does. Pick *Take a photo* or *Record a video*, and the result is attached. With ~org-attach-method~ ~mv~ or ~ln~ (or *Attach and move*, *Attach a link*) the document picker opens instead, with no camera: a move asks before deleting the original, and a link keeps reading the original file, so it stays where it is.
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
 - *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
 - *Reminders*: agenda notifications (see [[#agenda-notifications][Agenda notifications]]) are handed to Android, so they arrive with the app closed. Allow notifications when asked; without the *Alarms & reminders* setting they may be a few minutes late.

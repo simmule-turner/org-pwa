@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import androidx.documentfile.provider.DocumentFile;
@@ -20,6 +21,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * The org-pwa folder: a place for the attachments of local documents, and for local files found by name. A local document is
@@ -89,14 +92,15 @@ public class AttachmentsPlugin extends Plugin {
     @PluginMethod
     public void read(PluginCall call) {
         String path = call.getString("path");
-        DocumentFile file = locate(path, false);
+        Uri linked = linkedUri(path);
+        DocumentFile file = linked == null ? locate(path, false) : null;
         JSObject out = new JSObject();
-        if (file == null || !file.isFile()) {
+        if (linked == null && (file == null || !file.isFile())) {
             out.put("found", false);
             call.resolve(out);
             return;
         }
-        try (InputStream in = getContext().getContentResolver().openInputStream(file.getUri())) {
+        try (InputStream in = getContext().getContentResolver().openInputStream(linked != null ? linked : file.getUri())) {
             if (in == null) {
                 out.put("found", false);
                 call.resolve(out);
@@ -123,6 +127,7 @@ public class AttachmentsPlugin extends Plugin {
             call.reject("Nothing to write");
             return;
         }
+        setLink(path, null); // a file written here replaces a link kept at the same path
         DocumentFile file = locate(path, true);
         if (file == null || !file.isFile()) {
             call.reject("Could not create " + path + " in the attachments folder. Is a folder chosen?");
@@ -143,18 +148,22 @@ public class AttachmentsPlugin extends Plugin {
     /** Whether a file is there, by its path inside the folder. Resolves { value }. */
     @PluginMethod
     public void exists(PluginCall call) {
-        DocumentFile file = locate(call.getString("path"), false);
+        String path = call.getString("path");
+        DocumentFile file = locate(path, false);
         JSObject out = new JSObject();
-        out.put("value", file != null && file.isFile());
+        out.put("value", linkedUri(path) != null || (file != null && file.isFile()));
         call.resolve(out);
     }
 
     /** Deletes a file by its path inside the folder. Resolves { deleted }: false if it was not there. */
     @PluginMethod
     public void remove(PluginCall call) {
-        DocumentFile file = locate(call.getString("path"), false);
+        String path = call.getString("path");
+        boolean unlinked = linkedUri(path) != null; // removing a link leaves the file it points to alone
+        setLink(path, null);
+        DocumentFile file = locate(path, false);
         JSObject out = new JSObject();
-        out.put("deleted", file != null && file.delete());
+        out.put("deleted", unlinked || (file != null && file.delete()));
         call.resolve(out);
     }
 
@@ -170,8 +179,88 @@ public class AttachmentsPlugin extends Plugin {
                 if (child.isFile() && name != null) names.put(name);
             }
         }
+        String prefix = call.getString("path", "") + "/";
+        JSONObject links = links();
+        java.util.Iterator<String> keys = links.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            if (key.startsWith(prefix) && key.indexOf('/', prefix.length()) < 0) names.put(key.substring(prefix.length()));
+        }
         out.put("names", names);
         call.resolve(out);
+    }
+
+    /**
+     * org-attach-method ln: keeps a link at a path inside the folder to a file the person picked (`uri`, from pickAttachment with
+     * keep), instead of a copy. read, exists, list and remove then treat the path as a file. The file must still be readable
+     * later, so access to it has to have been kept.
+     */
+    @PluginMethod
+    public void link(PluginCall call) {
+        String path = call.getString("path");
+        String uri = call.getString("uri");
+        if (path == null || path.isEmpty() || uri == null || path.contains("..")) {
+            call.reject("Nothing to link");
+            return;
+        }
+        Uri target = Uri.parse(uri);
+        boolean readable = false;
+        for (UriPermission permission : getContext().getContentResolver().getPersistedUriPermissions()) {
+            if (permission.getUri().equals(target) && permission.isReadPermission()) readable = true;
+        }
+        if (!readable) {
+            call.reject("Android did not keep access to that file, so it cannot be linked.");
+            return;
+        }
+        setLink(path, uri);
+        call.resolve();
+    }
+
+    /** org-attach-method mv: deletes the file the person picked, once its copy is attached. Rejects if Android refuses. */
+    @PluginMethod
+    public void removeSource(PluginCall call) {
+        String uri = call.getString("uri");
+        if (uri == null) {
+            call.reject("Nothing to delete");
+            return;
+        }
+        try {
+            if (DocumentsContract.deleteDocument(getContext().getContentResolver(), Uri.parse(uri))) call.resolve();
+            else call.reject("The app that holds that file did not delete it.");
+        } catch (SecurityException | java.io.FileNotFoundException | IllegalArgumentException e) {
+            call.reject("Could not delete the original: " + (e.getMessage() == null ? "not allowed" : e.getMessage()));
+        }
+    }
+
+    private static final String LINKS = "links";
+
+    /** The links kept so far: { path inside the folder: uri of the file }. */
+    private JSONObject links() {
+        try {
+            return new JSONObject(prefs().getString(LINKS, "{}"));
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
+    }
+
+    private Uri linkedUri(String path) {
+        String uri = path == null ? null : links().optString(path, null);
+        return uri == null || uri.isEmpty() ? null : Uri.parse(uri);
+    }
+
+    /** Keeps (or with null, drops) the link at a path. */
+    private void setLink(String path, String uri) {
+        if (path == null) return;
+        JSONObject links = links();
+        try {
+            if (uri == null) {
+                if (!links.has(path)) return;
+                links.remove(path);
+            } else links.put(path, uri);
+        } catch (JSONException e) {
+            return;
+        }
+        prefs().edit().putString(LINKS, links.toString()).apply();
     }
 
     private Uri treeUri() {

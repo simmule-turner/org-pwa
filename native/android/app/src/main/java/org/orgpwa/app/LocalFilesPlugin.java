@@ -318,6 +318,8 @@ public class LocalFilesPlugin extends Plugin {
     // The two files a camera app may be asked to write, for the pick in progress (one pick at a time).
     private File photoTarget;
     private File videoTarget;
+    // Whether the pick in progress is for org-attach-method mv or ln: the file stays where it is, with access kept to it.
+    private boolean keepOriginal;
 
     /**
      * Attaching a file the way Chrome's own picker lets you: one system chooser that lists your files AND, beside them, the
@@ -340,6 +342,17 @@ public class LocalFilesPlugin extends Plugin {
         videoTarget = new File(directory, "video-" + stamp + ".mp4");
 
         String mode = call.getString("mode", "");
+        keepOriginal = Boolean.TRUE.equals(call.getBoolean("keep", false)) && !mode.equals("photo") && !mode.equals("video");
+        if (keepOriginal) {
+            // A move or a link needs the file itself, not a copy: the document picker, whose answer can be kept (and the original
+            // deleted); there is no original to move for a photo just taken, so the cameras are left out.
+            Intent keep = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            keep.addCategory(Intent.CATEGORY_OPENABLE);
+            keep.setType("*/*");
+            keep.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            startActivityForResult(call, keep, "pickedAttachment");
+            return;
+        }
         if (mode.equals("photo") || mode.equals("video")) {
             // the camera straight away: no chooser
             boolean photo = mode.equals("photo");
@@ -387,6 +400,8 @@ public class LocalFilesPlugin extends Plugin {
     @ActivityCallback
     private void pickedAttachment(PluginCall call, ActivityResult result) {
         if (call == null) return;
+        boolean keep = keepOriginal;
+        keepOriginal = false;
         if (result.getResultCode() != Activity.RESULT_OK) {
             call.reject("cancelled");
             return;
@@ -410,6 +425,17 @@ public class LocalFilesPlugin extends Plugin {
         }
         String name = displayName(picked);
         String type = getContext().getContentResolver().getType(picked);
+        if (keep) {
+            // Keep access past this run, writing too if the provider allows it (a move deletes the original; a link reads it later).
+            Uri kept = Uri.parse(picked.toString());
+            int flags = result.getData().getFlags();
+            try {
+                getContext().getContentResolver().takePersistableUriPermission(kept, flags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
+                out.put("uri", picked.toString());
+            } catch (SecurityException | IllegalArgumentException e) {
+                // no lasting access: the page gets the file but no uri, and attaches a copy
+            }
+        }
         File directory = capturesDirectory();
         if (directory == null) {
             call.reject("Could not prepare a place for the file");

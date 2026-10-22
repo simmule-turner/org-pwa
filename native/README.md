@@ -71,6 +71,7 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   `* Test <2026-10-08 Thu 14:35>`). A system notification should arrive 10 minutes before it, **with the app closed**;
   tapping it opens that day in the Agenda. Without **Exact timing** (the button under it) Android may be a few minutes
   late. `npm run sync` (the workflow does this) picks the plugin up; nothing else changes in the Android project.
+- **Moving and linking attachments (0.7.8):** with `org-attach-method` set to `mv` or `ln` (or *Attach and move*, *Attach a link*), *Attach* opens Android's document picker, with no camera entries. A move deletes the original after the copy is attached and the person agrees; a link keeps the picked file where it is and reads it through the stored link (`AttachmentsPlugin.link` and `removeSource`, `LocalFilesPlugin.pickAttachment` with `keep`). To test: attach a PDF with `ln`, close the app, open the attachment; attach another with `mv` and confirm the original is gone from Files.
 - **Swiping a reminder away (0.7.7):** with a reminder showing, swipe it out of the shade. The appointment's later reminders
   should not arrive (even with the app closed), and tapping one does the same. `npm run sync` patches the plugin's dismiss
   receiver to do this (`scripts/patch-local-notifications.mjs`); the build stops there if the plugin is upgraded, so the patch

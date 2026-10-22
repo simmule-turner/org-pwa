@@ -8,6 +8,7 @@
 /** @typedef {import('../src/types.js').BlockRow} BlockRow */
 /** @typedef {import('../src/types.js').HrRow} HrRow */
 // Extracted from app.js: row render.
+import { readPriorityFaces } from '../src/priorities.js';
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
@@ -221,6 +222,12 @@ export function renderRow(row, todoSequence) {
       priorityBadge.className = 'priority-badge';
       priorityBadge.textContent = `#${row.node.priority}`;
       priorityBadge.onclick = () => cyclePriorityFor(row.node);
+      const look = readPriorityFaces(S.state.localVariables['org-priority-faces']).get(String(row.node.priority).toUpperCase());
+      if (look && look.color) {
+        priorityBadge.style.color = look.color;
+        priorityBadge.style.borderColor = look.color;
+      }
+      if (look && look.bold) priorityBadge.style.fontWeight = '800';
       el.appendChild(priorityBadge);
     }
 

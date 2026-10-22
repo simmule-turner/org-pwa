@@ -6051,6 +6051,51 @@ check('attach: a platform that supplies its own picker (the camera beside the fi
   await context.close();
 });
 
+check('attach: a move or a link asks the platform for a file it keeps access to; the link and the delete use its uri', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const tree = new Map();
+    window.__tree = tree;
+    window.__calls = { keep: [], removed: [], linked: [] };
+    installPlatform({
+      localFiles: { supported: () => true, pickOpen: async () => 'phone.org', pickNew: async (kv, n) => n, adapter: { async read() { return { content: '* Report\n' }; }, async write() {} } },
+      attachments: {
+        supported: () => true,
+        folder: async () => ({ name: 'org-pwa' }),
+        pickFolder: async () => ({ name: 'org-pwa' }),
+        removeSource: async (uri) => { window.__calls.removed.push(uri); },
+        adapter: {
+          readBinary: async () => null,
+          writeBinary: async (path, base64) => { tree.set(path, base64); return {}; },
+          link: async (path, uri) => { window.__calls.linked.push([path, uri]); },
+          delete: async () => {},
+          exists: async () => false,
+          list: async () => [],
+        },
+      },
+      pickFile: async (kind, options) => { window.__calls.keep.push(!!(options && options.keep)); return { name: 'doc.pdf', type: 'application/pdf', base64: 'JVBERg==', uri: 'content://docs/doc.pdf' }; },
+    });
+    (await import('/src-browser/app-state.js')).S.attachmentsFolder = 'org-pwa';
+  });
+  await fileMenu(page, 'Open', 'Local file');
+  await page.waitForFunction(() => document.getElementById('modelineBar').innerText.includes('phone.org'), null, { timeout: 8000 });
+  const out = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { attachFileToHeading } = await import('/src-browser/attachments-flow.js');
+    const heading = S.state.doc.children[0];
+    S.globalVariables['org-attach-method'] = 'ln';
+    S.state.localVariables['org-attach-method'] = 'ln';
+    attachFileToHeading(heading, 'ln');
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    return { calls: window.__calls, written: [...window.__tree.keys()], status: document.getElementById('statusBar') ? document.getElementById('statusBar').innerText : '' };
+  });
+  expect(out.calls.keep[0] === true, `a link asks for a file kept: ${JSON.stringify(out.calls)}`);
+  expect(out.calls.linked.length === 1 && out.calls.linked[0][1] === 'content://docs/doc.pdf' && out.written.length === 0, `the link was made and nothing copied: ${JSON.stringify(out)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attachments on a local document where the platform has no folder support (a browser): unavailable, with the explanation it always had', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {

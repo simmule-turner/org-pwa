@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v606';
+const CACHE_NAME = 'org-pwa-shell-v607';
 
 const SHELL_FILES = [
   './',
@@ -357,6 +357,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
+    tellPages(CACHE_NAME + ' got the take-over request');
     self.skipWaiting();
     return;
   }
@@ -382,12 +383,17 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  const activateStart = Date.now();
+  tellPages(CACHE_NAME + ' activate event began');
   event.waitUntil(
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-      .then(() => tellPages(CACHE_NAME + ' active'))
+      .then(() => {
+        tellPages(CACHE_NAME + ' old caches deleted', { ms: Date.now() - activateStart });
+        return self.clients.claim();
+      })
+      .then(() => tellPages(CACHE_NAME + ' active', { ms: Date.now() - activateStart }))
   );
 });
 
