@@ -1,0 +1,8 @@
+#+OPTIONS: d:t
+* A
+:LOGBOOK:
+- note
+:END:
+:MY:
+in
+:END:

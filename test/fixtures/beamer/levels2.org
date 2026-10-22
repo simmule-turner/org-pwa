@@ -1,0 +1,15 @@
+#+OPTIONS: toc:nil H:3 num:nil
+* S1
+** SS1
+*** F1
+**** B1
+x
+* S2
+** SS2
+text
+*** Deep fullframe
+**** FF
+:PROPERTIES:
+:BEAMER_env: fullframe
+:END:
+ff

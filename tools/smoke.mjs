@@ -4881,7 +4881,7 @@ check('settings: Export has ASCII and HTML in that order, every box starts untic
   await context.close();
 });
 
-check('LaTeX export: the Export menu lists ASCII, HTML, LaTeX and Markdown, Settings → Export → LaTeX sets the class and compiler, and the saved .tex follows them unless the file says otherwise', async () => {
+check('LaTeX export: the Export menu lists ASCII, Beamer, HTML, LaTeX and Markdown, Settings → Export → LaTeX sets the class and compiler, and the saved .tex follows them unless the file says otherwise', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
     const { installPlatform } = await import('/src-browser/platform.js');
@@ -4906,7 +4906,7 @@ check('LaTeX export: the Export menu lists ASCII, HTML, LaTeX and Markdown, Sett
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Export');
     const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
-    expect(items.join(',') === 'ASCII,HTML,LaTeX,Markdown', `the Export menu lists four formats: ${items.join(',')}`);
+    expect(items.join(',') === 'ASCII,Beamer,HTML,LaTeX,Markdown', `the Export menu lists five formats: ${items.join(',')}`);
     await pick(page, '#morePanel', 'LaTeX');
     await pick(page, '#morePanel', 'This file');
     for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
@@ -5000,7 +5000,7 @@ check('LaTeX export: "Fix wide TOC numbers" adds the tocloft lines to the saved 
   await context.close();
 });
 
-check('Export menu: ASCII, HTML, LaTeX and Markdown only; Calendar (.ics), Contacts (.vcf) and ODT are palette commands, and the subscript setting reaches ASCII and Markdown', async () => {
+check('Export menu: ASCII, Beamer, HTML, LaTeX and Markdown only; Calendar (.ics), Contacts (.vcf) and ODT are palette commands, and the subscript setting reaches ASCII and Markdown', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Effort_ALL: values\nbody a_b\n');
   await page.evaluate(async () => {
@@ -5011,7 +5011,7 @@ check('Export menu: ASCII, HTML, LaTeX and Markdown only; Calendar (.ics), Conta
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Export');
   const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
-  expect(items.join(',') === 'ASCII,HTML,LaTeX,Markdown', `menu: ${items.join(',')}`);
+  expect(items.join(',') === 'ASCII,Beamer,HTML,LaTeX,Markdown', `menu: ${items.join(',')}`);
   await page.click('#moreBtn');
   await openPalette(page);
   await page.keyboard.type('Export');

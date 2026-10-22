@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :options angle=90 :height 2cm :width 3cm
+[[file:c.png]]
+
+#+ATTR_LATEX: :options angle=90 :height 2cm :width 3cm
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :options angle=90 :height 2cm :width 3cm
+[[file:c.svg]]
+
+#+ATTR_LATEX: :options angle=90 :height 2cm :width 3cm
+[[file:c.pdf]]

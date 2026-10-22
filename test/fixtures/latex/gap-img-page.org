@@ -1,0 +1,1 @@
+[[file:/abs/a b.png]] [[file:c.svg]] [[file:dir/e.pdf::3]]

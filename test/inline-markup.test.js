@@ -501,9 +501,14 @@ test('a lone, unterminated $ or \\( is left as plain text, not a hang or a false
   assert.deepEqual(parseInline('an unterminated \\(x here'), [{ type: 'text', value: 'an unterminated \\(x here' }]);
 });
 
-test('THE FIX: $...$ genuinely requires at least 2 characters of content -- confirmed directly against the actual org-latex-regexps source\u2019s own structure (a required first-character-class match and a SEPARATE required last-character-class match are two distinct character positions, not satisfiable by a single character); real org would use \\(x\\) for a single-character case instead, which has no such restriction at all', () => {
-  assert.deepEqual(parseInline('$x$'), [{ type: 'text', value: '$x$' }]);
+test('$x$ is math with one character of content, as org-element reads it (checked against Emacs 29.3)', () => {
+  assert.deepEqual(parseInline('$x$'), [{ type: 'latex', source: 'x', displayMode: false }]);
   assert.deepEqual(parseInline('\\(x\\)'), [{ type: 'latex', source: 'x', displayMode: false }]);
+  assert.deepEqual(parseInline('costs $5 and $10 total'), [{ type: 'text', value: 'costs $5 and $10 total' }]);
+  assert.deepEqual(parseInline('$a$b'), [{ type: 'text', value: '$a$b' }]);
+  assert.deepEqual(parseInline('$x$-y'), [{ type: 'text', value: '$x$-y' }]);
+  assert.equal(parseInline('($x$)').some((n) => n.type === 'latex'), true);
+  assert.equal(parseInline('$x$<').some((n) => n.type === 'latex'), true);
 });
 
 // ---- THE FIX: multi-line LaTeX fragments -----------------------------------
@@ -538,12 +543,10 @@ test('THE FIX: the user\u2019s own reported failing example -- \\begin{equation}
   assert.deepEqual(nodes, [{ type: 'latex', source: source, displayMode: true }]);
 });
 
-test('$...$ still correctly caps at 2 embedded newlines (3 lines total) -- real org\u2019s own actual, different restriction for this one delimiter specifically, confirmed directly against the source\u2019s own "{0,2}" repeat count', () => {
-  const twoBreaks = parseInline('$ab\ncd\nef$');
-  assert.deepEqual(twoBreaks, [{ type: 'latex', source: 'ab\ncd\nef', displayMode: false }]);
-
-  const threeBreaks = parseInline('$ab\ncd\nef\ngh$');
-  assert.deepEqual(threeBreaks, [{ type: 'text', value: '$ab\ncd\nef\ngh$' }]);
+test('$...$ may run over several lines but not over a blank line', () => {
+  assert.deepEqual(parseInline('$ab\ncd\nef$'), [{ type: 'latex', source: 'ab\ncd\nef', displayMode: false }]);
+  assert.deepEqual(parseInline('$ab\ncd\nef\ngh$'), [{ type: 'latex', source: 'ab\ncd\nef\ngh', displayMode: false }]);
+  assert.equal(parseInline('$ab\n\ncd$').some((n) => n.type === 'latex'), false);
 });
 
 // ---- THE FIX: extractLatexFragments (the paragraph-level pre-pass) --------

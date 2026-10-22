@@ -1,0 +1,28 @@
+#+TITLE: Rules
+* One
+text
+
+#+ATTR_ASCII: :width 10
+-----
+
+#+ATTR_ASCII: :width 0
+-----
+
+#+ATTR_ASCII: :width 99
+-----
+
+#+ATTR_ASCII: :width abc
+-----
+
+#+ATTR_ASCII: :width 20
+-----
+- item
+
+  #+ATTR_ASCII: :width 5
+  -----
+
+#+begin_quote
+#+ATTR_ASCII: :width 8
+-----
+#+end_quote
+-----

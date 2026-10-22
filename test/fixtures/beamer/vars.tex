@@ -1,0 +1,56 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{metropolis}
+\author{root}
+\date{\today}
+\title{Vars}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Vars},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{frame}[plain]{TOC}
+\tableofcontents
+\end{frame}
+
+\section{S}
+\label{sec:org5520c76}
+\begin{frame}[label={sec:orgdf38867},t]{F}
+a
+\begin{myenv}<1>{Mine}
+mm
+\end{myenv}
+\begin{fancy}[o1] [<2>][Fancy *x*|[<2>]]{Fancy \alert{x}}
+ff
+\end{fancy}
+<<2>||[o2,o3]|o2,o3|<2>|Escapes|Escapes|{Escapes}|%%|%c|%Z>
+c1
+\end{e1}
+\begin{MYBLOCK}{Over}
+b
+\end{MYBLOCK}
+\end{frame}
+\begin{frame}[t,label=l]{G}
+g
+\end{frame}
+\begin{frame}[label={sec:orgfa56cb2},fragile,t]{Frame with code}
+ \texttt{v}
+\end{frame}
+\againframe<3>[label=x]{sec:orgdf38867}
+\end{document}

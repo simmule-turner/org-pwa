@@ -1,0 +1,84 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{Probe}
+\subtitle{The sub \alert{title}}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Probe},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\section{Sec\hfill{}\textsc{work}}
+\label{sec:org54d492a}
+text of sec
+\begin{frame}<2->[fragile,t,allowframebreaks]{Frame with todo}
+ \begin{itemize}
+\item item one
+\item <2-> item overlay
+\setcounter{enumi}{2}
+\item item counter
+\end{itemize}
+\begin{itemize}[<+->]
+\item piece a
+\item piece b
+\end{itemize}
+text \alert{bold} \emph{it} \texttt{verb} \texttt{code} \uline{under} \sout{strike}
+\end{frame}
+\begin{frame}[label={sec:org1be5fa0}]{Frame with table}
+\begin{center}
+\begin{tabular}{rr}
+a & b\\[0pt]
+\hline
+1 & 2\\[0pt]
+\end{tabular}
+\end{center}
+
+Footnote\footnote{The note.} here.
+\end{frame}
+\begin{frame}[label={sec:org5fb61ba},fragile]{Frame with example}
+ \begin{verbatim}
+raw
+\end{verbatim}
+\end{frame}
+\begin{frame}[label={sec:org71b0778}]{Frame with quote}
+\begin{quote}
+quoted
+\end{quote}
+\pause after pause
+\pause
+more text
+\vfill
+\end{frame}
+\begin{frame}[label={sec:org73fd544}]{Frame with special block}
+\begin{columns}
+\begin{column}
+col a
+\end{column}
+\end{columns}
+\begin{alertblock}
+alert special
+\end{alertblock}
+\end{frame}
+\end{document}

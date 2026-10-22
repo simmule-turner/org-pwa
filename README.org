@@ -379,12 +379,12 @@ Math in a heading, paragraph or list item renders as typeset math with [[https:/
 | ~\(...\)~ | Inline | None — org's own recommended form |
 | ~\[...\]~ | Display | None |
 | ~$$...$$~ | Display | None |
-| ~$...$~ | Inline | No whitespace directly inside the delimiters; the closing ~$~ must be followed by whitespace or punctuation, but never a dash (avoiding ~$5-10~ reading as math) |
+| ~$...$~ | Inline | One character is enough (~$x$~). No whitespace directly inside the delimiters; the closing ~$~ must be followed by whitespace, the end of the line or punctuation |
 | ~\begin{env}...\end{env}~ | Display | ~\begin~ must start a line, preceded by nothing but whitespace |
 
-~$...$~ avoids misreading currency: ~costs $5 and $10 total~ stays text. The first content character can't be whitespace, comma, semicolon or period, the character before the closing ~$~ can't be whitespace, comma or period, and it needs two characters of content (use ~\(x\)~ for one).
+~$...$~ avoids misreading currency: ~costs $5 and $10 total~ stays text. The first content character can't be a space, comma, period or semicolon, and the character before the closing ~$~ can't be a space, comma or period. The closing ~$~ must be followed by a space, the end of the line, or one of ~. , ; : ! ? ( ) [ ] { } < > " ' ` # @ ^~, so ~$a$b~ and ~$x$-y~ stay text. These are Org's own rules.
 
-~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span lines, even across a blank line; ~$...$~ allows at most two newlines. KaTeX doesn't treat ~%~ as a comment. A fragment KaTeX can't render shows its raw source with a dashed border. KaTeX supports a large subset of LaTeX, not all of it.
+~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span lines, even across a blank line; ~$...$~ can span lines but not a blank line. KaTeX doesn't treat ~%~ as a comment. A fragment KaTeX can't render shows its raw source with a dashed border. KaTeX supports a large subset of LaTeX, not all of it.
 
 Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; Markdown, ASCII and ODT export pass the raw source through as text.
 
@@ -625,6 +625,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~diary-abbreviated-year-flag~ | ~t~ | ~t~ reads a two-digit year in a diary date as the year it ends: ~4/20/27~ is 2027 (see [[#diary-file][Diary file]]) |
 | ~diary-date-forms~ | unset (from ~calendar-date-style~) | Which written dates a diary line may start with, as in Emacs: a list such as ~((month "/" day "[^/0-9]") (dayname "\\W"))~ of the symbols ~month~, ~day~, ~year~, ~monthname~, ~dayname~ and regexp strings |
 | ~diary-file~ | unset | The diary: one ~github:~, ~webdav:~ or ~local:~ file, shown in the Agenda when ~org-agenda-include-diary~ is ~t~ |
+| ~diary-hebrew-sabbath-candles-minutes~ | ~18~ | Minutes before sunset that ~(diary-hebrew-sabbath-candles)~ gives for lighting the Sabbath candles |
 | ~diary-include-string~ | ~"#include"~ | The word that starts a line naming another diary file |
 | ~diary-list-entries-hook~ | unset | ~diary-include-other-diary-files~ in the list follows ~#include~ lines; ~diary-sort-entries~ sorts a day's entries by time. Other names are ignored |
 | ~diary-nongregorian-listing-hook~ | unset | ~diary-hebrew-list-entries~, ~diary-islamic-list-entries~ and ~diary-bahai-list-entries~ in the list show the diary's ~H~, ~I~ and ~B~ entries (see [[#diary-file][Diary file]]) |
@@ -676,12 +677,15 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Quick Settings → *Agenda* |
 | ~org-habit-show-all-today~ | ~nil~ | ~t~ shows every habit today, even one not yet due; also Settings → Quick Settings → *Agenda* |
 | ~org-habit-show-habits-only-for-today~ | ~t~ | Habits appear only in today's Agenda; also Settings → Quick Settings → *Agenda* |
+| ~org-html-doctype~ | ~xhtml-strict~ | The document type of HTML export: ~xhtml-strict~, ~xhtml-transitional~, ~xhtml-frameset~, ~xhtml-11~, ~xhtml5~, ~html5~, ~html4-strict~, ~html4-transitional~ or ~html4-frameset~; a file's ~#+HTML_DOCTYPE:~ wins |
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
+| ~org-inlinetask-min-level~ | ~15~ | With ~org-inlinetask~ in ~org-modules~: the number of stars from which a headline is an inline task (see Inline tasks under Export) |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
+| ~org-modules~ | unset | Add ~org-inlinetask~ to read long headlines as inline tasks in exports. A Lisp init does the same with ~(add-to-list 'org-modules 'org-inlinetask)~ or ~(require 'org-inlinetask)~ |
 | ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
 | ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
@@ -707,7 +711,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
-| ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX export: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export); Settings → Export → LaTeX sets it |
+| ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX and Beamer exports: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export), and the ~org-beamer-*~ variables (see Beamer); Settings → Export → LaTeX sets it |
 | ~org-xx-lisp-init~ | unset | (own) A quoted string of Emacs Lisp: the ~holiday-*~ lists, ~calendar-holidays~ and the ~calendar-*-all-holidays-flag~ variables, and ~(load "github:file.el")~ to read them from a file (see [[#holidays][Holidays]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
@@ -1239,7 +1243,7 @@ All three variables can be edited in Quick Settings, with a reset to default.
 :CUSTOM_ID: solar-times
 :END:
 
-Sunrise, sunset, the twilights and the length of the day come from the same two functions Emacs's ~solar.el~ has, so an entry written for Emacs works here. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or in Settings → Quick Settings → *Diary*, which also has a *Use device location* button).
+Sunrise, sunset, the twilights and the length of the day are computed as Emacs's ~solar.el~ computes them, and agree with it to the minute, so an entry written for Emacs works here. They use ~calendar-latitude~ and ~calendar-longitude~ (default Durham, NC; set them in Local Variables or in Settings → Quick Settings → *Diary*, which also has a *Use device location* button).
 
 - ~(solar-sunrise-sunset DATE)~ returns ~((RISE ZONE) (SET ZONE) "H:MM")~: the local times as decimal hours with the zone name, then the daylight as hours and minutes. A time the day doesn't have (polar day or night) is ~nil~. ~DATE~ is ~date~, the day being evaluated. This app adds an optional second argument, the sun's height in degrees: ~-6~ for civil, ~-12~ for nautical and ~-18~ for astronomical twilight, giving dawn and dusk in place of rise and set. The default is ~-0.61~, as in Emacs.
 - ~(solar-time-string TIME ZONE)~ turns decimal hours into text by evaluating ~calendar-time-display-form~, as Emacs does. ~(solar-time-string 6.5)~ gives "6:30am" and ~(solar-time-string 6.5 "EDT")~ gives "6:30am (EDT)". The form can use ~12-hours~, ~24-hours~, ~minutes~, ~am-pm~ and ~time-zone~, and the zone it prints is this device's.
@@ -1271,6 +1275,29 @@ For example, a line that labels itself:
 #+END_SRC
 
 A day without the event gives ~nil~, and ~solar-time-string~ of ~nil~ is ~nil~, so ~format~ prints "nil" there; wrap the entry in ~(when (car l) ...)~ to leave it out instead. For 24-hour times tick *Sun times: use 24-hour* in Settings → Quick Settings → *Diary*, or set ~calendar-time-display-form~ to ~(24-hours ":" minutes)~. ~calendar-time-display-form~ is the one setting that changes how times read.
+
+*** Hebrew diary functions
+:PROPERTIES:
+:CUSTOM_ID: hebrew-diary
+:END:
+
+These are Emacs's ~cal-hebrew.el~ functions, and give the same days and text.
+
+| Function | Shows |
+|----------+-------|
+| ~(diary-hebrew-birthday MONTH DAY YEAR)~ | "ENTRY's Nth Hebrew birthday" on each Hebrew anniversary of the Gregorian date |
+| ~(diary-hebrew-yahrzeit MONTH DAY YEAR)~ | "Yahrzeit of ENTRY: Nth anniversary"; add ~nil t~ for a death after sunset |
+| ~(diary-hebrew-omer)~ | "Day N of the omer" from Passover to Shavuot |
+| ~(diary-hebrew-rosh-hodesh)~ | The new Hebrew month, on the days it begins |
+| ~(diary-hebrew-parasha)~ | The Torah portion, on Saturdays |
+| ~(diary-hebrew-sabbath-candles)~ | The time to light candles on Fridays: local sunset less ~diary-hebrew-sabbath-candles-minutes~ |
+
+Dates follow the order of ~calendar-date-style~. For example:
+
+#+BEGIN_SRC
+%%(diary-hebrew-yahrzeit 3 14 1980) Grandpa
+%%(diary-hebrew-rosh-hodesh)
+#+END_SRC
 
 *** Diary file
 :PROPERTIES:
@@ -1378,11 +1405,12 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) "Payday")>~ shows "Payday" only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
 - ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip the days in your holiday lists as well (see [[#holidays][Holidays]]). ~(calendar-check-holidays date)~ gives a day's holiday names. Example: ~<%%(org-class 2026 9 1 2026 12 15 1 'holidays)> Class meets~ is every Monday from September 1 to December 15 except those that are holidays, so September 7 (Labor Day) and October 12 (Columbus Day) have no "Class meets".
+- The ~diary-hebrew-*~ functions are in [[#hebrew-diary][Hebrew diary functions]].
 - ~(org-cyclic ...)~, ~(org-anniversary ...)~ and ~(diary-float ...)~, as above, work as sub-expressions. So do ~(solar-sunrise-sunset)~, ~(solar-time-string)~ and ~(apply)~ (see [[#solar-times][Sun times]]) and ~(org-weather)~, which return a formatted string; a string result becomes the displayed text ("Weekly Sync: Weekly sync"). ~org-contacts-anniversaries~ isn't recognized inside a sexp timestamp.
 - ~(format FORMAT-STRING ARG...)~ combines strings and numbers into one line: ~<%%(when (today-p) (format "%d days until Christmas" (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date))))>~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
 - Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
 
-*Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite. Also not implemented: alternate calendars and Hebrew observances (~diary-yahrzeit~, ~diary-rosh-hodesh~ and the rest).
+*Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite.
 
 *** Other agenda behavior
 :PROPERTIES:
@@ -1815,6 +1843,10 @@ A file that can't be found is skipped silently.
 
 ~#+HTML_HEAD:~ inserts raw HTML before ~</head>~, in HTML export only and for subtree exports too; several lines are joined in order. ~#+BEGIN_EXPORT <backend>~ ... ~#+END_EXPORT~ passes its content through unescaped when the backend matches the current format (~html~, ~ascii~, ~md~ or ~markdown~, ~odt~, where the content must already be ODF XML) and is omitted otherwise.
 
+*Document type*: ~#+HTML_DOCTYPE: html5~ (or ~org-html-doctype~, Settings → Export) picks the declaration, as in Emacs; the default is ~xhtml-strict~. XHTML closes empty tags with ~ />~ and adds an XML declaration and ~xmlns~; HTML 5 writes ~<meta charset>~ and plain ~<table>~ tags; the HTML 4 and older XHTML types write the ~Content-Type~ meta and the table border attributes. A text that is not a name is written as the declaration.
+
+*Inline tasks*: with ~org-inlinetask~ switched on (see ~org-modules~ above), a headline of 15 or more stars is an inline task, closed by an ~END~ headline of the same depth. Every export prints it in place, in the text of the section it sits in: HTML and Markdown as ~<div class="inlinetask">~, ASCII as a box, LaTeX as a framed minipage, ODT as a bordered paragraph. Without the module they are ordinary deep headings.
+
 *Header and footer*: ~html-preamble:~ and ~html-postamble:~ in ~#+OPTIONS:~ take a quoted text, as in Emacs, placed above and below the page (~nil~ drops the postamble). In it ~%t~ is the title, ~%s~ the subtitle, ~%a~ the author, ~%d~ the date, ~%e~ the email, ~%C~ or ~%T~ when it was exported, and ~%%~ a percent sign; ~\n~ starts a new line and HTML is allowed.
 
 #+BEGIN_SRC
@@ -1831,7 +1863,7 @@ Plain text laid out as Emacs's ~org-ascii-export-to-ascii~ lays it out (compared
 
 Tables are typeset: each column is padded to its widest cell, and mostly-numeric columns are right-aligned. A row of ~<N>~ cells, like ~| <30> | <10> | <24> |~, sets a column's width, and ~<l>~, ~<c>~ and ~<r>~ its alignment; that row never appears in any format's output. A ~|---|~ rule is drawn as a line, and a caption follows as "Table 1: …".
 
-Not implemented: ~#+ATTR_ASCII:~, inline tasks, and the ~org-ascii-*~ variables other than the character set and the text width (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]).
+A horizontal rule takes its width from ~#+ATTR_ASCII: :width N~. Of the ~org-ascii-*~ variables only the character set and the text width are read (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]).
 
 *** Markdown
 
@@ -1864,7 +1896,21 @@ HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lin
 
 A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep section numbers such as 1.11.1 from running into their titles in the PDF's table of contents.
 
-~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Source block line numbers and references are included (see [[#export-line-numbers][Line numbers and references in source blocks]]). Not included: Beamer and the ~engraved~ backend.
+~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Source block line numbers and references are included (see [[#export-line-numbers][Line numbers and references in source blocks]]). Not included: the ~engraved~ backend. The export reads ~#+OPTIONS:~ as Emacs does (~num:N~, ~todo~, ~pri~, ~tags~, ~stat~, ~tasks~, ~p~, ~d~, ~prop~, ~arch~, ~\n~, ~*~, ~e~, ~f~, ~tex~, ~title~, ~email~ and ~creator~), plus ~#+SELECT_TAGS:~, ~#+EXCLUDE_TAGS:~ and the ~UNNUMBERED~ property. Pictures follow ~#+ATTR_LATEX:~ (~:width~, ~:height~, ~:scale~, ~:options~, ~:float~, ~:placement~, ~:center~): pdf (with ~::page~), eps, svg and tikz files are written as Emacs writes them. Links to named blocks, equations, quotes and paragraphs get labels, footnotes in tables use ~\footnotemark~, and ~:booktabs t~ tables, table special rows and columns (~#~, ~*~, ~!~, ~_~, ~^~, ~$~, ~/ < >~) and inline ~src_lang{..}~ follow Emacs. ~#+LINK:~ abbreviations (~%s~ and ~%h~) expand in LaTeX and HTML export, and ~news:~, ~help:~, ~irc:~, ~file+sys:~ and ~file+emacs:~ links are written as Emacs writes them. The Lisp init box also reads ~org-latex-tables-centered~, ~org-latex-tables-booktabs~, ~org-latex-default-table-environment~, ~org-latex-caption-above~, ~org-latex-images-centered~, ~org-latex-default-figure-position~, ~org-latex-title-command~, ~org-latex-toc-command~, ~org-latex-active-timestamp-format~, ~org-latex-inactive-timestamp-format~, ~org-latex-prefer-user-labels~ and ~org-latex-text-markup-alist~. Smart quotes (~#+OPTIONS: ':t~) follow Org's rules and the quotes of each ~#+LANGUAGE:~. Also as in Org: sub- and superscripts such as ~a_(b)~, ~a_b.c~ and ~x_\alpha~, several ~#+CAPTION:~ lines (and ~#+TITLE:~, ~#+AUTHOR:~, ~#+DATE:~ lines) joined by a blank, ~#+INDEX:~ as ~\index{}~, letter item counters (~[@c]~), macros that use other macros, the ~{{{n}}}~ counter, special block names that keep their case, and ~:environment~ on a quote block. Presentations are under Beamer below.
+
+*** Beamer
+
+More → Export → Beamer writes a presentation the way Emacs's ~org-beamer-export-to-latex~ does (compared with Emacs 29.3 on sample files): the same ~.tex~ file, or a ~.zip~ with the pictures, in class ~beamer~ unless the file sets ~#+LATEX_CLASS:~. Compile it with a TeX distribution.
+
+*Frames*: headings at the frame level become frames and headings above it sections. ~H:~ in ~#+OPTIONS:~ sets the level (1 by default); a heading with ~:BEAMER_env: frame~ or ~fullframe~ sets it for its own tree. Below the frame level a heading is a block, or the environment ~BEAMER_env~ names: ~block~, ~alertblock~, ~exampleblock~, ~example~, ~theorem~, ~definition~, ~proof~, ~verse~, ~quote~, ~quotation~, ~structureenv~, ~beamercolorbox~, ~columns~ or ~column~. ~note~ and ~noteNH~ write ~\note{…}~, ~ignoreheading~ writes only the heading's text, ~appendix~ writes ~\appendix~, and ~againframe~ shows the frame named in ~BEAMER_ref~ (a heading link such as ~*Title~) again. A frame with code in it, or ~allowframebreaks~, is made fragile as Emacs does.
+
+*Properties*: ~BEAMER_col~ puts a heading in a column (neighboring ones share one ~columns~ environment); ~BEAMER_act~ is the overlay specification (~<2->~); ~BEAMER_opt~ the options of a frame, ~columns~ or ~beamercolorbox~.
+
+*Document*: ~#+BEAMER_THEME:~, ~#+BEAMER_COLOR_THEME:~, ~#+BEAMER_FONT_THEME:~, ~#+BEAMER_INNER_THEME:~ and ~#+BEAMER_OUTER_THEME:~ write the ~\use…theme~ lines; ~#+BEAMER_HEADER:~ adds preamble lines after the title, and ~#+BEAMER:~ lines go into the text as they are. ~#+SUBTITLE:~ becomes ~\subtitle{}~. With ~toc:t~ the table of contents gets a frame of its own; ~#+TOC: headlines 2~ writes it where it stands.
+
+*Text*: ~*bold*~ is ~\alert{}~. ~@@beamer:\pause@@~ is written as it stands, and ~@@beamer:<2>@@~ at the start of a list item, bold text or link description sets its overlay. ~#+ATTR_BEAMER: :overlay <+->~ and ~:options~ apply to a list. Links to headings and targets are ~\hyperlink{}~.
+
+The Lisp init of Settings → Export → LaTeX reads ~org-beamer-frame-level~, ~org-beamer-theme~, ~org-beamer-frame-default-options~, ~org-beamer-outline-frame-title~, ~org-beamer-outline-frame-options~, ~org-beamer-subtitle-format~ and ~org-beamer-environments-extra~ (with the ~%a~, ~%A~, ~%o~, ~%O~, ~%h~, ~%r~, ~%H~ and ~%R~ escapes). A heading whose ~BEAMER_env~ names an environment that does not exist is written as a block, where Emacs stops with an error.
 
 *** As-org
 

@@ -1,0 +1,4 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+OPTIONS: ':t
+He said "hello" and 'world' it's "nested 'inner' text" done. ("paren") 'tis "a" "b". 5'10" rock'n'roll

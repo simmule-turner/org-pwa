@@ -1,0 +1,13 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+* A
+:PROPERTIES:
+:CUSTOM_ID: my-id
+:END:
+[[#my-id]]
+
+#+NAME: tbl
+#+CAPTION: C
+| a |
+
+[[tbl]]

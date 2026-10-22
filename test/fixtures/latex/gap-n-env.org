@@ -1,0 +1,10 @@
+#+NAME: e
+\begin{split}
+x
+\end{split}
+[[e]]
+#+NAME: a
+\begin{align*}
+x
+\end{align*}
+[[a]]

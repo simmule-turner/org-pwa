@@ -1,0 +1,17 @@
+#+TITLE: T *x*
+#+SUBTITLE: Sub *s*
+#+AUTHOR: A
+#+BEAMER_THEME: [secnumber]Madrid[x]
+#+BEAMER_COLOR_THEME: [rgb={0.1,0.2}]dolphin
+#+BEAMER_FONT_THEME:
+#+BEAMER_INNER_THEME: circles
+#+BEAMER_OUTER_THEME: infolines
+#+BEAMER_HEADER: \usepackage{a}
+#+BEAMER_HEADER: \usepackage{b}
+#+LATEX_HEADER: \usepackage{c}
+#+LATEX_CLASS_OPTIONS: [aspectratio=169,10pt]
+#+DESCRIPTION: desc
+#+KEYWORDS: k1, k2
+#+LANGUAGE: de
+#+OPTIONS: toc:nil
+* x

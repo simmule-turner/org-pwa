@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :scale 2 :height 2cm
+[[file:c.png]]
+
+#+ATTR_LATEX: :scale 2 :height 2cm
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :scale 2 :height 2cm
+[[file:c.svg]]
+
+#+ATTR_LATEX: :scale 2 :height 2cm
+[[file:c.pdf]]

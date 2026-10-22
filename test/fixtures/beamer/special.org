@@ -1,0 +1,71 @@
+#+OPTIONS: toc:nil H:2
+* S
+** F
+a @@beamer:<2>@@ mid *b* @@beamer:\pause@@ end @@beamer:<3-4>@@
+- item @@beamer:<2>@@ mid
+- @@beamer:<2>@@
+** Note at level
+:PROPERTIES:
+:BEAMER_env: note
+:BEAMER_opt: [foo]
+:BEAMER_act: <2>
+:END:
+note text
+more note
+
+para 2
+** Ignore at frame level
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+text after ignore
+*** child of ignore
+cc
+** Appendix with body
+:PROPERTIES:
+:BEAMER_env: appendix
+:END:
+appendix body
+** NoteNH w act
+:PROPERTIES:
+:BEAMER_env: noteNH
+:BEAMER_act: <1>
+:END:
+nn
+** Again
+:PROPERTIES:
+:BEAMER_env: againframe
+:BEAMER_ref: *F
+:BEAMER_opt: [label=x]
+:BEAMER_act: <3>
+:END:
+ignored body
+** Full
+:PROPERTIES:
+:BEAMER_env: fullframe
+:END:
+** Section-like env at frame level
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+b at frame level
+** Column at frame level
+:PROPERTIES:
+:BEAMER_col: 0.5
+:END:
+col at frame level
+* Top-level block
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+tb
+* Top-level ignore
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+ti
+* Top note
+:PROPERTIES:
+:BEAMER_env: note
+:END:
+tn

@@ -1,0 +1,34 @@
+#+OPTIONS: toc:nil H:2
+* S
+** F
+- @@beamer:<2>@@ item with overlay
+- plain
+- [<3>] bracket first
+Text *@@beamer:<3>@@ bold ov* and *bold* and /@@beamer:<4>@@ it/ [[*S][to S]] [[*F][to F]] [[*S]] <<tg>> and [[tg][to tg]] and [[tg]] <<<radio>>> use radio again.
+Link [[*F][@@beamer:<2>@@ with ov]] and @@beamer:\alert<2>{x}@@ and @@latex:\foo@@ and @@html:<b>@@ and ~@@latex:code@@~.
+[[#cid][custom id]]
+#+ATTR_LATEX: :options [a]
+- l1
+#+ATTR_BEAMER: :options [b]
+- l2
+#+ATTR_BEAMER: :overlay <+-> :options [c]
+- l3
+#+ATTR_LATEX: :options [d] :environment myenv
+#+ATTR_BEAMER: :overlay [<2>]
+1. l4
+#+ATTR_BEAMER: :overlay <2->
+- term :: desc
+#+begin_columns
+#+begin_column
+col a
+#+end_column
+#+end_columns
+#+begin_alertblock
+alert special
+#+end_alertblock
+#+BEAMER: \pause
+@@beamer:\pause@@ after pause
+** G
+:PROPERTIES:
+:CUSTOM_ID: cid
+:END:

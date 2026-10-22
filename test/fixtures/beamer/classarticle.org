@@ -1,0 +1,8 @@
+#+TITLE: T
+#+SUBTITLE: Sub
+#+LATEX_CLASS: article
+#+BEAMER_THEME: default
+#+OPTIONS: toc:nil
+* x
+** y
+text

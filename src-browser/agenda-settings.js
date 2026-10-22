@@ -2,7 +2,7 @@
 // The settings the agenda evaluates its sexp lines with (sun times, weather): where you are, how times are written, the weather
 // last fetched and how it is shown. The Agenda, the calendar export and the CalDAV sync all take them from here, so a
 // <%%(…)> line reads the same in all three.
-import { getTimeDisplayForm, getCalendarLatitude, getCalendarLongitude, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getCalendarDateStyle } from '../src/local-variables.js';
+import { getTimeDisplayForm, getCalendarLatitude, getCalendarLongitude, getOrgWeatherFormat, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getCalendarDateStyle, getDiaryHebrewSabbathCandlesMinutes } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { diarySource } from './diary-file-load.js';
 
@@ -19,6 +19,7 @@ export function agendaSexpOptions() {
     calendarLatitude: getCalendarLatitude(vars),
     calendarLongitude: getCalendarLongitude(vars),
     calendarDateStyle: getCalendarDateStyle(vars),
+    diaryHebrewSabbathCandlesMinutes: getDiaryHebrewSabbathCandlesMinutes(vars),
     calendarTimeDisplayForm: getTimeDisplayForm(vars),
     diary: diarySource(), // org-agenda-include-diary: the diary file's entries and the day's holidays, once the file is read
     weatherData: S.weatherData,

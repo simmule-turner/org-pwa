@@ -159,9 +159,9 @@ function parseListItemLine(line) {
 
   /** @type {number | null} */
   let startValue = null;
-  const startValueMatch = /^\[@(\d+)\]\s*/.exec(text);
+  const startValueMatch = /^\[@(\d+|[A-Za-z])\]\s*/.exec(text);
   if (startValueMatch) {
-    startValue = Number(startValueMatch[1]);
+    startValue = /^\d+$/.test(startValueMatch[1]) ? Number(startValueMatch[1]) : startValueMatch[1].toLowerCase().charCodeAt(0) - 96; // [@c] is 3
     text = text.slice(startValueMatch[0].length);
   }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v607';
+const CACHE_NAME = 'org-pwa-shell-v612';
 
 const SHELL_FILES = [
   './',
@@ -38,6 +38,8 @@ const SHELL_FILES = [
   './src/text-edit.js',
   './src/text-syntax.js',
   './src/diary-sexp.js',
+  './src/diary-hebrew.js',
+  './src/solar-emacs.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
   './src/reschedule.js',
@@ -57,6 +59,8 @@ const SHELL_FILES = [
   './src/calendar-conv.js',
   './src/calendar-holidays.js',
   './src/solar-holidays.js',
+  './src/html-doctype.js',
+  './src/inline-tasks.js',
   './src/lisp-load.js',
   './src/diary-nongregorian.js',
   './src/diary-calendar.js',
@@ -137,6 +141,8 @@ const SHELL_FILES = [
   './src/logbook.js',
   './src/heading-edit.js',
   './src/body-edit.js',
+  './src/smart-quotes.js',
+  './src/link-abbrev.js',
   './src/link-resolve.js',
   './src/id-locations.js',
   './src/tag-inheritance.js',
@@ -159,6 +165,7 @@ const SHELL_FILES = [
   './src/org-elements.js',
   './src/syntax-highlight.js',
   './src/export-html.js',
+  './src/export-beamer.js',
   './src/export-latex.js',
   './src/export-latex-zip.js',
   './src/latex-cite.js',

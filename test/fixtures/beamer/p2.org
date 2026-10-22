@@ -1,0 +1,77 @@
+#+OPTIONS: toc:nil num:nil
+* One
+** Sub
+*** Body level
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 0.3
+:BEAMER_opt: t
+:END:
+c1
+*** Body two
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 5cm
+:END:
+c2
+*** Body three
+:PROPERTIES:
+:BEAMER_col: 0.2\textwidth
+:BEAMER_env: verse
+:END:
+c3
+*** Struct
+:PROPERTIES:
+:BEAMER_env: structureenv
+:END:
+st
+*** Colorbox
+:PROPERTIES:
+:BEAMER_env: beamercolorbox
+:BEAMER_opt: rounded=true
+:END:
+cb
+*** Proof
+:PROPERTIES:
+:BEAMER_env: proof
+:BEAMER_opt: <1>[Fermat]
+:END:
+pr
+*** Defn
+:PROPERTIES:
+:BEAMER_env: definition
+:BEAMER_opt: [Foo]
+:END:
+df
+*** Quotation
+:PROPERTIES:
+:BEAMER_env: quotation
+:END:
+qt
+*** Block tagged :B_block:
+text
+*** Ignored body
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+ignored text
+** Notes
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+nnh
+** Frame exp
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: plain
+:END:
+*** inner block
+inner
+** Againframe
+:PROPERTIES:
+:BEAMER_env: againframe
+:BEAMER_ref: *Frame exp
+:BEAMER_act: <2->
+:END:
+** Normal  :B_note:
+note via tag

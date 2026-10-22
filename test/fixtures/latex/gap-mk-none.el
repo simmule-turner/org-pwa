@@ -1,0 +1,1 @@
+(setq org-latex-text-markup-alist nil)

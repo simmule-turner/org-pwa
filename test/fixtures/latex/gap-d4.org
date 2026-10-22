@@ -1,0 +1,7 @@
+* A
+:MY:
+in
+:END:
+:LOGBOOK:
+x
+:END:

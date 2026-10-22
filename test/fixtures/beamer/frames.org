@@ -1,0 +1,72 @@
+#+OPTIONS: H:2 toc:nil
+* A
+** f1
+:PROPERTIES:
+:BEAMER_opt: t
+:END:
+x
+** f2
+:PROPERTIES:
+:BEAMER_opt: allowframebreaks
+:END:
+x
+** f3
+:PROPERTIES:
+:BEAMER_opt: [t]
+:END:
+x
+** f4
+:PROPERTIES:
+:BEAMER_opt: fragile
+:END:
+x
+** f5
+:PROPERTIES:
+:BEAMER_opt: label=foo,t
+:END:
+x
+** f6
+:PROPERTIES:
+:BEAMER_opt: plain,allowframebreaks=0.8
+:BEAMER_act: [<+->]
+:END:
+x
+** f7
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_act: <2>
+:END:
+#+begin_src js
+a
+#+end_src
+** f8 =v=
+:PROPERTIES:
+:CUSTOM_ID: myid
+:END:
+x
+
+** f9 with table
+| a | =b= |
+|---+-----|
+| 1 | 2   |
+** f10 :B_fullframe:
+:PROPERTIES:
+:BEAMER_env: fullframe
+:BEAMER_opt: t
+:END:
+y
+** f11 sub with code
+*** inner block
+~code~ in a block
+** Last frame
+
+Some text.
+
+* B
+Text under B.
+
+** TODO [#A] Todo frame :x:
+:PROPERTIES:
+:BEAMER_act: <2->
+:END:
+t

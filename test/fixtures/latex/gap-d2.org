@@ -1,0 +1,6 @@
+#+OPTIONS: d:nil
+* A
+:MY:
+in
+:END:
+text

@@ -3,7 +3,7 @@
 // The items are Org's own variables, set in the Global Variables. Off unless set. A value written in the file
 // itself (#+OPTIONS:, #+HTML_HEAD:) always wins over these.
 
-/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} HtmlExportDefaults */
+/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, doctype?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} HtmlExportDefaults */
 
 /** The items, with the text offered before the person has typed anything. `key` is the Global Variable that holds the text.
  *  The items are Org's own variables (org-html-preamble, -postamble, -head): the value is a quoted string and being set
@@ -49,6 +49,8 @@ export function htmlExportDefaults(vars) {
     if (s.on && s.text.trim() !== '') /** @type {Record<string, string>} */ (out)[item.id] = s.text;
   }
   if (out.postamble === undefined && String((vars || {})['org-html-postamble'] ?? '').trim().toLowerCase() === 'nil') out.postamble = false;
+  const doctype = String((vars || {})['org-html-doctype'] ?? '').trim().replace(/^"(.*)"$/s, '$1').replace(/^'/, '');
+  if (doctype && doctype.toLowerCase() !== 'nil') out.doctype = doctype;
   return out;
 }
 

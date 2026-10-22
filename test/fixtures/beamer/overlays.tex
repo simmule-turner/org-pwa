@@ -1,0 +1,66 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\section{S}
+\label{sec:org6a34f2e}
+\begin{frame}[label={sec:orga55fa6b},fragile]{F}
+ \begin{itemize}
+\item<2> item with overlay
+\item plain
+\item\relax [<3>] bracket first
+\end{itemize}
+Text \alert<3>{ bold ov} and \alert{bold} and \emph{ it} \hyperlink{sec:org6a34f2e}{to S} \hyperlink{sec:orga55fa6b}{to F} \ref{sec:org6a34f2e} \label{org3e3e5f8} and \hyperlink{org3e3e5f8}{to tg} and \ref{org3e3e5f8} \hypertarget{org7dd99da}{radio} use \hyperlink{org7dd99da}{radio} again.
+Link \hyperlink<2>{sec:orga55fa6b}{ with ov} and \alert<2>{x} and \foo and  and \texttt{@@latex:code@@}.
+\hyperlink{sec:org5b8a78b}{custom id}
+\begin{itemize}[a]
+\item l1
+\end{itemize}
+\begin{itemize}[b]
+\item l2
+\end{itemize}
+\begin{itemize}[<+->][c]
+\item l3
+\end{itemize}
+\begin{myenv}[<2>][d]
+\item l4
+\end{myenv}
+\begin{description}[<2->]
+\item[{term}] desc
+\end{description}
+\begin{columns}
+\begin{column}
+col a
+\end{column}
+\end{columns}
+\begin{alertblock}
+alert special
+\end{alertblock}
+\pause
+\pause after pause
+\end{frame}
+\begin{frame}[label={sec:org5b8a78b}]{G}
+\end{frame}
+\end{document}

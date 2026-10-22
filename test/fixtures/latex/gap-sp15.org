@@ -1,0 +1,3 @@
+#+ATTR_LATEX: :align lr
+| / | < | > |
+| | 1 | 2 |

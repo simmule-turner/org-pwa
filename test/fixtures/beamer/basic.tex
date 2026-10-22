@@ -1,0 +1,85 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{Madrid}
+\usecolortheme{dolphin}
+\usefonttheme{structurebold}
+\useinnertheme{circles}
+\useoutertheme{infolines}
+\author{Me}
+\date{2026-01-02}
+\title{Deck \alert{one}}
+\usepackage{tikz}
+\hypersetup{
+ pdfauthor={Me},
+ pdftitle={Deck \alert{one}},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+\section{Intro}
+\label{sec:org5cce58b}
+\begin{frame}[label={sec:org41cdc78}]{First slide}
+Some text with \emph{emphasis}.
+\begin{itemize}
+\item one
+\item two
+\end{itemize}
+\end{frame}
+\begin{frame}[fragile,label=sec2]{Second slide}
+ \begin{verbatim}
+let a = 1;
+\end{verbatim}
+\end{frame}
+\section{Part two}
+\label{sec:org3c2ffd4}
+Text directly under a section.
+\begin{frame}[label={sec:orgc8e0050}]{Blocks}
+\begin{block}{A block}
+Block text
+\end{block}
+\begin{alertblock}{Alert here}
+alerting
+\end{alertblock}
+\begin{example}[Example here]
+an example
+\end{example}
+\begin{theorem}<2->[Theorem one]
+a theorem
+\end{theorem}
+\end{frame}
+\begin{frame}[label={sec:orgd51a734}]{Columns}
+\begin{columns}
+\begin{column}{0.5\columnwidth}
+left text
+\end{column}
+\begin{column}{0.5\columnwidth}
+\begin{block}{Right}
+right text
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+\begin{frame}[label={sec:org787b225}]{}
+full text
+\end{frame}
+\appendix
+\againframe{sec2}
+\note{A note
+note body}
+shown without heading
+\end{document}

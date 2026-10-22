@@ -1,0 +1,21 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+BEGIN_Warning
+w
+#+END_Warning
+
+#+BEGIN_LATEX
+\foo
+#+END_LATEX
+
+#+begin_Quote
+q
+#+end_Quote
+
+#+BEGIN_CENTER
+c
+#+END_CENTER
+
+#+BEGIN_EXPORT LaTeX
+\bar
+#+END_EXPORT

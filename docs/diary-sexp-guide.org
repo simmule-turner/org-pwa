@@ -202,7 +202,7 @@ Seven days before each month's last day:
 * Troubleshooting
 - *Nothing shows.* Check the parentheses first: an unbalanced expression matches nothing. Then check that the line starts with ~%%(~ (indentation is fine) and is all on one line.
 - *The wrong day.* Remember ~calendar-day-of-week~ counts from 0 for Sunday, and ~date~ is month first.
-- *A function from Emacs isn't recognized.* It matches nothing. The language list above is complete; anything else (~setq~, ~defun~, alternate calendars, Hebrew observances) is not available.
+- *A function from Emacs isn't recognized.* It matches nothing. The language list above is complete; anything else (~setq~, ~defun~) is not available.
 
 * Reference
 - Emacs manual, [[https://www.gnu.org/s/emacs/manual/html_node/emacs/Sexp-Diary-Entries.html][Sexp Diary Entries]]: the diary functions and their arguments.

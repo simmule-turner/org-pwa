@@ -1,0 +1,38 @@
+#+TITLE: R
+#+HTML_DOCTYPE: DT
+#+OPTIONS: toc:nil
+* One
+line one\\
+line two
+
+-----
+
+[[file:img.png]]
+
+[[file:img.png][alt]]
+
+- [ ] box
+- [X] done
+
+#+begin_verse
+v1
+v2
+#+end_verse
+
+#+begin_src emacs-lisp
+(x)
+#+end_src
+
+#+begin_export html
+<br>
+#+end_export
+
+| a | b |
+|---+---|
+| 1 | 2 |
+
+Footnote.[fn:1]
+
+Inline <2026-10-22 Thu> and ~code~ and src_js{1}.
+
+[fn:1] note

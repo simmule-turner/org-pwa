@@ -1,0 +1,6 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+OPTIONS: ':t
+*"b"* /'i'/ ='v'= ~"c"~ [[http://x.org]["desc 'q'"]] "x"[fn:1]
+
+[fn:1] "foot" it's

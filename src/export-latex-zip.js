@@ -5,7 +5,7 @@
  * attachments); a picture it cannot read is left as a plain path in the .tex file.
  */
 import { createZip } from './zip-writer.js';
-import { exportToLatex, latexImageTargets } from './export-latex.js';
+import { exportToLatex, exportToBeamer, latexImageTargets } from './export-latex.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -13,16 +13,16 @@ import { exportToLatex, latexImageTargets } from './export-latex.js';
 /**
  * @param {Doc} doc
  * @param {Heading | null} scope
- * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string, sup?: string, header?: string } }} options
+ * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string, sup?: string, header?: string }, beamer?: boolean }} options
  * @returns {Promise<Uint8Array>}
  */
-export async function exportLatexZip(doc, scope, { baseName, readImage, defaults }) {
+export async function exportLatexZip(doc, scope, { baseName, readImage, defaults, beamer = false }) {
   /** @type {Map<string, string>} link as written -> path inside the zip */
   const images = new Map();
   /** @type {{ name: string, content: Uint8Array }[]} */
   const files = [];
   const taken = new Set([baseName + '.tex']);
-  for (const target of latexImageTargets(doc, scope)) {
+  for (const target of latexImageTargets(doc, scope, { beamer })) {
     if (/^[a-z][a-z0-9+.-]*:(?!\/\/)|^https?:/i.test(target.replace(/^file:/i, 'x:/')) && !/^(file|attachment):/i.test(target)) continue; // a web address stays a link
     const bytes = await readImage(target);
     if (!bytes) continue;
@@ -33,5 +33,5 @@ export async function exportLatexZip(doc, scope, { baseName, readImage, defaults
     images.set(target, name);
     files.push({ name, content: bytes });
   }
-  return createZip([{ name: baseName + '.tex', content: exportToLatex(doc, scope, { images, defaults }) }, ...files]);
+  return createZip([{ name: baseName + '.tex', content: (beamer ? exportToBeamer : exportToLatex)(doc, scope, { images, defaults }) }, ...files]);
 }

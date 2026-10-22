@@ -1,0 +1,82 @@
+#+OPTIONS: H:2 toc:nil
+* S
+
+text in S
+
+** F
+
+lead blank in F
+
+*** B1
+
+b1 text
+
+
+*** B2
+b2 text
+
+after b2
+
+** G
+g text
+
+** H
+** I
+
+** F1
+*** B1
+b1
+
+
+*** B2
+b2
+
+
+** F2
+*** B3
+b3
+
+**** B3a
+b3a
+
+*** B4
+b4
+** F3
+f3 text
+
+*** B5
+b5
+** F4
+
+*** B6
+
+b6
+
+
+** Props
+:PROPERTIES:
+:ID: y
+:END:
+text
+** Props2
+:PROPERTIES:
+:ID: x
+:END:
+
+after props
+
+   indented para
+
+** Emptyframe
+
+* T2
+
+** FT2
+x
+* T3
+** FT3
+y
+* T
+
+t text
+

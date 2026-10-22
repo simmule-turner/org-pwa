@@ -1,0 +1,9 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+1. [@3] three
+2. four
+
+1. [@b] bee
+2. cee
+
+- [@4] bullet

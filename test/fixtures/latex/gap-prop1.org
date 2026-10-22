@@ -1,0 +1,7 @@
+#+OPTIONS: prop:t
+* A
+:PROPERTIES:
+:ID: x
+:Y: z
+:END:
+text

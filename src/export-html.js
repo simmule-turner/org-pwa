@@ -30,6 +30,9 @@
  * checkboxes are real (disabled) `<input>` elements.
  */
 
+import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
+import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
+import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
 import { parseInline, extractLatexFragments } from './inline-markup.js';
 import { parseElements, parseAttributes } from './org-elements.js';
 import { citeExportFor, dropSilentCitations } from './cite.js';
@@ -379,7 +382,7 @@ function targetsInLines(lines) {
 function renderInline(state, rawText) {
   let text = expandMacros(state, rawText);
   // forced line breaks: a line ending in two backslashes
-  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => addToken(state, '<br />', '\\\\') + (m.endsWith('\n') ? '\n' : ''));
+  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => addToken(state, `<br${closing}`, '\\\\') + (m.endsWith('\n') ? '\n' : ''));
   // export snippets
   text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
@@ -439,7 +442,7 @@ function renderText(state, value) {
     }
     h = h.replace(COOKIE_RE, options.stat ? '<code>[$1]</code>' : '');
     if (state.radioRe && !state.noRadio) h = h.replace(state.radioRe, (m) => `<a href="#${state.targets.get(m.trim().replace(/\s+/g, ' ').toLowerCase())}">${m}</a>`);
-    if (options.brk) h = h.replace(/\n/g, '<br />\n');
+    if (options.brk) h = h.replace(/\n/g, `<br${closing}\n`);
     return h.replace(TOKEN_RE, (w, n) => state.tokens[Number(n)]);
   };
   if (options.entities) {
@@ -484,6 +487,10 @@ function fileHref(path) {
   return p + hash;
 }
 
+/** What ends a void tag in the page being written: " />" for XHTML, ">" otherwise. */
+let closing = ' />';
+/** Whether the page being written is HTML 5 (its tables carry no border attributes). */
+let html5Page = false;
 let activeImages = new Map();
 
 /** @param {string} target */
@@ -648,7 +655,7 @@ function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
   const plain = target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '');
   const name = /^https?:/i.test(plain) ? plain.replace(/^.*\//, '') : plain;
-  return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${attrs} />`;
+  return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${attrs}${closing}`;
 }
 
 /**
@@ -688,7 +695,7 @@ function internalLinkLabel(state, rawTarget) {
  * @param {import('./types.js').LinkNode} node
  */
 function linkHtml(state, node) {
-  const target = node.target;
+  const target = expandAbbreviation(node.target, linkAbbreviations(state.doc)); // #+LINK: abbreviations
   const desc = node.description;
   const coderef = /^\((.+)\)$/.exec(target.trim());
   if (coderef) {
@@ -814,12 +821,12 @@ function itemHtml(state, item, listType) {
   const parts = children.map((c, /** @type {number} */ i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
   let inner = parts.filter((p) => p !== '').join('\n');
   if (item.checkbox && listType !== 'descriptive') {
-    const box = `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}>`;
+    const box = `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}${closing}`;
     inner = `${box} ${inner}`.replace(/\s+$/, '');
   }
   if (listType === 'descriptive') {
     const tag = item.tag === null ? '(no term)' : renderInline(state, item.tag);
-    const box = item.checkbox ? `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}> ` : '';
+    const box = item.checkbox ? `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}${closing} ` : '';
     const cls = item.checkbox ? ` class="${item.checkbox}"` : '';
     return `<dt${cls}>${box}${tag}</dt><dd>${inner.replace(/\n$/, '')}</dd>`;
   }
@@ -873,14 +880,15 @@ function tableHtml(state, el) {
   if (!groups[groups.length - 1].length) groups.pop();
   const hasHeader = groups.length > 1 && rows.some((r) => r.rule) && !rows[0].rule;
   const attrs = parseAttributes(aff && aff.attr.html);
-  const base = { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
+  // org-html-table-default-attributes, which a page of HTML 5 does not carry
+  const base = html5Page ? {} : { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
   let tableAttrs = '';
   for (const [k, v] of Object.entries({ ...base, ...attrs })) tableAttrs += v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`;
   const caption = captionHtml(state, aff);
   const idAttr = el.__id ? ` id="${escapeAttr(el.__id)}"` : '';
   let out = `<table${idAttr}${tableAttrs}>\n`;
   if (caption !== null) out += `<caption class="t-above"><span class="table-number">Table ${++state.counters.table}:</span> ${caption}</caption>\n`;
-  out += '\n<colgroup>\n' + align.map((a) => `<col  class="org-${a}" />`).join('\n\n') + '\n</colgroup>\n';
+  out += '\n<colgroup>\n' + align.map((a) => `<col  class="org-${a}"${closing}`).join('\n\n') + '\n</colgroup>\n';
   /**
    * @param {any} c
    * @param {string} tag
@@ -998,12 +1006,19 @@ function blockHtml(state, el, ctx) {
       return `<blockquote${htmlAttributes(el.aff)}>\n${inner(el.lines)}\n</blockquote>`;
     case 'center':
       return `<div class="org-center">\n${inner(el.lines)}\n</div>`;
+    case INLINE_TASK_BLOCK: {
+      // org-html-inlinetask; Emacs prints the word nil for a task with no contents, which is left out here
+      const info = inlineTaskInfo(el.params);
+      const title = headingTitleHtml(state, /** @type {OutlineNode} */ (/** @type {unknown} */ ({ heading: { type: 'heading', level: 0, ...info } })));
+      const contents = el.lines.some((l) => l.trim()) ? inner(el.lines) + '\n' : '';
+      return `<div class="inlinetask">\n<b>${title}</b><br${closing}\n${contents}</div>`;
+    }
     case 'verse': {
       const lines = removeIndentation(el.lines.map(unescapeLine));
       const html = lines
         .map((l) => {
           const lead = (/^ */.exec(l) || [''])[0].length;
-          return (NBSP.repeat(lead) + renderInline(state, l.slice(lead))).replace(/^$/, '') + '<br />';
+          return (NBSP.repeat(lead) + renderInline(state, l.slice(lead))).replace(/^$/, '') + `<br${closing}`;
         })
         .join('\n');
       return `<p class="verse">\n${html}\n</p>`;
@@ -1048,7 +1063,7 @@ function elementHtml(state, el, ctx = {}) {
     case 'fixed':
       return `<pre class="example">\n${escapeHtml(el.lines.join('\n'))}\n</pre>`;
     case 'hr':
-      return '<hr />';
+      return `<hr${closing}`;
     case 'latex-env': {
       const source = el.lines.join('\n');
       const r = renderMathHtml(source, true);
@@ -1101,11 +1116,14 @@ function titleOf(h) {
  * Which headings are exported: not COMMENT, not excluded by tag, only selected ones when `#+SELECT_TAGS:` is used.
  * @param {ExportState} state
  */
-function buildFilter(state) {
+export function buildFilter(state) {
   const { doc, options } = state;
   const exclude = new Set((keywordValues(doc, 'EXCLUDE_TAGS').join(' ') || 'noexport').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
   if (!keywordValues(doc, 'EXCLUDE_TAGS').length) exclude.add('noexport');
   const select = new Set(keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
+  /** @param {Heading[]} list @returns {boolean} */
+  const anyTagged = (list) => list.some((h) => (h.tags || []).some((t) => select.has(String(t).toLowerCase())) || anyTagged(h.children || []));
+  if (select.size && !anyTagged(doc.children || [])) select.clear(); // no headline carries a select tag: everything is exported
   const selected = new Set();
   /**
    * @param {Heading[]} headings
@@ -1277,7 +1295,7 @@ function deepListHtml(state, nodes) {
   const tag = ordered ? 'ol' : 'ul';
   const items = nodes.map((node) => {
     const id = state.headingIds.get(node.heading) || '';
-    let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br />\n`;
+    let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br${closing}\n`;
     const body = node.archived ? '' : bodyHtml(state, node.heading, node);
     if (body) li += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(node.number.join('-'))}">\n${body}\n</div>\n`;
     if (node.children.length) li += deepListHtml(state, node.children) + '\n';
@@ -1451,7 +1469,12 @@ export function exportToHtml(doc, scope = null, options = {}) {
  * @param {Doc} doc
  */
 function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
+  ({ doc, scope } = foldInlineTasks(doc, scope));
   activeImages = images instanceof Map ? images : new Map();
+  // #+HTML_DOCTYPE:, else org-html-doctype, else Org's own default
+  const doctype = doctypeInfo(keywordValue(doc, 'HTML_DOCTYPE') || defaults.doctype);
+  closing = doctype.close;
+  html5Page = doctype.html5;
   const state = createState(doc, scope, defaults);
   state.namedElements = new Map();
   state.fnDefsCollect = (/** @type {any} */ elements) => {
@@ -1600,21 +1623,25 @@ function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images =
   const lang = (keywordValue(doc, 'LANGUAGE') || 'en').replace(/[^A-Za-z-]/g, '') || 'en';
   const meta = [];
   const author = keywordValue(doc, 'AUTHOR');
-  if (author && options.author) meta.push(`<meta name="author" content="${escapeAttr(author)}">`);
+  if (author && options.author) meta.push(`<meta name="author" content="${escapeAttr(author)}" />`);
   const description = keywordValue(doc, 'DESCRIPTION');
-  if (description) meta.push(`<meta name="description" content="${escapeAttr(description)}">`);
+  if (description) meta.push(`<meta name="description" content="${escapeAttr(description)}" />`);
   const keywords = keywordValue(doc, 'KEYWORDS');
-  if (keywords) meta.push(`<meta name="keywords" content="${escapeAttr(keywords)}">`);
+  if (keywords) meta.push(`<meta name="keywords" content="${escapeAttr(keywords)}" />`);
   const head = [defaults.head, getHtmlHead(doc), ...keywordValues(doc, 'HTML_HEAD_EXTRA')].filter(Boolean).join('\n');
   return (
-    '<!DOCTYPE html>\n' +
-    `<html lang="${lang}">\n` +
+    xmlDeclaration(doctype) +
+    doctype.declaration +
+    '\n' +
+    htmlTag(doctype, lang) +
+    '\n' +
     '<head>\n' +
-    '<meta charset="utf-8">\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+    charsetMeta(doctype) +
+    '\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
     `<title>${docTitle}</title>\n` +
     meta.map((m) => m + '\n').join('') +
-    '<meta name="generator" content="org-pwa">\n' +
+    '<meta name="generator" content="org-pwa" />\n' +
     `<style>${PAGE_CSS}</style>\n` +
     (state.math ? `<style>${KATEX_EXPORT_CSS}</style>\n` : '') +
     (head ? head + '\n' : '') +

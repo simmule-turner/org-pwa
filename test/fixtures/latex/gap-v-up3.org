@@ -1,0 +1,23 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+* A
+<<tgt>> text <<<rad>>> and rad.
+
+[[tgt]]
+
+#+NAME: eq1
+\begin{equation}
+x
+\end{equation}
+
+#+NAME: s1
+#+BEGIN_SRC c
+x
+#+END_SRC
+[[s1]] [[eq1]]
+
+#+NAME: fg
+#+CAPTION: F
+[[file:p.png]]
+
+[[fg]]

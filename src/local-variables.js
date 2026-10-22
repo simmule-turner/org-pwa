@@ -664,6 +664,12 @@ export function getCalendarLongitude(vars) {
   return n >= -180 && n <= 180 ? n : -78.8986;
 }
 
+/** diary-hebrew-sabbath-candles-minutes: how many minutes before sunset the candles are lit (18 as in Emacs unless set to a number). @param {LocalVars} vars */
+export function getDiaryHebrewSabbathCandlesMinutes(vars) {
+  const n = parseLispNumber((vars || {})['diary-hebrew-sabbath-candles-minutes'], 18);
+  return n >= 0 && n <= 300 ? n : 18;
+}
+
 /** Emacs's own default calendar-time-display-form: 6:30am (EDT). */
 export const DEFAULT_TIME_DISPLAY_FORM = '(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")"))';
 

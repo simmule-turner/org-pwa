@@ -1,0 +1,8 @@
+#+OPTIONS: d:("MY")
+* A
+:MY:
+in
+:END:
+:OTHER:
+out
+:END:

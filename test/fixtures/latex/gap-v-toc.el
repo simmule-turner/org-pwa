@@ -1,0 +1,1 @@
+(setq org-latex-toc-command "\\toc\n")

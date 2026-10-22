@@ -1,0 +1,1 @@
+(setq org-latex-src-block-backend (quote listings))

@@ -1,0 +1,1 @@
+(setq org-latex-tables-centered nil)

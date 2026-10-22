@@ -1,0 +1,73 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\section*{One}
+\label{sec:org106f1aa}
+\begin{block}{Sub}
+\begin{columns}
+\begin{column}[t]{0.3\columnwidth}
+c1
+\end{column}
+\begin{column}{5cm\columnwidth}
+c2
+\end{column}
+\begin{column}{0.2\textwidth\columnwidth}
+\begin{verse} %% Body three
+c3
+\end{verse}
+\end{column}
+\end{columns}
+\begin{structureenv} %% Struct
+st
+\end{structureenv}
+\begin{beamercolorbox}[rounded=true]{Colorbox}
+cb
+\end{beamercolorbox}
+\begin{proof}[Proof]
+pr
+\end{proof}
+\begin{definition}[Defn]
+df
+\end{definition}
+\begin{quotation} %% Quotation
+qt
+\end{quotation}
+\begin{block}{Block tagged}
+text
+\end{block}
+ignored text
+\end{block}
+\note{nnh}
+\begin{frame}[label={sec:org9eae5c9},plain]{Frame exp}
+\begin{block}{inner block}
+inner
+\end{block}
+\end{frame}
+\againframe<2->{sec:org9eae5c9}
+\begin{block}{Normal}
+note via tag
+\end{block}
+\end{document}

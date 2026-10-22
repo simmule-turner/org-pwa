@@ -1,0 +1,3 @@
+a[fn:1]
+
+[fn:1] def with[fn::inner]

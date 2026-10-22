@@ -1,0 +1,4 @@
+#+OPTIONS: email:t
+#+EMAIL: a@b.c
+#+AUTHOR: A
+#+TITLE: T

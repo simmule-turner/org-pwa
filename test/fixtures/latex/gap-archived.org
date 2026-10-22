@@ -1,0 +1,4 @@
+* A :ARCHIVE:
+text
+** child
+* B

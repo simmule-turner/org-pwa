@@ -8,8 +8,9 @@ import { exportToHtml } from '../src/export-html.js';
 test('produces a complete standalone HTML document', () => {
   const doc = parseOrg('* Hello');
   const out = exportToHtml(doc);
-  assert.ok(out.startsWith('<!DOCTYPE html>'));
-  assert.ok(out.includes('<meta charset="utf-8">'));
+  // Emacs's default doctype is xhtml-strict
+  assert.ok(out.startsWith('<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"'));
+  assert.ok(out.includes('<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />'));
   assert.ok(out.includes('<style>'));
   assert.ok(out.trim().endsWith('</html>'));
 });
@@ -77,8 +78,8 @@ test('a link target with special characters is escaped inside the href attribute
 test('checkbox items render as real disabled <input> checkboxes, checked state preserved', () => {
   const doc = parseOrg('* A\n- [ ] todo\n- [X] done');
   const out = exportToHtml(doc);
-  assert.ok(out.includes('<input type="checkbox" disabled> todo'));
-  assert.ok(out.includes('<input type="checkbox" disabled checked> done'));
+  assert.ok(out.includes('<input type="checkbox" disabled /> todo'));
+  assert.ok(out.includes('<input type="checkbox" disabled checked /> done'));
 });
 
 // ---- tables ---------------------------------------------------------------
@@ -506,8 +507,8 @@ test('lists: org-ul / org-ol with value, descriptive lists as dl, checkboxes wit
   assert.ok(body('* A\n1. [@5] five\n2. six').includes('<li value="5">five</li>'));
   assert.ok(body('* A\n- term :: description').includes('<dl class="org-dl">\n<dt>term</dt><dd>description</dd>\n</dl>'));
   const boxes = body('* A\n- [ ] a\n- [X] b\n- [-] c');
-  assert.ok(boxes.includes('<li class="off"><input type="checkbox" disabled> a</li>'));
-  assert.ok(boxes.includes('<li class="on"><input type="checkbox" disabled checked> b</li>'));
+  assert.ok(boxes.includes('<li class="off"><input type="checkbox" disabled /> a</li>'));
+  assert.ok(boxes.includes('<li class="on"><input type="checkbox" disabled checked /> b</li>'));
   assert.ok(boxes.includes('<li class="trans">'));
 });
 
@@ -651,8 +652,8 @@ test('a subtree export is titled after its heading and numbers its children from
 test('postamble shows the date, author and email when present; the page declares its language and meta', () => {
   const out = body('#+TITLE: T\n#+AUTHOR: Me\n#+EMAIL: me@x.org\n#+DATE: 2026-10-11\n#+DESCRIPTION: D\n#+LANGUAGE: de\n#+OPTIONS: email:t\n* A');
   assert.match(out, /<div id="postamble" class="status">\s*<p class="date">Date: 2026-10-11<\/p>\s*<p class="author">Author: Me<\/p>\s*<p class="email">Email: <a href="mailto:me@x.org">me@x.org<\/a><\/p>/);
-  assert.match(out, /<html lang="de">/);
-  assert.match(out, /<meta name="description" content="D">/);
+  assert.match(out, /<html xmlns="http:\/\/www.w3.org\/1999\/xhtml" lang="de" xml:lang="de">/);
+  assert.match(out, /<meta name="description" content="D" \/>/);
   assert.ok(!body('#+AUTHOR: Me\n#+OPTIONS: author:nil\n* A').includes('Author: Me'));
 });
 

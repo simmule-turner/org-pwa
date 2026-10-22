@@ -1,0 +1,4 @@
+| t[fn::in table] | u |
+| v | w[fn:1] |
+
+[fn:1] def

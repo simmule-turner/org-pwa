@@ -26,6 +26,8 @@
  *     already treat images as a reference rather than embedded data.
  */
 
+import { foldInlineTasks, inlineTaskInfo, INLINE_TASK_BLOCK } from './inline-tasks.js';
+import { parseBody } from './body-parser.js';
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { citeExportFor, dropSilentCitations, splitBibliography } from './cite.js';
 import { resolveTodoSequence } from './todo-cycle.js';
@@ -379,9 +381,18 @@ function codeBlockOdt(block) {
   return start === null ? rows.join('') : `<text:list text:style-name="OrgSrcBlockNumberedLine" text:continue-numbering="${start === 0 ? 'false' : 'true'}">${rows.join('')}</text:list>`;
 }
 
-/** @param {import('./types.js').Block} block */
+/** An inline task as a bordered paragraph for the title over the contents (Org's own is a drawing frame of 30 characters). @param {import('./types.js').Block} block @returns {string} */
+function inlineTaskOdt(block) {
+  const info = inlineTaskInfo(block.params || '');
+  const title = [info.todo ? `<text:span text:style-name="TodoKeywordActive">${escapeXml(info.todo)}</text:span>` : '', renderTextOdt(info.title), info.tags.length ? `<text:span text:style-name="Code">:${info.tags.map(escapeXml).join(':')}:</text:span>` : ''].filter(Boolean).join(' ');
+  const contents = parseBody(block.lines).map(renderBodyNodeOdt).join('');
+  return `<text:p text:style-name="InlineTaskTitle">${title}</text:p>${contents}`;
+}
+
+/** @param {import('./types.js').Block} block @returns {string} */
 function renderBlockOdt(block) {
   const name = block.name;
+  if (name.toLowerCase() === INLINE_TASK_BLOCK) return inlineTaskOdt(block);
   if (name === 'COMMENT') return ''; // matches every other export backend
   if (name === 'EXPORT') {
     return (block.params || '').trim().toLowerCase() === 'odt' ? block.lines.join('\n') : '';
@@ -397,7 +408,7 @@ function renderBlockOdt(block) {
   return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
 }
 
-/** @param {import('./types.js').BodyNode} node */
+/** @param {import('./types.js').BodyNode} node @returns {string} */
 function renderBodyNodeOdt(node) {
   if (node.type === 'list') return renderListOdt(node);
   if (node.type === 'paragraph') return renderParagraphOdt(node);
@@ -525,6 +536,7 @@ function stylesXml() {
     headingStyles +
     '<style:style style:name="Quote" style:family="paragraph"><style:paragraph-properties fo:margin-left="0.5in"/><style:text-properties fo:font-style="italic"/></style:style>' +
     '<style:style style:name="Code" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
+    '<style:style style:name="InlineTaskTitle" style:family="paragraph"><style:paragraph-properties fo:margin-left="0.5in" fo:margin-right="0.5in" fo:padding="0.05in" fo:border="0.5pt solid #000000" fo:background-color="#eeeeee"/><style:text-properties fo:font-weight="bold"/></style:style>' +
     '<style:style style:name="Planning" style:family="paragraph"><style:text-properties fo:font-style="italic" fo:color="#666666"/></style:style>' +
     '<style:style style:name="Footnote" style:family="paragraph"><style:text-properties fo:font-size="9pt"/></style:style>' +
     '<style:style style:name="Bold" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>' +
@@ -638,6 +650,7 @@ function buildTocOdt(roots, toc, numberingEnabled) {
 /** @param {Doc} doc */
 export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't', brokenLinks = /** @type {import('./broken-links.js').BrokenLinks} */ ('nil') } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
+  ({ doc, scope } = foldInlineTasks(doc, scope));
   docForLinkResolutionOdt = doc;
   headingIdMapOdt = new Map();
   footnoteCounterOdt = 0;

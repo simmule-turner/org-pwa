@@ -1,0 +1,43 @@
+#+TITLE: Vars
+* S
+** F
+a
+*** Mine
+:PROPERTIES:
+:BEAMER_env: myenv
+:BEAMER_act: <1>
+:END:
+mm
+*** Fancy *x*
+:PROPERTIES:
+:BEAMER_env: fancy
+:BEAMER_act: [<2>]
+:BEAMER_opt: [o1]
+:END:
+ff
+*** Escapes
+:PROPERTIES:
+:BEAMER_env: e1
+:BEAMER_act: <2>
+:BEAMER_opt: o2,o3
+:END:
+c1
+*** Over
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+b
+** G
+:PROPERTIES:
+:BEAMER_opt: label=l
+:END:
+g
+** Frame with code
+=v=
+** Again
+:PROPERTIES:
+:BEAMER_env: againframe
+:BEAMER_ref: *F
+:BEAMER_opt: [label=x]
+:BEAMER_act: <3>
+:END:

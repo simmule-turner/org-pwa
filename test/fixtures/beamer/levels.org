@@ -1,0 +1,18 @@
+#+OPTIONS: toc:nil
+* L1a
+** L2a
+*** L3a
+**** L4a
+* L1b
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+** L2b
+*** L3b
+* L1c
+** L2c
+*** L3c
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+**** L4c

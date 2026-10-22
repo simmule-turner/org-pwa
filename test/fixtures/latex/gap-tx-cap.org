@@ -1,0 +1,9 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+CAPTION: One
+#+CAPTION: Two
+| a |
+
+#+CAPTION[short]: Long
+#+CAPTION: more
+[[file:p.png]]

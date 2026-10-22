@@ -1,0 +1,40 @@
+#+OPTIONS: H:2 toc:nil
+#+TITLE: Inline tasks
+#+OPTIONS: toc:nil
+* One
+text
+
+*************** TODO [#A] Fix *it* :work:home:
+:PROPERTIES:
+:ID: x
+:END:
+body of task with /italic/
+
+- list in task
+*************** END
+
+after
+
+*************** DONE Done one
+body
+*************** END
+
+last para
+** Two
+*************** Under two :t:
+second body
+#+begin_src js
+let x = 1;
+#+end_src
+*************** END
+
+* Three
+*************** Never closed
+dangling text
+
+* Four
+*************** Empty
+*************** END
+*************** TODO Only todo
+  indented body
+*************** END

@@ -12,11 +12,11 @@
  *   - links become `[description]` with the target listed after the section (`org-ascii-links-to-notes`);
  *   - emphasis keeps its markers (`*bold*`, `/italic/`), code and verbatim text read `like this'.
  *
- * Not yet: inline tasks, line numbers and references in source blocks, `#+ATTR_ASCII`, the `org-ascii-*` variables
+ * Not yet: line numbers and references in source blocks, the `org-ascii-*` variables
  * other than the text width and the character set (the exporter reads them from one place, `makeInfo`).
  */
 
-import { parseElements } from './org-elements.js';
+import { parseElements, parseAttributes } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { citeExportFor, dropSilentCitations } from './cite.js';
 import { removeIndentation } from './babel-blocks.js';
@@ -27,6 +27,7 @@ import { expandMacrosForExport } from './export-org.js';
 import { radioTargetRegExp } from './targets.js';
 import { BrokenLinkSignal, brokenLinkText, parseBrokenLinks } from './broken-links.js';
 import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
+import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
@@ -67,6 +68,7 @@ import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, bl
  *   caption?: Item[] | null,
  *   shortCaption?: Item[] | null,
  *   nameKey?: string | null,
+ *   attrAscii?: string[],
  *   label?: string | null,
  *   inline?: Item[] | null,
  *   fnNumber?: number,
@@ -389,6 +391,7 @@ function buildElements(list, parent, I) {
     node.postBlank = el.postBlank || 0;
     if (el.aff) {
       node.nameKey = el.aff.name;
+      if (el.aff.attr && el.aff.attr.ascii) node.attrAscii = el.aff.attr.ascii;
       Object.assign(node, captionItems(el.aff.caption, node, I));
       if (el.aff.name) I.named.set(el.aff.name, node);
     }
@@ -497,6 +500,13 @@ function buildBlock(el, parent, I) {
       return codeNode(mk('example-block', parent, { lines: unescapeCode(el.lines) }), name, el.params, I);
     case 'comment':
       return null;
+    case INLINE_TASK_BLOCK: {
+      const info = inlineTaskInfo(el.params);
+      const node = mk('inlinetask', parent, { todo: info.todo, priority: info.priority, tags: info.tags, rawTitle: info.title });
+      node.title = objects(info.title, node, I);
+      node.contents = buildElements(parseElements(el.lines), node, I);
+      return node;
+    }
     case 'export':
       return mk('export-block', parent, { name: (el.params.split(/\s+/)[0] || '').toUpperCase(), lines: el.lines });
     case 'verse': {
@@ -594,9 +604,10 @@ function walk(item, fn) {
  * @param {Info} I
  */
 function numberHeadlines(I) {
-  const counters = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const counters = /** @type {number[]} */ ([]);
   for (const h of I.headlines) {
     const rel = /** @type {number} */ (h.level);
+    while (counters.length < rel) counters.push(0);
     counters[rel - 1] = (counters[rel - 1] || 0) + 1;
     for (let i = rel; i < counters.length; i++) counters[i] = 0;
     h.number = counters.slice(0, rel);
@@ -699,16 +710,20 @@ function itemCheckbox(item, I) {
   return item.checkbox ? I.cs.checkbox[/** @type {'on' | 'off' | 'trans'} */ (item.checkbox)] : null;
 }
 
+const INLINE_TASK_WIDTH = 30;
+
 /** `org-ascii--current-text-width`. @param {Node} n @param {Info} I */
 function currentTextWidth(n, I) {
   if (n.type === 'headline') {
     const rank = lowLevel(n, I);
     return I.width - (rank ? rank * 2 : I.globalMargin);
   }
+  if (n.type === 'inlinetask') return INLINE_TASK_WIDTH; // org-ascii-inlinetask-width
   const genealogy = lineage(n);
   const parent = parentHeadline(n);
   let total = I.width - I.globalMargin;
-  if (parent) {
+  if (genealogy.some((e) => e.type === 'inlinetask')) total = INLINE_TASK_WIDTH;
+  else if (parent) {
     const rank = lowLevel(parent, I);
     total -= rank ? rank * 2 : I.innerMargin;
   }
@@ -757,7 +772,7 @@ function codeOf(n) {
 // ---- export ------------------------------------------------------------------------
 
 /** The greater elements: their contents are normalized before they are handed on. */
-const GREATER = new Set(['org-data', 'headline', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'footnote-definition', 'table']);
+const GREATER = new Set(['org-data', 'headline', 'inlinetask', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'footnote-definition', 'table']);
 const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
 
 /**
@@ -851,7 +866,9 @@ const TRANSCODERS = {
   'export-block': (n, _c, I) => (n.name === 'ASCII' ? justifyElement((n.lines || []).join('\n') + '\n', n, I) : null),
   'horizontal-rule': (n, _c, I) => {
     const width = currentTextWidth(n, I);
-    return justifyLines(I.cs.rule.repeat(width), width, 'center');
+    // #+ATTR_ASCII: :width N draws the rule N characters long (digits only, else the text width), centered
+    const wanted = parseAttributes(n.attrAscii || []).width;
+    return justifyLines(I.cs.rule.repeat(wanted !== undefined && /^[0-9]+$/.test(wanted) ? Number(wanted) : width), width, 'center');
   },
   'latex-environment': (n, _c, I) => (I.tex ? justifyElement(removeIndentation(n.lines || []).join('\n') + '\n', n, I) : null),
   drawer: (n, c, I) => {
@@ -874,6 +891,7 @@ const TRANSCODERS = {
     return links.trim() ? headlineSpacing(normalizeString(text)) + links : text;
   },
   headline: (n, c, I) => headlineText(n, c, I),
+  inlinetask: (n, c, I) => inlineTaskText(n, c, I),
   'org-data': (_n, c) => c,
   'footnote-definition': () => null,
 };
@@ -1013,7 +1031,7 @@ function describeLinks(links, width, I) {
  * @param {Node} h @param {Info} I @param {number} textWidth @param {boolean} underline @param {boolean} noTags @param {boolean} toc
  */
 function buildTitle(h, I, textWidth, underline, noTags, toc) {
-  const numbers = isNumbered(h, I) && h.number ? (toc ? `${h.number[h.number.length - 1]}. ` : `${h.number.join('.')} `) : '';
+  const numbers = h.type === 'headline' && isNumbered(h, I) && h.number ? (toc ? `${h.number[h.number.length - 1]}. ` : `${h.number.join('.')} `) : '';
   const alt = toc && h.properties && h.properties.ALT_TITLE ? h.properties.ALT_TITLE : null;
   const text = (alt !== null ? exportItems(objects(alt, h, I), I) : exportItems(h.title || [], I)).trim();
   const todo = I.withTodo && h.todo ? `${h.todo} ` : '';
@@ -1047,6 +1065,19 @@ function headlineText(h, contents, I) {
     return `${bullet}${title}\n\n${indentString(body, bullet.length)}`;
   }
   return `${title}\n\n${body}`;
+}
+
+/** `org-ascii-inlinetask` with `org-ascii-format-inlinetask-default`: a box 30 characters wide, flush right. @param {Node} n @param {string} contents @param {Info} I */
+function inlineTaskText(n, contents, I) {
+  const width = INLINE_TASK_WIDTH;
+  const utf8 = I.cs.utf8;
+  const line = (/** @type {string} */ ch) => ch.repeat(width);
+  const title = buildTitle(n, I, width, false, false, false);
+  const fitted = stringWidth(title) <= width ? title : fillString(title, width);
+  const inner =
+    line(utf8 ? '━' : '_') + '\n' + (utf8 ? '' : ' '.repeat(width) + '\n') + fitted + '\n' + (/\S/.test(contents) ? line(utf8 ? '─' : '-') + '\n' + contents : '') + line(utf8 ? '━' : '_');
+  const parent = parentHeadline(n);
+  return indentString(inner, I.width - I.globalMargin - (parent ? I.innerMargin : 0) - width);
 }
 
 /** `org-ascii-item`. @param {Node} item @param {string} contents @param {Info} I */
@@ -1449,6 +1480,7 @@ function footnoteSection(I) {
  * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} [options]
  */
 export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil' } = {}) {
+  ({ doc, scope } = foldInlineTasks(doc, scope));
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
   const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup, brokenLinks);
   const skip = exclusion(doc);

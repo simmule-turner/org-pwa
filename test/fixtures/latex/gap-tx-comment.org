@@ -1,0 +1,8 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+a
+#+COMMENT: hidden
+b
+
+# comment
+c

@@ -1,0 +1,63 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\section{S}
+\label{sec:org7cd493b}
+\begin{frame}[label={sec:org200ef74}]{F}
+a <2> mid \alert{b} \pause end <3-4>
+\begin{itemize}
+\item item <2> mid
+\item<2> 
+\end{itemize}
+\end{frame}
+\note<2>{Note at level
+note text
+more note
+
+para 2}
+text after ignore
+\begin{block}{child of ignore}
+cc
+\end{block}
+\appendix
+appendix body
+\note<1>{nn}
+\againframe<3>[label=x]{sec:org200ef74}
+\begin{frame}[label={sec:org960eac8}]{}
+\end{frame}
+\begin{frame}[label={sec:org36fe993}]{Section-like env at frame level}
+b at frame level
+\end{frame}
+\begin{frame}[label={sec:orgc644249}]{Column at frame level}
+col at frame level
+\end{frame}
+\section{Top-level block}
+\label{sec:orgea6ea9c}
+tb
+ti
+\note{Top note
+tn}
+\end{document}

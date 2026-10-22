@@ -1,0 +1,15 @@
+#+SELECT_TAGS: s
+#+OPTIONS: toc:nil
+top text
+* A :s:
+ta
+** a1
+text1
+* B
+tb
+** b1 :s:
+tb1
+*** b11
+* C
+** c1
+tc

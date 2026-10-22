@@ -1,0 +1,11 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+ATTR_LATEX: :environment quotation
+#+BEGIN_QUOTE
+q
+#+END_QUOTE
+
+#+ATTR_LATEX: :environment foo :options [x]
+#+BEGIN_CENTER
+c
+#+END_CENTER

@@ -1,0 +1,4 @@
+a[fn:1] b[fn:2]
+
+[fn:1] def with [fn:2]
+[fn:2] second

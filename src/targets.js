@@ -45,7 +45,7 @@ export function collectTargets(doc) {
       for (const node of heading.body || []) {
         if (node.type === 'paragraph') for (const line of node.inlineLines || []) visit(line, heading, out);
         else if (node.type === 'list') visitItems(node.items, heading, out);
-        else if (node.type === 'table') for (const row of node.rows || []) for (const cell of row.cellsInline || []) visit(cell, heading, out);
+        else if (node.type === 'table') for (const row of node.rows || []) for (const cell of ('cellsInline' in row ? row.cellsInline : null) || []) visit(cell, heading, out);
       }
       walk(heading.children || []);
     }
@@ -74,7 +74,14 @@ export function findTargetHeading(doc, name) {
  * @returns {RegExp | null}
  */
 export function radioTargetRegExp(doc) {
-  const names = new Set(collectTargets(doc).filter((t) => t.radio).map((t) => normalizeTargetName(t.name)));
+  /** @type {TargetEntry[]} */ const before = [];
+  const top = /** @type {Heading} */ (/** @type {unknown} */ (doc));
+  for (const node of doc.body || []) {
+    if (node.type === 'paragraph') for (const line of node.inlineLines || []) visit(line, top, before);
+    else if (node.type === 'list') visitItems(node.items, top, before);
+    else if (node.type === 'table') for (const row of node.rows || []) for (const cell of ('cellsInline' in row ? row.cellsInline : null) || []) visit(cell, top, before);
+  }
+  const names = new Set([...before, ...collectTargets(doc)].filter((t) => t.radio).map((t) => normalizeTargetName(t.name))); // the text before the first headline counts too
   if (names.size === 0) return null;
   const parts = [...names].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+'));
   return new RegExp('(?<![\\p{L}\\p{N}_])(?:' + parts.join('|') + ')(?![\\p{L}\\p{N}_])', 'giu');

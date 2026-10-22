@@ -1,0 +1,1 @@
+(setq org-latex-active-timestamp-format "\\textbf{%s}" org-latex-inactive-timestamp-format "\\emph{%s}")

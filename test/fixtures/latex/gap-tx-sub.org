@@ -1,0 +1,3 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+a_(b) a_b.c x_\alpha a_*b a_{b c} a^2 a_-1 a_+ a_b_c a_1.5 a_b, a^(x) a_(b)c a_\alpha.

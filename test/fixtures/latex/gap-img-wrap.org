@@ -1,0 +1,5 @@
+#+ATTR_LATEX: :float wrap
+[[file:c.png]]
+
+#+ATTR_LATEX: :float wrap
+[[file:c.tikz]]

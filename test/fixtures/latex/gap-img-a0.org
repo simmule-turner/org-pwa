@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :width 4cm
+[[file:c.png]]
+
+#+ATTR_LATEX: :width 4cm
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :width 4cm
+[[file:c.svg]]
+
+#+ATTR_LATEX: :width 4cm
+[[file:c.pdf]]

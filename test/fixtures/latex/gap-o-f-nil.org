@@ -1,0 +1,13 @@
+#+OPTIONS: f:nil
+#+TITLE: T
+* TODO [#A] Head [1/2] :t1:
+- [ ] x
+- [X] y
+a\nb \alpha text[fn:1]
+** sub
+*** subsub
+**** subsubsub
+* DONE x
+CLOSED: [2026-10-22 Thu]
+
+[fn:1] def

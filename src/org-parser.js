@@ -621,6 +621,7 @@ export {
   serializeOrg,
   serializeHeadingSubtree,
   serializeHeadingLine,
+  headingPreambleLines,
   findHeadingLineNumber,
   headingLineIndex,
   findHeadingAtLine,

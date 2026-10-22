@@ -1,0 +1,2 @@
+#+OPTIONS: tex:nil
+$x$ \alpha \(y\)

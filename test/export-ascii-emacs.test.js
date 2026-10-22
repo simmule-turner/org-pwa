@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { exportToAscii } from '../src/export-ascii.js';
+import { setInlineTaskLevel } from '../src/inline-tasks.js';
 
 // test/fixtures/ascii/NAME[.CHARSET].txt are what Emacs 29.3 (ox-ascii) writes for NAME.org; tools/gen-ascii-oracle.mjs makes them.
 const dir = new URL('./fixtures/ascii/', import.meta.url);
@@ -23,9 +24,12 @@ for (const name of names) {
   for (const [charset, suffix] of [['ascii', ''], ['utf-8', '.utf-8'], ['latin1', '.latin1']]) {
     if (!fs.existsSync(new URL(`${name}${suffix}.txt`, dir))) continue;
     test(`ASCII export of ${name} matches Emacs (${charset})`, () => {
+      setInlineTaskLevel(name.startsWith('inline-') ? 15 : null); // org-inlinetask is loaded for the inline-* fixtures only
       const doc = parseOrg(read(`${name}.org`));
       const scope = name.startsWith('subtree-') ? findChosen(doc.children) : null;
       assert.equal(exportToAscii(doc, scope, 72, { charset }), read(`${name}${suffix}.txt`));
     });
   }
 }
+
+test.after(() => setInlineTaskLevel(null));

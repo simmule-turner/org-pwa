@@ -23,9 +23,9 @@ test('forms that need Emacs to run are ignored', () => {
   assert.equal(vars.get('b').v, 'ok');
 });
 
-test('the defaults are Org’s: three classes, verbatim source blocks, no extra packages', () => {
+test('the defaults are Org’s: its classes (and beamer), verbatim source blocks, no extra packages', () => {
   const cfg = latexConfig(undefined);
-  assert.deepEqual(cfg.classes.map((c) => c.name), ['article', 'report', 'book']);
+  assert.deepEqual(cfg.classes.map((c) => c.name), ['article', 'report', 'book', 'beamer']);
   assert.equal(cfg.backend, 'verbatim');
   assert.deepEqual(cfg.packages, []);
   assert.equal(cfg.listingsLangs.get('python'), 'Python');

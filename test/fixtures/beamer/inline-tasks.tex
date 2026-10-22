@@ -1,0 +1,113 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{Inline tasks}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Inline tasks},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\section{One}
+\label{sec:orgabf83c9}
+text
+
+\begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+\textbf{\textsf{\textsc{TODO}}} Fix \alert{it}\hfill{}\textsc{:work:home:}
+
+\rule[.8em]{\linewidth}{2pt}
+
+body of task with \emph{italic}
+
+\begin{itemize}
+\item list in task
+\end{itemize}
+\end{minipage}
+}
+\end{center}
+
+after
+
+\begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+\textbf{\textsf{\textsc{DONE}}} Done one
+
+\rule[.8em]{\linewidth}{2pt}
+
+body
+\end{minipage}
+}
+\end{center}
+
+last para
+\begin{frame}[label={sec:orgfa53e63},fragile]{Two}
+ \begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+Under two\hfill{}\textsc{:t:}
+
+\rule[.8em]{\linewidth}{2pt}
+
+second body
+\begin{verbatim}
+let x = 1;
+\end{verbatim}
+\end{minipage}
+}
+\end{center}
+\end{frame}
+
+\section{Three}
+\label{sec:org73ce0c1}
+\begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+Never closed
+
+\end{minipage}
+}
+\end{center}
+dangling text
+
+\section{Four}
+\label{sec:orgec8c89b}
+\begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+Empty
+
+\end{minipage}
+}
+\end{center}
+\begin{center}
+\fbox{
+\begin{minipage}[c]{.6\linewidth}
+\textbf{\textsf{\textsc{TODO}}} Only todo
+
+\rule[.8em]{\linewidth}{2pt}
+
+indented body
+\end{minipage}
+}
+\end{center}
+\end{document}

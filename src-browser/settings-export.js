@@ -189,7 +189,7 @@ function latexInitRow(rerender, text) {
   name.style.cssText = 'font-size: 14px; font-weight: 700; min-height: 32px; display: flex; align-items: center';
   name.textContent = 'Classes, packages and source blocks';
   row.appendChild(name);
-  row.appendChild(line("Emacs Lisp, as in an init file: (add-to-list 'org-latex-classes ...), (add-to-list 'org-latex-packages-alist '(\"\" \"listings\")), (setq org-latex-src-block-backend 'listings) or 'minted, org-latex-listings-options, org-latex-minted-options. Other forms are ignored.", 'font-size: 11px; opacity: 0.65; margin-bottom: 6px'));
+  row.appendChild(line("Emacs Lisp, as in an init file: (add-to-list 'org-latex-classes ...), (add-to-list 'org-latex-packages-alist '(\"\" \"listings\")), (setq org-latex-src-block-backend 'listings) or 'minted, org-latex-listings-options, org-latex-minted-options; for Beamer org-beamer-frame-level, org-beamer-theme, org-beamer-frame-default-options, org-beamer-environments-extra. Other forms are ignored.", 'font-size: 11px; opacity: 0.65; margin-bottom: 6px'));
   let current = text;
   const field = editorBox({
     name: 'Classes, packages and source blocks',

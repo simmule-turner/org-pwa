@@ -1,0 +1,109 @@
+#+OPTIONS: toc:nil H:3
+* S1
+** SS1
+*** F1
+**** B1
+:PROPERTIES:
+:BEAMER_col: 0.5
+:BEAMER_opt: T
+:END:
+c
+**** B2 :BMCOL:
+:PROPERTIES:
+:BEAMER_col: 0.5
+:BEAMER_env: block
+:END:
+d
+**** B3
+:PROPERTIES:
+:BEAMER_env: columns
+:BEAMER_opt: onlytextwidth,t
+:END:
+***** Cx
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: .4
+:BEAMER_act: <2->
+:END:
+x
+***** Cy
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 0.5
+:END:
+y
+**** B4
+:PROPERTIES:
+:BEAMER_env: block
+:BEAMER_opt: [t]
+:BEAMER_act: <3->
+:END:
+z
+**** B5
+:PROPERTIES:
+:BEAMER_env: exampleblock
+:BEAMER_act: [<+->]
+:END:
+z
+**** B6
+:PROPERTIES:
+:BEAMER_env: verse
+:BEAMER_act: <2->
+:END:
+vv
+**** B7
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+ign
+**** CB
+:PROPERTIES:
+:BEAMER_env: beamercolorbox
+:BEAMER_col: 0.5
+:BEAMER_opt: rounded=true
+:BEAMER_act: <2>
+:END:
+cb
+**** Proof
+:PROPERTIES:
+:BEAMER_env: proof
+:BEAMER_opt: <1>[Fermat]
+:END:
+pr
+**** Defn
+:PROPERTIES:
+:BEAMER_env: definition
+:BEAMER_opt: [Foo]
+:END:
+df
+**** Quotation
+:PROPERTIES:
+:BEAMER_env: quotation
+:END:
+qt
+**** Theorem
+:PROPERTIES:
+:BEAMER_env: theorem
+:BEAMER_act: <2->
+:END:
+th
+**** Example
+:PROPERTIES:
+:BEAMER_env: example
+:END:
+ex
+**** Alert
+:PROPERTIES:
+:BEAMER_env: alertblock
+:END:
+al
+**** Struct
+:PROPERTIES:
+:BEAMER_env: structureenv
+:END:
+st
+**** Quote
+:PROPERTIES:
+:BEAMER_env: quote
+:END:
+qu

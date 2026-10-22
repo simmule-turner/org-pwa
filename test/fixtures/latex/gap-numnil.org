@@ -1,0 +1,6 @@
+#+OPTIONS: num:nil
+* A
+:PROPERTIES:
+:UNNUMBERED: nil
+:END:
+** B

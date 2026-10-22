@@ -1,0 +1,187 @@
+{
+ "html4-strict": {
+  "head": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\n\"http://www.w3.org/TR/html4/strict.dtd\">\n<html>",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br>"
+  ],
+  "hr": [
+   "<hr>"
+  ],
+  "img": [
+   "<img src=\"img.png\">"
+  ],
+  "col": [
+   "<col>",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "html4-transitional": {
+  "head": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n\"http://www.w3.org/TR/html4/loose.dtd\">\n<html>",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br>"
+  ],
+  "hr": [
+   "<hr>"
+  ],
+  "img": [
+   "<img src=\"img.png\">"
+  ],
+  "col": [
+   "<col>",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "html4-frameset": {
+  "head": "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Frameset//EN\"\n\"http://www.w3.org/TR/html4/frameset.dtd\">\n<html>",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br>"
+  ],
+  "hr": [
+   "<hr>"
+  ],
+  "img": [
+   "<img src=\"img.png\">"
+  ],
+  "col": [
+   "<col>",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "xhtml-strict": {
+  "head": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br />",
+   "<br>"
+  ],
+  "hr": [
+   "<hr />"
+  ],
+  "img": [
+   "<img src=\"img.png\" />"
+  ],
+  "col": [
+   "<col />",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "xhtml-transitional": {
+  "head": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"\n\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br />",
+   "<br>"
+  ],
+  "hr": [
+   "<hr />"
+  ],
+  "img": [
+   "<img src=\"img.png\" />"
+  ],
+  "col": [
+   "<col />",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "xhtml-frameset": {
+  "head": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Frameset//EN\"\n\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br />",
+   "<br>"
+  ],
+  "hr": [
+   "<hr />"
+  ],
+  "img": [
+   "<img src=\"img.png\" />"
+  ],
+  "col": [
+   "<col />",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "xhtml-11": {
+  "head": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"\n\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">",
+  "contentType": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />",
+  "br": [
+   "<br />",
+   "<br>"
+  ],
+  "hr": [
+   "<hr />"
+  ],
+  "img": [
+   "<img src=\"img.png\" />"
+  ],
+  "col": [
+   "<col />",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table border=\"2\" cellspacing=\"0\" cellpadding=\"6\" rules=\"groups\" frame=\"hsides\">"
+  ]
+ },
+ "html5": {
+  "head": "<!DOCTYPE html>\n<html lang=\"en\">",
+  "contentType": "<meta charset=\"utf-8\" />",
+  "br": [
+   "<br>"
+  ],
+  "hr": [
+   "<hr>"
+  ],
+  "img": [
+   "<img src=\"img.png\">"
+  ],
+  "col": [
+   "<col>",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table>"
+  ]
+ },
+ "xhtml5": {
+  "head": "<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">",
+  "contentType": "<meta charset=\"utf-8\" />",
+  "br": [
+   "<br />",
+   "<br>"
+  ],
+  "hr": [
+   "<hr />"
+  ],
+  "img": [
+   "<img src=\"img.png\" />"
+  ],
+  "col": [
+   "<col />",
+   "<colgroup>"
+  ],
+  "table": [
+   "<table>"
+  ]
+ }
+}

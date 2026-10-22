@@ -114,6 +114,9 @@ function keywordValues(doc, name) {
     .join(' ');
 }
 
+/** The {{{n}}} counters, by name; they start over for each export. @type {Map<string, number>} */
+let counters = new Map();
+
 /** Expands every {{{macro}}} reference in `text` against `macros`
  *  (see buildMacroTable) and `doc`'s own keywords, using `now` for
  *  the {{{time(...)}}} macro's own current-time value. An unrecognized
@@ -124,8 +127,10 @@ function keywordValues(doc, name) {
  * @param {any} macros
  * @param {Doc} doc
  * @param {Date} now
+ * @param {number} [depth]
+ * @returns {string}
  *  silently dropped. */
-function expandMacrosInText(text, macros, doc, now) {
+function expandMacrosInText(text, macros, doc, now, depth = 0) {
   return text.replace(MACRO_USE_RE, (whole, /** @type {string} */ name, _paren, argsStr) => {
     const args = splitMacroArgs(argsStr);
     if (name === 'title') return keywordValues(doc, 'TITLE');
@@ -146,12 +151,22 @@ function expandMacrosInText(text, macros, doc, now) {
       }
       return raw;
     }
+    if (name === 'n') {
+      // {{{n(NAME)}}} counts up from 1 for each NAME; a second argument of `-` repeats the last number and a number starts over there
+      const key = args[0] || '';
+      const action = args[1];
+      let value = counters.get(key) || 0;
+      if (action !== '-') value = action !== undefined && /^\d+$/.test(action) ? Number(action) : value + 1;
+      counters.set(key, value);
+      return String(value);
+    }
     if (name === 'time') return formatTime(now, args[0] || '%Y-%m-%d');
     if (name === 'keyword') return keywordValues(doc, args[0] || '');
     if (name in macros) {
       const template = macros[name];
       if (/^\(eval\b/.test(template.trim())) return whole; // real org's own escape into arbitrary Emacs Lisp -- can't safely execute this, same reason step (c) can't run a code block; left exactly as written
-      return template.replace(/\$(\d+)/g, (/** @type {any} */ _, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
+      const filled = template.replace(/\$(\d+)/g, (/** @type {any} */ _, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
+      return depth < 20 ? expandMacrosInText(filled, macros, doc, now, depth + 1) : filled; // a macro may use others
     }
     return whole;
   });
@@ -197,6 +212,7 @@ function expandBodyLines(lines, expand) {
  * @param {Date} now
  *  new doc; the input is never mutated. */
 function expandMacros(doc, now) {
+  counters = new Map();
   const macros = buildMacroTable(doc);
   const expand = (/** @type {string} */ text) => expandMacrosInText(text, macros, doc, now);
   const newBodyLines = expandBodyLines(doc.bodyLines || [], expand);

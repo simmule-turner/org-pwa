@@ -1,0 +1,14 @@
+#+BEGIN_SRC c :exports none
+x
+#+END_SRC
+#+BEGIN_SRC c :exports results
+y
+#+END_SRC
+#+BEGIN_SRC c :exports both :eval no
+z
+#+END_SRC
+#+BEGIN_SRC c :exports code
+w
+#+END_SRC
+#+BEGIN_SRC c
+#+END_SRC

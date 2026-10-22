@@ -6,7 +6,7 @@ import { htmlExportDefaults, latexExportDefaults } from '../src/export-defaults.
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
-import { exportToLatex } from '../src/export-latex.js';
+import { exportToLatex, exportToBeamer } from '../src/export-latex.js';
 import { exportLatexZip } from '../src/export-latex-zip.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
 import { prepareBabelExport } from '../src/babel-export.js';
@@ -79,7 +79,7 @@ function dataUrlBytes(url) {
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'latex') {
+  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     try {
@@ -89,16 +89,17 @@ export async function performExport(format, scope) {
       saveOut(baseName + '.md', exportToMarkdown(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/markdown');
     } else if (format === 'html') {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
-    } else if (format === 'latex') {
+    } else if (format === 'latex' || format === 'beamer') {
+      const beamer = format === 'beamer'; // a presentation: the same .tex and .zip, from the Beamer back end
       const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) };
       const heading = scope && typeof scope === 'object' ? scope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);
       if (pictures.size) {
-        const bytes = await exportLatexZip(doc, heading, { baseName, defaults, readImage: async (target) => dataUrlBytes(pictures.get(target)) });
+        const bytes = await exportLatexZip(doc, heading, { baseName, defaults, beamer, readImage: async (target) => dataUrlBytes(pictures.get(target)) });
         saveOut(baseName + '.zip', bytes.slice(), 'application/zip');
       } else {
-        saveOut(baseName + '.tex', exportToLatex(doc, heading, { defaults }), 'application/x-tex');
+        saveOut(baseName + '.tex', (beamer ? exportToBeamer : exportToLatex)(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
       saveOut(baseName + '.odt', exportToOdt(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'application/vnd.oasis.opendocument.text');
@@ -183,7 +184,7 @@ export async function performExport(format, scope) {
   S.exportFormat = null;
   S.exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'beamer' ? 'Beamer' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
   );
   renderMoreMenu();
   render();
@@ -250,8 +251,13 @@ export function renderExportFlow() {
       S.exportFormat = 'latex';
       renderMoreMenu();
     });
+    const beamerBtn = aliasedMenuDivItem(exportMenuAliases, 'Beamer', () => {
+      S.exportFormat = 'beamer';
+      renderMoreMenu();
+    });
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
+      { label: 'Beamer', btn: beamerBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'LaTeX', btn: latexBtn },
       { label: 'Markdown', btn: mdBtn },
@@ -472,7 +478,7 @@ export function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'markdown' ? 'Markdown' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'markdown' ? 'Markdown' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : S.exportFormat === 'beamer' ? 'Beamer' : 'Calendar (.ics)'} for:`;
   morePanel.appendChild(label);
 
   morePanel.appendChild(

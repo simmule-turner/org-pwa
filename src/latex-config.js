@@ -5,7 +5,7 @@
  * Their defaults are Org 9.6's. See lisp-read.js for the forms an init text may use.
  */
 
-import { runInit, readLisp, listItems, stringValue, symbolName, isNil } from './lisp-read.js';
+import { runInit, readLisp, listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
 /**
@@ -13,7 +13,9 @@ import { runInit, readLisp, listItems, stringValue, symbolName, isNil } from './
  * @typedef {{ numbered: string | null, unnumbered: string | null }} Sectioning
  * @typedef {{ name: string, header: string, sections: (Sectioning | null)[] }} LatexClass
  * @typedef {{ options: string, name: string, compilers: string[] | null }} LatexPackage
- * @typedef {{ classes: LatexClass[], packages: (string | LatexPackage)[], backend: 'verbatim' | 'listings' | 'minted' | 'engraved', listingsOptions: [string, string | null][], listingsLangs: Map<string, string>, mintedOptions: [string, string | null][], mintedLangs: Map<string, string> }} LatexConfig
+ * @typedef {{ frameLevel: number, theme: string, frameOptions: string, outlineTitle: string, outlineOptions: string, subtitleFormat: string, environments: { name: string, begin: string, end: string }[] }} BeamerConfig
+ * @typedef {{ tablesCentered: boolean, tablesBooktabs: boolean, tableEnvironment: string, tableMode: string, captionAbove: Set<string>, imagesCentered: boolean, figurePosition: string, titleCommand: string, tocCommand: string, activeTimestamp: string, inactiveTimestamp: string, preferUserLabels: boolean, textMarkup: Map<string, string> }} LatexVars
+ * @typedef {{ vars: LatexVars, beamer: BeamerConfig, classes: LatexClass[], packages: (string | LatexPackage)[], backend: 'verbatim' | 'listings' | 'minted' | 'engraved', listingsOptions: [string, string | null][], listingsLangs: Map<string, string>, mintedOptions: [string, string | null][], mintedLangs: Map<string, string> }} LatexConfig
  */
 
 const DEFAULT_INIT = `
@@ -29,7 +31,16 @@ const DEFAULT_INIT = `
     ("book" "\\\\documentclass[11pt]{book}"
      ("\\\\part{%s}" . "\\\\part*{%s}") ("\\\\chapter{%s}" . "\\\\chapter*{%s}")
      ("\\\\section{%s}" . "\\\\section*{%s}") ("\\\\subsection{%s}" . "\\\\subsection*{%s}")
+     ("\\\\subsubsection{%s}" . "\\\\subsubsection*{%s}"))
+    ("beamer" "\\\\documentclass[presentation]{beamer}"
+     ("\\\\section{%s}" . "\\\\section*{%s}") ("\\\\subsection{%s}" . "\\\\subsection*{%s}")
      ("\\\\subsubsection{%s}" . "\\\\subsubsection*{%s}"))))
+(setq org-beamer-frame-level 1
+      org-beamer-theme "default"
+      org-beamer-frame-default-options ""
+      org-beamer-outline-frame-title "Outline"
+      org-beamer-outline-frame-options ""
+      org-beamer-subtitle-format "\\\\subtitle{%s}")
 (setq org-latex-listings-langs
   '((emacs-lisp "Lisp") (lisp "Lisp") (clojure "Lisp") (c "C") (cc "C++") (fortran "fortran")
     (perl "Perl") (cperl "Perl") (python "Python") (ruby "Ruby") (html "HTML") (xml "XML")
@@ -125,6 +136,75 @@ function langsOf(value) {
   return out;
 }
 
+/** The ox-latex variables for tables, figures, captions, the title, timestamps, labels and text markup. @param {Map<string, Lisp>} vars @returns {LatexVars} */
+function varsOf(vars) {
+  const flag = (/** @type {string} */ key, /** @type {boolean} */ fallback) => {
+    const v = vars.get(key);
+    return v === undefined ? fallback : !isNil(v);
+  };
+  const text = (/** @type {string} */ key, /** @type {string} */ fallback) => {
+    const v = str(vars.get(key));
+    return v === null ? fallback : v;
+  };
+  const symbols = (/** @type {Lisp | undefined} */ v, /** @type {string[]} */ fallback) => (v === undefined ? fallback : (listItems(v) || (symbolName(v) && !isNil(v) ? [v] : [])).map((x) => symbolName(x)).filter((x) => !!x));
+  const mode = vars.get('org-latex-default-table-mode');
+  /** @type {Map<string, string>} */
+  const markup = new Map([['bold', '\\textbf{%s}'], ['code', 'protectedtexttt'], ['italic', '\\emph{%s}'], ['strike-through', '\\sout{%s}'], ['underline', '\\uline{%s}'], ['verbatim', 'protectedtexttt']]);
+  const given = vars.get('org-latex-text-markup-alist');
+  if (given !== undefined) {
+    markup.clear();
+    for (const entry of listItems(given) || []) {
+      if (entry.k !== 'list') continue;
+      const key = symbolName(entry.items[0]);
+      const value = entry.tail ? entry.tail : entry.items[1];
+      const v = value && (str(value) ?? symbolName(value));
+      if (key && v) markup.set(key, v);
+    }
+  }
+  return {
+    tablesCentered: flag('org-latex-tables-centered', true),
+    tablesBooktabs: flag('org-latex-tables-booktabs', false),
+    tableEnvironment: text('org-latex-default-table-environment', 'tabular'),
+    tableMode: (mode && symbolName(mode)) || 'table',
+    captionAbove: new Set(/** @type {string[]} */ (symbols(vars.get('org-latex-caption-above'), ['table']))),
+    imagesCentered: flag('org-latex-images-centered', true),
+    figurePosition: text('org-latex-default-figure-position', 'htbp'),
+    titleCommand: text('org-latex-title-command', '\\maketitle'),
+    tocCommand: text('org-latex-toc-command', '\\tableofcontents\n\n'),
+    activeTimestamp: text('org-latex-active-timestamp-format', '\\textit{%s}'),
+    inactiveTimestamp: text('org-latex-inactive-timestamp-format', '\\textit{%s}'),
+    preferUserLabels: flag('org-latex-prefer-user-labels', false),
+    textMarkup: markup,
+  };
+}
+
+/** The ox-beamer variables, and `org-beamer-environments-extra` as a list of environments that win over the built-in ones. @param {Map<string, Lisp>} vars @returns {BeamerConfig} */
+function beamerOf(vars) {
+  const text = (/** @type {string} */ key, /** @type {string} */ fallback) => {
+    const v = str(vars.get(key));
+    return v === null ? fallback : v;
+  };
+  const level = datum(vars.get('org-beamer-frame-level') || { k: 'sym', v: 'nil' });
+  /** @type {{ name: string, begin: string, end: string }[]} */
+  const environments = [];
+  for (const entry of listItems(vars.get('org-beamer-environments-extra')) || []) {
+    const items = listItems(entry);
+    const name = items && str(items[0]);
+    const begin = items && str(items[2]);
+    const end = items && str(items[3]);
+    if (name && begin !== null && end !== null) environments.push({ name, begin, end });
+  }
+  return {
+    frameLevel: level && level.k === 'num' && level.v >= 1 ? level.v : 1,
+    theme: text('org-beamer-theme', 'default'),
+    frameOptions: text('org-beamer-frame-default-options', ''),
+    outlineTitle: text('org-beamer-outline-frame-title', 'Outline'),
+    outlineOptions: text('org-beamer-outline-frame-options', ''),
+    subtitleFormat: text('org-beamer-subtitle-format', '\\subtitle{%s}'),
+    environments,
+  };
+}
+
 /** @type {Map<string, Lisp> | null} */
 let defaults = null;
 
@@ -140,6 +220,8 @@ export function latexConfig(init) {
   const name = wanted ? (symbolName(wanted) === 't' ? 'listings' : symbolName(wanted)) : 'verbatim';
   const backend = name === 'listings' || name === 'minted' || name === 'engraved' ? name : 'verbatim';
   return {
+    vars: varsOf(vars),
+    beamer: beamerOf(vars),
     classes: classesOf(vars.get('org-latex-classes')),
     packages: packagesOf(vars.get('org-latex-packages-alist')),
     backend,
@@ -152,7 +234,7 @@ export function latexConfig(init) {
 
 /** The names of the classes an init text defines, for the Settings class list. @param {string | undefined} init */
 export function latexClassNames(init) {
-  return [...new Set(latexConfig(init).classes.map((c) => c.name))];
+  return [...new Set(latexConfig(init).classes.map((c) => c.name))].filter((n) => n !== 'beamer');
 }
 
 /** Parses an init text only to tell whether it has anything the exporter reads (for the "N set" count). @param {string | undefined} init */

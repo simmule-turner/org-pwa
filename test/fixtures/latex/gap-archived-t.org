@@ -1,0 +1,3 @@
+#+OPTIONS: arch:t
+* A :ARCHIVE:
+text

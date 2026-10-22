@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :center nil
+[[file:c.png]]
+
+#+ATTR_LATEX: :center nil
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :center nil
+[[file:c.svg]]
+
+#+ATTR_LATEX: :center nil
+[[file:c.pdf]]

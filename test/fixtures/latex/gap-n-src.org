@@ -1,0 +1,5 @@
+#+NAME: n
+#+BEGIN_SRC c
+x
+#+END_SRC
+[[n]]

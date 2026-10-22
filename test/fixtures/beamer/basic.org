@@ -1,0 +1,80 @@
+#+TITLE: Deck *one*
+#+AUTHOR: Me
+#+DATE: 2026-01-02
+#+BEAMER_THEME: Madrid
+#+BEAMER_COLOR_THEME: dolphin
+#+BEAMER_FONT_THEME: structurebold
+#+BEAMER_INNER_THEME: circles
+#+BEAMER_OUTER_THEME: infolines
+#+BEAMER_HEADER: \usepackage{tikz}
+#+BEAMER: \tableofcontents
+#+OPTIONS: H:2 toc:nil
+* Intro
+** First slide
+Some text with /emphasis/.
+- one
+- two
+** Second slide :tag:
+:PROPERTIES:
+:BEAMER_opt: fragile,label=sec2
+:END:
+#+begin_src js
+let a = 1;
+#+end_src
+* Part two
+Text directly under a section.
+** Blocks
+*** A block
+Block text
+*** Alert here
+:PROPERTIES:
+:BEAMER_env: alertblock
+:END:
+alerting
+*** Example here
+:PROPERTIES:
+:BEAMER_env: example
+:END:
+an example
+*** Theorem one
+:PROPERTIES:
+:BEAMER_env: theorem
+:BEAMER_act: <2->
+:END:
+a theorem
+** Columns
+*** Left
+:PROPERTIES:
+:BEAMER_col: 0.5
+:END:
+left text
+*** Right
+:PROPERTIES:
+:BEAMER_col: 0.5
+:BEAMER_env: block
+:END:
+right text
+** Notes slide
+:PROPERTIES:
+:BEAMER_env: fullframe
+:END:
+full text
+** Appendix
+:PROPERTIES:
+:BEAMER_env: appendix
+:END:
+** Back
+:PROPERTIES:
+:BEAMER_env: againframe
+:BEAMER_ref: *Second slide
+:END:
+** A note
+:PROPERTIES:
+:BEAMER_env: note
+:END:
+note body
+** Ignored
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+shown without heading

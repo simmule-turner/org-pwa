@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { exportToHtml } from '../src/export-html.js';
 import { cacheBibliography } from '../src/cite.js';
+import { setInlineTaskLevel } from '../src/inline-tasks.js';
 
 // The .expected.html files are what Emacs 29.3's ox-html produced for each .org file
 // ((org-export-as 'html), org-export-use-babel nil), reduced to document structure by `skeleton` below.
@@ -27,11 +28,14 @@ function skeleton(h) {
   return h.replace(/></g, '>\n<').trim();
 }
 
-for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
+for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) {
   test(`HTML export of fixture p${n} has the structure ox-html gives it`, () => {
+    setInlineTaskLevel(n === 15 ? 15 : null); // org-inlinetask is loaded for p15 only
     // citations read the bibliography files named in the fixture, which sit beside it
     for (const m of fixture(`p${n}.org`).matchAll(/^#\+BIBLIOGRAPHY:\s*"?([^"\n]+?)"?\s*$/gim)) cacheBibliography(m[1], fixture(m[1]));
     const ours = skeleton(exportToHtml(parseOrg(fixture(`p${n}.org`))));
     assert.equal(ours, fixture(`p${n}.expected.html`).trim());
   });
 }
+
+test.after(() => setInlineTaskLevel(null));

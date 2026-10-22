@@ -1,0 +1,1 @@
+(setq org-latex-caption-above (quote (table image src-block)))

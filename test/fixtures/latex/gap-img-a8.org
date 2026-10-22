@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :options angle=90 :scale 2
+[[file:c.png]]
+
+#+ATTR_LATEX: :options angle=90 :scale 2
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :options angle=90 :scale 2
+[[file:c.svg]]
+
+#+ATTR_LATEX: :options angle=90 :scale 2
+[[file:c.pdf]]

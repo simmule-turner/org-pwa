@@ -18,8 +18,6 @@ The Android app writes into =local:= agenda files while a local file is open. In
 Read, with no view of those types to apply them to; they follow if the Agenda gains a tags-match or search view. Effort: S. Impact: S.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
-** [#B] More Hebrew and Islamic diary functions
-=diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles=, and the Bahá'í and Islamic equivalents. The date arithmetic is there; =-parasha= and =-sabbath-candles= also need sunset times. Effort: M. Impact: S.
 ** [#C] Chinese holidays
 =holiday-oriental-holidays= and =diary-chinese-date= need the Chinese calendar's new-moon and solar-term calculation, which the solar holidays' equinox and solstice code does not cover. Effort: L. Impact: S.
 
@@ -38,16 +36,31 @@ Org's =_= and =^= rows name fields for use on the right of a formula; naming one
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
 * Export
-** [#C] =#+ATTR_ASCII:= and inline tasks in ASCII export
-** [#C] =#+HTML_DOCTYPE:=
-** [#C] Beamer
+** [#C] Slides as HTML, printable to PDF
+- Why: there is no TeX in the app, so Beamer stops at a =.tex= file. An HTML slide export turns into a PDF with the browser's Print → Save as PDF, on a phone too.
+- Not in Emacs: =ox-beamer= writes LaTeX only; HTML slides come from outside packages (=org-re-reveal=). So this is a separate entry, *Slides (HTML)*, in the Export menu. *Beamer* keeps meaning what Emacs's Beamer means.
+- Change: a second back end over the Beamer walk in =src/export-latex.js= (the frame, section, block and column decisions are reused as they are). A frame is one page, a block a box, columns are side by side by =BEAMER_col=. =@page= sets the page size (16:9) and a page break follows each frame. Title slide, outline frame, =note= (left out of the page), =againframe=, =appendix= and =ignoreheading= follow the Beamer rules. Contents come from the HTML exporter, so links, tables, code and math look as they do in HTML export.
+- Differences from Beamer to state in the README:
+  - Themes: =\usetheme= names cannot be reproduced. A few names map to built-in looks and the rest use a plain one.
+  - Overlays (=<+->=, =<2->=, =BEAMER_act=): a choice to make. Beamer's PDF has one page per step. Either match that (one printed page per step) or flatten (everything on one page). Matching is the larger part of the work.
+  - =\setbeamertemplate=, =#+BEAMER_HEADER:= and other raw LaTeX are not used.
+  - Page breaks inside a frame that is too long are the browser's, not =allowframebreaks=.
+- Effort: M for the flattened version, L with a page per overlay step. Impact: S to M for those who give talks from a phone.
+
+** [#B] LaTeX export: where it differs from Emacs
+Found by about 375 small probes run through Emacs 29.3 and the app and compared line by line; the wrong or lost output and the =#+OPTIONS:=, property and figure differences are fixed and kept as fixtures. What is left:
+- Links: =~/= paths are not expanded to the home directory and =docview:= links are not written as Emacs writes them (both depend on the machine Emacs ran on).
+- Text: the macros =input-file=, =modification-time=, =property= and =(eval ..)= (they need the file name, the heading in view or the Lisp interpreter).
+- Variables not read: =org-latex-default-table-mode= (Emacs writes such a table in a way no attribute produces), =org-latex-format-headline-function= (a Lisp function, so it waits for the interpreter), =org-latex-default-table-environment= =tabularx= on a math table.
+- Small: =creator:t= writes "Org Mode PWA", not Emacs's version string; a table inside a footnote definition is not repeated as Emacs does by accident; the table special rows (=#=, =*=, =!=, =_=, =^=, =$=, =/ < >=) are left out in LaTeX but still print in HTML.
+- Tests: each item gets a fixture from Emacs 29.3 (=tools/gen-latex-oracle.mjs=). Effort: M. Impact: S to M.
 
 * Order for the next release
 Impact = how often the gap meets everyday use. Effort: S under a day, M a day or two, L several days. Ranked by impact against effort, best first. Designs are in each item.
 
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
-| 1 | More Hebrew and Islamic diary functions | S | M | Date arithmetic is in place; sunset-based ones are the larger part |
+| 1 | Slides as HTML | S | M | Reuses the Beamer walk; overlays decide the size |
 | 2 | Chinese holidays | S | L | Needs a new astronomical calculation for little everyday use |
 
 Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.

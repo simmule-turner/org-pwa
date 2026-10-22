@@ -1,0 +1,22 @@
+#+TITLE: T
+* One
+text
+
+*************** TODO [#A] Fix *it* :work:home:
+:PROPERTIES:
+:ID: x
+:END:
+body of task with /italic/
+
+- list in task
+*************** END
+
+after
+
+*************** Plain task no body
+
+*************** DONE Done one
+body
+*************** END
+
+last para

@@ -15,6 +15,7 @@
  */
 
 import { startOfDay, endOfDay } from './agenda.js';
+import { emacsSunriseSunset } from './solar-emacs.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 10000; // safety valve, matching agenda.js's own precedent throughout
@@ -512,16 +513,19 @@ function timeZoneName(date) {
  * @param {Date} date @param {number} latitude @param {number} longitude @param {number} [height]
  * @returns {{ rise: number | null, set: number | null, daylight: string, zone: string }} */
 function solarSunriseSunset(date, latitude, longitude, height = -0.61) {
-  const utc = computeSunriseSunsetUtc(date, latitude, longitude, height);
-  const offset = localOffsetMinutes(date) / 60;
-  /** @param {number} h */
-  const local = (h) => (((h + offset) % 24) + 24) % 24;
-  return {
-    rise: utc ? local(utc.sunrise) : null,
-    set: utc ? local(utc.sunset) : null,
-    daylight: solarDaylight(computeDaylightHours(date, latitude, longitude, height)),
-    zone: timeZoneName(date),
+  const offset = localOffsetMinutes(date);
+  const standard = Math.min(localOffsetMinutes(new Date(date.getFullYear(), 0, 1)), localOffsetMinutes(new Date(date.getFullYear(), 6, 1)));
+  const saving = (offset - standard) / 60;
+  const sun = emacsSunriseSunset(date.getMonth() + 1, date.getDate(), date.getFullYear(), latitude, longitude, standard, height);
+  /** Rounded to the minute, then moved to daylight saving time. Where the place is far from the device's own time zone the moment
+   *  can fall past midnight; it is shown as a time of day (Emacs would give no event, as it assumes the device is at the place).
+   * @param {number | null} h */
+  const local = (h) => {
+    if (h === null) return null;
+    const t = Math.round(60 * h) / 60 + saving;
+    return ((t % 24) + 24) % 24;
   };
+  return { rise: local(sun.rise), set: local(sun.set), daylight: solarDaylight(sun.length), zone: timeZoneName(date) };
 }
 
 export {

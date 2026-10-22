@@ -42,6 +42,7 @@ import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn } from './holidays.js';
 import { nonGregorianDateLine } from './diary-nongregorian.js';
+import { hebrewBirthday, hebrewYahrzeit, hebrewOmer, hebrewRoshHodesh, hebrewParasha, isFriday } from './diary-hebrew.js';
 import { astroDayNumberLine, dayOfYearLine, isoDateLine, julianDateLine, lunarPhasesLine } from './diary-calendar.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
@@ -435,6 +436,40 @@ function canonicalDiaryLine(line, style) {
         : head.value === 'diary-bahai-date' ? nonGregorianDateLine('bahai', c)
         : lunarPhasesLine(y, m, d, context.timeZone);
       return line || false;
+    }
+
+    // The Hebrew-calendar entries of cal-hebrew.el. The birth or death date is written in calendar-date-style order; AFTER-SUNSET moves it a day.
+    case 'diary-hebrew-birthday':
+    case 'diary-hebrew-yahrzeit': {
+      const values = args.map((a) => ev(a, context));
+      if (values.length < 3 || !values.slice(0, 3).every((n) => Number.isInteger(n))) return false;
+      const order = /** @type {Record<string, number[]>} */ (DATE_STYLE_ORDER)[context.calendarDateStyle || 'american'] || DATE_STYLE_ORDER.american;
+      const at = (/** @type {number} */ kind) => /** @type {number} */ (values[order.indexOf(kind)]);
+      const when = /** @type {[number, number, number]} */ ([at(0), at(1), at(2)]);
+      const birthday = head.value === 'diary-hebrew-birthday';
+      const flag = birthday ? values[3] : values[4];
+      const afterSunset = flag !== undefined && isTruthy(flag);
+      const entry = context.entryText || '';
+      return (birthday ? hebrewBirthday : hebrewYahrzeit)(startOfDay(context.candidateDate), when, afterSunset, entry) || false;
+    }
+
+    case 'diary-hebrew-omer':
+      return hebrewOmer(startOfDay(context.candidateDate)) || false;
+
+    case 'diary-hebrew-rosh-hodesh':
+      return hebrewRoshHodesh(startOfDay(context.candidateDate)) || false;
+
+    case 'diary-hebrew-parasha':
+      return hebrewParasha(startOfDay(context.candidateDate)) || false;
+
+    case 'diary-hebrew-sabbath-candles': {
+      // On a Friday: the local sunset time less diary-hebrew-sabbath-candles-minutes (18 unless set).
+      const day = startOfDay(context.candidateDate);
+      if (!isFriday(day)) return false;
+      const sun = solarSunriseSunset(day, context.calendarLatitude, context.calendarLongitude);
+      if (sun.set === null) return false;
+      const minutes = typeof context.diaryHebrewSabbathCandlesMinutes === 'number' ? context.diaryHebrewSabbathCandlesMinutes : 18;
+      return `${solarTimeString(Math.round(sun.set * 60) / 60 - minutes / 60.0, sun.zone, context)} Sabbath candle lighting`;
     }
 
     case 'solar-sunrise-sunset': {
@@ -914,7 +949,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

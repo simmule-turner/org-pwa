@@ -1,0 +1,11 @@
+#+ATTR_LATEX: :center nil :float t :placement [h]
+[[file:c.png]]
+
+#+ATTR_LATEX: :center nil :float t :placement [h]
+[[file:c.tikz]]
+
+#+ATTR_LATEX: :center nil :float t :placement [h]
+[[file:c.svg]]
+
+#+ATTR_LATEX: :center nil :float t :placement [h]
+[[file:c.pdf]]

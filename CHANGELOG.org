@@ -7,6 +7,26 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v612 — Hebrew diary functions, and sunrise and sunset as Emacs computes them
+=diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles= work in diary sexps, with =diary-hebrew-sabbath-candles-minutes= for the candle-lighting offset. Sunrise, sunset, twilight and day length now use the algorithm of Emacs's =solar.el=, so they agree with it to the minute (before, they could differ by one).
+Verified: every day of 1900–2100 for each Hebrew function, and 3,050 sunrise and sunset days at five places, compared with Emacs 29.3.
+
+* v611 — LaTeX smart quotes, sub- and superscripts, and the last text differences
+=#+OPTIONS: ':t= now writes quotes as Org does for each =#+LANGUAGE:=. Sub- and superscripts accept Org's forms (=a_(b)=, =a_b.c=, =x_\alpha=, =a_*b=), in every export. Several =#+CAPTION:=, =#+TITLE:=, =#+AUTHOR:= and =#+DATE:= lines are joined, =#+INDEX:= is =\index{}=, =[@c]= counters work, macros may use other macros, the =n= macro counts, special block names keep their case, and =:environment= works on quotes.
+Verified: 45 more LaTeX fixtures compared with Emacs 29.3.
+
+* v610 — LaTeX links, labels and the org-latex variables
+=#+LINK:= abbreviations now expand in LaTeX and HTML export, and =news:=, =help:=, =file+sys:= and similar links, plus =_ # & %= inside URLs, are written as Emacs writes them. The LaTeX init box reads Org's table, figure, caption, title, table-of-contents, timestamp, label and text-markup variables (=org-latex-tables-centered=, =caption-above=, =images-centered=, =prefer-user-labels=, =text-markup-alist= and more). A table in =:mode math= uses =tabular= unless an environment is given, as in Emacs.
+Verified: 30 more LaTeX fixtures compared with Emacs 29.3.
+
+* v609 — LaTeX export reads more of Org, and =$x$= is math
+LaTeX export now follows Emacs on =#+OPTIONS:= (=num:N=, =todo=, =pri=, =tags=, =stat=, =tasks=, =p=, =d=, =prop=, =arch=, =\n=, =*=, =e=, =f=, =tex=, =title=, =email=, =creator=), =#+SELECT_TAGS:= and =UNNUMBERED=. Pictures take =:scale=, =:options= and the pdf, eps, svg and tikz forms; named blocks, equations and quotes get labels; footnotes in tables, booktabs tables, table special rows, inline =src_c{..}= and list counters match. A =#+KEY:= line now ends a paragraph in every exporter. A one-character =$x$= is math, by Org's own rule, on screen and in HTML as well.
+Verified: 130+ new LaTeX fixtures compared with Emacs 29.3; the Export menu smoke checks were run.
+
+* v608 — Beamer export, inline tasks everywhere, and Emacs's HTML doctype
+Export menu → Beamer writes a presentation as Emacs does: frames, sections, blocks and columns from =BEAMER_*= properties, overlays, themes, =#+BEAMER:= lines and the outline frame (a =.tex= file; there is no TeX here to make a PDF). Inline tasks (=org-inlinetask-min-level= stars, with =org-modules=) export in ASCII, HTML, LaTeX, Markdown and ODT. =#+ATTR_ASCII: :width= sizes a rule, and the HTML doctype is =xhtml-strict= by default, as in Emacs. LaTeX now writes =@@latex:..@@= snippets, subtitles, =\item\relax= and list counters as Emacs does.
+Verified: Beamer, inline-task, doctype and ASCII output compared with Emacs 29.3 on 40+ fixtures; the Export menu smoke checks were run.
+
 * v607 — Emacs's default agenda order, priority variables, and move and link on Android
 The Agenda now orders rows by Emacs's default strategy until you set =org-agenda-sorting-strategy= (Settings → Advanced has a field for it). Priorities step as =org-priority-down= does, =#+PRIORITIES:=, =org-priority-start-cycle-with-default= and =org-priority-faces= are read, and the Android app can move and link attachments. *Attach a link* now works on local documents. The update log records each phase of a worker's take-over, to find why some updates wait.
 Verified: sorting orders compared with Emacs 29.3; the Android code was written without a device to run it on.

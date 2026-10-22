@@ -1,0 +1,49 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{default}
+\author{root}
+\date{\today}
+\title{With toc}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={With toc},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{frame}{Outline}
+\setcounter{tocdepth}{2}
+\tableofcontents
+\end{frame}
+
+\section{S1}
+\label{sec:orgc51f469}
+text 1
+\setcounter{tocdepth}{1}
+\tableofcontents
+\subsection{SS1}
+\label{sec:org411d013}
+\setcounter{tocdepth}{2}
+\tableofcontents
+\begin{frame}[label={sec:org2cfd17d}]{F1}
+\setcounter{tocdepth}{2}
+\tableofcontents[pausesections]
+a
+\listoftables
+\end{frame}
+\stopcontents[level-2]
+\end{document}

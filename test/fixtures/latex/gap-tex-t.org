@@ -1,0 +1,9 @@
+#+OPTIONS: tex:t
+a $x$ \(y\) \[z\] \alpha \foo{bar} \mbox{q}
+
+\begin{equation}
+x
+\end{equation}
+
+#+LATEX: \keep
+@@latex:snip@@

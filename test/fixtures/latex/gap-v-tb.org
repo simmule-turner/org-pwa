@@ -1,0 +1,25 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+TITLE: T
+#+TOC: headlines 1
+* A
+#+CAPTION: Cap
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+CAPTION: Fig
+[[file:p.png]]
+
+[[file:q.png]]
+
+<2026-10-22 Thu> [2026-10-22 Thu]
+
+#+ATTR_LATEX: :mode math
+| x | y |
+| 1 | 2 |
+
+#+CAPTION: Src
+#+BEGIN_SRC c
+x
+#+END_SRC

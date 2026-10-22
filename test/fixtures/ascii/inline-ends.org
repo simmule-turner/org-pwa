@@ -1,0 +1,15 @@
+* One
+*************** Task a
+body a
+*************** end
+after lower end
+*************** Task b
+body b no end
+
+text after
+*************** END
+stray end
+*************** Task c :t:
+*************** Task d
+body d
+*************** END

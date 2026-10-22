@@ -1,0 +1,1 @@
+(setq org-latex-text-markup-alist (quote ((bold . "\\textbf{%s}") (italic . "\\textsl{%s}") (code . verb) (verbatim . protectedtexttt) (strike-through . "\\sout{%s}") (underline . "\\underline{%s}"))))

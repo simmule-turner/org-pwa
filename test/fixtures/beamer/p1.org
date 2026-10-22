@@ -1,0 +1,51 @@
+#+TITLE: Probe
+#+SUBTITLE: The sub *title*
+#+OPTIONS: toc:t H:2
+* Sec :work:
+:PROPERTIES:
+:BEAMER_opt: shrink=15
+:END:
+text of sec
+** TODO [#A] Frame with todo :a:b:
+:PROPERTIES:
+:BEAMER_act: <2->
+:BEAMER_opt: t,allowframebreaks
+:END:
+- item one
+- <2-> item overlay
+- [@3] item counter
+#+ATTR_BEAMER: :overlay <+->
+- piece a
+- piece b
+text *bold* /it/ =verb= ~code~ _under_ +strike+
+** Frame with table
+| a | b |
+|---+---|
+| 1 | 2 |
+
+Footnote[fn:1] here.
+
+[fn:1] The note.
+** Frame with example
+#+begin_example
+raw
+#+end_example
+** Frame with quote
+#+begin_quote
+quoted
+#+end_quote
+@@beamer:\pause@@ after pause
+#+BEAMER: \pause
+more text
+#+BEAMER: \vfill
+** Frame with special block
+#+begin_columns
+#+begin_column
+:PROPERTIES:
+:END:
+col a
+#+end_column
+#+end_columns
+#+begin_alertblock
+alert special
+#+end_alertblock

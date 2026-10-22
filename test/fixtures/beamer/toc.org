@@ -1,0 +1,11 @@
+#+OPTIONS: toc:2 H:3
+#+TITLE: With toc
+* S1
+text 1
+#+TOC: headlines 1
+** SS1
+#+TOC: headlines 2 local
+*** F1
+#+TOC: headlines [pausesections]
+a
+#+TOC: tables

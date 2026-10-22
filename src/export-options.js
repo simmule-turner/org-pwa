@@ -27,6 +27,25 @@ import { parseBrokenLinks } from './broken-links.js';
 /** @type {Record<string, any>} */
 const DEFAULT_OPTIONS = { toc: true, num: true, sup: 't', author: true, date: true, creator: false, broken: 'nil' };
 
+/** `key:value` in an #+OPTIONS: line: a value is a word or a Lisp list in parentheses (`d:(not "LOGBOOK")`), and the key may be punctuation (`\n:t`, `':t`, `::nil`). */
+const OPTION_PAIR_RE = /([^\s:]+|:):(\((?:[^()]|\([^()]*\))*\)|\S*)/g;
+
+/**
+ * Every key of the #+OPTIONS: lines as written (the last one wins), for the exporters that read more of them than parseExportOptions
+ * returns: `todo`, `pri`, `tags`, `stat`, `tasks`, `p`, `d`, `arch`, `\n`, `'`, `*`, `e`, `f`, `tex`, `title`, `email` ...
+ * @param {Doc} doc
+ * @returns {Record<string, string>}
+ */
+function rawExportOptions(doc) {
+  /** @type {Record<string, string>} */
+  const raw = {};
+  for (const kw of doc.keywords || []) {
+    if (kw.key.toUpperCase() !== 'OPTIONS') continue;
+    for (const m of kw.value.matchAll(OPTION_PAIR_RE)) if (m[2] !== '') raw[m[1]] = m[2];
+  }
+  return raw;
+}
+
 /** Parses every #+OPTIONS: line in `doc.keywords` into a single,
  *  merged `{ toc, num, sup, author, date, creator }` object -- a
  *  later value for the same key overwrites an earlier one, whether
@@ -53,11 +72,9 @@ function parseExportOptions(doc, sup = 't', broken = 'nil') {
   options.broken = broken;
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'OPTIONS') continue;
-    const tokens = kw.value.trim().split(/\s+/).filter(Boolean);
-    for (const token of tokens) {
-      const m = /^(\^|[a-zA-Z-]+):(.+)$/.exec(token);
-      if (!m) continue;
+    for (const m of kw.value.matchAll(OPTION_PAIR_RE)) {
       const [, key, value] = m;
+      if (value === '') continue;
       if (key === 'toc') {
         if (value === 'nil') options.toc = false;
         else if (/^\d+$/.test(value)) options.toc = Number(value);
@@ -83,30 +100,25 @@ function parseExportOptions(doc, sup = 't', broken = 'nil') {
   return options;
 }
 
-/** `doc.keywords`' own first #+TITLE: value (real org's own "last
- *  wins" convention doesn't actually apply to #+TITLE specifically --
- *  multiple #+TITLE: lines concatenate together, but that's a rare
- *  enough case this app doesn't reproduce; the first one found is
- * @param {Doc} doc
- *  used), trimmed, or null if the document has none at all. */
+/** The #+TITLE: of `doc`, trimmed; several lines are one title, joined by a blank (as in Org), or null when there is none. @param {Doc} doc */
 function getDocTitle(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'TITLE');
-  return kw ? kw.value.trim() : null;
+  const all = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'TITLE');
+  return all.length ? all.map((k) => k.value.trim()).join(' ') : null; // several lines are one, joined by a blank
 }
 
 /** @param {Doc} doc */
 function getDocAuthor(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'AUTHOR');
-  return kw ? kw.value.trim() : null;
+  const all = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'AUTHOR');
+  return all.length ? all.map((k) => k.value.trim()).join(' ') : null; // several lines are one, joined by a blank
 }
 
 /** @param {Doc} doc */
 function getDocDate(doc) {
   /** @param {any} [k] */
-  const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'DATE');
-  return kw ? kw.value.trim() : null;
+  const all = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'DATE');
+  return all.length ? all.map((k) => k.value.trim()).join(' ') : null; // several lines are one, joined by a blank
 }
 
 /** Every #+HTML_HEAD: line's own value, joined by newlines in source
@@ -123,4 +135,4 @@ function getHtmlHead(doc) {
   return lines.length > 0 ? lines.join('\n') : null;
 }
 
-export { parseExportOptions, getDocTitle, getDocAuthor, getDocDate, getHtmlHead };
+export { rawExportOptions, parseExportOptions, getDocTitle, getDocAuthor, getDocDate, getHtmlHead };

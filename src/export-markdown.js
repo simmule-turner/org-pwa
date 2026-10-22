@@ -37,6 +37,8 @@
  * view does.
  */
 
+import { foldInlineTasks, inlineTaskInfo, INLINE_TASK_BLOCK } from './inline-tasks.js';
+import { parseBody } from './body-parser.js';
 import { parseInline, stripLineBreakMarker } from './inline-markup.js';
 import { citeExportFor, dropSilentCitations, replaceCitationsInText, segmentsText, splitBibliography } from './cite.js';
 import { resolveLinkTarget } from './link-resolve.js';
@@ -420,9 +422,18 @@ function brokenTextMd(path) {
   return brokenMd === 'mark' ? `[BROKEN LINK: ${escapeMarkdownText(path)}]` : text;
 }
 
-/** @param {import('./types.js').Block} block */
+/** An inline task as ox-md writes it, the HTML ox-html gives it around the contents as Markdown. @param {import('./types.js').Block} block @returns {string} */
+function inlineTaskMd(block) {
+  const info = inlineTaskInfo(block.params || '');
+  const title = [info.todo, renderTextMd(info.title), info.tags.length ? '<code>:' + info.tags.join(':') + ':</code>' : ''].filter(Boolean).join(' ');
+  const contents = parseBody(block.lines).map(renderBodyNodeMd).filter(Boolean).join('\n\n');
+  return '<div class="inlinetask">\n<b>' + title + '</b><br>' + (contents ? '\n\n' + contents + '\n\n' : '\n') + '</div>';
+}
+
+/** @param {import('./types.js').Block} block @returns {string} */
 function renderBlockMd(block) {
   const name = block.name;
+  if (name.toLowerCase() === INLINE_TASK_BLOCK) return inlineTaskMd(block);
   if (name === 'COMMENT') return ''; // matches real org's own export behavior -- comment blocks are excluded from every export backend
   if (name === 'EXPORT') {
     const backend = (block.params || '').trim().toLowerCase();
@@ -441,7 +452,7 @@ function renderBlockMd(block) {
   return '```\n' + (name === 'EXAMPLE' ? codeLinesMd(block) : block.lines.map(stripCommaEscape).join('\n')) + '\n```';
 }
 
-/** @param {import('./types.js').BodyNode} node */
+/** @param {import('./types.js').BodyNode} node @returns {string} */
 function renderBodyNodeMd(node) {
   if (node.type === 'list') return renderListMd(node, 0);
   if (node.type === 'paragraph') return renderParagraphMd(node);
@@ -563,6 +574,7 @@ function buildTocMd(headings, toc, numberingEnabled) {
 /** @param {Doc} doc */
 export function exportToMarkdown(doc, scope = /** @type {any} */ (null), { sup = 't', brokenLinks = /** @type {import('./broken-links.js').BrokenLinks} */ ('nil') } = {}) {
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
+  ({ doc, scope } = foldInlineTasks(doc, scope));
   footnoteDefinitionsMd = [];
   anonymousFootnoteCounterMd = 0;
   docForLinkResolutionMd = doc;

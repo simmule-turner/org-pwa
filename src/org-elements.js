@@ -17,6 +17,7 @@
  *   footnote-def     { label, children }
  *   html-line        { value }     (`#+HTML:`)
  *   latex-line       { value }     (`#+LATEX:`)
+ *   beamer-line      { value }     (`#+BEAMER:`)
  *   ascii-line       { value }     (`#+ASCII:`)
  *   toc              { value }     (`#+TOC:`)
  *   include          { value }     (`#+INCLUDE:`)
@@ -32,6 +33,7 @@
  *   { type: 'paragraph', lines: string[] } |
  *   { type: 'list', listType: 'unordered' | 'ordered' | 'descriptive', items: ElementListItem[] } |
  *   { type: 'table', rows: ElementTableRow[] } |
+ *   { type: 'index', value: string } |
  *   { type: 'block', name: string, rawName?: string, params: string, lines: string[], indent: number } |
  *   { type: 'drawer', name: string, lines: string[] } |
  *   { type: 'fixed', lines: string[] } |
@@ -41,6 +43,7 @@
  *   { type: 'html-line', value: string } |
  *   { type: 'ascii-line', value: string } |
  *   { type: 'latex-line', value: string } |
+ *   { type: 'beamer-line', value: string } |
  *   { type: 'toc', value: string } |
  *   { type: 'include', value: string } |
  *   { type: 'print-bibliography', value: string }
@@ -89,7 +92,12 @@ function emptyAff() {
 function addAffiliated(aff, match) {
   const key = match[1].toUpperCase();
   const value = match[3];
-  if (key === 'CAPTION') aff.caption.push({ short: match[2] || null, text: value });
+  if (key === 'CAPTION') {
+    // several captions are one: the texts, and the short forms, joined by a blank
+    const first = aff.caption[0];
+    if (first) aff.caption[0] = { short: [first.short, match[2] || null].filter(Boolean).join(' ') || null, text: first.text + ' ' + value };
+    else aff.caption.push({ short: match[2] || null, text: value });
+  }
   else if (key === 'NAME' || key === 'TBLNAME') aff.name = value;
   else if (key.startsWith('ATTR_')) (aff.attr[key.slice(5).toLowerCase()] ||= []).push(value);
   else if (key === 'HEADER' || key === 'HEADERS') aff.header.push(value);
@@ -192,9 +200,9 @@ function parseList(lines, start) {
       j++;
     }
     const item = /** @type {ElementListItem} */ ({ bullet: m[2], checkbox: null, counter: null, tag: null });
-    const cookie = /^\[@(\d+)\][ \t]*/.exec(rest);
+    const cookie = /^\[@(\d+|[A-Za-z])\][ \t]*/.exec(rest);
     if (cookie) {
-      item.counter = Number(cookie[1]);
+      item.counter = /^\d+$/.test(cookie[1]) ? Number(cookie[1]) : cookie[1].toLowerCase().charCodeAt(0) - 96; // [@c] is 3
       rest = rest.slice(cookie[0].length);
     }
     const box = /^\[([ xX-])\](?:[ \t]+|$)/.exec(rest);
@@ -252,6 +260,9 @@ function findBlockEnd(lines, i, name) {
   return -1;
 }
 
+/** A keyword line: `#+KEY:` or `#+KEY[option]:`. */
+const KEYWORD_LINE_RE = /^[ \t]*#\+[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?:/;
+
 /**
  * Does this line start something that ends a paragraph?
  * @param {string} line
@@ -262,7 +273,7 @@ function interruptsParagraph(line) {
     BLOCK_BEGIN_RE.test(line) ||
     AFFILIATED_RE.test(line) ||
     COMMENT_RE.test(line) ||
-    /^[ \t]*#\+(HTML|LATEX|TOC|INCLUDE|PRINT_BIBLIOGRAPHY):/i.test(line) ||
+    KEYWORD_LINE_RE.test(line) || // any `#+KEY:` line ends a paragraph, known or not
     TABLE_RE.test(line) ||
     HR_RE.test(line) ||
     FIXED_RE.test(line) ||
@@ -318,11 +329,13 @@ export function parseElements(lines) {
       const key = kw[1].toUpperCase();
       if (key === 'HTML') push({ type: 'html-line', value: kw[2] });
       else if (key === 'LATEX') push({ type: 'latex-line', value: kw[2] });
+      else if (key === 'BEAMER') push({ type: 'beamer-line', value: kw[2] });
       else if (key === 'ASCII') push({ type: 'ascii-line', value: kw[2] });
       else if (key === 'TOC') push({ type: 'toc', value: kw[2] });
+      else if (key === 'INDEX') push({ type: 'index', value: kw[2] });
       else if (key === 'INCLUDE') push({ type: 'include', value: kw[2] });
       else if (key === 'PRINT_BIBLIOGRAPHY') push({ type: 'print-bibliography', value: kw[2] });
-      // other keywords (TITLE, OPTIONS, MACRO ...) are not content
+      else afterComment = true; // other keywords (TITLE, OPTIONS, MACRO ...) are not content; the blank lines after one belong to it, not to the element before
       i++;
       continue;
     }

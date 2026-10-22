@@ -1,0 +1,1 @@
+(setq org-latex-tables-booktabs t)

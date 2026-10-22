@@ -1,0 +1,5 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+OPTIONS: ':t
+#+LANGUAGE: de
+Er sagte "Hallo" und 'Welt' it's

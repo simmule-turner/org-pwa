@@ -1,0 +1,1 @@
+a src_c{int x;} b src_python[:exports both]{1+1} c src_sh[:exports code]{ls} d src_sh[:exports none]{ls} e src_sh[:exports results]{ls} f src_c[:eval no]{x_y} g src_c{a%b} ~src_c{x}~ =src_c{y}=

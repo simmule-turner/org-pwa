@@ -55,8 +55,11 @@ const DISPLAY_DOLLAR_RE = /^\$\$([\s\S]+?)\$\$/;
 const INLINE_PAREN_RE = /^\\\(([\s\S]*?)\\\)/;
 const DISPLAY_BRACKET_RE = /^\\\[([\s\S]*?)\\\]/;
 const BEGIN_ENV_RE = /^\\begin\{([A-Za-z*]+)\}([\s\S]+?)\\end\{\1\}/;
-const DOLLAR_INLINE_RE = /^\$([^ \t\n,;.$][^$\n\r]*?(?:\n[^$\n\r]*?){0,2}[^ \t\n,.$])\$/;
-const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?([{)\]}'"]/;
+// `$...$` as org-element-latex-fragment-parser reads it: the text after the opening `$` does not start with a blank, comma, period or semicolon,
+// the closing `$` is the next one and is not preceded by a blank, comma or period, and what follows it is a blank, the end of the line or one of
+// . , ; : ! ? ( ) [ ] { } < > " ' ` # @ ^ . One character is enough (`$x$`); the text may run over lines but not over a blank line.
+const DOLLAR_INLINE_RE = /^\$([^ \t\n,;.$](?:[^$]*[^ \t\n,.$])?)\$/;
+const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?()[\]{}<>"'`#@^]/;
 
 /** Matches a real org LaTeX math fragment at `text[pos]` -- tries the
  *  display forms first ($$...$$, \[...\], \begin{env}...\end{env})
@@ -115,9 +118,9 @@ function matchLatexFragmentAt(text, pos) {
 
   if (text[pos] === '$' && text[pos + 1] !== '$' && (pos === 0 || text[pos - 1] !== '$')) {
     const m = DOLLAR_INLINE_RE.exec(remaining);
-    if (m) {
+    if (m && !/\n[ \t]*\n/.test(m[1])) {
       const after = text[pos + m[0].length];
-      if (after !== '-' && (after === undefined || DOLLAR_VALID_FOLLOW_RE.test(after))) {
+      if (after === undefined || DOLLAR_VALID_FOLLOW_RE.test(after)) {
         return { content: m[1], displayMode: false, length: m[0].length };
       }
     }
@@ -304,14 +307,21 @@ const ANGLE_URL_RE = /^<((?:https?|ftp|mailto|doi|file|github|webdav|local):[^\s
 const OPEN_PRE_RE = /[\s\-({'"]/;
 const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;
 
-// Bare (unbraced) sub/superscript content: an optional leading sign,
-// then one or more alphanumerics -- covers both a_b (one character) and
-// a_bc (several, still valid without braces per the org spec: braces
-// improve readability, they aren't required for a multi-character
-// script). Deliberately narrower than org's own full regexp-components
-// table (which also allows a handful of extra punctuation inside a bare
-// script); this covers the common case, not every edge case.
-const BARE_SCRIPT_RE = /^[+-]?[A-Za-z0-9]+/;
+// Bare (unbraced) sub/superscript content, as Org's `org-match-substring-regexp` has it: `*`, or an optional sign and letters, digits, `.`,
+// `,` and `\` that end in a letter or digit (`a_b.c`, `a_1.5`, `x_\alpha`; `a_b,` is `b` and a comma).
+const BARE_SCRIPT_RE = /^(?:\*|[+-]?[A-Za-z0-9.,\\]*[A-Za-z0-9])/;
+
+/** The text through the bracket that closes the one at `pos` (`{}` or `()`, nested up to Org's depth of 3), or -1. @param {string} text @param {number} pos */
+function closingBracket(text, pos) {
+  const open = text[pos];
+  const close = open === '{' ? '}' : ')';
+  let depth = 0;
+  for (let i = pos; i < text.length; i++) {
+    if (text[i] === open) depth++;
+    else if (text[i] === close && --depth === 0) return i;
+  }
+  return -1;
+}
 
 /**
  * Attempts to match a `_{...}`/`^{...}` or bare `_word`/`^word`
@@ -336,13 +346,17 @@ function matchScriptAt(text, pos, mode) {
   const kind = marker === '_' ? 'subscript' : 'superscript';
 
   if (text[pos + 1] === '{') {
-    const close = text.indexOf('}', pos + 2);
+    const close = closingBracket(text, pos + 1);
     if (close === -1) return null;
     return { kind, content: text.slice(pos + 2, close), length: close - pos + 1 };
   }
 
   if (mode === '{}') return null; // braces required in this mode; a bare a_b is left as literal underscore + text
 
+  if (text[pos + 1] === '(') {
+    const close = closingBracket(text, pos + 1);
+    if (close !== -1) return { kind, content: text.slice(pos + 1, close + 1), length: close - pos + 1 };
+  }
   const bareMatch = BARE_SCRIPT_RE.exec(text.slice(pos + 1));
   if (!bareMatch) return null;
   return { kind, content: bareMatch[0], length: 1 + bareMatch[0].length };

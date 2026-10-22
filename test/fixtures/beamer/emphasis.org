@@ -1,0 +1,12 @@
+#+OPTIONS: H:2 toc:nil
+* S
+** F
+@@beamer:<2>@@ para start
+@@beamer:<2>@@ second line start of para
+_@@beamer:<5>@@ under_ and +@@beamer:<6>@@ strike+ and *@@beamer:<7>@@@@beamer:<8>@@ two*
+| @@beamer:<2>@@ cell | b |
+
+- plain @@beamer:<3>@@
+  @@beamer:<4>@@ continuation para
+- /@@beamer:<2>@@ it/ in item
+** @@beamer:<2>@@ Title start

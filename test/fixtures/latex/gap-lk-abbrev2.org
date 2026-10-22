@@ -1,0 +1,4 @@
+#+LINK: g https://g.com/s?q=%s&x
+#+LINK: e https://e.com/
+#+LINK: u https://u.com/%h/z
+[[g:a b]] [[e:path/x_y]] [[u:é ü]] [[g:]]

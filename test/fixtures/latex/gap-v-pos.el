@@ -1,0 +1,1 @@
+(setq org-latex-default-figure-position "h")

@@ -1,0 +1,6 @@
+#+AUTHOR: Au
+#+DATE: 2026-01-01
+#+OPTIONS: ':t
+"a" [fn:1] "b"
+
+[fn:1] def "c"

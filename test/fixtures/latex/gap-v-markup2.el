@@ -1,0 +1,1 @@
+(setq org-latex-text-markup-alist (quote ((bold . "\\alert{%s}") (code . protectedtexttt) (verbatim . verb))))

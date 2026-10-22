@@ -1,0 +1,37 @@
+#+NAME: n
+#+BEGIN_EXAMPLE
+x
+#+END_EXAMPLE
+[[n]]
+#+NAME: q
+#+BEGIN_QUOTE
+x
+#+END_QUOTE
+[[q]]
+#+NAME: p
+A paragraph.
+
+[[p]] [[p][d]]
+#+NAME: e
+\begin{equation}
+x
+\end{equation}
+[[e]]
+#+NAME: l
+- a
+[[l]]
+#+NAME: v
+#+BEGIN_VERSE
+x
+#+END_VERSE
+[[v]]
+#+NAME: c
+#+BEGIN_CENTER
+x
+#+END_CENTER
+[[c]]
+#+NAME: s
+#+BEGIN_foo
+x
+#+END_foo
+[[s]]

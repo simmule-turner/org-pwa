@@ -1,0 +1,12 @@
+#+TITLE: Deep
+* One
+text
+
+*************** TODO [#A] Fix it :work:
+body of task
+*************** END
+
+after
+*************** Plain deep heading
+more
+** Two
