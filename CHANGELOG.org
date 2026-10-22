@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v606 — Solar holidays, and a holidays file you can share
+=holiday-solar-holidays= joins the groups: the equinoxes, the solstices and the days daylight saving time starts and ends, for this device's time zone and =calendar-latitude=. =(load "github:org/holidays.el")= in the Lisp init box reads one file, so a repository can hold your holidays for every device; the last copy read is kept for offline use and the Agenda's refresh reads it again. The README's Holidays section links Emacs's list and explains the shorter and longer lists.
+Verified: equinoxes, solstices and daylight saving compared with Emacs 29.3 in eight time zones.
+
+* v605 — Review fixes for v604
+A link attachment no longer caches a picture it never read, a "copied instead" note stays visible after attaching, and holiday forms follow Emacs's own arguments (the Hebrew and Bahá'í functions take none). The README's Holidays and Attachments text and the ROADMAP are tightened.
+Verified: 23 custom holiday forms compared with Emacs 29.3 over 2023-2028.
+
 * v604 — Holidays as Emacs's lists, Hebrew, Islamic and Bahá'í calendars, and more ways to attach
 Holidays now follow Emacs's =holiday-*= lists: the Hebrew, Islamic and Bahá'í groups join the US and Christian ones, and Settings → Advanced → Lisp init takes your own lists, =calendar-holidays=, the =calendar-*-all-holidays-flag= variables and =nil= to switch a group off, for the Agenda, the diary and =org-class=. The diary reads =H=, =I= and =B= entries (through =diary-nongregorian-listing-hook=, as in Emacs) and the =diary-hebrew-date= family. Attach gains =org-attach-method=, copy, move and link keys, and attaching from a URL.
 Verified: every group, 2024-2027, and the entries and date lines compared with Emacs 29.3.

@@ -18,8 +18,8 @@ The Android app writes into =local:= agenda files while a local file is open. In
 Not read yet: the =stats= and =user-defined= keys, the =tags= and =search= entries (the app has no view of those types), =%(function)= forms in =org-agenda-prefix-format=, and a Settings editor for the key list. When the variable is unset the rows keep the app's own order; Emacs's default (=habit-down time-up priority-down category-keep= for the Agenda, =priority-down category-keep= for TODO) would put priority first within a day.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
-** [#C] Chinese and solar holidays, and the rest of the Hebrew and Islamic diary functions
-=holiday-oriental-holidays= (the Chinese calendar) and =holiday-solar-holidays= (solstices, equinoxes, moon and sunrise-related days) need astronomy; the other groups are in. Also not read yet: =diary-hebrew-birthday=, =diary-hebrew-yahrzeit=, =diary-hebrew-omer=, =diary-hebrew-rosh-hodesh=, =diary-hebrew-parasha=, =diary-hebrew-sabbath-candles=, the Islamic and Bahá'í birthday and anniversary entries, and holiday-name expressions in =holiday-fixed=. Effort: M (the Chinese calendar is the larger part). Impact: S.
+** [#C] Chinese holidays, and more Hebrew and Islamic diary functions
+Not built: =holiday-oriental-holidays= (it needs astronomy), =diary-hebrew-birthday=, =-yahrzeit=, =-omer=, =-rosh-hodesh=, =-parasha= and =-sabbath-candles=, the Bahá'í and Islamic equivalents, and a string that is an expression in =holiday-sexp=. Effort: M. Impact: S.
 
 * Editing and structure
 ** [#C] The rest of the priority variables
@@ -35,7 +35,7 @@ Org's =_= and =^= rows name fields for use on the right of a formula; naming one
 
 * Babel and attachments
 ** [#C] Android shell: move and link for attachments
-The app reads =org-attach-method= and offers =m= and =l= when the shell supplies =attachments.removeSource(uri)=, =attachments.adapter.link(path, uri)= and a =uri= on the file =pickFile= returns (see =src-browser/platform.js=). The Android app has to implement them. Effort: M. Impact: M on Android.
+The app offers =m= and =l= when the shell supplies =attachments.removeSource(uri)=, =attachments.adapter.link(path, uri)= and a =uri= on the file =pickFile= returns (see =src-browser/platform.js=). The Android app has to implement them. Effort: M. Impact: M on Android.
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
@@ -49,7 +49,7 @@ Impact = how often the gap meets everyday use. Effort: S under a day, M a day or
 
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
-| 1 | Attachments: storage chooser, URL, link | M (Android) | M | Useful, but needs the Android folder to matter |
+| 1 | Android shell: move and link for attachments | M (Android) | M | Native work in the Android app; the web side is done |
 
 Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
 
@@ -98,9 +98,8 @@ A section in Extensions for Lisp that runs once per session and defines function
 1. The interpreter core (stage 1), as its own module, with tests against Emacs 29.3.
 2. Move the diary evaluator (=src/sexp-eval.js=) onto it. The diary layer keeps the =date= binding, the diary and calendar functions as native builtins, and a tolerant mode in which a failing entry shows nothing, as today. The Emacs-checked sexp tests and the existing suite must pass unchanged. This replaces the hard-coded list of line forms with one reader, and gives diary entries real errors, =defun=, =setq= and loops.
 3. The =calendar-*=, =holiday-fixed=, =holiday-float= and =holiday-easter-etc= functions as builtins, under Emacs's names.
-4. Holidays as an editable =calendar-holidays= list, which also covers =org-class= beyond US and Christian holidays.
-5. =emacs-lisp= source blocks in Babel (stage 2).
-6. Shared definitions for the diary.
+4. =emacs-lisp= source blocks in Babel (stage 2).
+5. Shared definitions for the diary.
 
 What stays in JavaScript: the calendar grid and its layout (UI, redrawn often), and the agenda's per-day effort total and =+N?= count (computed while drawing, with no Org equivalent). A hook the interpreter can call may be added to the latter later.
 
