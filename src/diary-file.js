@@ -7,6 +7,8 @@
 // as they do in Emacs without being rewritten here.
 import { emacsRegexToJs } from './emacs-regex.js';
 import { holidaysOn } from './holidays.js';
+import { LISTERS, nonGregorianDate } from './diary-nongregorian.js';
+import { absoluteFromGregorian as absGreg, dayOfWeek } from './calendar-conv.js';
 import { parseSexpr } from './sexp-eval.js';
 import {
   getCalendarDateStyle,
@@ -15,6 +17,7 @@ import {
   getDiaryMergeRows,
   getDiaryShowHolidaysFlag,
   getDiarySymbol,
+  getDiaryNongregorianHook,
 } from './local-variables.js';
 
 /** @typedef {(string | { backup: boolean })[]} DateForm  The parts of one `diary-date-forms` element: the symbols month, day, year, monthname, dayname, or a regexp string; a leading `backup`. */
@@ -55,6 +58,10 @@ export const DIARY_DATE_FORMS = {
  * @property {string} [nonmarkingSymbol]  `diary-nonmarking-symbol` (default "&")
  * @property {string} [sexpSymbol]  `diary-sexp-entry-symbol` (default "%%")
  * @property {string} [includeString]  `diary-include-string` (default "#include")
+ * @property {string[]} [nongregorian]  the names in `diary-nongregorian-listing-hook`: diary-hebrew-list-entries, diary-islamic-list-entries, diary-bahai-list-entries
+ * @property {string} [hebrewSymbol]  `diary-hebrew-entry-symbol` (default "H")
+ * @property {string} [islamicSymbol]  `diary-islamic-entry-symbol` (default "I")
+ * @property {string} [bahaiSymbol]  `diary-bahai-entry-symbol` (default "B")
  * @property {boolean} [showHolidays]  `diary-show-holidays-flag` (default true)
  * @property {string[]} [hooks]  the names in `diary-list-entries-hook`: diary-include-other-diary-files, diary-sort-entries
  * @property {boolean} [mergeRows]  `org-xx-diary-merge-rows` (default true): show the day as Org does, untimed entries joined into the row before
@@ -92,21 +99,23 @@ export function describeDateForm(form) {
 /** The regexp (Emacs syntax) for one date form on one day, as diary-list-entries-2 builds it.
  * @param {DateForm} form
  * @param {Date} date
- * @param {{ mark: string, abbreviatedYear: boolean }} opts */
+ * @param {{ mark: string, abbreviatedYear: boolean, calendar?: { kind: import('./diary-nongregorian.js').Kind, symbol: string } }} opts */
 function formRegexp(form, date, opts) {
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const year = date.getFullYear();
-  const dayName = DAYS[date.getDay()];
+  const other = opts.calendar ? nonGregorianDate(opts.calendar.kind, date) : null;
+  const month = other ? other.month : date.getMonth() + 1;
+  const day = other ? other.day : date.getDate();
+  const year = other ? other.year : date.getFullYear();
+  // Emacs finds the weekday of a Hebrew, Islamic or Bahá'í date by reading its numbers as a Gregorian date.
+  const dayName = DAYS[other ? dayOfWeek(absGreg([month, day, year])) : date.getDay()];
   const values = {
     dayname: `${dayName}\\|${dayName.slice(0, 3)}\\.?`,
-    monthname: `\\*\\|${MONTHS[month - 1]}\\|${MONTHS[month - 1].slice(0, 3)}\\.?`,
+    monthname: other ? `\\*\\|${other.monthName}` : `\\*\\|${MONTHS[month - 1]}\\|${MONTHS[month - 1].slice(0, 3)}\\.?`,
     month: `\\*\\|0*${month}`,
     day: `\\*\\|0*${day}`,
     year: `\\*\\|0*${year}${opts.abbreviatedYear ? `\\|${String(year % 100).padStart(2, '0')}` : ''}`,
   };
   const parts = form.filter((p) => typeof p === 'string').map((p) => (p in values ? values[/** @type {keyof typeof values} */ (p)] : p));
-  return `^${regexpQuote(opts.mark)}?\\(${parts.join('\\)\\(?:')}\\)`;
+  return `^${regexpQuote(opts.mark)}?${opts.calendar ? regexpQuote(opts.calendar.symbol) : ''}\\(${parts.join('\\)\\(?:')}\\)`;
 }
 
 /** Emacs reads the diary with `*` and `:` as word characters (diary-syntax-table), which `\W` and `\<` in the date forms follow. */
@@ -159,10 +168,10 @@ function lineTextAt(text, offset) {
   return text.slice(start, nl === -1 ? text.length : nl).trim();
 }
 
-/** datedEntries with the place of each entry in the file.
- * @param {string} text @param {Date} date @param {DiaryOptions} [options]
+/** datedEntries with the place of each entry in the file; with `calendar`, the entries of the Hebrew, Islamic or Bahá'í dates of the day (what diary-hebrew-list-entries finds).
+ * @param {string} text @param {Date} date @param {DiaryOptions} [options] @param {{ kind: import('./diary-nongregorian.js').Kind, symbol: string }} [calendar]
  * @returns {LocatedEntry[]} */
-export function datedEntriesAt(text, date, options = {}) {
+export function datedEntriesAt(text, date, options = {}, calendar) {
   const forms = dateFormsFor(options);
   const mark = options.nonmarkingSymbol ?? '&';
   const abbreviatedYear = options.abbreviatedYear !== false;
@@ -172,7 +181,8 @@ export function datedEntriesAt(text, date, options = {}) {
     const backup = typeof form[0] === 'object';
     let regexp;
     try {
-      regexp = compileForm(formRegexp(form, date, { mark, abbreviatedYear }));
+      if (calendar && !nonGregorianDate(calendar.kind, date)) return found;
+      regexp = compileForm(formRegexp(form, date, { mark, abbreviatedYear, calendar }));
     } catch {
       continue; // a form of diary-date-forms that is not a valid pattern matches nothing
     }
@@ -308,6 +318,11 @@ export function diaryRowsLocated(diary, date, options, sexpTitle) {
       }
     }
     for (const e of datedEntriesAt(text, date, options)) entries.push({ ...e, file });
+    for (const hook of options.nongregorian || []) {
+      const kind = LISTERS[/** @type {keyof typeof LISTERS} */ (hook)];
+      const symbol = { hebrew: options.hebrewSymbol ?? 'H', islamic: options.islamicSymbol ?? 'I', bahai: options.bahaiSymbol ?? 'B' }[kind];
+      for (const e of datedEntriesAt(text, date, options, { kind, symbol })) entries.push({ ...e, file });
+    }
   });
   if (hooks.includes('diary-sort-entries')) {
     const key = (/** @type {{ lines: string[] }} */ e) => e.lines.join('\n');
@@ -389,6 +404,10 @@ export function diaryOptionsFromVars(vars) {
     includeString: getDiarySymbol(vars, 'diary-include-string'),
     showHolidays: getDiaryShowHolidaysFlag(vars),
     hooks: getDiaryListEntriesHook(vars),
+    nongregorian: getDiaryNongregorianHook(vars),
+    hebrewSymbol: getDiarySymbol(vars, 'diary-hebrew-entry-symbol'),
+    islamicSymbol: getDiarySymbol(vars, 'diary-islamic-entry-symbol'),
+    bahaiSymbol: getDiarySymbol(vars, 'diary-bahai-entry-symbol'),
     mergeRows: getDiaryMergeRows(vars),
   };
 }

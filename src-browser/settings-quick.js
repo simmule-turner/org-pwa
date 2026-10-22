@@ -1,6 +1,8 @@
 // @ts-check
 // The Quick Settings section of Settings: reading a setting's value, saving a change, and drawing each field.
 import { applyDurationVariables } from '../src/org-duration.js';
+import { encodeLispString, lispStringValue } from '../src/export-defaults.js';
+import { applyHolidayVariables } from '../src/holidays.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
 import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
@@ -104,6 +106,7 @@ export async function commitGlobalVariableChange(key, rawValue) {
   S.globalVariablesText = serializeGlobalVariables(vars);
   S.globalVariables = vars;
   applyDurationVariables(vars);
+  applyHolidayVariables(vars);
   await setGlobalVariables(kv, S.globalVariablesText);
   if (S.state.doc) {
     S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
@@ -249,6 +252,7 @@ export function renderQuickSettingField(field) {
     /** @param {any} [raw] */
     const displayValue = (raw) => {
       if (raw === undefined) return '';
+      if (field.lispString) return lispStringValue(raw) ?? raw;
       return field.entryTokenizer ? multiEntryValueToDisplayText(raw, field.entryTokenizer) : raw;
     };
     const textarea = document.createElement('textarea');
@@ -269,7 +273,7 @@ export function renderQuickSettingField(field) {
         defaultValue: '',
         onSave: async (/** @type {any} */ newValue) => {
           const normalized = normalizeSmartQuotes(newValue).trim();
-          const canonical = field.entryTokenizer ? multiEntryDisplayTextToValue(normalized, field.entryTokenizer) : normalized;
+          const canonical = field.lispString ? (normalized === '' ? '' : encodeLispString(normalized)) : field.entryTokenizer ? multiEntryDisplayTextToValue(normalized, field.entryTokenizer) : normalized;
           await commitGlobalVariableChange(field.key, canonical === '' ? null : canonical);
           setStatus(`${field.label} updated.`);
           renderSettingsView();

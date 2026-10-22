@@ -1,0 +1,536 @@
+2023-12-03 Advent
+2023-12-05 "Tal Umatar" (evening)
+2023-12-07 Erev Hanukkah
+2023-12-08 Hanukkah (first day)
+2023-12-09 Hanukkah (second day)
+2023-12-10 Hanukkah (third day)
+2023-12-11 Hanukkah (fourth day)
+2023-12-12 Hanukkah (fifth day)
+2023-12-13 Hanukkah (sixth day)
+2023-12-14 Hanukkah (seventh day)
+2023-12-15 Hanukkah (eighth day)
+2023-12-22 Tzom Teveth
+2023-12-25 Christmas
+2024-01-01 New Year's Day
+2024-01-06 Epiphany
+2024-01-07 Christmas (Julian calendar)
+2024-01-15 Martin Luther King Day
+2024-01-25 Tu B'Shevat
+2024-01-27 Shabbat Shirah
+2024-01-28 Septuagesima Sunday
+2024-02-02 Groundhog Day
+2024-02-04 Sexagesima Sunday
+2024-02-06 Shab-e-Mi'raj
+2024-02-11 Shrove Sunday
+2024-02-12 Shrove Monday
+2024-02-13 Shrove Tuesday
+2024-02-14 Ash Wednesday
+2024-02-14 Valentine's Day
+2024-02-19 President's Day
+2024-02-25 Shab-e-Bara't
+2024-03-09 Shabbat Shekalim
+2024-03-11 Ramadan Begins
+2024-03-17 Passion Sunday
+2024-03-17 St. Patrick's Day
+2024-03-21 Bahá’í New Year (Naw-Ruz) 181
+2024-03-21 Fast of Esther
+2024-03-23 Erev Purim
+2024-03-23 Shabbat Zachor
+2024-03-24 Palm Sunday
+2024-03-24 Purim
+2024-03-25 Shushan Purim
+2024-03-28 Maundy Thursday
+2024-03-29 Good Friday
+2024-03-30 Shabbat Parah
+2024-03-31 Easter Sunday
+2024-04-01 April Fools' Day
+2024-04-06 Shab-e Qadr
+2024-04-06 Shabbat HaHodesh
+2024-04-10 Id-al-Fitr
+2024-04-20 Shabbat HaGadol
+2024-04-21 First Day of Ridvan
+2024-04-22 Erev Passover
+2024-04-22 Second Day of Ridvan
+2024-04-23 Passover
+2024-04-23 Third Day of Ridvan
+2024-04-24 Fourth Day of Ridvan
+2024-04-24 Passover (second day)
+2024-04-25 Fifth Day of Ridvan
+2024-04-25 Hol Hamoed Passover (first day)
+2024-04-26 Hol Hamoed Passover (second day)
+2024-04-26 Sixth Day of Ridvan
+2024-04-27 Hol Hamoed Passover (third day)
+2024-04-27 Seventh Day of Ridvan
+2024-04-28 Eighth Day of Ridvan
+2024-04-28 Hol Hamoed Passover (fourth day)
+2024-04-29 Ninth Day of Ridvan
+2024-04-29 Passover (seventh day)
+2024-04-30 Passover (eighth day)
+2024-04-30 Tenth Day of Ridvan
+2024-05-01 Eleventh Day of Ridvan
+2024-05-02 Twelfth Day of Ridvan
+2024-05-05 Pascha (Greek Orthodox Easter)
+2024-05-05 Rogation Sunday
+2024-05-06 Yom HaShoah
+2024-05-09 Ascension Day
+2024-05-12 Mother's Day
+2024-05-14 Yom HaAtzma'ut
+2024-05-19 Pentecost (Whitsunday)
+2024-05-20 Whitmonday
+2024-05-23 Declaration of the Báb
+2024-05-26 Lag BaOmer
+2024-05-26 Trinity Sunday
+2024-05-27 Memorial Day
+2024-05-29 Ascension of Bahá’u’lláh
+2024-05-30 Corpus Christi
+2024-06-05 Yom Yerushalaim
+2024-06-11 Erev Shavuot
+2024-06-12 Shavuot
+2024-06-13 Shavuot (second day)
+2024-06-14 Flag Day
+2024-06-16 Father's Day
+2024-06-17 Id-al-Adha
+2024-07-04 Independence Day
+2024-07-08 Islamic New Year 1446
+2024-07-09 Martyrdom of the Báb
+2024-07-17 Ashura
+2024-07-23 Tzom Tammuz
+2024-08-10 Shabbat Hazon
+2024-08-13 Tisha B'Av
+2024-08-15 Assumption
+2024-08-17 Shabbat Nahamu
+2024-09-02 Labor Day
+2024-09-16 Mulad-al-Nabi
+2024-09-28 Selichot (night)
+2024-10-02 Erev Rosh HaShanah
+2024-10-03 Rosh HaShanah 5785
+2024-10-04 Rosh HaShanah (second day)
+2024-10-05 Shabbat Shuvah
+2024-10-06 Tzom Gedaliah
+2024-10-11 Erev Yom Kippur
+2024-10-12 Yom Kippur
+2024-10-14 Columbus Day
+2024-10-16 Erev Sukkot
+2024-10-17 Sukkot
+2024-10-18 Sukkot (second day)
+2024-10-19 Hol Hamoed Sukkot (first day)
+2024-10-20 Birth of the Báb
+2024-10-20 Hol Hamoed Sukkot (second day)
+2024-10-21 Hol Hamoed Sukkot (third day)
+2024-10-22 Hol Hamoed Sukkot (fourth day)
+2024-10-23 Hoshanah Rabbah
+2024-10-24 Shemini Atzeret
+2024-10-25 Simchat Torah
+2024-10-31 Halloween
+2024-11-11 Veteran's Day
+2024-11-12 Birth of Bahá’u’lláh
+2024-11-26 Day of the Covenant
+2024-11-28 Ascension of `Abdu’l-Bahá
+2024-11-28 Thanksgiving
+2024-12-01 Advent
+2024-12-04 "Tal Umatar" (evening)
+2024-12-25 Christmas
+2024-12-25 Erev Hanukkah
+2024-12-26 Hanukkah (first day)
+2024-12-27 Hanukkah (second day)
+2024-12-28 Hanukkah (third day)
+2024-12-29 Hanukkah (fourth day)
+2024-12-30 Hanukkah (fifth day)
+2024-12-31 Hanukkah (sixth day)
+2025-01-01 Hanukkah (seventh day)
+2025-01-01 New Year's Day
+2025-01-02 Hanukkah (eighth day)
+2025-01-06 Epiphany
+2025-01-07 Christmas (Julian calendar)
+2025-01-10 Tzom Teveth
+2025-01-20 Martin Luther King Day
+2025-01-26 Shab-e-Mi'raj
+2025-02-02 Groundhog Day
+2025-02-08 Shabbat Shirah
+2025-02-13 Tu B'Shevat
+2025-02-14 Shab-e-Bara't
+2025-02-14 Valentine's Day
+2025-02-16 Septuagesima Sunday
+2025-02-17 President's Day
+2025-02-23 Sexagesima Sunday
+2025-03-01 Ramadan Begins
+2025-03-01 Shabbat Shekalim
+2025-03-02 Shrove Sunday
+2025-03-03 Shrove Monday
+2025-03-04 Shrove Tuesday
+2025-03-05 Ash Wednesday
+2025-03-08 Shabbat Zachor
+2025-03-13 Erev Purim
+2025-03-13 Fast of Esther
+2025-03-14 Purim
+2025-03-16 Shushan Purim
+2025-03-17 St. Patrick's Day
+2025-03-21 Bahá’í New Year (Naw-Ruz) 182
+2025-03-22 Shabbat Parah
+2025-03-27 Shab-e Qadr
+2025-03-29 Shabbat HaHodesh
+2025-03-31 Id-al-Fitr
+2025-04-01 April Fools' Day
+2025-04-06 Passion Sunday
+2025-04-12 Erev Passover
+2025-04-12 Shabbat HaGadol
+2025-04-13 Palm Sunday
+2025-04-13 Passover
+2025-04-14 Passover (second day)
+2025-04-15 Hol Hamoed Passover (first day)
+2025-04-16 Hol Hamoed Passover (second day)
+2025-04-17 Hol Hamoed Passover (third day)
+2025-04-17 Maundy Thursday
+2025-04-18 Good Friday
+2025-04-18 Hol Hamoed Passover (fourth day)
+2025-04-19 Passover (seventh day)
+2025-04-20 Easter Sunday
+2025-04-20 Pascha (Greek Orthodox Easter)
+2025-04-20 Passover (eighth day)
+2025-04-21 First Day of Ridvan
+2025-04-22 Second Day of Ridvan
+2025-04-23 Third Day of Ridvan
+2025-04-24 Fourth Day of Ridvan
+2025-04-25 Fifth Day of Ridvan
+2025-04-25 Yom HaShoah
+2025-04-26 Sixth Day of Ridvan
+2025-04-27 Seventh Day of Ridvan
+2025-04-28 Eighth Day of Ridvan
+2025-04-29 Ninth Day of Ridvan
+2025-04-30 Tenth Day of Ridvan
+2025-05-01 Eleventh Day of Ridvan
+2025-05-01 Yom HaAtzma'ut
+2025-05-02 Twelfth Day of Ridvan
+2025-05-11 Mother's Day
+2025-05-16 Lag BaOmer
+2025-05-23 Declaration of the Báb
+2025-05-25 Rogation Sunday
+2025-05-26 Memorial Day
+2025-05-26 Yom Yerushalaim
+2025-05-29 Ascension Day
+2025-05-29 Ascension of Bahá’u’lláh
+2025-06-01 Erev Shavuot
+2025-06-02 Shavuot
+2025-06-03 Shavuot (second day)
+2025-06-07 Id-al-Adha
+2025-06-08 Pentecost (Whitsunday)
+2025-06-09 Whitmonday
+2025-06-14 Flag Day
+2025-06-15 Father's Day
+2025-06-15 Trinity Sunday
+2025-06-19 Corpus Christi
+2025-06-27 Islamic New Year 1447
+2025-07-04 Independence Day
+2025-07-06 Ashura
+2025-07-09 Martyrdom of the Báb
+2025-07-13 Tzom Tammuz
+2025-08-02 Shabbat Hazon
+2025-08-03 Tisha B'Av
+2025-08-09 Shabbat Nahamu
+2025-08-15 Assumption
+2025-09-01 Labor Day
+2025-09-05 Mulad-al-Nabi
+2025-09-13 Selichot (night)
+2025-09-22 Erev Rosh HaShanah
+2025-09-23 Rosh HaShanah 5786
+2025-09-24 Rosh HaShanah (second day)
+2025-09-25 Tzom Gedaliah
+2025-09-27 Shabbat Shuvah
+2025-10-01 Erev Yom Kippur
+2025-10-02 Yom Kippur
+2025-10-06 Erev Sukkot
+2025-10-07 Sukkot
+2025-10-08 Sukkot (second day)
+2025-10-09 Hol Hamoed Sukkot (first day)
+2025-10-10 Hol Hamoed Sukkot (second day)
+2025-10-11 Hol Hamoed Sukkot (third day)
+2025-10-12 Hol Hamoed Sukkot (fourth day)
+2025-10-13 Columbus Day
+2025-10-13 Hoshanah Rabbah
+2025-10-14 Shemini Atzeret
+2025-10-15 Simchat Torah
+2025-10-20 Birth of the Báb
+2025-10-31 Halloween
+2025-11-11 Veteran's Day
+2025-11-12 Birth of Bahá’u’lláh
+2025-11-26 Day of the Covenant
+2025-11-27 Thanksgiving
+2025-11-28 Ascension of `Abdu’l-Bahá
+2025-11-30 Advent
+2025-12-04 "Tal Umatar" (evening)
+2025-12-14 Erev Hanukkah
+2025-12-15 Hanukkah (first day)
+2025-12-16 Hanukkah (second day)
+2025-12-17 Hanukkah (third day)
+2025-12-18 Hanukkah (fourth day)
+2025-12-19 Hanukkah (fifth day)
+2025-12-20 Hanukkah (sixth day)
+2025-12-21 Hanukkah (seventh day)
+2025-12-22 Hanukkah (eighth day)
+2025-12-25 Christmas
+2025-12-30 Tzom Teveth
+2026-01-01 New Year's Day
+2026-01-06 Epiphany
+2026-01-07 Christmas (Julian calendar)
+2026-01-15 Shab-e-Mi'raj
+2026-01-19 Martin Luther King Day
+2026-01-31 Shabbat Shirah
+2026-02-01 Septuagesima Sunday
+2026-02-02 Groundhog Day
+2026-02-02 Tu B'Shevat
+2026-02-03 Shab-e-Bara't
+2026-02-08 Sexagesima Sunday
+2026-02-14 Shabbat Shekalim
+2026-02-14 Valentine's Day
+2026-02-15 Shrove Sunday
+2026-02-16 President's Day
+2026-02-16 Shrove Monday
+2026-02-17 Shrove Tuesday
+2026-02-18 Ash Wednesday
+2026-02-18 Ramadan Begins
+2026-02-28 Shabbat Zachor
+2026-03-02 Erev Purim
+2026-03-02 Fast of Esther
+2026-03-03 Purim
+2026-03-04 Shushan Purim
+2026-03-07 Shabbat Parah
+2026-03-14 Shabbat HaHodesh
+2026-03-16 Shab-e Qadr
+2026-03-17 St. Patrick's Day
+2026-03-20 Id-al-Fitr
+2026-03-21 Bahá’í New Year (Naw-Ruz) 183
+2026-03-22 Passion Sunday
+2026-03-28 Shabbat HaGadol
+2026-03-29 Palm Sunday
+2026-04-01 April Fools' Day
+2026-04-01 Erev Passover
+2026-04-02 Maundy Thursday
+2026-04-02 Passover
+2026-04-03 Good Friday
+2026-04-03 Passover (second day)
+2026-04-04 Hol Hamoed Passover (first day)
+2026-04-05 Easter Sunday
+2026-04-05 Hol Hamoed Passover (second day)
+2026-04-06 Hol Hamoed Passover (third day)
+2026-04-07 Hol Hamoed Passover (fourth day)
+2026-04-08 Passover (seventh day)
+2026-04-09 Passover (eighth day)
+2026-04-12 Pascha (Greek Orthodox Easter)
+2026-04-14 Yom HaShoah
+2026-04-21 First Day of Ridvan
+2026-04-22 Second Day of Ridvan
+2026-04-22 Yom HaAtzma'ut
+2026-04-23 Third Day of Ridvan
+2026-04-24 Fourth Day of Ridvan
+2026-04-25 Fifth Day of Ridvan
+2026-04-26 Sixth Day of Ridvan
+2026-04-27 Seventh Day of Ridvan
+2026-04-28 Eighth Day of Ridvan
+2026-04-29 Ninth Day of Ridvan
+2026-04-30 Tenth Day of Ridvan
+2026-05-01 Eleventh Day of Ridvan
+2026-05-02 Twelfth Day of Ridvan
+2026-05-05 Lag BaOmer
+2026-05-10 Mother's Day
+2026-05-10 Rogation Sunday
+2026-05-14 Ascension Day
+2026-05-15 Yom Yerushalaim
+2026-05-21 Erev Shavuot
+2026-05-22 Shavuot
+2026-05-23 Declaration of the Báb
+2026-05-23 Shavuot (second day)
+2026-05-24 Pentecost (Whitsunday)
+2026-05-25 Memorial Day
+2026-05-25 Whitmonday
+2026-05-27 Id-al-Adha
+2026-05-29 Ascension of Bahá’u’lláh
+2026-05-31 Trinity Sunday
+2026-06-04 Corpus Christi
+2026-06-14 Flag Day
+2026-06-17 Islamic New Year 1448
+2026-06-21 Father's Day
+2026-06-26 Ashura
+2026-07-02 Tzom Tammuz
+2026-07-04 Independence Day
+2026-07-09 Martyrdom of the Báb
+2026-07-18 Shabbat Hazon
+2026-07-23 Tisha B'Av
+2026-07-25 Shabbat Nahamu
+2026-08-15 Assumption
+2026-08-26 Mulad-al-Nabi
+2026-09-05 Selichot (night)
+2026-09-07 Labor Day
+2026-09-11 Erev Rosh HaShanah
+2026-09-12 Rosh HaShanah 5787
+2026-09-13 Rosh HaShanah (second day)
+2026-09-14 Tzom Gedaliah
+2026-09-19 Shabbat Shuvah
+2026-09-20 Erev Yom Kippur
+2026-09-21 Yom Kippur
+2026-09-25 Erev Sukkot
+2026-09-26 Sukkot
+2026-09-27 Sukkot (second day)
+2026-09-28 Hol Hamoed Sukkot (first day)
+2026-09-29 Hol Hamoed Sukkot (second day)
+2026-09-30 Hol Hamoed Sukkot (third day)
+2026-10-01 Hol Hamoed Sukkot (fourth day)
+2026-10-02 Hoshanah Rabbah
+2026-10-03 Shemini Atzeret
+2026-10-04 Simchat Torah
+2026-10-12 Columbus Day
+2026-10-20 Birth of the Báb
+2026-10-31 Halloween
+2026-11-11 Veteran's Day
+2026-11-12 Birth of Bahá’u’lláh
+2026-11-26 Day of the Covenant
+2026-11-26 Thanksgiving
+2026-11-28 Ascension of `Abdu’l-Bahá
+2026-11-29 Advent
+2026-12-04 "Tal Umatar" (evening)
+2026-12-04 Erev Hanukkah
+2026-12-05 Hanukkah (first day)
+2026-12-06 Hanukkah (second day)
+2026-12-07 Hanukkah (third day)
+2026-12-08 Hanukkah (fourth day)
+2026-12-09 Hanukkah (fifth day)
+2026-12-10 Hanukkah (sixth day)
+2026-12-11 Hanukkah (seventh day)
+2026-12-12 Hanukkah (eighth day)
+2026-12-20 Tzom Teveth
+2026-12-25 Christmas
+2027-01-01 New Year's Day
+2027-01-05 Shab-e-Mi'raj
+2027-01-06 Epiphany
+2027-01-07 Christmas (Julian calendar)
+2027-01-18 Martin Luther King Day
+2027-01-23 Shabbat Shirah
+2027-01-23 Tu B'Shevat
+2027-01-24 Septuagesima Sunday
+2027-01-24 Shab-e-Bara't
+2027-01-31 Sexagesima Sunday
+2027-02-02 Groundhog Day
+2027-02-07 Shrove Sunday
+2027-02-08 Ramadan Begins
+2027-02-08 Shrove Monday
+2027-02-09 Shrove Tuesday
+2027-02-10 Ash Wednesday
+2027-02-14 Valentine's Day
+2027-02-15 President's Day
+2027-03-06 Shab-e Qadr
+2027-03-06 Shabbat Shekalim
+2027-03-10 Id-al-Fitr
+2027-03-14 Passion Sunday
+2027-03-17 St. Patrick's Day
+2027-03-20 Shabbat Zachor
+2027-03-21 Bahá’í New Year (Naw-Ruz) 184
+2027-03-21 Palm Sunday
+2027-03-22 Erev Purim
+2027-03-22 Fast of Esther
+2027-03-23 Purim
+2027-03-24 Shushan Purim
+2027-03-25 Maundy Thursday
+2027-03-26 Good Friday
+2027-03-27 Shabbat Parah
+2027-03-28 Easter Sunday
+2027-04-01 April Fools' Day
+2027-04-03 Shabbat HaHodesh
+2027-04-17 Shabbat HaGadol
+2027-04-21 Erev Passover
+2027-04-21 First Day of Ridvan
+2027-04-22 Passover
+2027-04-22 Second Day of Ridvan
+2027-04-23 Passover (second day)
+2027-04-23 Third Day of Ridvan
+2027-04-24 Fourth Day of Ridvan
+2027-04-24 Hol Hamoed Passover (first day)
+2027-04-25 Fifth Day of Ridvan
+2027-04-25 Hol Hamoed Passover (second day)
+2027-04-26 Hol Hamoed Passover (third day)
+2027-04-26 Sixth Day of Ridvan
+2027-04-27 Hol Hamoed Passover (fourth day)
+2027-04-27 Seventh Day of Ridvan
+2027-04-28 Eighth Day of Ridvan
+2027-04-28 Passover (seventh day)
+2027-04-29 Ninth Day of Ridvan
+2027-04-29 Passover (eighth day)
+2027-04-30 Tenth Day of Ridvan
+2027-05-01 Eleventh Day of Ridvan
+2027-05-02 Pascha (Greek Orthodox Easter)
+2027-05-02 Rogation Sunday
+2027-05-02 Twelfth Day of Ridvan
+2027-05-04 Yom HaShoah
+2027-05-06 Ascension Day
+2027-05-09 Mother's Day
+2027-05-12 Yom HaAtzma'ut
+2027-05-16 Pentecost (Whitsunday)
+2027-05-17 Id-al-Adha
+2027-05-17 Whitmonday
+2027-05-23 Declaration of the Báb
+2027-05-23 Trinity Sunday
+2027-05-25 Lag BaOmer
+2027-05-27 Corpus Christi
+2027-05-29 Ascension of Bahá’u’lláh
+2027-05-31 Memorial Day
+2027-06-04 Yom Yerushalaim
+2027-06-06 Islamic New Year 1449
+2027-06-10 Erev Shavuot
+2027-06-11 Shavuot
+2027-06-12 Shavuot (second day)
+2027-06-14 Flag Day
+2027-06-15 Ashura
+2027-06-20 Father's Day
+2027-07-04 Independence Day
+2027-07-09 Martyrdom of the Báb
+2027-07-22 Tzom Tammuz
+2027-08-07 Shabbat Hazon
+2027-08-12 Tisha B'Av
+2027-08-14 Shabbat Nahamu
+2027-08-15 Assumption
+2027-08-15 Mulad-al-Nabi
+2027-09-06 Labor Day
+2027-09-25 Selichot (night)
+2027-10-01 Erev Rosh HaShanah
+2027-10-02 Rosh HaShanah 5788
+2027-10-03 Rosh HaShanah (second day)
+2027-10-04 Tzom Gedaliah
+2027-10-09 Shabbat Shuvah
+2027-10-10 Erev Yom Kippur
+2027-10-11 Columbus Day
+2027-10-11 Yom Kippur
+2027-10-15 Erev Sukkot
+2027-10-16 Sukkot
+2027-10-17 Sukkot (second day)
+2027-10-18 Hol Hamoed Sukkot (first day)
+2027-10-19 Hol Hamoed Sukkot (second day)
+2027-10-20 Birth of the Báb
+2027-10-20 Hol Hamoed Sukkot (third day)
+2027-10-21 Hol Hamoed Sukkot (fourth day)
+2027-10-22 Hoshanah Rabbah
+2027-10-23 Shemini Atzeret
+2027-10-24 Simchat Torah
+2027-10-31 Halloween
+2027-11-11 Veteran's Day
+2027-11-12 Birth of Bahá’u’lláh
+2027-11-25 Thanksgiving
+2027-11-26 Day of the Covenant
+2027-11-28 Advent
+2027-11-28 Ascension of `Abdu’l-Bahá
+2027-12-05 "Tal Umatar" (evening)
+2027-12-24 Erev Hanukkah
+2027-12-25 Christmas
+2027-12-25 Hanukkah (first day)
+2027-12-25 Shab-e-Mi'raj
+2027-12-26 Hanukkah (second day)
+2027-12-27 Hanukkah (third day)
+2027-12-28 Hanukkah (fourth day)
+2027-12-29 Hanukkah (fifth day)
+2027-12-30 Hanukkah (sixth day)
+2027-12-31 Hanukkah (seventh day)
+2028-01-01 Hanukkah (eighth day)
+2028-01-01 New Year's Day
+2028-01-06 Epiphany
+2028-01-07 Christmas (Julian calendar)
+2028-01-09 Tzom Teveth
+2028-01-13 Shab-e-Bara't
+2028-01-17 Martin Luther King Day
+2028-01-28 Ramadan Begins

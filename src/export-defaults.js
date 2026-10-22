@@ -33,7 +33,7 @@ export function exportItemState(vars, item) {
 /** The text of a quoted Lisp string value ("a\nb" is two lines), or null when the value is not a string (t, nil, auto).
  * @param {unknown} raw
  * @returns {string | null} */
-function lispStringValue(raw) {
+export function lispStringValue(raw) {
   const v = typeof raw === 'string' ? raw.trim() : '';
   if (!/^".*"$/s.test(v)) return null;
   return v.slice(1, -1).replace(/\\(.)/gs, (_m, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));

@@ -24,7 +24,9 @@
 //                      `local:` files are found by name. supported(); folder() -- the folder chosen, { name }, or null;
 //                      pickFolder() -- ask the person, resolving { name } (an AbortError if they back out); adapter --
 //                      { readBinary(path) -> { base64 } or null, writeBinary(path, base64), delete(path), exists(path), list(folder) -> [{ name, path, type }] }
-//                      on paths relative to that folder
+//                      on paths relative to that folder. Optional, for org-attach-method: removeSource(uri) -- delete a file `pickFile` returned
+//                      with a `uri` (a move); adapter.link(path, uri) -- keep a link entry at `path` to that file instead of a copy, which
+//                      readBinary then reads through (ln). Without them a move or link is a copy.
 //   captureShortcuts   the launcher's own shortcuts for Capture: supported() -- whether there are any here; set(list) --
 //                      publish one per capture template, `list` being [{ key, label }]; canPin() / pin({ key, label }) --
 //                      put an icon for one on the home screen ('' as the key is the template list); info() -- what the

@@ -41,6 +41,7 @@ import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn } from './holidays.js';
+import { nonGregorianDateLine } from './diary-nongregorian.js';
 import { astroDayNumberLine, dayOfYearLine, isoDateLine, julianDateLine, lunarPhasesLine } from './diary-calendar.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
@@ -416,6 +417,9 @@ function canonicalDiaryLine(line, style) {
     case 'diary-iso-date':
     case 'diary-julian-date':
     case 'diary-astro-day-number':
+    case 'diary-hebrew-date':
+    case 'diary-islamic-date':
+    case 'diary-bahai-date':
     case 'diary-lunar-phases': {
       const c = context.candidateDate;
       const y = c.getFullYear();
@@ -426,6 +430,9 @@ function canonicalDiaryLine(line, style) {
         : head.value === 'diary-iso-date' ? isoDateLine(y, m, d)
         : head.value === 'diary-julian-date' ? julianDateLine(y, m, d)
         : head.value === 'diary-astro-day-number' ? astroDayNumberLine(y, m, d)
+        : head.value === 'diary-hebrew-date' ? nonGregorianDateLine('hebrew', c)
+        : head.value === 'diary-islamic-date' ? nonGregorianDateLine('islamic', c)
+        : head.value === 'diary-bahai-date' ? nonGregorianDateLine('bahai', c)
         : lunarPhasesLine(y, m, d, context.timeZone);
       return line || false;
     }
@@ -779,6 +786,16 @@ function evaluateSexpr(/** @type {unknown} */ node, /** @type {Record<string, un
   }
 }
 
+/** The value a sexp stands for (a number, string, list or false), for callers that need more than a match. @param {unknown} node @param {Record<string, unknown>} context @returns {unknown} */
+function evaluateSexprValue(node, context) {
+  try {
+    return ev(node, context);
+  } catch (e) {
+    if (e instanceof LispError) return false;
+    throw e;
+  }
+}
+
 /** `diary-float`'s own MONTH argument, exactly as parseDiaryFloatLine
  *  in diary-sexp.js already accepts it -- a single 1-12 number, the
  *  symbol `t` (every month), or a parenthesized list of numbers
@@ -889,7 +906,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-lunar-phases']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`
@@ -939,4 +956,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };
+export { canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, evaluateSexprValue, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };

@@ -1,6 +1,7 @@
 // @ts-check
 import { startClockWatch, tickClockWatch } from './src-browser/clock-watch.js';
 import { applyDurationVariables } from './src/org-duration.js';
+import { applyHolidayVariables } from './src/holidays.js';
 import { hasPendingChange } from './src/outbox.js';
 import { parseOrg } from './src/org-parser.js';
 import { cycleFoldLevel } from './src/fold-state.js';
@@ -1198,6 +1199,7 @@ async function bootstrap() {
   S.globalVariablesText = await getGlobalVariables(kv);
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
   applyDurationVariables(S.globalVariables);
+  applyHolidayVariables(S.globalVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   loadExtensions().catch((err) => console.error('extensions:', err));

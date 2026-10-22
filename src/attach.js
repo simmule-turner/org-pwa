@@ -404,7 +404,33 @@ function planAttachTransfer(names, fromDir, toDir, targetExisting, move) {
   return { files };
 }
 
+/** `org-attach-method`: cp (default), mv, ln or lns; the value may be written as a symbol ('mv) or a bare name.
+ * @param {Record<string, string> | undefined} vars @returns {'cp' | 'mv' | 'ln' | 'lns'} */
+function attachMethod(vars) {
+  const raw = String((vars || {})['org-attach-method'] ?? '').trim().replace(/^'/, '');
+  return raw === 'mv' || raw === 'ln' || raw === 'lns' ? raw : 'cp';
+}
+
+/** The file name a URL downloads as: the last path segment, decoded, or `fallback` when it has none (`org-attach-url` uses the same).
+ * @param {string} url @param {string} [fallback] @returns {string} */
+function fileNameFromUrl(url, fallback = 'download') {
+  /** @type {string} */ let path;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    return fallback;
+  }
+  const last = path.split('/').filter(Boolean).pop() || '';
+  try {
+    return decodeURIComponent(last) || fallback;
+  } catch {
+    return last || fallback;
+  }
+}
+
 export {
+  attachMethod,
+  fileNameFromUrl,
   planAttachTransfer,
   prefersInAppCamera,
   attachmentSizeCheck,

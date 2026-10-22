@@ -506,6 +506,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-text-line-numbers', label: 'Text view: show line numbers', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-wrap', label: 'Text view: wrap long lines', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
+  { key: 'org-xx-lisp-init', label: 'Lisp init (holiday-* lists, calendar-holidays)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
   { key: 'org-global-properties', label: 'Global properties', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#effort-all' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
@@ -515,5 +516,6 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
   { key: 'diary-file', label: 'Diary file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
   { key: 'diary-list-entries-hook', label: 'Diary hook (diary-include-other-diary-files, diary-sort-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-nongregorian-listing-hook', label: 'Hebrew, Islamic and Bahá\u2019í entries (diary-hebrew-list-entries, diary-islamic-list-entries, diary-bahai-list-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
   { key: 'diary-date-forms', label: 'Diary date forms (Lisp list)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
 ];

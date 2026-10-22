@@ -1,6 +1,8 @@
 // @ts-check
 // Extracted from app.js: settings view (the theme part is in settings-theme.js, Quick Settings in settings-quick.js).
+import { attachMethod } from '../src/attach.js';
 import { applyDurationVariables } from '../src/org-duration.js';
+import { applyHolidayVariables } from '../src/holidays.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
 import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -35,7 +37,7 @@ import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 import { applyTheme, buildThemeColorCustomizationSection } from './settings-theme.js';
 import { buildExportCards } from './settings-export.js';
-import { buildFullyResolvedGlobalVariablesText, renderQuickSettingsGroups } from './settings-quick.js';
+import { buildFullyResolvedGlobalVariablesText, commitGlobalVariableChange, renderQuickSettingsGroups } from './settings-quick.js';
 import { renderSettingsShell } from './settings-shell.js';
 export { applyTheme, persistAndReapplyThemeColors, buildThemeColorCustomizationSection, applySidePanelWidth } from './settings-theme.js';
 export { resolveQuickSettingValue, buildFullyResolvedGlobalVariablesText, commitGlobalVariableChange, renderQuickSettingField, renderQuickSettingsGroups } from './settings-quick.js';
@@ -398,6 +400,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     S.globalVariablesText = normalizedText;
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
     applyDurationVariables(S.globalVariables);
+    applyHolidayVariables(S.globalVariables);
     // Re-merge immediately so the currently open document (if any)
     // reflects the change right away -- no reload needed, matching
     // how the theme/font settings already apply on save.
@@ -920,6 +923,30 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   linkHint.style.cssText = 'font-size:11px;opacity:.6;margin:2px 0 6px;';
   linkHint.textContent = 'Org keeps attachments in a folder and writes no link. A link is what shows a picture or a recording inline under the heading; with never, attachments are found through the Attach menu only.';
   attachSection.appendChild(linkHint);
+  const methodRow = document.createElement('div');
+  methodRow.className = 'panel-row';
+  methodRow.style.cssText = 'align-items:center;flex-wrap:wrap;gap:12px;';
+  const methodLabel = document.createElement('span');
+  methodLabel.textContent = 'Attach a file by (org-attach-method)';
+  methodRow.appendChild(methodLabel);
+  const currentMethod = attachMethod(S.globalVariables);
+  for (const [value, label] of [['cp', 'copying'], ['mv', 'moving'], ['ln', 'linking']]) {
+    const choice = document.createElement('label');
+    choice.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer;';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'attachMethod';
+    radio.checked = currentMethod === value || (value === 'ln' && currentMethod === 'lns');
+    radio.onchange = () => commitGlobalVariableChange('org-attach-method', value === 'cp' ? null : `'${value}`);
+    choice.appendChild(radio);
+    choice.appendChild(document.createTextNode(label));
+    methodRow.appendChild(choice);
+  }
+  attachSection.appendChild(methodRow);
+  const methodHint = document.createElement('div');
+  methodHint.style.cssText = 'font-size:11px;opacity:.6;margin:2px 0 6px;';
+  methodHint.textContent = 'What Attach does with a file you pick. Moving asks before it deletes the original, and linking keeps a link to it; both need an app that can do that, and copy is used where it cannot.';
+  attachSection.appendChild(methodHint);
 
   cards.set('history', buildHistoryCard());
 

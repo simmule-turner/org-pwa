@@ -161,6 +161,21 @@ export function datum(f) {
   return null;
 }
 
+/** `(append A B ...)` of variables and quoted lists, the one computed value an init text commonly sets (`calendar-holidays`).
+ * @param {Lisp} f @param {Map<string, Lisp>} vars @param {(name: string) => string} real @returns {Lisp | null} */
+function appended(f, vars, real) {
+  if (f.k !== 'list' || symbolName(f.items[0]) !== 'append') return null;
+  /** @type {Lisp[]} */
+  const items = [];
+  for (const a of f.items.slice(1)) {
+    const v = a.k === 'sym' && a.v !== 't' && a.v !== 'nil' ? vars.get(real(a.v)) : datum(a) || undefined;
+    const l = v === undefined ? null : listItems(v);
+    if (!l) return null;
+    items.push(...l);
+  }
+  return { k: 'list', items };
+}
+
 /**
  * Plays the configuration forms of an init text on top of `vars` (variable name to value) and returns the result.
  * `setq` replaces a value, `add-to-list` puts a new item first (last with a third argument) unless it is already there, `push` puts it first.
@@ -180,7 +195,7 @@ export function runInit(text, initial, aliases = {}) {
     if (head === 'setq') {
       for (let i = 0; i + 1 < args.length; i += 2) {
         const name = symbolName(args[i]);
-        const value = datum(args[i + 1]);
+        const value = datum(args[i + 1]) || appended(args[i + 1], vars, real);
         if (name && value) vars.set(real(name), value);
       }
     } else if (head === 'add-to-list' || head === 'push' || head === 'cl-pushnew') {

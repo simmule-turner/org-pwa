@@ -806,9 +806,9 @@ export function getDiaryShowHolidaysFlag(vars) {
 
 /** diary-nonmarking-symbol (default "&"), diary-sexp-entry-symbol (default "%%") and diary-include-string (default "#include").
  * @param {LocalVars} vars
- * @param {'diary-nonmarking-symbol' | 'diary-sexp-entry-symbol' | 'diary-include-string'} name */
+ * @param {'diary-nonmarking-symbol' | 'diary-sexp-entry-symbol' | 'diary-include-string' | 'diary-hebrew-entry-symbol' | 'diary-islamic-entry-symbol' | 'diary-bahai-entry-symbol'} name */
 export function getDiarySymbol(vars, name) {
-  const fallback = name === 'diary-nonmarking-symbol' ? '&' : name === 'diary-sexp-entry-symbol' ? '%%' : '#include';
+  const fallback = /** @type {Record<string, string>} */ ({ 'diary-include-string': '#include', 'diary-nonmarking-symbol': '&', 'diary-sexp-entry-symbol': '%%', 'diary-hebrew-entry-symbol': 'H', 'diary-islamic-entry-symbol': 'I', 'diary-bahai-entry-symbol': 'B' })[name];
   return parseLispString((vars || {})[name], fallback);
 }
 
@@ -818,6 +818,14 @@ export function getDiarySymbol(vars, name) {
 export function getDiaryListEntriesHook(vars) {
   const raw = String((vars || {})['diary-list-entries-hook'] ?? '');
   return (raw.match(/diary-include-other-diary-files|diary-sort-entries/g) || []).filter((n, i, all) => all.indexOf(n) === i);
+}
+
+/** diary-nongregorian-listing-hook: the functions it names that list Hebrew, Islamic and Bahá'í entries. Default nil, as in Emacs.
+ * @param {LocalVars} vars
+ * @returns {string[]} */
+export function getDiaryNongregorianHook(vars) {
+  const raw = String((vars || {})['diary-nongregorian-listing-hook'] ?? '');
+  return (raw.match(/diary-(?:hebrew|islamic|bahai)-list-entries/g) || []).filter((n, i, all) => all.indexOf(n) === i);
 }
 
 /** org-xx-diary-merge-rows: show a day's diary as Org does, with every entry that does not start with a time joined into the

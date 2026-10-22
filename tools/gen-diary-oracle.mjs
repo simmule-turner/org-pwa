@@ -4,7 +4,7 @@
  * the variables), what Emacs 29.3 lists for every day of 2026 and 2027:
  *   org   what the Org agenda shows (org-get-entries-from-diary), holidays included
  *   raw   the entries diary-list-entries finds, each as the text Emacs holds for it
- *   hol   the holidays of that day (the general and Christian lists, which are the ones the app has)
+ *   hol   the holidays of that day (Emacs's default groups the app has: general, Christian, Hebrew, Islamic and Bahá'í)
  *
  *   node tools/gen-diary-oracle.mjs     (needs emacs on the PATH)
  */
@@ -22,7 +22,7 @@ const cases = JSON.parse(fs.readFileSync(path.join(src, 'cases.json'), 'utf8')).
 
 const el = `
 (require 'org-agenda) (require 'diary-lib) (require 'holidays) (require 'json)
-(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays))
+(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays holiday-hebrew-holidays holiday-islamic-holidays holiday-bahai-holidays))
 (defun kget (k alist) (cdr (assq k alist)))
 (defun day-record (date)
   (let* ((org (mapcar #'substring-no-properties (let ((inhibit-message t)) (org-get-entries-from-diary date))))

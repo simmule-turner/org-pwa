@@ -623,6 +623,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~diary-file~ | unset | The diary: one ~github:~, ~webdav:~ or ~local:~ file, shown in the Agenda when ~org-agenda-include-diary~ is ~t~ |
 | ~diary-include-string~ | ~"#include"~ | The word that starts a line naming another diary file |
 | ~diary-list-entries-hook~ | unset | ~diary-include-other-diary-files~ in the list follows ~#include~ lines; ~diary-sort-entries~ sorts a day's entries by time. Other names are ignored |
+| ~diary-nongregorian-listing-hook~ | unset | ~diary-hebrew-list-entries~, ~diary-islamic-list-entries~ and ~diary-bahai-list-entries~ in the list show the diary's ~H~, ~I~ and ~B~ entries (see [[#diary-file][Diary file]]) |
 | ~diary-nonmarking-symbol~ | ~"&"~ | The character that may come before a date |
 | ~diary-sexp-entry-symbol~ | ~"%%"~ | What starts a sexp line |
 | ~diary-show-holidays-flag~ | ~t~ | ~t~ lists the day's holidays with its diary entries (see [[#diary-file][Diary file]]) |
@@ -648,6 +649,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-use-tag-inheritance~ | ~(todo search agenda)~ | The views that use tag inheritance: ~t~, ~nil~, or a list of ~agenda~, ~todo~ and ~search~ |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
+| ~org-attach-method~ | ~cp~ | What Attach does with a file you pick: ~cp~ copies it, ~mv~ asks to delete the original after copying, ~ln~ (or ~lns~) keeps a link to it; ~mv~ and ~ln~ copy where the app cannot do them (see [[#attachments][Attachments]]); also Settings → Attachments |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
@@ -700,6 +702,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
 | ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX export: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export); Settings → Export → LaTeX sets it |
+| ~org-xx-lisp-init~ | unset | (own) A quoted string of Emacs Lisp: the ~holiday-*~ lists, ~calendar-holidays~ and the ~calendar-*-all-holidays-flag~ variables (see [[#holidays][Holidays]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
@@ -956,6 +959,8 @@ Header arguments are inherited as in Org: ~#+PROPERTY: header-args :results outp
 Files kept with a heading, as in Org's ~org-attach~. Press ~C-c C-a~ on a heading, or tap *Attach* in 📋 Edit details, for a grid of buttons:
 
 - *Attach* (~a~): on a phone or tablet, opens the system chooser to pick files or photos, or take a photo or video; the file is copied into the heading's folder. On ChromeOS and desktop it first asks *Choose a file*, *Take a photo* or *Record a video* (the last two use an in-app webcam panel).
+- *Attach a copy* (~c~), *Attach and move* (~m~), *Attach a link* (~l~): ~a~ does what ~org-attach-method~ says (Settings → Attachments): ~cp~ copies, ~mv~ copies and then asks before deleting the original, ~ln~ keeps a link to the file. Moving and linking appear where the app can delete or link a picked file (the Android app); elsewhere ~mv~ and ~ln~ copy.
+- *Attach from URL* (~u~, ~org-attach-url~): type a URL; the file is downloaded into the folder. A site that does not allow other sites to read it fails with a message.
 - *Record audio* (~r~): record from the microphone, play it back, then save.
 - *Attach open document* (~b~, ~org-attach-buffer~): save one of your open documents, as text, in the folder.
 - *New text file* (~n~, ~org-attach-new~): give a name and type its contents.
@@ -978,8 +983,6 @@ Example: on a heading, ~C-c C-a~, then ~a~, pick ~receipt.pdf~. The heading now 
 *Filenames*: unsafe characters become ~_~; a duplicate gets ~-1~, ~-2~ before the extension.
 
 *Between headings*: in the folder panel, select files and tap *Copy to heading…* or *Move to heading…*, then pick a heading from the open document. The files are written to that heading's folder first (it gets an ~ID~, a folder and the ~:ATTACH:~ tag if it had none) and a move deletes the originals only afterwards; the link setting above decides whether a link is added. A name already there gets ~-1~, ~-2~.
-
-*Not built*: attaching from a URL, ~org-attach-method~ (the copy/move/link choice for a new file), and absolute ~DIR~ paths outside the storage.
 
 -----
 
@@ -1308,7 +1311,27 @@ Each indented line is its own row, and the same entries can be written one per l
 
 Rows are as Emacs's Org agenda shows them: a date line followed by indented lines gives one row for each indented line that starts with a time, and a line without a time joins the row before it. ~org-xx-diary-merge-rows~ set to ~nil~ gives each entry, a date and all its indented lines, a single row instead. ~diary-show-holidays-flag~ set to ~nil~ leaves the holidays out. ~diary-list-entries-hook~ may name ~diary-include-other-diary-files~ (read the files named by ~#include "file"~ lines) and ~diary-sort-entries~ (sort a day's entries by time). *Refresh* in the Agenda reads the file again.
 
+Hebrew, Islamic and Bahá'í dates: a line starting ~H~, ~I~ or ~B~ directly before a date in that calendar (~HHeshvan 10, 5787 Anniversary~) is listed on that day once ~diary-nongregorian-listing-hook~ names ~diary-hebrew-list-entries~, ~diary-islamic-list-entries~ or ~diary-bahai-list-entries~, with the month names of that calendar (Hebrew months are numbered with Nisan first and Adar I and II as 12 and 13). ~%%(diary-hebrew-date)~, ~%%(diary-islamic-date)~ and ~%%(diary-bahai-date)~ show the day's date in each calendar.
+
 In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly, anniversary, cyclic or block entry at the end of the file, as Emacs's ~diary-insert-*~ commands do, and saves it. *Check this line* says whether the line under the cursor is an entry, by which date form, and on which days it falls next. *Date…* puts a date at the cursor. The Agenda reads the diary from its open tab, so an edit shows at once.
+
+*** Holidays
+:PROPERTIES:
+:CUSTOM_ID: holidays
+:END:
+
+The holidays the Agenda, the diary, ~org-class~ and ~calendar-check-holidays~ use are Emacs's ~calendar-holidays~: the groups ~holiday-general-holidays~ (the US list), ~holiday-christian-holidays~, ~holiday-hebrew-holidays~, ~holiday-islamic-holidays~ and ~holiday-bahai-holidays~, plus your own ~holiday-local-holidays~ and ~holiday-other-holidays~. Set them in Settings → Advanced → *Lisp init*, as in an init file.
+
+#+BEGIN_SRC
+(setq holiday-hebrew-holidays nil)                         ; switch a group off
+(setq holiday-local-holidays
+      '((holiday-fixed 3 14 "Pi Day")
+        (holiday-float 11 4 -1 "Last Thursday of November")
+        (holiday-easter-etc 1 "Easter Monday")))
+(setq calendar-christian-all-holidays-flag t)              ; the longer lists
+#+END_SRC
+
+Forms: ~holiday-fixed~, ~holiday-float~, ~holiday-easter-etc~, ~holiday-greek-orthodox-easter~, ~holiday-advent~, ~holiday-julian~, ~holiday-hebrew~, ~holiday-islamic~, ~holiday-bahai~, ~holiday-sexp~ (a quoted expression that gives ~(month day year)~ for a ~year~, and a string), the named ~holiday-hebrew-passover~ family, ~holiday-islamic-new-year~ and ~holiday-bahai-new-year~, with ~if~, ~append~ and ~progn~. ~(setq calendar-holidays (append holiday-general-holidays holiday-islamic-holidays))~ chooses the groups. The ~calendar-christian-all-holidays-flag~, ~calendar-hebrew-all-holidays-flag~, ~calendar-islamic-all-holidays-flag~ and ~calendar-bahai-all-holidays-flag~ variables add the longer lists, as in Emacs.
 
 *** General ~<%%(sexp)>~ timestamps
 :PROPERTIES:
@@ -2262,7 +2285,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and a sound file plays in the Android app only.
 
-*Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips US and Christian holidays. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open. The diary shows its Gregorian entries.
+*Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips the days in your holiday lists. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open.
 
 *Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
 

@@ -3,14 +3,14 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
-import { confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFiles, showModalOverlay } from './dialogs.js';
+import { promptText, confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFiles, showModalOverlay } from './dialogs.js';
 import { pickHeading } from './heading-pick.js';
 import { showAttachmentFolder } from './attach-folder-panel.js';
 import { cameraAvailable, openCameraPanel } from './camera-capture.js';
@@ -70,7 +70,7 @@ async function requireAttachmentStorage() {
  * needed here.
  * @param {Heading} heading
  */
-export async function attachFileToHeading(heading) {
+export async function attachFileToHeading(heading, method = attachMethod(S.globalVariables)) {
   if (!(await requireAttachmentStorage())) return;
 
   // A Chromebook or desktop browser has no camera in its file chooser, so Attach asks which first; a phone's own chooser has it.
@@ -78,7 +78,7 @@ export async function attachFileToHeading(heading) {
     openButtonChoiceModal({
       label: `Attach to "${heading.title || '(untitled)'}"`,
       buttons: [
-        { text: 'Choose a file', onClick: () => pickAndUpload(heading) },
+        { text: 'Choose a file', onClick: () => pickAndUpload(heading, method) },
         { text: 'Take a photo', onClick: () => openCameraPanel('photo', (/** @type {any} */ picked) => uploadAttachmentToHeading(heading, picked)) },
         { text: 'Record a video', onClick: () => openCameraPanel('video', (/** @type {any} */ picked) => uploadAttachmentToHeading(heading, picked)) },
         { text: 'Cancel', onClick: () => {} },
@@ -86,11 +86,18 @@ export async function attachFileToHeading(heading) {
     });
     return;
   }
-  await pickAndUpload(heading);
+  await pickAndUpload(heading, method);
 }
 
-/** @param {Heading} heading */
-async function pickAndUpload(heading) {
+/** Whether the platform can delete the file a person picked (`mv`) or keep a handle to it (`ln`).
+ * @param {'mv' | 'ln'} method */
+function platformCan(method) {
+  const a = platform.attachments || {};
+  return method === 'mv' ? typeof a.removeSource === 'function' : !!(a.adapter && typeof a.adapter.link === 'function');
+}
+
+/** @param {Heading} heading @param {'cp' | 'mv' | 'ln' | 'lns'} method */
+async function pickAndUpload(heading, method) {
   let picked;
   try {
     // a shell may offer the camera beside the files; the browser's chooser takes several at once
@@ -98,7 +105,55 @@ async function pickAndUpload(heading) {
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
-  for (const file of Array.isArray(picked) ? picked : [picked]) await uploadAttachmentToHeading(heading, file);
+  const wanted = method === 'lns' ? 'ln' : method;
+  const files = Array.isArray(picked) ? picked : [picked];
+  for (const file of files) {
+    const can = wanted === 'cp' || (wanted === 'mv' && (!!file.remove || (platformCan('mv') && !!file.uri))) || (wanted === 'ln' && platformCan('ln') && !!file.uri);
+    if (!can) {
+      setStatus(`This device cannot ${wanted === 'mv' ? 'move' : 'link'} a file it picked, so \u201c${file.name}\u201d is copied (org-attach-method ${wanted} \u2192 cp).`);
+      await uploadAttachmentToHeading(heading, file);
+    } else if (wanted === 'ln') await uploadAttachmentToHeading(heading, file, { link: true });
+    else {
+      const name = await uploadAttachmentToHeading(heading, file);
+      if (name && wanted === 'mv') await offerDeleteSource(file);
+    }
+  }
+}
+
+/** After a move: the original is deleted once the copy is written, if the person agrees (write first, delete second, as Refile does).
+ * @param {{ name: string, uri?: string, remove?: () => Promise<void> }} file */
+async function offerDeleteSource(file) {
+  if (!(await confirmDialog(`Attached. Delete the original \u201c${file.name}\u201d from the device?`, { confirmLabel: 'Delete original', danger: true }))) return;
+  try {
+    if (file.remove) await file.remove();
+    else await platform.attachments.removeSource(file.uri);
+    setStatus(`Moved \u201c${file.name}\u201d: the original is deleted.`);
+  } catch (err) {
+    setStatus(`The copy is attached, but the original \u201c${file.name}\u201d could not be deleted: ${err && err.message ? err.message : err}`);
+  }
+  render();
+}
+
+/** `u` (org-attach-url): downloads a URL into the heading's attachment folder. A site that does not allow cross-origin requests cannot be read from a browser.
+ * @param {Heading} heading */
+export async function attachFromUrl(heading) {
+  if (!(await requireAttachmentStorage())) return;
+  const url = await promptText('Attach the file at this URL:', '', { okLabel: 'Download' });
+  if (!url || !url.trim()) return;
+  setStatus('Downloading\u2026');
+  render();
+  try {
+    const response = await fetch(url.trim());
+    if (!response.ok) throw new Error(`the server answered ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    await uploadAttachmentToHeading(heading, { name: fileNameFromUrl(url.trim()), type: response.headers.get('content-type') || undefined, base64: btoa(binary) });
+  } catch (err) {
+    const blocked = err instanceof TypeError;
+    setStatus(blocked ? 'Could not download it: the site does not allow this app to read it (cross-origin), or there is no connection.' : `Could not download it: ${err && err.message ? err.message : err}`);
+    render();
+  }
 }
 
 /** The file names in an attachment folder (sorted), or null if the backend could not say. A folder that does not exist yet is an
@@ -147,16 +202,18 @@ export async function attachmentFiles(heading) {
  *  check (this itself doesn't re-check, since both current callers
  *  already have): only ever called once GitHub/WebDAV is confirmed
  * @param {Heading} heading
- * @param {{ name: string, base64: string, type?: string }} picked
+ * @param {{ name: string, base64: string, type?: string, uri?: string }} picked
+ * @param {{ link?: boolean }} [opts]  link: keep a link entry to the picked file instead of a copy (`ln`)
+ * @returns {Promise<string | null>}  the name it was attached as
  *  connected. */
-export async function uploadAttachmentToHeading(heading, picked) {
+export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
   const tooBig = attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
   if (tooBig && tooBig.refuse) {
     setStatus(tooBig.refuse);
     render();
-    return;
+    return null;
   }
-  if (tooBig && tooBig.warn && !(await confirmDialog(tooBig.warn, { confirmLabel: 'Attach', danger: false }))) return;
+  if (tooBig && tooBig.warn && !(await confirmDialog(tooBig.warn, { confirmLabel: 'Attach', danger: false }))) return null;
   setStatus('Uploading attachment\u2026');
   render();
 
@@ -173,11 +230,12 @@ export async function uploadAttachmentToHeading(heading, picked) {
 
   try {
     const adapter = activeDiskAdapter();
-    await adapter.writeBinary(path, picked.base64);
+    if (opts.link) await adapter.link(path, picked.uri);
+    else await adapter.writeBinary(path, picked.base64);
   } catch (err) {
     setStatus(`Could not attach "${filename}": ${err.message}`);
     render();
-    return;
+    return null;
   }
 
   // Avoid immediately re-downloading the exact bytes just uploaded --
@@ -195,6 +253,7 @@ export async function uploadAttachmentToHeading(heading, picked) {
 
   setStatus(`Attached "${filename}".`);
   commitAndRender(`Attached "${filename}"`);
+  return filename;
 }
 
 /** Downloads a non-image attachment: link's own actual file -- what
@@ -568,7 +627,7 @@ export async function revealAttachmentFolder(heading) {
     title: `Folder \u2014 ${dir}`,
     load: () => listFolder(dir),
     act: (/** @type {any} */ action, /** @type {string} */ name) => performAttachmentAction(heading, name, action),
-    add: () => pickAndUpload(heading),
+    add: () => pickAndUpload(heading, 'cp'),
     saveMany: async (/** @type {any} */ names) => {
       for (const name of names) await performAttachmentAction(heading, name, 'save');
     },
@@ -703,6 +762,10 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
     showKeys: viaKeys,
     buttons: [
       { key: 'a', text: 'Attach', onClick: () => attachFileToHeading(heading) },
+      { key: 'c', text: 'Attach a copy', onClick: () => attachFileToHeading(heading, 'cp') },
+      ...(platformCan('mv') ? [{ key: 'm', text: 'Attach and move', onClick: () => attachFileToHeading(heading, 'mv') }] : []),
+      ...(platformCan('ln') ? [{ key: 'l', text: 'Attach a link', onClick: () => attachFileToHeading(heading, 'ln') }] : []),
+      { key: 'u', text: 'Attach from URL', onClick: () => attachFromUrl(heading) },
       { key: 'r', text: 'Record audio', onClick: () => openAudioRecordingPanel(heading) },
       { key: 'b', text: 'Attach open document', onClick: () => attachOpenDocument(heading) },
       { key: 'n', text: 'New text file', onClick: () => attachNewTextFile(heading) },
