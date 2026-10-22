@@ -1,0 +1,7 @@
+(setq calendar-holidays '((holiday-fixed 2 29 "Leap")
+ (holiday-float 11 4 -1 "Last Thu Nov") (holiday-float 12 0 2 "2nd Sun after Dec 10" 10) (holiday-float 1 1 -2 "2nd Mon before Jan 20" 20)
+ (holiday-float 3 2 1 "Tue after Mar 30" 30) (holiday-easter-etc 1 "Easter Monday") (holiday-easter-etc -7 "Palm")
+ (holiday-greek-orthodox-easter 1 "GOE Monday") (holiday-greek-orthodox-easter) (holiday-advent -7 "Before Advent") (holiday-advent)
+ (holiday-julian 1 7 "Orthodox Xmas") (holiday-julian 12 25 "Julian Xmas") (holiday-hebrew 1 14 "Eve") (holiday-hebrew 12 1 "Adar start") (holiday-hebrew 7 3 "Tishri3")
+ (holiday-islamic 10 1 "Eid") (holiday-islamic 12 10 "Adha") (holiday-islamic 1 1 "NY") (holiday-bahai 4 21 "Ridvan1") (holiday-bahai 19 1 "Ala") (holiday-bahai 1 1 "Baha1")
+ (holiday-sexp '(if (= (% year 4) 0) (list 3 (+ 20 (% year 3)) year)) "Sexp") (holiday-sexp '(list 12 31 year) "NYE")))

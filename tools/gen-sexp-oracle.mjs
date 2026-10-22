@@ -13,8 +13,8 @@ import path from 'node:path';
 
 const exprs = JSON.parse(fs.readFileSync('test/fixtures/sexp/general.exprs.json', 'utf8'));
 const el = `
-(require 'diary-lib) (require 'json) (require 'cl-lib) (require 'holidays) (require 'org-agenda)
-(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays holiday-hebrew-holidays holiday-islamic-holidays holiday-bahai-holidays))
+(require 'diary-lib) (require 'json) (require 'cl-lib) (require 'holidays) (require 'solar) (require 'org-agenda)
+(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays holiday-hebrew-holidays holiday-islamic-holidays holiday-bahai-holidays holiday-solar-holidays))
 (defvar date) (defvar entry)
 (let ((exprs (json-parse-string (getenv "SEXP_EXPRS") :array-type 'list)) (out '()))
   (dolist (src exprs)

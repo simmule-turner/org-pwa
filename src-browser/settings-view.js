@@ -2,7 +2,7 @@
 // Extracted from app.js: settings view (the theme part is in settings-theme.js, Quick Settings in settings-quick.js).
 import { attachMethod } from '../src/attach.js';
 import { applyDurationVariables } from '../src/org-duration.js';
-import { applyHolidayVariables } from '../src/holidays.js';
+import { applyLispInit } from './lisp-init-load.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
 import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -400,7 +400,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     S.globalVariablesText = normalizedText;
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
     applyDurationVariables(S.globalVariables);
-    applyHolidayVariables(S.globalVariables);
+    applyLispInit(S.globalVariables);
     // Re-merge immediately so the currently open document (if any)
     // reflects the change right away -- no reload needed, matching
     // how the theme/font settings already apply on save.

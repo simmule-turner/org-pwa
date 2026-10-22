@@ -9,12 +9,16 @@ import {
   absoluteFromGregorian, gregorianFromAbsolute, daynameOnOrBefore, lastDayOfMonth, nthNamedDay, incrementMonth, dateIsVisible,
   hebrewToAbsolute, hebrewFromAbsolute, islamicToAbsolute, islamicFromAbsolute, bahaiToAbsolute, bahaiFromAbsolute, julianToAbsolute, julianFromAbsolute,
 } from './calendar-conv.js';
-import { readLisp, symbolName, stringValue, listItems, isNil } from './lisp-read.js';
+import { symbolName, stringValue, listItems, isNil } from './lisp-read.js';
+import { NORTH_SEASONS, SOUTH_SEASONS, seasonLocal } from './solar-holidays.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
 /** @typedef {import('./calendar-conv.js').CalDate} CalDate */
 /** @typedef {{ date: CalDate, name: string }} Holiday */
-/** @typedef {{ month: number, year: number, vars: Map<string, Lisp>, sexp: ((expr: Lisp, year: number) => CalDate | null) | null }} Window */
+/**
+ * @typedef {{ zone: string, latitude: number, timeString: (hours: number, zoneName: string) => string }} Solar  the time zone, calendar-latitude and solar-time-string for the sun-related holidays
+ * @typedef {{ month: number, year: number, vars: Map<string, Lisp>, sexp: ((expr: Lisp, name: Lisp, year: number) => Holiday | null) | null, solar?: Solar }} Window
+ */
 
 /** @param {Lisp | undefined} f @returns {number | null} */
 const num = (f) => (f && f.k === 'num' ? f.v : null);
@@ -107,15 +111,10 @@ function holidayIslamic(w, month, day, name) {
     return [d[0], d[2]];
   })();
   if (im < 1) return [];
-  const [m, y] = incrementMonthIslamic(im, iy, 10 - month);
+  const [m, y] = incrementMonth(im, iy, 10 - month);
   if (!(m > 7)) return [];
   const date = gregorianFromAbsolute(islamicToAbsolute([month, day, y]));
   return dateIsVisible(date, w.month, w.year) ? [{ date, name }] : [];
-}
-
-/** `calendar-increment-month` with 12 months a year, for the Islamic calendar. @param {number} m @param {number} y @param {number} n @returns {[number, number]} */
-function incrementMonthIslamic(m, y, n) {
-  return incrementMonth(m, y, n);
 }
 
 /** @param {Window} w @param {number} month @param {number} day @param {string} name */
@@ -227,11 +226,20 @@ function bahaiRidvan(w, all) {
   return show.flatMap((i) => holidayFixed(w, i < 10 ? 4 : 5, i + (i < 10 ? 21 : -9), `${ord[i]} Day of Ridvan`).slice(0, 1));
 }
 
+/** `solar-equinoxes-solstices`: the equinox or solstice of the quarter the window is on, with its local time. @param {Window} w @returns {Holiday[]} */
+function solarEquinoxesSolstices(w) {
+  if (!w.solar) return [];
+  const [m, y] = incrementMonth(w.month, w.year, w.month % 3 === 1 ? -1 : w.month % 3 === 2 ? 1 : 0);
+  const k = Math.trunc(m / 3) - 1;
+  const local = seasonLocal(w.solar.zone, k, y);
+  const names = w.solar.latitude < 0 ? SOUTH_SEASONS : NORTH_SEASONS;
+  return [{ date: local.date, name: `${names[k]} ${w.solar.timeString(local.hours, local.name)}` }];
+}
+
 /** The holidays of the three months around `window`, in the order Emacs's `calendar-holiday-list` returns them.
  * @param {Lisp[]} forms  the entries of `calendar-holidays`
- * @param {Window} w
- * @param {(message: string) => void} [warn] */
-export function holidayList(forms, w, warn) {
+ * @param {Window} w */
+export function holidayList(forms, w) {
   const flag = (/** @type {string} */ name) => {
     const v = w.vars.get(name);
     return !!v && !isNil(v);
@@ -254,26 +262,24 @@ export function holidayList(forms, w, warn) {
       case 'holiday-hebrew': return n(0) !== null && n(1) !== null ? holidayHebrew(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
       case 'holiday-islamic': return n(0) !== null && n(1) !== null ? holidayIslamic(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
       case 'holiday-bahai': return n(0) !== null && n(1) !== null ? holidayBahai(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-hebrew-passover': return hebrewPassover(w, flag('calendar-hebrew-all-holidays-flag') || !isNil(a[0]));
-      case 'holiday-hebrew-rosh-hashanah': return hebrewRoshHashanah(w, flag('calendar-hebrew-all-holidays-flag') || !isNil(a[0]));
-      case 'holiday-hebrew-hanukkah': return hebrewHanukkah(w, flag('calendar-hebrew-all-holidays-flag') || !isNil(a[0]));
+      case 'holiday-hebrew-passover': return hebrewPassover(w, flag('calendar-hebrew-all-holidays-flag'));
+      case 'holiday-hebrew-rosh-hashanah': return hebrewRoshHashanah(w, flag('calendar-hebrew-all-holidays-flag'));
+      case 'holiday-hebrew-hanukkah': return hebrewHanukkah(w, flag('calendar-hebrew-all-holidays-flag'));
       case 'holiday-hebrew-tisha-b-av': return hebrewTishaBAv(w);
       case 'holiday-hebrew-misc': return hebrewMisc(w);
       case 'holiday-islamic-new-year': return islamicNewYear(w);
       case 'holiday-bahai-new-year': return bahaiNewYear(w);
-      case 'holiday-bahai-ridvan': return bahaiRidvan(w, flag('calendar-bahai-all-holidays-flag') || !isNil(a[0]));
+      case 'holiday-bahai-ridvan': return bahaiRidvan(w, flag('calendar-bahai-all-holidays-flag'));
+      case 'solar-equinoxes-solstices': return solarEquinoxesSolstices(w);
       case 'holiday-sexp': {
-        const expr = a[0] ? (a[0].k === "list" && symbolName(a[0].items[0]) === "quote" ? a[0].items[1] : a[0]) : null;
-        const name = stringValue(a[1]);
-        if (!expr || name === null || !w.sexp) {
-          if (warn) warn('holiday-sexp needs a quoted expression and a string');
-          return [];
-        }
-        const [pm, py] = incrementMonth(w.month, w.year, -1);
+        const expr = a[0] ? (a[0].k === 'list' && symbolName(a[0].items[0]) === 'quote' ? a[0].items[1] : a[0]) : null;
+        if (!expr || !a[1] || !w.sexp) return [];
+        const [, py] = incrementMonth(w.month, w.year, -1);
+        const nameForm = a[1];
         return visible([py, py + 1].flatMap((year) => {
-          const date = w.sexp ? w.sexp(expr, year) : null;
-          return date ? [{ date, name }] : [];
-        }), w).filter((h, i, all) => all.findIndex((x) => x.date.join() === h.date.join()) === i && pm > 0);
+          const h = w.sexp ? w.sexp(expr, nameForm, year) : null;
+          return h ? [h] : [];
+        }), w);
       }
       case 'if': {
         const test = a[0];
@@ -283,8 +289,7 @@ export function holidayList(forms, w, warn) {
       case 'append': return a.flatMap(run);
       case 'progn': return a.flatMap(run);
       default:
-        if (warn) warn(`Bad holiday list item: ${head}`);
-        return [];
+        return []; // a function the app does not have gives no holiday
     }
   };
   /** @type {Holiday[]} */
@@ -356,9 +361,20 @@ export const DEFAULT_LISTS = `
         (append
          (holiday-fixed 11 26 "Day of the Covenant")
          (holiday-fixed 11 28 "Ascension of \`Abdu’l-Bahá")))))
+(setq holiday-solar-holidays
+  '((solar-equinoxes-solstices)
+    (holiday-sexp calendar-daylight-savings-starts
+                  (format "Daylight Saving Time Begins %s"
+                          (solar-time-string
+                           (/ calendar-daylight-savings-starts-time (float 60))
+                           calendar-standard-time-zone-name)))
+    (holiday-sexp calendar-daylight-savings-ends
+                  (format "Daylight Saving Time Ends %s"
+                          (solar-time-string
+                           (/ calendar-daylight-savings-ends-time (float 60))
+                           calendar-daylight-time-zone-name)))))
 `;
 
 /** The group variables in the order `calendar-holidays` joins them. */
 export const HOLIDAY_GROUPS = ['holiday-general-holidays', 'holiday-local-holidays', 'holiday-other-holidays', 'holiday-christian-holidays', 'holiday-hebrew-holidays', 'holiday-islamic-holidays', 'holiday-bahai-holidays', 'holiday-oriental-holidays', 'holiday-solar-holidays'];
 
-export { readLisp };

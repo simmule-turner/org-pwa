@@ -110,8 +110,11 @@ async function pickAndUpload(heading, method) {
   for (const file of files) {
     const can = wanted === 'cp' || (wanted === 'mv' && (!!file.remove || (platformCan('mv') && !!file.uri))) || (wanted === 'ln' && platformCan('ln') && !!file.uri);
     if (!can) {
-      setStatus(`This device cannot ${wanted === 'mv' ? 'move' : 'link'} a file it picked, so \u201c${file.name}\u201d is copied (org-attach-method ${wanted} \u2192 cp).`);
-      await uploadAttachmentToHeading(heading, file);
+      const name = await uploadAttachmentToHeading(heading, file);
+      if (name) {
+        setStatus(`Attached \u201c${name}\u201d as a copy: this device cannot ${wanted === 'mv' ? 'move' : 'link'} a file it picked (org-attach-method ${wanted}).`);
+        render();
+      }
     } else if (wanted === 'ln') await uploadAttachmentToHeading(heading, file, { link: true });
     else {
       const name = await uploadAttachmentToHeading(heading, file);
@@ -207,7 +210,7 @@ export async function attachmentFiles(heading) {
  * @returns {Promise<string | null>}  the name it was attached as
  *  connected. */
 export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
-  const tooBig = attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
+  const tooBig = opts.link ? null : attachmentSizeCheck(String(picked.base64 || '').length, S.state.storageKind);
   if (tooBig && tooBig.refuse) {
     setStatus(tooBig.refuse);
     render();
@@ -243,7 +246,7 @@ export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
   // attachment inline (if it's an image and inline images are on),
   // and without this, that would mean a full second network fetch of
   // content already sitting right here in memory.
-  imageDataUrlCache.set(`${S.state.storageKind}:${path}`, `data:${guessImageMimeType(path)};base64,${picked.base64}`);
+  if (!opts.link) imageDataUrlCache.set(`${S.state.storageKind}:${path}`, `data:${guessImageMimeType(path)};base64,${picked.base64}`);
 
   addAttachTag(heading); // org-attach-auto-tag
   if (shouldInsertAttachmentLink(filename, await getAttachLinkMode(kv))) {

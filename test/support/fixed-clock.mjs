@@ -15,3 +15,7 @@ if (raw !== 'real') {
   }
   globalThis.Date = FixedDate;
 }
+
+// The Emacs oracles for the diary and sexp tests were made in this zone; the sun-related holidays follow the zone (tests of other zones set their own).
+const { setHolidayZone } = await import('../../src/holidays.js');
+setHolidayZone('America/New_York');

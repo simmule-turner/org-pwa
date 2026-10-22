@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as c from '../src/calendar-conv.js';
 import { holidayList, DEFAULT_LISTS, HOLIDAY_GROUPS } from '../src/calendar-holidays.js';
-import { holidaysOn, setHolidayConfig } from '../src/holidays.js';
+import { holidaysOn, setHolidayConfig, setHolidayZone, applyHolidayVariables } from '../src/holidays.js';
 import { runInit, listItems } from '../src/lisp-read.js';
 import { datedEntriesAt } from '../src/diary-file.js';
 import { nonGregorianDateLine } from '../src/diary-nongregorian.js';
@@ -95,4 +95,46 @@ test('H, I and B diary entries match diary-list-entries', () => {
     for (const e of found) got.push(JSON.stringify(e.lines.join('\n')));
   }
   assert.deepEqual(got, want);
+});
+
+test('holiday forms with their optional arguments match Emacs, 2023-2028', () => {
+  setHolidayConfig(read('holidays-custom.el'));
+  const got = new Set();
+  for (let y = 2023; y <= 2028; y++) {
+    for (let m = 0; m < 12; m++) {
+      for (let d = 1, n = new Date(y, m + 1, 0).getDate(); d <= n; d++) {
+        for (const h of holidaysOn(new Date(y, m, d))) got.add(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')} ${h}`);
+      }
+    }
+  }
+  setHolidayConfig('');
+  const want = read('holidays-custom.txt').trim().split('\n').filter((l) => !/^2022|^2029/.test(l));
+  assert.deepEqual([...got].sort(), want.sort());
+});
+
+for (const zone of ['America/New_York', 'Europe/Paris', 'Australia/Sydney', 'Asia/Kolkata', 'UTC']) {
+  test(`sun-related holidays match Emacs in ${zone}: equinoxes, solstices and daylight saving time`, () => {
+    setHolidayZone(zone);
+    setHolidayConfig('(setq calendar-holidays holiday-solar-holidays)');
+    const got = new Set();
+    for (let y = 2024; y <= 2027; y++) {
+      for (let m = 0; m < 12; m++) {
+        for (let d = 1, n = new Date(y, m + 1, 0).getDate(); d <= n; d++) {
+          for (const h of holidaysOn(new Date(y, m, d))) got.add(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')} ${h}`);
+        }
+      }
+    }
+    setHolidayConfig('');
+    setHolidayZone('America/New_York');
+    assert.deepEqual([...got].sort(), read(`solar-${zone.replace('/', '_')}.txt`).trim().split('\n').sort());
+  });
+}
+
+test('a southern latitude swaps the season names, as in Emacs', () => {
+  setHolidayZone('UTC');
+  applyHolidayVariables({ 'calendar-latitude': '-33.9', 'org-xx-lisp-init': '(setq calendar-holidays holiday-solar-holidays)' });
+  assert.match(holidaysOn(new Date(2026, 2, 20)).join(), /Autumnal Equinox/);
+  applyHolidayVariables({});
+  setHolidayZone('America/New_York');
+  assert.match(holidaysOn(new Date(2026, 2, 20)).join(), /Vernal Equinox/);
 });

@@ -21,8 +21,8 @@ for (const f of fs.readdirSync(src).filter((n) => n.endsWith('.diary'))) {
 const cases = JSON.parse(fs.readFileSync(path.join(src, 'cases.json'), 'utf8')).map((c) => ({ ...c, path: path.join(dir, c.file) }));
 
 const el = `
-(require 'org-agenda) (require 'diary-lib) (require 'holidays) (require 'json)
-(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays holiday-hebrew-holidays holiday-islamic-holidays holiday-bahai-holidays))
+(require 'org-agenda) (require 'diary-lib) (require 'holidays) (require 'solar) (require 'json)
+(setq calendar-holidays (append holiday-general-holidays holiday-christian-holidays holiday-hebrew-holidays holiday-islamic-holidays holiday-bahai-holidays holiday-solar-holidays))
 (defun kget (k alist) (cdr (assq k alist)))
 (defun day-record (date)
   (let* ((org (mapcar #'substring-no-properties (let ((inhibit-message t)) (org-get-entries-from-diary date))))

@@ -161,9 +161,10 @@ export function datum(f) {
   return null;
 }
 
-/** `(append A B ...)` of variables and quoted lists, the one computed value an init text commonly sets (`calendar-holidays`).
+/** `(append A B ...)` of variables and quoted lists, or another variable, the computed values an init text commonly sets (`calendar-holidays`).
  * @param {Lisp} f @param {Map<string, Lisp>} vars @param {(name: string) => string} real @returns {Lisp | null} */
 function appended(f, vars, real) {
+  if (f.k === 'sym' && f.v !== 't' && f.v !== 'nil') return vars.get(real(f.v)) || null; // another variable's value
   if (f.k !== 'list' || symbolName(f.items[0]) !== 'append') return null;
   /** @type {Lisp[]} */
   const items = [];

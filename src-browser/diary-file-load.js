@@ -34,7 +34,7 @@ function currentVars() {
  * @param {boolean} prompt  whether a local file may ask for its permission (only a tap on refresh does)
  * @returns {Promise<string>}
  */
-async function readSpec(spec, prompt) {
+export async function readSpec(spec, prompt) {
   const colon = spec.indexOf(':');
   const scheme = spec.slice(0, colon);
   const path = spec.slice(colon + 1);

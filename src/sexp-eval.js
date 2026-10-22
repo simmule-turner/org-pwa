@@ -100,7 +100,7 @@ function tokenize(text) {
  *  `{ type: 'list', ... }` wrapper needed. */
 function atomNode(raw) {
   if (typeof raw === 'object') return raw; // already a { type: 'string', value } token
-  if (/^-?\d+(\.\d+)?$/.test(raw)) return { type: 'number', value: Number(raw) };
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return raw.includes('.') ? Object.defineProperty({ type: 'number', value: Number(raw) }, 'float', { value: true }) : { type: 'number', value: Number(raw) };
   return { type: 'symbol', value: raw };
 }
 
@@ -535,7 +535,7 @@ function canonicalDiaryLine(line, style) {
     case '1+':
     case '1-': {
       const n = args.map((a) => numberOf(ev(a, context)));
-      return arithmetic(head.value, n);
+      return arithmetic(head.value, n, args.some(isFloatNode));
     }
     case '=':
     case '/=':
@@ -553,6 +553,9 @@ function canonicalDiaryLine(line, style) {
       }
       return true;
     }
+    case 'float':
+      return args.length === 1 ? numberOf(ev(args[0], context)) : false;
+
     case 'zerop':
       return args.length === 1 && numberOf(ev(args[0], context)) === 0;
     case 'equal':
@@ -687,8 +690,13 @@ function numberOf(/** @type {unknown} */ v) {
   return v;
 }
 
-function arithmetic(/** @type {string} */ op, /** @type {number[]} */ n) {
-  const allInts = n.every(Number.isInteger);
+/** A float written as `60.0`, or made by `(float X)`: division with it is not integer division. */
+function isFloatNode(/** @type {any} */ node) {
+  return Array.isArray(node) ? node[0] && node[0].type === 'symbol' && node[0].value === 'float' : !!(node && node.float);
+}
+
+function arithmetic(/** @type {string} */ op, /** @type {number[]} */ n, /** @type {boolean} */ floating = false) {
+  const allInts = !floating && n.every(Number.isInteger);
   const div = (/** @type {number} */ a, /** @type {number} */ b) => {
     if (b === 0) throw new LispError('division by zero');
     return allInts ? Math.trunc(a / b) : a / b;
@@ -956,4 +964,4 @@ function evaluateSexpTimestamp(expr, context) {
   return evaluateSexpr(expr, context);
 }
 
-export { canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, evaluateSexprValue, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };
+export { solarTimeString, canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, evaluateSexprValue, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };

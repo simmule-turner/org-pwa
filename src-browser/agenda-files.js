@@ -8,6 +8,7 @@ import { rememberIds } from './id-locations.js';
 import { prefetchSetupFiles } from './setupfile.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { ensureDiaryLoaded, refreshDiary } from './diary-file-load.js';
+import { applyLispInit } from './lisp-init-load.js';
 import { S } from './app-state.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
@@ -195,6 +196,7 @@ export function refreshAgendaFiles() {
   S.agendaFilesCacheLoadedFor = null;
   ensureAgendaFilesLoaded({ prompt: true }); // a tap on the refresh button is the one thing allowed to ask for a local file's permission
   refreshDiary();
+  applyLispInit(S.globalVariables, { prompt: true, say: true });
   render();
   scheduleCalendarSync(); // freshly fetched files may hold different dates
 }
