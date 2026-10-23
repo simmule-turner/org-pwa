@@ -51,7 +51,7 @@ import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, bl
  *   todo?: string | null,
  *   priority?: string | null,
  *   tags?: string[],
- *   properties?: Record<string, string>,
+ *   properties?: Record<string, string>, unnumbered?: string | null,
  *   number?: number[],
  *   heading?: Heading,
  *   listType?: string,
@@ -120,7 +120,7 @@ export function normalizeAsciiCharset(value) {
  *   headlineLevels: number, numbering: boolean | number, toc: boolean | number,
  *   withTitle: boolean, withAuthor: boolean, withEmail: boolean, withDate: boolean, withCreator: boolean,
  *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean,
- *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, drawers: boolean | string[],
+ *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean, drawers: boolean | string[],
  *   fixedWidth: boolean, tex: boolean,
  *   linksToNotes: boolean, noFootnotes?: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
  *   verbatimFormat: string,
@@ -184,6 +184,7 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
     specialStrings: flag(o.get('-'), true),
     entities: flag(o.get('e'), true),
     footnotes: flag(o.get('f'), true),
+    tables: flag(o.get('|'), true),
     drawers: drawers === undefined ? ['!LOGBOOK'] : drawers === 'nil' ? false : drawers === 't' ? true : drawers.replace(/[()"]/g, '').split(/\s+/).filter(Boolean),
     fixedWidth: flag(o.get(':'), true),
     tex: flag(o.get('tex'), true),
@@ -313,6 +314,14 @@ function objects(text, parent, I, radio = true) {
 function convertInline(nodes, parent, I) {
   /** @type {Item[]} */
   const out = [];
+  if (!I.footnotes) {
+    // footnotes:nil drops the references, and the blanks after one go with it (org-element-extract-element)
+    nodes = nodes.flatMap((n, i) => {
+      if (n.type === 'footnote-ref' || n.type === 'footnote-def') return [];
+      const before = nodes[i - 1];
+      return before && n.type === 'text' && (before.type === 'footnote-ref' || before.type === 'footnote-def') ? [{ ...n, value: n.value.replace(/^[ \t]+/, '') }] : [n];
+    });
+  }
   for (const n of nodes) {
     switch (n.type) {
       case 'text': {
@@ -480,6 +489,7 @@ function buildElement(el, parent, I) {
       return node;
     }
     case 'table': {
+      if (!I.tables) return null;
       const node = mk('table', parent);
       for (const row of el.rows) {
         const cellTexts = 'cells' in row && row.cells ? row.cells : null;
@@ -649,8 +659,17 @@ function walk(item, fn) {
  */
 function numberHeadlines(I) {
   const counters = /** @type {number[]} */ ([]);
+  // UNNUMBERED is inherited from the headlines above
+  /** @type {{ level: number, value: string | null }[]} */
+  const above = [];
   for (const h of I.headlines) {
     const rel = /** @type {number} */ (h.level);
+    while (above.length && above[above.length - 1].level >= rel) above.pop();
+    const key = h.properties && Object.keys(h.properties).find((k) => k.toUpperCase() === 'UNNUMBERED');
+    const value = key && h.properties ? h.properties[key] : above.length ? above[above.length - 1].value : null;
+    above.push({ level: rel, value });
+    h.unnumbered = value;
+    if (!isNumbered(h, I)) continue;
     while (counters.length < rel) counters.push(0);
     counters[rel - 1] = (counters[rel - 1] || 0) + 1;
     for (let i = rel; i < counters.length; i++) counters[i] = 0;
@@ -660,8 +679,8 @@ function numberHeadlines(I) {
 
 /** @param {Node} h @param {Info} I */
 function isNumbered(h, I) {
-  const unnumbered = h.properties && h.properties.UNNUMBERED;
-  if (unnumbered && unnumbered.toLowerCase() !== 'nil') return false;
+  const unnumbered = h.unnumbered;
+  if (unnumbered && unnumbered.trim().toLowerCase() !== 'nil') return false;
   return typeof I.numbering === 'number' ? /** @type {number} */ (h.level) <= I.numbering : I.numbering;
 }
 

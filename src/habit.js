@@ -13,7 +13,7 @@
 /** @typedef {import('./types.js').Heading} Heading */
 import { parseOrgTimestamp } from './org-timestamp.js';
 import { parseRepeater } from './agenda.js';
-import { parseLogbookEntries } from './logbook.js';
+import { allLogLines, parseLogbookEntries } from './logbook.js';
 
 const DAY_MS = 86400000;
 /** org-habit-duration-to-days: a month is 30 days and a year 365. Hours make no sense for a habit. */
@@ -68,7 +68,7 @@ export function habitSpec(heading) {
  * @returns {number[]} ascending, without repeats */
 export function habitDoneDays(heading, isDone) {
   const days = new Set();
-  for (const entry of parseLogbookEntries(heading.logbookLines || [])) {
+  for (const entry of parseLogbookEntries(allLogLines(heading))) {
     if (entry.type !== 'state' || !isDone(entry.newState || '')) continue;
     const ts = parseOrgTimestamp(entry.timestamp);
     if (ts) days.add(dayNumber(ts.date));

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v616';
+const CACHE_NAME = 'org-pwa-shell-v625';
 
 const SHELL_FILES = [
   './',
@@ -42,6 +42,9 @@ const SHELL_FILES = [
   './src/solar-emacs.js',
   './src/sexp-eval.js',
   './src/repeater-shift.js',
+  './src/list-edit.js',
+  './src/log-settings.js',
+  './src/todo-transition.js',
   './src/reschedule.js',
   './src/archive-refile-details.js',
   './src-browser/archive-refile-panel.js',
@@ -71,6 +74,7 @@ const SHELL_FILES = [
   './src/calendar-mirror.js',
   './src/contacts-mirror.js',
   './src/capture-shared.js',
+  './src/capture-lisp.js',
   './src/capture-template.js',
   './src/format-time.js',
   './src/js-inspect.js',
@@ -149,6 +153,7 @@ const SHELL_FILES = [
   './src/smart-quotes.js',
   './src/link-abbrev.js',
   './src/link-resolve.js',
+  './src/link-string.js',
   './src/id-locations.js',
   './src/tag-inheritance.js',
   './src/targets.js',
@@ -174,6 +179,8 @@ const SHELL_FILES = [
   './src/export-latex-zip.js',
   './src/latex-cite.js',
   './src/latex-table.js',
+  './src/table-model.js',
+  './src/table-number.js',
   './src/entities-latex.js',
   './src/export-options.js',
   './src/export-include.js',
@@ -226,6 +233,7 @@ const SHELL_FILES = [
   './src-browser/attachments-store.js',
   './src-browser/audio-recording.js',
   './src-browser/calendar-panel.js',
+  './src-browser/capture-templates.js',
   './src-browser/capture-ui.js',
   './src-browser/chrome.js',
   './src-browser/clock-flow.js',

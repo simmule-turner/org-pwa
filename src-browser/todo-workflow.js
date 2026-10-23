@@ -5,14 +5,11 @@
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { updateTodoCookiesUpward } from '../src/checkbox-cookie.js';
 import { getClosedKeepWhenNoTodo, parseLocalVariables } from '../src/local-variables.js';
-import { formatStateLogLine } from '../src/logbook.js';
+import { findAncestorPath } from '../src/archive-model.js';
 import { serializeOrg } from '../src/org-parser.js';
-import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { cycleHeadingTodo } from '../src/outline-view-model.js';
-import { decideLogbookEntry, decideProgressLogging, getEffectiveLogDoneSetting } from '../src/progress-logging.js';
-import { applyRepeaterShiftOnDone } from '../src/repeater-shift.js';
-import { habitSpec } from '../src/habit.js';
-import { parseStartupConfig } from '../src/startup-config.js';
+import { readLogSettings } from '../src/log-settings.js';
+import { applyTransitionEffects, writePendingNote } from '../src/todo-transition.js';
 import { resolveTodoSequence, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
@@ -23,6 +20,11 @@ import { doneNotePanel, doneNotePanelBox, refilePanel, refilePanelBox } from './
 import { commitAndRender } from './editing.js';
 import { render } from './render.js';
 import { autoGrowTextarea, hideModalOverlay, menuButton } from './ui-widgets.js';
+
+/** The headings from the top down to `heading`, for the properties it inherits. @param {Doc} doc @param {Heading} heading */
+function headingPath(doc, heading) {
+  return [...(findAncestorPath(doc, heading) || []), heading];
+}
 
 /**
  * Every call site in this app that changes a heading's TODO state
@@ -55,55 +57,13 @@ import { autoGrowTextarea, hideModalOverlay, menuButton } from './ui-widgets.js'
 export function applyTodoTransition(heading, performChange) {
   const fromTodo = heading.todo;
   performChange();
-  const toTodo = heading.todo;
 
   const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
   const fileLocalVarsOnly = parseLocalVariables(serializeOrg(S.state.doc));
-  const logDoneSetting = getEffectiveLogDoneSetting(fileLocalVarsOnly, parseStartupConfig(S.state.doc), S.globalVariables);
+  const settings = readLogSettings(S.state.doc, fileLocalVarsOnly, S.globalVariables, headingPath(S.state.doc, heading));
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(S.state.localVariables);
-  const now = new Date();
-  const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
-
-  const closedDecision = decideProgressLogging(fromTodo, toTodo, sequence, logDoneSetting, keepWhenNoTodo);
-  if (closedDecision.insertClosed) {
-    heading.planning.closed = timestamp;
-  } else if (closedDecision.removeClosed) {
-    heading.planning.closed = null;
-  }
-
-  const logbookDecision = decideLogbookEntry(fromTodo, toTodo, sequence, logDoneSetting);
-  if (logbookDecision.shouldLog) {
-    if (logbookDecision.needsNote) {
-      S.pendingLogNote = { heading, fromTodo, toTodo, timestamp };
-    } else {
-      heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp));
-    }
-  }
-
-  // Real org's own repeater-shift-on-DONE: completing a heading with
-  // a repeating SCHEDULED/DEADLINE doesn't actually finish it -- the
-  // date shifts forward and the state bounces straight back to TODO.
-  // Only applies when THIS transition is what just entered a
-  // done-type keyword (not e.g. cycling from one done-type keyword to
-  // another) -- matches real org's own "on marking DONE" trigger.
-  if (sequence.doneKeywords.includes(toTodo) && !sequence.doneKeywords.includes(fromTodo)) {
-    if (applyRepeaterShiftOnDone(heading, sequence, now)) {
-      // As Emacs does for a repeating task (org-log-repeat), a habit records each completion as a State line: that log is its history.
-      if (!logbookDecision.shouldLog && habitSpec(heading)) {
-        heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp));
-      }
-      // The bounce-back is an automatic side effect of the repeater,
-      // not a real user-initiated transition -- real org's own actual
-      // behavior logs only the original DONE entry above, not a
-      // second one for this. The CLOSED timestamp just inserted DOES
-      // still need to come back off, though, since the heading isn't
-      // actually staying done.
-      const bounceBackDecision = decideProgressLogging(toTodo, heading.todo, sequence, logDoneSetting, keepWhenNoTodo);
-      if (bounceBackDecision.removeClosed) {
-        heading.planning.closed = null;
-      }
-    }
-  }
+  const pendingNote = applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now: new Date() });
+  if (pendingNote) S.pendingLogNote = pendingNote;
 
   // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"
   // cookie on some ancestor counts -- this transition may have just
@@ -133,13 +93,13 @@ export function renderLogNotePrompt() {
   }
   showModalOverlay(doneNotePanel);
 
-  const { heading, fromTodo, toTodo, timestamp } = S.pendingLogNote;
+  const { heading, toTodo, kind } = S.pendingLogNote;
 
   const label = document.createElement('div');
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '6px';
-  label.textContent = `Note for marking "${heading.title || '(untitled)'}" as ${toTodo}:`;
+  label.textContent = kind === 'done' ? `Closing note for "${heading.title || '(untitled)'}":` : `Note for marking "${heading.title || '(untitled)'}" as ${toTodo || 'no state'}:`;
   doneNotePanelBox.appendChild(label);
 
   const textarea = document.createElement('textarea');
@@ -157,10 +117,9 @@ export function renderLogNotePrompt() {
   row.appendChild(
     menuButton('Save note', () => {
       const text = textarea.value.trim();
+      const pending = S.pendingLogNote;
       S.pendingLogNote = null;
-      if (text) {
-        heading.logbookLines.splice(0, 0, ...formatStateLogLine(toTodo, fromTodo, timestamp, text));
-      }
+      if (text && pending) writePendingNote(pending, text, readLogSettings(S.state.doc, parseLocalVariables(serializeOrg(S.state.doc)), S.globalVariables, headingPath(S.state.doc, heading)));
       commitAndRender(text ? 'Added log note' : 'Skipped log note');
     })
   );

@@ -432,3 +432,18 @@ test('the comma-escape strip also works when the escaped line is indented', () =
   assert.ok(content.includes('#+CATEGORY: Projects'));
   assert.ok(!content.includes(',#+CATEGORY'));
 });
+
+test('f:nil leaves footnotes out and |:nil leaves tables out (as in Emacs)', () => {
+  const src = '* H\nText[fn:1] here.\n\n| a | b |\n\n[fn:1] note\n';
+  const on = unzipEntry(exportToOdt(parseOrg(src)), 'content.xml');
+  assert.match(on, /text:note /);
+  assert.match(on, /<table:table>/);
+  const off = unzipEntry(exportToOdt(parseOrg('#+OPTIONS: f:nil |:nil\n' + src)), 'content.xml');
+  assert.doesNotMatch(off, /text:note /);
+  assert.doesNotMatch(off, /<table:table>/);
+});
+
+test('a footnote defined on its own line carries its text', () => {
+  const xml = unzipEntry(exportToOdt(parseOrg('* H\nText[fn:1] here.\n\n[fn:1] The *note*.\n')), 'content.xml');
+  assert.match(xml, /<text:note-body><text:p text:style-name="Footnote">The <text:span text:style-name="Bold">note<\/text:span>\.<\/text:p>/);
+});

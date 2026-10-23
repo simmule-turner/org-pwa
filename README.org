@@ -103,12 +103,12 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, wh
 - *Move*: drag the grip at the right of a heading to move it with its subtree (Settings → Quick Settings → *Drag handle on headings* moves it to the left or turns it off). The blue line snaps between two headings; moving sideways steps through the levels that fit, rightward being deeper, and a tag names the result (*into* a heading, *same level as* one, or *top level*). Letting go over the top bar or the mode line, or pressing Escape, cancels.
 - *Complete or archive*: swipe right. A heading with an active TODO keyword jumps to the first DONE-type keyword. Otherwise it opens the Archive, Refile or Cancel prompt, and an archived heading unarchives directly.
 - *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~ or back, from a panel that shows the destination first (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties can be edited or removed in the general editor.
-- *Moving in steps* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings with its subtree. ← promotes it one level, right after its former parent. → demotes it one level, as the last child of the heading before it. At a boundary a short status message says so.
+- *Moving in steps* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings with its subtree. ← promotes the heading with its subtree one level, as ~org-promote-subtree~ does: it stays where it is in the text, and the siblings after it become its children. → demotes it one level: after a sibling it becomes that sibling's last child, as a first child it stays under its parent. A top-level heading can't be promoted, and a short status message says so.
 - *The general editor* (📋 *Edit details*) is a popup with five tabs, so nothing is a long scroll: *Dates*, *Tags*, *Props*, *Files* and *More* (priority and tables). A tab you have edited shows a dot, and a note beside the buttons names them ("Changed: Dates, Tags"). Each tab shows how many items it holds.
   - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers, a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
   - *Tags*: removable chips (tap to remove) and an input with an *Add* button (Enter also adds). Suggestions appear as you type: every tag used in the open document or a loaded agenda file (most used first) plus tags declared on a ~#+TAGS:~ line, narrowed to what you typed and excluding tags the heading already has. One tap adds one.
   - *Priority*: a button for each priority of the range (A, B, C unless ~org-priority-highest~ and ~org-priority-lowest~ say otherwise) and None.
-  - *Properties*: an editable key/value row for each, with a remove button and an *Add property* row. The Key field completes from every key used in the open document or a loaded agenda file (most used first) plus ones the app reads or writes (~CUSTOM_ID~, ~EFFORT~, ~Effort_ALL~, ~ID~, the ~ARCHIVE_*~ set); other keys still work. A row with a blank key is dropped on commit. This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style links (see [[#links-and-images][Links and images]]).
+  - *Properties*: an editable key/value row for each, with a remove button and an *Add property* row. The Key field completes from every key used in the open document or a loaded agenda file (most used first) plus ones the app reads or writes (~CUSTOM_ID~, ~EFFORT~, ~Effort_ALL~, ~ID~, the ~ARCHIVE_*~ set); other keys still work. A row with a blank key is dropped on commit. A property that is new or changed is written as Org writes it, with the ~:KEY:~ padded to ten columns (~:ID:       abc~). This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style links (see [[#links-and-images][Links and images]]).
 
   Three buttons govern every tab: *Cancel* discards everything and closes, *Reset* restores every field to how it was when the editor opened, and *OK* commits every tab and closes. Nothing is written until *OK*. Above them are three immediate actions. *Add table* inserts a table into the body and closes the editor. *Delete table* removes the heading's most recently added table after a confirmation, and is disabled when there is none. *Attach* closes the editor and opens the attachment picker (see [[#attachments][Attachments]]). If any field has changed, these three first ask *Commit and continue*, *Discard and continue* or *Keep editing*; with no changes they act at once.
 
@@ -158,9 +158,9 @@ Landing on a step identical to the last saved text clears the modified indicator
 :CUSTOM_ID: lists-tables-and-body-text
 :END:
 
-- *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions.
-- *Checkboxes* cycle unchecked → in-progress → done. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
-- *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table, and ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
+- *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term). *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
+- *Checkboxes* toggle between unchecked and done. A box that has boxes under it shows what they add up to (~[-]~ when some are done), as in Org, so tapping it changes nothing. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
+- *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table. Every edit aligns the table the way ~org-table-align~ does (deleting a row leaves the others as they are), and the references in ~#+TBLFM:~ follow an inserted or deleted row or column. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
 - *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. A caption shows in italics with its markup rendered; ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~ and ~em~ work). The other lines stay visible as small muted text, exactly as written.
 
@@ -515,15 +515,16 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 :CUSTOM_ID: links-and-images
 :END:
 
-- ~[[target][description]]~ links render as tappable text.
-- *Bare URLs* link too, typed in a sentence or wrapped as ~<https://example.com>~. The schemes are ~http~, ~https~, ~ftp~, ~mailto~, ~doi~, ~file~, ~github~, ~webdav~ and ~local~, so ~10:30~ or ~3:4~ is never a link. Trailing punctuation is left out (~see https://example.com/page.~ links the URL without the period); wrap the URL in ~<...>~ or ~[[...]]~ if it must end in one. ~doi:10.1145/1327452.1327492~ opens ~https://doi.org/...~.
-- *Internal links* go to a heading by title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~) or by a title search for bare text, expanding the ancestors and scrolling to the target. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
+- ~[[target][description]]~ links render as tappable text. A backslash escapes a bracket inside the target (~[[a\]b]]~ is the target ~a]b~).
+- *Bare URLs* link too, typed in a sentence or wrapped as ~<https://example.com>~. The schemes are Org's link types (~http~, ~https~, ~ftp~, ~mailto~, ~news~, ~file~, ~id~, ~doi~, ~shell~, ~elisp~, ~info~, ~help~, ~irc~ and the rest of ~org-link-types~) and ~github~, ~webdav~ and ~local~, so ~10:30~ or ~3:4~ is never a link. A URL ends at its last letter, digit, slash or closing parenthesis (~see https://example.com/page.~ links the URL without the period, and ~https://example.com/a_(b)~ keeps its parentheses); wrap the URL in ~<...>~ or ~[[...]]~ if it must end in anything else. ~doi:10.1145/1327452.1327492~ opens ~https://doi.org/...~.
+- *Internal links* go to a heading by title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~, case ignored) or by bare text (~[[some words]]~), expanding the ancestors and scrolling to the target. Bare text finds, in this order, a ~<<some words>>~ target (case and spacing ignored), a ~#+NAME: some words~ line, then a heading whose words are ~some words~. Headings compare word by word, case counting, ignoring extra spaces, a ~COMMENT~ keyword and cookies like ~[1/3]~. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
+- *Link abbreviations*: ~#+LINK: gh https://github.com/%s~ lets ~[[gh:org/repo]]~ stand for the full address. The first ~%s~ in the value becomes the text after the colon, else the first ~%h~ becomes that text percent-encoded, else the text is added to the end.
 - *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property wherever it now lives. Tapping one looks in the open file, the other open tabs, your [[#agenda-files][Agenda Files]], then files you have opened or saved here before (a remembered table, like ~org-id-locations~); the ⏎ button comes back. If nothing has the ID the status line says so, and if several headings share it the first is used. *Copy link to heading* (~org-store-link~, ~C-c l~) puts ~[[id:…][Title]]~ on the clipboard, adding an ~:ID:~ first if needed; *Add ID to heading* (~org-id-get-create~) only adds it; *Find links to this heading* searches this file and your Agenda Files.
 - *Targets*: ~<<name>>~ is a spot a link can go to. The same words in triple angle brackets, ~<<<name>>>~, make a *radio target*: every plain use of those words in the file (any case, whole words) becomes a link to it. Code blocks are not read. HTML and LaTeX export turn targets into anchors and links.
 - *The ⏎ button*: after you follow a link, a floating ⏎ at bottom-left goes back, one hop at a time, so a document with a table of contents is navigable on a touch device without a browser Back. It disappears when there is nowhere left to go.
 - *Image links*: ~http://~ and ~https://~ image links render inline when ~#+STARTUP: inlineimages~ is set (off by default).
 - *Local and relative image paths* on GitHub and WebDAV render too (~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~, ~[[github:images/photo.png]]~), relative to the document's path, under the same ~#+STARTUP: inlineimages~ switch. Local files (File System Access) and iOS imports show an ~[image: path]~ placeholder, because reading a sibling file needs browser permission that can't be granted mid-render.
-- *~file:~, ~github:~, ~webdav:~ and ~local:~ links* use org's ~::~ convention: an absolute path (~file:/home/user/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=) or a text search (=file:~/notes.org::exact phrase=). Tapping one opens the document, as File → Open does, and jumps to the headline or match. A path with no scheme uses the backend the current document came from; an explicit scheme always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
+- *~file:~, ~github:~, ~webdav:~ and ~local:~ links* use org's ~::~ convention: an absolute path (~file:/home/user/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=), a custom ID (=::#my-id=), a line number (=::120=, the heading that holds it) or a target, name or heading (=file:~/notes.org::exact phrase=), found as for internal links. Tapping one opens the document, as File → Open does, and jumps to the match. A path with no scheme uses the backend the current document came from; an explicit scheme always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
 
   The back button returns across documents to the heading the link was in, found by its title path (or the remembered scroll position if the heading was renamed or the link was in the preamble). This works only when both documents are on GitHub or WebDAV: a local file or iOS import can't be reopened from a link tap, because the browser needs a file-picker gesture for each file, so a message says so.
 - *~attachment:~ links* are org-attach's link type, produced by *Attach* (see [[#attachments][Attachments]]). They are bracketed only (~[[attachment:photo.jpg]]~); a bare ~attachment:photo.jpg~ in text is not a link.
@@ -538,11 +539,13 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 Three layers set variables (Emacs Lisp variables or org directives), in org's own precedence: *Local Variables beats #+STARTUP beats Global Variables*. A variable left unset falls through to the next layer down.
 
 1. *Global Variables* ([[#global-variables][below]]): an app-wide baseline, set in Settings.
-2. *~#+STARTUP:~* ([[#folding-and-startup][below]]): a file's own directive. Only three variables have a ~#+STARTUP:~ shorthand, as in real org:
+2. *~#+STARTUP:~* ([[#folding-and-startup][below]]): a file's own directive. Only some variables have a ~#+STARTUP:~ shorthand, as in real org:
 
 | Variable | ~#+STARTUP:~ keyword(s) |
 |---+---|
-| ~org-log-done~ | ~logdone~ (→ ~time~), ~lognotedone~ (→ ~note~) |
+| ~org-log-done~ | ~logdone~ (→ ~time~), ~lognotedone~ (→ ~note~), ~nologdone~ (→ ~nil~) |
+| ~org-log-into-drawer~ | ~logdrawer~ (→ ~t~), ~nologdrawer~ (→ ~nil~) |
+| ~org-log-repeat~ | ~logrepeat~ (→ ~time~), ~lognoterepeat~ (→ ~note~), ~nologrepeat~ (→ ~nil~) |
 | ~org-startup-folded~ | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ |
 | ~org-startup-with-inline-images~ | ~inlineimages~ (→ ~t~), ~noinlineimages~ (→ ~nil~) |
 
@@ -579,14 +582,16 @@ org-pwa applies ~#+STARTUP:~ directives, typically on the first line. They can s
 |---+---+---|
 | Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ | ~showeverything~ |
 | Inline images | ~inlineimages~, ~noinlineimages~ | ~noinlineimages~ |
-| Progress logging on DONE | ~logdone~, ~lognotedone~ | neither (no logging) |
+| Progress logging on DONE | ~logdone~, ~lognotedone~, ~nologdone~ | none |
+| Log into the drawer | ~logdrawer~, ~nologdrawer~ | ~nologdrawer~ |
+| Log a repeat | ~logrepeat~, ~lognoterepeat~, ~nologrepeat~ | ~logrepeat~ |
 
 - ~overview~: only top-level headings, everything else folded.
 - ~show2levels~ to ~show5levels~: like ~overview~ with that cutoff depth. Headings are shown through that level with no body text at any visible level, and deeper levels are folded.
 - ~content~: every heading line shown, but body text (paragraphs, lists, tables) and properties hidden until you open a heading.
 - ~showall~: body text, lists and tables shown. Property drawers (~:PROPERTIES:~) and blocks (~#+BEGIN_SRC~, ~#+BEGIN_QUOTE~ and the like) stay folded, one line each.
 - ~showeverything~: ~showall~ plus drawers and blocks fully expanded.
-- ~logdone~, ~lognotedone~: set ~org-log-done~ to ~time~ or ~note~ (see [[#progress-logging][Progress logging]]).
+- ~logdone~, ~lognotedone~, ~nologdone~, ~logdrawer~, ~nologdrawer~, ~logrepeat~, ~lognoterepeat~, ~nologrepeat~: set ~org-log-done~, ~org-log-into-drawer~ and ~org-log-repeat~ (see [[#progress-logging][Progress logging]]).
 
 Cycling a heading to fully expanded always reveals its properties and blocks, whatever ~#+STARTUP:~ says, and collapsing hides them again. With no ~#+STARTUP~ line everything is shown, as in org.
 
@@ -693,7 +698,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-inlinetask-min-level~ | ~15~ | With ~org-inlinetask~ in ~org-modules~: the number of stars from which a headline is an inline task (see Inline tasks under Export) |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
-| ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a note, kept in a ~:LOGBOOK:~ drawer. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
+| ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a closing note. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
+| ~org-log-into-drawer~ | ~nil~ | ~t~ or a drawer name writes log items into ~:LOGBOOK:~ (any name is written as ~LOGBOOK~). ~#+STARTUP: logdrawer~ |
+| ~org-log-repeat~ | ~'time~ | ~'time~ logs a repeating task's completion and sets ~LAST_REPEAT~; ~'note~ asks for a note; ~nil~ does neither. ~#+STARTUP: logrepeat~, ~lognoterepeat~, ~nologrepeat~ |
 | ~org-modules~ | unset | Add ~org-inlinetask~ to read long headlines as inline tasks in exports. A Lisp init does the same with ~(add-to-list 'org-modules 'org-inlinetask)~ or ~(require 'org-inlinetask)~ |
 | ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
 | ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
@@ -738,16 +745,24 @@ Any other ~# key: value~ line is parsed and ignored, so new variables can be add
 :CUSTOM_ID: progress-logging
 :END:
 
-Two mechanisms write into a heading's ~:LOGBOOK:~ drawer, org's running history of state changes and notes, kept apart from the body.
+Changing a heading's TODO state follows Emacs's ~org-todo~. =examples/todo-states.org= shows the results, as Emacs wrote them.
 
 *** ~org-log-done~
 
-Set by ~#+STARTUP: logdone~ or ~lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]), it controls what happens when a heading becomes DONE. The two are mutually exclusive:
+Set by ~#+STARTUP: logdone~ or ~lognotedone~ (see [[#folding-and-startup][Folding and #+STARTUP]]), it controls what happens when a heading becomes DONE:
 
-- ~logdone~ (~time~) inserts a ~CLOSED: [timestamp]~ line. Cycling to a non-done keyword removes it, and so does cycling back to no keyword unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]). Switching between two done keywords (DONE to KILL) leaves it alone.
-- ~lognotedone~ (~note~) prompts for a note when a heading becomes DONE; the badge flips at once, so *Skip* only declines the note. A saved note becomes a timestamped ~:LOGBOOK:~ entry.
+- ~logdone~ (~time~) inserts a ~CLOSED: [timestamp]~ line and nothing else. Cycling to an open keyword removes it, and so does cycling back to no keyword unless ~org-closed-keep-when-no-todo~ is set (see [[#local-variables][Local Variables]]). Switching between two done keywords (DONE to KILL) leaves it alone.
+- ~lognotedone~ (~note~) also asks for a note, saved as ~- CLOSING NOTE [timestamp]~. The badge flips at once, so *Skip* only declines the note.
 
-They apply to a done keyword with no logging spec of its own. With neither, as by default in org, entering DONE adds nothing extra.
+With neither and no per-keyword spec, entering DONE changes nothing but a repeating task's dates.
+
+*** Where log items go
+
+A log item is written under the planning line and properties, above any existing text, newest first. With ~#+STARTUP: logdrawer~ (~org-log-into-drawer~ ~t~), or a ~:LOG_INTO_DRAWER:~ property on the heading or an ancestor, it goes into the ~:LOGBOOK:~ drawer instead. A state item reads ~- State "DONE"       from "TODO"       [timestamp]~.
+
+*** Repeating tasks and ~org-log-repeat~
+
+Marking a task with a repeating time stamp done moves every repeating active time stamp in the entry forward (~+~, ~++~ and ~.+~ as in org), removes a ~SCHEDULED~ without a repeater, drops ~CLOSED~, and sets the state to the ~:REPEAT_TO_STATE:~ property if it names a keyword of the file, else to the first keyword. ~LAST_REPEAT~ and a ~- State "DONE" from "TODO"~ item are written unless ~#+STARTUP: nologrepeat~; ~lognoterepeat~ asks for a note with it.
 
 *** The per-keyword logging spec
 
@@ -766,7 +781,7 @@ Four markers, each optional, as in org:
 | ~@/!~ | Log a note when entering, /and/ a timestamp when *leaving* — conditionally, see below |
 | ~/!~ | Log a timestamp only when *leaving* this state — no logging on entering it at all |
 
-A leaving-log (~@/!~ or ~/!~) fires only if the target state doesn't already log on entry. In the example, WAIT to DONE adds nothing from WAIT's ~/!~, because DONE logs a timestamp on entry (~d!~); WAIT to TODO does, since TODO logs nothing and the move would go unrecorded. A ~CLOSED~ timestamp and a ~:LOGBOOK:~ entry can both fire for one transition, as in org.
+A leaving-log (~@/!~ or ~/!~) fires only if the target state doesn't already log on entry. In the example, WAIT to DONE adds nothing from WAIT's ~/!~, because DONE logs a timestamp on entry (~d!~); WAIT to TODO does, since TODO logs nothing and the move would go unrecorded. A ~CLOSED~ timestamp and a state item can both fire for one transition, as in org.
 
 
 *Fast-access keys* (the letter in ~TODO(t)~) are parsed, so a ~#+TODO:~ line using them still works. A ~#+TODO:~ line with no ~|~ treats its last keyword as the only done state, as in org.
@@ -1226,7 +1241,7 @@ These are self-contained lines anywhere in a heading's body, with no switch line
 
 - ~%%(org-anniversary YEAR MONTH DAY) text~: applies only to years after YEAR. In the text, ~%d~ becomes the elapsed years and ~%s~ its ordinal suffix, so ~%%(org-anniversary 2001 6 12) %d%s wedding anniversary~ shows "25th wedding anniversary" in 2026. February 29 counts as March 1 in non-leap years.
 - ~%%(org-cyclic N YEAR MONTH DAY) text~: every N days from that date, never before it.
-- ~%%(diary-float MONTH DAYNAME N [DAY] [YEAR]) text~: the Nth weekday of a month. MONTH is 1 to 12, a list like ~(1 4 7 10)~ (a quoted ~'(1 4 7 10)~ also works), or ~t~ for every month. DAYNAME is 0 (Sunday) to 6. N counts from the start of the month when positive and from the end when negative (~-1~ is the last). ~%%(diary-float 11 4 4) Thanksgiving~ is the 4th Thursday of November. An optional DAY moves where scanning starts (~%%(diary-float 11 2 1 2) US Election Day~ starts at the 2nd, skipping a Tuesday on the 1st), and an optional YEAR limits the entry to that year.
+- ~%%(diary-float MONTH DAYNAME N [DAY] [MARK]) text~: the Nth weekday of a month. MONTH is 1 to 12, a list like ~(1 4 7 10)~ (a quoted ~'(1 4 7 10)~ also works), or ~t~ for every month. DAYNAME is 0 (Sunday) to 6. N counts from the start of the month when positive and from the end when negative (~-1~ is the last). ~%%(diary-float 11 4 4) Thanksgiving~ is the 4th Thursday of November. An optional DAY moves where scanning starts (~%%(diary-float 11 2 1 2) US Election Day~ starts at the 2nd, skipping a Tuesday on the 1st). As in Emacs, the Nth weekday after (or before) DAY may fall in the next (or previous) month, and a fifth argument is only a calendar face.
 - ~%%(org-block Y1 M1 D1 Y2 M2 D2) text~: every day in an inclusive range, in either order.
 - Lines built from ~and~, ~or~, ~not~, ~when~, ~if~, ~cond~, ~let~, ~org-class~ or ~org-date~, such as ~%%(and (org-block 2026 9 1 2026 12 18) (org-class 2026 9 1 2026 12 18 1)) Seminar~, use the evaluator described under [[#agenda-sexp-timestamps][General sexp timestamps]]. The text after the closing parenthesis is the entry, and a string result replaces it.
 - ~%%(org-weather)~ shows current conditions and today's forecast from [[https://open-meteo.com/][Open-Meteo]] (free, no key), for the same coordinates. It is one entry, on today only, showing the last-fetched snapshot, and nothing until the first refresh.
@@ -1414,6 +1429,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~calendar-absolute-from-gregorian~ and ~calendar-gregorian-from-absolute~ turn a date into a day count and back (day 1 is 1 January, year 1), plus ~min~, ~max~ and ~abs~. A count makes "every other week" and "N days until" rules easy: ~<%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))>~ counts down for the 30 days before.
 - ~(diary-remind SEXP DAYS)~: shows the entry on the day SEXP matches, and "Reminder: Only 3 days until ..." on the DAYS before it. ~DAYS~ is a number, a list (~'(1 3 7)~), or a negative number for every day up to it. ~%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving~ starts a week ahead. The variable ~entry~ is the text of the line, so ~(and (org-block 2026 12 20 2026 12 25) entry)~ also works.
 - ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-hebrew-date)~, ~(diary-islamic-date)~, ~(diary-bahai-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Hebrew date (until sunset): Heshvan 10, 5787", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line.
+- ~(diary-offset SEXP DAYS)~ matches DAYS days after SEXP does; ~(diary-ordinal-suffix N)~ gives ~st~, ~nd~, ~rd~ or ~th~; ~(calendar-nth-named-day N DAYNAME MONTH YEAR [DAY])~ gives a date.
 - ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) "Payday")>~ shows "Payday" only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
 - ~(org-class Y1 M1 D1 Y2 M2 D2 DAYNAME [SKIP-WEEK...])~: DAYNAME (0 Sunday to 6) every week between the two dates, except the listed ISO week numbers. Add ~'holidays~ to the list to skip the days in your holiday lists as well (see [[#holidays][Holidays]]). ~(calendar-check-holidays date)~ gives a day's holiday names. Example: ~<%%(org-class 2026 9 1 2026 12 15 1 'holidays)> Class meets~ is every Monday from September 1 to December 15 except those that are holidays, so September 7 (Labor Day) and October 12 (Columbus Day) have no "Class meets".
@@ -1422,7 +1438,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~(format FORMAT-STRING ARG...)~ combines strings and numbers into one line: ~<%%(when (today-p) (format "%d days until Christmas" (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date))))>~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
 - Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
 
-*Not included*: assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite.
+*Not included*: the Coptic, Ethiopic, Persian, French, Mayan and Chinese date functions, assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite.
 
 *** Other agenda behavior
 :PROPERTIES:
@@ -1431,7 +1447,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 
 - *Completed items are excluded*, using the done keywords of the file's own ~#+TODO:~ sequence.
 - *Repeating timestamps expand* for SCHEDULED, DEADLINE and title timestamps: ~<2000-01-01 Sat +1y>~ shows every year within the range displayed. A repeating SCHEDULED or DEADLINE shows only on its repeat dates, with no carry-forward or early warning between them.
-- *Marking a repeating task done shifts it*, as in org: its date moves forward, ~LAST_REPEAT~ is stamped, and the TODO state returns to the first keyword. ~+N~ adds one interval to the previous date, even if that is still in the past. ~++N~ adds intervals until the date is later than now, keeping the weekday and time (a timed one can land later today). ~.+N~ counts from today, or from the current time for hours. The DONE transition is logged normally; the bounce-back is not, and the ~CLOSED~ timestamp is removed again.
+- *Marking a repeating task done shifts it*, as in org: its date moves forward, ~LAST_REPEAT~ is stamped, and the TODO state returns to the first keyword (or ~REPEAT_TO_STATE~). ~+N~ adds one interval to the previous date, even if that is still in the past. ~++N~ adds intervals until the date is later than now, keeping the weekday and time (a timed one can land later today). ~.+N~ counts from today, or from the current time for hours. Every repeating time stamp in the entry moves, the ~CLOSED~ timestamp is removed, and the completion is logged as ~org-log-repeat~ says (see [[#progress-logging][Progress logging]]).
 - *Archived and commented headings are excluded*. A commented heading starts with ~COMMENT~ (~** COMMENT draft, not ready yet~), as in Emacs. The settings are ~org-agenda-skip-archived-trees~ and ~org-agenda-skip-comment-trees~ in [[#local-variables][Local Variables]].
 
 A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in org. Without the space the tag stays as title text, but the timestamp still shows.
@@ -1536,6 +1552,8 @@ A capture into a different file goes into that file's buffer, as in Emacs: it op
 
 Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meeting) and ~t~ (Table Row). Edit or replace them in *Settings → Capture Templates*, as a JSON array of template objects.
 
+*Templates in Lisp:* ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~ in the Lisp init (~org-xx-lisp-init~) are read as Emacs reads them, and appear beside the JSON templates; where a Lisp and a JSON template share a key, the Lisp one is used. Types ~entry~, ~item~, ~checkitem~, ~table-line~ and ~plain~; targets ~(file "f")~, ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~, where a segment may be a ~%<FORMAT>~; keywords ~:prepend~, ~:empty-lines~, ~:empty-lines-before~, ~:empty-lines-after~ and ~:table-line-pos~, and the app's own ~:omit-empty-entries~, ~:prepend-heading~, ~:table-header~, ~:pre-text~ and ~:post-text~. A template or keyword the app cannot use is named in a message when the Capture list opens. With no heading in the target, an ~entry~ or ~plain~ capture is filed at the file's top level. See =examples/capture-templates.org=.
+
 *Template shape:*
 
 #+BEGIN_SRC json
@@ -1552,11 +1570,14 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 #+END_SRC
 
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
-- ~type~: ~item~ (a bullet), ~checkitem~ (a checkbox item), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) or ~table-line~ (a row added to the nearest table under the target, or a new table).
+- ~type~: ~item~ (a bullet), ~checkitem~ (a checkbox item), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) ~entry~ (a heading; its level follows the target) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
 - ~olp~: the outline path to insert into, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
 - ~file~ (optional): capture into a different file (org's ~file+olp~). A bare name is a sibling of the open file, a path containing ~/~ is used as is, and an optional ~github:~, ~webdav:~ or ~local:~ prefix names the backend; a prefix that doesn't match the open document's backend is refused. If it resolves to the open file, the capture lands in that live document. Otherwise the other file is read, changed and written back without being opened, and nothing changes if the write fails. Omit it to capture into the open file. GitHub and WebDAV targets work automatically; a local or iOS-imported target must have been opened or saved once first, except in the [[#android-app][Android app]], where a file in the org-pwa folder works automatically and is created if it doesn't exist.
 - ~template~: the text inserted, after %-expansion. A JSON ~\n~ is a newline; a blank line after the entry is ~"...%?\n"~.
 - ~prepend~ (default ~false~): put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created ~olp~ heading first among its siblings.
+- ~emptyLines~, ~emptyLinesBefore~, ~emptyLinesAfter~ (default ~0~): the blank lines left before and after the new text, as ~:empty-lines~, ~:empty-lines-before~ and ~:empty-lines-after~ in Emacs. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
+- ~tableLinePos~ (~table-line~ only): where the row goes, as ~:table-line-pos~ in Emacs: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
+- ~tableHeader~ (default ~true~; ~table-line~ only): ~false~ starts a new table with just the row, with no empty header row and rule.
 - ~prependHeading~ (default ~false~; ~table-line~ only): put newly created ~olp~ headings first among their siblings, independently of ~prepend~. That keeps the newest month's heading on top while its rows still append in order. It applies at every level that has to be created; existing segments are reused as they are.
 - ~omitEmptyEntries~ (default ~false~; ~plain~ only): remove entries whose expanded value is empty because a ~%^{Prompt}~ was left blank. That covers ~:KEY:~ drawer entries and body lines shaped ~KEY:value~, such as raw vCard lines (for ~N~ and ~ADR~, a value of only whitespace and semicolons counts as empty). It also removes an empty trailing tag (a blank ~:%^{Tag}:~ would show as ~::~), in every sub-heading the capture defines.
 - ~preText~, ~postText~ (optional, default empty): template text, in the same %-language, added around the output. For ~item~, ~checkitem~ and ~plain~ it wraps every capture, with no automatic spacing. For ~table-line~ it is added once, when the target has no table yet: ~preText~, the new table with this first row, then ~postText~; later captures only add rows. No blank line separates them from the table, so a header row and rule in ~preText~ join the table, and a ~#+TBLFM:~ or ~#+PLOT:~ line is picked up (see [[#table-formulas][Table formulas]] and [[#plots][Plots]]). A ~%^{Prompt}~ in them still appears on the form even when the capture won't use it, unless the target is the open document, a loaded Agenda File or a local file, where the form can check first.
@@ -1599,13 +1620,19 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 - Outside ~%<...>~, ~%%~ is not an escape, as in Emacs: it stays ~%%~, and ~%%t~ is a percent sign followed by a timestamp.
 - ~%t~, ~%T~: an active timestamp, date only or date and time. ~%u~, ~%U~: the same, inactive (~[...]~ instead of ~<...>~).
 - ~%i~ is content shared in from another app (see [[#capture-from-other-apps][Capturing from other apps]]), and ~%a~ is a link to the shared page, ~[[url][title]]~. Text before ~%i~ on its line is added before every later line, so a ~%i~ that follows indentation keeps every line indented. A shared line that would start a heading or a ~#+~ line gets a leading comma, so shared text can never change the document's structure, and only web and mail addresses become links. Both are empty when nothing was shared.
-- ~%x~ is the clipboard. It is read only for a template that uses it, the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
-- ~%^{Prompt}~ asks a question on the in-app form. ~%^{Prompt|default}~ pre-fills an answer, and ~%^{Prompt|default|choice1|choice2}~ also lists the choices as a hint under the field (there is no dropdown). Several prompts share one form, and cancelling discards the whole capture.
-- ~%^t~, ~%^T~, ~%^u~, ~%^U~ are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. The date & time popup also has an *End time*, which follows the start by 30 minutes until you change it (*No end* removes it) and writes a range such as ~<2026-09-22 Tue 09:00-10:30>~: an appointment with a start and an end, exported with both. They count as prompts, in reading order, for ~%\N~ and the live preview.
-- ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ or ~%?~ (1-based) instead of asking again. Out of range gives empty text. In the JSON text the backslash must be doubled: ~%\\1~.
+- ~%A~ is the link with a prompt for its description, ~%l~ the link without a description, ~%L~ the bare address. ~%:link~, ~%:description~ and ~%:type~ are parts of the shared link.
+- ~%x~ and ~%c~ are the clipboard. It is read only for a template that uses it (~%x~, ~%c~, ~%^C~ or ~%^L~), the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
+- ~%n~ is the value of ~user-full-name~ from the global variables (empty when unset). ~%k~ is the heading of the running clock and ~%K~ a link to it, ~[[file::*heading][heading]]~. ~%f~ and ~%F~ are the open file's name and full path.
+- ~%^{Prompt}~ asks a question on the in-app form. ~%^{Prompt|default}~ pre-fills an answer, and ~%^{Prompt|default|choice1|choice2}~ also lists the choices as a hint under the field (there is no dropdown). An empty answer is the default. Several prompts share one form, and cancelling discards the whole capture.
+- ~%^g~ and ~%^G~ ask for tags, written as ~work:home~, and insert ~:work:home:~. On a heading line the tags are aligned so the line ends at column 77.
+- ~%^C~ asks for a clipboard value (pre-filled with the shared text, when there is any) and inserts it; ~%^L~ inserts it as ~[[value]]~.
+- ~%^t~, ~%^T~, ~%^u~, ~%^U~ (and ~%^{Prompt}t~ and the other letters, to name the field) are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. The date & time popup also has an *End time*, which follows the start by 30 minutes until you change it (*No end* removes it) and writes a range such as ~<2026-09-22 Tue 09:00-10:30>~: an appointment with a start and an end, exported with both. A date typed into the field (~2026-09-22~ or ~2026-09-22 14:30~) becomes a timestamp; ~T~ and ~U~ add the current time when none is given, and an empty field is now.
+- ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ (1-based) instead of asking again; tag, clipboard, timestamp and ~%?~ prompts are not counted. A number past the last prompt is an error and the capture does not run. In the JSON text the backslash must be doubled: ~%\\1~.
+- A backslash before ~%~ escapes it: ~\%t~ stays ~%t~. With several backslashes, half of them (rounded up) are removed and the ~%~ is literal when their number is odd, so ~\\%t~ is a backslash and a timestamp.
+- The result has no blank lines before the text, ends with one newline (or is empty when nothing is left), and tabs become spaces at 8-column stops.
 - ~@#~ is the table-formula row number, for ~table-line~ captures only (empty otherwise). It takes an offset, ~@# + n~ or ~@# - n~, with n a non-negative integer.
 - ~%?~ is org's cursor marker, treated as one more prompt: labeled "Text", asked on the form, and focused with the keyboard up when it is the first or only field.
-- Not supported, and left as written: ~%^g~ ~%^G~ (tag prompts), ~%^C~ ~%^L~, ~%c~ (kill ring), ~%f~ ~%F~ ~%k~ ~%K~ ~%n~ ~%l~ ~%L~, ~%(sexp)~, ~%[file]~ and ~%:keyword~; Emacs would expand them. ~%\N~ out of range is empty here, an error in Emacs.
+- Not supported, and left as written: ~%^{Prompt}p~ (property prompts), ~%(sexp)~ and ~%[file]~; Emacs would expand them.
 
 *Two worked examples:*
 
@@ -1887,6 +1914,8 @@ A horizontal rule takes its width from ~#+ATTR_ASCII: :width N~. Of the ~org-asc
 *** HTML
 
 A complete standalone page laid out like Emacs's ~ox-html~: the title as ~h1~, top-level headings as ~h2~ in numbered outline containers, ~org-ul~, ~org-ol~ and ~org-dl~ lists whose items keep their paragraphs, sub-lists and blocks, tables with a header row (when a rule follows it), column alignment and caption, figures, and footnotes numbered in order of reference. Entities (~\alpha~, ~\rarr~), timestamps, inline source, macros, ~@@html:...@@~ snippets, special blocks (~#+BEGIN_NOTE~ becomes ~<div class="note">~), verse and center blocks, ~#+TOC: headlines~, ~tables~ and ~listings~, and ~#+ATTR_HTML:~ on tables and images all work. Source blocks are colored for common languages. Pictures the app can read (GitHub, WebDAV, attachments) are embedded, so the file stands alone.
+
+Tables follow ox's rules in HTML, LaTeX and ASCII: a first column of ~#~, ~*~, ~!~, ~_~, ~^~, ~$~ or ~/~ marks is not written, and neither are the rows marked ~/~, ~^~, ~_~, ~$~ or ~!~ or made only of ~<l>~ ~<r>~ ~<c>~ cookies; the last cookie of a column sets its alignment, a ~/~ row with ~<~ ~>~ gives column groups, and a header is what comes before the first rule. ~#+OPTIONS: |:nil~ leaves tables out, ~f:nil~ leaves footnote references out, and a heading with ~:UNNUMBERED: t~ passes that on to its sub-headings (~notoc~ also keeps it out of the table of contents). A ~#+SUBTITLE:~ goes inside the title.
 
 The CSS is print-aware (headings, tables, figures and code stay whole across pages, and long code lines wrap), so the browser's *Print → Save as PDF* is the route to PDF.
 
@@ -2376,7 +2405,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
-*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ and KaTeX in place of MathJax.
+*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ and KaTeX in place of MathJax. ODT is written directly as ODF, not through ox-odt: its tables ignore special rows and columns, alignment cookies and header rows, and images are referenced, not embedded. HTML, LaTeX, ASCII and Org follow ox on tables, ~UNNUMBERED~ and the ~f:~ and ~|:~ options.
 
 *Refile* (see [[#refile][Refile]]): the destination is an existing heading.
 

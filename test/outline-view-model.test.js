@@ -243,15 +243,19 @@ test('cycleItemCheckbox cycles a leaf item (no nested sub-items) through just tw
   assert.equal(cycleItemCheckbox(readingList, item), 'X');
 });
 
-test('cycleItemCheckbox cycles an item WITH nested sub-items through all three states', () => {
-  const doc = parseOrg(
-    ['* Notes', '- [ ] Parent task', '  - [ ] Sub-task one', '  - [ ] Sub-task two'].join('\n')
-  );
-  const item = doc.children[0].body[0].items[0]; // "Parent task" -- has nested sub-items
-  assert.equal(item.checkbox, ' ');
-  assert.equal(cycleItemCheckbox(doc.children[0], item), '-');
-  assert.equal(cycleItemCheckbox(doc.children[0], item), 'X');
-  assert.equal(cycleItemCheckbox(doc.children[0], item), ' ');
+test('cycleItemCheckbox on an item with checkbox sub-items leaves it showing what they add up to, as Org does', () => {
+  const doc = parseOrg(['* Notes', '- [ ] Parent task', '  - [ ] Sub-task one', '  - [ ] Sub-task two'].join('\n'));
+  const heading = doc.children[0];
+  assert.equal(cycleItemCheckbox(heading, heading.body[0].items[0]), ' ');
+});
+
+test('cycleItemCheckbox on a sub-item updates the boxes above it', () => {
+  const doc = parseOrg(['* Notes', '- [ ] Parent task', '  - [ ] Sub-task one', '  - [ ] Sub-task two'].join('\n'));
+  const heading = doc.children[0];
+  cycleItemCheckbox(heading, heading.body[0].items[0].children[0].items[0]);
+  assert.match(heading.bodyLines[0], /^- \[-\] Parent task$/);
+  cycleItemCheckbox(heading, heading.body[0].items[0].children[0].items[1]);
+  assert.match(heading.bodyLines[0], /^- \[X\] Parent task$/);
 });
 
 test('cycleItemCheckbox on a leaf item currently showing "-" (e.g. hand-edited) moves to checked, skipping back to the ambiguous state', () => {

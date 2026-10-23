@@ -464,7 +464,7 @@ test('TODO keywords get todo/done classes from the file\u2019s own #+TODO: seque
 
 test('priority shows only with pri:t, and todo:nil hides keywords', () => {
   assert.ok(!body('* [#A] Important').includes('class="priority"'));
-  assert.ok(body('#+OPTIONS: pri:t\n* [#A] Important').includes('<span class="priority">[#A]</span>'));
+  assert.ok(body('#+OPTIONS: pri:t\n* [#A] Important').includes('<span class="priority">[A]</span>'));
   assert.ok(!body('#+OPTIONS: todo:nil\n* TODO Task').includes('<span class="todo'));
 });
 

@@ -1,0 +1,3242 @@
+{
+ "cases": [
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n** A\n** B\n** New\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n** New\nnbody\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {},
+   "emacs": "a\n\n* Z\n\n* Y\n* New\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nbody\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nbody\ntext\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nintro\n- new\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n- i1\n- i2\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nx\n- i1\n- i2\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n- i1\n\n- i2\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n** New\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n** New\nnbody\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "a\n* New\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\ntext\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n** A\n** B\n\n** New\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n** New\nnbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n\n** New\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "a\n\n* Z\n\n* Y\n\n* New\n\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n\ntext\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nbody\n\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nbody\n\ntext\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nintro\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n- i1\n- i2\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nx\n- i1\n- i2\n\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n- i1\n\n- i2\n\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** New\n\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n\n** New\nnbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** New\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "a\n\n* New\n\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\n\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\n\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n- new\n\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n** A\n** B\n\n\n** New\n\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n\n** New\nnbody\n\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n\n\n** New\n\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "a\n\n* Z\n\n* Y\n\n\n* New\n\n\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n\n\ntext\n\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nbody\n\n\ntext\n\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nbody\n\n\ntext\n\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\n\ntext\n\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n\n\n- new\n\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nintro\n\n\n- new\n\n\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n- i1\n- i2\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nx\n- i1\n- i2\n\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n- i1\n\n- i2\n\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\n- new\n\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** New\n\n\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n\n\n** New\nnbody\n\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** New\n\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "a\n\n\n* New\n\n\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\n\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\n\n\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\n\n\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\ntext\n\n\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n- new\n\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n- new\n\n\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\n- new\n\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n** A\n** B\n\n\n** New\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n\n** New\nnbody\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n\n\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "a\n\n* Z\n\n* Y\n\n\n* New\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nbody\n\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nbody\n\n\ntext\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nintro\n\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n- i1\n- i2\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nx\n- i1\n- i2\n\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n- i1\n\n- i2\n\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** New\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n\n\n** New\nnbody\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "a\n\n\n* New\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\ntext\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\ntext\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n- new\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n** A\n** B\n** New\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n** New\nnbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n** New\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "a\n\n* Z\n\n* Y\n* New\n\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\ntext\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nbody\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nbody\ntext\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n- new\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nintro\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n- i1\n- i2\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nx\n- i1\n- i2\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n- i1\n\n- i2\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n** New\n\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n** New\nnbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n** New\n\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "a\n* New\n\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\n\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\n\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\ntext\n\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n** A\n** B\n\n** New\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n** New\nnbody\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "a\n\n* Z\n\n* Y\n\n* New\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nbody\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nbody\n\ntext\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nintro\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n- i1\n- i2\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nx\n- i1\n- i2\n\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n- i1\n\n- i2\n\n- new\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n** A\n** B\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** New\n** A\n** B\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n** B\nbbody\n\n* Z\n",
+   "type": "entry",
+   "template": "* New\nnbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\nbody\n\n** New\nnbody\n** A\nabody\n\n** B\nbbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** New\n"
+  },
+  {
+   "init": "a\n\n* Z\n\n* Y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "a\n\n* New\n* Z\n\n* Y\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\nbody\n\n** A\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n* Z\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\nbody\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n- new\n"
+  },
+  {
+   "init": "* Tr\nintro\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n- new\nintro\n"
+  },
+  {
+   "init": "* Tr\n- i1\n- i2\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n- i2\n"
+  },
+  {
+   "init": "* Tr\nx\n- i1\n- i2\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\nx\n- new\n- i1\n- i2\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n- i1\n\n- i2\n\n** A\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- i1\n\n- i2\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\n- new\n"
+  },
+  {
+   "init": "* Tr\n| a | b |\n",
+   "type": "table-line",
+   "template": "| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n| c | d |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "table-line",
+   "template": "| a | b | c |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n|   |   |   |\n|---+---+---|\n| a | b | c |\n"
+  },
+  {
+   "init": "* Tr\ntext\n** A\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\ntext\n|   |   |\n|---+---|\n| a | b |\n** A\n"
+  },
+  {
+   "init": "* Tr\n\ntext\n\n** A\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n\ntext\n\n|   |   |\n|---+---|\n| a | b |\n** A\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n| a  | b  |\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| x | y |\n| z | w |\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| a  | b  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n|----+----|\n| t  | u  |\n| a  | b  |\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| x | y |\n| a | b |\n\n| z | w |\n"
+  },
+  {
+   "init": "| x | y |\n\n* Tr\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {},
+   "emacs": "| x | y |\n| a | b |\n\n* Tr\n"
+  },
+  {
+   "init": "* Tr\n#+TBLFM: $2=1\n| x | y |\n#+TBLFM: $2=1\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n#+TBLFM: $2=1\n| x | 1 |\n| a | 1 |\n#+TBLFM: $2=1\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "table-line",
+   "template": "| a | b | c |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n|   |   |   |\n|---+---+---|\n| a | b | c |\n"
+  },
+  {
+   "init": "* Tr\ntext\n** A\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\ntext\n|   |   |\n|---+---|\n| a | b |\n** A\n"
+  },
+  {
+   "init": "* Tr\n\ntext\n\n** A\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n\ntext\n\n|   |   |\n|---+---|\n| a | b |\n** A\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| a  | b  |\n| x  | y  |\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| a | b |\n| x | y |\n| z | w |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| a  | b  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| a  | b  |\n| x  | y  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| a | b |\n| x | y |\n\n| z | w |\n"
+  },
+  {
+   "init": "| x | y |\n\n* Tr\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "| a | b |\n| x | y |\n\n* Tr\n"
+  },
+  {
+   "init": "* Tr\n#+TBLFM: $2=1\n| x | y |\n#+TBLFM: $2=1\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n#+TBLFM: $2=1\n| a | 1 |\n| x | 1 |\n#+TBLFM: $2=1\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| a  | b  |\n| x  | y  |\n| z  | w  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+2"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n| a  | b  |\n| z  | w  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I-1"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n| a  | b  |\n|----+----|\n| x  | y  |\n| z  | w  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+0"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n| a  | b  |\n|----+----|\n| x  | y  |\n| z  | w  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "II+1"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n| z  | w  |\n|----+----|\n| a  | b  |\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "II-1"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n| z  | w  |\n| a  | b  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "III+1"
+   },
+   "emacs": "ERROR Capture template `t': Invalid table line specification \"III+1\""
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+9"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n|----+----|\n| x  | y  |\n| z  | w  |\n|----+----|\n| t  | u  |\n| a  | b  |\n"
+  },
+  {
+   "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I-9"
+   },
+   "emacs": "* Tr\n| h1 | h2 |\n| a  | b  |\n|----+----|\n| x  | y  |\n| z  | w  |\n|----+----|\n| t  | u  |\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "ERROR Capture template `t': Invalid table line specification \"I+1\""
+  },
+  {
+   "init": "* Tr\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "* Tr\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n+ a\n+ b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n+ a\n+ b\n+ new\n"
+  },
+  {
+   "init": "* Tr\n1. a\n2. b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n1. a\n2. b\n3. new\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n  - a\n  - b\n  - new\n"
+  },
+  {
+   "init": "* Tr\n- a\n  - sub\n- b\n  more\n",
+   "type": "item",
+   "template": "l1\nl2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n- a\n  - sub\n- b\n  more\n- l1\n  l2\n"
+  },
+  {
+   "init": "* A\nt\n** B\n- i\n* C\n- j\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {},
+   "emacs": "* A\nt\n** B\n- i\n- new\n* C\n- j\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {},
+   "emacs": "* A\ntext\n* B\ntext\n- new\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [],
+   "opts": {},
+   "emacs": "pre\n* A\ntext\n* B\ntext\ntext\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {},
+   "emacs": "pre\n* A\ntext\n* B\ntext\n* New\n"
+  },
+  {
+   "init": "* A\n| x | y |\n* B\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {},
+   "emacs": "* A\n| x | y |\n| a | b |\n* B\n| z | w |\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {},
+   "emacs": "* A\ntext\n* B\ntext\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\nnew\n"
+  },
+  {
+   "init": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\nnew\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\nnew\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n- new\n"
+  },
+  {
+   "init": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n- new\n"
+  },
+  {
+   "init": "* Tr\n+ a\n+ b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- a\n- b\n"
+  },
+  {
+   "init": "* Tr\n1. a\n2. b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n1. new\n2. a\n3. b\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n- a\n  - sub\n- b\n  more\n",
+   "type": "item",
+   "template": "l1\nl2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- l1\n  l2\n- a\n  - sub\n- b\n  more\n"
+  },
+  {
+   "init": "* A\nt\n** B\n- i\n* C\n- j\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* A\nt\n** B\n- new\n- i\n* C\n- j\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* A\n- new\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "text\npre\n* A\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "pre\n* New\n* A\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "* A\n| x | y |\n* B\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* A\n| a | b |\n| x | y |\n* B\n| z | w |\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* A\ntext\n* B\ntext\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n:LOGBOOK:\n- note\n:END:\nnew\ntext\n"
+  },
+  {
+   "init": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n:MYDRAWER:\nx\n:END:\nnew\ntext\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\nnew\ntext\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n- new\ntext\n"
+  },
+  {
+   "init": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n#+begin_src sh\n- not a list\n#+end_src\ntext\n"
+  },
+  {
+   "init": "* Tr\n+ a\n+ b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n+ a\n+ b\n\n+ new\n"
+  },
+  {
+   "init": "* Tr\n1. a\n2. b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n1. a\n2. b\n\n3. new\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n  - a\n  - b\n\n  - new\n"
+  },
+  {
+   "init": "* Tr\n- a\n  - sub\n- b\n  more\n",
+   "type": "item",
+   "template": "l1\nl2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n- a\n  - sub\n- b\n  more\n\n- l1\n  l2\n"
+  },
+  {
+   "init": "* A\nt\n** B\n- i\n* C\n- j\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* A\nt\n** B\n- i\n\n- new\n* C\n- j\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* A\ntext\n* B\ntext\n\n- new\n\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "pre\n* A\ntext\n* B\ntext\n\ntext\n\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "pre\n* A\ntext\n* B\ntext\n\n* New\n\n"
+  },
+  {
+   "init": "* A\n| x | y |\n* B\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* A\n| x | y |\n| a | b |\n* B\n| z | w |\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* A\ntext\n* B\ntext\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\n\nnew\n\n"
+  },
+  {
+   "init": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\n\nnew\n\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n\nnew\n\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n+ a\n+ b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n- \na\n- b\n"
+  },
+  {
+   "init": "* Tr\n1. a\n2. b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n1. new\n2. \na\n3. b\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- new\n\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n- a\n  - sub\n- b\n  more\n",
+   "type": "item",
+   "template": "l1\nl2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- l1\n  l2\n\n- a\n  - sub\n- b\n  more\n"
+  },
+  {
+   "init": "* A\nt\n** B\n- i\n* C\n- j\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* A\nt\n** B\n- new\n\n- i\n* C\n- j\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* A\n\n- new\n\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "plain",
+   "template": "text",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "\ntext\n\npre\n* A\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "pre\n* A\ntext\n* B\ntext\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "pre\n\n* New\n\n* A\ntext\n* B\ntext\n"
+  },
+  {
+   "init": "* A\n| x | y |\n* B\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* A\n| a | b |\n| x | y |\n* B\n| z | w |\n"
+  },
+  {
+   "init": "* A\ntext\n* B\ntext\n",
+   "type": "table-line",
+   "template": "| a | b |",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* A\ntext\n* B\ntext\n|   |   |\n|---+---|\n| a | b |\n"
+  },
+  {
+   "init": "* Tr\n:LOGBOOK:\n- note\n:END:\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:LOGBOOK:\n- note\n:END:\n\nnew\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n:MYDRAWER:\nx\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n:MYDRAWER:\nx\n:END:\n\nnew\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "plain",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\nnew\n\ntext\n"
+  },
+  {
+   "init": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\n- new\n\ntext\n"
+  },
+  {
+   "init": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n",
+   "type": "item",
+   "template": "new",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n- new\n\n#+begin_src sh\n- not a list\n#+end_src\ntext\n"
+  }
+ ]
+}

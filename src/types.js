@@ -12,10 +12,11 @@
  *   priority: string | null,
  *   title: string,
  *   tags: string[],
- *   planning: { scheduled: string | null, deadline: string | null, closed: string | null },
+ *   planning: { scheduled: string | null, deadline: string | null, closed: string | null, order?: string[] },
  *   properties: Record<string, string>,
  *   propertyOrder: string[],
  *   logbookLines: string[],
+ *   preLogLines?: string[],
  *   bodyLines: string[],
  *   collapsed: boolean,
  *   bodyHidden: boolean,
@@ -28,7 +29,7 @@
  */
 
 /** The original lines above a heading's body, kept so an unedited heading is written back exactly as it was read.
- * @typedef {{ header: string, headerSig: string, planning: string | null, planningSig: string | null, drawers: { type: 'properties' | 'logbook', lines: string[] }[], propertyLines: Record<string, { line: string, value: string }>, propsSig: string, logSig: string }} HeadingRaw */
+ * @typedef {{ header: string, headerSig: string, planning: string | null, planningSig: string | null, drawers: { type: 'properties' | 'logbook' | 'prelog', lines: string[] }[], propertyLines: Record<string, { line: string, value: string }>, propsSig: string, logSig: string }} HeadingRaw */
 
 /** @typedef {{ key: string, value: string, [k: string]: any }} Keyword */
 
@@ -61,7 +62,7 @@
 
 /** One entry of the command palette. @typedef {{ id: string, label: string, orgName?: string, keys?: string, group?: string, keywords?: string[], needs?: string[], run: (target?: object | null) => any, [k: string]: any }} PaletteCommand */
 
-/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, [k: string]: any }} CaptureTemplate */
+/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, [k: string]: any }} CaptureTemplate */
 
 /**
  * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).
@@ -113,7 +114,7 @@
 
 export {};
 
-/** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string }} PendingLogNote */
+/** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string, kind: 'state' | 'done' }} PendingLogNote */
 /** @typedef {{ heading: Heading, mode: string, loading: boolean, candidates: any[], errors: any[], recent: any[], selected: any, query: string }} PendingRefile */
 /** @typedef {{ heading: Heading, table: Table, rowIndex: number, colIndex: number }} EditingCell */
 /** @typedef {{ heading: Heading, paragraph: Paragraph }} EditingParagraph */

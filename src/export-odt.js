@@ -33,7 +33,7 @@ import { resolveTodoSequence } from './todo-cycle.js';
 import { resolveLinkTarget } from './link-resolve.js';
 import { createZip } from './zip-writer.js';
 import { isWidthCookieRow } from './table-cookies.js';
-import { parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
+import { rawExportOptions, parseExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { getProperty } from './archive-model.js';
 import { anchorFor, buildLinkContext, internalLink } from './export-links.js';
 import { expandMacrosForExport } from './export-org.js';
@@ -59,6 +59,11 @@ let footnoteCounterOdt = 0;
 /** org-use-sub-superscripts for the export in progress: the file's #+OPTIONS: ^: or else the setting. */
 let supOdt = 't';
 let numberingEnabledOdt = true;
+/** `f:` and `|:` of #+OPTIONS: footnotes and tables are exported unless turned off. */
+let footnotesOdt = true;
+/** The text of each `[fn:label] text` definition, which a reference to it puts in its footnote. @type {Map<string, import('./types.js').InlineNode[]>} */
+let footnoteDefsOdt = new Map();
+let tablesOdt = true;
 /** What the export does with a link that leads nowhere (org-export-with-broken-links). @type {import('./broken-links.js').BrokenLinks} */
 let brokenOdt = 'nil';
 
@@ -185,13 +190,14 @@ function renderInlineNodeOdt(node) {
       return `<text:span text:style-name="Code">[image: ${escapeXml(node.target)}]</text:span>`;
     case 'footnote-ref':
     case 'footnote-def': {
+      if (!footnotesOdt) return '';
       // ODF's own native footnote -- a real, editable footnote, not a
       // manually-numbered reference into a hand-built list. The
       // footnote's own body is just a paragraph of inline content
       // inside <text:note-body>; org's optional explicit [fn:label]
       // becomes the note's citation text where present, otherwise ODF
       // auto-numbers it (text:note-class handles the numbering itself).
-      const children = node.type === 'footnote-def' ? node.children : [];
+      const children = node.type === 'footnote-def' ? node.children : (node.label !== null && footnoteDefsOdt.get(node.label)) || [];
       const citation = node.label !== null ? escapeXml(node.label) : '';
       footnoteCounterOdt++;
       return (
@@ -289,6 +295,7 @@ function renderListOdt(list) {
 
 /** @param {Table} table */
 function renderTableOdt(table) {
+  if (!tablesOdt) return '';
   const dataRows = table.rows.filter((r) => r.type === 'row' && !isWidthCookieRow(r));
   if (dataRows.length === 0) return '';
   const colCount = Math.max(...dataRows.map((/** @type {any} */ r) => r.cellsInline.length));
@@ -658,6 +665,22 @@ export function exportToOdt(doc, scope = /** @type {any} */ (null), { sup = 't',
   supOdt = options.sup;
   brokenOdt = options.broken;
   numberingEnabledOdt = options.num;
+  const raw = rawExportOptions(doc);
+  footnotesOdt = raw.f !== 'nil';
+  footnoteDefsOdt = new Map();
+  /** @param {import('./types.js').Heading[]} headings */
+  const collectDefs = (headings) => {
+    for (const h of headings) {
+      for (const node of parseBody(h.bodyLines || [])) {
+        if (node.type === 'paragraph' && node.footnoteLabel !== null && !footnoteDefsOdt.has(node.footnoteLabel)) {
+          footnoteDefsOdt.set(node.footnoteLabel, node.inlineLines.flatMap((/** @type {import('./types.js').InlineNode[]} */ line, /** @type {number} */ i) => (i ? [/** @type {import('./types.js').InlineNode} */ ({ type: 'text', value: ' ' }), ...line] : line)));
+        }
+      }
+      collectDefs(h.children || []);
+    }
+  };
+  collectDefs(doc.children || []);
+  tablesOdt = raw['|'] !== 'nil';
 
   const roots = scope ? [scope] : doc.children || [];
   assignHeadingIdsOdt(roots, new Set());

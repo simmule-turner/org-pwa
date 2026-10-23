@@ -59,3 +59,78 @@ test('every query in match-queries.org finds the headings Emacs found', async ()
   }
   assert.ok(checked >= 25);
 });
+
+test('every before/after pair in todo-states.org is what the app writes', async () => {
+  const { readLogSettings } = await import('../src/log-settings.js');
+  const { getClosedKeepWhenNoTodo, parseLocalVariables } = await import('../src/local-variables.js');
+  const { resolveTodoSequence, setTodoState } = await import('../src/todo-cycle.js');
+  const { applyTransitionEffects } = await import('../src/todo-transition.js');
+  const text = read('todo-states.org');
+  const unescape = (s) => s.replace(/^,(\*|#\+)/gm, '$1');
+  const pairs = [...text.matchAll(/Before:\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC\n\nAfter setting (\w+):\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC/g)];
+  assert.ok(pairs.length >= 10);
+  const saved = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    for (const [, before, state, after] of pairs) {
+      const doc = parseOrg(unescape(before) + '\n');
+      const heading = doc.children[0];
+      const sequence = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+      const from = heading.todo;
+      setTodoState(heading, state, sequence);
+      const settings = readLogSettings(doc, parseLocalVariables(serializeOrg(doc)), {}, [heading]);
+      applyTransitionEffects(heading, from, sequence, { settings, keepWhenNoTodo: getClosedKeepWhenNoTodo({}), now: new Date(2026, 9, 11, 16, 30) });
+      assert.equal(serializeOrg(doc).trimEnd(), unescape(after).trimEnd(), unescape(before));
+    }
+  } finally {
+    if (saved === undefined) delete process.env.TZ;
+    else process.env.TZ = saved;
+  }
+});
+
+test('every before/after pair in editing.org is what the app writes', async () => {
+  const { demoteHeading, moveHeadingUp, promoteHeading } = await import('../src/heading-edit.js');
+  const { deleteTableRow, insertListItem, insertTableColumn, setTableCell } = await import('../src/body-edit.js');
+  const { cycleItemCheckbox } = await import('../src/outline-view-model.js');
+  const { updateCheckboxCookie } = await import('../src/checkbox-cookie.js');
+  const cases = JSON.parse(read('../test/fixtures/editing-cases.json'));
+  const unescape = (s) => s.replace(/^,(\*|#\+)/gm, '$1');
+  const afters = [...read('editing.org').matchAll(/\nAfter:\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC/g)].map((m) => unescape(m[1]));
+  assert.equal(afters.length, cases.length);
+  cases.forEach((c, i) => {
+    let result;
+    if (['promote', 'demote', 'up'].includes(c.op)) {
+      const doc = parseOrg(c.org);
+      const headings = [];
+      (function walk(n) {
+        for (const h of n.children) {
+          headings.push(h);
+          walk(h);
+        }
+      })(doc);
+      const at = c.org.split('\n').slice(0, c.line - 1).filter((l) => /^\*+ /.test(l)).length;
+      ({ promote: promoteHeading, demote: demoteHeading, up: moveHeadingUp })[c.op](doc, headings[at]);
+      result = serializeOrg(doc);
+    } else if (c.op === 'item-below' || c.op === 'toggle') {
+      const doc = parseOrg(c.org);
+      const heading = doc.children[0];
+      const find = (lists) => lists.flatMap((l) => l.items.flatMap((it) => [it, ...find(it.children || [])]));
+      const item = find(heading.body.filter((n) => n.type === 'list')).find((it) => it.lineIndex === c.line - 2);
+      if (c.op === 'item-below') insertListItem(heading, item);
+      else {
+        cycleItemCheckbox(heading, item);
+        updateCheckboxCookie(heading);
+      }
+      result = serializeOrg(doc);
+    } else {
+      const doc = parseOrg('* h\n' + c.org);
+      const heading = doc.children[0];
+      const table = heading.body.find((n) => n.type === 'table');
+      if (c.op === 'insert-col') insertTableColumn(heading, table, c.col - 2);
+      else if (c.op === 'delete-row') deleteTableRow(heading, table, c.line - 1);
+      else setTableCell(heading, table, c.line - 1, c.col - 1, c.value);
+      result = serializeOrg(doc).replace(/^\* h\n/, '');
+    }
+    assert.equal(result.trimEnd(), afters[i].trimEnd(), c.title);
+  });
+});

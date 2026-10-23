@@ -1,7 +1,10 @@
 // @ts-check
 // Extracted from app.js: capture ui.
-import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, insertCapture, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
+import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, fileCapture, getCaptureFileScheme, plannedTableRow, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { parseOrg } from '../src/org-parser.js';
+import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
+import { parseTableConstants, recalculateTable } from '../src/table-formula.js';
+import { tableUserCall } from './extension-flow.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
@@ -11,11 +14,12 @@ import { commitAndRender, setStatus } from './editing.js';
 import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { navigateToHeading } from './navigation.js';
-import { getCaptureTemplates } from './settings.js';
+import { captureLispNotes, getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { agendaFilesCache, kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
 import { platform } from './platform.js';
+import { findRunningClockAcrossSessions } from './clock-flow.js';
 
 /** Converts org-agenda-files' own raw string value (semicolon-
  *  separated "scheme:path" entries, the same separator convention
@@ -65,6 +69,7 @@ export async function renderCapturePanel() {
   const templates = await getCaptureTemplates(kv);
   if (!S.captureOpen) return; // panel was closed again before this resolved
   S.currentCaptureTemplates = templates;
+  if (captureLispNotes.length) setStatus(captureLispNotes.join(' '));
 
   if (templates.length === 0) {
     const empty = document.createElement('div');
@@ -90,7 +95,7 @@ export async function renderCapturePanel() {
   grid.style.gridTemplateColumns = '1fr 1fr';
   grid.style.gap = '6px';
 
-  const nonCollidingKeys = computeNonCollidingKeys(templates, (/** @type {any} */ t) => t.key); // badges however the picker was opened
+  const nonCollidingKeys = computeNonCollidingKeys(templates, (/** @type {{key: string}} */ t) => t.key); // badges however the picker was opened
 
   for (const template of templates) {
     const btn = document.createElement('button');
@@ -185,7 +190,7 @@ export async function peekTableAlreadyExists(template) {
   }
   if (!doc) return null;
 
-  const target = resolveOlpTarget(doc, template.olp, { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false });
+  const target = resolveOlpTarget(doc, template.olp || [], { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false });
   if (!target) return false; // the heading path itself doesn't exist yet -- definitely no table under it either
   const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
   return !!existingTable;
@@ -207,7 +212,7 @@ export async function openCapturePrompt(template) {
   S.capturePromptSkipPrePost = skipPrePost;
 
   const scanText = skipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
-  const prompts = scanPrompts(scanText);
+  const prompts = scanPrompts(scanText, templateContext());
   if (prompts.length === 0) {
     runCaptureWithAnswers(template, []);
     return;
@@ -217,25 +222,39 @@ export async function openCapturePrompt(template) {
   renderCapturePanel();
 }
 
+/** What a template can read besides the clock and its own answers: shared-in content, the clipboard, the running
+ *  clock (%k, %K), the open file (%f, %F) and `user-full-name` (%n). */
+function templateContext() {
+  const running = findRunningClockAcrossSessions();
+  const fullName = S.globalVariables && S.globalVariables['user-full-name'];
+  return {
+    shared: S.captureShared,
+    clipboard: S.captureClipboard,
+    userFullName: typeof fullName === 'string' ? fullName : '',
+    clock: running ? { heading: running.heading.title, file: running.isActive ? S.state.documentId : (S.documentSessions.find((x) => x.tabId === running.tabId)?.state.documentId ?? '') } : null,
+    originalFile: S.state.documentId || '',
+  };
+}
+
 /**
- * Whether `text` uses %x (the clipboard), not counting an escaped %%x.
+ * Whether `text` uses a clipboard placeholder (%x, %c, %^C or %^L).
  * @param {string} text
  */
 function usesClipboardToken(text) {
-  return /(?:^|[^%])(?:%%)*%x/.test(text);
+  return /%(?:[xc]|\^[CL])/.test(text);
 }
 
 /** Reads the clipboard into S.captureClipboard, but only for a template that has %x, so a template that does not
  *  never touches it (the browser may ask permission, and iOS shows a Paste confirmation). A refusal or failure
  * @param {import('../src/types.js').CaptureTemplate} template
- *  leaves %x empty and says so, so the capture still goes ahead. */
+ *  leaves them empty and says so, so the capture still goes ahead. */
 async function readClipboardIfUsed(template) {
   S.captureClipboard = '';
   if (!usesClipboardToken((template.preText || '') + template.template + (template.postText || ''))) return;
   try {
     S.captureClipboard = await platform.clipboard.readText();
   } catch {
-    setStatus("Couldn't read the clipboard (allow pasting if asked), so %x is empty.");
+    setStatus("Couldn't read the clipboard (allow pasting if asked), so the clipboard placeholders are empty.");
   }
 }
 
@@ -246,7 +265,7 @@ async function readClipboardIfUsed(template) {
 export function renderCapturePromptForm() {
   const template = /** @type {import('../src/types.js').CaptureTemplate} */ (S.capturePromptTemplate);
   const scanText = S.capturePromptSkipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
-  const prompts = scanPrompts(scanText);
+  const prompts = scanPrompts(scanText, templateContext());
   const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
 
   const heading = document.createElement('div');
@@ -276,13 +295,16 @@ export function renderCapturePromptForm() {
   capturePanelBox.appendChild(preview);
 
   function updatePreview() {
-    const context = { now: previewNow, promptAnswers: S.capturePromptValues, shared: S.captureShared, clipboard: S.captureClipboard };
-    if (S.capturePromptSkipPrePost) {
-      const { text } = expandTemplate(template.template, context);
-      preview.textContent = text;
-    } else {
-      const { preText, text, postText } = expandCaptureText(template.preText, template.template, template.postText, context);
-      preview.textContent = template.type === 'table-line' ? [preText, text, postText].filter(Boolean).join('\n') : preText + text + postText;
+    const context = { ...templateContext(), now: previewNow, promptAnswers: S.capturePromptValues };
+    try {
+      if (S.capturePromptSkipPrePost) {
+        preview.textContent = expandTemplate(template.template, context).text;
+      } else {
+        const { preText, text, postText } = expandCaptureText(template.preText, template.template, template.postText, context);
+        preview.textContent = template.type === 'table-line' ? [preText, text.replace(/\n$/, ''), postText].filter(Boolean).join('\n') : preText + text + postText;
+      }
+    } catch (err) {
+      preview.textContent = /** @type {Error} */ (err).message;
     }
   }
   updatePreview();
@@ -431,19 +453,10 @@ export async function runCaptureWithAnswers(template, answers) {
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (doc) => {
-        const target = resolveOlpTarget(doc, template.olp, { now, prepend: getOlpPrepend(template) });
-        let tableRowNumber = null;
-        if (template.type === 'table-line') {
-          const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-          const dataRowCount = existingTable ? existingTable.rows.filter((/** @type {any} */ r) => r.type === 'row').length : 0;
-          // @# reflects the row's ACTUAL final position -- 1 (the new first
-          // data row) when prepending to an existing table, dataRowCount + 1
-          // (the next row after every existing one) when appending, the
-          // table's own default.
-          tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
-        }
-        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { now, promptAnswers: answers, tableRowNumber, shared: S.captureShared, clipboard: S.captureClipboard });
-        insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);
+        const target = (template.olp || []).length ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template) }) : doc; // no path: the file's top level
+        const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
+        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { ...templateContext(), now, promptAnswers: answers, tableRowNumber });
+        fileCapture(doc, target, template.type, text.replace(/\n$/, ''), template.prepend, template.omitEmptyEntries, preText, postText, placeOptions(template, doc)); // the newline that ends an expansion is the line's own
         return true;
       },
     });
@@ -458,35 +471,48 @@ export async function runCaptureWithAnswers(template, answers) {
     return;
   }
 
-  const target = resolveOlpTarget(S.state.doc, template.olp, { now, prepend: getOlpPrepend(template) });
+  const target = (template.olp || []).length ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template) }) : S.state.doc; // no path: the file's top level
 
-  let tableRowNumber = null;
-  if (template.type === 'table-line') {
-    const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-    const dataRowCount = existingTable ? existingTable.rows.filter((/** @type {any} */ r) => r.type === 'row').length : 0;
-    // @# reflects the row's ACTUAL final position -- 1 (the new first
-    // data row) when prepending to an existing table, dataRowCount + 1
-    // (the next row after every existing one) when appending, the
-    // table's own default.
-    tableRowNumber = template.prepend && existingTable ? 1 : dataRowCount + 1;
+  const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
+
+  let expanded;
+  try {
+    expanded = expandCaptureText(preTextSrc, template.template, postTextSrc, { ...templateContext(), now, promptAnswers: answers, tableRowNumber });
+  } catch (err) {
+    setStatus(`Can't capture: ${/** @type {Error} */ (err).message}`);
+    renderCapturePanel();
+    return;
   }
+  const { preText, text, postText } = expanded;
 
-  const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, {
-    now,
-    promptAnswers: answers,
-    tableRowNumber,
-    shared: S.captureShared,
-    clipboard: S.captureClipboard,
-  });
-
-  insertCapture(target, template.type, text, template.prepend, template.omitEmptyEntries, preText, postText);
+  const placed = fileCapture(S.state.doc, target, template.type, text.replace(/\n$/, ''), template.prepend, template.omitEmptyEntries, preText, postText, placeOptions(template, S.state.doc)); // the newline that ends an expansion is the line's own
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');
-  navigateToHeading(target, { revealOwnBody: true });
+  const shown = (template.olp || []).length ? target : placed && 'level' in placed ? placed : null;
+  if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
   setStatus('Captured.');
   afterSuccessfulCapture();
-  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: target });
+  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: (template.olp || []).length ? target : null });
+}
+
+/** What a template says about how its text is filed: the blank lines around it, the table row, and the sums of a table it joins.
+ * @param {import('../src/types.js').CaptureTemplate} template @param {import('../src/types.js').Doc} doc */
+function placeOptions(template, doc) {
+  return {
+    emptyLines: template.emptyLines,
+    emptyLinesBefore: template.emptyLinesBefore,
+    emptyLinesAfter: template.emptyLinesAfter,
+    tableLinePos: template.tableLinePos,
+    tableHeader: template.tableHeader,
+    recalculate: (/** @type {import('../src/types.js').Table} */ table) => {
+      try {
+        return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(doc), userCall: tableUserCall });
+      } catch {
+        return null;
+      }
+    },
+  };
 }
 
 /** After a successful capture, the form always closes, returning to

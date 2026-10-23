@@ -42,6 +42,7 @@ export function createHeading({ level, title = '', todo = null, priority = null,
     properties: {},
     propertyOrder: [],
     logbookLines: [],
+    preLogLines: [],
     bodyLines: [],
     body: [],
     collapsed: false,
@@ -187,6 +188,35 @@ export function setPlainTimestampInTitle(heading, raw) {
   }
 }
 
+/** The last heading in document order. @param {Doc} doc @returns {Heading | null} */
+function lastHeading(doc) {
+  /** @type {Doc | Heading} */
+  let node = doc;
+  while (node.children.length) node = node.children[node.children.length - 1];
+  return node === doc ? null : /** @type {Heading} */ (node);
+}
+
+/**
+ * The file's final newline is held as an empty last line of the last heading's text, so it has to stay with the end of the
+ * file when a heading moves, goes or is added: `edit` runs with it taken off and it goes back on whichever heading is last.
+ * @template {(doc: Doc, ...rest: never[]) => unknown} F
+ * @param {F} edit
+ * @returns {F}
+ */
+function keepFinalNewline(edit) {
+  return /** @type {F} */ (
+    (/** @type {Doc} */ doc, /** @type {unknown[]} */ ...rest) => {
+      const before = lastHeading(doc);
+      const had = !!before && before.bodyLines.length > 0 && before.bodyLines[before.bodyLines.length - 1] === '';
+      if (had && before) before.bodyLines.pop();
+      const result = /** @type {(...a: unknown[]) => unknown} */ (edit)(doc, ...rest);
+      const after = lastHeading(doc);
+      if (had && after) after.bodyLines.push('');
+      return result;
+    }
+  );
+}
+
 /**
  * Appends a new top-level (level 1) heading at the end of the document.
  * @param {Doc} doc
@@ -226,7 +256,7 @@ export function insertChildHeading(parent, opts = {}, prepend = false) {
  * @param {Doc} doc
  * @param {Heading} heading
  */
-export function insertHeadingAfter(doc, heading, opts = {}) {
+function insertHeadingAfterRaw(doc, heading, opts = {}) {
   const located = findContainer(doc, heading);
   if (!located) return null;
   const sibling = createHeading({ level: heading.level, ...opts });
@@ -239,7 +269,7 @@ export function insertHeadingAfter(doc, heading, opts = {}) {
  * @param {Doc} doc
  * @param {Heading} heading
  *  title, rather than leaving an empty, unnamed heading behind. */
-export function removeHeading(doc, heading) {
+function removeHeadingRaw(doc, heading) {
   const located = findContainer(doc, heading);
   if (!located) return false;
   located.container.splice(located.index, 1);
@@ -254,7 +284,7 @@ export function removeHeading(doc, heading) {
  * @param {Doc} doc
  * @param {Heading} heading
  *  object. */
-export function moveHeadingUp(doc, heading) {
+function moveHeadingUpRaw(doc, heading) {
   const located = findContainer(doc, heading);
   if (!located || located.index === 0) return false;
   const { container, index } = located;
@@ -267,7 +297,7 @@ export function moveHeadingUp(doc, heading) {
  * @param {Doc} doc
  * @param {Heading} heading
  */
-export function moveHeadingDown(doc, heading) {
+function moveHeadingDownRaw(doc, heading) {
   const located = findContainer(doc, heading);
   if (!located || located.index === located.container.length - 1) return false;
   const { container, index } = located;
@@ -317,7 +347,7 @@ export function dropClimbLimit(doc, target, ignore = null) {
  * @param {any} target
  * @param {string} position
  */
-export function moveHeadingTo(doc, heading, target, position, climb = 0) {
+function moveHeadingToRaw(doc, heading, target, position, climb = 0) {
   if (!heading || !target || inSubtree(heading, target)) return false;
   const origin = findContainer(doc, heading);
   if (!origin || !findContainer(doc, target)) return false;
@@ -350,19 +380,13 @@ export function moveHeadingTo(doc, heading, target, position, climb = 0) {
 }
 
 /**
- * Promotes heading (and its whole subtree) up one level: it becomes a
- * sibling of its current parent, inserted immediately after it. No-op
- * if heading is already top-level — there's nothing above level 1 to
- * promote into. Matches real org's M-left/outdent, except expressed as
- * reparenting rather than just decrementing a star count: this app's
- * document model derives level from tree depth, so "one level up"
- * means "become a child of the grandparent" — every descendant's level
- * shifts by the same amount as part of the same move, since they're
- * still the same subtree, just relocated.
+ * Promotes heading (and its whole subtree) up one level, as Org's `org-promote-subtree` does: the stars lose one and the
+ * heading stays where it is in the text.  It ends up right after its former parent's subtree up to it, and the siblings that
+ * followed it, being deeper than it now, become its children.  Nothing happens to a top-level heading.
  * @param {Doc} doc
  * @param {Heading} heading
  */
-export function promoteHeading(doc, heading) {
+function promoteHeadingRaw(doc, heading) {
   const path = findAncestorPath(doc, heading);
   if (!path || path.length === 0) return false; // already top-level
   const parent = path[path.length - 1];
@@ -371,30 +395,49 @@ export function promoteHeading(doc, heading) {
   const parentLocated = findContainer(doc, parent);
   if (!located || !parentLocated) return false;
 
+  const later = located.container.splice(located.index + 1);
   located.container.splice(located.index, 1);
   parentLocated.container.splice(parentLocated.index + 1, 0, heading);
-  shiftLevels(heading, parent.level);
+  heading.children.push(...later);
+  shiftLevels(heading, heading.level - 1);
+  for (const l of later) l.level = Math.max(l.level, heading.level + 1);
   return true;
 }
 
 /**
- * Demotes heading (and its whole subtree) down one level: it becomes
- * the last child of its immediately preceding sibling. No-op if
- * heading has no preceding sibling — matches real org's own
- * limitation, since there'd be nothing to become a child of (you can't
- * demote the very first item under a given parent).
+ * Demotes heading (and its whole subtree) down one level, as Org's `org-demote-subtree` does: the stars gain one and the
+ * heading stays where it is in the text.  After a sibling it becomes that sibling's last child; as a first child it stays
+ * under its parent, a level deeper.
  * @param {Doc} doc
  * @param {Heading} heading
  */
-export function demoteHeading(doc, heading) {
+function demoteHeadingRaw(doc, heading) {
   const located = findContainer(doc, heading);
-  if (!located || located.index === 0) return false;
+  if (!located) return false;
   const { container, index } = located;
+  if (index === 0) {
+    shiftLevels(heading, heading.level + 1);
+    return true;
+  }
   const newParent = container[index - 1];
 
   container.splice(index, 1);
   newParent.children.push(heading);
   newParent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
-  shiftLevels(heading, newParent.level + 1);
+  shiftLevels(heading, heading.level + 1);
   return true;
 }
+
+export const insertHeadingAfter = keepFinalNewline(insertHeadingAfterRaw);
+
+export const removeHeading = keepFinalNewline(removeHeadingRaw);
+
+export const moveHeadingUp = keepFinalNewline(moveHeadingUpRaw);
+
+export const moveHeadingDown = keepFinalNewline(moveHeadingDownRaw);
+
+export const moveHeadingTo = keepFinalNewline(moveHeadingToRaw);
+
+export const promoteHeading = keepFinalNewline(promoteHeadingRaw);
+
+export const demoteHeading = keepFinalNewline(demoteHeadingRaw);

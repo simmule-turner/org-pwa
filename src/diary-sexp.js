@@ -15,6 +15,7 @@
  */
 
 import { startOfDay, endOfDay } from './agenda.js';
+import { nthNamedAbsday, gregorianFromAbsolute, lastDayOfMonth } from './calendar-conv.js';
 import { emacsSunriseSunset } from './solar-emacs.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -275,19 +276,14 @@ function parseDiaryFloatLine(line) {
   const dayname = Number(m[2]);
   if (dayname < 0 || dayname > 6) return null;
   const n = Number(m[3]);
-  if (n === 0) return null; // real elisp: N must be nonzero, no "0th occurrence" concept
 
   const trailing = m[4].trim().split(/\s+/).filter(Boolean).map(Number);
   /** @type {number | null} */
   let day = null;
   /** @type {number | null} */
   let year = null;
-  if (trailing.length === 2) {
-    [day, year] = trailing;
-  } else if (trailing.length === 1) {
-    if (trailing[0] > 31) year = trailing[0];
-    else day = trailing[0];
-  }
+  // (diary-float MONTH DAYNAME N &optional DAY MARK): the fifth argument is a face for the calendar, not a year
+  if (trailing.length) day = trailing[0];
   if (day !== null && (day < 1 || day > 31)) return null;
 
   return { monthSpec, dayname, n, day, year, title: m[5] };
@@ -333,40 +329,44 @@ function nthWeekdayOfMonth(year, month, dayname, n, dayOverride) {
   return new Date(year, month - 1, d);
 }
 
-/** Every diary-float occurrence within [rangeStart, rangeEnd] --
- *  iterates every (year, month) pair the range spans, computing the
- *  nth-weekday occurrence for each month `monthSpec` matches (and,
+/** Every day in [rangeStart, rangeEnd] on which a `diary-float` entry applies (see diaryFloatMatches).
  * @param {number | number[] | string} monthSpec
  * @param {number} dayname
  * @param {number} n
  * @param {number | null} dayOverride
- * @param {number | null} yearFilter
- * @param {any} [rangeStart]
- * @param {any} [rangeEnd]
- *  when `yearFilter` is given, only for that one specific year). */
-function expandDiaryFloatOccurrences(monthSpec, dayname, n, dayOverride, yearFilter, rangeStart, rangeEnd) {
-  const rangeStartDay = startOfDay(rangeStart);
-  const rangeEndDay = endOfDay(rangeEnd);
+ * @param {unknown} _mark the calendar face of Emacs's fifth argument, which has no effect on the days
+ * @param {Date} rangeStart
+ * @param {Date} rangeEnd */
+function expandDiaryFloatOccurrences(monthSpec, dayname, n, dayOverride, _mark, rangeStart, rangeEnd) {
   const dates = [];
-
-  let y = rangeStart.getFullYear();
-  let mo = rangeStart.getMonth() + 1;
-  const endY = rangeEnd.getFullYear();
-  const endMo = rangeEnd.getMonth() + 1;
-  let guard = 0;
-  while ((y < endY || (y === endY && mo <= endMo)) && guard < 2000) {
-    if ((yearFilter == null || yearFilter === y) && monthSpecMatches(monthSpec, mo)) {
-      const occ = nthWeekdayOfMonth(y, mo, dayname, n, dayOverride);
-      if (occ && occ >= rangeStartDay && occ <= rangeEndDay) dates.push(occ);
-    }
-    mo++;
-    if (mo > 12) {
-      mo = 1;
-      y++;
-    }
-    guard++;
+  for (let d = startOfDay(rangeStart); d <= endOfDay(rangeEnd); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    if (diaryFloatMatches(d, monthSpec, dayname, n, dayOverride)) dates.push(d);
   }
   return dates;
+}
+
+/**
+ * `diary-float` as diary-lib.el decides it for one date: the date is the Nth DAYNAME after (before, when N is negative) MONTH DAY,
+ * where that base day may lie in the month before or after the date's own.
+ * @param {Date} date
+ * @param {number | number[] | string} monthSpec
+ * @param {number} dayname
+ * @param {number} n
+ * @param {number | null} day
+ */
+function diaryFloatMatches(date, monthSpec, dayname, n, day) {
+  if (date.getDay() !== dayname) return false;
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const y = date.getFullYear();
+  const limit = nthNamedAbsday(-n, dayname, m, y, d); // last (n > 0) or first (n < 0) possible base date
+  const lastAbs = n > 0 ? limit : limit + 6;
+  const firstAbs = n > 0 ? limit - 6 : limit;
+  const [m1, d1, y1] = gregorianFromAbsolute(firstAbs);
+  const [m2, d2, y2] = gregorianFromAbsolute(lastAbs);
+  const baseDay = (/** @type {number} */ month, /** @type {number} */ year) => day ?? (n > 0 ? 1 : lastDayOfMonth(month, year));
+  if (m1 === m2) return monthSpecMatches(monthSpec, m1) && d1 <= baseDay(m1, y1) && baseDay(m1, y1) <= d2;
+  return (y1 < y2 || (y1 === y2 && m1 < m2)) && ((monthSpecMatches(monthSpec, m1) && d1 <= baseDay(m1, y1)) || (monthSpecMatches(monthSpec, m2) && baseDay(m2, y2) <= d2));
 }
 
 // ---- solar position ---------------------------------------------------------
@@ -542,6 +542,7 @@ export {
   parseDiaryFloatLine,
   monthSpecMatches,
   nthWeekdayOfMonth,
+  diaryFloatMatches,
   expandDiaryFloatOccurrences,
   computeSunriseSunsetUtc,
   computeDaylightHours,

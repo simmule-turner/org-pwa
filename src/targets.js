@@ -68,6 +68,19 @@ export function findTargetHeading(doc, name) {
 }
 
 /**
+ * The heading holding the dedicated (not radio) target with this name, or null.
+ * @param {Doc} doc
+ * @param {string} name
+ * @returns {Heading | null}
+ */
+export function findDedicatedTargetHeading(doc, name) {
+  const wanted = normalizeTargetName(name);
+  if (!wanted) return null;
+  const hit = collectTargets(doc).find((t) => !t.radio && normalizeTargetName(t.name) === wanted);
+  return hit ? hit.heading : null;
+}
+
+/**
  * A pattern for the plain occurrences of the document's radio targets, longest first so "big apple" wins over "apple";
  * null when there are none. Case is ignored and a space in a name matches any run of whitespace.
  * @param {Doc} doc

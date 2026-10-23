@@ -1,0 +1,1013 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "demote",
+   "emacs": "** A\n*** A1\n**** A1a\n*** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "down",
+   "emacs": "* B\n** B1\n* A\n** A1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "delete",
+   "emacs": "* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 0,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* \n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "promote",
+   "emacs": "* A\n* A1\n** A1a\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "demote",
+   "emacs": "* A\n*** A1\n**** A1a\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "down",
+   "emacs": "* A\n** A2\n** A1\n*** A1a\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "delete",
+   "emacs": "* A\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 1,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** \n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "promote",
+   "emacs": "* A\n** A1\n** A1a\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "demote",
+   "emacs": "* A\n** A1\n**** A1a\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "delete",
+   "emacs": "* A\n** A1\n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 2,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n*** \n** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "promote",
+   "emacs": "* A\n** A1\n*** A1a\n* A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n*** A2\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "up",
+   "emacs": "* A\n** A2\n** A1\n*** A1a\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 3,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n** \n* B\n** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n** B\n*** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "up",
+   "emacs": "* B\n** B1\n* A\n** A1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "down",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* C\n* B\n** B1\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 4,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* \n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "promote",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n* B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n*** B1\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 5,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n** \n* C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n** C\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "up",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* C\n* B\n** B1\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n"
+  },
+  {
+   "doc": "tree",
+   "org": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n",
+   "index": 6,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n* B\n** B1\n* C\n* \n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "demote",
+   "emacs": "** A\ntext a\n*** A1\ntext a1\n**** A1a\n*** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "down",
+   "emacs": "* B\nbody b\n* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "delete",
+   "emacs": "* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 0,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* \n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "promote",
+   "emacs": "* A\ntext a\n* A1\ntext a1\n** A1a\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "demote",
+   "emacs": "* A\ntext a\n*** A1\ntext a1\n**** A1a\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "down",
+   "emacs": "* A\ntext a\n** A2\n** A1\ntext a1\n*** A1a\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "delete",
+   "emacs": "* A\ntext a\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 1,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** \n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "promote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n** A1a\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "demote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n**** A1a\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "delete",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 2,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n*** \n** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "promote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n* A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "demote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n*** A2\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "up",
+   "emacs": "* A\ntext a\n** A2\n** A1\ntext a1\n*** A1a\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "delete",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 3,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n** \n* B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "demote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n** B\nbody b\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "up",
+   "emacs": "* B\nbody b\n* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "down",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* C\n* B\nbody b\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "delete",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 4,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* \n* C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "demote",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n** C\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "up",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* C\n* B\nbody b\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "delete",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n"
+  },
+  {
+   "doc": "body",
+   "org": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n",
+   "index": 5,
+   "op": "insert-after",
+   "emacs": "* A\ntext a\n** A1\ntext a1\n*** A1a\n** A2\n* B\nbody b\n* C\n* \n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "demote",
+   "emacs": "** A\n*** A1\n**** A1a\n***** A1a1\n*** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "delete",
+   "emacs": ""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 0,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n* \n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "promote",
+   "emacs": "* A\n* A1\n** A1a\n*** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "demote",
+   "emacs": "* A\n*** A1\n**** A1a\n***** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "down",
+   "emacs": "* A\n** A2\n** A1\n*** A1a\n**** A1a1\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "delete",
+   "emacs": "* A\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 1,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n** \n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "promote",
+   "emacs": "* A\n** A1\n** A1a\n*** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "demote",
+   "emacs": "* A\n** A1\n**** A1a\n***** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "delete",
+   "emacs": "* A\n** A1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 2,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n*** \n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "promote",
+   "emacs": "* A\n** A1\n*** A1a\n*** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n***** A1a1\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 3,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n**** \n** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "promote",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n* A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "demote",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n*** A2\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "up",
+   "emacs": "* A\n** A2\n** A1\n*** A1a\n**** A1a1\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "delete",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n"
+  },
+  {
+   "doc": "deep",
+   "org": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n",
+   "index": 4,
+   "op": "insert-after",
+   "emacs": "* A\n** A1\n*** A1a\n**** A1a1\n** A2\n** \n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "demote",
+   "emacs": "** TODO [#A] A                                                            :x:\nSCHEDULED: <2026-10-05 Mon>\n*** DONE A1                                                               :y:\n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "down",
+   "emacs": "* B\n* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "delete",
+   "emacs": "* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 0,
+   "op": "insert-after",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* \n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "promote",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n* DONE A1                                                                 :y:\n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "demote",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n*** DONE A1                                                               :y:\n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "delete",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 1,
+   "op": "insert-after",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n** \n* B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "demote",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n** B\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "up",
+   "emacs": "* B\n* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "delete",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n"
+  },
+  {
+   "doc": "tagged",
+   "org": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n",
+   "index": 2,
+   "op": "insert-after",
+   "emacs": "* TODO [#A] A :x:\nSCHEDULED: <2026-10-05 Mon>\n** DONE A1 :y:\n* B\n* \n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "demote",
+   "emacs": "** A\n:PROPERTIES:\n:ID: 1\n:END:\n*** A1\n- item\n  more\n| a | b |\n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "down",
+   "emacs": "* B\n* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "delete",
+   "emacs": "* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 0,
+   "op": "insert-after",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* \n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "promote",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n* A1\n- item\n  more\n| a | b |\n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "demote",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n*** A1\n- item\n  more\n| a | b |\n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "up",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "delete",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 1,
+   "op": "insert-after",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n** \n* B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "promote",
+   "emacs": "ERROR \"Cannot promote to level 0.  UNDO to recover if necessary\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "demote",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n** B\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "up",
+   "emacs": "* B\n* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "down",
+   "emacs": "ERROR \"Cannot move past superior level or buffer limit\""
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "delete",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n"
+  },
+  {
+   "doc": "folded",
+   "org": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n",
+   "index": 2,
+   "op": "insert-after",
+   "emacs": "* A\n:PROPERTIES:\n:ID: 1\n:END:\n** A1\n- item\n  more\n| a | b |\n* B\n* \n"
+  }
+ ]
+}

@@ -1,6 +1,7 @@
 // @ts-check
 
 import { parseCitationAt } from './cite.js';
+import { unescapeLink } from './link-string.js';
 
 /**
  * Inline markup parser. Turns a single line of text into a sequence of
@@ -34,7 +35,9 @@ const EMPHASIS_KIND = {
 };
 const LITERAL_KINDS = new Set(['code', 'verbatim']);
 
-const LINK_RE = /^\[\[([^\]]+?)\](?:\[([^\]]+?)\])?\]/;
+// [[path]] and [[path][description]], as org-link-bracket-re reads them: a backslash before a bracket escapes it (a run of backslashes
+// counts in pairs), the description may hold single brackets and runs to the first `]]`, and it cannot be empty.
+const LINK_RE = /^\[\[((?:[^[\]\\]|\\(?:\\\\)*[[\]]|\\+[^[\]]|\\+(?=\]))+)\](?:\[([\s\S]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
 // <<<radio target>>> and <<dedicated target>>: no space just inside the brackets, and no angle bracket or line break within
 const RADIO_TARGET_RE = /^<<<(?=\S)([^<>\n]*[^<>\s])>>>/;
@@ -286,23 +289,21 @@ function matchFootnoteAt(text, pos) {
 // link-resolve.js) -- http/https/ftp/mailto for ordinary external
 // links, doi for academic citations (resolved to doi.org), and
 // file/github/webdav for the file-linking schemes this app supports.
-const AUTOLINK_SCHEMES = ['https', 'http', 'ftp', 'mailto', 'doi', 'file', 'github', 'webdav', 'local'];
-const BARE_URL_RE = new RegExp('^(?:' + AUTOLINK_SCHEMES.join('|') + '):[^\\s<>]+', 'i');
-// Trailing sentence punctuation almost never belongs to the URL itself
-// ("see https://example.com/page." -- the period ends the sentence,
-// not the link) -- stripped one character at a time from the end of a
-// bare-URL match, the same heuristic common URL auto-linkers use
-// (e.g. Rust's own rustdoc bare-URL lint). A URL that genuinely ends
-// in one of these characters is the rare case traded off here, same
-// as elsewhere in this parser (see matchScriptAt's own documented
-// tradeoffs) -- wrapping it in [[...]] or <...> sidesteps this
-// entirely if it ever matters.
-const TRAILING_PUNCTUATION_RE = /[.,;:!?)\]}'"]+$/;
+const AUTOLINK_SCHEMES = [
+  // the link types Org knows (org-link-types), plus the file schemes of this app
+  'file+emacs', 'file+sys', 'attachment', 'docview', 'bibtex', 'mailto', 'github', 'webdav', 'elisp', 'shell', 'https', 'local', 'bbdb', 'gnus', 'info', 'help', 'http', 'rmail', 'news', 'file', 'eww', 'ftp', 'irc', 'mhe', 'w3m', 'doi', 'id',
+];
+const TYPES_RE = AUTOLINK_SCHEMES.join('|');
+// A plain link as org-link-plain-re reads it: the path is non-blank, non-bracket, non-angle characters (and balanced parentheses),
+// and ends in something that is not punctuation, a slash, or a parenthesized group.
+const PLAIN_CHARS = '[^\\][ \\t\\n()<>]';
+const PLAIN_PAREN = `\\((?:${PLAIN_CHARS}|\\(${PLAIN_CHARS}*\\))*\\)`;
+const BARE_URL_RE = new RegExp(`^(?:${TYPES_RE}):(?:(?:${PLAIN_CHARS}|${PLAIN_PAREN})+)(?:[^!-/:-@\\[-\`{-~\\p{P} \\t\\n]|/|${PLAIN_PAREN})`, 'iu');
 // <https://example.com> -- real org's other recognized plain-URI form,
 // explicitly called out in org's own manual as equivalent to the bare
 // form above, just with angle brackets marking the boundary instead of
 // relying on trailing-punctuation heuristics.
-const ANGLE_URL_RE = /^<((?:https?|ftp|mailto|doi|file|github|webdav|local):[^\s<>]+)>/i;
+const ANGLE_URL_RE = new RegExp(`^<((?:${TYPES_RE}):[^>\\n]*)>`, 'i');
 
 const OPEN_PRE_RE = /[\s\-({'"]/;
 const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;
@@ -447,7 +448,7 @@ function matchEmphasisAt(text, pos) {
     const linkMatch = LINK_RE.exec(remaining);
     if (linkMatch && linkMatch.index === 0) {
       flush();
-      const target = linkMatch[1];
+      const target = unescapeLink(linkMatch[1]);
       const description = linkMatch[2] !== undefined ? linkMatch[2] : null;
       if (description === null && IMAGE_EXT_RE.test(target)) {
         nodes.push({ type: 'image', target });
@@ -483,10 +484,10 @@ function matchEmphasisAt(text, pos) {
       continue;
     }
 
-    const bareMatch = BARE_URL_RE.exec(remaining);
+    const bareMatch = pos === 0 || !/[\p{L}\p{N}]/u.test(text[pos - 1]) ? BARE_URL_RE.exec(remaining) : null;
     if (bareMatch && bareMatch.index === 0) {
       flush();
-      const target = bareMatch[0].replace(TRAILING_PUNCTUATION_RE, '');
+      const target = bareMatch[0];
       if (IMAGE_EXT_RE.test(target)) {
         nodes.push({ type: 'image', target });
       } else {

@@ -1,0 +1,26 @@
+#+TITLE: Lists
+#+OPTIONS: toc:nil num:nil
+* Lists
+1. one
+2. [@5] five
+   - nested a
+   - nested b
+     1. deep
+3. three
+- term :: description
+- other term :: long description
+  that continues
+  - [ ] unchecked
+  - [X] checked
+  - [-] partial [1/2]
+    - [X] sub
+    - [ ] sub two
++ plus bullet
++ another
+
+  second paragraph in item
+- item with *bold* and /italic/ and =verb= and ~code~ and +strike+ and _under_
+
+1) paren
+2) numbers
+a. letters

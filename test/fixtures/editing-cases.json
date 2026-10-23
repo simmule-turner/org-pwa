@@ -1,0 +1,75 @@
+[
+ {
+  "title": "Promote a heading",
+  "text": "The stars drop by one and the heading stays where it is in the text, so the siblings after it become its children.",
+  "op": "promote",
+  "line": 3,
+  "org": "* A\n** B\n** C\n** D\n"
+ },
+ {
+  "title": "Demote a heading",
+  "text": "The heading and its subtree go one level deeper. After a sibling it becomes that sibling's last child.",
+  "op": "demote",
+  "line": 3,
+  "org": "* A\n** B\n** C\n*** C1\n"
+ },
+ {
+  "title": "Move a subtree",
+  "text": "A heading changes places with its sibling, subtree and all.",
+  "op": "up",
+  "line": 3,
+  "org": "* A\n** B\n* C\n** C1\n* D\n"
+ },
+ {
+  "title": "A new numbered item",
+  "text": "Ordered items are numbered again.",
+  "op": "item-below",
+  "line": 3,
+  "org": "* Steps\n1. Mix\n2. Bake\n3. Cool\n"
+ },
+ {
+  "title": "A new item above sub-items",
+  "text": "The new item goes right under the item's first line, and the sub-items follow it.",
+  "op": "item-below",
+  "line": 2,
+  "org": "* Shopping\n- Fruit\n  - apples\n  - pears\n- Bread\n"
+ },
+ {
+  "title": "A new description item",
+  "text": "The term is empty, ready to be filled in.",
+  "op": "item-below",
+  "line": 2,
+  "org": "* Terms\n- org :: outliner\n- pwa :: web app\n"
+ },
+ {
+  "title": "Checking a box",
+  "text": "A box that has boxes under it shows what they add up to, and the cookie follows.",
+  "op": "toggle",
+  "line": 3,
+  "org": "* Packing [0/2]\n- [-] Bag [1/2]\n  - [ ] shirts\n  - [X] shoes\n- [ ] Passport\n"
+ },
+ {
+  "title": "Insert a table column",
+  "text": "The table is aligned again and the =#+TBLFM:= references move with the columns.",
+  "op": "insert-col",
+  "line": 3,
+  "col": 2,
+  "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n"
+ },
+ {
+  "title": "Delete a table row",
+  "text": "The other rows keep their layout, and row references in =#+TBLFM:= follow.",
+  "op": "delete-row",
+  "line": 3,
+  "org": "| n | sq |\n|---+----|\n| 1 |  1 |\n| 2 |  4 |\n| 3 |  9 |\n#+TBLFM: @4$2=@3$1*@3$1\n"
+ },
+ {
+  "title": "Change a table cell",
+  "text": "The columns are widened to the longest cell.",
+  "op": "set-cell",
+  "line": 3,
+  "col": 1,
+  "value": "a much longer name",
+  "org": "| Name | Qty |\n|------+-----|\n| ab   |   3 |\n"
+ }
+]

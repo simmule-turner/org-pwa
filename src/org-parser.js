@@ -56,6 +56,23 @@ const KEYWORD_RE = /^#\+([A-Za-z][A-Za-z_]*):\s?(.*)$/;
 const PROPERTY_DRAWER_START_RE = /^\s*:PROPERTIES:\s*$/i;
 const PROPERTY_DRAWER_END_RE = /^\s*:END:\s*$/i;
 const LOGBOOK_DRAWER_START_RE = /^\s*:LOGBOOK:\s*$/i;
+const LOG_ITEM_RE = /^[ \t]*- (?:State "|Note taken on |CLOSING NOTE |Rescheduled from |Not scheduled, was |New deadline from |Removed deadline, was |Refiled on )/;
+
+/**
+ * Whether the log items that start at `i` (with their indented continuation lines) are followed directly by a :LOGBOOK: drawer.
+ * @param {string[]} lines
+ * @param {number} i
+ */
+function logItemsBeforeLogbook(lines, i) {
+  let j = i;
+  while (j < lines.length && (LOG_ITEM_RE.test(lines[j]) || (/^[ \t]+\S/.test(lines[j]) && j > i))) j++;
+  return j < lines.length && LOGBOOK_DRAWER_START_RE.test(lines[j]);
+}
+
+/** @param {Heading} node */
+function logSignature(node) {
+  return JSON.stringify([node.logbookLines || [], node.preLogLines || []]);
+}
 const LOGBOOK_DRAWER_END_RE = /^\s*:END:\s*$/i;
 // Org's own rule (org-property-re): the name is the first token without its closing colon, however many
 // colons or plus signs it contains -- :ID:, :header-args+:, :header-args:emacs-lisp:, :Effort_ALL:.
@@ -69,7 +86,8 @@ const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
 /** @param {string} line */
 function parsePlanningLine(line) {
-  const planning = /** @type {{scheduled: string|null, deadline: string|null, closed: string|null}} */ ({ scheduled: null, deadline: null, closed: null });
+  const planning = /** @type {{scheduled: string|null, deadline: string|null, closed: string|null, order?: string[]}} */ ({ scheduled: null, deadline: null, closed: null });
+  /** @type {string[]} */ const order = [];
   let match;
   let found = false;
   PLANNING_KEYWORD_RE.lastIndex = 0;
@@ -79,7 +97,9 @@ function parsePlanningLine(line) {
     if (kw === 'SCHEDULED') planning.scheduled = stamp;
     else if (kw === 'DEADLINE') planning.deadline = stamp;
     else if (kw === 'CLOSED') planning.closed = stamp;
+    order.push(kw.toLowerCase());
   }
+  if (found) Object.defineProperty(planning, 'order', { value: order, writable: true, enumerable: false });
   return found ? planning : null;
 }
 
@@ -260,6 +280,7 @@ function parseOrg(text, opts = {}) {
         properties: {},
         propertyOrder: /** @type {string[]} */ ([]),
         logbookLines: /** @type {string[]} */ ([]),
+        preLogLines: /** @type {string[]} */ ([]),
         bodyLines: [],
         collapsed: false,
         bodyHidden: false,
@@ -314,6 +335,16 @@ function parseOrg(text, opts = {}) {
           if (i < lines.length) segment.lines.push(lines[i]); // :END:
           i++; // consume :END:
           /** @type {import('./types.js').HeadingRaw} */ (heading.raw).drawers.push(segment);
+        } else if (LOG_ITEM_RE.test(lines[i]) && logItemsBeforeLogbook(lines, i)) {
+          // log items Emacs wrote above a :LOGBOOK: drawer (org-log-into-drawer is nil for state changes, clocks go in the drawer)
+          sawDrawer = true;
+          const segment = /** @type {{ type: 'properties' | 'logbook' | 'prelog', lines: string[] }} */ ({ type: 'prelog', lines: [] });
+          while (i < lines.length && !LOGBOOK_DRAWER_START_RE.test(lines[i])) {
+            segment.lines.push(lines[i]);
+            /** @type {string[]} */ (heading.preLogLines).push(lines[i]);
+            i++;
+          }
+          /** @type {import('./types.js').HeadingRaw} */ (heading.raw).drawers.push(segment);
         } else if (LOGBOOK_DRAWER_START_RE.test(lines[i])) {
           sawDrawer = true;
           const segment = /** @type {{ type: 'properties' | 'logbook', lines: string[] }} */ ({ type: 'logbook', lines: [lines[i]] });
@@ -329,7 +360,7 @@ function parseOrg(text, opts = {}) {
         }
       }
       /** @type {import('./types.js').HeadingRaw} */ (heading.raw).propsSig = propertiesSignature(heading);
-      /** @type {import('./types.js').HeadingRaw} */ (heading.raw).logSig = JSON.stringify(heading.logbookLines);
+      /** @type {import('./types.js').HeadingRaw} */ (heading.raw).logSig = logSignature(heading);
 
       continue;
     }
@@ -388,10 +419,13 @@ function serializeHeadingLine(node) {
 /** @param {Heading['planning'] | null | undefined} planning */
 function serializePlanningLine(planning) {
   if (!planning) return null;
+  // Keywords stay in the order they were read (Emacs edits the planning line in place and puts a new keyword first).
+  const keys = [...(planning.order || []), 'scheduled', 'deadline', 'closed'].filter((k, i, all) => all.indexOf(k) === i);
   const parts = [];
-  if (planning.scheduled) parts.push(`SCHEDULED: ${planning.scheduled}`);
-  if (planning.deadline) parts.push(`DEADLINE: ${planning.deadline}`);
-  if (planning.closed) parts.push(`CLOSED: ${planning.closed}`);
+  for (const key of keys) {
+    const value = /** @type {Record<string, string | null>} */ (/** @type {unknown} */ (planning))[key];
+    if (value) parts.push(`${key.toUpperCase()}: ${value}`);
+  }
   return parts.length ? parts.join(' ') : null;
 }
 
@@ -406,12 +440,13 @@ function propertiesSignature(node) {
 }
 
 /**
- * A property written from scratch: `:KEY: value`, or just `:KEY:` when the value is empty (as org writes it).
+ * A property written from scratch as Org writes it (`org-property-format`, "%-10s %s"): the `:KEY:` padded to ten
+ * columns, a space, then the value; just `:KEY:` when the value is empty.
  * @param {string} key
  * @param {string | null} value
  */
 function canonicalPropertyLine(key, value, indent = '') {
-  return value === '' || value == null ? `${indent}:${key}:` : `${indent}:${key}: ${value}`;
+  return value === '' || value == null ? `${indent}:${key}:` : `${indent}${`:${key}:`.padEnd(10)} ${value}`;
 }
 
 /** @param {string} line */
@@ -464,12 +499,13 @@ function headingPreambleLines(node) {
   else if (planning) lines.push(planning);
 
   const propsUnchanged = !!raw && raw.propsSig === propertiesSignature(node);
-  const logUnchanged = !!raw && raw.logSig === JSON.stringify(node.logbookLines || []);
+  const logUnchanged = !!raw && raw.logSig === logSignature(node);
   if (propsUnchanged && logUnchanged) {
     for (const drawer of raw.drawers) lines.push(...drawer.lines); // exactly as read: order, indentation, repeats, empty drawers
   } else {
     const keep = (/** @type {string} */ type) => /** @type {import('./types.js').HeadingRaw} */ (raw).drawers.filter((d) => d.type === type).flatMap((d) => d.lines);
     lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node)));
+    lines.push(...(logUnchanged ? keep('prelog') : node.preLogLines || []));
     lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node)));
   }
   return lines;

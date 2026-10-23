@@ -1,0 +1,244 @@
+#+TITLE: Changing a TODO state
+#+STARTUP: showall
+
+A cookbook for what a change of TODO state writes. Each section shows a heading before, and after the state in the title is set; the clock reads 2026-10-11 16:30. The "after" texts are what Emacs 29.3 (Org 9.6.15) left, and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+
+* A repeating task
+Marking a repeating task done moves its date on, stamps =LAST_REPEAT=, logs the completion and puts the state back.
+
+Before:
+#+BEGIN_SRC org
+,* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Repeater +1d
+=+1d= adds one day to the old date, even if the result is still in the past.
+
+Before:
+#+BEGIN_SRC org
+,* TODO Cumulate
+SCHEDULED: <2026-10-05 Mon +1d>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,* TODO Cumulate
+SCHEDULED: <2026-10-06 Tue +1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Repeater ++1d
+=++1d= adds days until the date is in the future.
+
+Before:
+#+BEGIN_SRC org
+,* TODO Catch up
+SCHEDULED: <2026-10-05 Mon ++1d>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,* TODO Catch up
+SCHEDULED: <2026-10-12 Mon ++1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Repeater .+1d
+=.+1d= counts from today.
+
+Before:
+#+BEGIN_SRC org
+,* TODO Restart
+SCHEDULED: <2026-10-05 Mon .+1d>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,* TODO Restart
+SCHEDULED: <2026-10-12 Mon .+1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Every repeating time stamp moves
+A repeater in the title or text moves too, a time range keeps its end, and a =SCHEDULED= without a repeater is dropped.
+
+Before:
+#+BEGIN_SRC org
+,* TODO Standup <2026-10-05 Mon 09:00-09:15 +1w>
+SCHEDULED: <2026-10-05 Mon>
+DEADLINE: <2026-10-20 Tue +1m -3d>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,* TODO Standup <2026-10-12 Mon 09:00-09:15 +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+DEADLINE: <2026-11-20 Fri +1m -3d>
+#+END_SRC
+
+* Return to another state
+=REPEAT_TO_STATE= names the state a repeating task goes back to, if the file has it.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT | DONE
+,* TODO Review
+SCHEDULED: <2026-10-05 Mon +1d>
+:PROPERTIES:
+:REPEAT_TO_STATE: NEXT
+:END:
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT | DONE
+,* NEXT Review
+SCHEDULED: <2026-10-06 Tue +1d>
+:PROPERTIES:
+:REPEAT_TO_STATE: NEXT
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* No repeat log
+=#+STARTUP: nologrepeat= leaves out =LAST_REPEAT= and the log item.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: nologrepeat
+,* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+STARTUP: nologrepeat
+,* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+#+END_SRC
+
+* A closing time
+=#+STARTUP: logdone= writes =CLOSED:= and nothing else.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* TODO Write the report
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* DONE Write the report
+CLOSED: [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Reopening
+Going back to an open state removes =CLOSED:=.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* DONE Write the report
+CLOSED: [2026-10-10 Sat 09:00]
+#+END_SRC
+
+After setting TODO:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* TODO Write the report
+#+END_SRC
+
+* Logging every change
+A =!= on a keyword logs each time the heading enters it. The item goes under the planning line, above the text.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* NEXT Call the bank
+SCHEDULED: <2026-10-12 Mon>
+The number is on the card.
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* DONE Call the bank
+SCHEDULED: <2026-10-12 Mon>
+- State "DONE"       from "NEXT"       [2026-10-11 Sun 16:30]
+The number is on the card.
+#+END_SRC
+
+* Logging into the drawer
+=#+STARTUP: logdrawer= puts log items in =:LOGBOOK:=.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: logdone logdrawer
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* TODO Call the bank
+The number is on the card.
+#+END_SRC
+
+After setting NEXT:
+#+BEGIN_SRC org
+,#+STARTUP: logdone logdrawer
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* NEXT Call the bank
+:LOGBOOK:
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+:END:
+The number is on the card.
+#+END_SRC
+
+* A log item above an existing drawer
+Without =logdrawer=, a new item goes above a drawer the heading already has.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO | DONE(d!)
+,* TODO Call the bank
+:LOGBOOK:
+CLOCK: [2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30] =>  0:30
+:END:
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+TODO: TODO | DONE(d!)
+,* DONE Call the bank
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+:LOGBOOK:
+CLOCK: [2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30] =>  0:30
+:END:
+#+END_SRC
+
+* Where the app differs from Emacs
+- Emacs re-aligns a heading's tags to =org-tags-column= when its state changes; the app leaves their spacing as it is.
+- =org-log-reschedule=, =org-log-redeadline= and =org-log-refile= are not applied.
+- A drawer name other than =LOGBOOK= in =org-log-into-drawer= is written as =LOGBOOK=.
+- A note (=@=, =lognotedone=, =lognoterepeat=) is asked for in a panel after the state has changed; skipping it writes no item.

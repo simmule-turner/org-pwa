@@ -7,6 +7,7 @@
 // C-c l) makes the :ID: when there is none and puts the link on the clipboard.
 import { setProperty } from '../src/archive-model.js';
 import { findHeadingById, findHeadingsById } from '../src/link-resolve.js';
+import { makeLinkString } from '../src/link-string.js';
 import { S } from './app-state.js';
 import { ensureAgendaFilesLoadedAndWait } from './agenda-files.js';
 import { scrollContainer } from './chrome.js';
@@ -97,12 +98,6 @@ export async function openIdLink(id, containingHeading = null) {
   if (total > 1) setStatus(`${total} headings share ID ${id}; opened the first.`);
 }
 
-/** Link text must not hold brackets, which would end the link early.
- * @param {string} title */
-function linkText(title) {
-  return title.replace(/[[\]]/g, '').replace(/\s+/g, ' ').trim();
-}
-
 /** The heading's :ID:, making one first when it has none (org-id-get-create). Null when the buffer is read-only and it has none.
  * @param {Heading} heading
  * @returns {{ id: string, created: boolean } | null} */
@@ -112,7 +107,7 @@ function ensureHeadingId(heading) {
   if (S.isBufferReadOnly) return null;
   const id = crypto.randomUUID();
   setProperty(heading, 'ID', id);
-  commitAndRender(`Added an ID to "${linkText(heading.title) || 'heading'}"`);
+  commitAndRender(`Added an ID to "${heading.title.trim() || 'heading'}"`);
   return { id, created: true };
 }
 
@@ -138,11 +133,11 @@ export async function copyHeadingLink(heading) {
     return;
   }
   const { id, created } = got;
-  const title = linkText(heading.title) || 'link';
-  const link = `[[id:${id}][${title}]]`;
+  const title = heading.title.trim();
+  const link = makeLinkString(`id:${id}`, title);
   try {
     await platform.clipboard.writeText(link);
-    setStatus(`Copied the link to "${title}"${created ? ' (and added its :ID:)' : ''}.`);
+    setStatus(`Copied the link to "${title || id}"${created ? ' (and added its :ID:)' : ''}.`);
   } catch {
     setStatus(`Couldn't copy to the clipboard — your browser may not allow it here.${created ? ' The :ID: was added to the heading.' : ''}`);
   }

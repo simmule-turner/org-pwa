@@ -7,21 +7,14 @@
  */
 
 import { parseAttributes } from './org-elements.js';
+import { tableModel } from './table-model.js';
 
 /** @typedef {import('./org-elements.js').OrgElement} OrgElement */
 /** @typedef {Extract<OrgElement, { type: 'table' }>} TableElement */
 /** @typedef {{ cell: (text: string) => string, caption: { short: string | null, text: string } | null, label: string, vars?: import('./latex-config.js').LatexVars }} TableContext */
 
-const NUMBER_RE = /^([<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%:]*|0[xX][0-9a-fA-F]+|nan|[-+u]?inf)$/;
-const COOKIE_RE = /^<[lrc]?\d*>$/;
-const ALIGN_COOKIE_RE = /^<[lrc]\d*>$/;
 const NO_SPEC_ENV_RE = /matrix$/;
 const WIDTH_ENVS = new Set(['tabularx', 'tabulary', 'tabular*']);
-
-/** The row cells of a cookie row (`<l> <r>` ...), or null when the row is anything else. @param {string[] | null} cells */
-function isCookieRow(cells) {
-  return !!cells && cells.some((c) => COOKIE_RE.test(c) && c !== '<>') && cells.every((c) => c === '' || COOKIE_RE.test(c));
-}
 
 /**
  * @param {TableElement} el
@@ -29,35 +22,22 @@ function isCookieRow(cells) {
  */
 export function latexTable(el, ctx) {
   const attrs = parseAttributes(el.aff && el.aff.attr.latex);
-  const { rows, marks } = withoutSpecialRows(el.rows.map((r) => ('rule' in r && r.rule ? null : (r.cells || []).map((c) => c.trim()))));
-  /** @type {string[]} */
-  const cookies = [];
-  const kept = rows.filter((cells) => {
-    if (!isCookieRow(cells)) return true;
-    /** @type {string[]} */ (cells).forEach((c, i) => {
-      if (ALIGN_COOKIE_RE.test(c)) cookies[i] = c.replace(/[^lrc]/g, '');
-    });
-    return false;
-  });
-  const standard = /** @type {string[][]} */ (kept.filter((r) => r !== null));
-  const width = Math.max(0, ...standard.map((r) => r.length));
+  const model = tableModel(el.rows);
+  const kept = /** @type {(string[] | null)[]} */ (model.rows.flatMap((r, i) => (r.rule ? [null] : model.specials[i] ? [] : [r.cells.slice(model.offset)])));
+  const firstRow = model.firstIndex >= 0 ? model.rows[model.firstIndex] : null;
+  const width = firstRow ? firstRow.cells.length - model.offset : 0;
   const vars = ctx.vars;
   const mode = attrs.mode || '';
   const math = mode === 'math' || mode === 'inline-math';
   const env = attrs.environment || (vars ? vars.tableEnvironment : 'tabular');
   let spec = attrs.align || '';
   if (!spec) {
+    // org-latex--align-string: the first row gives the columns; a left border only before the first one
     for (let c = 0; c < width; c++) {
-      const left = marks[c] === '<' || marks[c] === '<>';
-      const right = (marks[c] === '>' || marks[c] === '<>') && !(marks[c + 1] === '<' || marks[c + 1] === '<>'); // a border is written once
-      let align;
-      if (math) align = 'c';
-      else if (cookies[c]) align = cookies[c];
-      else {
-        const numeric = standard.filter((r) => NUMBER_RE.test(r[c] || '')).length;
-        align = standard.length && numeric / standard.length >= 0.5 ? 'r' : 'l';
-      }
-      spec += (left ? '|' : '') + align + (right ? '|' : '');
+      const column = c + model.offset;
+      if (c === 0 && model.leftBorder(column)) spec += '|';
+      spec += math ? 'c' : model.alignment(column)[0];
+      if (model.rightBorder(column)) spec += '|';
     }
   }
 
@@ -101,31 +81,6 @@ export function latexTable(el, ctx) {
   if (caption && !above) lines.push(caption, '');
   lines.push('\\end{' + name + '}');
   return lines.join('\n') + '\n';
-}
-
-const MARKS = new Set(['', '#', '!', '$', '*', '_', '/', '^']);
-
-/**
- * Org's special rows and columns. When every row starts with a mark (and one has a real one) that column is a special column and is not
- * written; rows marked `!` `^` `$` `_` are not written either. A row starting with `/` holds the column group marks (`<` opens a group, `>`
- * closes it, `<>` is a group of one) and is not written; they become `|` in the column specification.
- * @param {(string[] | null)[]} rows
- * @returns {{ rows: (string[] | null)[], marks: string[] }}
- */
-function withoutSpecialRows(rows) {
-  const data = /** @type {string[][]} */ (rows.filter((r) => r !== null));
-  const special = data.length > 0 && data.every((r) => MARKS.has(r[0] || '')) && data.some((r) => (r[0] || '') !== '');
-  /** @type {string[]} */
-  let marks = [];
-  /** @type {(string[] | null)[]} */
-  const out = [];
-  for (const r of rows) {
-    if (r === null) out.push(null);
-    else if ((r[0] || '') === '/') marks = special ? r.slice(1) : r;
-    else if (special && ['!', '^', '$', '_'].includes(r[0] || '')) continue;
-    else out.push(special ? r.slice(1) : r);
-  }
-  return { rows: out, marks };
 }
 
 /**

@@ -1,0 +1,19 @@
+#+OPTIONS: toc:t num:t
+* One
+** A
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+*** under A
+** B
+:PROPERTIES:
+:UNNUMBERED: notoc
+:END:
+** C
+* Two [#A] TODO task
+[[file:/a/b/pic.png]]
+
+[[file:pic2.jpg][desc]]
+
+#+CAPTION: cap
+[[file:dir/pic3.png]]

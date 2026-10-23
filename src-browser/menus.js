@@ -14,7 +14,7 @@ import { extraMenuTargetHeading } from './gestures-structure.js';
 import { findPaletteCommandByOrgName, openCommandPalette, runPaletteCommand } from './god-mode-palette.js';
 import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
-import { getCaptureTemplates } from './settings.js';
+import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
 import { switchToView } from './views.js';

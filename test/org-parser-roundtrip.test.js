@@ -41,7 +41,7 @@ test('property names are read the way org reads them: everything up to the last 
 test('editing one property rewrites only that line; the others keep their own spacing and the drawer its indentation', () => {
   const doc = parseOrg('* H\n  :PROPERTIES:\n  :ID:       abc\n  :KEEP:     padded\n  :END:\n');
   doc.children[0].properties.ID = 'xyz';
-  assert.equal(serializeOrg(doc), '* H\n  :PROPERTIES:\n  :ID: xyz\n  :KEEP:     padded\n  :END:\n');
+  assert.equal(serializeOrg(doc), '* H\n  :PROPERTIES:\n  :ID:       xyz\n  :KEEP:     padded\n  :END:\n');
 });
 
 test('a property added to an indented drawer is written in the drawer\u2019s indentation', () => {
@@ -49,7 +49,7 @@ test('a property added to an indented drawer is written in the drawer\u2019s ind
   const h = doc.children[0];
   h.propertyOrder.push('NEW');
   h.properties.NEW = 'v';
-  assert.equal(serializeOrg(doc), '* H\n  :PROPERTIES:\n  :ID: abc\n  :NEW: v\n  :END:\n');
+  assert.equal(serializeOrg(doc), '* H\n  :PROPERTIES:\n  :ID: abc\n  :NEW:      v\n  :END:\n');
 });
 
 test('removing the last property removes the drawer; removing one of several keeps the rest as they were', () => {
@@ -95,7 +95,7 @@ test('headings written from scratch (no original text) serialize as before', () 
     planning: { scheduled: '<2026-01-01 Thu>', deadline: null, closed: null },
     properties: { ID: 'q', EMPTY: '' }, propertyOrder: ['ID', 'EMPTY'], logbookLines: ['- note'], bodyLines: ['text'], children: [],
   });
-  assert.equal(serializeOrg(doc), '* TODO [#A] Fresh :x:\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: q\n:EMPTY:\n:END:\n:LOGBOOK:\n- note\n:END:\ntext');
+  assert.equal(serializeOrg(doc), '* TODO [#A] Fresh :x:\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID:       q\n:EMPTY:\n:END:\n:LOGBOOK:\n- note\n:END:\ntext');
 });
 
 test('line-number lookups account for the logbook and unusual drawers, so they match the serialized text', () => {

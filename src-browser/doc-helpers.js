@@ -275,6 +275,11 @@ export function validateCaptureTemplates(parsed) {
     if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
     if ('prependHeading' in t && typeof t.prependHeading !== 'boolean') return `${label}: "prependHeading" must be true or false if present`;
     if ('omitEmptyEntries' in t && typeof t.omitEmptyEntries !== 'boolean') return `${label}: "omitEmptyEntries" must be true or false if present`;
+    for (const field of ['emptyLines', 'emptyLinesBefore', 'emptyLinesAfter']) {
+      if (field in t && !(Number.isInteger(t[field]) && t[field] >= 0)) return `${label}: "${field}" must be a whole number if present`;
+    }
+    if ('tableLinePos' in t && typeof t.tableLinePos !== 'string') return `${label}: "tableLinePos" must be a string such as "I+1" if present`;
+    if ('tableHeader' in t && typeof t.tableHeader !== 'boolean') return `${label}: "tableHeader" must be true or false if present`;
     if ('preText' in t && typeof t.preText !== 'string') return `${label}: "preText" must be a string if present`;
     if ('postText' in t && typeof t.postText !== 'string') return `${label}: "postText" must be a string if present`;
   }

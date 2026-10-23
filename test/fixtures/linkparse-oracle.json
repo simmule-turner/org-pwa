@@ -1,0 +1,833 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "line": "a [[https://x.org][desc]] b",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 2,
+     "end": 26,
+     "desc": "desc"
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 17,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[file:a.org::*h][t]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a.org",
+     "raw": "file:a.org::*h",
+     "format": "bracket",
+     "begin": 0,
+     "end": 21,
+     "desc": "t"
+    }
+   ]
+  },
+  {
+   "line": "[[file:a.org::12]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a.org",
+     "raw": "file:a.org::12",
+     "format": "bracket",
+     "begin": 0,
+     "end": 18,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[file:~/a.org]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "~/a.org",
+     "raw": "file:~/a.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 16,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[./rel.png]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "./rel.png",
+     "raw": "./rel.png",
+     "format": "bracket",
+     "begin": 0,
+     "end": 13,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[~/x.org]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "~/x.org",
+     "raw": "~/x.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 11,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[/abs/path.org]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "/abs/path.org",
+     "raw": "/abs/path.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 17,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[*heading]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "*heading",
+     "raw": "*heading",
+     "format": "bracket",
+     "begin": 0,
+     "end": 12,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[#custom]]",
+   "emacs": [
+    {
+     "type": "custom-id",
+     "path": "custom",
+     "raw": "#custom",
+     "format": "bracket",
+     "begin": 0,
+     "end": 11,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[id:abc-123][y]]",
+   "emacs": [
+    {
+     "type": "id",
+     "path": "abc-123",
+     "raw": "id:abc-123",
+     "format": "bracket",
+     "begin": 0,
+     "end": 17,
+     "desc": "y"
+    }
+   ]
+  },
+  {
+   "line": "[[id:abc-123]]",
+   "emacs": [
+    {
+     "type": "id",
+     "path": "abc-123",
+     "raw": "id:abc-123",
+     "format": "bracket",
+     "begin": 0,
+     "end": 14,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[fuzzy words]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "fuzzy words",
+     "raw": "fuzzy words",
+     "format": "bracket",
+     "begin": 0,
+     "end": 15,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[(coderef)]]",
+   "emacs": [
+    {
+     "type": "coderef",
+     "path": "coderef",
+     "raw": "(coderef)",
+     "format": "bracket",
+     "begin": 0,
+     "end": 13,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[attachment:f.png]]",
+   "emacs": [
+    {
+     "type": "attachment",
+     "path": "f.png",
+     "raw": "attachment:f.png",
+     "format": "bracket",
+     "begin": 0,
+     "end": 20,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[a\\]b]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a]b",
+     "raw": "a]b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 8,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[a\\\\]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a\\",
+     "raw": "a\\",
+     "format": "bracket",
+     "begin": 0,
+     "end": 7,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[x][y\\]z]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "x",
+     "raw": "x",
+     "format": "bracket",
+     "begin": 0,
+     "end": 11,
+     "desc": "y\\]z"
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org/a b]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org/a b",
+     "raw": "https://x.org/a b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 21,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org/path?a=1&b=2#frag][q]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org/path?a=1&b=2#frag",
+     "raw": "https://x.org/path?a=1&b=2#frag",
+     "format": "bracket",
+     "begin": 0,
+     "end": 38,
+     "desc": "q"
+    }
+   ]
+  },
+  {
+   "line": "[[mailto:a@b.c][mail]]",
+   "emacs": [
+    {
+     "type": "mailto",
+     "path": "a@b.c",
+     "raw": "mailto:a@b.c",
+     "format": "bracket",
+     "begin": 0,
+     "end": 22,
+     "desc": "mail"
+    }
+   ]
+  },
+  {
+   "line": "[[shell:ls][run]]",
+   "emacs": [
+    {
+     "type": "shell",
+     "path": "ls",
+     "raw": "shell:ls",
+     "format": "bracket",
+     "begin": 0,
+     "end": 17,
+     "desc": "run"
+    }
+   ]
+  },
+  {
+   "line": "[[elisp:(foo)][e]]",
+   "emacs": [
+    {
+     "type": "elisp",
+     "path": "(foo)",
+     "raw": "elisp:(foo)",
+     "format": "bracket",
+     "begin": 0,
+     "end": 18,
+     "desc": "e"
+    }
+   ]
+  },
+  {
+   "line": "[[doi:10.1/x][d]]",
+   "emacs": [
+    {
+     "type": "doi",
+     "path": "10.1/x",
+     "raw": "doi:10.1/x",
+     "format": "bracket",
+     "begin": 0,
+     "end": 17,
+     "desc": "d"
+    }
+   ]
+  },
+  {
+   "line": "see https://example.org/path_(x), ok",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/path_(x)",
+     "raw": "https://example.org/path_(x)",
+     "format": "plain",
+     "begin": 4,
+     "end": 32,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "plain https://example.org. end",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org",
+     "raw": "https://example.org",
+     "format": "plain",
+     "begin": 6,
+     "end": 25,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "https://example.org/a_(b)_c done",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/a_(b)_c",
+     "raw": "https://example.org/a_(b)_c",
+     "format": "plain",
+     "begin": 0,
+     "end": 28,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "text https://example.org/a;b?c=d! more",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/a;b?c=d",
+     "raw": "https://example.org/a;b?c=d",
+     "format": "plain",
+     "begin": 5,
+     "end": 32,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "<https://x.org> and mailto:a@b.c",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "angle",
+     "begin": 0,
+     "end": 16,
+     "desc": null
+    },
+    {
+     "type": "mailto",
+     "path": "a@b.c",
+     "raw": "mailto:a@b.c",
+     "format": "plain",
+     "begin": 20,
+     "end": 32,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "<file:a.org> next",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a.org",
+     "raw": "file:a.org",
+     "format": "angle",
+     "begin": 0,
+     "end": 13,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "mailto:someone@example.org, then",
+   "emacs": [
+    {
+     "type": "mailto",
+     "path": "someone@example.org",
+     "raw": "mailto:someone@example.org",
+     "format": "plain",
+     "begin": 0,
+     "end": 26,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "https://x.org/a,b. https://y.org)",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org/a,b",
+     "raw": "https://x.org/a,b",
+     "format": "plain",
+     "begin": 0,
+     "end": 17,
+     "desc": null
+    },
+    {
+     "type": "https",
+     "path": "//y.org",
+     "raw": "https://y.org",
+     "format": "plain",
+     "begin": 19,
+     "end": 32,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "(https://x.org)",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "plain",
+     "begin": 1,
+     "end": 14,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "\"https://x.org\"",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "plain",
+     "begin": 1,
+     "end": 14,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "file:foo.org and file:bar.org::*h",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "foo.org",
+     "raw": "file:foo.org",
+     "format": "plain",
+     "begin": 0,
+     "end": 13,
+     "desc": null
+    },
+    {
+     "type": "file",
+     "path": "bar.org",
+     "raw": "file:bar.org::*h",
+     "format": "plain",
+     "begin": 17,
+     "end": 33,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "ftp://host/file.txt.",
+   "emacs": [
+    {
+     "type": "ftp",
+     "path": "//host/file.txt",
+     "raw": "ftp://host/file.txt",
+     "format": "plain",
+     "begin": 0,
+     "end": 19,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "http://a.b/c-d_e~f",
+   "emacs": [
+    {
+     "type": "http",
+     "path": "//a.b/c-d_e~f",
+     "raw": "http://a.b/c-d_e~f",
+     "format": "plain",
+     "begin": 0,
+     "end": 18,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "https://example.org/#sec-1.2,",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/#sec-1.2",
+     "raw": "https://example.org/#sec-1.2",
+     "format": "plain",
+     "begin": 0,
+     "end": 28,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "news:comp.emacs end",
+   "emacs": [
+    {
+     "type": "news",
+     "path": "comp.emacs",
+     "raw": "news:comp.emacs",
+     "format": "plain",
+     "begin": 0,
+     "end": 16,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "id:abc-123 plain",
+   "emacs": [
+    {
+     "type": "id",
+     "path": "abc-123",
+     "raw": "id:abc-123",
+     "format": "plain",
+     "begin": 0,
+     "end": 11,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "doi:10.1/x plain",
+   "emacs": [
+    {
+     "type": "doi",
+     "path": "10.1/x",
+     "raw": "doi:10.1/x",
+     "format": "plain",
+     "begin": 0,
+     "end": 11,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org][desc with *bold* and [[nested]]]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 48,
+     "desc": "desc with *bold* and [[nested"
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org][]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "plain",
+     "begin": 2,
+     "end": 15,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[ spaced ]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": " spaced ",
+     "raw": " spaced ",
+     "format": "bracket",
+     "begin": 0,
+     "end": 12,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org][desc]][[https://y.org]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 23,
+     "desc": "desc"
+    },
+    {
+     "type": "https",
+     "path": "//y.org",
+     "raw": "https://y.org",
+     "format": "bracket",
+     "begin": 23,
+     "end": 40,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "adjacent[[https://x.org]]text",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 8,
+     "end": 25,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "tel:+1234 and  xmpp:me@x.org",
+   "emacs": []
+  },
+  {
+   "line": "[[  https://x.org  ][d]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "  https://x.org  ",
+     "raw": "  https://x.org  ",
+     "format": "bracket",
+     "begin": 0,
+     "end": 24,
+     "desc": "d"
+    }
+   ]
+  },
+  {
+   "line": "[[file:a b.org][sp]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a b.org",
+     "raw": "file:a b.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 20,
+     "desc": "sp"
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org][desc ]] after",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 0,
+     "end": 25,
+     "desc": "desc "
+    }
+   ]
+  },
+  {
+   "line": "[fn:1] not link [[https://x.org]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "bracket",
+     "begin": 16,
+     "end": 33,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[https://example.org/a%20b][pct]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/a%20b",
+     "raw": "https://example.org/a%20b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 34,
+     "desc": "pct"
+    }
+   ]
+  },
+  {
+   "line": "[[https://example.org/(paren)][p]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//example.org/(paren)",
+     "raw": "https://example.org/(paren)",
+     "format": "bracket",
+     "begin": 0,
+     "end": 34,
+     "desc": "p"
+    }
+   ]
+  },
+  {
+   "line": "a [[x]] [[y]] [[z]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "x",
+     "raw": "x",
+     "format": "bracket",
+     "begin": 2,
+     "end": 8,
+     "desc": null
+    },
+    {
+     "type": "fuzzy",
+     "path": "y",
+     "raw": "y",
+     "format": "bracket",
+     "begin": 8,
+     "end": 14,
+     "desc": null
+    },
+    {
+     "type": "fuzzy",
+     "path": "z",
+     "raw": "z",
+     "format": "bracket",
+     "begin": 14,
+     "end": 19,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[file:a.org::/re/][r]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a.org",
+     "raw": "file:a.org::/re/",
+     "format": "bracket",
+     "begin": 0,
+     "end": 23,
+     "desc": "r"
+    }
+   ]
+  },
+  {
+   "line": "[[file:a.org::(ref)][c]]",
+   "emacs": [
+    {
+     "type": "file",
+     "path": "a.org",
+     "raw": "file:a.org::(ref)",
+     "format": "bracket",
+     "begin": 0,
+     "end": 24,
+     "desc": "c"
+    }
+   ]
+  }
+ ]
+}

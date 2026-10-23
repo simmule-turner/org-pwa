@@ -1,0 +1,5962 @@
+[
+ {
+  "op": "normalize",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n* Footnotes\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "section": null,
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "sort",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n* Footnotes\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Text and more[fn:2].\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Text and more[fn:1].\n\n[fn:1] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "label": "2",
+  "autoAdjust": "nil",
+  "emacs": "Text[fn:1] and more.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "label": "2",
+  "autoAdjust": "renumber",
+  "emacs": "Text[fn:1] and more.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn::] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:new] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 34,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1][fn::] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 34,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1][fn:new] One.\n\n[fn:2] Two.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 34,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1][fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 52,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 52,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 52,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz] and more[fn:2].\n\n* Footnotes\n\n[fn:1] One.\n\n[fn:zz] \n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz:] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Text[fn:1][fn:zz] and more[fn:2].\n\n[fn:1] One.\n\n[fn:2] Two.\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n* Footnotes\n\n[fn:1] B.\n\n[fn:2] A.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "section": null,
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:1] B.\n\n[fn:2] A.\n\n* Footnotes\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:b] B.\n\n[fn:a] A.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "label": "b",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText and[fn:a].\n\n* Footnotes\n[fn:a] A.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "label": "b",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText and[fn:a].\n\n* Footnotes\n[fn:a] A.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "label": "a",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText[fn:b] and.\n\n* Footnotes\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "label": "a",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText[fn:b] and.\n\n* Footnotes\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 25,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn::]\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 25,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn:new]\n\n* Footnotes\n\n[fn:new] \n[fn:a] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 25,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn:b]\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 45,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a][fn::] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 45,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:new] \n[fn:a][fn:new] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 45,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a][fn:b] A.\n\n[fn:b] B.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 59,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 59,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:new] \n[fn:a] A.\n\n[fn:b] B.[fn:new]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 59,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.[fn:b]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:a] A.\n\n[fn:b] B.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n* After\nx\n\n* Footnotes\n\n[fn:1] B.\n\n[fn:2] A.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "section": null,
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:1] B.\n\n[fn:2] A.\n\n* Footnotes\n\n* After\nx\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* After\nx\n\n* Footnotes\n\n[fn:b] B.\n\n[fn:a] A.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "label": "b",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n\n* After\nx\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "label": "b",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n\n* After\nx\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "label": "a",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText[fn:b] and.\n\n* Footnotes\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "label": "a",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText[fn:b] and.\n\n* Footnotes\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 25,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn::]\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 25,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn:new]\n\n* Footnotes\n[fn:new] \n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 25,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].[fn:b]\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 46,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a][fn::] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 46,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:new] \n\n[fn:a][fn:new] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 46,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a][fn:b] A.\n[fn:b] B.\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 59,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.[fn::]\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 59,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:new] \n\n[fn:a] A.\n[fn:b] B.[fn:new]\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 59,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.[fn:b]\n\n* After\nx\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 70,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 70,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n[fn:new] \n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx[fn:new]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 70,
+  "label": "b",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx[fn:b]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:b] and[fn:a].\n\n* Footnotes\n\n[fn:a] A.\n[fn:b] B.\n\n* After\nx\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n\n[fn:1] A.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "section": null,
+  "emacs": "* H\nText[fn:1].\n\n[fn:1] A.\n\n* Footnotes\n** Sub\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n\n[fn:1] A.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText.\n\n* Footnotes\n** Sub\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText.\n\n* Footnotes\n** Sub\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 18,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 18,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 18,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 35,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n** Sub[fn::]\n[fn:1] A.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 35,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n\n[fn:new] \n** Sub[fn:new]\n[fn:1] A.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 35,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1].\n\n* Footnotes\n** Sub[fn:1]\n[fn:1] A.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1].\n\n* Footnotes\n** Sub\n[fn:1] A.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "section": null,
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "renumber",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "sort",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Text\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Text\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn::]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:new]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 29,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond[fn::] line\n\nnext paragraph\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 29,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond[fn:new] line\n\nnext paragraph\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 29,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond[fn:1] line\n\nnext paragraph\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 50,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 50,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 50,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:1] one\nsecond line\n\nnext paragraph\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz:]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] one\nsecond line\n\nnext paragraph\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n\nafter two blanks\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "section": null,
+  "emacs": "Text[fn:1]\n\n\nafter two blanks\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "sort",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n\nafter two blanks\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Text\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Text\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn::]\n\n[fn:1] one\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:new]\n\n[fn:1] one\n\n\nafter two blanks\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 30,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\n\n\nafter[fn::] two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 30,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\n\n\nafter[fn:new] two blanks\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 30,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] one\n\n\nafter[fn:1] two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] one\n\n\nafter two blanks\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n\nafter two blanks\n\n* Footnotes\n\n[fn:1] one\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz:]\n\n[fn:1] one\n\n\nafter two blanks\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] one\n\n\nafter two blanks\n",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] one\n\n\nafter two blanks\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n* Footnotes\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "section": null,
+  "emacs": "* A\nOne[fn:1].\n\n[fn:1] One.\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "sort",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n* Footnotes\n\n[fn:1] One.\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* A\nOne.\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* A\nOne.\n** B\nTwo[fn:1].\n\n[fn:1] Two.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "label": "2",
+  "autoAdjust": "nil",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "label": "2",
+  "autoAdjust": "renumber",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 17,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 17,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 17,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 38,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2][fn::] Two.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 38,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2][fn:new] Two.\n\n[fn:1] One.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 38,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2][fn:1] Two.\n\n[fn:1] One.\n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 56,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 56,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 56,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* A\nOne[fn:1].\n** B\nTwo[fn:2].\n\n[fn:2] Two.\n\n[fn:1] One.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:1] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "section": null,
+  "emacs": "\n[fn:1] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "emacs": "[fn:1] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "sort",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:1] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "delete",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": ""
+ },
+ {
+  "op": "delete",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": ""
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn::] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:new] def first\n\nText[fn:1] after.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:1] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1] def first\n\nText[fn:1][fn::] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1] def first\n\nText[fn:1][fn:new] after.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1] def first\n\nText[fn:1][fn:1] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:zz] def first\n\nText[fn:1] after.\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:zz] \n\n[fn:1][fn:zz] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:zz:] def first\n\nText[fn:1] after.\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1] def first\n\nText[fn:1] after.\n",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "[fn:1][fn:zz] def first\n\nText[fn:1] after.\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]",
+  "section": null,
+  "emacs": "Text[fn:1]\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "Text[fn:1]",
+  "emacs": "Text[fn:1]"
+ },
+ {
+  "op": "sort",
+  "text": "Text[fn:1]",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Text"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Text"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn::]"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:1]"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz:]"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] def at eof\n"
+ },
+ {
+  "op": "normalize",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "section": null,
+  "emacs": "Text[fn:1]\n\n[fn:1] def at eof\n"
+ },
+ {
+  "op": "renumber",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "emacs": "Text[fn:1]\n\n[fn:1] def at eof"
+ },
+ {
+  "op": "sort",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n* Footnotes\n\n[fn:1] def at eof\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Text\n"
+ },
+ {
+  "op": "delete",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Text\n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn::]\n\n[fn:1] def at eof"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:new]\n\n[fn:1] def at eof\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:1]\n\n[fn:1] def at eof"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 25,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] def at[fn::] eof"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 25,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] def at[fn:new] eof\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 25,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1]\n\n[fn:1] def at[fn:1] eof"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] def at eof\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:1] def at eof\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Text[fn:1][fn:zz:]\n\n[fn:1] def at eof"
+ },
+ {
+  "op": "new",
+  "text": "Text[fn:1]\n\n[fn:1] def at eof",
+  "pos": 10,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Text[fn:1][fn:zz]\n\n[fn:1] def at eof\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] and B[fn:2] and C[fn:2].\n\n* Footnotes\n\n[fn:1] inline text\n\n[fn:2] named inline\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "section": null,
+  "emacs": "A[fn:1] and B[fn:2] and C[fn:2].\n\n[fn:1] inline text\n\n[fn:2] named inline\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "emacs": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n\n* Footnotes\n\n[fn:x] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "label": "x",
+  "autoAdjust": "nil",
+  "emacs": "A[fn::inline text] and B and C.\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "label": "x",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn::inline text] and B and C.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn::] text] and B[fn:x:named inline] and C[fn:x].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn:new] text] and B[fn:x:named inline] and C[fn:x].\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "x",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn:x] text] and B[fn:x:named inline] and C[fn:x].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 35,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named[fn::] inline] and C[fn:x].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 35,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named[fn:new] inline] and C[fn:x].\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 35,
+  "label": "x",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named[fn:x] inline] and C[fn:x].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 56,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 56,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 56,
+  "label": "x",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].[fn:x]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn:zz] text] and B[fn:x:named inline] and C[fn:x].\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn:zz] text] and B[fn:x:named inline] and C[fn:x].\n\n* Footnotes\n\n[fn:zz] \n\n[fn:x] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn::inline[fn:zz:] text] and B[fn:x:named inline] and C[fn:x].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::inline text] and B[fn:x:named inline] and C[fn:x].\n",
+  "pos": 12,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn::inline[fn:zz] text] and B[fn:x:named inline] and C[fn:x].\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:1] one [fn:2] nested\n\n[fn:2] two\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "section": null,
+  "emacs": "A[fn:1].\n\n[fn:1] one [fn:2] nested\n\n[fn:2] two\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "emacs": "A[fn::one [fn:1] nested].\n\n[fn:1] two\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "section": "Footnotes",
+  "emacs": "A[fn::one [fn:2] nested].\n\n* Footnotes\n\n[fn:2] two\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "label": "2",
+  "autoAdjust": "nil",
+  "emacs": "A[fn::one  nested].\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "label": "2",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn::one  nested].\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn::] [fn:2] nested].\n\n[fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn:new] [fn:2] nested].\n\n[fn:2] two\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "2",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn:2] [fn:2] nested].\n\n[fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 33,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one [fn:2] nested].\n\n[fn:2][fn::] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 33,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one [fn:2] nested].\n\n[fn:2][fn:new] two\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 33,
+  "label": "2",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one [fn:2] nested].\n\n[fn:2][fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn:zz] [fn:1] nested].\n\n[fn:1] two\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn:zz] [fn:2] nested].\n\n* Footnotes\n\n[fn:zz] \n\n[fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn::one[fn:zz:] [fn:2] nested].\n\n[fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn::one [fn:2] nested].\n\n[fn:2] two\n",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn::one[fn:zz] [fn:2] nested].\n\n[fn:2] two\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] end.\n\n* Footnotes\n\n[fn:1] long inline\nspanning lines\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "section": null,
+  "emacs": "A[fn:1] end.\n\n[fn:1] long inline\nspanning lines\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "emacs": "A[fn:a:long inline\nspanning lines] end.\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long inline\nspanning lines] end.\n\n* Footnotes\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "label": "a",
+  "autoAdjust": "nil",
+  "emacs": "A end.\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "label": "a",
+  "autoAdjust": "renumber",
+  "emacs": "A end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn::] inline\nspanning lines] end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn:new] inline\nspanning lines] end.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "a",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn:a] inline\nspanning lines] end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 34,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long inline\nspanning lines][fn::] end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 34,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long inline\nspanning lines][fn:new] end.\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 34,
+  "label": "a",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long inline\nspanning lines][fn:a] end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn:zz] inline\nspanning lines] end.\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn:zz] inline\nspanning lines] end.\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:a:long[fn:zz:] inline\nspanning lines] end.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:a:long inline\nspanning lines] end.\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:a:long[fn:zz] inline\nspanning lines] end.\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* H\nSee [[https://x.org/a][link]] here.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nSee [[https://x.org/a][link]] here.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 39,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]][fn::] here.\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 39,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]][fn:new] here.\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 39,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]][fn:1] here.\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 57,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 57,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 57,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nSee [[https://x.org/a[fn:1]][link]] here.\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text.\n"
+ },
+ {
+  "op": "delete",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text.\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In[fn::] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In[fn:new] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In[fn:1] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 32,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]=[fn::] text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 32,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]=[fn:new] text[fn:1].\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 32,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]=[fn:1] text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 56,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 56,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 56,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In[fn:zz] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "In[fn:zz] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n* Footnotes\n\n[fn:zz] \n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "In[fn:zz:] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "In ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n",
+  "pos": 2,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "In[fn:zz] ~code[fn:1]~ and =verb[fn:1]= text[fn:1].\n\n[fn:1] one\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 58,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1][fn::] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 58,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1][fn:new] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 58,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1][fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_src sh\necho \"[fn:1]\"\n#+end_src\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 11,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "#+begin_quote\nQuote.\n#+end_quote\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "#+begin_quote\nQuote.\n#+end_quote\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 46,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1][fn::] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 46,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1][fn:new] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 46,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1][fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+begin_quote\nQuote[fn:1].\n#+end_quote\n\n[fn:1] one\n",
+  "pos": 13,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "# comment [fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "emacs": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "# comment [fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "# comment [fn:1]\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "# comment [fn:1]\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "# comment [fn:1]\nText[fn:1].[fn::]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "# comment [fn:1]\nText[fn:1].[fn:new]\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "# comment [fn:1]\nText[fn:1].[fn:1]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "# comment [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": ": fixed [fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "emacs": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": ": fixed [fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": ": fixed [fn:1]\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": ": fixed [fn:1]\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 26,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": ": fixed [fn:1]\nText[fn:1].[fn::]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 26,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": ": fixed [fn:1]\nText[fn:1].[fn:new]\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 26,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": ": fixed [fn:1]\nText[fn:1].[fn:1]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": ": fixed [fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 20,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 20,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 20,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 45,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].[fn::]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 45,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].[fn:new]\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 45,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].[fn:1]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\n:PROPERTIES:\n:X: [fn:1]\n:END:\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "#+TITLE: T[fn:1]\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "#+TITLE: T[fn:1]\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 36,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1][fn::] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 36,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1][fn:new] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 36,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1][fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "#+TITLE: T[fn:1]\nText[fn:1].\n\n[fn:1] one\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1] |\n| c | d |\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "normalize",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "section": null,
+  "emacs": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "renumber",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "emacs": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "sort",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1] |\n| c | d |\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "delete",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "| a | b |\n| c | d |\n"
+ },
+ {
+  "op": "delete",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "| a | b |\n| c | d |\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "|[fn::] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "|[fn:new] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "|[fn:1] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 13,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1][fn::] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 13,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1][fn:new] |\n| c | d |\n\n[fn:1] note\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 13,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1][fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1] |\n| c[fn::] | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1] |\n| c[fn:new] | d |\n\n[fn:1] note\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "| a | b[fn:1] |\n| c[fn:1] | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 25,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 25,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 25,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "|[fn:zz] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "|[fn:zz] a | b[fn:1] |\n| c | d |\n\n* Footnotes\n\n[fn:zz] \n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "|[fn:zz:] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "| a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "|[fn:zz] a | b[fn:1] |\n| c | d |\n\n[fn:1] note\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item two\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "normalize",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "section": null,
+  "emacs": "- item[fn:1]\n- item two\n\n[fn:1] note\n"
+ },
+ {
+  "op": "renumber",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "emacs": "- item[fn:1]\n- item two\n\n[fn:1] note\n"
+ },
+ {
+  "op": "sort",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item two\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "delete",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "- item\n- item two\n"
+ },
+ {
+  "op": "delete",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "- item\n- item two\n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item[fn::] two\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item[fn:new] two\n\n[fn:1] note\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 19,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item[fn:1] two\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 36,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item two\n\n[fn:1] note[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 36,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item two\n\n[fn:1] note[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 36,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item[fn:1]\n- item two\n\n[fn:1] note[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item[fn:1]\n- item two\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "section": "Footnotes",
+  "emacs": "- item\n  [fn:1] indented\n\nText[fn:1].\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "normalize",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "section": null,
+  "emacs": "- item\n  [fn:1] indented\n\nText[fn:1].\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "emacs": "- item\n  [fn:1] indented\n\nText[fn:1].\n"
+ },
+ {
+  "op": "sort",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "section": "Footnotes",
+  "emacs": "- item\n  [fn:1] indented\n\nText[fn:1].\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n"
+ },
+ {
+  "op": "delete",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "- item\n   indented\n\nText.\n"
+ },
+ {
+  "op": "delete",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "- item\n   indented\n\nText.\n"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 24,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item\n  [fn:1] indented[fn::]\n\nText[fn:1].\n"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 24,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item\n  [fn:1] indented[fn:new]\n\nText[fn:1].\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 24,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "- item\n  [fn:1] indented[fn:1]\n\nText[fn:1].\n"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "- item\n  [fn:1] indented\n\nText[fn:1].\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "* Head[fn:1] title\nbody\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "section": null,
+  "emacs": "* Head[fn:1] title\nbody\n\n[fn:1] note\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "emacs": "* Head[fn:1] title\nbody\n\n[fn:1] note\n"
+ },
+ {
+  "op": "sort",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "* Head[fn:1] title\nbody\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "delete",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* Head title\nbody\n"
+ },
+ {
+  "op": "delete",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* Head title\nbody\n"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 23,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Head[fn:1] title\nbody[fn::]\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 23,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Head[fn:1] title\nbody[fn:new]\n\n[fn:1] note\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 23,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Head[fn:1] title\nbody[fn:1]\n\n[fn:1] note\n"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Head[fn:1] title\nbody\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "section": null,
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n"
+ },
+ {
+  "op": "sort",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "section": "Footnotes",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n* Footnotes\n\n[fn:1] note\n"
+ },
+ {
+  "op": "delete",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* TODO Head :tag:\nbody\n"
+ },
+ {
+  "op": "delete",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* TODO Head :tag:\nbody\n"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 17,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 17,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 17,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 41,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 41,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 41,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* TODO Head :tag:\nbody[fn:1]\n\n[fn:1] note\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:2] C[fn:3] D[fn:4].\n\n* Footnotes\n\n[fn:1] e\n\n[fn:2] ab\n\n[fn:3] ab2\n\n[fn:4] one x\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "section": null,
+  "emacs": "A[fn:1] B[fn:2] C[fn:3] D[fn:4].\n\n[fn:1] e\n\n[fn:2] ab\n\n[fn:3] ab2\n\n[fn:4] one x\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n* Footnotes\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "label": "é",
+  "autoAdjust": "nil",
+  "emacs": "A B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "label": "é",
+  "autoAdjust": "renumber",
+  "emacs": "A B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "label": "a-b",
+  "autoAdjust": "nil",
+  "emacs": "A[fn:é] B C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "label": "a-b",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn:é] B C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn::] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn:new] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "é",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 37,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].[fn::]\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 37,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].[fn:new]\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 37,
+  "label": "é",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].[fn:é]\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 57,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b][fn::] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 57,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b][fn:new] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 57,
+  "label": "é",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b][fn:é] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 74,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2[fn::]\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 74,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2[fn:new]\n\n[fn:1x] one x\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 74,
+  "label": "é",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2[fn:é]\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 89,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 89,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 89,
+  "label": "é",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x[fn:é]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn:zz] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn:zz] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n* Footnotes\n\n[fn:é] e\n\n[fn:zz] \n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:é][fn:zz:] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:é] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:é][fn:zz] B[fn:a-b] C[fn:a_b] D[fn:1x].\n\n[fn:é] e\n\n[fn:a-b] ab\n\n[fn:a_b] ab2\n\n[fn:1x] one x\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:2] C[fn:3].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:2] ten\n\n[fn:3] two\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "section": null,
+  "emacs": "A[fn:1] B[fn:2] C[fn:3].\n\n[fn:1] one\n\n[fn:2] ten\n\n[fn:3] two\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "emacs": "A[fn:1] B[fn:2] C[fn:3].\n\n[fn:2] ten\n\n[fn:3] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:10] ten\n\n[fn:2] two\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "A B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "A B[fn:1] C[fn:2].\n\n[fn:1] ten\n\n[fn:2] two\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "label": "10",
+  "autoAdjust": "nil",
+  "emacs": "A[fn:1] B C[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "label": "10",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn:1] B C[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn::] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:new] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 34,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10][fn::] ten\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 34,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10][fn:new] ten\n\n[fn:2] two\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 34,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10][fn:1] ten\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 50,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two[fn::]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 50,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two[fn:new]\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 50,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two[fn:1]\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] B[fn:2] C[fn:3].\n\n[fn:2] ten\n\n[fn:3] two\n\n[fn:1] one\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] B[fn:10] C[fn:2].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:zz] \n\n[fn:10] ten\n\n[fn:2] two\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz:] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:1][fn:zz] B[fn:10] C[fn:2].\n\n[fn:10] ten\n\n[fn:2] two\n\n[fn:1] one\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:2] C[fn:1].\n\n* Footnotes\n\n[fn:1] zed\n\n[fn:2] why\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "section": null,
+  "emacs": "A[fn:1] B[fn:2] C[fn:1].\n\n[fn:1] zed\n\n[fn:2] why\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n* Footnotes\n\n[fn:z] zed\n\n[fn:y] why\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "label": "z",
+  "autoAdjust": "nil",
+  "emacs": "A B[fn:y] C.\n\n[fn:y] why\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "label": "z",
+  "autoAdjust": "renumber",
+  "emacs": "A B[fn:y] C.\n\n[fn:y] why\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "label": "y",
+  "autoAdjust": "nil",
+  "emacs": "A[fn:z] B C[fn:z].\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "label": "y",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn:z] B C[fn:z].\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn::] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn:new] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "z",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 32,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y][fn::] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 32,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y][fn:new] why\n\n[fn:z] zed\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 32,
+  "label": "z",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y][fn:z] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 48,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 48,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 48,
+  "label": "z",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed[fn:z]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn:zz] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn:zz] B[fn:y] C[fn:z].\n\n* Footnotes\n\n[fn:z] zed\n\n[fn:zz] \n\n[fn:y] why\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:z][fn:zz:] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:z] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:z][fn:zz] B[fn:y] C[fn:z].\n\n[fn:y] why\n\n[fn:z] zed\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:2] B[fn:3].\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] two\n\n[fn:4] unused\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "section": null,
+  "emacs": "A[fn:1] unknown[fn:2] B[fn:3].\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:2] DEFINITION NOT FOUND.\n\n[fn:3] two\n\n[fn:4] unused\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "A unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "A unknown[fn:nodef] B[fn:1].\n\n[fn:1] two\n\n[fn:2] unused\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "label": "nodef",
+  "autoAdjust": "nil",
+  "emacs": "A[fn:1] unknown B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "label": "nodef",
+  "autoAdjust": "renumber",
+  "emacs": "A[fn:1] unknown B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn::] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:new] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 42,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2][fn::] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 42,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2][fn:new] two\n\n[fn:3] unused\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 42,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2][fn:1] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 61,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 61,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 61,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] unknown[fn:nodef] B[fn:2].\n\n* Footnotes\n\n[fn:1] DEFINITION NOT FOUND.\n\n[fn:zz] \n\n[fn:nodef] DEFINITION NOT FOUND.\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz:] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:1][fn:zz] unknown[fn:nodef] B[fn:2].\n\n[fn:2] two\n\n[fn:3] unused\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "section": null,
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] dup\n\n[fn:1] one\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:1] one\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "A B.\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "A B.\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn::] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:new] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] one[fn::]\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] one[fn:new]\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1] B[fn:1].\n\n[fn:1] one[fn:1]\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz] B[fn:1].\n\n[fn:1] dup\n\n* Footnotes\n\n[fn:1] one\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:1][fn:zz:] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n",
+  "pos": 7,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:1][fn:zz] B[fn:1].\n\n[fn:1] one\n\n[fn:1] dup\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Two\nB[fn:2].\n\n* Footnotes\n\n[fn:1] a\n\n[fn:2] b\n\n[fn:3] c\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "section": null,
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n[fn:3] c\n\n* Footnotes\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "sort",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Two\nB[fn:2].\n\n* Footnotes\n\n[fn:1] a\n\n[fn:2] b\n\n[fn:3] c\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* One\nA.\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* One\nA.\n\n* Two\nB[fn:1].\n\n[fn:1] b\n\n* Footnotes\n[fn:2] c\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "label": "2",
+  "autoAdjust": "nil",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB.\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "label": "2",
+  "autoAdjust": "renumber",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB.\n\n* Footnotes\n[fn:2] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 22,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1][fn::] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 22,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1][fn:new] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n\n[fn:new] \n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 22,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1][fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 31,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two[fn::]\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 31,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two[fn:new]\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n\n[fn:new] \n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 31,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two[fn:1]\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 50,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b[fn::]\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 50,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b[fn:new]\n\n* Footnotes\n\n[fn:new] \n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 50,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b[fn:1]\n\n* Footnotes\n[fn:3] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 70,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3][fn::] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 70,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n\n[fn:new] \n[fn:3][fn:new] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 70,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3][fn:1] c\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Two\nB[fn:2].\n\n[fn:2] b\n\n* Footnotes\n[fn:3] c\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "section": null,
+  "emacs": "* One\nA[fn:1].\n\n[fn:1] a\n\n* Footnotes\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "sort",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* One\nA.\n\n* Footnotes\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "delete",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* One\nA.\n\n* Footnotes\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 17,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 17,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 17,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 37,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a[fn::]\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 37,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n[fn:new] \n\n[fn:1] a[fn:new]\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 37,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a[fn:1]\n\n** Not part\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 50,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part[fn::]\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 50,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n[fn:new] \n\n[fn:1] a\n\n** Not part[fn:new]\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 50,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part[fn:1]\nstuff\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA.\n\n* Footnotes\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "section": null,
+  "emacs": "* One\nA.\n\n* FOOTNOTES\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "emacs": "* One\nA.\n\n* FOOTNOTES\n"
+ },
+ {
+  "op": "sort",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "section": "Footnotes",
+  "emacs": "* One\nA.\n\n* Footnotes\n"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 11,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 11,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 11,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* One\nA.\n\n* FOOTNOTES\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "* Footnotes :tag:\nA.\n",
+  "section": "Footnotes",
+  "emacs": "* Footnotes :tag:\nA.\n\n* Footnotes\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* Footnotes :tag:\nA.\n",
+  "section": null,
+  "emacs": "* Footnotes :tag:\nA.\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* Footnotes :tag:\nA.\n",
+  "emacs": "* Footnotes :tag:\nA.\n"
+ },
+ {
+  "op": "sort",
+  "text": "* Footnotes :tag:\nA.\n",
+  "section": "Footnotes",
+  "emacs": "* Footnotes :tag:\nA.\n\n* Footnotes\n"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 20,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Footnotes :tag:\nA.[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 20,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Footnotes :tag:\nA.[fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 20,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* Footnotes :tag:\nA.[fn:1]\n\n* Footnotes\n\n[fn:1] \n"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* Footnotes :tag:\nA.\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "normalize",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "section": null,
+  "emacs": "A[fn:1].\n\n[fn:1] one\ncontinued\n\npara two of def\n\n* Footnotes\n"
+ },
+ {
+  "op": "renumber",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "sort",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "A.\n\n* Footnotes\n"
+ },
+ {
+  "op": "delete",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "A.\n\n* Footnotes\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn::]\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn:new]\n\n* Footnotes\n\n[fn:new] \n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn:1]\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1][fn::] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:new] \n[fn:1][fn:new] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1][fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 48,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara[fn::] two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 48,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:new] \n[fn:1] one\ncontinued\n\npara[fn:new] two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 48,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara[fn:1] two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 59,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def[fn::]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 59,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n\n[fn:new] \n[fn:1] one\ncontinued\n\npara two of def[fn:new]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 59,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def[fn:1]\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn:zz]\n\n* Footnotes\n\n[fn:zz] \n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn:zz]\n\n* Footnotes\n\n[fn:1] one\ncontinued\n\npara two of def\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "A[fn:1].[fn:zz:]\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "new",
+  "text": "A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n",
+  "pos": 8,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "A[fn:1].[fn:zz]\n\n[fn:zz] \n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ }
+]

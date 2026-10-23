@@ -426,6 +426,7 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
     properties: flag('prop', false),
     drawer,
     footnotes: flag('f', true),
+    tables: flag('|', true),
     title: flag('title', true),
     author: flag('author', true),
     date: flag('date', true),

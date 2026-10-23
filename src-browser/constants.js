@@ -53,4 +53,4 @@ export const SEARCH_TYPE_ICON = {
   planning: '\ud83d\udcc5',
 };
 
-export const CAPTURE_TYPES = ['item', 'checkitem', 'plain', 'table-line'];
+export const CAPTURE_TYPES = ['item', 'checkitem', 'plain', 'entry', 'table-line'];

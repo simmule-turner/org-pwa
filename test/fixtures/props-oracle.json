@@ -1,0 +1,2427 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      val\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:key:      val\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc-123\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A+:       more\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      two words\n:END:\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n"
+  },
+  {
+   "heading": "plain",
+   "org": "* H\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      val\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:key:      val\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc-123\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A+:       more\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      two words\n:END:\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\nbody text\n"
+  },
+  {
+   "heading": "body",
+   "org": "* H\nbody text\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\nbody text\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:A:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:a:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "planning",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawer",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerOne",
+   "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A: 1\n:END:\nbody\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:KEY:      val\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:key:      val\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:A:        new\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:a:        new\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:KEY:\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc-123\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:A+:       more\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:LONGERPROPERTYNAME: v\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:KEY:      two words\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "drawerPadded",
+   "org": "* H\n:PROPERTIES:\n:ID:       abc\n:CUSTOM_ID: x\n:END:\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:CUSTOM_ID: x\n:END:\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      val\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:key:      val\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc-123\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A+:       more\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      two words\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "logbook",
+   "org": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\nbody\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:      val\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:key:      val\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:A:        new\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:a:        new\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:ID:       abc-123\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:A+:       more\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:PROPERTIES:\n:KEY:      two words\n:END:\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "planningLogbook",
+   "org": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\nSCHEDULED: <2026-10-11 Sun>\n:LOGBOOK:\n- Note taken on [2026-10-01 Thu 10:00] \\\\\n  hi\n:END:\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      val\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:key:      val\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A:        new\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:a:        new\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:ID:       abc-123\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:A+:       more\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H\n:PROPERTIES:\n:KEY:      two words\n:END:\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H\n** C\ntext\n"
+  },
+  {
+   "heading": "child",
+   "org": "* H\n** C\ntext\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H\n** C\ntext\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* H                                                                       :x:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* H                                                                     :x:y:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* H                                                                     :b:a:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* H\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* H                                                        :work:home:urgent:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:A:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:a:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* H :a:b:\n:PROPERTIES:\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* H :a:b:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* H :a:b:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* H :a:b:\nbody\n"
+  },
+  {
+   "heading": "tagged",
+   "org": "* H :a:b:\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* H :a:b:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* TODO [#A] Title with words                                              :x:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* TODO [#A] Title with words                                            :x:y:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* TODO [#A] Title with words                                            :b:a:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* TODO [#A] Title with words\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* TODO [#A] Title with words                               :work:home:urgent:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:A:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:a:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\n:PROPERTIES:\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\nbody\n"
+  },
+  {
+   "heading": "todo",
+   "org": "* TODO [#A] Title with words :work:\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* TODO [#A] Title with words :work:\nbody\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer :x:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer :x:y:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer :b:a:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer :work:home:urgent:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:KEY:      val\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:key:      val\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:A:        new\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:a:        new\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:KEY:\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:ID:       abc-123\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:A+:       more\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n:PROPERTIES:\n:KEY:      two words\n:END:\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n"
+  },
+  {
+   "heading": "long",
+   "org": "* A rather long heading title that goes close to the tags column of the buffer\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* A rather long heading title that goes close to the tags column of the buffer\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "** Level two                                                              :x:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "** Level two                                                            :x:y:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "** Level two                                                            :b:a:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "** Level two\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "** Level two                                               :work:home:urgent:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:KEY:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:key:      val\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:A:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:a:        new\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:KEY:\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:ID:       abc-123\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:A+:       more\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "** Level two\n:PROPERTIES:\n:KEY:      two words\n:END:\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "** Level two\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "** Level two\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "** Level two\nbody\n"
+  },
+  {
+   "heading": "nested",
+   "org": "** Level two\nbody\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "** Level two\nbody\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "tags",
+   "args": [
+    "x"
+   ],
+   "emacs": "* P                                                                       :x:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "tags",
+   "args": [
+    "x",
+    "y"
+   ],
+   "emacs": "* P                                                                     :x:y:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "tags",
+   "args": [
+    "b",
+    "a"
+   ],
+   "emacs": "* P                                                                     :b:a:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "tags",
+   "args": [],
+   "emacs": "* P\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "tags",
+   "args": [
+    "work",
+    "home",
+    "urgent"
+   ],
+   "emacs": "* P                                                        :work:home:urgent:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "val"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:KEY:      val\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "key",
+    "val"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:key:      val\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "A",
+    "new"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:A:        new\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "a",
+    "new"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:a:        new\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    ""
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:KEY:\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "ID",
+    "abc-123"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:ID:       abc-123\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "A+",
+    "more"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:A+:       more\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "LONGERPROPERTYNAME",
+    "v"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:LONGERPROPERTYNAME: v\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "put",
+   "args": [
+    "KEY",
+    "two words"
+   ],
+   "emacs": "* P :p:\n:PROPERTIES:\n:KEY:      two words\n:END:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "delete",
+   "args": [
+    "A"
+   ],
+   "emacs": "* P :p:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "delete",
+   "args": [
+    "B"
+   ],
+   "emacs": "* P :p:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "delete",
+   "args": [
+    "NOPE"
+   ],
+   "emacs": "* P :p:\n** H :c:\n"
+  },
+  {
+   "heading": "inheritedFrom",
+   "org": "* P :p:\n** H :c:\n",
+   "op": "delete",
+   "args": [
+    "ID"
+   ],
+   "emacs": "* P :p:\n** H :c:\n"
+  }
+ ]
+}

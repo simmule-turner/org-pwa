@@ -17,7 +17,7 @@ import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, prom
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
 import { isJsBlock } from '../src/babel.js';
 import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
-import { parseLogbookEntries } from '../src/logbook.js';
+import { allLogLines, parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
 import { S } from './app-state.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
@@ -436,14 +436,14 @@ export function renderRow(row, todoSequence) {
 
     /** @type {HTMLDivElement | null} */
     let logbookDisplayEl = null;
-    if (!row.node.drawersHidden && row.node.logbookLines.length > 0 && S.editingGeneral !== row.node) {
+    if (!row.node.drawersHidden && allLogLines(row.node).length > 0 && S.editingGeneral !== row.node) {
       logbookDisplayEl = document.createElement('div');
       logbookDisplayEl.style.padding = '2px 10px 6px 40px';
       logbookDisplayEl.style.fontSize = '12px';
       logbookDisplayEl.style.opacity = '0.65';
       logbookDisplayEl.style.cursor = 'pointer';
       logbookDisplayEl.onclick = () => toggleActionMenu(row.node);
-      for (const entry of parseLogbookEntries(row.node.logbookLines)) {
+      for (const entry of parseLogbookEntries(allLogLines(row.node))) {
         const line = document.createElement('div');
         line.style.whiteSpace = 'pre-wrap';
         line.style.overflowWrap = 'anywhere';
@@ -567,6 +567,25 @@ export function renderRow(row, todoSequence) {
               openListItemEditor(row.heading, newItem);
             },
           },
+          ...(row.item.checkbox === null
+            ? []
+            : [
+                {
+                  icon: '\u2610',
+                  label: 'Add checkbox below',
+                  onClick: (/** @type {Event} */ e) => {
+                    e.stopPropagation();
+                    S.actionMenuFor = null;
+                    const oldLineIndex = row.item.lineIndex;
+                    const newItem = insertListItem(row.heading, row.item, '', true);
+                    resyncKeyboardFocusToBodyRow(row.heading, 'list-item', oldLineIndex);
+                    updateCheckboxCookie(row.heading);
+                    S.editingListItem = { heading: row.heading, item: newItem };
+                    commitAndRender('Added checkbox item');
+                    openListItemEditor(row.heading, newItem);
+                  },
+                },
+              ]),
           {
             icon: '\u2715',
             label: 'Delete item',

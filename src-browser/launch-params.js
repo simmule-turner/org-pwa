@@ -8,7 +8,7 @@ import { S } from './app-state.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { setStatus } from './editing.js';
 import { openApptDay } from './appt-flow.js';
-import { getCaptureTemplates } from './settings.js';
+import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
 
 /** Acts on the launch URL, once, after startup has restored everything. A URL with nothing for Capture does nothing. */

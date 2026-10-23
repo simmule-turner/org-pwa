@@ -1,0 +1,101 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "heading": "Plain title",
+   "emacs": "[[id:abc-123][Plain title]]"
+  },
+  {
+   "heading": "TODO Task title",
+   "emacs": "[[id:abc-123][Task title]]"
+  },
+  {
+   "heading": "TODO [#A] Prioritized :work:",
+   "emacs": "[[id:abc-123][Prioritized]]"
+  },
+  {
+   "heading": "Title with [1/3] cookie",
+   "emacs": "[[id:abc-123][Title with [1/3] cookie]]"
+  },
+  {
+   "heading": "Title [50%]",
+   "emacs": "[[id:abc-123][Title [50%]​]]"
+  },
+  {
+   "heading": "Brackets [in] title",
+   "emacs": "[[id:abc-123][Brackets [in] title]]"
+  },
+  {
+   "heading": "Trailing bracket [x]",
+   "emacs": "[[id:abc-123][Trailing bracket [x]​]]"
+  },
+  {
+   "heading": "[Leading] bracket",
+   "emacs": "[[id:abc-123][[Leading] bracket]]"
+  },
+  {
+   "heading": "Link [[https://example.org][text]] inside",
+   "emacs": "[[id:abc-123][Link [[https://example.org][text]​] inside]]"
+  },
+  {
+   "heading": "Plain [[https://example.org]] link",
+   "emacs": "[[id:abc-123][Plain [[https://example.org]​] link]]"
+  },
+  {
+   "heading": "Spaces   inside    title",
+   "emacs": "[[id:abc-123][Spaces   inside    title]]"
+  },
+  {
+   "heading": "Title with trailing tags    :a:b:",
+   "emacs": "[[id:abc-123][Title with trailing tags]]"
+  },
+  {
+   "heading": "COMMENT Commented",
+   "emacs": "[[id:abc-123][COMMENT Commented]]"
+  },
+  {
+   "heading": "Percent 100% done",
+   "emacs": "[[id:abc-123][Percent 100% done]]"
+  },
+  {
+   "heading": "Backslash \\ here",
+   "emacs": "[[id:abc-123][Backslash \\ here]]"
+  },
+  {
+   "heading": "Timestamp <2026-10-11 Sun> in",
+   "emacs": "[[id:abc-123][Timestamp <2026-10-11 Sun> in]]"
+  },
+  {
+   "heading": "Inactive [2026-10-11 Sun] in",
+   "emacs": "[[id:abc-123][Inactive [2026-10-11 Sun] in]]"
+  },
+  {
+   "heading": "Code ~tilde~ and *bold*",
+   "emacs": "[[id:abc-123][Code ~tilde~ and *bold*]]"
+  },
+  {
+   "heading": "Quote \"double\" and 'single'",
+   "emacs": "[[id:abc-123][Quote \"double\" and 'single']]"
+  },
+  {
+   "heading": "Colon: inside",
+   "emacs": "[[id:abc-123][Colon: inside]]"
+  },
+  {
+   "heading": "Ends with backslash \\",
+   "emacs": "[[id:abc-123][Ends with backslash \\]]"
+  },
+  {
+   "heading": "Two [a][b] pairs",
+   "emacs": "[[id:abc-123][Two [a][b] pairs]]"
+  },
+  {
+   "heading": "Footnote[fn:1] ref",
+   "emacs": "[[id:abc-123][Footnote[fn:1] ref]]"
+  },
+  {
+   "heading": "Unicode café ☕",
+   "emacs": "[[id:abc-123][Unicode café ☕]]"
+  }
+ ]
+}

@@ -87,6 +87,7 @@ function shiftTimestampString(raw, now) {
   return formatOrgTimestamp({
     date: newDate,
     time: parsed.hasTime ? `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}` : null,
+    endTime: parsed.endDate ? `${String(parsed.endDate.getHours()).padStart(2, '0')}:${String(parsed.endDate.getMinutes()).padStart(2, '0')}` : null, // the end of a time range stays as written
     repeaterMark: rep.mark,
     repeaterValue: `${rep.amount}${rep.unit}` + (rep.range ? `/${rep.range.amount}${rep.range.unit}` : ''),
     delayValue: parsed.delay ? parsed.delay.slice(1) : null, // parsed.delay keeps its own leading "-"; formatOrgTimestamp re-adds it
@@ -144,6 +145,38 @@ function applyRepeaterShiftOnDone(heading, sequence, now = new Date()) {
   );
 
   heading.todo = sequence.todoKeywords[0] || null;
+  return true;
+}
+
+/** org-repeat-re: an active time stamp with a repeater anywhere before its `>`. */
+const REPEAT_RE = /<\d{4}-\d\d-\d\d [^>\n]*?(?:[.+]?\+\d+[hdwmy](?:\/\d+[hdwmy])?)/;
+const ACTIVE_STAMP_RE = /<\d{4}-\d\d-\d\d[^>\n]*>/g;
+
+/** @param {string} stamp @returns {boolean} */
+export function hasRepeater(stamp) {
+  return REPEAT_RE.test(stamp);
+}
+
+/**
+ * `org-auto-repeat-maybe` for the time stamps: every active time stamp with a repeater in the entry (title, planning line,
+ * drawers and text, not the sub-headings) moves on, and a SCHEDULED without a repeater is removed, as it no longer applies.
+ * Returns false, and changes nothing, when the entry has no repeating time stamp.
+ * @param {Heading} heading
+ * @param {Date} now
+ */
+export function shiftEntryRepeaters(heading, now) {
+  const shiftIn = (/** @type {string} */ text) => text.replace(ACTIVE_STAMP_RE, (stamp) => (REPEAT_RE.test(stamp) ? shiftTimestampString(stamp, now) || stamp : stamp));
+  const parts = [heading.title, heading.planning.scheduled, heading.planning.deadline, ...heading.bodyLines, ...heading.logbookLines, ...(heading.preLogLines || []), ...Object.values(heading.properties)];
+  if (!parts.some((t) => t && ACTIVE_STAMP_RE.test(t) && ((ACTIVE_STAMP_RE.lastIndex = 0), true) && t.match(ACTIVE_STAMP_RE)?.some((m) => REPEAT_RE.test(m)))) return false;
+  ACTIVE_STAMP_RE.lastIndex = 0;
+  if (heading.planning.scheduled && !REPEAT_RE.test(heading.planning.scheduled)) heading.planning.scheduled = null;
+  heading.title = shiftIn(heading.title);
+  if (heading.planning.scheduled) heading.planning.scheduled = shiftIn(heading.planning.scheduled);
+  if (heading.planning.deadline) heading.planning.deadline = shiftIn(heading.planning.deadline);
+  heading.bodyLines = heading.bodyLines.map(shiftIn);
+  heading.logbookLines = heading.logbookLines.map(shiftIn);
+  if (heading.preLogLines) heading.preLogLines = heading.preLogLines.map(shiftIn);
+  for (const key of Object.keys(heading.properties)) heading.properties[key] = shiftIn(heading.properties[key]);
   return true;
 }
 

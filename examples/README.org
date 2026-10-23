@@ -8,12 +8,15 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | outline-basics.org        | keywords, priorities, tags, properties, checkboxes   | read the same way              |
 | table-formulas.org        | =#+TBLFM:= formulas, ranges, parameters, Calc        | results from Emacs             |
 | cookies.org               | =[/]= and =[%]= cookies on lists and headings        | org-update-statistics-cookies  |
+| todo-states.org           | what a TODO state change writes: repeats, =CLOSED:=, log items | org-todo                       |
+| editing.org               | promote, demote and move headings; list items and checkboxes; table rows, columns and cells | org-promote-subtree, org-meta-return, org-table-* |
 | clock-tables.org          | =#+BEGIN: clocktable= reports                        | org-update-all-dblocks         |
 | match-queries.org         | tag, property and TODO queries (=C-c / m=)           | org-map-entries                |
 | babel-js.org              | =js= blocks: results, =:var=, =:wrap=, =:prologue=   | ob-js, run in Emacs            |
 | icalendar.org             | calendar (.ics) export; =icalendar.ics= is the output | org-icalendar-export-to-ics    |
 | calendar.org              | a month, holidays and events built from =js= blocks  | app only                       |
 | sunrise-sunset.org        | Noweb and tangling into an init script               | app only                       |
+| capture-templates.org     | capture templates written in Lisp: targets, blank lines, table rows | org-capture                    |
 | capture-vcard.org         | a capture template that files a contact              | app only                       |
 | contacts-vcard.org        | contacts exported as vCards (flat)                   | app only                       |
 | contacts-vcard-tree.org   | contacts exported as vCards (tree)                   | app only                       |

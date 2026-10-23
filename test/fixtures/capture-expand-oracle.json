@@ -1,0 +1,291 @@
+{
+ "emacs": "29.3",
+ "tz": "America/New_York",
+ "now": "2026-10-11 16:30:00",
+ "ctx": {
+  "killRing": "last kill",
+  "initial": "first line\nsecond line",
+  "annotation": "[[https://example.org/page][An example]]",
+  "fullName": "Ada Lovelace",
+  "clockHeading": "Write report",
+  "clockFile": "/home/u/work.org",
+  "originalFile": "/home/u/notes/ideas.org",
+  "linkProps": {
+   ":link": "https://example.org/page",
+   ":description": "An example",
+   ":type": "https"
+  }
+ },
+ "answers": {
+  "strings": [
+   "Grace",
+   "Hopper",
+   "Third"
+  ],
+  "tags": "work:home",
+  "date": "2026-11-03 14:30",
+  "clip": "chosen clip"
+ },
+ "cases": [
+  {
+   "template": "%t",
+   "emacs": "<2026-10-11 Sun>\n"
+  },
+  {
+   "template": "%T",
+   "emacs": "<2026-10-11 Sun 16:30>\n"
+  },
+  {
+   "template": "%u",
+   "emacs": "[2026-10-11 Sun]\n"
+  },
+  {
+   "template": "%U",
+   "emacs": "[2026-10-11 Sun 16:30]\n"
+  },
+  {
+   "template": "%<%Y-%m-%d>",
+   "emacs": "2026-10-11\n"
+  },
+  {
+   "template": "%<%A %H:%M>",
+   "emacs": "Sunday 16:30\n"
+  },
+  {
+   "template": "Meeting %U",
+   "emacs": "Meeting [2026-10-11 Sun 16:30]\n"
+  },
+  {
+   "template": "%<%B %e, %Y>",
+   "emacs": "October 11, 2026\n"
+  },
+  {
+   "template": "%<%j>",
+   "emacs": "284\n"
+  },
+  {
+   "template": "%a",
+   "emacs": "[[https://example.org/page][An example]]\n"
+  },
+  {
+   "template": "%A",
+   "emacs": "[[https://example.org/page][Grace]]\n"
+  },
+  {
+   "template": "%l",
+   "emacs": "[[https://example.org/page]]\n"
+  },
+  {
+   "template": "%L",
+   "emacs": "https://example.org/page\n"
+  },
+  {
+   "template": "%i",
+   "emacs": "first line\nsecond line\n"
+  },
+  {
+   "template": "  %i",
+   "emacs": "  first line\n  second line\n"
+  },
+  {
+   "template": "- %i",
+   "emacs": "- first line\n- second line\n"
+  },
+  {
+   "template": "* TODO %i",
+   "emacs": "* TODO first line\n* TODO second line\n"
+  },
+  {
+   "template": "%c",
+   "emacs": "last kill\n"
+  },
+  {
+   "template": "%n",
+   "emacs": "Ada Lovelace\n"
+  },
+  {
+   "template": "%k",
+   "emacs": "Write report\n"
+  },
+  {
+   "template": "%K",
+   "emacs": "[[/home/u/work.org::*Write report][Write report]]\n"
+  },
+  {
+   "template": "%f",
+   "emacs": "ideas.org\n"
+  },
+  {
+   "template": "%F",
+   "emacs": "/home/u/notes/ideas.org\n"
+  },
+  {
+   "template": "%:link",
+   "emacs": "https://example.org/page\n"
+  },
+  {
+   "template": "%:description",
+   "emacs": "An example\n"
+  },
+  {
+   "template": "%:type",
+   "emacs": "https\n"
+  },
+  {
+   "template": "%:nothing",
+   "emacs": ""
+  },
+  {
+   "template": "\\%t",
+   "emacs": "%t\n"
+  },
+  {
+   "template": "\\\\%t",
+   "emacs": "\\<2026-10-11 Sun>\n"
+  },
+  {
+   "template": "\\\\\\%t",
+   "emacs": "\\%t\n"
+  },
+  {
+   "template": "100%",
+   "emacs": "100%\n"
+  },
+  {
+   "template": "%%",
+   "emacs": "%%\n"
+  },
+  {
+   "template": "50%% done",
+   "emacs": "50%% done\n"
+  },
+  {
+   "template": "%z",
+   "emacs": "%z\n"
+  },
+  {
+   "template": "\n\n* TODO a",
+   "emacs": "* TODO a\n"
+  },
+  {
+   "template": "* TODO a\n\n\n",
+   "emacs": "* TODO a\n"
+  },
+  {
+   "template": "   \n",
+   "emacs": ""
+  },
+  {
+   "template": "",
+   "emacs": ""
+  },
+  {
+   "template": "a\tb",
+   "emacs": "a       b\n"
+  },
+  {
+   "template": "* a\n\tb",
+   "emacs": "* a\n        b\n"
+  },
+  {
+   "template": "%?",
+   "emacs": "%?\n"
+  },
+  {
+   "template": "* %?",
+   "emacs": "* %?\n"
+  },
+  {
+   "template": "- %?\n  more",
+   "emacs": "- %?\n  more\n"
+  },
+  {
+   "template": "a %? b",
+   "emacs": "a %? b\n"
+  },
+  {
+   "template": "%^{Name}",
+   "emacs": "Grace\n"
+  },
+  {
+   "template": "%^{Name}!",
+   "emacs": "Grace!\n"
+  },
+  {
+   "template": "%^{Name|Ada}",
+   "emacs": "Grace\n"
+  },
+  {
+   "template": "%^{Name|Ada|Bob|Cy}",
+   "emacs": "Grace\n"
+  },
+  {
+   "template": "%^{A} and %^{B}",
+   "emacs": "Grace and Hopper\n"
+  },
+  {
+   "template": "%^{A} %\\1",
+   "emacs": "Grace Grace\n"
+  },
+  {
+   "template": "%^{A} %^{B} %\\2 %\\1",
+   "emacs": "Grace Hopper Hopper Grace\n"
+  },
+  {
+   "template": "%\\3",
+   "emacs": "ERROR (wrong-type-argument stringp nil)"
+  },
+  {
+   "template": "* %^{Title} %^g",
+   "emacs": "* Grace                                                           :work:home:\n"
+  },
+  {
+   "template": "* %^{Title} :a:%^g",
+   "emacs": "* Grace                                                         :a:work:home:\n"
+  },
+  {
+   "template": "%^G",
+   "emacs": ":work:home:\n"
+  },
+  {
+   "template": "%^C",
+   "emacs": "chosen clip\n"
+  },
+  {
+   "template": "%^L",
+   "emacs": "[[chosen clip]]\n"
+  },
+  {
+   "template": "%^t",
+   "emacs": "<2026-11-03 Tue 14:30>\n"
+  },
+  {
+   "template": "%^T",
+   "emacs": "<2026-11-03 Tue 14:30>\n"
+  },
+  {
+   "template": "%^u",
+   "emacs": "[2026-11-03 Tue 14:30]\n"
+  },
+  {
+   "template": "%^U",
+   "emacs": "[2026-11-03 Tue 14:30]\n"
+  },
+  {
+   "template": "%^{Due}t",
+   "emacs": "<2026-11-03 Tue 14:30>\n"
+  },
+  {
+   "template": "%^{When}T",
+   "emacs": "<2026-11-03 Tue 14:30>\n"
+  },
+  {
+   "template": "* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?",
+   "emacs": "* Grace\n:PROPERTIES:\n:AUTHOR: Ada Lovelace\n:END:\n%?\n"
+  },
+  {
+   "template": "- [ ] %^{Item}\n  %U",
+   "emacs": "- [ ] Grace\n  [2026-10-11 Sun 16:30]\n"
+  }
+ ]
+}

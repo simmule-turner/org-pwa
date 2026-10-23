@@ -1,0 +1,8 @@
+#+OPTIONS: f:nil |:nil toc:nil
+#+TITLE: Opt
+* H
+Text[fn:1] and [fn::inline] here.
+
+| a | b |
+
+[fn:1] def

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { expandTemplate, insertCapture, resolveOlpTarget } from '../src/capture-template.js';
+import { expandTemplate as expandWithNewline, insertCapture, resolveOlpTarget } from '../src/capture-template.js';
+const expandTemplate = (t, c) => ({ text: expandWithNewline(t, c).text.replace(/\n$/, '') }); // the newline that ends every expansion is not what these tests look at
 import { launchFromShare } from '../src/capture-shared.js';
 import { DEFAULT_CAPTURE_TEMPLATES } from '../src-browser/settings.js';
 import { validateCaptureTemplates } from '../src-browser/doc-helpers.js';

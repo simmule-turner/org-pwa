@@ -6,7 +6,7 @@ import { S } from './app-state.js';
 import { openButtonChoiceModal } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
-import { getCaptureTemplates } from './settings.js';
+import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
 
 /**

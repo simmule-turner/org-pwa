@@ -51,7 +51,7 @@ test('serializeTable reconstructs rows, rule, and TBLFM in order', () => {
   const doc = docWithTable();
   const table = doc.children[0].body[0];
   const lines = serializeTable(table);
-  assert.deepEqual(lines, ['| Name | Age |', '|---+---|', '| Alice | 30 |', '| Bob | 25 |']);
+  assert.deepEqual(lines, ['| Name  | Age |', '|-------+-----|', '| Alice |  30 |', '| Bob   |  25 |']);
 });
 
 // ---- isTableHeaderRow -------------------------------------------------------
@@ -133,7 +133,7 @@ test('setTableCell updates the cell and survives serialize -> reparse', () => {
   setTableCell(heading, table, 2, 1, '31');
 
   const text2 = serializeOrg(doc);
-  assert.match(text2, /\| Alice \| 31 \|/);
+  assert.match(text2, /\| Alice \|  31 \|/);
 
   const doc2 = parseOrg(text2);
   const reparsedTable = doc2.children[0].body[0];
@@ -195,7 +195,7 @@ test('insertTableColumn adds a blank cell to every data row, leaves the rule alo
   assert.equal(table.rows[1].type, 'rule');
 
   const text = serializeOrg(doc);
-  assert.match(text, /\|---\+---\+---\|/);
+  assert.match(text, /\|-------\+-----\+---\|/);
 });
 
 test('deleteTableColumn removes that column from every data row', () => {
@@ -388,24 +388,18 @@ test('insertListItem adds a sibling right after the target and survives serializ
   );
 });
 
-test('insertListItem inserts after a subtree, not inside it', () => {
+test('insertListItem puts the new item right under the item, its sub-items following it, as M-RET does', () => {
   const doc = parseOrg(['* Notes', '- one', '  - nested', '- three'].join('\n'));
   const heading = doc.children[0];
   insertListItem(heading, heading.body[0].items[0], 'two');
-
-  const list = heading.body[0];
-  assert.deepEqual(
-    list.items.map((i) => i.text),
-    ['one', 'two', 'three']
-  );
-  assert.equal(list.items[0].children[0].items[0].text, 'nested');
+  assert.deepEqual(heading.bodyLines, ['- one', '- two', '  - nested', '- three']);
 });
 
-test('insertListItem gives the new item an unchecked checkbox when the sibling has one', () => {
+test('insertListItem gives the new item no checkbox unless asked, as M-RET and M-S-RET do', () => {
   const doc = parseOrg(['* Notes', '- [X] done thing'].join('\n'));
   const heading = doc.children[0];
-  const newItem = insertListItem(heading, heading.body[0].items[0], 'new thing');
-  assert.equal(newItem.checkbox, ' ');
+  assert.equal(insertListItem(heading, heading.body[0].items[0], 'new thing').checkbox, null);
+  assert.equal(insertListItem(heading, heading.body[0].items[0], 'boxed', true).checkbox, ' ');
 });
 
 test('insertListItem does not inherit the sibling tag', () => {

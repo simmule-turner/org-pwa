@@ -1,0 +1,207 @@
+#+TITLE: Editing headings, lists and tables
+#+STARTUP: showall
+
+A cookbook for structure edits. Each section shows text before an edit and after it. The "after" texts are what Emacs 29.3 (Org 9.6.15) left (promote and demote with =M-left= and =M-right= on a subtree, =M-up=, =M-RET=, =C-c C-x C-b=, the table commands), and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+
+* Promote a heading
+The stars drop by one and the heading stays where it is in the text, so the siblings after it become its children.
+
+Before (promote at line 3):
+#+BEGIN_SRC org
+,* A
+,** B
+,** C
+,** D
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* A
+,** B
+,* C
+,** D
+#+END_SRC
+
+* Demote a heading
+The heading and its subtree go one level deeper. After a sibling it becomes that sibling's last child.
+
+Before (demote at line 3):
+#+BEGIN_SRC org
+,* A
+,** B
+,** C
+,*** C1
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* A
+,** B
+,*** C
+,**** C1
+#+END_SRC
+
+* Move a subtree
+A heading changes places with its sibling, subtree and all.
+
+Before (up at line 3):
+#+BEGIN_SRC org
+,* A
+,** B
+,* C
+,** C1
+,* D
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* C
+,** C1
+,* A
+,** B
+,* D
+#+END_SRC
+
+* A new numbered item
+Ordered items are numbered again.
+
+Before (item-below at line 3):
+#+BEGIN_SRC org
+,* Steps
+1. Mix
+2. Bake
+3. Cool
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Steps
+1. Mix
+2. Bake
+3. 
+4. Cool
+#+END_SRC
+
+* A new item above sub-items
+The new item goes right under the item's first line, and the sub-items follow it.
+
+Before (item-below at line 2):
+#+BEGIN_SRC org
+,* Shopping
+- Fruit
+  - apples
+  - pears
+- Bread
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Shopping
+- Fruit
+- 
+  - apples
+  - pears
+- Bread
+#+END_SRC
+
+* A new description item
+The term is empty, ready to be filled in.
+
+Before (item-below at line 2):
+#+BEGIN_SRC org
+,* Terms
+- org :: outliner
+- pwa :: web app
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Terms
+- org :: outliner
+-  :: 
+- pwa :: web app
+#+END_SRC
+
+* Checking a box
+A box that has boxes under it shows what they add up to, and the cookie follows.
+
+Before (toggle at line 3):
+#+BEGIN_SRC org
+,* Packing [0/2]
+- [-] Bag [1/2]
+  - [ ] shirts
+  - [X] shoes
+- [ ] Passport
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Packing [1/2]
+- [X] Bag [2/2]
+  - [X] shirts
+  - [X] shoes
+- [ ] Passport
+#+END_SRC
+
+* Insert a table column
+The table is aligned again and the =#+TBLFM:= references move with the columns.
+
+Before (insert-col at line 3, column 2):
+#+BEGIN_SRC org
+| a | b |
+|---+---|
+| 1 | 2 |
+,#+TBLFM: $2=$1*2
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+| a |   | b |
+|---+---+---|
+| 1 |   | 2 |
+,#+TBLFM: $3=$1*2
+#+END_SRC
+
+* Delete a table row
+The other rows keep their layout, and row references in =#+TBLFM:= follow.
+
+Before (delete-row at line 3):
+#+BEGIN_SRC org
+| n | sq |
+|---+----|
+| 1 |  1 |
+| 2 |  4 |
+| 3 |  9 |
+,#+TBLFM: @4$2=@3$1*@3$1
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+| n | sq |
+|---+----|
+| 2 |  4 |
+| 3 |  9 |
+,#+TBLFM: @3$2=@2$1*@2$1
+#+END_SRC
+
+* Change a table cell
+The columns are widened to the longest cell.
+
+Before (set-cell at line 3, column 1, value "a much longer name"):
+#+BEGIN_SRC org
+| Name | Qty |
+|------+-----|
+| ab   |   3 |
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+| Name               | Qty |
+|--------------------+-----|
+| a much longer name |   3 |
+#+END_SRC
+
+* Where the app differs from Emacs
+- Emacs re-aligns a heading's tags to =org-tags-column= when its level changes; the app leaves their spacing as it is.
+- Deleting a table column leaves an extra column in Emacs when a row has an empty cell and the rule is a bare =|-=; the app deletes the column asked for.
+- A new item below an item with a checkbox has none, as in Emacs; the item menu has *Add checkbox below* for one with a box.

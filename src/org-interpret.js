@@ -10,7 +10,7 @@
 /**
  * @typedef {{
  *   todoKeywords: Set<string>, todo: boolean, priority: boolean, tags: boolean, planning: boolean, properties: boolean,
- *   drawer: (name: string) => boolean, footnotes: boolean, title: boolean, author: boolean, date: boolean, email: boolean,
+ *   drawer: (name: string) => boolean, footnotes: boolean, tables?: boolean, title: boolean, author: boolean, date: boolean, email: boolean,
  *   selective?: boolean, nested?: boolean, referenced?: Set<string>,
  *   cite?: { text: (c: any) => string, bibliography: string[] },
  * }} InterpretOptions
@@ -100,7 +100,7 @@ function objects(text, opts) {
   out = out.replace(/@@[A-Za-z0-9-]+:[\s\S]*?@@/g, '');
   out = out.replace(/\[\[([^\][]+)(\]\[[^\]]*)?\]\]/g, (whole, target, desc) => (/^(?:\.{1,2}\/|\/|~\/)/.test(target) ? `[[file:${target}${desc || ''}]]` : whole));
   out = out.replace(TIMESTAMP_RE, (_whole, a, b, spaces) => splitTimeRange(a) + (b ? '--' + splitTimeRange(b) : '') + (spaces ? spaces + spaces : ''));
-  if (!opts.footnotes) out = out.replace(/\[fn:[^\]\s]*(?::[^\]]*)?\]/g, '');
+  if (!opts.footnotes) out = out.replace(/\[fn:[^\]\s]*(?::[^\]]*)?\][ \t]*/g, ''); // the blanks after a dropped reference go with it
   return out;
 }
 
@@ -282,7 +282,7 @@ function render(lines, opts) {
     if (/^\s*\|/.test(line)) {
       const run = [];
       while (i < lines.length && /^\s*\|/.test(lines[i])) run.push(lines[i++]);
-      out.push(...table(run, opts));
+      if (opts.tables !== false) out.push(...table(run, opts));
       afterTable = true;
       continue;
     }

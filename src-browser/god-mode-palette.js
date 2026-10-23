@@ -48,7 +48,7 @@ import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
-import { getCaptureTemplates } from './settings.js';
+import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
 import { renameBuffer } from './buffer-rename.js';

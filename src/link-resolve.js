@@ -38,7 +38,7 @@
 
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { ownAttachmentDirectory } from './attach.js';
-import { findTargetHeading } from './targets.js';
+import { findDedicatedTargetHeading } from './targets.js';
 
 const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 const MAILTO_RE = /^mailto:/i;
@@ -323,6 +323,61 @@ export function findHeadingByTitle(doc, title) {
   return found;
 }
 
+/** Statistics cookies, which a link search ignores: [3/5], [/], [60%], [%]. */
+const COOKIE_RE = /\[\d*(?:%|\/\d*)\]/g;
+
+/** The words of a heading as org-link-search compares them: a COMMENT keyword and statistics cookies dropped, runs of blanks as one.
+ * @param {string} title */
+function headingWords(title) {
+  return title.replace(/^COMMENT(?=\s|$)/, '').replace(COOKIE_RE, ' ').split(/\s+/).filter(Boolean);
+}
+
+/** @param {string[]} a @param {string[]} b */
+const sameWords = (a, b) => a.length === b.length && a.every((w, i) => w === b[i]);
+
+/** The lines of a heading's body that name an element: `#+NAME: tbl` gives `tbl`. @param {Heading} heading */
+function elementNames(heading) {
+  const names = [];
+  for (const line of heading.bodyLines || []) {
+    const m = /^[ \t]*#\+NAME:[ \t]+(.*?)[ \t]*$/i.exec(line);
+    if (m) names.push(m[1]);
+  }
+  return names;
+}
+
+/**
+ * Where a link's search string leads in `doc`, as org-link-search finds it, as the heading that holds the match; null when
+ * nothing matches. `#id` is a :CUSTOM_ID: (case ignored). `*Heading` is a heading whose words (see headingWords) equal the
+ * words after the star, case counting. Any other text is, in order: a `<<target>>` (case and spacing ignored), a `#+NAME:`
+ * (case counting), then a heading as for `*`. A coderef `(ref)` or a regexp `/re/` finds nothing here.
+ * @param {Doc} doc
+ * @param {string} search
+ * @returns {Heading | null}
+ */
+export function searchLink(doc, search) {
+  if (!search.trim()) return null;
+  const normalized = search.replace(/\n[ \t]*/g, ' ');
+  if (normalized.startsWith('#')) return findHeadingByCustomId(doc, normalized.slice(1));
+  if (/^\(.*\)$/.test(normalized) || /^\/.*\/$/.test(normalized)) return null;
+  const starred = normalized.startsWith('*');
+  const words = (starred ? search.slice(1) : search).split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  if (!starred) {
+    const target = findDedicatedTargetHeading(doc, words.join(' '));
+    if (target) return target;
+    /** @type {Heading | null} */ let named = null;
+    walkHeadings(doc, (node) => {
+      if (!named && elementNames(node).some((n) => sameWords(n.split(/\s+/).filter(Boolean), words))) named = node;
+    });
+    if (named) return named;
+  }
+  /** @type {Heading | null} */ let found = null;
+  walkHeadings(doc, (node) => {
+    if (!found && sameWords(headingWords(node.title || ''), words)) found = node;
+  });
+  return found;
+}
+
 /**
  * First heading (in document order) whose :CUSTOM_ID: property exactly matches, or null.
  * @param {Doc} doc
@@ -332,7 +387,7 @@ export function findHeadingByTitle(doc, title) {
 export function findHeadingByCustomId(doc, customId) {
   /** @type {Heading | null} */ let found = null;
   walkHeadings(doc, (node) => {
-    if (!found && getProperty(node, 'CUSTOM_ID') === customId) found = node;
+    if (!found && String(getProperty(node, 'CUSTOM_ID') ?? '').trim().toLowerCase() === customId.trim().toLowerCase()) found = node;
   });
   return found;
 }
@@ -500,13 +555,8 @@ export function resolveLinkTarget(doc, rawTarget) {
     return { type: 'external', url: target };
   }
 
-  if (target.startsWith('#')) {
-    const heading = findHeadingByCustomId(doc, target.slice(1));
-    return heading ? { type: 'heading', heading } : { type: 'unresolved', target };
-  }
-
-  if (target.startsWith('*')) {
-    const heading = findHeadingByTitle(doc, target.slice(1).trim());
+  if (target.startsWith('#') || target.startsWith('*')) {
+    const heading = searchLink(doc, target);
     return heading ? { type: 'heading', heading } : { type: 'unresolved', target };
   }
 
@@ -528,7 +578,7 @@ export function resolveLinkTarget(doc, rawTarget) {
     return { type: 'file', scheme, path, inFileTarget };
   }
 
-  // [[name]]: a heading with that title, else the heading that holds a <<name>> or <<<name>>>
-  const heading = findHeadingByTitle(doc, target) || findTargetHeading(doc, target);
+  // [[name]]: a <<name>> target, a #+NAME:, or a heading with that title (see searchLink)
+  const heading = searchLink(doc, target);
   return heading ? { type: 'heading', heading } : { type: 'unresolved', target };
 }

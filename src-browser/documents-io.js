@@ -12,11 +12,10 @@ import { markDocumentClosed, markDocumentOpen, openDocument, saveAndSync } from 
 import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { clearPersistedHistory, loadPersistedHistory } from '../src/history-store.js';
-import { findHeadingById, findHeadingByTitle, resolveImagePath } from '../src/link-resolve.js';
-import { getBufferReadOnly, getCycleOpenArchivedTrees, getUsePropertyInheritance, getUseTagInheritance, parseLocalVariables } from '../src/local-variables.js';
-import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { findHeadingById, resolveImagePath, searchLink } from '../src/link-resolve.js';
+import { getBufferReadOnly, getCycleOpenArchivedTrees, parseLocalVariables } from '../src/local-variables.js';
+import { findHeadingAtLine, parseOrg, serializeOrg } from '../src/org-parser.js';
 import { isPlainTextFile } from '../src/plain-file.js';
-import { searchDocument } from '../src/search.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { createHistory, pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
@@ -248,10 +247,9 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
  * target document via openRemotePath — the exact same switching
  * mechanism File \u2192 Open already uses, including its own conflict
  * resolution for unsaved changes — then jumps to the in-file target if
- * one was specified: a headline search (`*Title`) via
- * findHeadingByTitle, or a plain text search via the same
- * searchDocument engine the Search panel itself uses, landing on the
- * first match.
+ * one was specified: a line number, or a search as org-link-search
+ * makes it (searchLink: `*Title`, `#custom-id`, a <<target>>, a
+ * #+NAME:, or a heading), landing on the heading that holds it.
  *
  * Local filesystem / iOS import: same picker-permission wall as
  * archiving/capture-to-file/images — can't open an arbitrary path
@@ -343,23 +341,10 @@ export async function openFileLink(resolution, containingHeading = null) {
   if (!resolution.inFileTarget) return;
 
   const target = resolution.inFileTarget;
-  if (target.startsWith('*')) {
-    const headingTitle = target.slice(1).trim();
-    const heading = findHeadingByTitle(S.state.doc, headingTitle);
-    if (heading) {
-      navigateToHeading(heading, { pushToBackStack: false });
-    } else {
-      setStatus(`Opened ${resolvedPath}, but couldn't find the heading "${headingTitle}".`);
-    }
-    return;
-  }
-
-  const results = searchDocument(S.state.doc, target, {
-    useTagInheritance: getUseTagInheritance(S.state.localVariables),
-    usePropertyInheritance: getUsePropertyInheritance(S.state.localVariables),
-  });
-  if (results.length > 0) {
-    navigateToHeading(results[0].heading, { revealOwnBody: results[0].type !== 'heading', targetNode: results[0].node, pushToBackStack: false });
+  const lineNumber = /^\d+$/.test(target.trim()) ? Number(target) : 0;
+  const heading = lineNumber ? findHeadingAtLine(S.state.doc, lineNumber - 1) : searchLink(S.state.doc, target);
+  if (heading) {
+    navigateToHeading(heading, { pushToBackStack: false });
   } else {
     setStatus(`Opened ${resolvedPath}, but couldn't find "${target}" in it.`);
   }

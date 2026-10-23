@@ -114,11 +114,10 @@ test('formatStateLogLine produces a single line for a bare timestamp (no note)',
   assert.match(lines[0], /^- State "DONE"\s+from "TODO"\s+\[2026-07-31 Fri 14:22\]$/);
 });
 
-test('formatStateLogLine omits the "from" clause when oldState is null', () => {
+test('formatStateLogLine keeps a blank "from" field when oldState is null, as Emacs does', () => {
   const lines = formatStateLogLine('TODO', null, '[2026-07-31 Fri 08:00]');
   assert.equal(lines.length, 1);
-  assert.doesNotMatch(lines[0], /from/);
-  assert.match(lines[0], /^- State "TODO"\s+\[2026-07-31 Fri 08:00\]$/);
+  assert.equal(lines[0], '- State "TODO"       from              [2026-07-31 Fri 08:00]');
 });
 
 test('formatStateLogLine produces a trailing-backslash line plus indented continuation when a note is given', () => {
@@ -143,7 +142,7 @@ test('formatStateLogLine left-justifies each quoted keyword to at least 12 chara
 
 test('a keyword whose quoted form is already >= 12 characters gets no extra padding (just the natural length)', () => {
   const lines = formatStateLogLine('WAITING-ON-REVIEW', null, '[2026-07-31 Fri 14:22]');
-  assert.match(lines[0], /^- State "WAITING-ON-REVIEW" \[/);
+  assert.match(lines[0], /^- State "WAITING-ON-REVIEW" from /);
 });
 
 // ---- round-trip: format then re-parse produces the exact same entry -----

@@ -1,0 +1,98 @@
+{
+ "emacs": "29.3",
+ "defs": "#+LINK: gh https://github.com/%s\n#+LINK: two https://x.org/%s/and/%s\n#+LINK: enc https://x.org/q?=%h\n#+LINK: both https://x.org/%s?q=%h\n#+LINK: plain https://x.org/base/\n#+LINK: dup https://first/%s\n#+LINK: dup https://second/%s\n#+LINK: Case https://case/%s\n#+LINK: empty-tag https://t/%s/end\n#+LINK: pct https://x.org/100%25/%s\n#+LINK: fn https://x.org/%(someFunction)",
+ "cases": [
+  {
+   "target": "gh:org/repo",
+   "emacs": "https://github.com/org/repo"
+  },
+  {
+   "target": "gh:",
+   "emacs": "https://github.com/"
+  },
+  {
+   "target": "gh",
+   "emacs": "https://github.com/"
+  },
+  {
+   "target": "gh::x",
+   "emacs": "https://github.com/x"
+  },
+  {
+   "target": "gh:a:b",
+   "emacs": "https://github.com/a:b"
+  },
+  {
+   "target": "gh:with space",
+   "emacs": "https://github.com/with space"
+  },
+  {
+   "target": "two:one",
+   "emacs": "https://x.org/one/and/%s"
+  },
+  {
+   "target": "enc:a b&c/d?e",
+   "emacs": "https://x.org/q?=a%20b%26c%2Fd%3Fe"
+  },
+  {
+   "target": "enc:café ☕",
+   "emacs": "https://x.org/q?=caf%C3%A9%20%E2%98%95"
+  },
+  {
+   "target": "both:x y",
+   "emacs": "https://x.org/x y?q=%h"
+  },
+  {
+   "target": "plain:index.html",
+   "emacs": "https://x.org/base/index.html"
+  },
+  {
+   "target": "plain:",
+   "emacs": "https://x.org/base/"
+  },
+  {
+   "target": "dup:z",
+   "emacs": "https://second/z"
+  },
+  {
+   "target": "Case:z",
+   "emacs": "https://case/z"
+  },
+  {
+   "target": "case:z",
+   "emacs": "case:z"
+  },
+  {
+   "target": "empty-tag:",
+   "emacs": "https://t//end"
+  },
+  {
+   "target": "pct:abc",
+   "emacs": "https://x.org/100%25/abc"
+  },
+  {
+   "target": "fn:abc",
+   "emacs": "ERROR (void-function nil)"
+  },
+  {
+   "target": "unknown:abc",
+   "emacs": "unknown:abc"
+  },
+  {
+   "target": ":abc",
+   "emacs": ":abc"
+  },
+  {
+   "target": "gh:a::b",
+   "emacs": "https://github.com/a::b"
+  },
+  {
+   "target": "https://example.org",
+   "emacs": "https://example.org"
+  },
+  {
+   "target": "GH:org",
+   "emacs": "GH:org"
+  }
+ ]
+}

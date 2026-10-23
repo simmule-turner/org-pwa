@@ -33,7 +33,7 @@
  * for how each one is actually shown.
  */
 
-const STATE_LINE_RE = /^-\s+State\s+"([^"]+)"(?:\s+from\s+"([^"]+)")?\s+(\[[^\]]+\])(\s+\\)?\s*$/;
+const STATE_LINE_RE = /^-\s+State\s+"([^"]*)"(?:\s+from(?:\s+"([^"]*)")?)?\s+(\[[^\]]+\])(\s+\\)?\s*$/;
 const NOTE_LINE_RE = /^-\s+Note taken on\s+(\[[^\]]+\])(\s+\\)?\s*$/;
 const CLOCK_LINE_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)(?:--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+:\d+))?\s*$/;
 const CONTINUATION_INDENT_RE = /^\s+\S/; // a note-continuation line: indented, not blank
@@ -138,12 +138,29 @@ function padTo12(s) {
  * @param {string} timestamp
  */
 function formatStateLogLine(newState, oldState, timestamp, note = /** @type {string | null} */ (null)) {
-  const newPart = padTo12(`"${newState}"`);
-  const fromClause = oldState ? `from ${padTo12(`"${oldState}"`)}` : '';
-  const head = fromClause ? `- State ${newPart} ${fromClause} ${timestamp}` : `- State ${newPart} ${timestamp}`;
+  // org-log-note-headings: "State %-12s from %-12S %t".  With no old state %S is empty, so the "from" field is blank, not left out.
+  const newPart = padTo12(`"${newState ?? ''}"`);
+  const oldPart = padTo12(oldState === null ? '' : `"${oldState}"`);
+  const head = `- State ${newPart} from ${oldPart} ${timestamp}`;
   if (!note) return [head];
   const noteLines = note.split('\n');
   return [`${head} \\`, ...noteLines.map((l) => `  ${l}`)];
 }
 
-export { parseLogbookEntries, formatStateLogLine };
+/**
+ * A log item with another heading from `org-log-note-headings`, such as `CLOSING NOTE %t`; the note, if any, follows indented.
+ * @param {string} heading e.g. "CLOSING NOTE [2026-10-11 Sun 16:30]"
+ * @param {string | null} [note]
+ */
+function formatNoteLine(heading, note = null) {
+  if (!note) return [`- ${heading}`];
+  return [`- ${heading} \\`, ...note.split('\n').map((l) => (l ? `  ${l}` : l))];
+}
+
+/** Every log item of a heading: those above its :LOGBOOK: drawer (Emacs's default placement), then the drawer's own.
+ * @param {{ logbookLines?: string[], preLogLines?: string[] }} heading */
+function allLogLines(heading) {
+  return [...(heading.preLogLines || []), ...(heading.logbookLines || [])];
+}
+
+export { allLogLines, parseLogbookEntries, formatStateLogLine, formatNoteLine };

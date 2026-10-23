@@ -1,0 +1,158 @@
+{
+ "emacs": "29.3",
+ "doc": "Preamble line with the word zebra and <<top target>>.\n* TODO Heading One :tag:\nSome body mentioning alpha beta.\n<<dedicated>> and <<spaced   out target>>\n* [#A] Second Heading [1/2]\n:PROPERTIES:\n:CUSTOM_ID: cid-1\n:END:\n#+NAME: tbl1\n| a | b |\n#+NAME: spaced   name\n| c | d |\n** Child heading\ntext with Mixed Case Phrase\n#+begin_src js -n\nlet x = 1; // (ref:one)\n#+end_src\n* COMMENT Hidden Heading\n* Third   heading with   spaces\n<<<radio target>>>\nsee here\n* DONE Done thing :a:b:\n",
+ "cases": [
+  {
+   "query": "*Heading One",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "*heading one",
+   "emacs": "ERROR No match for fuzzy expression: *heading one"
+  },
+  {
+   "query": "*TODO Heading One",
+   "emacs": "ERROR No match for fuzzy expression: *TODO Heading One"
+  },
+  {
+   "query": "*Second Heading",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "*Second Heading [1/2]",
+   "emacs": "ERROR No match for fuzzy expression: *Second Heading [1/2]"
+  },
+  {
+   "query": "*Child heading",
+   "emacs": "Child heading"
+  },
+  {
+   "query": "*Third heading with spaces",
+   "emacs": "Third   heading with   spaces"
+  },
+  {
+   "query": "*Hidden Heading",
+   "emacs": "Hidden Heading"
+  },
+  {
+   "query": "*COMMENT Hidden Heading",
+   "emacs": "ERROR No match for fuzzy expression: *COMMENT Hidden Heading"
+  },
+  {
+   "query": "*Done thing",
+   "emacs": "Done thing"
+  },
+  {
+   "query": "*Nonexistent",
+   "emacs": "ERROR No match for fuzzy expression: *Nonexistent"
+  },
+  {
+   "query": "*Heading",
+   "emacs": "ERROR No match for fuzzy expression: *Heading"
+  },
+  {
+   "query": "*  Heading   One ",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "#cid-1",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "#CID-1",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "#nope",
+   "emacs": "ERROR No match for custom ID: nope"
+  },
+  {
+   "query": "dedicated",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "Dedicated",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "spaced out target",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "top target",
+   "emacs": "(top)"
+  },
+  {
+   "query": "radio target",
+   "emacs": "ERROR No match for fuzzy expression: radio target"
+  },
+  {
+   "query": "tbl1",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "TBL1",
+   "emacs": "ERROR No match for fuzzy expression: TBL1"
+  },
+  {
+   "query": "spaced name",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "spaced   name",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "Heading One",
+   "emacs": "Heading One"
+  },
+  {
+   "query": "heading one",
+   "emacs": "ERROR No match for fuzzy expression: heading one"
+  },
+  {
+   "query": "Second Heading",
+   "emacs": "Second Heading [1/2]"
+  },
+  {
+   "query": "Child heading",
+   "emacs": "Child heading"
+  },
+  {
+   "query": "Third heading with spaces",
+   "emacs": "Third   heading with   spaces"
+  },
+  {
+   "query": "Done thing",
+   "emacs": "Done thing"
+  },
+  {
+   "query": "alpha beta",
+   "emacs": "ERROR No match for fuzzy expression: alpha beta"
+  },
+  {
+   "query": "zebra",
+   "emacs": "ERROR No match for fuzzy expression: zebra"
+  },
+  {
+   "query": "Mixed Case Phrase",
+   "emacs": "ERROR No match for fuzzy expression: Mixed Case Phrase"
+  },
+  {
+   "query": "nonexistent text",
+   "emacs": "ERROR No match for fuzzy expression: nonexistent text"
+  },
+  {
+   "query": "(one)",
+   "emacs": "Child heading"
+  },
+  {
+   "query": "(two)",
+   "emacs": "ERROR No match for coderef: two"
+  },
+  {
+   "query": "/alpha/",
+   "emacs": "(top)"
+  }
+ ]
+}

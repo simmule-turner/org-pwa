@@ -13,7 +13,7 @@ const STAMPS = /\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g;
 
 // a1: repeaters, overdue and warnings. b1: where in a heading's entry a time stamp counts (title, body, drawers, blocks).
 // The app leaves completed headings out of the agenda (its default), so Emacs's DONE entries are not compared.
-for (const name of ['a1', 'b1']) test(`${name}: every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does`, () => {
+for (const name of ['a1', 'b1', 'f1']) test(`${name}: every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does`, () => {
   const oracle = JSON.parse(read(`${name}.expected.json`));
   const savedTz = process.env.TZ;
   process.env.TZ = oracle.tz;

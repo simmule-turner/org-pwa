@@ -1,0 +1,34 @@
+#+TITLE: Drawers and keywords
+#+OPTIONS: toc:nil num:nil d:t
+#+KEYWORDS: a, b
+#+DESCRIPTION: desc
+* Heading
+:DRAWER:
+drawer content
+:END:
+:PROPERTIES:
+:X: y
+:END:
+#+NAME: n1
+#+BEGIN_EXAMPLE
+x
+#+END_EXAMPLE
+#+RESULTS: n1
+: res
+#+RESULTS:
+| a | b |
+#+BEGIN_SRC sh :results output
+echo hi
+#+END_SRC
+
+#+RESULTS:
+: hi
+- list
+  :LOGBOOK:
+  x
+  :END:
+* Tasks
+*************** TODO inline task
+body
+*************** END
+Text after.

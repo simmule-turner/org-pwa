@@ -7,6 +7,40 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v625 — diary-float as Emacs has it
+=diary-float= lets the Nth weekday after a day fall in the next month, accepts =nil= for DAY, and no longer reads its fifth argument as a year (in Emacs it is a calendar face). =diary-offset=, =diary-ordinal-suffix= and =calendar-nth-named-day= work.
+Verified: 15 expressions over 2026 to 2029 compared with Emacs 29.3.
+
+* v624 — ODT footnotes and honest gaps
+An ODT footnote written as =[fn:1] text= now carries its text (it came out empty), and =f:nil= and =|:nil= apply in ODT. README.org and ROADMAP.org now list where the app still differs from Emacs: diary-float, a few sexp functions and calendars, and ODT tables.
+
+* v623 — HTML, LaTeX and ASCII tables and options as Emacs has them
+Table special columns and rows, the last alignment cookie of a column, =/ < >= column groups and header detection now follow ox in HTML and LaTeX. =|:nil= leaves tables out and =f:nil= leaves footnote references out (and the blanks after them, as Emacs does) in HTML, LaTeX, ASCII, Org and ODT. =UNNUMBERED= is inherited and not counted in ASCII, =notoc= keeps a heading out of the HTML table of contents, the Footnotes section is no longer exported as a heading, =#+SUBTITLE:= sits in the title, and a tagged item in a list without tags gets =value= or =id= like Emacs.
+Verified: 8 HTML, 3 LaTeX, 3 ASCII and 4 Org export cases compared with Emacs 29.3.
+
+* v622 — Captures are filed as Emacs files them
+A capture goes where =org-capture= puts it: a list item joins the entry's first list, a table row its first table (formulas follow the new row and recalculate), and =emptyLines=, =emptyLinesBefore=, =emptyLinesAfter= and =tableLinePos= (=:empty-lines=, =:empty-lines-before=, =:empty-lines-after=, =:table-line-pos= in Lisp) work. A table that a row starts has an empty header row and a rule, as in Emacs; =tableHeader: false= keeps just the row.
+Verified: filing of entries, text, items and table rows compared with Emacs 29.3.
+
+* v621 — Capture templates in Lisp
+=(setq org-capture-templates …)= and =(add-to-list 'org-capture-templates …)= in the Lisp init now define templates beside the JSON ones; a Lisp template wins on the same key. Types =entry=, =item=, =checkitem=, =table-line= and =plain=, targets =file=, =file+headline= and =file+olp=, and =:prepend= are read as Org reads them; anything the app cannot use is named when the Capture list opens.
+
+* v620 — Properties and links as Emacs has them
+A new or changed property is written as Org writes it (=:KEY:      value=). Internal links find a =<<target>>=, a =#+NAME:= or a heading word by word, =#custom-id= ignores case, and =file:…::search= and line numbers use the same rules. Stored =[[id:…][Title]]= links keep the title as Emacs does, link abbreviations expand like =org-link-expand-abbrev=, and plain links accept Org's link types and balanced parentheses; a backslash escapes a bracket in =[[…]]=.
+Verified: property edits, link search, stored links, abbreviations and link parsing compared with Emacs 29.3.
+
+* v619 — Capture templates expand as Emacs does
+Templates now follow =org-capture-fill-template=: =\%= escapes a percent sign, =%A %l %L %c %n %k %K %f %F= and =%:link= are filled in, tag (=%^g=), clipboard (=%^C=, =%^L=) and named timestamp (=%^{Due}t=) prompts work, an empty answer takes the default, and =%\N= counts only =%^{...}= answers (a missing one is an error). The result has no leading blank lines, one final newline, and tabs expanded.
+Verified: template expansion compared with Emacs 29.3.
+
+* v618 — Editing headings, lists and tables as Emacs does
+Promote and demote work in place on the heading's stars as Org's subtree commands do (the siblings after a promoted heading become its children, and a first child can be demoted). Moving or adding the last heading no longer leaves a stray blank line. Table edits align the table, deleting a row leaves the others alone, and =#+TBLFM:= references follow inserted or deleted rows and columns. Ordered lists number again after an add or delete, a new item goes right under its item without a checkbox (*Add checkbox below* makes one), deleting an item takes its text, and a parent checkbox shows what its sub-items add up to. =examples/editing.org= shows the results.
+Verified: heading, list and table edits compared with Emacs 29.3.
+
+* v617 — TODO state changes as Emacs does
+Changing a TODO state follows Org's =org-todo=: log items go under the planning line, above the text, or into =:LOGBOOK:= with =#+STARTUP: logdrawer=; =logdone= writes =CLOSED:= only, and =lognotedone= asks for a closing note. A repeating task moves every repeating time stamp in the entry, keeps a time range's end, honors =REPEAT_TO_STATE= and =nologrepeat=, and logs the completion. The agenda follows Emacs for a warning or range after a repeater and for =--= delays. =examples/todo-states.org= shows the results.
+Verified: state changes, repeats and agenda dates compared with Emacs 29.3.
+
 * v616 — Match queries, time formats and Babel as Emacs does
 Match queries (=C-c / m=, the Agenda's Match view) now use Org's own matcher: =LEVEL=, property comparisons for text, numbers, regexps and times, =/TODO|NEXT= and =/!=. =format-time-string= formats (flags, widths, =%N=, =%z=) are Emacs's, in capture templates and table formulas; =%%= is no longer an escape. =js= blocks lay results out as Org does (tables, lists, examples, =:wrap=, =append= and =prepend=), and =:var= takes =name[1,2]= indexes, quoted lists, =:colnames=, =:rownames= and =:hlines=, with =:prologue= and =:epilogue=. Calendar export wraps descriptions at 70 columns as Emacs does. Citations and the As-org bibliography follow Emacs. The =examples/= cookbook gains an index and files for cookies, clock tables, match queries, Babel and calendar export.
 Verified: match, time-format, Babel and calendar cases, and the new example files, compared with Emacs 29.3.

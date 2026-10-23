@@ -27,7 +27,7 @@ function skeleton(h) {
   return h.replace(/></g, '>\n<').trim();
 }
 
-for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) {
+for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]) {
   test(`HTML export of fixture p${n} has the structure ox-html gives it`, () => {
     setInlineTaskLevel(n === 15 ? 15 : null); // org-inlinetask is loaded for p15 only
     // citations read the bibliography files named in the fixture, which sit beside it

@@ -58,8 +58,8 @@ test('edits change the live headings, and the file serializes the way the edits 
   ], deps);
   const text = serializeOrg(doc);
   assert.match(text, /^\* TODO Plan the trip\s+:travel:fun:$/m);
-  assert.match(text, /:EFFORT: 3h/);
-  assert.match(text, /:STARS: 4/);
+  assert.match(text, /:EFFORT:   3h/);
+  assert.match(text, /:STARS:    4/);
   assert.match(text, /^\* NEXT Notes$/m);
   assert.match(text, /Compare prices\.\nBooked\./);
   assert.match(text, /SCHEDULED: <2026-10-12 Mon>/);

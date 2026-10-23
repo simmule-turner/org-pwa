@@ -37,6 +37,8 @@
  */
 
 import { parseBody } from './body-parser.js';
+import { layoutTable } from './org-table-layout.js';
+import { fixBoxes, isItemLine, itemEnd, renumber } from './list-edit.js';
 
 // ---- table serialization (pure, independently testable) ------------------
 
@@ -50,14 +52,17 @@ export function serializeTableRule(columnCount) {
   return '|' + Array(Math.max(1, columnCount)).fill('---').join('+') + '|';
 }
 
-/** @param {Table} table */
-export function serializeTable(table) {
+/**
+ * @param {Table} table
+ * @param {boolean} [align] pad the columns as Emacs's org-table-align does (every table edit does); false writes each row as is
+ */
+export function serializeTable(table, align = true) {
   const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
-  const lines = table.rows.map((row) =>
-    row.type === 'rule' ? serializeTableRule(columnCount) : serializeTableRow(row.cells)
-  );
-  if (table.tblfm) lines.push('#+TBLFM: ' + table.tblfm);
+  const lines = align
+    ? layoutTable(table.rows.map((row) => (row.type === 'rule' ? null : row.cells)))
+    : table.rows.map((row) => (row.type === 'rule' ? serializeTableRule(columnCount) : serializeTableRow(row.cells)));
+  if (table.tblfm !== null) lines.push('#+TBLFM: ' + table.tblfm);
   return lines;
 }
 
@@ -158,24 +163,64 @@ function requireDataRow(table, rowIndex) {
  * @param {number} rowIndex
  * @param {number} colIndex
  * @param {string} value
+ * @param {boolean} [align]
  *  (see module docstring). */
-export function setTableCell(heading, table, rowIndex, colIndex, value) {
+export function setTableCell(heading, table, rowIndex, colIndex, value, align = true) {
   const row = requireDataRow(table, rowIndex);
   row.cells[colIndex] = String(value).replace(/[\r\n|]+/g, ' ').trim();
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align));
+}
+
+/**
+ * `org-table-fix-formulas`: the references in a #+TBLFM: line follow a row or column that was inserted or deleted. `key` is
+ * "@" (rows) or "$" (columns); numbers above `limit` move by `delta`, those in `replace` become the value given, and the
+ * terms that set the `remove`d row or column go. Throws, as Emacs refuses, if a range ends on the removed one.
+ * @param {string} tblfm @param {string} key @param {Record<string, string>} replace
+ * @param {number | undefined} limit @param {number} delta @param {number} [remove]
+ */
+export function fixTableFormulas(tblfm, key, replace, limit, delta, remove) {
+  const inRemote = (/** @type {string} */ line, /** @type {number} */ at) => [...line.matchAll(/remote\([^)]+?\)/g)].some((m) => /** @type {number} */ (m.index) <= at && at <= /** @type {number} */ (m.index) + m[0].length);
+  let line = tblfm;
+  if (remove !== undefined) {
+    const re2 = key === '$' ? new RegExp(`(@[0-9]+)?\\$${remove}=.*?(::|$)`, 'g') : new RegExp(`@${remove}\\$[0-9]+=.*?(::|$)`, 'g');
+    let out = '';
+    let last = 0;
+    for (const m of line.matchAll(re2)) {
+      const at = /** @type {number} */ (m.index);
+      if (inRemote(line, at + m[0].length)) continue; // Emacs asks at the end of the match
+      if (line[at - 1] === '.') throw new Error(`Change makes TBLFM term ${m[0]} invalid`);
+      out += line.slice(last, at);
+      last = at + m[0].length;
+    }
+    line = out + line.slice(last);
+  }
+  const re = key === '$' ? /\$([0-9]+)/g : /@([0-9]+)/g;
+  return line.replace(re, (whole, digits, at) => {
+    if (inRemote(line, at + whole.length)) return whole;
+    if (digits in replace) return key + replace[digits];
+    if (limit !== undefined && Number(digits) > limit) return key + (Number(digits) + delta);
+    return whole;
+  });
+}
+
+/** @param {Table} table @param {number} rowIndex the 1-based number of the data line, rules not counted */
+function dataLineNumber(table, rowIndex) {
+  return table.rows.slice(0, rowIndex + 1).filter((r) => r.type === 'row').length;
 }
 
 /** Inserts a new blank data row after `afterRowIndex` (-1 to insert at the
  * @param {Heading} heading
  * @param {Table} table
  * @param {number} afterRowIndex
+ * @param {boolean} [align]
  *  very start), with the same column count as the table's existing rows. */
-export function insertTableRow(heading, table, afterRowIndex) {
+export function insertTableRow(heading, table, afterRowIndex, align = true) {
   const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
   const newRow = /** @type {import('./types.js').DataRow} */ ({ type: 'row', cells: Array(columnCount).fill('') });
   table.rows.splice(afterRowIndex + 1, 0, newRow);
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '@', {}, dataLineNumber(table, afterRowIndex + 1) - 1, 1);
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align));
 }
 
 /**
@@ -187,8 +232,15 @@ export function deleteTableRow(heading, table, rowIndex) {
   if (table.rows.length <= 1) {
     throw new Error('deleteTableRow: refusing to delete the last row of a table');
   }
+  // Emacs's org-table-kill-row takes the line out and leaves the others as they are
+  const dline = table.rows[rowIndex].type === 'row' ? dataLineNumber(table, rowIndex) : 0;
   table.rows.splice(rowIndex, 1);
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  commitLines(heading, table.lineIndex + rowIndex, 1, []);
+  table.lineCount -= 1;
+  if (dline && table.tblfm !== null) {
+    table.tblfm = fixTableFormulas(table.tblfm, '@', { [dline]: 'INVALID' }, dline, -1, dline);
+    commitLines(heading, table.lineIndex + table.lineCount - 1, 1, ['#+TBLFM: ' + table.tblfm]);
+  }
 }
 
 /** Inserts a new blank column after `afterColIndex` (-1 for the start) in
@@ -201,6 +253,7 @@ export function insertTableColumn(heading, table, afterColIndex) {
   for (const row of table.rows) {
     if (row.type === 'row') row.cells.splice(afterColIndex + 1, 0, '');
   }
+  if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '$', {}, afterColIndex + 1, 1);
   commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
 }
 
@@ -217,6 +270,7 @@ export function deleteTableColumn(heading, table, colIndex) {
   for (const row of table.rows) {
     if (row.type === 'row') row.cells.splice(colIndex, 1);
   }
+  if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '$', { [colIndex + 1]: 'INVALID' }, colIndex + 1, -1, colIndex + 1);
   commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
 }
 
@@ -275,35 +329,26 @@ export function editListItemText(heading, item, newText) {
   commitLines(heading, item.lineIndex, 1, [line]);
 }
 
-/** The line just past the end of `item`'s own line and everything nested
- * @param {any} [item]
- *  under it (recursively) — i.e. the exclusive end of its line span. */
-function listItemEndLine(item) {
-  let end = item.lineIndex + 1;
-  for (const nestedList of item.children || []) {
-    for (const child of nestedList.items) {
-      end = Math.max(end, listItemEndLine(child));
-    }
-  }
-  return end;
-}
-
 /**
- * Inserts a new sibling item right after `afterItem` (and after
- * everything nested under it), at the same indentation/marker style. If
- * `afterItem` has a checkbox, the new item gets an unchecked one too
- * (matching "this is a checklist" convention); it never inherits
- * `afterItem`'s tag, since a tag is a per-item descriptive term, not
- * something that makes sense to duplicate onto a sibling. Returns the
- * freshly parsed item so the caller can e.g. start editing it right away.
+ * Inserts a new sibling item directly under `afterItem`'s first line, as Org's M-RET at the end of an item does, at the same
+ * indentation and with the same kind of bullet; the item's sub-items and text follow the new one.  The new item has no
+ * checkbox unless `withCheckbox` (M-S-RET), and a description item gets an empty term.  Ordered items are numbered again.
+ * Returns the freshly parsed item so the caller can e.g. start editing it right away.
  * @param {Heading} heading
  * @param {any} [afterItem]
+ * @param {string} [text]
+ * @param {boolean} [withCheckbox]
  */
-export function insertListItem(heading, afterItem, text = '') {
-  const checkboxPart = afterItem.checkbox !== null ? '[ ] ' : '';
-  const line = `${afterItem.indent}${afterItem.marker} ${checkboxPart}${text}`;
-  const insertAt = listItemEndLine(afterItem);
+export function insertListItem(heading, afterItem, text = '', withCheckbox = false) {
+  const checkboxPart = withCheckbox ? '[ ] ' : '';
+  // A description item gets an empty term, as Org's M-RET does; an ordered one is numbered below
+  const termPart = afterItem.tag && !text ? ' :: ' : '';
+  const line = `${afterItem.indent}${afterItem.marker} ${checkboxPart}${termPart}${text}`;
+  // M-RET at the end of the item's line: the new item goes right under it, the item's sub-items and text following it
+  const insertAt = afterItem.lineIndex + 1;
   commitLines(heading, insertAt, 0, [line]);
+  heading.bodyLines = fixBoxes(renumber(heading.bodyLines, insertAt), insertAt);
+  heading.body = parseBody(heading.bodyLines);
 
   /** @param {any} [items] */
   function findByLineIndex(items) {
@@ -338,8 +383,13 @@ export function insertListItem(heading, afterItem, text = '') {
  */
 export function deleteListItem(heading, item) {
   const start = item.lineIndex;
-  const end = listItemEndLine(item);
+  const end = itemEnd(heading.bodyLines, start);
   commitLines(heading, start, end - start, []);
+  // What is left follows Org's list rules: ordered items numbered again, parent checkboxes showing their sub-items
+  const rest = heading.bodyLines;
+  const at = [start, start - 1, start + 1].find((l) => l >= 0 && l < rest.length && isItemLine(rest[l]));
+  if (at !== undefined) heading.bodyLines = fixBoxes(renumber(rest, at), at);
+  heading.body = parseBody(heading.bodyLines);
 }
 
 // ---- paragraph edits --------------------------------------------------

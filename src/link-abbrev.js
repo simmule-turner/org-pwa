@@ -14,13 +14,17 @@ export function linkAbbreviations(doc) {
   return map;
 }
 
-/** A link target with its abbreviation expanded: `%s` is the rest of the target, `%h` that text percent-encoded, and a value with neither
- * gets the rest appended. A value that calls a function (`%(name)`) is left as written. @param {string} target @param {Map<string, string>} map */
+/** A link target with its abbreviation expanded, as org-link-expand-abbrev does: the part after the first `:` (or `::`) is the
+ * tag. In the value, the first `%s` becomes the tag; failing that, the first `%h` becomes the tag percent-encoded; a value
+ * with neither gets the tag appended. A value that calls a function (`%(name)`) is left as written, because the app has no Lisp
+ * to call. @param {string} target @param {Map<string, string>} map */
 export function expandAbbreviation(target, map) {
   if (!map.size) return target;
-  const m = /^([^:]+):([\s\S]*)$/.exec(target);
+  const m = /^([^:]*)(?:::?(.*))?$/.exec(target);
   const value = m && map.get(m[1]);
-  if (!m || value === undefined || /%\(/.test(value)) return target;
-  if (!/%[sh]/.test(value)) return value + m[2];
-  return value.replace(/%([sh])/g, (_, c) => (c === 's' ? m[2] : encodeURIComponent(m[2])));
+  if (!m || value === undefined || /%\([^)]+\)/.test(value)) return target;
+  const tag = m[2] ?? '';
+  if (value.includes('%s')) return value.replace('%s', () => tag);
+  if (value.includes('%h')) return value.replace('%h', () => encodeURIComponent(tag));
+  return value + tag;
 }

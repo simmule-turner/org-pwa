@@ -180,14 +180,16 @@ test('diary-float negative N counts backward from the end of the month', () => {
   assert.equal(occ.getDate(), 27);
 });
 
-test('diary-float honors an explicit year filter -- only that one year, blank in all others', () => {
-  const parsed = parseDiaryFloatLine('%%(diary-float 11 4 4 1 2026) One-off Thanksgiving');
-  assert.equal(parsed.year, 2026);
+test('the fifth argument of diary-float is a face, as in Emacs, and does not limit the year', () => {
+  const parsed = parseDiaryFloatLine('%%(diary-float 11 4 4 1 2026) Thanksgiving');
   assert.equal(parsed.day, 1);
-  const occs2025 = expandDiaryFloatOccurrences(11, 4, 4, 1, 2026, new Date(2025, 0, 1), new Date(2025, 11, 31));
-  assert.equal(occs2025.length, 0);
-  const occs2026 = expandDiaryFloatOccurrences(11, 4, 4, 1, 2026, new Date(2026, 0, 1), new Date(2026, 11, 31));
-  assert.equal(occs2026.length, 1);
+  assert.equal(expandDiaryFloatOccurrences(11, 4, 4, 1, 2026, new Date(2025, 0, 1), new Date(2025, 11, 31)).length, 1);
+  assert.equal(expandDiaryFloatOccurrences(11, 4, 4, 1, 2026, new Date(2026, 0, 1), new Date(2026, 11, 31)).length, 1);
+});
+
+test('the Nth weekday after a day may fall in the next month, as in Emacs', () => {
+  const days = expandDiaryFloatOccurrences(3, 4, 3, 15, null, new Date(2026, 0, 1), new Date(2026, 11, 31));
+  assert.deepEqual(days.map((d) => `${d.getMonth() + 1}/${d.getDate()}`), ['4/2']);
 });
 
 test('monthSpecMatches handles all three forms', () => {
@@ -206,7 +208,6 @@ test('nthWeekdayOfMonth returns null when the occurrence doesn\u2019t exist (N t
 test('parseDiaryFloatLine returns null for malformed input', () => {
   assert.equal(parseDiaryFloatLine('%%(diary-float 13 4 4) bad month'), null);
   assert.equal(parseDiaryFloatLine('%%(diary-float 11 7 4) bad dayname'), null);
-  assert.equal(parseDiaryFloatLine('%%(diary-float 11 4 0) zero N not allowed'), null);
 });
 
 // ---- day length -------------------------------------------------------------

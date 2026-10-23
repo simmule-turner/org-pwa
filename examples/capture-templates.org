@@ -1,0 +1,39 @@
+#+TITLE: Capture templates in Lisp
+#+STARTUP: overview
+
+Put this in the Lisp init (~org-xx-lisp-init~). Each template is the form Emacs reads.
+
+* Entries, lists and rows
+#+BEGIN_SRC emacs-lisp
+(setq org-capture-templates
+  '(("a" "Appointment" entry (file+olp "calendar.org" "%<%Y>")
+     "* %^{Description} %^T\n%?" :prepend t :omit-empty-entries t)
+    ("j" "Journal" item
+     (file+olp "home.org" "Journal" "%<%Y-%m %b>" "%<%Y-%m-%d>")
+     "%<%H:%M> - %?" :prepend t)
+    ("c" "Journal check item" checkitem
+     (file+olp "home.org" "Journal" "%<%Y-%m %b>" "%<%Y-%m-%d>")
+     "%?")
+    ("m" "Meeting" entry (file+headline "notes.org" "Meetings")
+     "* %^{Title} :meeting:\n%U\n%?")
+    ("t" "Tracking" table-line (file+olp "home.org" "Tracking" "%<%Y-%m>")
+     "| @# | %<%Y-%m-%d> | %<%H%M> ||" :prepend-heading t
+     :pre-text "#+PLOT: title:\"Tracking\"" :post-text "#+TBLFM: $4=1")))
+#+END_SRC
+
+* Blank lines and table rows
+=:empty-lines N= leaves N blank lines before and after the new text (=:empty-lines-before= and =:empty-lines-after= set each side). =:table-line-pos "I+1"= puts a row on the line after the first rule. A table a capture starts has an empty header row and a rule; =:table-header nil= starts it with just the row.
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("e" "Expense" table-line (file+headline "money.org" "Expenses")
+    "| %<%Y-%m-%d> | %^{What} | %^{Amount} |" :table-line-pos "I+1"))
+(add-to-list 'org-capture-templates
+  '("s" "Task" entry (file+headline "tasks.org" "Inbox")
+    "* TODO %?" :empty-lines 1))
+#+END_SRC
+
+* One more template
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("n" "Note" plain (file "inbox.org") "* %?"))
+#+END_SRC

@@ -556,7 +556,7 @@ function footnoteText(id, produce, label) {
 
 /** @param {string | null} label @param {InlineNode[] | null} inlineDef */
 function footnoteRef(label, inlineDef) {
-  if (!S.opts.footnotes) return '';
+  if (!S.opts.footnotes) return LATEX_DROPPED; // the blanks after it go with it
   if (inlineDef) return footnoteText('org' + hash7('fn:inline' + (S.fnCount + 1)), () => nodes(inlineDef), false);
   if (label === null) return '';
   const known = S.footnoteLabels.get(label);
@@ -846,6 +846,7 @@ function itemBody(children, depth, last) {
 
 /** @param {Extract<OrgElement, { type: 'table' }>} el */
 function table(el) {
+  if (!S.opts.tables) return '';
   const caption = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
   const label = el.aff && el.aff.name ? '\\label{' + nameLabel(el.aff.name, 'tab:') + '}' : '';
   S.inTable++;

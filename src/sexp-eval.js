@@ -41,6 +41,7 @@ import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { sexpArgToValue, userSexpResult } from './extensions.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn } from './holidays.js';
+import { nthNamedDay } from './calendar-conv.js';
 import { nonGregorianDateLine } from './diary-nongregorian.js';
 import { hebrewBirthday, hebrewYahrzeit, hebrewOmer, hebrewRoshHodesh, hebrewParasha, isFriday } from './diary-hebrew.js';
 import { astroDayNumberLine, dayOfYearLine, isoDateLine, julianDateLine, lunarPhasesLine } from './diary-calendar.js';
@@ -48,7 +49,7 @@ import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
   expandOrgAnniversaryOccurrences,
   expandOrgCyclicOccurrences,
-  expandDiaryFloatOccurrences,
+  diaryFloatMatches,
   solarSunriseSunset,
 } from './diary-sexp.js';
 
@@ -408,9 +409,24 @@ function canonicalDiaryLine(line, style) {
       const monthSpec = parseMonthArg(args[0]);
       const dayname = args[1].value;
       const n = args[2].value;
-      const dayOverride = args[3] ? args[3].value : null;
-      const yearFilter = args[4] ? args[4].value : null;
-      return occursOn(expandDiaryFloatOccurrences, context.candidateDate, monthSpec, dayname, n, dayOverride, yearFilter);
+      const dayOverride = args[3] && args[3].type === 'number' ? args[3].value : null; // nil is no DAY; the fifth argument is a face
+      return diaryFloatMatches(context.candidateDate, monthSpec, dayname, n, dayOverride);
+    }
+
+    // (diary-offset SEXP DAYS): SEXP as it was DAYS days ago
+    case 'diary-offset': {
+      if (args.length < 2) return false;
+      const days = numberOf(ev(args[1], context));
+      const c = context.candidateDate;
+      return ev(args[0], { ...context, candidateDate: new Date(c.getFullYear(), c.getMonth(), c.getDate() - days) });
+    }
+    case 'diary-ordinal-suffix': {
+      const n = numberOf(ev(args[0], context));
+      return n % 100 === 11 || n % 100 === 12 || n % 100 === 13 || n % 10 > 3 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10];
+    }
+    case 'calendar-nth-named-day': {
+      const v = args.map((a) => numberOf(ev(a, context)));
+      return nthNamedDay(v[0], v[1], v[2], v[3], v[4]);
     }
 
     // The display-only calendar lines. Each shows the day's text, or matches nothing when there is none.
@@ -949,7 +965,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-offset', 'diary-ordinal-suffix', 'calendar-nth-named-day', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

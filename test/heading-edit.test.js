@@ -354,11 +354,11 @@ test('demoteHeading makes a heading the last child of its preceding sibling', ()
   assert.equal(doc.children[0].children[0].level, 2);
 });
 
-test('demoteHeading on the first heading (no preceding sibling) is a no-op and returns false', () => {
+test('demoteHeading on the first heading goes a level deeper in place, as Emacs does', () => {
   const doc = parseOrg('* A\n* B');
   const result = demoteHeading(doc, doc.children[0]);
-  assert.equal(result, false);
-  assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B']);
+  assert.equal(result, true);
+  assert.deepEqual(doc.children.map((h) => [h.title, h.level]), [['A', 2], ['B', 1]]);
 });
 
 test('demoteHeading appends after any EXISTING children of the new parent, not before', () => {

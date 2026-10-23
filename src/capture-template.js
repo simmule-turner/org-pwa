@@ -26,11 +26,13 @@
  */
 
 import { placeInsertedText, sharedAnnotation } from './capture-shared.js';
+import { makeLinkString } from './link-string.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { formatTimeString } from './format-time.js';
 import { parseOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
-import { insertTable, insertTableRow, setTableCell, commitLines } from './body-edit.js';
+import { commitLines, fixTableFormulas, serializeTable } from './body-edit.js';
+import { findLists, listAt, renumber } from './list-edit.js';
 import { parseBody } from './body-parser.js';
 
 // ---- %<FORMAT> (format-time-string) ---------------------------------------
@@ -40,29 +42,16 @@ function formatTime(date, format) {
   return formatTimeString(date, format);
 }
 
-// ---- %^{PROMPT} scanning --------------------------------------------------
+// ---- template expansion ---------------------------------------------
+//
+// The expansion follows org-capture-fill-template: a first pass for the
+// non-interactive escapes (%t %a %n %<...> %:key ...), a second for the
+// interactive ones (%^{Prompt}, %^g, %^C, %^t ...), a third for %\N, and
+// a cleanup of the result. A run of backslashes before a % escapes it
+// (org-capture-escaped-%): n backslashes lose (n+1)/2 of them, and the %
+// stays literal when n is odd.
 
-/**
- * Finds every %^{...} prompt AND bare %? marker in `template`, in the
- * order they appear — what a caller uses to actually ask the person
- * for each answer before calling expandTemplate. Real org syntax:
- * %^{prompt}, %^{prompt|default}, or
- * %^{prompt|default|completion1|completion2|...}. A bare %? (real
- * org's own "cursor goes here" marker) is treated as a prompt too,
- * labeled "Text" — gathered up front via the same mechanism as any
- * other prompt, rather than left empty with its position recorded for
- * a caller to find-and-focus after the fact. That older approach
- * depended entirely on DOM state (the target heading needing to
- * already be expanded/visible, which a freshly-collapsed or
- * newly-created heading often isn't) and had no equivalent at all for
- * a capture landing in a different file, since there's no live DOM
- * for that file to focus anything in. Gathering the value first sidesteps
- * both problems the same way any other prompt already did.
- */
-/** real org-mode's own four interactive timestamp-prompt letters --
- *  active/inactive x date-only/date-and-time -- each mapped to the
- *  { active, hasTime } shape formatOrgTimestamp itself expects, plus
- *  a plain-language label for the prompt form. */
+/** The four timestamp-prompt letters: active or inactive, date only or with a time. */
 const TIMESTAMP_PROMPT_KINDS = {
   t: { active: true, hasTime: false, label: 'Date' },
   T: { active: true, hasTime: true, label: 'Date & time' },
@@ -70,167 +59,311 @@ const TIMESTAMP_PROMPT_KINDS = {
   U: { active: false, hasTime: true, label: 'Date & time' },
 };
 
-/** @param {string} template */
-function scanPrompts(template) {
-  const prompts = [];
-  const re = /%\^\{([^}]*)\}|%\^([tTuU])|%\?/g;
-  let match;
-  while ((match = re.exec(template))) {
-    if (match[0] === '%?') {
-      prompts.push({ prompt: 'Text', default: '', completions: [] });
-    } else if (match[2]) {
-      const kind = /** @type {any} */ (TIMESTAMP_PROMPT_KINDS)[match[2]];
-      prompts.push({ prompt: kind.label, default: '', completions: [], timestamp: { active: kind.active, hasTime: kind.hasTime } });
-    } else {
-      const parts = match[1].split('|');
-      prompts.push({
-        prompt: parts[0] || '',
-        default: parts.length > 1 ? parts[1] : '',
-        completions: parts.slice(2),
-      });
-    }
-  }
-  return prompts;
+const PLAIN_ESCAPE_RE = /%(:[-A-Za-z]+|<([^>\n]+)>|[aAcfFikKlLntTuUx])|@#(?:\s*([+-])\s*(\d+))?/g;
+const PROMPT_ESCAPE_RE = /%\^(?:\{([^}]*)\})?([CgGLptTuU])?|%\?/g;
+const BACKREF_RE = /%\\([1-9][0-9]*)/g;
+const LINK_RE = /\[\[(.*?)\](\[.*?\])?\]/;
+const TAGS_COLUMN = 77;
+
+/** @typedef {{ buf: string, pos: number }} Cursor */
+
+/** Inserts `text` at the cursor and moves past it. @param {Cursor} st @param {string} text */
+function insertAt(st, text) {
+  st.buf = st.buf.slice(0, st.pos) + text + st.buf.slice(st.pos);
+  st.pos += text.length;
 }
 
-// ---- expansion -------------------------------------------------------
+/**
+ * Finds each match of `re` at or after the cursor, applies the backslash rule, and for an unescaped one removes the
+ * match and calls `handle` with the cursor where it stood. `handle` inserts the replacement.
+ * @param {Cursor} st @param {RegExp} re @param {(m: RegExpExecArray, st: Cursor) => void} handle
+ * @param {boolean} [escapable] false for a token that backslashes do not escape
+ */
+function sweep(st, re, handle, escapable = true) {
+  for (;;) {
+    re.lastIndex = st.pos;
+    const m = re.exec(st.buf);
+    if (!m) return;
+    let start = m.index;
+    let end = start + m[0].length;
+    if (escapable && !m[0].startsWith('@#')) {
+      let n = 0;
+      while (n < start && st.buf[start - 1 - n] === '\\') n++;
+      const cut = Math.floor((n + 1) / 2);
+      st.buf = st.buf.slice(0, start - n) + st.buf.slice(start - n + cut);
+      start -= cut;
+      end -= cut;
+      if (n % 2 === 1) {
+        st.pos = end;
+        continue;
+      }
+    }
+    st.buf = st.buf.slice(0, start) + st.buf.slice(end);
+    st.pos = start;
+    handle(m, st);
+  }
+}
+
+/** Right-aligns the tags at the end of a heading line the way org-align-tags does. @param {string} line */
+function alignHeadingTags(line) {
+  const m = /^(\*+\s+)(.*?)\s*(:[\w@#%]+(?::[\w@#%]+)*:)\s*$/.exec(line);
+  if (!m) return line;
+  const head = (m[1] + m[2]).replace(/\s+$/, '');
+  const pad = Math.max(1, TAGS_COLUMN - head.length - m[3].length);
+  return head + ' '.repeat(pad) + m[3];
+}
+
+/** Replaces each tab with spaces up to the next multiple of eight columns. @param {string} text */
+function untabify(text) {
+  return text
+    .split('\n')
+    .map((line) => {
+      let out = '';
+      for (const ch of line) out += ch === '\t' ? ' '.repeat(8 - (out.length % 8)) : ch;
+      return out;
+    })
+    .join('\n');
+}
 
 /**
- * Expands `template` against `context`:
- *   now             -- Date to use for %<FORMAT>/%t/%T/%u/%U (defaults to
- *                       the actual current moment; a caller passing a
- *                       fixed Date makes this deterministic for testing)
- *   promptAnswers    -- array of strings, matched to %^{...} AND bare %?
- *                       occurrences IN ORDER (the same order scanPrompts
- *                       returns them in) — not matched by prompt text,
- *                       since two prompts can legitimately share the
- *                       same wording
- *   tableRowNumber   -- substituted for @# (real org's own table-formula
- *                       row-number constant, not an invented specifier);
- *                       omitted/null becomes ''. @# also supports a
- *                       simple offset -- @# + 3 or @# - 2 (whitespace
- *                       around the operator optional either way)
- *                       evaluates to tableRowNumber plus/minus that
- *                       integer, still '' if tableRowNumber itself is
- *                       unset.
+ * The tidy-up that ends org-capture-fill-template: no blank lines before the text, one newline at the end (or an
+ * empty string), tabs expanded.
+ * @param {string} text
+ */
+function cleanupExpanded(text) {
+  const first = text.search(/[^ \t\n]/);
+  if (first === -1) return '';
+  const lineStart = text.lastIndexOf('\n', first - 1) + 1;
+  const body = text.slice(lineStart).replace(/[ \t\n]+$/, '');
+  return untabify(body) + '\n';
+}
+
+/** @param {string | null | undefined} value @param {boolean} active @param {boolean} hasTime @param {Date} now */
+function promptedTimestamp(value, active, hasTime, now) {
+  const text = (value || '').trim();
+  if (/^[<[]/.test(text)) return text;
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d\d))?$/.exec(text);
+  const date = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(now.getTime());
+  let time = null;
+  if (m && m[4] !== undefined) time = String(m[4]).padStart(2, '0') + ':' + m[5];
+  else if (hasTime) time = formatTime(now, '%H:%M');
+  return formatOrgTimestamp(time ? { date, active, time } : { date, active });
+}
+
+/**
+ * What the template sees besides the clock. Content shared into the app supplies `initial` and the annotation
+ * unless they are given directly.
+ * @param {any} context
+ */
+function templateValues(context) {
+  const now = context.now instanceof Date ? context.now : new Date();
+  const shared = context.shared || null;
+  const clipboard = typeof context.clipboard === 'string' && context.clipboard !== '' ? context.clipboard : null;
+  const killRing = typeof context.killRing === 'string' ? context.killRing : clipboard;
+  const initial = typeof context.initial === 'string' ? context.initial : (shared && shared.text) || '';
+  let annotation = typeof context.annotation === 'string' ? context.annotation : shared ? sharedAnnotation(shared) : '';
+  if (annotation === '[[]]') annotation = '';
+  const linkMatch = LINK_RE.exec(annotation);
+  const clock = context.clock || null;
+  const originalFile = context.originalFile || '';
+  /** @type {Record<string, string>} */
+  const props = { ':annotation': annotation, ':initial': initial };
+  if (shared && shared.url) {
+    props[':link'] = shared.url;
+    if (shared.title) props[':description'] = shared.title;
+    const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(shared.url);
+    if (scheme) props[':type'] = scheme[1].toLowerCase();
+  }
+  Object.assign(props, context.linkProps || {});
+  const stamp = (/** @type {boolean} */ active, /** @type {boolean} */ withTime) =>
+    formatOrgTimestamp(withTime ? { date: now, active, time: formatTime(now, '%H:%M') } : { date: now, active });
+  return {
+    now,
+    t: stamp(true, false),
+    T: stamp(true, true),
+    u: stamp(false, false),
+    U: stamp(false, true),
+    c: killRing || '',
+    x: clipboard || '',
+    i: initial,
+    a: annotation,
+    A: linkMatch ? annotation.replace(LINK_RE, '[[$1][%^{Link description}]]') : annotation,
+    l: linkMatch ? annotation.replace(LINK_RE, '[[$1]]') : annotation,
+    L: linkMatch ? annotation.replace(LINK_RE, '$1') : annotation,
+    n: typeof context.userFullName === 'string' ? context.userFullName : '',
+    k: clock ? clock.heading : '',
+    K: clock ? makeLinkString(`${clock.file}::*${clock.heading}`, clock.heading) : '',
+    f: originalFile ? originalFile.slice(originalFile.lastIndexOf('/') + 1) : '',
+    F: originalFile,
+    props,
+    /** what %^C and %^L choose from: the initial content, then the clipboards */
+    clipboards: [initial, ...(clipboard !== null ? [clipboard] : []), ...(typeof context.killRing === 'string' ? [context.killRing] : [])],
+    tableRowNumber: context.tableRowNumber,
+  };
+}
+
+/**
+ * Runs the three expansion passes. `answers` are matched to the interactive placeholders in the order they appear in
+ * the pass-one result; a missing answer is the placeholder's default. Returns the text (before the final cleanup)
+ * and the placeholders found, which is what a caller asks the person about.
+ * @param {string} template @param {any} context @param {string[]} answers
+ */
+function runExpansion(template, context, answers) {
+  const v = templateValues(context);
+  /** @type {Cursor} */
+  const st = { buf: template, pos: 0 };
+
+  sweep(st, PLAIN_ESCAPE_RE, (m, cur) => {
+    if (m[0].startsWith('@#')) {
+      if (v.tableRowNumber === undefined || v.tableRowNumber === null) return;
+      insertAt(cur, String(v.tableRowNumber + (m[3] && m[4] ? Number(m[3] + m[4]) : 0)));
+      return;
+    }
+    const key = m[1][0];
+    if (key === '<') insertAt(cur, formatTime(v.now, m[2]));
+    else if (key === ':') insertAt(cur, v.props[m[1]] || '');
+    else if (key === 'i') {
+      const lead = cur.buf.slice(cur.buf.lastIndexOf('\n', cur.pos - 1) + 1, cur.pos);
+      insertAt(cur, placeInsertedText(v.i, lead));
+    } else if (key === 'x' || key === 'c') {
+      const lead = cur.buf.slice(cur.buf.lastIndexOf('\n', cur.pos - 1) + 1, cur.pos);
+      insertAt(cur, placeInsertedText(key === 'x' ? v.x : v.c, lead));
+    } else insertAt(cur, /** @type {any} */ (v)[key]);
+  });
+
+  st.pos = 0;
+  /** @type {any[]} */ const prompts = [];
+  /** @type {string[]} */ const strings = [];
+  const answerFor = (/** @type {string} */ fallback) => {
+    const given = answers[prompts.length - 1];
+    return given === undefined || given === null || given === '' ? fallback : String(given);
+  };
+  sweep(st, PROMPT_ESCAPE_RE, (m, cur) => {
+    if (m[0] === '%?') {
+      prompts.push({ kind: 'text', prompt: 'Text', default: '', completions: [] });
+      const given = answers[prompts.length - 1];
+      insertAt(cur, given === undefined || given === null ? '' : String(given));
+      return;
+    }
+    const items = m[1] !== undefined ? m[1].split('|') : [];
+    const label = items[0];
+    const dflt = items[1];
+    const completions = items.slice(2);
+    const key = m[2];
+    if (key === 'p') {
+      insertAt(cur, m[0]); // property prompts are not supported; the text stays as written
+      return;
+    }
+    if (key === 'C' || key === 'L') {
+      if (v.clipboards.length === 1) {
+        insertAt(cur, key === 'C' ? v.clipboards[0] : v.clipboards[0].trim() ? makeLinkString(v.clipboards[0]) : '');
+        return;
+      }
+      prompts.push({ kind: 'clipboard', prompt: 'Clipboard/kill value', default: v.clipboards[0], completions: [] });
+      const value = answerFor(v.clipboards[0]);
+      insertAt(cur, key === 'C' || !value.trim() ? value : makeLinkString(value));
+      return;
+    }
+    if (key === 'g' || key === 'G') {
+      prompts.push({ kind: 'tags', prompt: label ? label : 'Tags', default: '', completions: [] });
+      const given = answers[prompts.length - 1];
+      const ins = String(given ?? '').split(/[ \t]*:[ \t]*/).join(':');
+      if (ins.trim() === '') return;
+      if (cur.buf[cur.pos - 1] !== ':') insertAt(cur, ':');
+      insertAt(cur, ins);
+      if (cur.buf[cur.pos] !== ':') insertAt(cur, ':');
+      const lineStart = cur.buf.lastIndexOf('\n', cur.pos - 1) + 1;
+      let lineEnd = cur.buf.indexOf('\n', cur.pos);
+      if (lineEnd === -1) lineEnd = cur.buf.length;
+      const line = cur.buf.slice(lineStart, lineEnd);
+      if (/^\*+ /.test(line)) {
+        const aligned = alignHeadingTags(line);
+        const rest = line.slice(cur.pos - lineStart);
+        cur.buf = cur.buf.slice(0, lineStart) + aligned + cur.buf.slice(lineEnd);
+        cur.pos = lineStart + aligned.length - (aligned.endsWith(rest) ? rest.length : 0);
+      }
+      return;
+    }
+    if (key) {
+      const kind = /** @type {any} */ (TIMESTAMP_PROMPT_KINDS)[key];
+      prompts.push({
+        kind: 'timestamp',
+        prompt: label !== undefined && label !== '' ? label : kind.label,
+        default: '',
+        completions: [],
+        timestamp: { active: kind.active, hasTime: kind.hasTime },
+      });
+      insertAt(cur, promptedTimestamp(answers[prompts.length - 1], kind.active, key === 'T' || key === 'U' || kind.hasTime, v.now));
+      return;
+    }
+    prompts.push({ kind: 'string', prompt: label !== undefined ? label : 'Enter string', default: dflt || '', completions });
+    const value = answerFor(dflt || '');
+    strings.push(value);
+    insertAt(cur, value);
+  });
+
+  st.pos = 0;
+  sweep(st, BACKREF_RE, (m, cur) => {
+    const n = Number(m[1]);
+    if (n > strings.length) throw new Error(`The template refers to %\\${n}, but it has ${strings.length} %^{...} prompt${strings.length === 1 ? '' : 's'}.`);
+    insertAt(cur, strings[n - 1]);
+  });
+  return { text: st.buf, prompts };
+}
+
+/**
+ * The placeholders in `template` that need an answer, in the order they are asked: every %^{Prompt}, %^g, %^C,
+ * %^t (and the other timestamp letters), and %? (which this app asks for like any other prompt). Each is
+ * `{ kind, prompt, default, completions, timestamp? }`; `kind` is 'string', 'tags', 'clipboard', 'timestamp' or 'text'.
+ * `context` is the one expandTemplate takes, because %A and %^C add or drop prompts depending on what was shared.
+ * @param {string} template
+ */
+function scanPrompts(template, context = {}) {
+  return runExpansion(template, context, []).prompts;
+}
+
+/**
+ * Expands `template` the way org-capture-fill-template does. `context`:
+ *   now             -- the Date for %t %T %u %U and %<FORMAT> (default: now)
+ *   promptAnswers   -- strings, one per placeholder scanPrompts returns, in that order; a missing or empty answer
+ *                       to a %^{Prompt|default} is its default
+ *   tableRowNumber  -- @# (and @# + 3, @# - 2), or '' when not given
+ *   shared          -- { title, text, url } shared into the app; supplies %i, %a and %:link
+ *   clipboard       -- %x, and the clipboard choice for %^C and %^L
+ *   initial, annotation, killRing, userFullName, originalFile,
+ *   clock: { heading, file }, linkProps -- %i, %a, %c, %n, %f %F, %k %K, %:key
  *
- * Returns { text } — a bare %? is just another prompt answer
- * substituted directly into the text now (see scanPrompts' own docs for
- * why), so there's no separate cursor position left to report.
+ * Returns { text }: no blank lines before the text and a single newline at the end, or '' when nothing is left.
+ * Throws when %\N names a prompt the template does not have.
  * @param {string} template
  */
 function expandTemplate(template, context = {}) {
-  const now = /** @type {any} */ (context).now instanceof Date ? /** @type {any} */ (context).now : new Date();
-  const promptAnswers = /** @type {any} */ (context).promptAnswers || [];
-  const tableRowNumber = /** @type {any} */ (context).tableRowNumber;
-  const shared = /** @type {any} */ (context).shared || null; // content shared in from another app, for %i and %a (see capture-shared.js)
-  const clipboard = typeof /** @type {any} */ (context).clipboard === 'string' ? /** @type {any} */ (context).clipboard : ''; // for %x
-
-  const hhmm = formatTime(now, '%H:%M');
-  const TOKEN_RE = /%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?iax]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
-
-  let result = '';
-  let lastIndex = 0;
-  let promptIndex = 0;
-  let match;
-
-  while ((match = TOKEN_RE.exec(template))) {
-    result += template.slice(lastIndex, match.index);
-    lastIndex = TOKEN_RE.lastIndex;
-    const token = match[0];
-
-    if (token.startsWith('%<')) {
-      result += formatTime(now, match[1]);
-    } else if (token.startsWith('%^{')) {
-      const answer = promptAnswers[promptIndex];
-      result += answer !== undefined && answer !== null ? answer : '';
-      promptIndex += 1;
-    } else if (token.startsWith('%\\')) {
-      // %\N -- real org's own backreference: re-inserts the answer
-      // already given to the Nth %^{...}/%? prompt (1-based, in the
-      // order scanPrompts found them), rather than asking for it
-      // again. Never advances promptIndex itself -- it's a reference
-      // to an existing answer, not a new prompt of its own. Out of
-      // range (e.g. %\5 with only two real prompts) resolves to
-      // empty, the same graceful-fallback convention every other
-      // token in this table already uses for unavailable data.
-      const n = Number(match[3]);
-      const answer = promptAnswers[n - 1];
-      result += answer !== undefined && answer !== null ? answer : '';
-    } else if (token === '%i' || token === '%x') {
-      // org: initial content (here, what was shared in) and the clipboard. Later lines take whatever precedes the
-      // token on its line, and structure-looking lines are escaped (placeInsertedText).
-      const prefix = result.slice(result.lastIndexOf('\n') + 1);
-      result += placeInsertedText(token === '%i' ? (shared && shared.text) || '' : clipboard, prefix);
-    } else if (token === '%a') {
-      result += sharedAnnotation(shared || {}); // org: the annotation, normally a link; here, a link to the shared page
-    } else if (token === '%t') {
-      result += formatOrgTimestamp({ date: now, active: true });
-    } else if (token === '%T') {
-      result += formatOrgTimestamp({ date: now, active: true, time: hhmm });
-    } else if (token === '%u') {
-      result += formatOrgTimestamp({ date: now, active: false });
-    } else if (token === '%U') {
-      result += formatOrgTimestamp({ date: now, active: false, time: hhmm });
-    } else if (token.startsWith('@#')) {
-      if (tableRowNumber === undefined || tableRowNumber === null) {
-        result += '';
-      } else {
-        const sign = match[4];
-        const offset = match[5];
-        const n = sign && offset ? Number(sign + offset) : 0;
-        result += String(tableRowNumber + n);
-      }
-    } else if (token === '%?') {
-      const answer = promptAnswers[promptIndex];
-      result += answer !== undefined && answer !== null ? answer : '';
-      promptIndex += 1;
-    } else if (token.startsWith('%^') && match[6]) {
-      const answer = promptAnswers[promptIndex];
-      result += answer !== undefined && answer !== null ? answer : '';
-      promptIndex += 1;
-    }
-  }
-  result += template.slice(lastIndex);
-
-  return { text: result };
+  const { text } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
+  return { text: cleanupExpanded(text) };
 }
 
 /** Expands a capture template's own preText/template/postText fields
  *  together, as if they were one continuous template string, so
  *  %^{...} prompts and %\N backreferences are numbered/resolved
- *  consistently across all three pieces -- a %^{...} in preText is
- *  prompt #1 if it's the first one in reading order, and %\1 anywhere
- *  in template or postText correctly refers back to it. Calling
- *  expandTemplate three separate times instead would restart its own
- *  internal promptIndex at 0 for each piece, silently misassigning
- *  which answer belongs to which prompt the moment more than one
- *  piece has one.
+ *  consistently across all three pieces. The combined string is
+ *  expanded once, then split back into its pieces on a sentinel that
+ *  never reaches the document. The main text gets the same cleanup
+ *  expandTemplate applies; preText and postText only have their tabs
+ *  expanded.
  *
- *  Combines preText + template + postText into one string, joined by
- *  a sentinel virtually guaranteed never to occur in real template
- *  text (control characters, not valid in any real capture content),
- *  expands that combined string with a single expandTemplate call,
- *  then splits the result back into its three separately-expanded
- *  pieces on that same sentinel -- purely an internal implementation
- *  detail of this one function; the sentinel itself never reaches the
- *  document.
- *
- *  Returns { preText, text, postText } -- `text` matches
- *  expandTemplate's own return shape for the main template piece,
- *  so an existing caller only passing a bare template (preText/
- *  postText both '') still gets the exact same result out of `text`
+ *  Returns { preText, text, postText }.
  * @param {any} preText
  * @param {string} template
  * @param {any} [postText]
- *  as calling expandTemplate directly would. */
+ */
 function expandCaptureText(preText, template, postText, context = {}) {
   const SENTINEL = '\x01\x02CAPTURE_SPLIT\x02\x01';
   const combined = (preText || '') + SENTINEL + template + SENTINEL + (postText || '');
-  const { text } = expandTemplate(combined, context);
+  const { text } = runExpansion(combined, context, /** @type {any} */ (context).promptAnswers || []);
   const [pre, main, post] = text.split(SENTINEL);
-  return { preText: pre, text: main, postText: post };
+  return { preText: untabify(pre), text: cleanupExpanded(main), postText: untabify(post) };
 }
+
 
 // ---- (file+olp "" "heading 1" "heading n") target resolution -------------
 
@@ -311,7 +444,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
  */
 function mergeFragmentInto(target, fragment, prepend = false) {
   if (fragment.children.length > 0) {
-    const offset = target.level;
+    const offset = target.level || 0; // a file's top level has none
     /** @param {Heading[]} headings */
     const applyOffset = (headings) => {
       for (const h of headings) {
@@ -336,27 +469,6 @@ function mergeFragmentInto(target, fragment, prepend = false) {
   }
 }
 
-/**
- * Inserts already-expanded capture content into `target`, dispatched by
- * `type` (real org's own capture types):
- *   'item'       -- a plain bullet list item (the bullet itself, "- ",
- *                   is NOT part of the template string — org's item type
- *                   supplies it, matching the corrected example
- *                   templates in the request, which removed the manual
- *                   "- " prefix from the bullet-list template for this
- *                   exact reason)
- *   'checkitem'  -- a checkbox list item ("- [ ] ..."), same reasoning:
- *                   the "[ ]" is supplied by the type, not the template
- *   'plain'      -- the expanded text inserted verbatim, parsed as its
- *                   own org fragment and merged (see mergeFragmentInto)
- *                   -- this is the only type that can itself contain
- *                   heading syntax, properties drawers, TODO keywords,
- *                   etc., since it's the type real org uses for exactly
- *                   that (see the Meeting example)
- *   'table-line' -- one row appended to the nearest existing table under
- *                   target, or a brand new table created from this row
- *                   if target has none yet
- */
 /** Splits a table row line ("| a | b | c |") into trimmed cells, the same
  *  way body-parser.js's own (module-private) parseTableRow does — not
  *  imported from there since it isn't exported, but simple enough to
@@ -367,99 +479,6 @@ function splitTableRowLine(line) {
   return trimmed.split('|').map((c) => c.trim());
 }
 
-/** Finds the last (most recently added) table in a heading's body, or
- *  null if it has none. Used to re-locate the target table by position
- *  after every mutating call, since body-edit.js's commitLines fully
- *  re-parses heading.body on each call — any table object reference
- *  held from before that call is immediately stale afterward (this is
- *  documented in body-edit.js itself: "table must be a fresh reference
- *  from the current render"), so it can't be reused across a sequence
- * @param {Heading} heading
- *  of mutations the way a naive loop might assume. */
-function lastTableIn(heading) {
-  for (let i = heading.body.length - 1; i >= 0; i--) {
-    if (heading.body[i].type === 'table') return /** @type {import('./types.js').Table} */ (heading.body[i]);
-  }
-  return null;
-}
-
-/** The first table in a heading's body -- lastTableIn's own mirror,
- *  needed because a :prepend capture puts new content at the START of
- *  target.body, so the just-inserted (or just-extended) table is now
- * @param {Heading} heading
- *  the first one there, not the last. */
-function firstTableIn(heading) {
-  for (const node of heading.body) {
-    if (node.type === 'table') return node;
-  }
-  return null;
-}
-
-/** Finds the last item in the last list of a heading's body -- the
- *  list-item equivalent of lastTableIn, for the same reason: after
- *  mergeFragmentInto (which goes through no commitLines call, so no
- *  staleness risk there, but heading.body is still freshest read fresh
- * @param {Heading} heading
- *  right after the merge rather than trusting an intermediate reference). */
-function lastListItemIn(heading) {
-  for (let i = heading.body.length - 1; i >= 0; i--) {
-    const node = heading.body[i];
-    if (node.type === 'list' && node.items.length > 0) return node.items[node.items.length - 1];
-  }
-  return null;
-}
-
-/** The first item of the first list in a heading's body --
- *  lastListItemIn's own mirror, for the same :prepend reason
- *  firstTableIn exists: prepending puts the new item at the very
- *  start, so it's now the first item of the first list, not the last
- * @param {Heading} heading
- *  item of the last one. */
-function firstListItemIn(heading) {
-  for (const node of heading.body) {
-    if (node.type === 'list' && node.items.length > 0) return node.items[0];
-  }
-  return null;
-}
-
-/**
- * Inserts already-expanded capture content into `target`, dispatched by
- * `type` (real org's own capture types):
- *   'item'       -- a plain bullet list item (the bullet itself, "- ",
- *                   is NOT part of the template string — org's item type
- *                   supplies it, matching the corrected example
- *                   templates in the request, which removed the manual
- *                   "- " prefix from the bullet-list template for this
- *                   exact reason)
- *   'checkitem'  -- a checkbox list item ("- [ ] ..."), same reasoning:
- *                   the "[ ]" is supplied by the type, not the template
- *   'plain'      -- the expanded text inserted verbatim, parsed as its
- *                   own org fragment and merged (see mergeFragmentInto)
- *                   -- this is the only type that can itself contain
- *                   heading syntax, properties drawers, TODO keywords,
- *                   etc., since it's the type real org uses for exactly
- *                   that (see the Meeting example)
- *   'table-line' -- one row appended to the nearest existing table under
- *                   target, or a brand new table created from this row
- *                   if target has none yet
- *
- * `prepend` (real org's own :prepend t capture-template property) puts
- * the new content at the START of target instead of the end, for every
- * type. For table-line specifically, prepending with an existing table
- * inserts right after any leading rule row (so the new row lands as
- * the first DATA row, not literally above the header) rather than at
- * index 0 unconditionally; a brand-new table has nothing to prepend
- * relative to, so prepend doesn't change that case.
- *
- * item/checkitem/plain all go through the same parse-a-fragment-and-merge
- * path (see mergeFragmentInto) rather than body-edit.js's insertListItem,
- * deliberately: insertListItem requires an existing list item to insert
- * after, which a capture target may well not have yet (a heading that's
- * never been captured into before has no list at all) — parsing the
- * (one-line, for these two types) fragment and merging handles "no list
- * yet" and "list already exists, extend it" the same way, uniformly,
- * without needing to detect and branch on which case applies.
- */
 /** A vCard-style (or any KEY:value-shaped) plain body line whose own
  *  value is empty -- everything after the colon is nothing but
  *  whitespace and/or semicolons. Semicolons specifically, not just
@@ -517,90 +536,349 @@ function stripEmptyProperties(heading) {
   for (const child of heading.children || []) stripEmptyProperties(child);
 }
 
+/** @typedef {import('./types.js').Heading | import('./types.js').Doc} Host a heading, or a file's top level */
+/** @typedef {import('./types.js').Table} Table */
+/** The blank lines around filed text, the table row to use, whether a new table gets a header, and `recalculate`, which works out a table's #+TBLFM after a row is added.
+ *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
+const BLANK = (/** @type {string} */ l) => l.trim() === '';
+const ITEM_START_RE = /^[ \t]*(?:[-+]|\d+[.)])(?:[ \t]|$)/;
+
+/** The last node whose own lines come before whatever follows `node`'s subtree.
+ * @param {Host} node @returns {Host} */
+function lastNodeOf(node) {
+  let n = node;
+  while (n.children && n.children.length) n = n.children[n.children.length - 1];
+  return n;
+}
+
+/** The nodes a capture looks in: the heading's own text, or for a file's top level every node in file order.
+ * @param {Host} target @returns {Host[]} */
+function hostNodes(target) {
+  if (target.level) return [target];
+  /** @type {Host[]} */ const out = [];
+  const walk = (/** @type {Host} */ n) => {
+    out.push(n);
+    for (const c of n.children || []) walk(c);
+  };
+  walk(target);
+  return out;
+}
+
+/** `org-capture-empty-lines-before`: the blank lines that end at `at` become `n`; returns where the text goes.
+ * @param {string[]} lines @param {number} at @param {number} n */
+function blanksBefore(lines, at, n) {
+  let a = at;
+  while (a > 0 && BLANK(lines[a - 1])) a--;
+  lines.splice(a, at - a, ...Array(n).fill(''));
+  return a + n;
+}
+
+/** `org-capture-empty-lines-after`: the blank lines around `at`, just past the inserted text, become `n`.
+ * @param {string[]} lines @param {number} at @param {number} n */
+function blanksAfter(lines, at, n) {
+  let a = at;
+  while (a > 0 && BLANK(lines[a - 1])) a--;
+  let z = at;
+  while (z < lines.length && BLANK(lines[z])) z++;
+  lines.splice(a, z - a, ...Array(n).fill(''));
+}
+
+/** The node's text ends in exactly `n` blank lines.
+ * @param {Host} node @param {number} n */
+function endWithBlanks(node, n) {
+  const lines = node.bodyLines;
+  let a = lines.length;
+  while (a > 0 && BLANK(lines[a - 1])) a--;
+  lines.splice(a, lines.length - a, ...Array(n).fill(''));
+  node.body = parseBody(lines);
+}
+
+/** `org-end-of-meta-data` with FULL t: past blank lines, clock lines and drawers at the start of an entry's text (the
+ *  planning line and the properties drawer are not among its lines).
+ * @param {string[]} lines */
+function afterMetaData(lines) {
+  let i = 0;
+  while (i < lines.length) {
+    if (BLANK(lines[i]) || /^[ \t]*CLOCK:/.test(lines[i])) i++;
+    else if (/^[ \t]*:[^\s:]+:[ \t]*$/.test(lines[i]) && !/^[ \t]*:END:[ \t]*$/i.test(lines[i])) {
+      const end = lines.findIndex((l, k) => k > i && /^[ \t]*:END:[ \t]*$/i.test(l));
+      if (end < 0) break;
+      i = end + 1;
+    } else break;
+  }
+  return i;
+}
+
+/** The blank lines to leave before and after what is filed (`:empty-lines-before`/`-after`, else `:empty-lines`, else 0).
+ * @param {PlaceOptions} opts @returns {[number, number]} */
+function emptyLinesOf(opts) {
+  const num = (/** @type {unknown} */ v) => (Number.isFinite(Number(v)) && v !== null && v !== undefined && v !== '' ? Math.max(0, Math.floor(Number(v))) : undefined);
+  const both = num(opts.emptyLines);
+  return [num(opts.emptyLinesBefore) ?? both ?? 0, num(opts.emptyLinesAfter) ?? both ?? 0];
+}
+
+/** Files heading text (`org-capture-place-entry`): a child of the target, first or last.
+ * @param {Host} target @param {Heading[]} headings @param {boolean} prepend @param {number} before @param {number} after */
+function placeHeadings(target, headings, prepend, before, after) {
+  endWithBlanks(prepend ? target : lastNodeOf(target), before);
+  if (prepend) target.children.unshift(...headings);
+  else target.children.push(...headings);
+  target.collapsed = false;
+  endWithBlanks(lastNodeOf(headings[headings.length - 1]), after);
+}
+
+/** Files text that holds no heading (`org-capture-place-plain-text`): the end of the entry's own text, or its start past
+ *  the meta data; for a file, its end or start.
+ * @param {Host} target @param {string[]} text @param {boolean} prepend @param {number} before @param {number} after */
+function placePlainText(target, text, prepend, before, after) {
+  const top = !target.level;
+  const host = !prepend && top ? lastNodeOf(target) : target;
+  const lines = host.bodyLines;
+  let at = prepend ? (top ? 0 : afterMetaData(lines)) : lines.length;
+  at = blanksBefore(lines, at, before);
+  lines.splice(at, 0, ...text);
+  blanksAfter(lines, at + text.length, after);
+  host.body = parseBody(lines);
+}
+
+/** @param {string} line */
+function indentOf(line) {
+  return /^[ \t]*/.exec(line)?.[0].replace(/\t/g, '        ').length ?? 0;
+}
+
+/** Files a list item (`org-capture-place-item`): into the first list of the entry's text (the file's text for a top
+ *  level), else as a new list.
+ * @param {Host} target @param {string} lead @param {string} text @param {boolean} prepend @param {number} before @param {number} after */
+function placeItem(target, lead, text, prepend, before, after) {
+  const body = text.replace(/^\s+|\s+$/g, '');
+  const itemLines = (ITEM_START_RE.test(body) ? body : lead + body.split('\n').join('\n  ')).split('\n');
+  /** @type {{ host: Host, list: ReturnType<typeof findLists>[number] } | null} */
+  let found = null;
+  for (const host of hostNodes(target)) {
+    const lists = findLists(host.bodyLines);
+    if (lists.length) {
+      found = { host, list: lists[0] };
+      break;
+    }
+  }
+  if (!found) {
+    // a file that starts with a heading has the new list in that heading's text; Emacs looks from the file's start
+    const top = !target.level;
+    const host = top ? (prepend ? (target.bodyLines.length === 0 && target.children.length ? target.children[0] : target) : lastNodeOf(target)) : target;
+    const lines = host.bodyLines;
+    let at = prepend ? 0 : lines.length;
+    at = blanksBefore(lines, at, before);
+    lines.splice(at, 0, ...itemLines);
+    blanksAfter(lines, at + itemLines.length, after);
+    host.body = parseBody(lines);
+    return { host, line: at };
+  }
+  const { host, list } = found;
+  const lines = host.bodyLines;
+  const first = list.items[0];
+  // Emacs indents a new last item like the list; one put first is not indented
+  const indent = prepend ? 0 : indentOf(lines[first.line]);
+  const placed = itemLines.map((l) => (indentOf(l) < indent ? ' '.repeat(indent - indentOf(l)) + l : l));
+  let at = prepend ? list.start : list.end;
+  if (!prepend) at = blanksBefore(lines, at, Math.min(1, before));
+  lines.splice(at, 0, ...placed);
+  if (prepend) blanksAfter(lines, at + placed.length, Math.min(1, after));
+  host.bodyLines = repairList(lines, at, prepend && /^\d/.test(first.bullet) === /^[-+*]/.test(itemLines[0].trim()));
+  host.body = parseBody(host.bodyLines);
+  return { host, line: at };
+}
+
 /**
- * @param {any} target
- * @param {string} type
- * @param {string} expandedText
+ * `org-list-repair` after an item is added at `line`: the items of its level take the first item's kind of bullet, and ordered
+ * bullets are numbered again. `cycle` first turns a first item that is the other kind from its list into the list's kind.
+ * @param {string[]} lines @param {number} line @param {boolean} cycle
  */
-function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '') {
-  if (type === 'item') {
-    const fragment = parseOrg('- ' + expandedPreText + expandedText + expandedPostText);
-    mergeFragmentInto(target, fragment, prepend);
-    return prepend ? firstListItemIn(target) : lastListItemIn(target);
+function repairList(lines, line, cycle) {
+  let out = [...lines];
+  const found = listAt(out, line);
+  if (!found) return out;
+  const items = found.list.items;
+  const top = items.filter((it) => it.indent === items[found.index].indent && it.parent === items[found.index].parent);
+  if (cycle && top.length > 1) {
+    const ordered = /^\d/.test(top[1].bullet);
+    out[line] = out[line].replace(/^([ \t]*)([-+*]|\d+[.)])/, (_m, sp) => sp + (ordered ? '1.' : '-'));
+    top[0] = { ...top[0], bullet: ordered ? '1.' : '-' };
   }
-
-  if (type === 'checkitem') {
-    const fragment = parseOrg('- [ ] ' + expandedPreText + expandedText + expandedPostText);
-    mergeFragmentInto(target, fragment, prepend);
-    return prepend ? firstListItemIn(target) : lastListItemIn(target);
+  const lead = top[0].bullet;
+  for (const it of top.slice(1)) {
+    const bullet = /^\d/.test(lead) ? '1' + lead.slice(-1) : lead;
+    out[it.line] = out[it.line].replace(/^([ \t]*)([-+*]|\d+[.)])/, (_m, sp) => sp + bullet);
   }
+  if (/^\d/.test(lead)) out = renumber(out, line);
+  return out;
+}
 
-  if (type === 'table-line') {
-    const cells = splitTableRowLine(expandedText);
-    let table = prepend ? firstTableIn(target) : lastTableIn(target);
+/** @param {Host} host @returns {Table[]} */
+function tablesOf(host) {
+  return /** @type {Table[]} */ ((host.body || []).filter((n) => n.type === 'table'));
+}
 
-    if (table) {
-      // An existing table -- preText/postText were already used (if
-      // ever) when this table was first created below; never touched
-      // again on a subsequent row.
-      const hasLeadingRule = table.rows[1] && table.rows[1].type === 'rule';
-      const insertAfterIndex = prepend ? (hasLeadingRule ? 1 : -1) : table.rows.length - 1;
-      const newRowIndex = insertAfterIndex + 1;
-      insertTableRow(target, table, insertAfterIndex);
-      table = /** @type {import('./types.js').Table} */ (prepend ? firstTableIn(target) : lastTableIn(target)); // re-fetch: insertTableRow's commitLines just re-parsed target.body
-      for (let i = 0; i < cells.length; i++) {
-        setTableCell(target, table, newRowIndex, i, cells[i]);
-        table = /** @type {import('./types.js').Table} */ (prepend ? firstTableIn(target) : lastTableIn(target)); // re-fetch after every cell too, same reason
-      }
-    } else {
-      // No table yet -- this IS the "once" moment: create it (exactly
-      // as before), then wrap it with preText/postText, both inserted
-      // directly adjacent to the table itself (no separator there
-      // specifically -- see this function's own doc comment above for
-      // why), so ordinary org table-continuation and this app's own
-      // existing #+TBLFM:/#+PLOT: adjacency recognition both apply for
-      // free.
-      let newTable = insertTable(target, { rows: 1, cols: cells.length || 1, headerRule: false });
-      for (let i = 0; i < cells.length; i++) {
-        setTableCell(target, newTable, 0, i, cells[i]);
-        newTable = /** @type {import('./types.js').Table} */ (lastTableIn(target));
-      }
-      // Captured as plain numbers, not held as an object reference --
-      // commitLines below invalidates any object reference the moment
-      // it's called, but a position captured as a number beforehand
-      // stays valid: postText's own insertion point doesn't shift just
-      // because preText gets inserted earlier in the body (both are
-      // relative to positions computed before EITHER insertion runs).
-      const tableStart = newTable.lineIndex;
-      const tableEnd = newTable.lineIndex + newTable.lineCount;
+/** `commitLines` takes a heading; a file's top level has the same lines and body.
+ * @param {Host} host @param {number} at @param {number} count @param {string[]} lines */
+function commit(host, at, count, lines) {
+  commitLines(/** @type {Heading} */ (host), at, count, lines);
+}
 
-      if (expandedPostText) {
-        const postLines = expandedPostText.split('\n');
-        const needsSeparatorAfter = target.bodyLines.length > tableEnd && target.bodyLines[tableEnd].trim() !== '';
-        commitLines(target, tableEnd, 0, needsSeparatorAfter ? [...postLines, ''] : postLines);
-      }
-      if (expandedPreText) {
-        // tableStart is still correct here even after the postText
-        // insertion above: that insertion happened at tableEnd (>=
-        // tableStart), which never shifts anything AT OR BEFORE
-        // tableStart -- inserting at tableStart itself, next, is
-        // exactly as valid as if postText had never run.
-        const preLines = expandedPreText.split('\n');
-        const needsSeparatorBefore = tableStart > 0 && target.bodyLines[tableStart - 1].trim() !== '';
-        commitLines(target, tableStart, 0, needsSeparatorBefore ? ['', ...preLines] : preLines);
+/** @param {Host} target @returns {{ host: Host, table: Table } | null} */
+function firstTableInFile(target) {
+  for (const host of hostNodes(target)) {
+    const table = tablesOf(host)[0];
+    if (table) return { host, table };
+  }
+  return null;
+}
+
+/** Where a row goes in an existing table (`:table-line-pos`, else after the header rule when prepending, else the end).
+ * @param {Table} table @param {boolean} prepend @param {string} [pos] */
+function tableRowIndex(table, prepend, pos) {
+  const rows = table.rows;
+  const spec = pos ? /(I+)([-+][0-9]+)/.exec(pos) : null;
+  if (spec) {
+    const rules = rows.map((r, i) => (r.type === 'rule' ? i : -1)).filter((/** @type {number} */ i) => i >= 0);
+    const count = spec[1].length;
+    if (count > rules.length) throw new Error(`Invalid table line specification "${pos}"`);
+    const delta = Number(spec[2]);
+    // two forward-line moves from the table's start, each stopping at an end of the table
+    return Math.min(rows.length, Math.max(0, rules[count - 1] + delta + (delta < 0 ? 0 : -1)) + 1);
+  }
+  if (prepend) {
+    const rule = rows.findIndex((r) => r.type === 'rule');
+    if (rule < 0) return 0;
+    const next = rows.findIndex((r, i) => i > rule && r.type === 'row');
+    return next >= 0 ? next : rows.length;
+  }
+  return rows.length;
+}
+
+/**
+ * The number the captured row will have among the table's lines (what `@#` in a template stands for), rules not counted.
+ * @param {Host} target @param {boolean} [prepend] @param {PlaceOptions} [opts]
+ */
+function plannedTableRow(target, prepend = false, opts = {}) {
+  const found = firstTableInFile(target);
+  if (!found) return opts.tableHeader === false ? 1 : 2;
+  try {
+    const k = tableRowIndex(found.table, prepend, opts.tableLinePos);
+    return found.table.rows.slice(0, k).filter((r) => r.type === 'row').length + 1;
+  } catch {
+    return 1;
+  }
+}
+
+/** Files a table row (`org-capture-place-table-line`): into the first table, or into a new one at the end of the text.
+ * @param {Host} target @param {string} text @param {boolean} prepend @param {string} pre @param {string} post @param {PlaceOptions} opts */
+function placeTableLine(target, text, prepend, pre, post, opts) {
+  const cells = splitTableRowLine(text);
+  const found = firstTableInFile(target);
+  if (found) {
+    const { host, table } = found;
+    const at = tableRowIndex(table, prepend, opts.tableLinePos);
+    table.rows.splice(at, 0, { type: 'row', cells });
+    // the formulas follow the rows (org-table-fix-formulas), then the table is worked out again
+    if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '@', {}, table.rows.slice(0, at + 1).filter((r) => r.type === 'row').length - 1, 1);
+    commit(host, table.lineIndex, table.lineCount, serializeTable(table, true));
+    const now = tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
+    if (now && now.tblfm && opts.recalculate) {
+      const rows = opts.recalculate(now);
+      if (rows) {
+        now.rows = rows;
+        commit(host, now.lineIndex, now.lineCount, serializeTable(now, true));
       }
     }
-    return prepend ? firstTableIn(target) : lastTableIn(target);
+    return tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
   }
+  const host = !target.level ? lastNodeOf(target) : target;
+  /** @type {import('./types.js').TableRow[]} */
+  const rows = opts.tableHeader === false ? [{ type: 'row', cells }] : [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
+  const tableLines = serializeTable({ type: 'table', rows, tblfm: null, lineIndex: 0, lineCount: 0 }, true);
+  const start = host.bodyLines.length;
+  commit(host, start, 0, tableLines);
+  const end = start + tableLines.length;
+  // preText and postText (this app's own) go directly beside the new table, once
+  if (post) {
+    const postLines = post.split('\n');
+    const needsSeparatorAfter = host.bodyLines.length > end && host.bodyLines[end].trim() !== '';
+    commit(host, end, 0, needsSeparatorAfter ? [...postLines, ''] : postLines);
+  }
+  if (pre) {
+    const preLines = pre.split('\n');
+    const needsSeparatorBefore = start > 0 && host.bodyLines[start - 1].trim() !== '';
+    commit(host, start, 0, needsSeparatorBefore ? ['', ...preLines] : preLines);
+  }
+  return tablesOf(host)[0] || null;
+}
 
-  // 'plain' (and the fallback for anything unrecognized -- inserting the
-  // text verbatim is a safer default than silently discarding it)
-  const fragment = parseOrg(expandedPreText + expandedText + expandedPostText);
+/**
+ * Files already-expanded capture text the way `org-capture` does.
+ * @param {Host} target a heading, or a file's top level
+ * @param {string} type entry, plain, item, checkitem or table-line
+ * @param {string} expandedText
+ * @param {boolean} [prepend]
+ * @param {boolean} [omitEmptyEntries]
+ * @param {string} [expandedPreText]
+ * @param {string} [expandedPostText]
+ * @param {PlaceOptions} [opts]
+ */
+function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '', opts = {}) {
+  const [before, after] = emptyLinesOf(opts);
+  if (type === 'item' || type === 'checkitem') {
+    const placed = placeItem(target, type === 'item' ? '- ' : '- [ ] ', expandedPreText + expandedText + expandedPostText, prepend, before, after);
+    for (const node of placed.host.body || []) {
+      if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
+    }
+    return null;
+  }
+  if (type === 'table-line') return placeTableLine(target, expandedText, prepend, expandedPreText, expandedPostText, opts);
+
+  // 'entry' and 'plain' (and the fallback for anything unrecognized -- filing the text as written is safer than discarding it)
+  const text = expandedPreText + expandedText + expandedPostText;
+  const fragment = parseOrg(text);
   if (omitEmptyEntries) for (const heading of fragment.children) stripEmptyProperties(heading);
-  const producedHeadings = fragment.children.length > 0;
-  mergeFragmentInto(target, fragment, prepend);
-  if (!producedHeadings) return null;
-  return prepend ? target.children[0] : target.children[target.children.length - 1];
+  if (fragment.children.length > 0) {
+    const offset = target.level || 0; // a file's top level has none
+    const shift = (/** @type {Heading[]} */ headings) => {
+      for (const h of headings) {
+        h.level += offset;
+        shift(h.children);
+      }
+    };
+    shift(fragment.children);
+    placeHeadings(target, fragment.children, prepend, before, after);
+    return prepend ? target.children[0] : target.children[target.children.length - 1];
+  }
+  placePlainText(target, text.split('\n'), prepend, before, after);
+  return null;
+}
+
+/**
+ * `insertCapture` for a whole file: the newline that ends the file is not a line of its own, so it stays at the end.
+ * @param {Host} doc the file
+ * @param {Host} target a heading of it, or the file itself
+ * @param {string} type @param {string} expandedText @param {boolean} [prepend] @param {boolean} [omitEmptyEntries]
+ * @param {string} [expandedPreText] @param {string} [expandedPostText] @param {Parameters<typeof insertCapture>[7]} [opts]
+ */
+function fileCapture(doc, target, type, expandedText, prepend, omitEmptyEntries, expandedPreText, expandedPostText, opts) {
+  const ends = (/** @type {Host} */ node) => node.bodyLines.length > 0 && node.bodyLines[node.bodyLines.length - 1] === '';
+  const newline = ends(lastNodeOf(doc));
+  if (newline) {
+    const last = lastNodeOf(doc);
+    last.bodyLines.pop();
+    last.body = parseBody(last.bodyLines);
+  }
+  try {
+    return insertCapture(target, type, expandedText, prepend, omitEmptyEntries, expandedPreText, expandedPostText, opts);
+  } finally {
+    if (newline) {
+      const last = lastNodeOf(doc);
+      last.bodyLines.push('');
+      last.body = parseBody(last.bodyLines);
+    }
+  }
 }
 
 /**
@@ -716,6 +994,8 @@ export {
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
+  fileCapture,
+  plannedTableRow,
   resolveCaptureFileId,
   getCaptureFileScheme,
   CAPTURE_FILE_SCHEMES,

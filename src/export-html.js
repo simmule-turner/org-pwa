@@ -17,7 +17,7 @@
 /** @typedef {import('./types.js').Doc} Doc */
 /** @template {import('./org-elements.js').OrgElement['type']} T @typedef {Extract<import('./org-elements.js').OrgElement, { type: T }>} OrgEl */
 /** @typedef {{ parent?: string, bare?: boolean, first?: boolean, footnote?: boolean }} ElCtx */
-/** @typedef {{ heading: Heading, level: number, number: number[], archived: boolean, children: OutlineNode[] }} OutlineNode */
+/** @typedef {{ heading: Heading, level: number, number: number[], archived: boolean, unnumbered: string | null, children: OutlineNode[] }} OutlineNode  `unnumbered` is the :UNNUMBERED: value in force here (the heading's own, else its parent's), or null. */
 /**
  * HTML export, following Org's own `ox-html`: the same document structure (outline containers, `h2` for top-level
  * headings under an `h1` title, `org-ul` / `org-ol` / `org-dl` lists, tables with a `colgroup` and a `thead`, figures,
@@ -35,6 +35,7 @@ import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tas
 import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
 import { parseInline, extractLatexFragments } from './inline-markup.js';
 import { parseElements, parseAttributes } from './org-elements.js';
+import { tableModel } from './table-model.js';
 import { citeExportFor, dropSilentCitations } from './cite.js';
 import { ENTITIES } from './entities.js';
 import { resolveTodoSequence } from './todo-cycle.js';
@@ -89,6 +90,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     emph: true,
     entities: true,
     footnotes: true,
+    tables: true,
     stat: true,
     tasks: true,
     planning: false,
@@ -145,6 +147,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case '*': o.emph = !isNil(v); break;
       case 'e': o.entities = !isNil(v); break;
       case 'f': o.footnotes = !isNil(v); break;
+      case '|': o.tables = !isNil(v); break;
       case 'stat': o.stat = !isNil(v); break;
       case 'tasks': o.tasks = isNil(v) ? false : v === 'todo' || v === 'done' ? v : true; break;
       case 'p': o.planning = v === 't'; break;
@@ -561,6 +564,13 @@ function literal(state, value) {
  */
 function renderNodes(state, nodes) {
   if (state.cite) nodes = dropSilentCitations(nodes, (c) => state.cite.formatCitation(c) === null);
+  if (!state.options.footnotes) {
+    // a removed reference takes the blanks that follow it along (org-element-extract-element)
+    nodes = nodes.map((/** @type {import('./types.js').InlineNode} */ n, i) => {
+      const before = nodes[i - 1];
+      return before && n.type === 'text' && (before.type === 'footnote-ref' || before.type === 'footnote-def') ? { ...n, value: n.value.replace(/^[ \t]+/, '') } : n;
+    });
+  }
   const quotes = state.options.smart ? quoteStatuses(nodes) : null;
   return nodes
     .map((n) => {
@@ -636,8 +646,9 @@ function renderNode(state, node) {
     case 'latex':
       return mathHtml(state, node.source, node.displayMode);
     case 'footnote-ref':
-      return footnoteRef(state, node.label);
+      return state.options.footnotes ? footnoteRef(state, node.label) : '';
     case 'footnote-def': {
+      if (!state.options.footnotes) return '';
       const label = node.label === null || node.label === '' ? 'anon-' + (state.fnOrder.length + 1) : node.label;
       return footnoteRef(state, label, `<p class="footpara">${renderNodes(state, node.children)}</p>`);
     }
@@ -672,7 +683,7 @@ function citeSegmentsHtml(state, segments) {
 function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
   const plain = target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '');
-  const name = /^https?:/i.test(plain) ? plain.replace(/^.*\//, '') : plain;
+  const name = plain.replace(/^.*\//, '');
   return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${attrs}${closing}`;
 }
 
@@ -694,16 +705,16 @@ function internalLinkLabel(state, rawTarget) {
     const node = state.targetHeadings.get(key);
     return numbered(node) ? node.number.join('.') : 'No description for this link';
   }
+  const id = !t.startsWith('*') && !t.startsWith('#') ? state.namedElements.get(t) : undefined; // a named element comes before a heading
+  if (id) {
+    const cap = state.captioned.find((c) => c.id === id);
+    return cap ? String(cap.n) : 'No description for this link';
+  }
   const res = resolveLinkTarget(state.doc, t);
   if (res.type === 'heading') {
     const node = state.headingNodes.get(res.heading);
     if (!node) return null;
     return numbered(node) ? node.number.join('.') : renderInline(state, titleOf(res.heading));
-  }
-  const id = state.namedElements.get(t);
-  if (id) {
-    const cap = state.captioned.find((c) => c.id === id);
-    if (cap) return String(cap.n);
   }
   return null;
 }
@@ -846,11 +857,13 @@ function itemHtml(state, item, listType) {
     return `<dt${cls}>${box}${tag}</dt><dd>${inner.replace(/\n$/, '')}</dd>`;
   }
   const cls = item.checkbox ? ` class="${item.checkbox}"` : '';
-  const value = item.counter !== null ? ` value="${item.counter}"` : '';
+  // a tag in a list that is not descriptive (its first item has none) becomes the value or the id, ahead of the counter
+  const tag = item.tag === null || item.tag === undefined ? null : renderInline(state, item.tag);
+  const attr = listType === 'ordered' ? 'value' : 'id';
+  const value = tag !== null ? ` ${attr}="${tag}"` : item.counter !== null ? ` value="${item.counter}"` : '';
   return `<li${cls}${value}>${inner.replace(/\n$/, '')}</li>`;
 }
 
-const NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$|^[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$/;
 
 /** The box before a checklist item, by org-html-checkbox-type. @param {ExportState} state @param {string} status  on | off | trans */
 function checkboxHtml(state, status) {
@@ -865,43 +878,13 @@ function checkboxHtml(state, status) {
  * @param {OrgEl<'table'>} el
  */
 function tableHtml(state, el) {
+  if (!state.options.tables) return '';
   const aff = el.aff;
-  // alignment/width cookie rows (`<l>`, `<r10>`, `<c>`, `<12>`) and the `/` marker column are table directives
-  let rows = el.rows;
-  /** @type {any[]} */ const cookieAlign = [];
-  rows = rows.filter((row) => {
-    if (row.rule) return true;
-    if (row.cells.length && row.cells.every((c) => c === '' || /^<[lrc]?\d*>$/.test(c)) && row.cells.some((c) => c)) {
-      row.cells.forEach((c, /** @type {number} */ i) => {
-        const m = /^<([lrc])?\d*>$/.exec(c);
-        if (m && m[1]) cookieAlign[i] = m[1];
-      });
-      return false;
-    }
-    return true;
-  });
-  const data = rows.filter((r) => !r.rule);
-  if (!data.length) return '';
-  const columns = Math.max(...data.map((r) => r.cells.length));
-  /** @type {any[]} */ const align = [];
-  for (let c = 0; c < columns; c++) {
-    if (cookieAlign[c]) {
-      align.push(cookieAlign[c] === 'r' ? 'right' : cookieAlign[c] === 'c' ? 'center' : 'left');
-      continue;
-    }
-    const cells = data.map((r) => (r.cells[c] || '').trim()).filter(Boolean);
-    const numbers = cells.filter((x) => NUMBER_RE.test(x)).length;
-    align.push(cells.length && numbers / cells.length >= 0.5 ? 'right' : 'left');
-  }
-  // groups of rows separated by rules; the first group is a header when a rule follows it and more rows come after
-  const groups = /** @type {any[][]} */ ([[]]);
-  for (const row of rows) {
-    if (row.rule) {
-      if (groups[groups.length - 1].length) groups.push([]);
-    } else groups[groups.length - 1].push(row);
-  }
-  if (!groups[groups.length - 1].length) groups.pop();
-  const hasHeader = groups.length > 1 && rows.some((r) => r.rule) && !rows[0].rule;
+  const model = tableModel(el.rows);
+  const { rows: all, specials, offset, hasHeader, groupOf, alignment, leftBorder, rightBorder, firstIndex } = model;
+  if (!all.some((r) => !r.rule)) return '';
+  const firstRow = firstIndex >= 0 ? all[firstIndex] : all.find((r) => !r.rule);
+  if (!firstRow) return '';
   const attrs = parseAttributes(aff && aff.attr.html);
   // org-html-table-default-attributes, which a page of HTML 5 does not carry
   const base = html5Page ? {} : { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
@@ -911,24 +894,37 @@ function tableHtml(state, el) {
   const idAttr = el.__id ? ` id="${escapeAttr(el.__id)}"` : '';
   let out = `<table${idAttr}${tableAttrs}>\n`;
   if (caption !== null) out += `<caption class="t-above"><span class="table-number">Table ${++state.counters.table}:</span> ${caption}</caption>\n`;
-  out += '\n<colgroup>\n' + align.map((a) => `<col  class="org-${a}"${closing}`).join('\n\n') + '\n</colgroup>\n';
+  const specs = [];
+  for (let c = offset; c < firstRow.cells.length; c++) {
+    const starts = c === offset || leftBorder(c);
+    const ends = c === firstRow.cells.length - 1 || rightBorder(c);
+    specs.push((starts ? '\n<colgroup>' : '') + `\n<col  class="org-${alignment(c)}"${closing}` + (ends ? '\n</colgroup>' : ''));
+  }
+  out += specs.join('\n') + '\n';
   /**
-   * @param {any} c
+   * @param {string} text
    * @param {string} tag
-   * @param {any} [a]
+   * @param {number} column
    */
-  const cell = (c, tag, a) => `<${tag}${tag === 'th' ? ' scope="col"' : ''} class="org-${a}">${renderInline(state, c.trim()) || NBSP}</${tag}>`;
-  /**
-   * @param {any} row
-   * @param {string} tag
-   */
-  const rowHtml = (row, tag) => '<tr>\n' + Array.from({ length: columns }, (_, c) => cell(row.cells[c] || '', tag, align[c])).join('\n') + '\n</tr>';
-  groups.forEach((group, gi) => {
-    const head = hasHeader && gi === 0;
-    out += head ? '<thead>\n' : '<tbody>\n';
-    out += group.map((r) => rowHtml(r, head ? 'th' : 'td')).join('\n\n') + '\n';
-    out += head ? '</thead>\n' : '</tbody>\n';
+  const cell = (text, tag, column) => `<${tag}${tag === 'th' ? ' scope="col"' : ''} class="org-${alignment(column)}">${renderInline(state, text.trim()) || NBSP}</${tag}>`;
+  // consecutive standard rows between rules make one group of the output
+  /** @type {number[][]} */ const blocks = [];
+  let open = false;
+  all.forEach((r, i) => {
+    if (r.rule) open = false;
+    else if (!specials[i]) {
+      if (!open) { blocks.push([]); open = true; }
+      blocks[blocks.length - 1].push(i);
+    }
   });
+  for (const block of blocks) {
+    const head = hasHeader && groupOf[block[0]] === 1;
+    out += head ? '<thead>\n' : '<tbody>\n';
+    out += block
+      .map((i) => '<tr>\n' + all[i].cells.slice(offset).map((t, k) => cell(t, head ? 'th' : 'td', k + offset)).join('\n') + '\n</tr>')
+      .join('\n\n') + '\n';
+    out += head ? '</thead>\n' : '</tbody>\n';
+  }
   return out + '</table>';
 }
 
@@ -1062,7 +1058,7 @@ function drawerHtml(state, el, ctx) {
   const d = state.options.drawers;
   const name = el.name.toUpperCase();
   const allowed = d.all || (d.include ? d.include.some((/** @type {any} */ x) => x.toUpperCase() === name) : !(d.exclude || []).some((/** @type {any} */ x) => x.toUpperCase() === name));
-  if (!allowed || name === 'PROPERTIES') return '';
+  if (!allowed) return '';
   return elementsHtml(state, nestedElements(state, el.lines, false), ctx);
 }
 
@@ -1202,20 +1198,23 @@ function isArchived(h) {
  * @param {number[]} numbers
  * @returns {OutlineNode[]}
  */
-function buildOutline(state, headings, levelOffset, filter, numbers) {
+function buildOutline(state, headings, levelOffset, filter, numbers, /** @type {string | null} */ inherited = null) {
   /** @type {OutlineNode[]} */ const out = [];
   let n = 0;
   for (const heading of headings) {
     if (!filter(heading)) continue;
-    n++;
+    const own = heading.properties && Object.keys(heading.properties).find((k) => k.toUpperCase() === 'UNNUMBERED');
+    const unnumbered = own ? String(heading.properties[own]) : inherited;
+    const isUnnumbered = unnumbered !== null && unnumbered.trim().toLowerCase() !== 'nil';
+    if (!isUnnumbered) n++;
     const number = [...numbers, n];
     const archived = isArchived(heading) && state.options.arch !== true;
     if (archived && state.options.arch === false) {
       n--;
       continue;
     }
-    const node = { heading, level: heading.level - levelOffset, number, archived, children: /** @type {OutlineNode[]} */ ([]) };
-    node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number);
+    const node = { heading, level: heading.level - levelOffset, number, archived, unnumbered: isUnnumbered ? unnumbered : null, children: /** @type {OutlineNode[]} */ ([]) };
+    node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number, unnumbered);
     out.push(node);
   }
   return out;
@@ -1233,7 +1232,7 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
     const done = state.doneKeywords.includes(heading.todo);
     parts.push(`<span class="${done ? 'done' : 'todo'} ${escapeHtml(heading.todo)}">${escapeHtml(heading.todo)}</span>`);
   }
-  if (heading.priority && options.pri) parts.push(`<span class="priority">[#${escapeHtml(heading.priority)}]</span>`);
+  if (heading.priority && options.pri) parts.push(`<span class="priority">[${escapeHtml(heading.priority)}]</span>`);
   parts.push(renderInline(state, titleOf(heading)) || '(untitled)');
   let html = parts.join(' ');
   if (options.tags && !(inToc && options.tags === 'not-in-toc') && heading.tags && heading.tags.length) {
@@ -1248,7 +1247,7 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
  */
 function numberLabel(state, node) {
   const { num } = state.options;
-  if (!num) return '';
+  if (!num || node.unnumbered !== null) return '';
   if (typeof num === 'number' && node.level > num) return '';
   return `<span class="section-number-${node.level + 1}">${node.number.join('.')}.</span> `;
 }
@@ -1336,11 +1335,11 @@ function deepListHtml(state, nodes) {
  * @returns {string}
  */
 function tocListHtml(state, nodes, maxDepth, depth = 1) {
-  const visible = nodes.filter((n) => n.level <= Math.min(state.options.H, maxDepth));
+  const visible = nodes.filter((n) => n.level <= Math.min(state.options.H, maxDepth) && !/^notoc$/i.test((n.unnumbered || '').trim()));
   if (!visible.length) return '';
   const items = visible.map((node) => {
     const id = state.headingIds.get(node.heading) || '';
-    const label = (state.options.num && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
+    const label = (state.options.num && node.unnumbered === null && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
     const sub = tocListHtml(state, node.children, maxDepth, depth + 1);
     return `<li><a href="#${escapeAttr(id)}">${label}</a>${sub ? '\n' + sub + '\n' : ''}</li>`;
   });
@@ -1516,7 +1515,8 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   state.fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
-  const filter = buildFilter(state);
+  const passes = buildFilter(state);
+  const filter = (/** @type {any} */ h) => h.title.replace(/^COMMENT\s+/, '').trim() !== 'Footnotes' && passes(h); // Org keeps its footnote section out of the export
 
   const roots = scope ? scope.children || [] : doc.children || [];
   const levelOffset = scope ? scope.level : 0;
@@ -1586,6 +1586,15 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
     }
   };
   collect(state.outline);
+  // the definitions in the Footnotes section are still found, though the section itself is not exported
+  /** @param {any[]} headings */
+  const sectionDefs = (headings) => {
+    for (const h of headings) {
+      if (h.title.replace(/^COMMENT\s+/, '').trim() === 'Footnotes') state.fnDefsCollect(parseElements(h.bodyLines || []));
+      sectionDefs(h.children || []);
+    }
+  };
+  sectionDefs(state.doc.children || []);
   for (const t of targetsInLines(preamble)) targetId(state, t.name);
 
   const radio = new Set();
@@ -1617,9 +1626,11 @@ function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, 
   const { options } = state;
   const out = [];
   const title = scope ? titleOf(scope) : keywordValue(doc, 'TITLE');
-  if (title && options.title) out.push(`<h1 class="title">${renderInline(state, title)}</h1>`);
   const subtitle = !scope && options.title ? keywordValue(doc, 'SUBTITLE') : null;
-  if (subtitle) out.push(`<p class="subtitle">${renderInline(state, subtitle)}</p>`);
+  if (title && options.title) {
+    const sub = subtitle ? `<br>\n<span class="subtitle">${renderInline(state, subtitle)}</span>\n` : '';
+    out.push(`<h1 class="title">${renderInline(state, title)}${sub}</h1>`);
+  }
   const toc = options.toc && !scope ? tocHtml(state, options.toc) : options.toc && scope ? tocHtml(state, options.toc) : '';
   if (toc) out.push(toc);
   const lead = [scope ? planningHtml(state, scope) : '', elementsHtml(state, preElements)].filter(Boolean).join('\n');

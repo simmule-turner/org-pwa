@@ -16,9 +16,9 @@
  */
 
 import { resolveTodoSequences, findSequenceForHeading, cycleTodoState } from './todo-cycle.js';
+import { fixBoxes } from './list-edit.js';
+import { parseBody } from './body-parser.js';
 
-const CHECKBOX_CYCLE_SIMPLE = [' ', 'X'];
-const CHECKBOX_CYCLE_WITH_CHILDREN = [' ', '-', 'X'];
 
 /**
  * Flattens `doc` into a linear row array respecting two independent
@@ -224,18 +224,20 @@ function cycleItemCheckbox(heading, item) {
   if (item.checkbox === null) {
     throw new Error('cycleItemCheckbox: item has no checkbox to cycle');
   }
-  /** @param {any} [list] */
-  const hasNestedItems = (item.children || []).some((/** @type {any} */ list) => list.items.length > 0);
-  const cycle = hasNestedItems ? CHECKBOX_CYCLE_WITH_CHILDREN : CHECKBOX_CYCLE_SIMPLE;
-  const idx = cycle.indexOf(item.checkbox);
-  const next = cycle[((idx === -1 ? 0 : idx) + 1) % cycle.length];
+  // Org's org-toggle-checkbox: [X] becomes [ ], anything else becomes [X]; then every box that has boxes under it shows what
+  // they add up to (org-list-struct-fix-box), the one tapped included, so tapping such a box changes nothing.
+  const next = item.checkbox === 'X' ? ' ' : 'X';
   item.checkbox = next;
 
   if (typeof item.lineIndex === 'number' && heading.bodyLines[item.lineIndex] !== undefined) {
-    heading.bodyLines[item.lineIndex] = heading.bodyLines[item.lineIndex].replace(
-      /\[([ xX-])\]/,
-      `[${next}]`
-    );
+    heading.bodyLines[item.lineIndex] = heading.bodyLines[item.lineIndex].replace(/\[([ xX-])\]/, `[${next}]`);
+    const fixed = fixBoxes(heading.bodyLines, item.lineIndex);
+    if (fixed.some((l, i) => l !== heading.bodyLines[i])) {
+      heading.bodyLines = fixed;
+      heading.body = parseBody(fixed);
+    }
+    const shown = /\[([ xX-])\]/.exec(heading.bodyLines[item.lineIndex]);
+    return shown ? shown[1].toUpperCase() : next;
   }
 
   return next;

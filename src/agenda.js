@@ -39,7 +39,7 @@ import { isArchived } from './archive-model.js';
 import { parseOrgDuration } from './org-duration.js';
 import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
-import { parseLogbookEntries } from './logbook.js';
+import { allLogLines, parseLogbookEntries } from './logbook.js';
 import { habitSpec, buildHabitGraph, dayNumber } from './habit.js';
 import { canonicalDiaryLine, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
@@ -726,7 +726,7 @@ const NO_STAMP_BLOCKS = new Set(['SRC', 'EXAMPLE', 'EXPORT', 'COMMENT']);
 function entryTimestampText(heading) {
   const lines = [heading.title];
   for (const value of Object.values(heading.properties || {})) lines.push(String(value));
-  lines.push(...(heading.logbookLines || []));
+  lines.push(...allLogLines(heading));
   const body = heading.bodyLines || [];
   for (let i = 0; i < body.length; i++) {
     const begin = /^\s*#\+BEGIN_(\w+)/i.exec(body[i]);
@@ -800,6 +800,9 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
    * @param {boolean} headingIsDone
    */
   function addItem(documentId, heading, kind, parsed, headingIsDone) {
+    // Emacs repeats a plain time stamp only when its repeater is the last thing before `>` (org-repeat-re): `<… +1d -2d>` and
+    // `<… +1w/2w>` stay on their own date.  SCHEDULED and DEADLINE read their repeaters properly.
+    if (kind !== 'scheduled' && kind !== 'deadline' && parsed.repeater && parsed.raw && !/ [.+]?\+\d+[hdwmy]>$/.test(parsed.raw)) parsed = { ...parsed, repeater: null };
     const base = {
       documentId,
       heading,
@@ -843,7 +846,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     let carryOccurrences = null;
     let scheduledDelay = 0;
     if (carryForwardEligible && rangeStart && rangeEnd) {
-      const delay = parsed.delay ? parseDelay(parsed.delay) : null;
+      const delay = parsed.delay ? parseDelay(parsed.delay.replace(/^--/, '-')) : null;
       const delayDays = delay ? delayToDays(delay) : 0;
       const warningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
       scheduledDelay = kind === 'scheduled' ? (delay ? delayDays : scheduledDelayDays) : 0;
@@ -854,7 +857,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       const carriedToday = carryOccurrences ? carryOccurrences.find((o) => o.daysOverdue !== 0) : null;
       for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
         if (carriedToday && isSameDay(occurrenceDate, carriedToday.date)) continue;
-        if (scheduledDelay > 0 && isSameDay(occurrenceDate, parsed.date)) continue; // the delayed first date, as in Emacs
+        if (scheduledDelay > 0 && dayNumber(occurrenceDate) - dayNumber(parsed.date) < scheduledDelay) continue; // every repeat within the delay of the first date, as in Emacs
         items.push({ ...base, date: occurrenceDate, daysOverdue: 0 });
       }
       if (carriedToday) items.push({ ...base, date: carriedToday.date, daysOverdue: carriedToday.daysOverdue });
@@ -945,8 +948,8 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       // it's now DONE, which is exactly what the main agenda call
       // site's own todoFilter (excluding done-state headings from the
       // normal, non-log view) would otherwise wrongly suppress here too.
-      if (includeLogbook && heading.logbookLines && heading.logbookLines.length) {
-        for (const entry of parseLogbookEntries(heading.logbookLines)) {
+      if (includeLogbook && allLogLines(heading).length) {
+        for (const entry of parseLogbookEntries(allLogLines(heading))) {
           if (entry.type !== 'state' && entry.type !== 'note') continue; // CLOCK entries excluded -- clocking isn't built yet, and a start/end range doesn't fit this "one item, one date" model
           const parsed = parseOrgTimestamp(entry.timestamp);
           if (!parsed) continue;

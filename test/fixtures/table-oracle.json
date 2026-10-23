@@ -1,0 +1,1253 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| Name  | Qty |\n|       |     |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | Qty |\n|----------------+-----|\n| apple          |   3 |\n| fig            |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| Name  |  7 |\n|-------+----|\n| apple |  3 |\n| fig   | 12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n|       |     |\n| fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| Name           | Qty |\n|----------------+-----|\n| a longer value |   3 |\n| fig            |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| apple |   7 |\n| fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n|       |     |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| Name           | Qty |\n|----------------+-----|\n| apple          |   3 |\n| a longer value |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 1,
+   "value": "7",
+   "emacs": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |   7 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | Name  | Qty |\n|---+-------+-----|\n|   | apple |   3 |\n|   | fig   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| Qty |\n|-----|\n|   3 |\n|  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| Name  |   | Qty |\n|-------+---+-----|\n| apple |   |   3 |\n| fig   |   |  12 |\n"
+  },
+  {
+   "table": "aligned",
+   "org": "| Name  | Qty |\n|-------+-----|\n| apple |   3 |\n| fig   |  12 |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| Name  |\n|-------|\n| apple |\n| fig   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| a |  b | c   |\n|   |    |     |\n|---+----+-----|\n| 1 | 22 | 333 |\n| x |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|-\n|1|22|333|\n|x||z|\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value |  b | c   |\n|----------------+----+-----|\n| 1              | 22 | 333 |\n| x              |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a |  b |   7 |\n|---+----+-----|\n| 1 | 22 | 333 |\n| x |    |   z |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| a |  b | c   |\n|---+----+-----|\n| 1 | 22 | 333 |\n|   |    |     |\n| x |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "|a|b|c|\n|-\n|x||z|\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              |  b | c   |\n|----------------+----+-----|\n| a longer value | 22 | 333 |\n| x              |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a |  b | c |\n|---+----+---|\n| 1 | 22 | 7 |\n| x |    | z |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| a |  b | c   |\n|---+----+-----|\n| 1 | 22 | 333 |\n| x |    | z   |\n|   |    |     |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "|a|b|c|\n|-\n|1|22|333|\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              |  b | c   |\n|----------------+----+-----|\n| 1              | 22 | 333 |\n| a longer value |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a |  b |   c |\n|---+----+-----|\n| 1 | 22 | 333 |\n| x |    |   7 |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | a |  b | c   |\n|---+---+----+-----|\n|   | 1 | 22 | 333 |\n|   | x |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "|  b | c   |\n|----+-----|\n| 22 | 333 |\n|    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |   |  b | c   |\n|---+---+----+-----|\n| 1 |   | 22 | 333 |\n| x |   |    | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |   c |   |\n|---+-----+---|\n| 1 | 333 |   |\n| x |     | z |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "insert-col-before",
+   "col": 2,
+   "row": 0,
+   "emacs": "| a |  b |   | c   |\n|---+----+---+-----|\n| 1 | 22 |   | 333 |\n| x |    |   | z   |\n"
+  },
+  {
+   "table": "loose",
+   "org": "|a|b|c|\n|-\n|1|22|333|\n|x||z|\n",
+   "op": "delete-col",
+   "col": 2,
+   "row": 0,
+   "emacs": "| a |  b |\n|---+----|\n| 1 | 22 |\n| x |    |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| item | price |\n|      |       |\n|------+-------|\n| a    |   1.5 |\n| b    |    22 |\n| c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | price |\n|----------------+-------|\n| a              |   1.5 |\n| b              |    22 |\n| c              |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| item |   7 |\n|------+-----|\n| a    | 1.5 |\n| b    |  22 |\n| c    | n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| item | price |\n|------+-------|\n| a    |   1.5 |\n|      |       |\n| b    |    22 |\n| c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| item | price |\n|---+---|\n| b | 22 |\n| c | n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| item           | price |\n|----------------+-------|\n| a longer value |   1.5 |\n| b              |    22 |\n| c              |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| item | price |\n|------+-------|\n| a    |     7 |\n| b    |    22 |\n| c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| item | price |\n|------+-------|\n| a    |   1.5 |\n| b    |    22 |\n|      |       |\n| c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| item | price |\n|---+---|\n| a | 1.5 |\n| c | n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| item           | price |\n|----------------+-------|\n| a              |   1.5 |\n| a longer value |    22 |\n| c              |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 1,
+   "value": "7",
+   "emacs": "| item | price |\n|------+-------|\n| a    |   1.5 |\n| b    |     7 |\n| c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-row-below",
+   "row": 4,
+   "emacs": "| item | price |\n|------+-------|\n| a    |   1.5 |\n| b    |    22 |\n| c    |   n/a |\n|      |       |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-row",
+   "row": 4,
+   "emacs": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| item           | price |\n|----------------+-------|\n| a              |   1.5 |\n| b              |    22 |\n| a longer value |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 1,
+   "value": "7",
+   "emacs": "| item | price |\n|------+-------|\n| a    |   1.5 |\n| b    |    22 |\n| c    |     7 |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | item | price |\n|---+------+-------|\n|   | a    |   1.5 |\n|   | b    |    22 |\n|   | c    |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| price |\n|-------|\n|   1.5 |\n|    22 |\n|   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| item |   | price |\n|------+---+-------|\n| a    |   |   1.5 |\n| b    |   |    22 |\n| c    |   |   n/a |\n"
+  },
+  {
+   "table": "numbers",
+   "org": "| item | price |\n|---+---|\n| a | 1.5 |\n| b | 22 |\n| c | n/a |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| item |\n|------|\n| a    |\n| b    |\n| c    |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| a | b |\n|   |   |\n|---+---|\n|   |   |\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|---+---|\n|   |   |\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | b |\n|----------------+---|\n|                |   |\n| x              |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a | 7 |\n|---+---|\n|   |   |\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| a | b |\n|---+---|\n|   |   |\n|   |   |\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| a | b |\n|---+---|\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              | b |\n|----------------+---|\n| a longer value |   |\n| x              |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a | b |\n|---+---|\n|   | 7 |\n| x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n|   |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| a | b |\n|---+---|\n|   |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              | b |\n|----------------+---|\n|                |   |\n| a longer value |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a | b |\n|---+---|\n|   |   |\n| x | 7 |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | a | b |\n|---+---+---|\n|   |   |   |\n|   | x |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| b |\n|---|\n|   |\n|   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |   | b |\n|---+---+---|\n|   |   |   |\n| x |   |   |\n"
+  },
+  {
+   "table": "empty",
+   "org": "| a | b |\n|---+---|\n|   |   |\n| x |   |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |\n|---|\n|   |\n| x |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| 名前   | n |\n|        |   |\n|--------+---|\n| 日本語 | 1 |\n| ab     | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | n |\n|----------------+---|\n| 日本語         | 1 |\n| ab             | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| 名前   | 7 |\n|--------+---|\n| 日本語 | 1 |\n| ab     | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| 名前   | n |\n|--------+---|\n| 日本語 | 1 |\n|        |   |\n| ab     | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| 名前 | n |\n|---+---|\n| ab | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| 名前           | n |\n|----------------+---|\n| a longer value | 1 |\n| ab             | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| 名前   | n |\n|--------+---|\n| 日本語 | 7 |\n| ab     | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| 名前   | n |\n|--------+---|\n| 日本語 | 1 |\n| ab     | 2 |\n|        |   |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| 名前           | n |\n|----------------+---|\n| 日本語         | 1 |\n| a longer value | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 1,
+   "value": "7",
+   "emacs": "| 名前   | n |\n|--------+---|\n| 日本語 | 1 |\n| ab     | 7 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | 名前   | n |\n|---+--------+---|\n|   | 日本語 | 1 |\n|   | ab     | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| n |\n|---|\n| 1 |\n| 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| 名前   |   | n |\n|--------+---+---|\n| 日本語 |   | 1 |\n| ab     |   | 2 |\n"
+  },
+  {
+   "table": "wide",
+   "org": "| 名前 | n |\n|---+---|\n| 日本語 | 1 |\n| ab | 2 |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| 名前   |\n|--------|\n| 日本語 |\n| ab     |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| a              |   b |\n|                |     |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a              |   7 |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-row-below",
+   "row": 1,
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|                |     |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-row",
+   "row": 1,
+   "emacs": "| a | b |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 1,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              |   b |\n| a longer value | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 1,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a              |  b |\n| <5>            |  7 |\n|----------------+----|\n| long text here |  1 |\n| x              | 22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n|                |     |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| a | b |\n| <5> | <r> |\n|---+---|\n| x | 22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| a longer value |   1 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   7 |\n| x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-row-below",
+   "row": 4,
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |  22 |\n|                |     |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-row",
+   "row": 4,
+   "emacs": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| a longer value |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a              |   b |\n| <5>            | <r> |\n|----------------+-----|\n| long text here |   1 |\n| x              |   7 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | a              |   b |\n|   | <5>            | <r> |\n|---+----------------+-----|\n|   | long text here |   1 |\n|   | x              |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   b |\n| <r> |\n|-----|\n|   1 |\n|  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a              |   |   b |\n| <5>            |   | <r> |\n|----------------+---+-----|\n| long text here |   |   1 |\n| x              |   |  22 |\n"
+  },
+  {
+   "table": "widthRow",
+   "org": "| a | b |\n| <5> | <r> |\n|---+---|\n| long text here | 1 |\n| x | 22 |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a              |\n| <5>            |\n|----------------|\n| long text here |\n| x              |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| h1 | h2 |\n|    |    |\n|----+----|\n| a  |  1 |\n|----+----|\n| b  |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | h2 |\n|----------------+----|\n| a              |  1 |\n|----------------+----|\n| b              |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| h1 | 7 |\n|----+---|\n| a  | 1 |\n|----+---|\n| b  | 2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| h1 | h2 |\n|----+----|\n| a  |  1 |\n|    |    |\n|----+----|\n| b  |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| h1 | h2 |\n|----+----|\n|----+----|\n| b | 2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| h1             | h2 |\n|----------------+----|\n| a longer value |  1 |\n|----------------+----|\n| b              |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| h1 | h2 |\n|----+----|\n| a  |  7 |\n|----+----|\n| b  |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "insert-row-below",
+   "row": 4,
+   "emacs": "| h1 | h2 |\n|----+----|\n| a  |  1 |\n|----+----|\n| b  |  2 |\n|    |    |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "delete-row",
+   "row": 4,
+   "emacs": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| h1             | h2 |\n|----------------+----|\n| a              |  1 |\n|----------------+----|\n| a longer value |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 1,
+   "value": "7",
+   "emacs": "| h1 | h2 |\n|----+----|\n| a  |  1 |\n|----+----|\n| b  |  7 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | h1 | h2 |\n|---+----+----|\n|   | a  |  1 |\n|---+----+----|\n|   | b  |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| h2 |\n|----|\n|  1 |\n|----|\n|  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| h1 |   | h2 |\n|----+---+----|\n| a  |   |  1 |\n|----+---+----|\n| b  |   |  2 |\n"
+  },
+  {
+   "table": "groups",
+   "org": "| h1 | h2 |\n|----+----|\n| a | 1 |\n|----+----|\n| b | 2 |\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| h1 |\n|----|\n| a  |\n|----|\n| b  |\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| a | b |\n|   |   |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | b |\n|----------------+---|\n|              1 | 2 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a | 7 |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| a | b |\n|---+---|\n| 1 | 2 |\n|   |   |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| a | b |\n|---+---|\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a              | b |\n|----------------+---|\n| a longer value | 2 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 1,
+   "value": "7",
+   "emacs": "| a | b |\n|---+---|\n| 1 | 7 |\n#+TBLFM: $2=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | a | b |\n|---+---+---|\n|   | 1 | 2 |\n#+TBLFM: $3=$2*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| b |\n|---|\n| 2 |\n#+TBLFM: $1=$INVALID*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |   | b |\n|---+---+---|\n| 1 |   | 2 |\n#+TBLFM: $3=$1*2\n"
+  },
+  {
+   "table": "formula",
+   "org": "| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |\n|---|\n| 1 |\n#+TBLFM: \n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-row-below",
+   "row": 0,
+   "emacs": "| a | b | c |\n|   |   |   |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @4$2=@3$1+@5$3::$3=$1+$2::@3$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-row",
+   "row": 0,
+   "emacs": "|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @2$2=@1$1+@3$3::$3=$1+$2::@1$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "| a longer value | b | c |\n|----------------+---+---|\n|              1 | 2 | 3 |\n|              4 | 5 | 6 |\n|              7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 0,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a | b | 7 |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-row-below",
+   "row": 2,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n|   |   |   |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @4$2=@2$1+@5$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-row",
+   "row": 2,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @2$2=@INVALID$1+@3$3::$3=$1+$2::@INVALID$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "|              a | b | c |\n|----------------+---+---|\n| a longer value | 2 | 3 |\n|              4 | 5 | 6 |\n|              7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 2,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 7 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-row-below",
+   "row": 3,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n|   |   |   |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@5$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-row",
+   "row": 3,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 7 | 8 | 9 |\n#+TBLFM: $3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "|              a | b | c |\n|----------------+---+---|\n|              1 | 2 | 3 |\n| a longer value | 5 | 6 |\n|              7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 3,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 7 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-row-below",
+   "row": 4,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n|   |   |   |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-row",
+   "row": 4,
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n#+TBLFM: @3$2=@2$1+@INVALID$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 0,
+   "value": "a longer value",
+   "emacs": "|              a | b | c |\n|----------------+---+---|\n|              1 | 2 | 3 |\n|              4 | 5 | 6 |\n| a longer value | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "set-cell",
+   "row": 4,
+   "col": 2,
+   "value": "7",
+   "emacs": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 7 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-col-before",
+   "col": 0,
+   "row": 0,
+   "emacs": "|   | a | b | c |\n|---+---+---+---|\n|   | 1 | 2 | 3 |\n|   | 4 | 5 | 6 |\n|   | 7 | 8 | 9 |\n#+TBLFM: @3$3=@2$2+@4$4::$4=$2+$3::@2$2=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-col",
+   "col": 0,
+   "row": 0,
+   "emacs": "| b | c |\n|---+---|\n| 2 | 3 |\n| 5 | 6 |\n| 8 | 9 |\n#+TBLFM: @3$1=@2$INVALID+@4$2::$2=$INVALID+$1::@2$INVALID=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-col-before",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a |   | b | c |\n|---+---+---+---|\n| 1 |   | 2 | 3 |\n| 4 |   | 5 | 6 |\n| 7 |   | 8 | 9 |\n#+TBLFM: @3$3=@2$1+@4$4::$4=$1+$3::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-col",
+   "col": 1,
+   "row": 0,
+   "emacs": "| a | c |\n|---+---|\n| 1 | 3 |\n| 4 | 6 |\n| 7 | 9 |\n#+TBLFM: $2=$1+$INVALID::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "insert-col-before",
+   "col": 2,
+   "row": 0,
+   "emacs": "| a | b |   | c |\n|---+---+---+---|\n| 1 | 2 |   | 3 |\n| 4 | 5 |   | 6 |\n| 7 | 8 |   | 9 |\n#+TBLFM: @3$2=@2$1+@4$4::$4=$1+$2::@2$1=remote(x,@1$1)\n"
+  },
+  {
+   "table": "refs",
+   "org": "| a | b | c |\n|---+---+---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n| 7 | 8 | 9 |\n#+TBLFM: @3$2=@2$1+@4$3::$3=$1+$2::@2$1=remote(x,@1$1)\n",
+   "op": "delete-col",
+   "col": 2,
+   "row": 0,
+   "emacs": "| a | b |\n|---+---|\n| 1 | 2 |\n| 4 | 5 |\n| 7 | 8 |\n#+TBLFM: @3$2=@2$1+@4$INVALID::@2$1=remote(x,@1$1)\n"
+  }
+ ]
+}
