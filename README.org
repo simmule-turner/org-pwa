@@ -348,7 +348,7 @@ A marker opens after the start of a line, whitespace or one of ~-({'"~, and isn'
 
 ~_~ also marks underline: underline needs whitespace, a line start or punctuation before it (~_underlined_~), subscript a non-space character (~a_b~). Script content is literal, so ~x_{*bold*}~ doesn't interpret the ~*bold*~.
 
-*Footnotes*: ~[fn:label]~ is a reference, shown as a small tappable superscript that jumps to the definition, even under a folded heading. A definition can be inline, ~[fn:label:the note text]~, anonymous, ~[fn::an anonymous note]~, or a separate line starting ~[fn:label]~ (like ~[fn:1] The actual definition.~). Markdown export uses GFM's ~[^label]~, HTML a jump-linked superscript with a back-linked Footnotes section.
+*Footnotes*: ~[fn:label]~ is a reference, shown as a small tappable superscript that jumps to the definition, even under a folded heading. A definition can be inline, ~[fn:label:the note text]~, anonymous, ~[fn::an anonymous note]~, or a separate line starting ~[fn:label]~ (like ~[fn:1] The actual definition.~). HTML export uses a jump-linked superscript with a back-linked Footnotes section.
 
 Table cells render inline markup too; tap one to edit its raw text and tap away to commit.
 
@@ -387,7 +387,7 @@ Math in a heading, paragraph or list item renders as typeset math with [[https:/
 
 ~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span lines, even across a blank line; ~$...$~ can span lines but not a blank line. KaTeX doesn't treat ~%~ as a comment. A fragment KaTeX can't render shows its raw source with a dashed border. KaTeX supports a large subset of LaTeX, not all of it.
 
-Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; Markdown, ASCII and ODT export pass the raw source through as text.
+Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; ASCII and ODT export pass the raw source through as text.
 
 *Examples*: the source ~The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).~ renders inline with a proper fraction bar and a square-root radical. This ~align~ environment:
 
@@ -678,6 +678,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Quick Settings → *Agenda* |
 | ~org-habit-show-all-today~ | ~nil~ | ~t~ shows every habit today, even one not yet due; also Settings → Quick Settings → *Agenda* |
 | ~org-habit-show-habits-only-for-today~ | ~t~ | Habits appear only in today's Agenda; also Settings → Quick Settings → *Agenda* |
+| ~org-html-checkbox-type~ | ~ascii~ | How HTML export writes checklist boxes: ~ascii~ (~[X]~, ~[ ]~, ~[-]~ as text), ~unicode~ (☑ and ☐) or ~html~ (checkbox inputs) |
 | ~org-html-doctype~ | ~xhtml-strict~ | The document type of HTML export: ~xhtml-strict~, ~xhtml-transitional~, ~xhtml-frameset~, ~xhtml-11~, ~xhtml5~, ~html5~, ~html4-strict~, ~html4-transitional~ or ~html4-frameset~; a file's ~#+HTML_DOCTYPE:~ wins |
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
@@ -956,7 +957,7 @@ Header arguments are inherited as in Org: ~#+PROPERTY: header-args :results outp
 
 *Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ are unchanged since its last run (the hash sits in ~#+RESULTS[hash]:~). Delete the results to force a run. Don't cache a block that reads the time or a live feed.
 
-*Export* follows ~:exports~: ~code~ (the default), ~results~, ~both~ or ~none~. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This covers ASCII, HTML, LaTeX, Markdown, ODT and Org export.
+*Export* follows ~:exports~: ~code~ (the default), ~results~, ~both~ or ~none~. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds. This covers ASCII, HTML, LaTeX, ODT and Org export.
 
 *The init script from an Org file*: in Settings → Extensions, *Use an Org file…* takes ~github:path~, ~webdav:path~ or ~local:name~, then ~::target~ (default ~::init.js~). The blocks of that file that tangle to the target become the init script, Noweb included. Only the file you name is read; the approval covers the assembled text, so a change to the file asks again.
 
@@ -1717,7 +1718,7 @@ Export and Import are steps within the More menu with their own namespaces, ~exp
 *~alias~*, after the semicolon:
 
 - *Non-empty*: replaces the button's visible text. The button does the same thing, and the original label becomes its accessible name (for screen readers and tooltips).
-- *Empty* (~"menu:Label;"~): the button is omitted entirely. ~"export:Markdown;"~ hides the Markdown button from the Export menu. *~more:Settings~ is the exception*: it can never be hidden, because GitHub and WebDAV setup and Global Variables are reachable only from there, so an empty alias keeps the label ~Settings~.
+- *Empty* (~"menu:Label;"~): the button is omitted entirely. ~"export:HTML;"~ hides the HTML button from the Export menu. *~more:Settings~ is the exception*: it can never be hidden, because GitHub and WebDAV setup and Global Variables are reachable only from there, so an empty alias keeps the label ~Settings~.
 
 *Order*: buttons can be reordered once every label of a menu is listed (the table has the complete sets); a partial list leaves the order alone. The buttons then follow the order written. An empty alias hides the button (except ~more:Settings~), so to keep one visible repeat its text: ~"more:Settings;Settings"~. To show More as Settings, Commands, Import, Export:
 
@@ -1734,7 +1735,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 |----------+--------|
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~, ~Save Some Buffers~ |
 | ~more~ | ~Commands~, ~Export~, ~Import~, ~Settings~ |
-| ~export~ | ~ASCII~, ~HTML~, ~LaTeX~, ~Markdown~ |
+| ~export~ | ~ASCII~, ~Beamer~, ~HTML~, ~LaTeX~ |
 | ~import~ | ~Contacts (.vcf)~, ~iCalendar (.ics)~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
@@ -1787,7 +1788,7 @@ The open tabs persist across restarts, each restored as left.
 *Org-cite citations* work as in Emacs's default (~basic~) processor. Write ~[cite:@knuth84]~, ~[cite/t:@knuth84 p. 5]~ or ~[cite:see @a; @b, ch. 2]~ and point at your references with ~#+BIBLIOGRAPHY: refs.bib~ (BibTeX or CSL-JSON, read from the same place as the document, one line per file). In the outline a citation stays as typed, dimmed, and tapping a key shows its entry; a key with no entry is dotted underlined.
 
 - Styles: default (author, year), ~/t~ (text), ~/a~ (author), ~/na~ (no author), ~/n~ (nothing printed), ~/b~ (numeric), with ~/c~ and ~/b~ variants for capitals and bare form.
-- ~#+PRINT_BIBLIOGRAPHY:~ marks where the reference list goes in HTML, Markdown, ASCII, ODT and LaTeX exports. ~#+CITE_EXPORT: basic plain~ (or ~numeric~) picks the list style.
+- ~#+PRINT_BIBLIOGRAPHY:~ marks where the reference list goes in HTML, ASCII, ODT and LaTeX exports. ~#+CITE_EXPORT: basic plain~ (or ~numeric~) picks the list style.
 - Settings (see [[#local-variables][Local Variables]]): ~org-cite-global-bibliography~ (files used by every document), ~org-cite-basic-sorting-field~ and ~org-cite-basic-author-year-separator~.
 
 -----
@@ -1797,20 +1798,20 @@ The open tabs persist across restarts, each restored as left.
 :CUSTOM_ID: export
 :END:
 
-*More → Export* lists ASCII, HTML, LaTeX and Markdown. The other formats are palette commands (*Commands*): ODT (~org-odt-export-to-odt~), As-org (~org-org-export-as-org~), Calendar (.ics) (~org-icalendar-export-to-ics~) and Contacts (.vcf) (~org-vcard-export~); the last two open their own scope choice, and C-c C-e opens the menu. File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
+*More → Export* lists ASCII, As-org, Beamer, HTML and LaTeX. The other formats are palette commands (*Commands*): ODT (~org-odt-export-to-odt~), Calendar (.ics) (~org-icalendar-export-to-ics~) and Contacts (.vcf) (~org-vcard-export~); the last two open their own scope choice, and C-c C-e opens the menu. File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
 
 *Scope*: *Choose a heading…* exports just that heading and its descendants, and every heading is listed, even folded ones. The chosen heading becomes the top level of the output. *This file* exports everything. Calendar and Contacts also offer *This file + Agenda Files* or *This file + Contacts Files* once those are configured, fetched fresh at export time. In Tree style, Contacts lists only contacts (headings with ~:KIND:~).
 
 *** Document settings
 
-~#+TITLE~, ~#+AUTHOR~ and ~#+DATE~ appear in a whole-document export in ASCII, HTML and ODT: a visible title with the author and date beneath it (in HTML, the date and author close the page, as in Emacs), and the format's own metadata where it has some. Markdown has none of them, as in org's ~ox-md~. A subtree export starts at its heading instead.
+~#+TITLE~, ~#+AUTHOR~ and ~#+DATE~ appear in a whole-document export in ASCII, HTML and ODT: a visible title with the author and date beneath it (in HTML, the date and author close the page, as in Emacs), and the format's own metadata where it has some. A subtree export starts at its heading instead.
 
 ~#+OPTIONS:~ takes these keys, chained on one line or split across several (a later value wins):
 
 | Key | Effect |
 |---+---|
 | ~toc:~ | An integer depth limit, or ~nil~ for no table of contents. Independent of ~num:~ |
-| ~num:~ | Heading numbers on or off. In Markdown it switches the table of contents between an ordered and an unordered list |
+| ~num:~ | Heading numbers on or off |
 | ~^:~ | Sub/superscript strictness, as ~org-use-sub-superscripts~ (see [[#local-variables][Local Variables]]); overrides it for this export |
 | ~author:~, ~date:~ | Show each field or not |
 | ~creator:~ | A "Generated by org-pwa" notice, off by default |
@@ -1832,7 +1833,7 @@ HTML export also takes these, with Org's defaults:
 | ~arch:~, ~tasks:~ | Archived subtrees (title only), TODO headings (~nil~, ~todo~, ~done~) |
 | ~<:~, ~title:~, ~email:~ | Timestamps, the title, the author's address |
 
-~#+EXCLUDE_TAGS:~ (default ~noexport~), ~#+SELECT_TAGS:~, COMMENT headings, ~#+SUBTITLE:~, ~#+DESCRIPTION:~, ~#+KEYWORDS:~, ~#+LANGUAGE:~ and ~#+MACRO:~ are honored. Other formats ignore these HTML-only keys; Markdown supports only ~toc:~ and ~num:~.
+~#+EXCLUDE_TAGS:~ (default ~noexport~), ~#+SELECT_TAGS:~, COMMENT headings, ~#+SUBTITLE:~, ~#+DESCRIPTION:~, ~#+KEYWORDS:~, ~#+LANGUAGE:~ and ~#+MACRO:~ are honored. Other formats ignore these HTML-only keys.
 
 ~#+INCLUDE: "path" [block-type] [language] [:lines "N-M"] [:minlevel N]~ splices another document in at export time, before the first heading or in a heading's body. In a body it nests as children of that heading, one level deeper by default; at document level it keeps its own levels. The path is read from an explicit ~github:~, ~webdav:~ or ~local:~ prefix, or else relative to the open file.
 
@@ -1842,11 +1843,11 @@ HTML export also takes these, with Org's defaults:
 
 A file that can't be found is skipped silently.
 
-~#+HTML_HEAD:~ inserts raw HTML before ~</head>~, in HTML export only and for subtree exports too; several lines are joined in order. ~#+BEGIN_EXPORT <backend>~ ... ~#+END_EXPORT~ passes its content through unescaped when the backend matches the current format (~html~, ~ascii~, ~md~ or ~markdown~, ~odt~, where the content must already be ODF XML) and is omitted otherwise.
+~#+HTML_HEAD:~ inserts raw HTML before ~</head>~, in HTML export only and for subtree exports too; several lines are joined in order. ~#+BEGIN_EXPORT <backend>~ ... ~#+END_EXPORT~ passes its content through unescaped when the backend matches the current format (~html~, ~ascii~, ~odt~, where the content must already be ODF XML) and is omitted otherwise.
 
 *Document type*: ~#+HTML_DOCTYPE: html5~ (or ~org-html-doctype~, Settings → Export) picks the declaration, as in Emacs; the default is ~xhtml-strict~. XHTML closes empty tags with ~ />~ and adds an XML declaration and ~xmlns~; HTML 5 writes ~<meta charset>~ and plain ~<table>~ tags; the HTML 4 and older XHTML types write the ~Content-Type~ meta and the table border attributes. A text that is not a name is written as the declaration.
 
-*Inline tasks*: with ~org-inlinetask~ switched on (see ~org-modules~ above), a headline of 15 or more stars is an inline task, closed by an ~END~ headline of the same depth. Every export prints it in place, in the text of the section it sits in: HTML and Markdown as ~<div class="inlinetask">~, ASCII as a box, LaTeX as a framed minipage, ODT as a bordered paragraph. Without the module they are ordinary deep headings.
+*Inline tasks*: with ~org-inlinetask~ switched on (see ~org-modules~ above), a headline of 15 or more stars is an inline task, closed by an ~END~ headline of the same depth. Every export prints it in place, in the text of the section it sits in: HTML as ~<div class="inlinetask">~, ASCII as a box, LaTeX as a framed minipage, ODT as a bordered paragraph. Without the module they are ordinary deep headings.
 
 *Header and footer*: ~html-preamble:~ and ~html-postamble:~ in ~#+OPTIONS:~ take a quoted text, as in Emacs, placed above and below the page (~nil~ drops the postamble). In it ~%t~ is the title, ~%s~ the subtitle, ~%a~ the author, ~%d~ the date, ~%e~ the email, ~%C~ or ~%T~ when it was exported, and ~%%~ a percent sign; ~\n~ starts a new line and HTML is allowed.
 
@@ -1866,12 +1867,6 @@ Tables are typeset: each column is padded to its widest cell, and mostly-numeric
 
 A horizontal rule takes its width from ~#+ATTR_ASCII: :width N~. Of the ~org-ascii-*~ variables only the character set and the text width are read (see [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]]).
 
-*** Markdown
-
-GFM. Checkboxes become task-list items (~- [ ]~, ~- [x]~), tables become pipe tables, code fences keep their language, and footnotes become ~[^label]~. TODO keyword, priority and tags stay as text on the heading (~# TODO [#A] Buy milk~). Underline and sub/superscript use raw ~<u>~, ~<sub>~ and ~<sup>~.
-
-Internal links (~[[#custom-id]]~, ~[[*Heading]]~, fuzzy titles) become GitHub-style ~#slug~ anchors: lowercase, punctuation stripped, spaces to hyphens, duplicates suffixed ~-1~, ~-2~. A link outside the exported scope, or one that doesn't resolve, stays as its literal text.
-
 *** HTML
 
 A complete standalone page laid out like Emacs's ~ox-html~: the title as ~h1~, top-level headings as ~h2~ in numbered outline containers, ~org-ul~, ~org-ol~ and ~org-dl~ lists whose items keep their paragraphs, sub-lists and blocks, tables with a header row (when a rule follows it), column alignment and caption, figures, and footnotes numbered in order of reference. Entities (~\alpha~, ~\rarr~), timestamps, inline source, macros, ~@@html:...@@~ snippets, special blocks (~#+BEGIN_NOTE~ becomes ~<div class="note">~), verse and center blocks, ~#+TOC: headlines~, ~tables~ and ~listings~, and ~#+ATTR_HTML:~ on tables and images all work. Source blocks are colored for common languages. Pictures the app can read (GitHub, WebDAV, attachments) are embedded, so the file stands alone.
@@ -1889,9 +1884,9 @@ A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Go
 :CUSTOM_ID: export-line-numbers
 :END:
 
-Source and example blocks follow Org's switches in HTML, ASCII, Markdown, LaTeX and ODT export, and the results were compared with Emacs 29.3. ~-n~ numbers the lines from 1 and ~-n 10~ from 10; ~+n~ continues from the previous numbered block, and ~+n 5~ adds 5 to that. ~-i~ keeps the indentation. A line that ends in ~(ref:label)~ is a reference: ~[[(label)]]~ links to it and shows the line number, or the label itself when the block shows labels. ~-r~ removes the label from the printed line and makes links show numbers; ~-k~ keeps it and also makes links show numbers; ~-l "[ref:%s]"~ changes how a label is written. ~[[(label)][see (label)]]~ replaces ~(label)~ in the description with the number.
+Source and example blocks follow Org's switches in HTML, ASCII, LaTeX and ODT export, and the results were compared with Emacs 29.3. ~-n~ numbers the lines from 1 and ~-n 10~ from 10; ~+n~ continues from the previous numbered block, and ~+n 5~ adds 5 to that. ~-i~ keeps the indentation. A line that ends in ~(ref:label)~ is a reference: ~[[(label)]]~ links to it and shows the line number, or the label itself when the block shows labels. ~-r~ removes the label from the printed line and makes links show numbers; ~-k~ keeps it and also makes links show numbers; ~-l "[ref:%s]"~ changes how a label is written. ~[[(label)][see (label)]]~ replaces ~(label)~ in the description with the number.
 
-HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lines with a label, and links get Org's hover highlight (the page includes Org's small ~CodeHighlightOn~ script when it has such a link; Emacs leaves the script out unless ~org-html-head-include-scripts~ is on). ASCII and the plain ~verbatim~ environment put the number at the left and the label flush right; with ~listings~ or ~minted~ the package numbers the lines (~numbers=left~ and ~firstnumber~, or ~linenos~ and ~firstnumber~), and an ~org-latex-listings-options~ or ~org-latex-minted-options~ entry for numbering wins. Markdown puts the numbers in the code text, as ASCII does. ODT writes a numbered list, with a bookmark on each line that has a label; links show that line's number.
+HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lines with a label, and links get Org's hover highlight (the page includes Org's small ~CodeHighlightOn~ script when it has such a link; Emacs leaves the script out unless ~org-html-head-include-scripts~ is on). ASCII and the plain ~verbatim~ environment put the number at the left and the label flush right; with ~listings~ or ~minted~ the package numbers the lines (~numbers=left~ and ~firstnumber~, or ~linenos~ and ~firstnumber~), and an ~org-latex-listings-options~ or ~org-latex-minted-options~ entry for numbering wins. ASCII puts the numbers in the code text. ODT writes a numbered list, with a bookmark on each line that has a label; links show that line's number.
 
 *** LaTeX
 
@@ -1919,10 +1914,12 @@ Org's ~org-org-export-as-org~: a fully processed copy of the document in a new u
 
 - resolves ~#+INCLUDE:~ lines;
 - expands ~{{{macro}}}~ references: ~#+MACRO: name text~ with ~$1~, ~$2~ arguments, written ~{{{name(arg1,arg2)}}}~ with ~\,~ for a literal comma, plus ~{{{title}}}~, ~{{{author}}}~, ~{{{email}}}~, ~{{{date}}}~ and ~{{{date(FORMAT)}}}~ (FORMAT applies only when ~#+DATE:~ is a single well-formed timestamp), ~{{{time(FORMAT)}}}~ and ~{{{keyword(NAME)}}}~;
-- drops ~:noexport:~ headings with their subtrees, and strips ~#+BEGIN_COMMENT~ blocks and comment lines (those starting with ~#~ and a space);
+- leaves out COMMENT headings, headings tagged by ~#+EXCLUDE_TAGS:~ (~noexport~ by default) or left out by ~#+SELECT_TAGS:~, and, with ~tasks:nil~, TODO headings, each with its subtree;
+- writes what Emacs writes (ox-org): keywords and block markers in lower case, ~#+OPTIONS:~ first and then ~#+title~, ~#+date~ and ~#+author~, tags aligned to column 77, source and example blocks indented by two, tables aligned, ordered lists renumbered from 1 (or from a ~[@N]~ counter), comment lines, ~#+ATTR_*:~ lines, export snippets and export blocks for other back ends dropped, and timestamp ranges written as two timestamps;
+- follows ~#+OPTIONS:~ as Emacs does: planning lines (~p:~), property drawers (~prop:~), drawers (~d:~; LOGBOOK is left out by default), priority cookies (~pri:~), TODO keywords (~todo:~), tags (~tags:~), footnotes (~f:~), and the title, date, author and email lines;
 - shifts the top level to 1.
 
-Not implemented: running source blocks, and macros whose text starts with ~(eval~. Both are left as written (see Differences from Emacs org-mode). In an Extras entry it is ~'org-org-export-as-org~.
+Not implemented: running source blocks, macros whose text starts with ~(eval~, and citations, which stay as written where Emacs prints ~(, )~ without a citation processor. In an Extras entry it is ~'org-org-export-as-org~.
 
 *** Calendar (.ics)
 
@@ -2004,7 +2001,7 @@ Both styles cover the same set of fields, which is smaller than org-vcard's full
 
 *** What is dropped
 
-Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are not exported. SCHEDULED and DEADLINE show as a small italic line under the heading in Markdown, HTML and ODT; Calendar is built from them.
+Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are not exported. SCHEDULED and DEADLINE show as a small italic line under the heading in HTML and ODT; Calendar is built from them.
 
 -----
 
@@ -2175,7 +2172,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Clocking* | clock in, clock out, cancel clock, continue last clock, go to clocked task, go to a recently clocked task |
 | *Document* | save, save as, open, new, undo, redo, undo history, toggle read-only, capture, recalculate all tables |
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar, sync contacts to the address book, rebuild contacts |
-| *Export* | the Export menu; this file as HTML, LaTeX, Markdown or ASCII |
+| *Export* | the Export menu; this file as HTML, LaTeX or ASCII |
 | *Import* | Contacts (.vcf), ~org-vcard-import~; iCalendar (.ics), ~icalendar-import-file~ |
 | *App* | settings, help, show display measurements, copy keyboard debug log, copy update and startup log, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 

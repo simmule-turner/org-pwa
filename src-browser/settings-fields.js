@@ -467,6 +467,19 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
+    key: 'org-html-checkbox-type',
+    label: 'HTML export: checkbox style',
+    section: 'Export',
+    type: 'select',
+    default: 'ascii',
+    options: [
+      { value: 'ascii', label: '[X] [ ] [-] as text' },
+      { value: 'unicode', label: '☑ ☐ symbols' },
+      { value: 'html', label: 'Checkbox inputs' },
+    ],
+    helpAnchor: '#export',
+  },
+  {
     key: 'org-xx-god-mode-button',
     label: 'Show the floating [g] god-mode button',
     section: 'Keyboard',

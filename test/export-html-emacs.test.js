@@ -21,7 +21,6 @@ function skeleton(h) {
   h = h.replace(/ (id|for)="[^"]*"/g, '').replace(/ href="#[^"]*"/g, ' href="#"');
   h = h.replace(/<span class="org-[a-z-]+">([^<]*)<\/span>/g, '$1');
   h = h.replace(/<br \/>/g, '<br>').replace(/ \/>/g, '>');
-  h = h.replace(/<input type="checkbox" disabled checked>/g, '<code>[X]</code>').replace(/<input type="checkbox" disabled>/g, '<code>[&#xa0;]</code>');
   h = h.replace(/(<span class="timestamp">[^<]*?)\s+<\/span>/g, '$1</span>');
   h = h.replace(/<div class="outline-text-\d">\s*<\/div>\s*/g, '');
   h = h.replace(/\s*\n\s*/g, '\n').replace(/>\n</g, '><').replace(/\n(?=<)/g, '').replace(/>\n/g, '>').replace(/\s+/g, ' ').replace(/> </g, '><');

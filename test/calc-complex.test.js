@@ -10,7 +10,7 @@ test('things Calc leaves symbolic are shown as written', () => {
   assert.equal(run('@1$2=inv($1)', ['[[1, 2], [2, 4]]', ''])[1], 'inv([[1, 2], [2, 4]])', 'a singular matrix has no inverse');
   assert.equal(run('@1$2=det($1)', ['[[1, 2, 3], [4, 5, 6]]', ''])[1], 'det([[1, 2, 3], [4, 5, 6]])', 'det needs a square matrix');
   assert.equal(run('@1$2=sqrt($1)', ['[1, 2, 3]', ''])[1], 'sqrt([1, 2, 3])', 'sqrt is not applied elementwise');
-  assert.equal(run('@1$2=(1,2) > 0', ['', ''])[1], '#ERROR', 'complex numbers have no order (Emacs shows "(1, 2) > 0"; known difference, complex forms are not in the symbolic engine)');
+  assert.equal(run('@1$2=(1,2) > 0', ['', ''])[1], '(1, 2) > 0', 'complex numbers have no order');
   assert.equal(run('@1$2=cross([1,2],[3,4])', ['', ''])[1], 'cross([1, 2], [3, 4])');
   assert.equal(run('@1$2=ln(0)', ['', ''])[1], 'ln(0)');
 });

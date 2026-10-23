@@ -542,7 +542,7 @@ S.state = /** @type {import('./src/types.js').DocState} */ (/** @type {unknown} 
 // File menu: whether the panel is open (Open and Save As leave it for the screen in src-browser/file-screen.js).
 S.fileMenuOpen = false;
 S.moreMenuStep = null; // null | 'export' -- see renderMoreMenuContent
-// Export sub-flow: which format was picked (null | 'markdown' | 'html'),
+// Export sub-flow: which format was picked (null | 'html'),
 // tracked separately since the export flow has its own two steps
 // (format, then scope) that don't fit the open/new/saveas
 // backend-choice pattern the rest of the file menu already uses.

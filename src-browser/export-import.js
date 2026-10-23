@@ -11,15 +11,14 @@ import { exportLatexZip } from '../src/export-latex-zip.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
 import { prepareBabelExport } from '../src/babel-export.js';
 import { expandIncludes } from '../src/export-include.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
-import { exportAsOrg } from '../src/export-org.js';
+import { exportOrgText } from '../src/export-org.js';
 import { exportToVcard } from '../src/export-vcard.js';
 import { importIcalendarAsOrgText } from '../src/import-icalendar.js';
 import { importVcardsAsOrgText } from '../src/import-vcard.js';
 import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMenuAliases, getUseSubSuperscripts, getExportWithBrokenLinks } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
-import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { collectExportImages } from './export-images.js';
@@ -79,14 +78,12 @@ function dataUrlBytes(url) {
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii' || format === 'markdown' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer') {
+  if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     try {
     if (format === 'ascii') {
       saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
-    } else if (format === 'markdown') {
-      saveOut(baseName + '.md', exportToMarkdown(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/markdown');
     } else if (format === 'html') {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex' || format === 'beamer') {
@@ -184,7 +181,7 @@ export async function performExport(format, scope) {
   S.exportFormat = null;
   S.exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'markdown' ? 'Markdown' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'beamer' ? 'Beamer' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'beamer' ? 'Beamer' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
   );
   renderMoreMenu();
   render();
@@ -209,20 +206,18 @@ export async function performExport(format, scope) {
 export async function performOrgOrgExport() {
   if (!S.state.doc) return;
   setStatus('Exporting\u2026');
-  let result;
+  let text;
   try {
-    result = await exportAsOrg(prepareBabelExport(S.state.doc), resolveIncludePath, parseOrg, { minlevel: 1 });
+    text = await exportOrgText(prepareBabelExport(S.state.doc), resolveIncludePath, parseOrg, { minlevel: 1 });
   } catch (err) {
     setStatus(`Couldn't export: ${err.message}`);
     render();
     return;
   }
-  const serialized = serializeOrg(result)
-    .split('\n')
-    .filter((line) => !/^\s*#\+TITLE:/i.test(line))
-    .join('\n');
-  const rawText = '#+TITLE: *Org ORG Export*\n' + serialized;
-  await createNewUnsavedDocument(rawText, 'Exported to *Org ORG Export* in a new buffer \u2014 your original document is untouched.', '*Org ORG Export*');
+  S.moreOpen = false;
+  S.moreMenuStep = null;
+  S.exportFormat = null;
+  await createNewUnsavedDocument(text, 'Exported to *Org ORG Export* in a new buffer \u2014 your original document is untouched.', '*Org ORG Export*');
 }
 
 export function renderExportFlow() {
@@ -239,12 +234,11 @@ export function renderExportFlow() {
       S.exportFormat = 'ascii';
       renderMoreMenu();
     });
+    const orgBtn = aliasedMenuDivItem(exportMenuAliases, 'As-org', () => {
+      void performOrgOrgExport();
+    });
     const htmlBtn = aliasedMenuDivItem(exportMenuAliases, 'HTML', () => {
       S.exportFormat = 'html';
-      renderMoreMenu();
-    });
-    const mdBtn = aliasedMenuDivItem(exportMenuAliases, 'Markdown', () => {
-      S.exportFormat = 'markdown';
       renderMoreMenu();
     });
     const latexBtn = aliasedMenuDivItem(exportMenuAliases, 'LaTeX', () => {
@@ -257,10 +251,10 @@ export function renderExportFlow() {
     });
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
+      { label: 'As-org', btn: orgBtn },
       { label: 'Beamer', btn: beamerBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'LaTeX', btn: latexBtn },
-      { label: 'Markdown', btn: mdBtn },
     ]);
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -437,7 +431,7 @@ export function renderExportFlow() {
     // separate sub-headings), so it has no real sub-heading pollution
     // to filter out in the first place -- every heading is already a
     // potential top-level contact, so it keeps the unfiltered list.
-    // Every other export format (HTML, Markdown, iCalendar, etc.)
+    // Every other export format (HTML, iCalendar, etc.)
     // also keeps the unfiltered list, since any heading is a
     // legitimate target for those.
     const isTreeVcard = S.exportFormat === 'vcard' && S.vcardStyle === 'tree';
@@ -478,7 +472,7 @@ export function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'markdown' ? 'Markdown' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : S.exportFormat === 'beamer' ? 'Beamer' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : S.exportFormat === 'beamer' ? 'Beamer' : 'Calendar (.ics)'} for:`;
   morePanel.appendChild(label);
 
   morePanel.appendChild(

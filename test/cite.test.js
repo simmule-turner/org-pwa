@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { parseInline } from '../src/inline-markup.js';
 import { exportToHtml } from '../src/export-html.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToOdt } from '../src/export-odt.js';
 import { cacheBibliography, citeEntry, parseBibtex, parseCitationAt, parseCslJson, splitCitationKeys } from '../src/cite.js';
@@ -81,11 +80,8 @@ test('HTML: the default author-year processor gives Emacs\'s text, the bibliogra
   assert.ok(html.indexOf('Ann Alpha') < html.indexOf('Donald E. Knuth (1984). <i>'), 'entries are sorted by author');
 });
 
-test('Markdown, ASCII and ODT give the same text, with the bibliography in their own markup', () => {
+test('ASCII and ODT give the same text, with the bibliography in their own markup', () => {
   const doc = parseOrg(SOURCE);
-  const md = exportToMarkdown(doc);
-  assert.ok(md.includes(SENTENCE));
-  assert.ok(md.includes('Ann Alpha and Bob Beta and Cy Gamma (2001). *Three authors*.'));
   const ascii = exportToAscii(doc, null, 400);
   assert.ok(ascii.includes(SENTENCE));
   assert.ok(ascii.includes('Ann Alpha and Bob Beta and Cy Gamma (2001). /Three authors/.'));

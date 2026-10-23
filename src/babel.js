@@ -113,7 +113,7 @@ export function findNamedTable(lines, name) {
     while (j < lines.length && /^\s*#\+(CAPTION|ATTR_\w+|HEADERS?)(\[[^\]]*\])?:/i.test(lines[j])) j++;
     const rows = [];
     for (; j < lines.length && /^\s*\|/.test(lines[j]); j++) {
-      if (/^\s*\|[-+]*\|?\s*$/.test(lines[j])) continue;
+      if (/^\s*\|-/.test(lines[j])) continue;
       rows.push(lines[j].trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cellValue));
     }
     if (rows.length) return rows;

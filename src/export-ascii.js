@@ -282,6 +282,10 @@ function plainText(text, I) {
     .join('');
 }
 
+const INLINE_SRC_OR_CALL_RE = /\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}|\bcall_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g;
+/** Inline source code and calls found by `objects`, standing in the text as placeholders while it is parsed. @type {(string | null)[]} */
+let inlineCode = [];
+
 /**
  * Org text as objects. `parent` is the element that holds it (a target needs it to say which section it is in).
  * @param {string} text @param {Node | null} parent @param {Info} I @param {boolean} [radio]
@@ -289,12 +293,20 @@ function plainText(text, I) {
  */
 function objects(text, parent, I, radio = true) {
   const marked = text.split('\n').map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l)).join('\n');
-  let nodes = parseInline(marked, { subSuperscriptMode: I.sup, radioTargets: radio ? I.radioRe : null });
+  const outer = inlineCode;
+  inlineCode = [];
+  const held = inlineCode;
+  const prepared = marked.replace(INLINE_SRC_OR_CALL_RE, (_whole, _lang, code) => `\uE000${held.push(code === undefined ? null : code) - 1}\uE001`);
+  let nodes = parseInline(prepared, { subSuperscriptMode: I.sup, radioTargets: radio ? I.radioRe : null });
   if (I.cite) {
     const cite = I.cite;
     nodes = dropSilentCitations(nodes, (c) => cite.formatCitation(c) === null);
   }
-  return convertInline(nodes, parent, I);
+  try {
+    return convertInline(nodes, parent, I);
+  } finally {
+    inlineCode = outer;
+  }
 }
 
 /** @param {import('./types.js').InlineNode[]} nodes @param {Node | null} parent @param {Info} I @returns {Item[]} */
@@ -306,13 +318,25 @@ function convertInline(nodes, parent, I) {
       case 'text': {
         let last = 0;
         const text = n.value;
+        /** @param {string} piece the plain text between snippets: inline source code prints as verbatim text, an inline call prints nothing */
+        const pushPlain = (piece) => {
+          let from = 0;
+          for (const m of piece.matchAll(/\uE000(\d+)\uE001/g)) {
+            const at = m.index || 0;
+            out.push(plainText(piece.slice(from, at), I));
+            const code = inlineCode[Number(m[1])];
+            if (code !== null && code !== undefined) out.push(mk('verbatim', parent, { value: code }));
+            from = at + m[0].length;
+          }
+          out.push(plainText(piece.slice(from), I));
+        };
         for (const m of text.matchAll(SNIPPET_RE)) {
           const at = m.index || 0;
-          out.push(plainText(text.slice(last, at), I));
+          pushPlain(text.slice(last, at));
           if (m[1].toLowerCase() === 'ascii') out.push(m[2]);
           last = at + m[0].length;
         }
-        out.push(plainText(text.slice(last), I));
+        pushPlain(text.slice(last));
         break;
       }
       case 'bold':
@@ -1107,7 +1131,7 @@ function itemText(item, contents, I) {
   const checkbox = itemCheckbox(item, I) || '';
   let bullet;
   if (type === 'descriptive') bullet = checkbox + exportItems(item.tag || [], I);
-  else if (type === 'ordered') bullet = `${item.itemNumber || 1}${(item.bullet || '').replace(/^\d+/, '')} `;
+  else if (type === 'ordered' && /^\d/.test(item.bullet || '1')) bullet = `${item.itemNumber || 1}${(item.bullet || '').replace(/^\d+/, '')} `;
   else {
     bullet = sourceBulletString(item);
     if (I.cs.utf8) bullet = bullet.replace(/-/g, '•').replace(/\+/g, '⁃').replace(/\*/g, '‣');

@@ -38,7 +38,7 @@ import { parseInline, stripLineBreakMarker, extractLatexFragments, matchLatexFra
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
 const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
-const TABLE_RULE_RE = /^\s*\|[-+]*\|?\s*$/;
+const TABLE_RULE_RE = /^\s*\|-/; // as in Org, any row that starts with |- is a horizontal rule (|---|---| too)
 const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
 const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
 const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)?(.*)$/;

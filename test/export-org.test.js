@@ -140,7 +140,7 @@ test('THE FEATURE: a raw "# " comment line is stripped, but a "#+KEYWORD:" line 
   assert.deepEqual(result.children[0].bodyLines, ['Real text.', '#+ATTR_HTML: :width 400', 'More text.', '']);
 });
 
-test('THE FEATURE: a #+BEGIN_COMMENT/#+END_COMMENT block is stripped entirely, matching real org\u2019s own actual export behavior (the same behavior this app\u2019s own HTML/Markdown/ODT exporters already give it)', () => {
+test('THE FEATURE: a #+BEGIN_COMMENT/#+END_COMMENT block is stripped entirely, matching real org\u2019s own actual export behavior (the same behavior this app\u2019s own HTML/ODT exporters already give it)', () => {
   const doc = parseOrg('* H\nBefore.\n#+BEGIN_COMMENT\nHidden line one.\nHidden line two.\n#+END_COMMENT\nAfter.\n');
   const result = filterNoexportAndComments(doc);
   assert.deepEqual(result.children[0].bodyLines, ['Before.', 'After.', '']);

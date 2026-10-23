@@ -75,11 +75,16 @@ test('a link target with special characters is escaped inside the href attribute
 
 // ---- lists ----------------------------------------------------------------
 
-test('checkbox items render as real disabled <input> checkboxes, checked state preserved', () => {
-  const doc = parseOrg('* A\n- [ ] todo\n- [X] done');
+test('checkbox items are written as text, as org-html-checkbox-type ascii does; unicode and html are the other choices', () => {
+  const doc = parseOrg('* A\n- [ ] todo\n- [X] done\n- [-] some');
   const out = exportToHtml(doc);
-  assert.ok(out.includes('<input type="checkbox" disabled /> todo'));
-  assert.ok(out.includes('<input type="checkbox" disabled checked /> done'));
+  assert.ok(out.includes('<code>[&#xa0;]</code> todo'));
+  assert.ok(out.includes('<code>[X]</code> done'));
+  assert.ok(out.includes('<code>[-]</code> some'));
+  const unicode = exportToHtml(doc, null, { defaults: { checkbox: 'unicode' } });
+  assert.ok(unicode.includes('&#x2610; todo') && unicode.includes('&#x2611; done') && unicode.includes('&#x2610; some'));
+  const inputs = exportToHtml(doc, null, { defaults: { checkbox: 'html' } });
+  assert.ok(inputs.includes("<input type='checkbox' /> todo") && inputs.includes("<input type='checkbox' checked='checked' /> done"));
 });
 
 // ---- tables ---------------------------------------------------------------
@@ -507,8 +512,8 @@ test('lists: org-ul / org-ol with value, descriptive lists as dl, checkboxes wit
   assert.ok(body('* A\n1. [@5] five\n2. six').includes('<li value="5">five</li>'));
   assert.ok(body('* A\n- term :: description').includes('<dl class="org-dl">\n<dt>term</dt><dd>description</dd>\n</dl>'));
   const boxes = body('* A\n- [ ] a\n- [X] b\n- [-] c');
-  assert.ok(boxes.includes('<li class="off"><input type="checkbox" disabled /> a</li>'));
-  assert.ok(boxes.includes('<li class="on"><input type="checkbox" disabled checked /> b</li>'));
+  assert.ok(boxes.includes('<li class="off"><code>[&#xa0;]</code> a</li>'));
+  assert.ok(boxes.includes('<li class="on"><code>[X]</code> b</li>'));
   assert.ok(boxes.includes('<li class="trans">'));
 });
 

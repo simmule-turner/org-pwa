@@ -140,7 +140,7 @@ function parseTable(lines, i) {
   /** @type {ElementTableRow[]} */ const rows = [];
   while (i < lines.length && TABLE_RE.test(lines[i])) {
     const line = lines[i];
-    if (/^[ \t]*\|[-+]*[ \t]*\|?[ \t]*$/.test(line) && /^[ \t]*\|-/.test(line)) rows.push({ rule: true });
+    if (/^[ \t]*\|-/.test(line)) rows.push({ rule: true });
     else rows.push({ cells: splitRow(line) });
     i++;
   }

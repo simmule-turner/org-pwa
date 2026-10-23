@@ -68,8 +68,8 @@ test('THE EXACT file menu example parses completely and correctly', () => {
   });
 });
 
-test('THE EXACT export menu example (omit Markdown) parses correctly', () => {
-  assert.deepEqual(parseMenuAliases('"export:Markdown;"'), { ...EMPTY, export: { Markdown: '' } });
+test('THE EXACT export menu example (omit HTML) parses correctly', () => {
+  assert.deepEqual(parseMenuAliases('"export:HTML;"'), { ...EMPTY, export: { HTML: '' } });
 });
 
 test('THE EXACT more menu example parses completely and correctly, including single-character labels like "+" and "?"', () => {
@@ -83,9 +83,9 @@ test('THE EXACT more menu example parses completely and correctly, including sin
 // ---- omission (empty alias) ---------------------------------------------
 
 test('an empty alias ("menu:Label;" with nothing after the semicolon) is stored as an empty string, distinct from "not mentioned at all"', () => {
-  const result = parseMenuAliases('"export:Markdown;"');
-  assert.equal('Markdown' in result.export, true);
-  assert.equal(result.export.Markdown, '');
+  const result = parseMenuAliases('"export:HTML;"');
+  assert.equal('HTML' in result.export, true);
+  assert.equal(result.export.HTML, '');
 });
 
 test('a label never mentioned at all has no entry -- distinguishable from an explicit empty-alias omission', () => {
@@ -125,7 +125,7 @@ test('whitespace around the menu, label, and alias within a token is trimmed', (
 });
 
 test('a semicolon with only whitespace after it is treated as an empty alias (omit)', () => {
-  assert.deepEqual(parseMenuAliases('"export:Markdown;   "'), { ...EMPTY, export: { Markdown: '' } });
+  assert.deepEqual(parseMenuAliases('"export:HTML;   "'), { ...EMPTY, export: { HTML: '' } });
 });
 
 // ---- multi-line values (line-continuation, matching every other multi-entry variable) ----

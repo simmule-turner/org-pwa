@@ -7,8 +7,7 @@
  * standalone .odt file -- a ZIP archive of OpenDocument XML, openable
  * directly in LibreOffice, OpenOffice, Word (with the ODF filter), and
  * Google Docs (import). Pure and DOM-free -- walks the same parsed AST
- * org-parser.js already produces, the same way export-html.js and
- * export-markdown.js do.
+ * org-parser.js already produces, the same way export-html.js does.
  *
  * Scope mirrors export-html.js closely (same inline markup coverage,
  * same resolveLinkTarget-based internal-link resolution, same
@@ -17,12 +16,12 @@
  *   - Footnotes use ODF's own native <text:note> mechanism (a real,
  *     editable footnote a word processor understands and can
  *     renumber/reflow on its own), not the "collect and append a
- *     Footnotes section" approximation HTML/Markdown export both use,
+ *     Footnotes section" approximation HTML export uses,
  *     since ODF actually has proper footnote support to use instead.
  *   - Images are rendered as a plain text reference to their target
  *     path, not embedded -- embedding would mean reading each image's
  *     binary and packaging it into the archive's own Pictures/
- *     folder, out of scope here, matching how Markdown/ASCII export
+ *     folder, out of scope here, matching how ASCII export
  *     already treat images as a reference rather than embedded data.
  */
 
@@ -404,7 +403,7 @@ function renderBlockOdt(block) {
   // every other/unrecognized block type: preserve verbatim in
   // a monospaced paragraph per line, same "don't try to reinterpret
   // content this app has no specific handling for" reasoning
-  // export-markdown.js's own renderBlockMd already documents.
+  // (the same as the other exporters).
   return block.lines.map(stripCommaEscape).map((l) => `<text:p text:style-name="Code">${escapeXml(l) || '<text:s/>'}</text:p>`).join('');
 }
 
@@ -597,7 +596,7 @@ function contentXml(bodyXml) {
  * Exports `doc` (or, if `scope` is given, just that heading and its
  * descendants) to a real .odt file, returned as a Uint8Array ready to
  * hand to a download function. Same by-reference `scope` convention
- * as exportToHtml/exportToMarkdown.
+ * as exportToHtml.
  */
 /** Builds one level of the ToC's own nested list -- a real ODF
  *  <text:list>, linking each entry to the same bookmark

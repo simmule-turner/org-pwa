@@ -1,31 +1,474 @@
 // @ts-check
 /**
- * Smart quotes (`#+OPTIONS: ':t`) for LaTeX export, as `org-export-activate-smart-quotes` does: every `"` in a run of text toggles a primary quote, and
+ * Smart quotes (`#+OPTIONS: ':t`), as `org-export-activate-smart-quotes` does: every `"` in a run of text toggles a primary quote, and
  * a `'` inside an open primary quote is an opening or closing secondary quote by the characters around it, otherwise an apostrophe. The quotes
  * are Org's `org-export-smart-quotes-alist` for LaTeX; a language without an entry (or an apostrophe with none) keeps the plain character.
  */
 
-/** @typedef {{ po?: string, pc?: string, so?: string, sc?: string }} QuoteSet */
+/** @typedef {'latex' | 'html' | 'utf8'} QuoteTarget */
+/** @typedef {Record<string, Partial<Record<QuoteTarget, string | null>>>} QuoteSet */
 
-/** @type {Record<string, QuoteSet>} */
+/** Org's `org-export-smart-quotes-alist`, generated from Emacs 29.3: per language, each kind of quote spelled for LaTeX, HTML and UTF-8. @type {Record<string, QuoteSet>} */
 const QUOTES = {
-  "ar": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "\\guilsinglleft{}", sc: "\\guilsinglright{}"},
-  "da": {po: ">>", pc: "<<", so: "\\frq{}", sc: "\\flq{}"},
-  "de": {po: "\"`", pc: "\"'", so: "\\glq{}", sc: "\\grq{}"},
-  "el": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "``", sc: "''"},
-  "en": {po: "``", pc: "''", so: "`", sc: "'"},
-  "es": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "``", sc: "''"},
-  "fa": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "\\guilsinglleft{}", sc: "\\guilsinglright{}"},
-  "fr": {po: "\\og ", pc: "\\fg{}", so: "``", sc: "''"},
-  "is": {po: "\"`", pc: "\"'", so: "\\glq{}", sc: "\\grq{}"},
-  "it": {po: "``", pc: "''", so: "`", sc: "'"},
-  "no": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "`", sc: "'"},
-  "nb": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "`", sc: "'"},
-  "nn": {po: "\\guillemotleft{}", pc: "\\guillemotright{}", so: "`", sc: "'"},
-  "ro": {po: "\"`", pc: "''", so: "\\guillemotleft{}", sc: "\\guillemotright{}"},
-  "ru": {po: "{}<<", pc: ">>{}", so: "\\glqq{}", sc: "\\grqq{}"},
-  "sl": {po: "{}<<", pc: ">>{}", so: "\\glqq{}", sc: "\\grqq{}"},
-  "sv": {po: "’’", pc: "’’", so: "’", sc: "’"},
+ "ar": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "\\guilsinglleft{}",
+   "html": "&lsaquo;",
+   "utf8": "‹"
+  },
+  "sc": {
+   "latex": "\\guilsinglright{}",
+   "html": "&rsaquo;",
+   "utf8": "›"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "da": {
+  "po": {
+   "latex": ">>",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "pc": {
+   "latex": "<<",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "so": {
+   "latex": "\\frq{}",
+   "html": "&rsaquo;",
+   "utf8": "›"
+  },
+  "sc": {
+   "latex": "\\flq{}",
+   "html": "&lsaquo;",
+   "utf8": "‹"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "de": {
+  "po": {
+   "latex": "\"`",
+   "html": "&bdquo;",
+   "utf8": "„"
+  },
+  "pc": {
+   "latex": "\"'",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "so": {
+   "latex": "\\glq{}",
+   "html": "&sbquo;",
+   "utf8": "‚"
+  },
+  "sc": {
+   "latex": "\\grq{}",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "el": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "``",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "sc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "en": {
+  "po": {
+   "latex": "``",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "pc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "so": {
+   "latex": "`",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "sc": {
+   "latex": "'",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "es": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "``",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "sc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "fa": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "\\guilsinglleft{}",
+   "html": "&lsaquo;",
+   "utf8": "‹"
+  },
+  "sc": {
+   "latex": "\\guilsinglright{}",
+   "html": "&rsaquo;",
+   "utf8": "›"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "fr": {
+  "po": {
+   "latex": "\\og ",
+   "html": "&laquo;&nbsp;",
+   "utf8": "« "
+  },
+  "pc": {
+   "latex": "\\fg{}",
+   "html": "&nbsp;&raquo;",
+   "utf8": " »"
+  },
+  "so": {
+   "latex": "``",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "sc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "is": {
+  "po": {
+   "latex": "\"`",
+   "html": "&bdquo;",
+   "utf8": "„"
+  },
+  "pc": {
+   "latex": "\"'",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "so": {
+   "latex": "\\glq{}",
+   "html": "&sbquo;",
+   "utf8": "‚"
+  },
+  "sc": {
+   "latex": "\\grq{}",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "it": {
+  "po": {
+   "latex": "``",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "pc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "so": {
+   "latex": "`",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "sc": {
+   "latex": "'",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "no": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "`",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "sc": {
+   "latex": "'",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "nb": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "`",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "sc": {
+   "latex": "'",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "nn": {
+  "po": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "`",
+   "html": "&lsquo;",
+   "utf8": "‘"
+  },
+  "sc": {
+   "latex": "'",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "ro": {
+  "po": {
+   "latex": "\"`",
+   "html": "&bdquo;",
+   "utf8": "„"
+  },
+  "pc": {
+   "latex": "''",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "so": {
+   "latex": "\\guillemotleft{}",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "sc": {
+   "latex": "\\guillemotright{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "ru": {
+  "po": {
+   "latex": "{}<<",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": ">>{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "\\glqq{}",
+   "html": "&bdquo;",
+   "utf8": "„"
+  },
+  "sc": {
+   "latex": "\\grqq{}",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "ap": {
+   "latex": null,
+   "html": null,
+   "utf8": "’"
+  }
+ },
+ "sl": {
+  "po": {
+   "latex": "{}<<",
+   "html": "&laquo;",
+   "utf8": "«"
+  },
+  "pc": {
+   "latex": ">>{}",
+   "html": "&raquo;",
+   "utf8": "»"
+  },
+  "so": {
+   "latex": "\\glqq{}",
+   "html": "&bdquo;",
+   "utf8": "„"
+  },
+  "sc": {
+   "latex": "\\grqq{}",
+   "html": "&ldquo;",
+   "utf8": "“"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ },
+ "sv": {
+  "po": {
+   "latex": "’’",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "pc": {
+   "latex": "’’",
+   "html": "&rdquo;",
+   "utf8": "”"
+  },
+  "so": {
+   "latex": "’",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "sc": {
+   "latex": "’",
+   "html": "&rsquo;",
+   "utf8": "’"
+  },
+  "ap": {
+   "latex": null,
+   "html": "&rsquo;",
+   "utf8": "’"
+  }
+ }
 };
 
 /** The syntax class Org's syntax table gives a character: whitespace, open or close bracket, word, symbol, punctuation or string quote. @param {string} c */
@@ -75,12 +518,13 @@ export function quoteStatuses(list) {
   return out;
 }
 
-/** The text with its quotes replaced. @param {string} text @param {string[]} status @param {string} language */
-export function smartQuotes(text, status, language) {
+/** The text with its quotes replaced. @param {string} text @param {string[]} status @param {string} language @param {QuoteTarget} [target] */
+export function smartQuotes(text, status, language, target = 'latex') {
   const set = QUOTES[language];
   let k = 0;
   return text.replace(/['"]/g, (m) => {
     const kind = status[k++];
-    return (set && kind !== 'ap' && /** @type {Record<string, string | undefined>} */ (set)[kind]) || m;
+    const entry = set && set[kind];
+    return (entry && entry[target]) || m;
   });
 }

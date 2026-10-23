@@ -4,7 +4,6 @@ import { countExportItemsOn, encodeLispString, hasLatexTocFix, hasPagedToc, html
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
 import { exportToAscii } from '../src/export-ascii.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
@@ -83,14 +82,10 @@ test('"Fix wide TOC numbers" is stored in org-xx-latex-header and written before
   assert.ok(at('\\usepackage{tocloft}') > at('\\usepackage{hyperref}') && at('\\cftsubsubsecnumwidth') < at('\\usepackage{mine}'), tex.slice(0, 600));
 });
 
-test('org-use-sub-superscripts also reaches ASCII, Markdown and ODT export, and the file\'s #+OPTIONS: ^: wins', () => {
+test('org-use-sub-superscripts also reaches ASCII and ODT export, and the file\'s #+OPTIONS: ^: wins', () => {
   const org = '* Effort_ALL: values\nSee x_{1} and a_b.\n';
   // ASCII prints a subscript as _x or _{xy} either way, so its text is the same whatever the setting
   assert.match(exportToAscii(doc(org), null, 72, { sup: '{}' }), /Effort_ALL/);
-  const md = (text, sup) => exportToMarkdown(doc(text), null, { sup });
-  assert.match(md(org, '{}'), /Effort\\_ALL/);
-  assert.match(md(org, 't'), /Effort<sub>ALL<\/sub>/);
-  assert.match(md('#+OPTIONS: ^:nil\n' + org, 't'), /Effort\\_ALL/);
   const odt = (text, sup) => {
     const dir = mkdtempSync(path.join(tmpdir(), 'export-defaults-odt-'));
     writeFileSync(path.join(dir, 't.odt'), exportToOdt(doc(text), null, { sup }));

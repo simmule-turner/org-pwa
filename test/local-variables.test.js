@@ -296,8 +296,8 @@ test('getExtraMenu returns an empty string when unset, not undefined', () => {
 // ---- getMenuAliases ----
 
 test('getMenuAliases returns the raw string value unchanged', () => {
-  const vars = { 'org-xx-menu-aliases': '"file:New;\u2795" "export:Markdown;"' };
-  assert.equal(getMenuAliases(vars), '"file:New;\u2795" "export:Markdown;"');
+  const vars = { 'org-xx-menu-aliases': '"file:New;\u2795" "export:HTML;"' };
+  assert.equal(getMenuAliases(vars), '"file:New;\u2795" "export:HTML;"');
 });
 
 test('getMenuAliases returns an empty string when unset, not undefined', () => {

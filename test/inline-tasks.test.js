@@ -5,23 +5,11 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseOrg } from '../src/org-parser.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
 import { setInlineTaskLevel, readInlineTaskLevel } from '../src/inline-tasks.js';
 
 const src = '* One\ntext\n\n*************** TODO Fix it :w:\nbody\n*************** END\n\nafter\n';
 test.after(() => setInlineTaskLevel(null));
-
-test('Markdown export writes an inline task as the div ox-md gives it', () => {
-  setInlineTaskLevel(15);
-  const md = exportToMarkdown(parseOrg(src));
-  assert.ok(md.includes('<div class="inlinetask">\n<b>TODO Fix it <code>:w:</code></b><br>\n\nbody\n\n</div>\n\nafter'), md);
-});
-
-test('Markdown export keeps the deep headings when org-inlinetask is not loaded', () => {
-  setInlineTaskLevel(null);
-  assert.ok(!exportToMarkdown(parseOrg(src)).includes('inlinetask'));
-});
 
 test('ODT export writes an inline task as a bordered title over its text', () => {
   setInlineTaskLevel(15);

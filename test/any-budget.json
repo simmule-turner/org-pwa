@@ -36,7 +36,6 @@
   "src/export-html.js": 42,
   "src/export-icalendar.js": 18,
   "src/export-include.js": 11,
-  "src/export-markdown.js": 6,
   "src/export-odt.js": 10,
   "src/export-options.js": 3,
   "src/export-org.js": 13,

@@ -12,7 +12,7 @@
  *                       freshly-parsed copy, never state.doc itself.
  *   b. Resolve #+INCLUDE:   -- reuses export-include.js's own
  *                       expandIncludes wholesale, the SAME module
- *                       ASCII/Markdown/HTML/ODT export already share
+ *                       ASCII/HTML/ODT export already share
  *                       -- not reimplemented here.
  *   c. Execute #+BEGIN_SRC code blocks -- genuinely NOT implemented:
  *       this app has no code interpreter or execution sandbox for any
@@ -34,7 +34,7 @@
  *       is dropped along with its entire subtree; a raw "# " comment
  *       line and a #+BEGIN_COMMENT/#+END_COMMENT block are both
  *       dropped too, matching real org's own actual export behavior
- *       (the same behavior this app's own HTML/Markdown/ODT exporters
+ *       (the same behavior this app's own HTML/ODT exporters
  *       already give #+BEGIN_COMMENT specifically, applied here more
  *       generally since this module's own output is real org text,
  *       not one of those backends).
@@ -49,6 +49,11 @@ import { shiftLevels } from './archive-model.js';
 import { parseBody } from './body-parser.js';
 import { formatTime } from './capture-template.js';
 import { parseOrgTimestamp } from './org-timestamp.js';
+import { serializeOrg } from './org-parser.js';
+import { buildFilter, parseHtmlOptions } from './export-html.js';
+import { rawExportOptions } from './export-options.js';
+import { resolveTodoSequences } from './todo-cycle.js';
+import { interpretOrg } from './org-interpret.js';
 
 const MACRO_USE_RE = /\{\{\{([a-zA-Z][-a-zA-Z0-9_]*)(\(([^)]*)\))?\}\}\}/g;
 
@@ -240,7 +245,7 @@ function expandMacros(doc, now) {
 }
 
 /**
- * The document with its {{{macros}}} expanded, for the exporters that read parsed text (Markdown, ASCII, ODT), and the heading
+ * The document with its {{{macros}}} expanded, for the exporters that read parsed text (ASCII, ODT), and the heading
  * to export in that copy. A document that uses no macro is returned as it is.
  * @param {Doc} doc @param {any} scope  the heading being exported, or null for the whole document @param {Date} now
  * @returns {{ doc: Doc, scope: any }}
@@ -268,7 +273,7 @@ const RAW_COMMENT_LINE_RE = /^\s*#(?!\+)(\s|$)/; // a real org "# " comment line
 /** Strips #+BEGIN_COMMENT/#+END_COMMENT blocks and raw "# " comment
  *  lines from a flat array of body lines -- matching real org's own
  *  actual export behavior (the same behavior this app's own HTML/
- *  Markdown/ODT exporters already give #+BEGIN_COMMENT specifically,
+ *  ODT exporter already give #+BEGIN_COMMENT specifically,
  *  applied here to raw text since this module's own output is real
  * @param {string[]} lines
  *  org text, not one of those rendered backends). */
@@ -360,15 +365,67 @@ function scaleHeadingLevels(doc, minlevel) {
  * export from an unrelated concurrent edit -- see this session's own
  * "safe copy" step (a) -- but nothing in here itself touches the
  * object it's given.
- * @param {Doc} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
+ * @param {Doc} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number, keepComments?: boolean }} [options]
  */
-async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel } = {}) {
+async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel, keepComments = false } = {}) {
   const resolvedNow = now instanceof Date ? now : new Date();
   let result = await expandIncludes(doc, fetchPath, parseOrgFn);
   result = expandMacros(result, resolvedNow);
-  result = filterNoexportAndComments(result);
+  if (!keepComments) result = filterNoexportAndComments(result);
   result = scaleHeadingLevels(result, minlevel);
   return result;
 }
 
-export { exportAsOrg, expandMacros, expandMacrosForExport, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs };
+/**
+ * The headings left after COMMENT, #+EXCLUDE_TAGS:, #+SELECT_TAGS: and tasks: (a dropped heading takes its subtree with it).
+ * @param {Doc} doc
+ * @returns {Doc}
+ */
+function pruneHeadings(doc) {
+  const sequences = resolveTodoSequences(doc);
+  const keep = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc, options: parseHtmlOptions(doc), doneKeywords: sequences.flatMap((q) => q.doneKeywords) })));
+  /** @param {Heading} h @returns {Heading | null} */
+  const walk = (h) => (keep(h) ? { ...h, children: (h.children || []).map(walk).filter((c) => c !== null) } : null);
+  return { ...doc, children: (doc.children || []).map(walk).filter((c) => c !== null) };
+}
+
+/**
+ * What Emacs's `org-org-export-as-org` writes for `doc`: the document after includes, macros and the export filters, in Org's
+ * canonical form (see org-interpret.js).
+ * @param {Doc} doc @param {Parameters<typeof expandIncludes>[1]} fetchPath @param {Parameters<typeof expandIncludes>[2]} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
+ * @returns {Promise<string>}
+ */
+async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
+  const processed = pruneHeadings(await exportAsOrg(doc, fetchPath, parseOrgFn, { ...options, keepComments: true }));
+  const raw = rawExportOptions(processed);
+  /** @param {string} key @param {boolean} dflt */
+  const flag = (key, dflt) => (raw[key] === undefined ? dflt : raw[key] !== 'nil');
+  const d = raw.d;
+  /** @type {(name: string) => boolean} */
+  let drawer = (name) => name !== 'LOGBOOK';
+  if (d === 'nil') drawer = () => false;
+  else if (d === 't') drawer = () => true;
+  else if (d && /^\(not /.test(d)) drawer = (name) => ![...d.matchAll(/"([^"]*)"/g)].some((m) => m[1] === name);
+  else if (d && d.startsWith('(')) drawer = (name) => [...d.matchAll(/"([^"]*)"/g)].some((m) => m[1] === name);
+  const sequences = resolveTodoSequences(processed);
+  const select = new Set((processed.keywords || []).filter((k) => k.key.toUpperCase() === 'SELECT_TAGS').flatMap((k) => k.value.split(/\s+/)).filter(Boolean).map((t) => t.toLowerCase()));
+  /** @param {Heading[]} list @returns {boolean} */
+  const anySelected = (list) => list.some((h) => (h.tags || []).some((t) => select.has(String(t).toLowerCase())) || anySelected(h.children || []));
+  return interpretOrg(serializeOrg(processed), {
+    todoKeywords: new Set(sequences.flatMap((q) => [...q.todoKeywords, ...q.doneKeywords])),
+    todo: flag('todo', true),
+    priority: flag('pri', false),
+    tags: flag('tags', true),
+    planning: flag('p', false),
+    properties: flag('prop', false),
+    drawer,
+    footnotes: flag('f', true),
+    title: flag('title', true),
+    author: flag('author', true),
+    date: flag('date', true),
+    email: flag('email', false),
+    selective: select.size > 0 && anySelected(processed.children || []),
+  });
+}
+
+export { exportOrgText, exportAsOrg, expandMacros, expandMacrosForExport, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs };

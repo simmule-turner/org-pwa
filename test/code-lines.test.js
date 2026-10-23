@@ -70,12 +70,3 @@ test('headingLineIndex agrees with findHeadingLineNumber', async () => {
   assert.equal(index.lines.get(a)?.bodyStart, 7);
   assert.equal(index.lines.get(doc.children[1])?.line, findHeadingLineNumber(doc, doc.children[1]));
 });
-
-test('Markdown export numbers lines and resolves references like ox-md', async () => {
-  const { parseOrg } = await import('../src/org-parser.js');
-  const { exportToMarkdown } = await import('../src/export-markdown.js');
-  const md = exportToMarkdown(parseOrg('* H\n#+begin_src python -n 10\na = 1\nb = 2\n#+end_src\n#+begin_src python +n 5\nc = 3 (ref:c)\n#+end_src\nSee [[(c)]] and [[(c)][line (c)]].\n'));
-  assert.ok(md.includes('10  a = 1\n11  b = 2'), md);
-  assert.ok(md.includes('16  c = 3'), md);
-  assert.ok(md.includes('See c and line c.'), md); // the block shows labels, so the link shows the label
-});

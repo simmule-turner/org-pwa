@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v614';
+const CACHE_NAME = 'org-pwa-shell-v615';
 
 const SHELL_FILES = [
   './',
@@ -89,6 +89,7 @@ const SHELL_FILES = [
   './src/query-replace.js',
   './src/emacs-regex.js',
   './src/export-org.js',
+  './src/org-interpret.js',
   './src/org-plot.js',
   './src/clocktable.js',
   './src/extra-menu.js',
@@ -154,7 +155,6 @@ const SHELL_FILES = [
   './src-browser/footnotes-ui.js',
   './src-browser/setupfile.js',
   './src/export-links.js',
-  './src/export-markdown.js',
   './src/export-odt.js',
   './src/zip-writer.js',
   './src/ascii-fill.js',

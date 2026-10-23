@@ -150,7 +150,7 @@ export function blockSwitchText(name, params) {
 }
 
 /**
- * Plain-text rendering of a block (ASCII, Markdown, ...): numbers on the left, references flush right.
+ * Plain-text rendering of a block (ASCII, ...): numbers on the left, references flush right.
  * @param {CodeBlock} block
  * @param {number | null} start
  * @returns {string[]}

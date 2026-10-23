@@ -5,7 +5,7 @@
  * typically placed just above the header row. It's a directive, not
  * table data -- every export backend in this app needs to recognize
  * and exclude it from its own output, or it gets treated as an
- * ordinary data row. For HTML and Markdown specifically, that's worse
+ * ordinary data row. For HTML specifically, that's worse
  * than it sounds: both backends treat the FIRST data row as the table
  * header, so an unrecognized cookie row doesn't just show up as
  * literal "<10>" text -- it actively hijacks the header position,
@@ -14,11 +14,11 @@
  * Only the ASCII exporter actually uses the widths themselves (to
  * force each column to a fixed size and word-wrap overflowing
  * content -- see export-ascii.js's own use of parseWidthCookieRow).
- * HTML, Markdown, and ODT export don't currently honor an explicit
+ * HTML and ODT export don't currently honor an explicit
  * width at all -- they use isWidthCookieRow just to recognize and
  * skip the row, leaving their own already-existing column-sizing
- * behavior (browser/renderer auto-sizing for HTML, GFM's own table
- * rendering for Markdown, ODF's own table-column defaults for ODT)
+ * behavior (browser/renderer auto-sizing for HTML, and
+ * ODF's own table-column defaults for ODT)
  * completely untouched otherwise.
  */
 

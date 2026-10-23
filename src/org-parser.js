@@ -51,7 +51,7 @@ const DEFAULT_DONE_KEYWORDS = ['DONE'];
 
 // ---- tokenizing helpers -------------------------------------------------
 
-const HEADING_RE = /^(\*+)\s+(.*)$/;
+const HEADING_RE = /^(\*+) +(.*)$/; // Org wants a space after the stars, not a tab
 const KEYWORD_RE = /^#\+([A-Za-z][A-Za-z_]*):\s?(.*)$/;
 const PROPERTY_DRAWER_START_RE = /^\s*:PROPERTIES:\s*$/i;
 const PROPERTY_DRAWER_END_RE = /^\s*:END:\s*$/i;
@@ -110,8 +110,8 @@ function parsePriority(rest) {
 function parseTodoKeyword(rest, todoKeywords) {
   const spaceIdx = rest.indexOf(' ');
   const firstWord = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
-  if (todoKeywords.includes(firstWord)) {
-    return { rest: spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1), todo: firstWord };
+  if (spaceIdx !== -1 && todoKeywords.includes(firstWord)) { // as in Org, a keyword needs a space after it: "* TODO" alone is a title
+    return { rest: rest.slice(spaceIdx + 1), todo: firstWord };
   }
   return { rest, todo: null };
 }
@@ -378,6 +378,7 @@ function serializeHeadingLine(node) {
   if (node.priority) parts.push(`[#${node.priority}]`);
   let line = parts.join(' ');
   line += node.title ? ` ${node.title}` : '';
+  if (!node.title && !(node.tags && node.tags.length)) line += ' '; // Org needs the space after the stars (or the keyword) even when nothing follows
   if (node.tags && node.tags.length) {
     line += ` :${node.tags.join(':')}:`;
   }

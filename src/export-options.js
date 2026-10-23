@@ -3,7 +3,7 @@
 /** @typedef {import('./types.js').Doc} Doc */
 /**
  * #+TITLE / #+AUTHOR / #+DATE / #+OPTIONS -- shared, pure parsing for
- * every export format (HTML/ASCII/Markdown/ODT) to build its own
+ * every export format (HTML/ASCII/ODT) to build its own
  * title block and apply the same #+OPTIONS: toggles consistently,
  * rather than four separate, potentially-drifting implementations of
  * the same six keys.

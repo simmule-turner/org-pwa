@@ -1,7 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
-// What the text exporters (Markdown, ASCII, ODT) need to treat internal links as Org does: each exported heading's section
+// What the text exporters (ASCII, ODT) need to treat internal links as Org does: each exported heading's section
 // number, where each `<<target>>` is, and the pattern for a radio target's plain mentions. (HTML export has its own.)
 import { resolveLinkTarget } from './link-resolve.js';
 import { collectTargets, normalizeTargetName, radioTargetRegExp } from './targets.js';

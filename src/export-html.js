@@ -26,10 +26,10 @@
  * which is how an export becomes a PDF: the browser's Print > Save as PDF.
  *
  * Differences from Emacs are deliberate: no `htmlize` syntax colouring, MathJax is replaced by KaTeX, `#+INCLUDE:`
- * and `#+SETUPFILE:` need files this page cannot read, element ids are readable slugs instead of hashes, and
- * checkboxes are real (disabled) `<input>` elements.
+ * and `#+SETUPFILE:` need files this page cannot read, and element ids are readable slugs instead of hashes.
  */
 
+import { quoteStatuses, smartQuotes } from './smart-quotes.js';
 import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
 import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
 import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
@@ -80,9 +80,12 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     todo: true,
     pri: false,
     brk: false,
+    checkbox: defaults.checkbox ?? 'ascii', // org-html-checkbox-type
     sup: defaults.sup ?? 't', // org-use-sub-superscripts, unless the file's #+OPTIONS: ^: says otherwise
     broken: parseBrokenLinks(defaults.brokenLinks), // org-export-with-broken-links, unless the file's #+OPTIONS: broken-links: says otherwise
     special: true,
+    smart: false, // #+OPTIONS: ':t
+    language: ((doc.keywords || []).find((/** @type {{ key: string }} */ k) => k.key.toUpperCase() === 'LANGUAGE') || { value: 'en' }).value.trim() || 'en',
     emph: true,
     entities: true,
     footnotes: true,
@@ -133,6 +136,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'H': if (/^\d+$/.test(v)) o.H = Number(v); break;
       case 'tags': o.tags = isNil(v) ? false : v === 'not-in-toc' ? 'not-in-toc' : true; break;
       case 'todo': o.todo = !isNil(v); break;
+      case "'": o.smart = v === 't'; break;
       case 'pri': o.pri = v === 't'; break;
       case '\\n': o.brk = v === 't'; break;
       case '^': o.sup = v === 'nil' || v === '{}' ? v : 't'; break;
@@ -294,7 +298,10 @@ const TIMESTAMP_RE = /<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\
 function timestampHtml(state, match) {
   const [whole] = match;
   if (!state.options.stamps) return '';
-  const text = escapeHtml(whole).replace(/--/g, '&#x2013;');
+  // a time range within one day, <2026-03-04 Wed 10:00-11:00>, is written as two timestamps
+  const range = /^([<[])(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?) (\d{1,2}:\d{2})-(\d{1,2}:\d{2})((?: [^>\]]+)?)([>\]])$/.exec(whole);
+  const spelled = range ? `${range[1]}${range[2]} ${range[3]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}--${range[1]}${range[2]} ${range[4]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}` : whole;
+  const text = escapeHtml(spelled).replace(/--/g, '&#x2013;');
   return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}</span></span>`, whole);
 }
 
@@ -387,6 +394,8 @@ function renderInline(state, rawText) {
   text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
   text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
+  // inline calls to Babel blocks print nothing when nothing is run
+  text = text.replace(/\bcall_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, (whole) => addToken(state, '', whole));
   // radio targets and targets (not inside =verbatim= or ~code~, where they are just characters)
   text = outsideVerbatim(text, (/** @type {string} */ piece) =>
     piece
@@ -505,7 +514,7 @@ function imageSrc(target) {
  */
 function linkHref(state, target) {
   const t = target.trim();
-  if (/^(https?|ftp|mailto|news|irc|doi):/i.test(t)) return /^doi:/i.test(t) ? 'https://doi.org/' + t.replace(/^doi:/i, '') : t;
+  if (/^(https?|ftp|mailto|news|irc|doi):/i.test(t)) return (/^doi:/i.test(t) ? 'https://doi.org/' + t.replace(/^doi:/i, '') : t).replace(/ /g, '%20'); // Org encodes spaces in a link
   if (/^id:/i.test(t)) {
     const id = t.slice(3);
     const h = findByProperty(state.doc.children || [], 'ID', id);
@@ -552,7 +561,16 @@ function literal(state, value) {
  */
 function renderNodes(state, nodes) {
   if (state.cite) nodes = dropSilentCitations(nodes, (c) => state.cite.formatCitation(c) === null);
-  return nodes.map((n) => renderNode(state, n)).join('');
+  const quotes = state.options.smart ? quoteStatuses(nodes) : null;
+  return nodes
+    .map((n) => {
+      const status = quotes && quotes.get(n);
+      if (!status || n.type !== 'text') return renderNode(state, n);
+      // each quote character becomes a placeholder for its entity, which the text rendering puts back
+      const value = smartQuotes(n.value, status, state.options.language, 'html').replace(/(&[a-z]+;)+/g, (entity) => addToken(state, entity, entity));
+      return renderNode(state, { ...n, value });
+    })
+    .join('');
 }
 
 /**
@@ -715,7 +733,7 @@ function linkHtml(state, node) {
     const internal = internalLinkLabel(state, target);
     if (internal !== null) return `<a href="${escapeAttr(linkHref(state, target))}">${internal}</a>`;
     const label = escapeHtml(/^(file:)/i.test(target) ? target.replace(/^file:/i, '') : target);
-    const display = /^(https?|ftp|mailto):/i.test(target) || /^file:/i.test(target) ? label : escapeHtml(target);
+    const display = /^(https?|ftp):/i.test(target) ? escapeHtml(target.replace(/ /g, '%20')) : /^(mailto):/i.test(target) || /^file:/i.test(target) ? label : escapeHtml(target); // a link without text shows its encoded address
     return `<a href="${escapeAttr(linkHref(state, target))}">${display}</a>`;
   }
   // a description that is itself an image link shows the picture inside the link
@@ -820,13 +838,10 @@ function itemHtml(state, item, listType) {
   const lead = first && first.type === 'paragraph' && (children.length === 1 || (children.length === 2 && children[1].type === 'list'));
   const parts = children.map((c, /** @type {number} */ i) => elementHtml(state, c, { parent: 'item', bare: i === 0 && lead, first: i === 0 }));
   let inner = parts.filter((p) => p !== '').join('\n');
-  if (item.checkbox && listType !== 'descriptive') {
-    const box = `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}${closing}`;
-    inner = `${box} ${inner}`.replace(/\s+$/, '');
-  }
+  if (item.checkbox && listType !== 'descriptive') inner = `${checkboxHtml(state, item.checkbox)} ${inner}`.replace(/\s+$/, '');
   if (listType === 'descriptive') {
     const tag = item.tag === null ? '(no term)' : renderInline(state, item.tag);
-    const box = item.checkbox ? `<input type="checkbox" disabled${item.checkbox === 'on' ? ' checked' : ''}${closing} ` : '';
+    const box = item.checkbox ? `${checkboxHtml(state, item.checkbox)} ` : '';
     const cls = item.checkbox ? ` class="${item.checkbox}"` : '';
     return `<dt${cls}>${box}${tag}</dt><dd>${inner.replace(/\n$/, '')}</dd>`;
   }
@@ -836,6 +851,14 @@ function itemHtml(state, item, listType) {
 }
 
 const NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$|^[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?$/;
+
+/** The box before a checklist item, by org-html-checkbox-type. @param {ExportState} state @param {string} status  on | off | trans */
+function checkboxHtml(state, status) {
+  const type = state.options.checkbox;
+  if (type === 'unicode') return status === 'on' ? '&#x2611;' : '&#x2610;';
+  if (type === 'html') return status === 'on' ? "<input type='checkbox' checked='checked' />" : "<input type='checkbox' />";
+  return status === 'on' ? '<code>[X]</code>' : status === 'off' ? '<code>[&#xa0;]</code>' : '<code>[-]</code>';
+}
 
 /**
  * @param {ExportState} state
@@ -1071,7 +1094,7 @@ function elementHtml(state, el, ctx = {}) {
         state.math = true;
         return r.html;
       }
-      return escapeHtml(source);
+      return source; // Org writes the environment as it is, `&` and `<` included
     }
     case 'html-line':
       return el.value;
@@ -1469,6 +1492,19 @@ export function exportToHtml(doc, scope = null, options = {}) {
  * @param {Doc} doc
  */
 function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
+  const prepared = prepareHtmlExport(doc, scope, { images, defaults });
+  ({ doc, scope } = prepared);
+  const { state, preElements, preamble, doctype } = prepared;
+  return finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, doctype);
+}
+
+/**
+ * Everything an export needs before anything is written: the state with its headings, ids, targets, footnotes, radio targets and citations worked out.
+ * @param {Doc} doc
+ * @param {import('./types.js').Heading | null} scope
+ * @param {{ images?: Map<string, string> | null, defaults?: import('./export-defaults.js').HtmlExportDefaults }} [extra]
+ */
+function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   ({ doc, scope } = foldInlineTasks(doc, scope));
   activeImages = images instanceof Map ? images : new Map();
   // #+HTML_DOCTYPE:, else org-html-doctype, else Org's own default
@@ -1480,7 +1516,6 @@ function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images =
   state.fnDefsCollect = (/** @type {any} */ elements) => {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
-  const { options } = state;
   const filter = buildFilter(state);
 
   const roots = scope ? scope.children || [] : doc.children || [];
@@ -1572,6 +1607,14 @@ function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images =
     state.radioRe = new RegExp('(?<![\\w])(?:' + names.join('|') + ')(?![\\w])', 'gi');
   }
 
+  return { doc, scope, state, preElements, preamble, doctype };
+}
+
+/**
+ * @param {ExportState} state @param {Doc} doc @param {import('./types.js').Heading | null} scope @param {import('./org-elements.js').OrgElement[]} preElements @param {string[]} preamble @param {import('./export-defaults.js').HtmlExportDefaults} defaults @param {ReturnType<typeof doctypeInfo>} doctype
+ */
+function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, doctype) {
+  const { options } = state;
   const out = [];
   const title = scope ? titleOf(scope) : keywordValue(doc, 'TITLE');
   if (title && options.title) out.push(`<h1 class="title">${renderInline(state, title)}</h1>`);
@@ -1693,3 +1736,4 @@ export function preambleBody(doc) {
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }
+

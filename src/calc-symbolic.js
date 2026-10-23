@@ -680,6 +680,7 @@ function compare(a, b) {
 /** @param {string} f @param {Form} a @param {Form} b @param {...Form} more @returns {Form} */
 function comparison(f, a, b, ...more) {
   if (more.length) return nAryEquation(f, [a, b, ...more]);
+  if (a.t === 'cplx' || b.t === 'cplx') return O(f, a, b); // complex numbers have no order: the comparison stays as written
   if (isVec(a) || isVec(b)) {
     if (f === 'eq' || f === 'neq') throw new SymbolicUnsupported('vector equality');
     return O(f, a, b); // Calc does not order vectors: the comparison stays as written
@@ -803,6 +804,7 @@ export function setNumericCall(fn) {
 /** Evaluate a parsed expression the way Calc's normalizer does: bottom-up, arguments first. @param {Form} form @returns {Form} */
 export function normalize(form) {
   if (form.t === 'vec') return VEC(form.items.map(normalize));
+  if (form.t === 'cplx') return { t: 'cplx', re: normalize(form.re), im: normalize(form.im) };
   if (form.t !== 'op') return form;
   const args = form.a.map(normalize);
   try {
@@ -815,6 +817,7 @@ export function normalize(form) {
 
 /** @param {Form} form @param {Form[]} args @returns {Form} */
 function apply(form, args) {
+  if (args.some((/** @type {Form} */ x) => x.t === 'cplx') && !['lt', 'gt', 'leq', 'geq'].includes(form.f)) throw new SymbolicUnsupported('complex arithmetic');
   switch (form.f) {
     case '+':
       return add(args[0], args[1]);
@@ -1076,7 +1079,12 @@ export function parseExpression(text) {
     }
     if (t.text === '(') {
       const inner = expr(0);
-      if (isOpTok(',')) throw new SymbolicUnsupported('complex form');
+      if (isOpTok(',')) {
+        pos++;
+        const imag = expr(0);
+        expect(')');
+        return { t: 'cplx', re: inner, im: imag }; // only displayed and compared: arithmetic on it belongs to the complex engine
+      }
       expect(')');
       return inner;
     }
@@ -1230,6 +1238,8 @@ export function show(a, prec = 0, inDivisor = false) {
       return `${a.n}:${a.d}`;
     case 'var':
       return a.name;
+    case 'cplx':
+      return `(${show(a.re, 0)}, ${show(a.im, 0)})`;
     case 'vec':
       return `[${a.items.map((/** @type {Form} */ x) => show(x, 0)).join(', ')}]`;
     default:

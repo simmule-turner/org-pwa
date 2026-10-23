@@ -4,7 +4,6 @@ import { parseOrg } from '../src/org-parser.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
-import { exportToMarkdown } from '../src/export-markdown.js';
 import { exportToOdt } from '../src/export-odt.js';
 import { getExportWithBrokenLinks } from '../src/local-variables.js';
 import { brokenLinkPath } from '../src/broken-links.js';
@@ -34,7 +33,6 @@ function contentXml(zip) {
 const exporters = {
   html: (doc, brokenLinks) => exportToHtml(doc, null, { defaults: { brokenLinks } }),
   ascii: (doc, brokenLinks) => exportToAscii(doc, null, 72, { brokenLinks }),
-  markdown: (doc, brokenLinks) => exportToMarkdown(doc, null, { brokenLinks }),
   latex: (doc, brokenLinks) => exportToLatex(doc, null, { defaults: { brokenLinks } }),
   odt: (doc, brokenLinks) => contentXml(exportToOdt(doc, null, { brokenLinks })),
 };
@@ -50,13 +48,11 @@ test('a link that leads nowhere stops every export by default, with Emacs\'s mes
 test('t leaves the link out, with the blanks after it', () => {
   const doc = parseOrg(MIXED);
   assert.match(exporters.html(doc, 't'), /<p>\nSee and then <a href="#here">1<\/a>\.\n<\/p>/);
-  assert.match(exporters.markdown(doc, 't'), /\nSee and then \[1\]\(/);
   assert.match(exporters.latex(doc, 't'), /\nSee and then \\ref\{sec:org[0-9a-f]+\}\.\n/);
   assert.match(exporters.ascii(doc, 't'), /\n {2}See and then 1\.\n/);
   assert.match(exporters.odt(doc, 't'), /<text:p [^>]*>See and then <text:bookmark-ref /);
   const refs = parseOrg(CODEREF);
   assert.match(exporters.html(refs, 't'), /<p>\nA b \.\n<\/p>/);
-  assert.match(exporters.markdown(refs, 't'), /\nA b \.\n/);
   assert.match(exporters.latex(refs, 't'), /\nA b \.\n/);
   assert.match(exporters.ascii(refs, 't'), /\n {2}A b \.\n/);
 });
@@ -64,13 +60,12 @@ test('t leaves the link out, with the blanks after it', () => {
 test('mark writes [BROKEN LINK: path] where the link was', () => {
   const doc = parseOrg(MIXED);
   assert.match(exporters.html(doc, 'mark'), /<p>\nSee \[BROKEN LINK: \*Nope\] and \[BROKEN LINK: Nope Fuzzy\] then <a href="#here">1<\/a>\.\n<\/p>/);
-  assert.match(exporters.markdown(doc, 'mark'), /\nSee \[BROKEN LINK: \\\*Nope\] and \[BROKEN LINK: Nope Fuzzy\] then \[1\]\(/);
   assert.match(exporters.latex(doc, 'mark'), /\nSee \[BROKEN LINK: \*Nope\] and \[BROKEN LINK: Nope Fuzzy\] then \\ref\{/);
   assert.match(exporters.odt(doc, 'mark'), /See \[BROKEN LINK: \*Nope\] and \[BROKEN LINK: Nope Fuzzy\] then <text:bookmark-ref /);
   const refs = parseOrg(CODEREF);
   const marked = 'A [BROKEN LINK: zz] b [BROKEN LINK: zz].';
   assert.ok(exporters.html(refs, 'mark').includes('<p>\n' + marked + '\n</p>'));
-  for (const name of ['markdown', 'latex']) assert.ok(exporters[name](refs, 'mark').includes('\n' + marked + '\n'), name);
+  assert.ok(exporters.latex(refs, 'mark').includes('\n' + marked + '\n'));
   assert.ok(exporters.ascii(refs, 'mark').includes('\n  ' + marked + '\n'));
 });
 
@@ -84,7 +79,6 @@ test('a file\'s #+OPTIONS: broken-links: wins over the variable', () => {
   const doc = parseOrg('#+OPTIONS: broken-links:mark\n* H\n[[Nowhere]]\n');
   assert.match(exporters.html(doc, 'nil'), /\[BROKEN LINK: Nowhere\]/);
   assert.match(exporters.ascii(doc, 'nil'), /\[BROKEN LINK: Nowhere\]/);
-  assert.match(exporters.markdown(doc, 'nil'), /\[BROKEN LINK: Nowhere\]/);
   assert.match(exporters.latex(doc, 'nil'), /\[BROKEN LINK: Nowhere\]/);
   assert.match(exporters.odt(doc, 'nil'), /\[BROKEN LINK: Nowhere\]/);
 });

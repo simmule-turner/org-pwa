@@ -660,8 +660,26 @@ function dateToDays(year, month, day, hour = 0, minute = 0) {
  * @param {any} [days]
  *  timestamp string for the cell. */
 function daysToDateParts(days) {
-  const d = new Date(Math.floor(days * 1440 + 0.01) * 60000); // whole minutes, as Calc shows them
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours(), minute: d.getUTCMinutes() };
+  const minutes = Math.floor(days * 1440 + 0.01); // whole minutes, as Calc shows them
+  const dayNumber = Math.floor(minutes / 1440);
+  const minuteOfDay = minutes - dayNumber * 1440;
+  // proleptic Gregorian calendar from day numbers (valid for any year, unlike Date), counting from 1970-01-01
+  const z = dayNumber + 719468;
+  const era = Math.floor(z / 146097);
+  const doe = z - era * 146097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const month = mp < 10 ? mp + 3 : mp - 9;
+  const astronomicalYear = yoe + era * 400 + (month <= 2 ? 1 : 0);
+  return {
+    year: astronomicalYear <= 0 ? astronomicalYear - 1 : astronomicalYear, // Calc has no year 0: the year before 1 is -1
+    month,
+    day: doy - Math.floor((153 * mp + 2) / 5) + 1,
+    hour: Math.floor(minuteOfDay / 60),
+    minute: minuteOfDay % 60,
+    weekday: (((Math.floor(days) + 719163) % 7) + 7) % 7, // Calc day 0 is a Sunday
+  };
 }
 
 // Deliberately more permissive than real org's own actual timestamp
@@ -744,11 +762,12 @@ function parseCellTimestamp(rawText) {
  * @param {any} [value]
  *  not an attempt to preserve the source cell's own bracket style. */
 function formatDateValue(value) {
-  const { year, month, day, hour, minute } = daysToDateParts(value.days);
-  const datePart = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
-  if (!value.hasTime) return `[${datePart} ${weekday}]`; // Calc's result is always an inactive timestamp with its day name
-  return `[${datePart} ${weekday} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}]`;
+  const { year, month, day, hour, minute, weekday } = daysToDateParts(value.days);
+  // Calc writes years 1 to 99 as +N and other years as they are; Org turns the result into an inactive timestamp only for four-digit years
+  const yearText = year > 0 && year < 100 ? `+${year}` : String(year);
+  const wide = year >= 1000 && year <= 9999;
+  const text = `${yearText}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]}${value.hasTime ? ` ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}` : ''}`;
+  return wide ? `[${text}]` : `<${text}>`;
 }
 
 /** Formats an hms-tagged duration back into Calc's own actual default
@@ -1325,7 +1344,7 @@ function evaluateDateArithmetic(l, r, op) {
 function calcDate(value) {
   const EPOCH_OFFSET = 719163; // 1 Jan 1970 is day 719163 in Calc
   if (isTaggedValue(value) && value.type === 'date') return Number((value.days + EPOCH_OFFSET).toPrecision(12));
-  if (typeof value === 'number' && Number.isFinite(value) && value >= 1) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
     return { type: 'date', days: value - EPOCH_OFFSET, hasTime: !Number.isInteger(value) };
   }
   throw new Error('date() needs a date or a day number');
@@ -2291,6 +2310,10 @@ function isPlainAlgebra(node, allowUnknown = false) {
       return node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'unknownCall':
       return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
+    case 'dateCall':
+      return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown)); // an impossible date stays as written
+    case 'complexLiteral':
+      return allowUnknown && isPlainAlgebra(node.re, allowUnknown) && isPlainAlgebra(node.im, allowUnknown);
     case 'ifCall':
       return isPlainAlgebra(node.condition, allowUnknown) && isPlainAlgebra(node.trueExpr, allowUnknown) && isPlainAlgebra(node.falseExpr, allowUnknown);
     default:
