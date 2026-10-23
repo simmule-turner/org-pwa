@@ -255,3 +255,14 @@ export const PRECISION_CASES = ['$1/3;p20', '$1/3;p20n20', '$1/3;n20', '$1/3;p3'
 export const DATE_FUNCTION_CASES = ['date($1)', 'date($2)', 'date($1)+14', 'date($1)-date($1)', 'date($2)+1', 'date(date($1))', 'date(date($1)+14)', 'date($4)', 'date($5)', 'date($4)+1',
   'date(2026,1,15)', 'date(2026,1,15)+0.5', 'date(739631.375)', 'date(739631)', 'date($1)-date($6)', '(date($1)-date($6))*24;%.2f', '$1-$6', '($1-$6)*24;%.2f']
   .map((e) => /** @type {[string[], string]} */ ([['[2026-01-15 Thu 09:00]', '739631.375', 'hello', '<2026-01-15 Thu>', '[2026-01-15]', '[2026-01-14 Wed 23:15]'], `@1$7=${e}`]));
+
+// Expressions Calc cannot reduce are shown as Calc writes them: text cells, pi and e, unknown names, division by zero deep inside, fractions.
+export const SYMBOLIC_CASES = [
+  ...['$1+$2', '$1*$2', '$1-$2', '$1/$2', '2*$1+3', '$1^2', '$1+$1', '$1*$1', '-$1', '$1*3+$2*3'].map((f) => /** @type {[string[], string]} */ ([['label', '5'], `@1$3=${f}`])),
+  ...['2*pi', 'pi+1', 'pi*pi', 'e^2', 'sin(pi)', 'round(pi)', 'sqrt(pi^2)', 'ln(e)', 'ln(e^2)', 'sqrt(e)', 'pi/pi', 'abs(-pi)', '2*pi;R', '2*pi;p10', '2*pi;N'].map((f) => /** @type {[string[], string]} */ ([['0'], `@1$2=${f}`])),
+  ...['frob($1)', 'Foo($1, 3)', 'abs(-$2)', 'sqrt(4*$2)', 'ln(0)', 'exp(ln(5))', 'ln(exp(5))', 'inf+1', '5-inf', 'inf-inf', 'inf*0', '5/inf', 'vmean([])', 'vsum([])', 'vmin([])', 'vmax([])', 'asin(1)'].map((f) => /** @type {[string[], string]} */ ([['7', 'x'], `@1$3=${f}`])),
+  ...['$1/$2+1', '1+$1/$2', '$1/$2*2', '$1/0+$1', '2^$2', '0^0.0'].map((f) => /** @type {[string[], string]} */ ([['5', '0'], `@1$3=${f}`])),
+  ...['$1+$2', '$1*$2', '$1/$2'].map((f) => /** @type {[string[], string]} */ ([['2:12', '1:47'], `@1$3=${f}`])),
+  ...['$1<$2<$3', '$1=$2=$3', '$1!=$2!=$3', '$1<$2=$3', '$1<=$2'].map((f) => /** @type {[string[], string]} */ ([['1', '2', '3'], `@1$4=${f}`])),
+  ...['$1 > 0', '$1 <= 5'].map((f) => /** @type {[string[], string]} */ ([['[1,2]'], `@1$2=${f}`])),
+];

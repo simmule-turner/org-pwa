@@ -177,8 +177,7 @@ A day number is counted from 1 January of year 1. =date= turns a date into that 
 
 * Where Emacs and the app differ
 Everything above gives the same result in both. These give a different result in Emacs 29.3:
-- Symbols: Emacs keeps =pi= and =e= symbolic (=2*pi= is =2 pi=, =sin(pi)= stays as written); the app evaluates =pi= as 3.14159265.
-- Text that is not a number, or a function Calc cannot evaluate: Emacs leaves the formula as written (=date(hello)=); the app writes =#ERROR=.
+- Calc's unevaluated results: text in a cell, =pi= and =e=, names Calc does not know and division by zero inside a larger formula are shown as Calc writes them (=2*pi= is =2 pi=, =sin(pi)= stays as written, =5/0+1= stays =5/0 + 1=), in both. Still different: a complex number in a comparison (=(1,2) > 0=) gives =#ERROR= in the app, and an impossible date such as =date(2026,13,1)= gives =#ERROR= where Emacs leaves it as written.
 - Day numbers of zero or less: =date(0)= gives =<-1-12-31 Sun>= in Emacs and =#ERROR= in the app.
 - Digits above Calc's own accuracy: =sqrt(2);p50n50= ends in =...875377= in Emacs and =...8753769= in the app, which is the correct root.
 

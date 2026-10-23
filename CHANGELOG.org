@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v614 — Table formulas show what Calc cannot reduce, as Emacs does
+Text in a cell, =pi= and =e=, names Calc does not know, and a division by zero inside a longer formula are shown as Calc writes them (=label + 5=, =2 pi=, =5/0 + 1=, =vmean([])=) instead of =nan= or =#ERROR=. Decimal arithmetic follows Calc's own 12-digit rounding, and =H:MM= cells read as the fractions Calc reads. Under =N= such formulas give =#ERROR=, as in Emacs.
+Verified: 961 formula cases compared with Emacs 29.3; two known differences are listed in the table-formulas example.
+
 * v613 — Table formulas that match Emacs Calc, and the first cookbook examples
 A formula gives what Emacs gives: operator precedence, ~%~ and ~\~, exact large integers, fractions written ~1:2~, dates as day numbers or timestamps with day names, text results as character codes, floats like ~3.~ and ~4e-3~, and every number flag (~n f s e p~, ~%e~, ~%g~). A division by zero is left as written. ASCII export gives timestamps their day names, and LaTeX export joins touching inline math as Emacs does. The =examples/= folder starts the cookbook (Beamer, outlines, table formulas, vCards, capture).
 Verified: about 900 formula cases, plus the ASCII and LaTeX fixtures, compared with Emacs 29.3.

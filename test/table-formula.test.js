@@ -52,9 +52,10 @@ test('unary minus', () => {
   assert.equal(result[0].cells[0], '7');
 });
 
-test('a formula that divides by zero is left as Calc leaves it, "5/0", and #ERROR inside a larger expression', () => {
+test('a formula that divides by zero is left as Calc leaves it: "5/0", and "5/0 + 1" inside a larger expression', () => {
   assert.equal(recalculateTable(mkTable('@1$1=$2/$3', [['', '5', '0']]))[0].cells[0], '5/0');
-  assert.equal(recalculateTable(mkTable('@1$1=$2/$3+1', [['', '5', '0']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('@1$1=$2/$3+1', [['', '5', '0']]))[0].cells[0], '5/0 + 1');
+  assert.equal(recalculateTable(mkTable('@1$1=1+$2/$3', [['', '5', '0']]))[0].cells[0], '1 + 5/0');
 });
 
 // ---- non-numeric / blank cells --------------------------------------------
@@ -64,9 +65,9 @@ test('blank cells are treated as 0 in arithmetic, not NaN', () => {
   assert.equal(result[0].cells[2], '0');
 });
 
-test('THE FIX: non-numeric text (a label cell), without the N flag, propagates as NaN rather than being silently read as 0 -- confirmed directly against real Emacs org-mode, which shows an unevaluated symbolic expression there instead; NaN is the closest honest approximation without full symbolic algebra', () => {
+test('non-numeric text (a label cell), without the N flag, is algebra, as in Emacs: the unevaluated expression is shown', () => {
   const result = recalculateTable(mkTable('@1$3=$1+$2', [['label', '5', '']]));
-  assert.equal(result[0].cells[2], 'nan');
+  assert.equal(result[0].cells[2], 'label + 5');
 });
 
 test('the N flag restores "non-numeric text reads as 0", matching real org\u2019s own documented N semantics exactly', () => {
@@ -298,8 +299,9 @@ test('THE FIX: an out-of-range row reference is a runtime error, isolated to tha
   assert.equal(result[0].cells[0], '#ERROR');
 });
 
-test('an unknown function name throws', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=frobnicate(@1$1..@1$1)', [['1']])));
+test('an unknown function name is left as written, as Calc leaves it', () => {
+  assert.equal(recalculateTable(mkTable('@1$1=frobnicate(@1$1..@1$1)', [['1']]))[0].cells[0], 'frobnicate([1])');
+  assert.equal(recalculateTable(mkTable('@1$2=Foo($1, 3)', [['7', '']]))[0].cells[1], 'Foo(7, 3)');
 });
 
 test('a formula target missing "=" entirely throws', () => {
@@ -414,8 +416,8 @@ test('vpvar()/vpsdev() (population, n divisor) of a single-element range is corr
 });
 
 test('there is deliberately no plain "variance"/"stddev" name for either the sample or population variant -- an unqualified name is rejected outright, not silently defaulted to one or the other', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=variance(@1$1..@1$1)', [['5']])));
-  assert.throws(() => recalculateTable(mkTable('@1$1=stddev(@1$1..@1$1)', [['5']])));
+  assert.equal(recalculateTable(mkTable('@1$1=variance(@1$1..@1$1)', [['5']]))[0].cells[0], 'variance([5])'); // Calc leaves a name it does not know as written
+  assert.equal(recalculateTable(mkTable('@1$1=stddev(@1$1..@1$1)', [['5']]))[0].cells[0], 'stddev([5])');
 });
 
 // ---- THE FIX: blank-cell semantics -- matches real org's own actual, documented default exactly -------
@@ -432,7 +434,7 @@ test('THE FIX: a blank cell inside a RANGE is OMITTED entirely, not treated as 0
   assert.equal(result[3].cells[2], '2', 'vcount([3, blank, 5]) = 2, NOT 3 -- the blank cell was never counted at all');
 });
 
-test('a range that is entirely blank correctly yields 0 for every aggregate function, not a crash or Infinity/-Infinity (vmin/vmax of an empty list)', () => {
+test('a range that is entirely blank gives what Emacs gives: 0 for vsum/vcount, inf/-inf for vmin/vmax, and vmean/vmedian left unevaluated', () => {
   const result = recalculateTable(
     mkTable('@4$1=vsum(@1$1..@3$1)::@4$2=vmean(@1$1..@3$1)::@4$3=vcount(@1$1..@3$1)::@4$4=vmin(@1$1..@3$1)::@4$5=vmax(@1$1..@3$1)::@4$6=vmedian(@1$1..@3$1)', [
       ['', '', '', '', '', ''],
@@ -441,7 +443,7 @@ test('a range that is entirely blank correctly yields 0 for every aggregate func
       ['', '', '', '', '', ''],
     ])
   );
-  assert.deepEqual(result[3].cells, ['0', '0', '0', '0', '0', '0']);
+  assert.deepEqual(result[3].cells, ['0', 'vmean([])', '0', 'inf', '-inf', 'vmedian([])']);
 });
 
 test('a single bare-ref argument to an aggregate function (not a full range) also correctly omits a blank cell, consistent with the range case', () => {
@@ -584,10 +586,8 @@ test('THE EXACT REQUEST: the manual\u2019s own worked example, verified exactly 
 test('THE FIX: without any duration flag, "H:MM" text is NOT read as a duration at all -- confirmed directly against real Emacs org-mode, which reads it as a Calc fraction instead (a distinction this engine doesn\u2019t reproduce either way, but the flag-gating itself is confirmed real)', () => {
   const rows = [['2:12', '1:47', '999']];
   const result = recalculateTable(mkTable('@1$3=$1+$2', rows));
-  // Neither operand parses as a plain number, so both read as NaN under
-  // this engine's own non-numeric-text handling (see the N-flag tests
-  // below) -- NOT a duration sum of any kind.
-  assert.equal(result[0].cells[2], 'nan');
+  // Calc reads 2:12 and 1:47 as the fractions 1:6 and 1:47 and adds them -- NOT a duration sum of any kind.
+  assert.equal(result[0].cells[2], '53:282');
 });
 
 test('a negative duration result is correctly signed', () => {
@@ -1126,7 +1126,7 @@ test('ln/log10/exp/exp10 match real Calc\u2019s own confirmed names and behavior
 
 test('exp/ln round-trip', () => {
   const result = recalculateTable(mkTable('$1 = ln(exp(5))', [['']]));
-  assert.equal(result[0].cells[0], '5');
+  assert.equal(result[0].cells[0], '5.'); // a float, as in Calc
 });
 
 test('THE FEATURE: log(x, base) matches the Calc manual\u2019s own worked example exactly (1024, base 2 -> 10)', () => {
@@ -1143,14 +1143,14 @@ test('log(x) with a single argument defaults to natural log', () => {
 });
 
 test('ln/log10/log of zero is #ERROR; of a negative number they are complex, as in Calc', () => {
-  assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = ln(0)', [['']]))[0].cells[0], 'ln(0)'); // Calc leaves it as written
   assert.equal(recalculateTable(mkTable('$1 = ln(-5)', [['']]))[0].cells[0], '(1.6094379, 3.1415927)');
   assert.equal(recalculateTable(mkTable('$1 = log10(-1)', [['']]))[0].cells[0], '(0., 1.3643764)');
   assert.equal(recalculateTable(mkTable('$1 = log(-5, 2)', [['']]))[0].cells[0], '(2.3219281, 4.5323601)');
 });
 
 test('log() with base 1 is #ERROR rather than Infinity/NaN; a negative base is complex, as in Calc', () => {
-  assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], '#ERROR');
+  assert.equal(recalculateTable(mkTable('$1 = log(10, 1)', [['']]))[0].cells[0], 'log(10, 1)');
   assert.equal(recalculateTable(mkTable('$1 = log(10, -2)', [['']]))[0].cells[0], '(0.15420498, -0.69891249)');
 });
 
@@ -1270,13 +1270,15 @@ test('trig and log functions compose with ordinary arithmetic and other function
 // ---- pi, $name constants, #+CONSTANTS: -------------------------------------
 
 test('THE FEATURE: pi resolves to the real mathematical constant', () => {
+  // pi stays the symbol pi in Calc, so round() has no number to work on and the expression is shown as it is
   const result = recalculateTable(mkTable('$1 = round(pi * 1000)', [['']]));
-  assert.equal(result[0].cells[0], '3142');
+  assert.equal(result[0].cells[0], 'round(1000 pi)');
+  assert.equal(recalculateTable(mkTable('$1 = 2 * pi', [['']]))[0].cells[0], '2 pi');
 });
 
 test('pi composes with trig functions, matching the user\u2019s own reference example (sin($1 * pi / 180))', () => {
   const result = recalculateTable(mkTable('$2 = round(sin($1 * pi / 180) * 1000);R', [['90', '']]));
-  assert.equal(result[0].cells[1], '1000');
+  assert.equal(result[0].cells[1], 'round(1000 sin(0.5 pi))'); // as Emacs shows it: Calc does not turn pi into a number
 });
 
 test('THE FEATURE: $name resolves a named constant passed via options.constants', () => {

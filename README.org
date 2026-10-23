@@ -233,7 +233,7 @@ For example, after *Recalculate* the ~Tot~ column below holds price × quantity 
 
 *Recalculating* is explicit. A *🔢 Calc* button below a table with a ~#+TBLFM:~ line recalculates that table. *Recalculate all tables* in the command palette (~org-table-recalculate-buffer-tables~, also usable in an Extras entry) recalculates every table as one undo step. A malformed formula is reported, and only its own table is skipped.
 
-*Blank and non-numeric cells*: by default a blank cell in a direct reference (~$1+$2~) reads as 0 but is left out of a range, so ~vmean~ averages only the non-blank cells and ~vcount~ skips it. Text that isn't a number reads as ~nan~ and propagates, so a stray label shows a problem instead of a plausible wrong number (the ~N~ flag below reads it as 0).
+*Blank and non-numeric cells*: by default a blank cell in a direct reference (~$1+$2~) reads as 0 but is left out of a range, so ~vmean~ averages only the non-blank cells and ~vcount~ skips it. Text that isn't a number makes Calc leave the formula as written, as Emacs does (a label plus 5 shows ~label + 5~), so a stray label shows a problem instead of a plausible wrong number (the ~N~ flag below reads it as 0).
 
 *Mode flags*: a trailing ~;flags~ string after the expression:
 

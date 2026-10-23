@@ -893,6 +893,458 @@
  },
  {
   "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1+$2",
+  "expect": "| label | 5 | label + 5 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1*$2",
+  "expect": "| label | 5 | 5 label |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1-$2",
+  "expect": "| label | 5 | label - 5 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1/$2",
+  "expect": "| label | 5 | label / 5 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=2*$1+3",
+  "expect": "| label | 5 | 2 label + 3 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1^2",
+  "expect": "| label | 5 | label^2 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1+$1",
+  "expect": "| label | 5 | 2 label |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1*$1",
+  "expect": "| label | 5 | label^2 |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=-$1",
+  "expect": "| label | 5 | -label |"
+ },
+ {
+  "cells": [
+   "label",
+   "5"
+  ],
+  "formula": "@1$3=$1*3+$2*3",
+  "expect": "| label | 5 | 3 label + 15 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=2*pi",
+  "expect": "| 0 | 2 pi |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=pi+1",
+  "expect": "| 0 | pi + 1 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=pi*pi",
+  "expect": "| 0 | pi^2 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=e^2",
+  "expect": "| 0 | e^2 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=sin(pi)",
+  "expect": "| 0 | sin(pi) |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=round(pi)",
+  "expect": "| 0 | round(pi) |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=sqrt(pi^2)",
+  "expect": "| 0 | pi |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=ln(e)",
+  "expect": "| 0 | 1 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=ln(e^2)",
+  "expect": "| 0 | 2 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=sqrt(e)",
+  "expect": "| 0 | sqrt(e) |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=pi/pi",
+  "expect": "| 0 | 1 |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=abs(-pi)",
+  "expect": "| 0 | abs(pi) |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=2*pi;R",
+  "expect": "| 0 | 2 pi |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=2*pi;p10",
+  "expect": "| 0 | 2 pi |"
+ },
+ {
+  "cells": [
+   "0"
+  ],
+  "formula": "@1$2=2*pi;N",
+  "expect": "| 0 | #ERROR |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=frob($1)",
+  "expect": "| 7 | x | frob(7) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=Foo($1, 3)",
+  "expect": "| 7 | x | Foo(7, 3) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=abs(-$2)",
+  "expect": "| 7 | x | abs(x) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=sqrt(4*$2)",
+  "expect": "| 7 | x | 2 sqrt(x) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=ln(0)",
+  "expect": "| 7 | x | ln(0) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=exp(ln(5))",
+  "expect": "| 7 | x | 5.0000000 |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=ln(exp(5))",
+  "expect": "| 7 | x | 5. |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=inf+1",
+  "expect": "| 7 | x | inf |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=5-inf",
+  "expect": "| 7 | x | -inf |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=inf-inf",
+  "expect": "| 7 | x | nan |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=inf*0",
+  "expect": "| 7 | x | nan |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=5/inf",
+  "expect": "| 7 | x | 0 |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=vmean([])",
+  "expect": "| 7 | x | vmean([]) |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=vsum([])",
+  "expect": "| 7 | x | 0 |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=vmin([])",
+  "expect": "| 7 | x | inf |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=vmax([])",
+  "expect": "| 7 | x | -inf |"
+ },
+ {
+  "cells": [
+   "7",
+   "x"
+  ],
+  "formula": "@1$3=asin(1)",
+  "expect": "| 7 | x | asin(1) |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=$1/$2+1",
+  "expect": "| 5 | 0 | 5/0 + 1 |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=1+$1/$2",
+  "expect": "| 5 | 0 | 1 + 5/0 |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=$1/$2*2",
+  "expect": "| 5 | 0 | 5/0 |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=$1/0+$1",
+  "expect": "| 5 | 0 | 1:0 |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=2^$2",
+  "expect": "| 5 | 0 | 1 |"
+ },
+ {
+  "cells": [
+   "5",
+   "0"
+  ],
+  "formula": "@1$3=0^0.0",
+  "expect": "| 5 | 0 | 0^0. |"
+ },
+ {
+  "cells": [
+   "2:12",
+   "1:47"
+  ],
+  "formula": "@1$3=$1+$2",
+  "expect": "| 2:12 | 1:47 | 53:282 |"
+ },
+ {
+  "cells": [
+   "2:12",
+   "1:47"
+  ],
+  "formula": "@1$3=$1*$2",
+  "expect": "| 2:12 | 1:47 | 1:282 |"
+ },
+ {
+  "cells": [
+   "2:12",
+   "1:47"
+  ],
+  "formula": "@1$3=$1/$2",
+  "expect": "| 2:12 | 1:47 | 47:6 |"
+ },
+ {
+  "cells": [
+   "1",
+   "2",
+   "3"
+  ],
+  "formula": "@1$4=$1<$2<$3",
+  "expect": "| 1 | 2 | 3 | 1 |"
+ },
+ {
+  "cells": [
+   "1",
+   "2",
+   "3"
+  ],
+  "formula": "@1$4=$1=$2=$3",
+  "expect": "| 1 | 2 | 3 | 0 |"
+ },
+ {
+  "cells": [
+   "1",
+   "2",
+   "3"
+  ],
+  "formula": "@1$4=$1!=$2!=$3",
+  "expect": "| 1 | 2 | 3 | 1 |"
+ },
+ {
+  "cells": [
+   "1",
+   "2",
+   "3"
+  ],
+  "formula": "@1$4=$1<$2=$3",
+  "expect": "| 1 | 2 | 3 | #ERROR |"
+ },
+ {
+  "cells": [
+   "1",
+   "2",
+   "3"
+  ],
+  "formula": "@1$4=$1<=$2",
+  "expect": "| 1 | 2 | 3 | 1 |"
+ },
+ {
+  "cells": [
+   "[1,2]"
+  ],
+  "formula": "@1$2=$1 > 0",
+  "expect": "| [1,2] | [1, 2] > 0 |"
+ },
+ {
+  "cells": [
+   "[1,2]"
+  ],
+  "formula": "@1$2=$1 <= 5",
+  "expect": "| [1,2] | [1, 2] <= 5 |"
+ },
+ {
+  "cells": [
    "[1, 2, 3]",
    "[4, 5, 6]"
   ],

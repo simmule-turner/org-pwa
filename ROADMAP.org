@@ -29,7 +29,8 @@ A subtree moved on one side and edited on the other is an ordinary clash today.
 * Tables and clocking
 ** [#C] A field's name as a formula target, and the =%= default format parameter
 Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
-** [#C] Symbolic algebra from Emacs Calc
+** [#C] Symbolic algebra from Emacs Calc: the rest
+The display of what Calc cannot reduce is done (v614). Not yet: complex numbers inside it (=(1,2) > 0=), impossible dates, symbolic simplification beyond Calc's default rules (=simplify=, =solve=), and ranges of the =<= / =<= interval kind.
 
 * Babel and attachments
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open

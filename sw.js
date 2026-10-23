@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v613';
+const CACHE_NAME = 'org-pwa-shell-v614';
 
 const SHELL_FILES = [
   './',
@@ -193,6 +193,7 @@ const SHELL_FILES = [
   './src-browser/habit-history.js',
   './src-browser/agenda-settings.js',
   './src/calc-complex.js',
+  './src/calc-symbolic.js',
   './src/calc-vector.js',
   './src-browser/contacts-sync.js',
   './src-browser/mirror-sync.js',

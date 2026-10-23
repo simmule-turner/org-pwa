@@ -5,7 +5,7 @@
  *   dataRows: any[], dataRowCount: number, colCount: number, hlinePositions: number[],
  *   complexDomain?: any, numericMode?: any, durationMode?: boolean, emptyMode?: string, forceNumeric?: boolean, angleMode?: string,
  *   constants?: Record<string, any>, userCall?: ((name: string, args: any[]) => any) | undefined, now?: Date,
- *   currentRow?: number, currentCol?: number,
+ *   currentRow?: number, currentCol?: number, probe?: { nonNumeric: boolean },
  * }} FormulaCtx
  */
 /** @typedef {import('./types.js').Table} Table */
@@ -92,6 +92,7 @@ import {
   cNeg, cConj, cAdd, cSub, cMul, cDiv, cPow, cAbs, cArg, cRe, cIm, cToPolar, cToRect, cSqrt, cExp, cLn, cLog10, cLog,
   cSin, cCos, cTan, cAsin, cAcos, cAtan, cEquals, cAggregate,
 } from './calc-complex.js';
+import * as Sym from './calc-symbolic.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
 } from './calc-vector.js';
@@ -933,8 +934,10 @@ function parseExpression(tokens) {
       return { type: 'number', value: Number(tok), float: /[.eE]/.test(tok) };
     }
     if (/^[A-Za-z_]/.test(tok)) {
-      const name = next().toLowerCase();
-      if (name === 'pi') return { type: 'number', value: Math.PI, float: true };
+      const rawName = next();
+      const name = rawName.toLowerCase();
+      if (name === 'pi') return { type: 'number', value: Math.PI, float: true, symbolic: 'pi' };
+      if (name === 'e') return { type: 'number', value: Math.E, float: true, symbolic: 'e' };
       if (name === 'i') return { type: 'complexLiteral', re: { type: 'number', value: 0 }, im: { type: 'number', value: 1 } };
       if (name === 'inf') return { type: 'number', value: Infinity };
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
@@ -1000,8 +1003,20 @@ function parseExpression(tokens) {
       }
       const isAggregate = name in AGGREGATE_FUNCTIONS;
       const isScalar = name in SCALAR_FUNCTIONS;
-      if (!isAggregate && !isScalar) throw new Error(`Unknown function "${name}" in formula`);
       expect('(');
+      if (!isAggregate && !isScalar) {
+        // Calc leaves a function it does not know as written: `foo(1)` stays `foo(1)`. Only the algebra path can show that.
+        const unknownArgs = [];
+        if (peek() !== ')') {
+          unknownArgs.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            unknownArgs.push(parseExpr());
+          }
+        }
+        expect(')');
+        return { type: 'unknownCall', name: rawName, args: unknownArgs };
+      }
       if (isAggregate) {
         /** @type {any} */ const arg = parseExpr();
         expect(')');
@@ -1149,7 +1164,9 @@ function readCellValue(dataRows, row, col, ctx) {
     const complex = parseComplexCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
     if (complex) return complexResult(complex, ctx);
   }
-  return readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
+  const number = readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
+  if (Number.isNaN(number) && text.trim() !== '' && ctx.probe) ctx.probe.nonNumeric = true; // text that is not a number: Calc reads it as algebra
+  return number;
 }
 
 /** Expands a { row, col } ref descriptor (row and/or col possibly
@@ -2153,9 +2170,165 @@ function applyFormatSpec(n, spec, isFloat = false, prec = 12) {
   return String(Math.trunc(n));
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Calc's unevaluated form. Org pastes the referenced cells into the formula as text and Calc reads the lot as algebra, so a cell
+// holding "hello" is a variable and `$1+1` shows as `hello + 1`; `pi` and `e` stay symbols. calc-symbolic.js is the port of that
+// algebra. It is tried when the numeric path cannot produce a number, and first when the formula names pi or e.
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** A parsed-formula node, symbolic form or evaluation context: loose by nature, so named once here.
+ * @typedef {any} FormulaNode */
+/** @type {FormulaNode} */ let symbolicCtx = null;
+Sym.setFloatFormatter((v) => calcFloatString(v, 'float', 8));
+Sym.setNumericCall((name, args) => {
+  if (!symbolicCtx || !Object.prototype.hasOwnProperty.call(SCALAR_FUNCTIONS, name) || args.length > 2) return null;
+  const nodes = [];
+  for (const a of args) {
+    if (a.t === 'int') nodes.push({ type: 'number', value: Number(a.v) });
+    else if (a.t === 'flt') nodes.push({ type: 'number', value: Sym.toNumber(a), float: true });
+    else return null;
+  }
+  try {
+    const node = { type: 'scalarCall', name, args: nodes };
+    const value = evaluateAst(node, symbolicCtx);
+    const n = isMathjsValue(value) ? Number(value.toString()) : typeof value === 'bigint' ? Number(value) : value;
+    if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+    return exprIsFloat(node, symbolicCtx) || !Number.isInteger(n) ? Sym.F(n) : Sym.I(n);
+  } catch {
+    return null;
+  }
+});
+
+/** @param {FormulaNode} ctx @param {number} row @param {number} col @returns {FormulaNode} */
+function symbolicCell(ctx, row, col) {
+  const text = String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) ?? '').trim();
+  if (text === '') return ctx.emptyMode === 'nan' ? Sym.V('nan') : Sym.I(0);
+  // When this is the main evaluator rather than the fallback, only plain numbers qualify: dates, durations and the like are the numeric path's
+  if (ctx.symbolicStrict && !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(text)) throw new Sym.SymbolicUnsupported(text);
+  return Sym.parseExpression(text);
+}
+
+/** The formula as Calc reads it. Org pastes each referenced cell into the formula as `(text)`; here a reference becomes a placeholder
+ *  variable that is swapped for the cell's parsed form once the rest of the formula has been read, so the precedence is Calc's own.
+ * @param {string} source @param {FormulaNode} ctx @returns {FormulaNode} */
+function symbolicForm(source, ctx) {
+  const tokens = tokenize(source);
+  /** @type {Map<string, FormulaNode>} */ const bound = new Map();
+  /** @type {string[]} */ const out = [];
+  const isRef = (/** @type {string} */ t) => /^@|^\$(?:[<>]|\d+)$/.test(t);
+  const hold = (/** @type {FormulaNode} */ form) => {
+    const name = `zzref${bound.size}zz`;
+    bound.set(name, form);
+    out.push(`(${name})`);
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (isRef(tok)) {
+      if (tokens[i + 1] === '..' && tokens[i + 2] !== undefined && isRef(tokens[i + 2])) {
+        hold(symbolicRange(parseExpression([tok, '..', tokens[i + 2]]), ctx));
+        i += 2;
+      } else {
+        const ref = parseExpression([tok]);
+        if (ref.type !== 'ref') throw new Sym.SymbolicUnsupported(tok);
+        const { row, col } = resolveRef(ref.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        hold(symbolicCell(ctx, row, col));
+      }
+    } else if (tok.startsWith('$')) {
+      const value = (ctx.constants || {})[tok.slice(1)];
+      if (typeof value !== 'number') throw new Sym.SymbolicUnsupported(tok);
+      hold(Number.isInteger(value) ? Sym.I(value) : Sym.F(value));
+    } else if (tok.startsWith('"') || tok === '..') {
+      throw new Sym.SymbolicUnsupported(tok);
+    } else {
+      out.push(tok);
+    }
+  }
+  const tree = Sym.parseExpression(out.join(' '));
+  const form = Sym.substitute(tree, bound);
+  if (ctx.symbolicStrict) Sym.assertNumericSymbols(form);
+  return form;
+}
+
+/** @param {FormulaNode} node a range node @param {FormulaNode} ctx @returns {FormulaNode} */
+function symbolicRange(node, ctx) {
+  const from = resolveRef(node.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
+  const to = resolveRef(node.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+  const items = [];
+  for (let r = Math.min(from.row, to.row); r <= Math.max(from.row, to.row); r++) {
+    for (let c = Math.min(from.col, to.col); c <= Math.max(from.col, to.col); c++) {
+      if (isCellBlank(ctx.dataRows, r, c) && ctx.emptyMode === 'omit') continue;
+      items.push(symbolicCell(ctx, r, c));
+    }
+  }
+  return Sym.VEC(items);
+}
+
+/** Does the formula use pi or e, which Calc leaves as symbols? @param {FormulaNode} node @returns {boolean} */
+function usesSymbolicConstant(node) {
+  if (!node || typeof node !== 'object') return false;
+  if (node.type === 'number') return !!node.symbolic;
+  return Object.values(node).some((v) => (Array.isArray(v) ? v.some(usesSymbolicConstant) : usesSymbolicConstant(v)));
+}
+
+/** Is the formula plain algebra over numbers and cell references -- the part Calc's own arithmetic port covers completely?
+ * @param {FormulaNode} node @returns {boolean} */
+function isPlainAlgebra(node, allowUnknown = false) {
+  switch (node.type) {
+    case 'number':
+    case 'ref':
+    case 'range':
+      return true;
+    case 'vectorLiteral':
+      return node.items.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
+    case 'neg':
+    case 'not':
+      return isPlainAlgebra(node.operand, allowUnknown);
+    case 'binop':
+      return isPlainAlgebra(node.left, allowUnknown) && isPlainAlgebra(node.right, allowUnknown);
+    case 'call':
+      return ['vsum', 'vmean', 'vcount', 'vprod', 'vmin', 'vmax', 'vmedian', 'vvar', 'vpvar', 'vsdev', 'vpsdev'].includes(node.name) && isPlainAlgebra(node.arg, allowUnknown);
+    case 'scalarCall':
+      return node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
+    case 'unknownCall':
+      return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
+    case 'ifCall':
+      return isPlainAlgebra(node.condition, allowUnknown) && isPlainAlgebra(node.trueExpr, allowUnknown) && isPlainAlgebra(node.falseExpr, allowUnknown);
+    default:
+      return false;
+  }
+}
+
+/** The formula as Calc would leave it: a number, or text such as `hello + 1`; null when the port does not cover it.
+ * `strict` is the main-evaluator mode: anything unusual (a date among the cells, a function it cannot compute) hands back to the numeric engine.
+ * @param {string | null} source @param {FormulaNode} ctx @param {boolean} [strict] @returns {{ kind: 'num', value: number | bigint, isFloat: boolean } | { kind: 'text', text: string } | null} */
+function symbolicOutcome(source, ctx, strict = false) {
+  if (source === null) return null;
+  symbolicCtx = { ...ctx, symbolicStrict: strict };
+  Sym.setStrictFunctions(strict);
+  try {
+    const form = Sym.normalize(symbolicForm(source, symbolicCtx));
+    if (form.t === 'int') return { kind: 'num', value: form.v > BigInt(Number.MAX_SAFE_INTEGER) || form.v < -BigInt(Number.MAX_SAFE_INTEGER) ? form.v : Number(form.v), isFloat: false };
+    if (form.t === 'flt') {
+      const value = Sym.toNumber(form);
+      return Number.isFinite(value) && (value !== 0 || form.m === 0n) ? { kind: 'num', value, isFloat: true } : { kind: 'text', text: Sym.show(form) };
+    }
+    return { kind: 'text', text: Sym.show(form) };
+  } catch (err) {
+    if (err instanceof Sym.SymbolicSyntaxError && (!strict || err.definite)) return { kind: 'text', text: '#ERROR' };
+    return null;
+  } finally {
+    symbolicCtx = null;
+  }
+}
+
+/** @param {FormulaNode} v */
+function isNanValue(v) {
+  return (typeof v === 'number' && Number.isNaN(v)) || (isMathjsValue(v) && typeof v.isNaN === 'function' && v.isNaN());
+}
+
 /** A division or remainder by zero. Calc leaves such a formula unevaluated; when it is the whole formula, the cell shows it ("5/0"). */
 class DivisionByZero extends Error {
-  /** @param {any} node @param {any} numerator */
+  /** @param {FormulaNode} node @param {FormulaNode} numerator */
   constructor(node, numerator) {
     super('Division by zero');
     this.node = node;
@@ -2175,10 +2348,10 @@ function unevaluatedDivision(err) {
 
 /** Whole-number arithmetic that stays exact however large, as Calc's integers do: a BigInt once the result passes 2^53, else a number.
  *  Undefined when an operand isn't a whole number or the operation isn't one this covers (division that leaves a remainder, a negative power).
- * @param {string} op @param {any} l @param {any} r @returns {number | bigint | undefined} */
+ * @param {string} op @param {FormulaNode} l @param {FormulaNode} r @returns {number | bigint | undefined} */
 function exactIntegerBinop(op, l, r) {
   if (op !== '+' && op !== '-' && op !== '*' && op !== '^' && op !== '%' && op !== '/' && op !== '\\') return undefined;
-  /** @param {any} v */
+  /** @param {FormulaNode} v */
   const whole = (v) => typeof v === 'bigint' || (typeof v === 'number' && Number.isInteger(v));
   if (!whole(l) || !whole(r)) return undefined;
   const a = BigInt(l);
@@ -2217,8 +2390,8 @@ const INTEGER_RESULT_FUNCTIONS = new Set(['floor', 'ceil', 'round', 'trunc', 'id
 
 /** Calc keeps a float a float even when it is whole, so 3.0*2 shows 6. and 3*2 shows 6. This asks whether the value
  *  of `node` is a float: a literal or cell holding a decimal point or exponent, or any operation on one.
- * @param {any} node
- * @param {any} ctx
+ * @param {FormulaNode} node
+ * @param {FormulaNode} ctx
  * @returns {boolean} */
 function exprIsFloat(node, ctx) {
   switch (node.type) {
@@ -2432,8 +2605,9 @@ function parseFormulaStatement(statement) {
     throw new Error(`Malformed formula target: "${lhs}"`);
   }
 
-  const expr = rhs.startsWith("'(") && rhs.endsWith(')') ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
-  return { target, expr, mode };
+  const isLisp = rhs.startsWith("'(") && rhs.endsWith(')');
+  const expr = isLisp ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
+  return { target, expr, mode, source: isLisp ? null : rhs };
 }
 
 /** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
@@ -2664,7 +2838,7 @@ export function recalculateTable(table, options = {}) {
   const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
-  for (const { target, expr, mode } of statements) {
+  for (const { target, expr, mode, source } of statements) {
     const numericMode = mode.fraction
       ? { kind: 'fraction', instance: mathjsDefault }
       : mode.precision !== null
@@ -2682,17 +2856,43 @@ export function recalculateTable(table, options = {}) {
     // evaluates normally. Isolated per cell, not per statement, so a
     // range/column-formula target with one bad cell doesn't lose the
     // rest of its own siblings either.
+    const plainMode = !mode.forceNumeric && !mode.fraction && !mode.duration && mode.precision === null;
+    const isPlain = source !== null && isPlainAlgebra(expr);
+    const canFallBack = source !== null && isPlainAlgebra(expr, true);
+    const symbolicOnly = isPlain && usesSymbolicConstant(expr) && !mode.forceNumeric && !mode.duration && (mode.fraction || mode.precision !== null); // pi and e stay symbols in these modes too
     /**
      * @param {any} [row]
      * @param {any} [col]
      */
     function evalCell(row, col) {
+      const probe = { nonNumeric: false };
+      const primarySymbolic = plainMode && isPlain;
+      const cellCtx = { ...evalCtx, currentRow: row, currentCol: col, probe };
+      /** @param {string} text */
+      const store = (text) => {
+        dataRows[row - 1].cells[col - 1] = text;
+      };
+      /** @param {any} outcome @returns {boolean} */
+      const storeSymbolic = (outcome) => {
+        if (!outcome) return false;
+        store(outcome.kind === 'text' ? outcome.text : formatFinalValue(outcome.value, mode, hourZeroPad, complexDomain, outcome.isFloat));
+        return true;
+      };
       try {
-        const value = evaluateAst(expr, { ...evalCtx, currentRow: row, currentCol: col });
-        dataRows[row - 1].cells[col - 1] = typeof value === 'string' && (expr.type === 'string' || expr.type === 'ifCall') ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, { ...evalCtx, currentRow: row, currentCol: col }));
+        if (mode.forceNumeric && isPlain && usesSymbolicConstant(expr)) return void store('#ERROR'); // N wants a number, and Calc keeps pi and e as symbols
+        if (primarySymbolic && storeSymbolic(symbolicOutcome(source, cellCtx, true))) return;
+        if (symbolicOnly) {
+          const outcome = symbolicOutcome(source, cellCtx, true);
+          if (outcome && outcome.kind === 'text') return void store(outcome.text);
+        }
+        const value = evaluateAst(expr, cellCtx);
+        if ((probe.nonNumeric || isNanValue(value)) && canFallBack && !mode.forceNumeric && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
+        store(typeof value === 'string' && (expr.type === 'string' || expr.type === 'ifCall') ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, cellCtx)));
       } catch (err) {
+        const showsExpression = !mode.format && !mode.forceNumeric && !mode.duration;
+        if (canFallBack && !mode.forceNumeric && (!(err instanceof DivisionByZero) || showsExpression) && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
         const shown = err instanceof DivisionByZero && err.node === expr && !mode.format && !mode.forceNumeric && !mode.duration ? unevaluatedDivision(err) : null;
-        dataRows[row - 1].cells[col - 1] = shown ?? '#ERROR';
+        store(shown ?? '#ERROR');
       }
     }
     if (target.type === 'cell') {

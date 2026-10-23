@@ -88,7 +88,7 @@ test('export results', () => {
 
 test('table formulas can call a registered script function', () => {
   const table = { tblfm: '$3=double($1, $2)', rows: [{ type: 'row', cells: ['1', '2', ''] }, { type: 'row', cells: ['3', '4', ''] }] };
-  assert.throws(() => recalculateTable(table, {}).length, /./, 'unknown without registration -> error');
+  assert.equal(recalculateTable(table, {})[0].cells[2], 'double(1, 2)', 'unknown without registration -> left as written, as Calc does');
   setUserTableFunctions(['double']);
   try {
     const seen = [];
