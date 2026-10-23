@@ -162,11 +162,11 @@ test('round trip with this app\u2019s own Export > Calendar: what it writes impo
   const doc = parseOrg('* Dentist <2026-10-05 Mon 09:00-10:00>\n* Pay rent\nDEADLINE: <2026-10-31 Sat>\n* Weekly review <2026-10-09 Fri 16:00 +1w>\n');
   const ics = exportToIcalendar([{ documentId: 'a.org', doc }], { today: new Date(2026, 9, 2, 12) });
   const back = parseOrg(text(ics, { zone: null })); // floating times: no conversion either way
-  assert.deepEqual(back.children.map((h) => h.title.replace(/ <.*$/, '')).sort(), ['Dentist', 'Pay rent', 'Weekly review']);
+  assert.deepEqual(back.children.map((h) => h.title.replace(/ <.*$/, '')).sort(), ['DL: Pay rent', 'Dentist', 'Weekly review']);
   const first = (title) => findTimestamps(back.children.find((h) => h.title.startsWith(title)).title)[0];
   assert.equal(first('Dentist').date.getDate(), 5);
   assert.equal(first('Dentist').hasTime, true);
   assert.equal(first('Weekly review').repeater, '+1w');
   assert.equal(first('Weekly review').date.getDate(), 9);
-  assert.equal(findTimestamps(back.children.find((h) => h.title.startsWith('Pay rent')).title).length, 1, 'a deadline comes back as a dated event too');
+  assert.equal(findTimestamps(back.children.find((h) => h.title.startsWith('DL: Pay rent')).title).length, 1, 'a deadline comes back as a dated event too');
 });

@@ -1,0 +1,50 @@
+#+TITLE: Calendar export
+#+STARTUP: showall
+
+A cookbook for iCalendar export. The palette's *Export → iCalendar* (in Emacs, =org-icalendar-export-to-ics=) turns timestamps into events. =icalendar.ics= beside this file is what Emacs 29.3 (Org 9.6.15) wrote for it with the time zone America/New_York, and the app writes the same text, apart from =DTSTAMP= (the time of export). The last section says where the two differ.
+
+* Meetings
+** Planning meeting
+:PROPERTIES:
+:ID: planning-1
+:LOCATION: Room 4
+:END:
+<2026-11-03 Tue 10:00-11:30> Agree the quarter's goals.
+
+** Team lunch
+:PROPERTIES:
+:ID: lunch-1
+:END:
+<2026-11-05 Thu 12:00>
+
+* Dates without a time
+** Dentist
+:PROPERTIES:
+:ID: dentist-1
+:END:
+<2026-11-10 Tue>
+
+** Conference
+:PROPERTIES:
+:ID: conf-1
+:END:
+<2026-11-16 Mon>--<2026-11-18 Wed>
+
+* Repeating
+** Pay rent
+:PROPERTIES:
+:ID: rent-1
+:END:
+<2026-11-01 Sun +1m>
+
+* Tasks with a deadline or a schedule
+** TODO File the report                                             :work:
+DEADLINE: <2026-11-20 Fri> SCHEDULED: <2026-11-18 Wed>
+:PROPERTIES:
+:ID: report-1
+:END:
+
+* Where the app differs from Emacs
+- A heading with no =:ID:= gets a random =UID= from Emacs and a stable one from the app (made from the file name and the heading), so the same event keeps its identity when you export again. The headings above carry an =:ID:= so the files can be compared.
+- The =TODO= heading at the end is left out by both, because =org-icalendar-include-todo= is =nil= in Emacs and in the app; set it in Settings → Export to have tasks written.
+- The =PRODID= names the login name of the user who exported.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v615';
+const CACHE_NAME = 'org-pwa-shell-v616';
 
 const SHELL_FILES = [
   './',
@@ -22,7 +22,7 @@ const SHELL_FILES = [
   './src/calendar-grid.js',
   './src/checkbox-cookie.js',
   './src/search.js',
-  './src/sparse-tree-matcher.js',
+  './src/tags-match.js',
   './src/document-store.js',
   './src/fold-state.js',
   './src/outbox.js',
@@ -72,6 +72,8 @@ const SHELL_FILES = [
   './src/contacts-mirror.js',
   './src/capture-shared.js',
   './src/capture-template.js',
+  './src/format-time.js',
+  './src/js-inspect.js',
   './src/line-endings.js',
   './src/local-variables.js',
   './src/refile.js',
@@ -90,6 +92,8 @@ const SHELL_FILES = [
   './src/emacs-regex.js',
   './src/export-org.js',
   './src/org-interpret.js',
+  './src/ox-icalendar.js',
+  './src/org-table-layout.js',
   './src/org-plot.js',
   './src/clocktable.js',
   './src/extra-menu.js',

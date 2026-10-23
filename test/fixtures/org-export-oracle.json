@@ -1,4 +1,5 @@
-[{"org":"* Heading\nBody text with *bold* /italic/ _under_ +strike+ ~code~ =verb=.","emacs":"* Heading\nBody text with *bold* /italic/ _under_ +strike+ ~code~ =verb=.\n"},
+[{"org":"citation [cite:@key] here","emacs":"citation (, ) here\n"},
+{"org":"* Heading\nBody text with *bold* /italic/ _under_ +strike+ ~code~ =verb=.","emacs":"* Heading\nBody text with *bold* /italic/ _under_ +strike+ ~code~ =verb=.\n"},
 {"org":"* TODO [#A] Task :tag1:tag2:\nSCHEDULED: <2026-03-04 Wed>\nText","emacs":"* TODO Task                                                       :tag1:tag2:\nText\n"},
 {"org":"* H1\n** H2\n*** H3\n**** H4\n***** H5\n****** H6\n******* H7\ntext","emacs":"* H1\n** H2\n*** H3\n**** H4\n***** H5\n****** H6\n******* H7\ntext\n"},
 {"org":"- one\n- two\n  - nested\n  - nested2\n- three","emacs":"- one\n- two\n  - nested\n  - nested2\n- three\n"},
@@ -258,4 +259,7 @@
 {"org":"- [ ] a [0/0]\n  - [X] b","emacs":"- [X] a [0/0]\n  - [X] b\n"},
 {"org":"#+SELECT_TAGS: zz\n* a\nx","emacs":"#+select_tags: zz\n* a\nx\n"},
 {"org":"#+EXCLUDE_TAGS: zz\n#+SELECT_TAGS: keep\n* a :keep:\nx","emacs":"* a                                                                    :keep:\nx\n"},
-{"org":"#+OPTIONS: pri:t\n#+TITLE: T\n#+SELECT_TAGS: keep\n#+LANGUAGE: en\nzeroth text\n* a :keep:\n[#A] x\n** TODO [#A] child\n* b\ny","emacs":"#+title: T\n* a                                                                    :keep:\n[#A] x\n** TODO [#A] child\n"}]
+{"org":"#+OPTIONS: pri:t\n#+TITLE: T\n#+SELECT_TAGS: keep\n#+LANGUAGE: en\nzeroth text\n* a :keep:\n[#A] x\n** TODO [#A] child\n* b\ny","emacs":"#+title: T\n* a                                                                    :keep:\n[#A] x\n** TODO [#A] child\n"},
+{"org":"#+BIBLIOGRAPHY: refs.bib\nSee [cite:@knuth84] and [cite/t:@knuth84, p. 5] and [cite/a:@lamport94] and [cite/na:@knuth84]. Bare [cite/n:@three].\n* Refs\n#+PRINT_BIBLIOGRAPHY:\n","emacs":"#+bibliography: refs.bib\nSee (Donald E. Knuth, 1984) and Donald E. Knuth (1984, p. 5) and Leslie Lamport and Donald E. Knuth and (1984). Bare.\n* Refs\nAnn Alpha and Bob Beta and Cy Gamma (2001). /Three authors/.\n\nDonald E. Knuth (1984). /The {TeX}book/, Addison-Wesley.\n\nLeslie Lamport and Donald E. Knuth (1994). /LaTeX: A Document Preparation System/, Journal of Typesetting.\n"},
+{"org":"#+CITE_EXPORT: basic\n[cite/t:@a;@b p. 3] [cite:see @key p. 3]","emacs":"#+cite_export: basic\n(),  (a p. 3) (see , a p. 3)\n"},
+{"org":"x [cite:@knuth84]","emacs":"x (, )\n"}]

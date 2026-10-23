@@ -6,7 +6,7 @@ import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { cacheHash } from '../src/babel-cache.js';
-import { existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { headerText, existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs } from '../src/local-variables.js';
@@ -84,8 +84,8 @@ function lookupTable(name) {
  * @param {string[]} lines
  * @param {string} label
  */
-function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null)) {
-  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash });
+function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null), handling = 'replace') {
+  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling });
   // the cursor stays on the block, whose body is re-parsed by the edit
   withKeyboardFocusPreserved(heading, () => commitLines(heading, start, removeCount, insert));
   commitAndRender(label);
@@ -119,12 +119,16 @@ export async function executeSourceBlock(heading, block) {
     setStatus(`Unsupported :results option "${spec.unsupported}".`);
     return;
   }
+  if (args.post !== undefined) {
+    setStatus('Unsupported header argument :post (it calls another block with the result).');
+    return;
+  }
   if (!(await confirmDocumentTrust())) return;
 
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
   try {
-    vars = resolveVars(args.var, lookupTable);
+    vars = resolveVars(args.var, lookupTable, { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines });
   } catch (err) {
     writeResults(heading, block, formatError(err.message), 'Executed source block');
     return;
@@ -140,6 +144,14 @@ export async function executeSourceBlock(heading, block) {
     }
   }
 
+  // :prologue and :epilogue go around the body, as org-babel-expand-body:generic puts them; an error's line stays the body's
+  let lineOffset = 0;
+  if (args.prologue !== undefined) {
+    const prologue = headerText(args.prologue);
+    code = prologue + '\n' + code;
+    lineOffset = prologue.split('\n').length;
+  }
+  if (args.epilogue !== undefined) code += '\n' + headerText(args.epilogue);
 
   /** @type {string | null} */
   let hash = null;
@@ -179,12 +191,12 @@ export async function executeSourceBlock(heading, block) {
     setStatus('The document changed while the block ran; the result was not written.');
     return;
   }
-  const lines = outcome.ok ? formatResult(spec.collect === 'output' ? outcome.output : outcome.hasValue ? outcome.value : undefined, spec, { wrap: args.wrap || '' }) : formatError(outcome.message, outcome.line);
+  const lines = outcome.ok ? formatResult(spec.collect === 'output' ? outcome.output : outcome.hasValue ? outcome.value : undefined, spec, { wrap: args.wrap === undefined ? null : args.wrap, lang: info ? info.lang : 'js' }) : formatError(outcome.message, outcome.line && outcome.line > lineOffset ? outcome.line - lineOffset : null);
   if (outcome.ok && spec.silent) {
     setStatus(`Ran in ${Date.now() - started} ms (results: silent).`);
     return;
   }
-  writeResults(heading, block, lines, outcome.ok ? 'Executed source block' : 'Source block failed', outcome.ok ? hash : null);
+  writeResults(heading, block, lines, outcome.ok ? 'Executed source block' : 'Source block failed', outcome.ok ? hash : null, outcome.ok ? spec.handling : 'replace');
   setStatus(outcome.ok ? `Ran in ${Date.now() - started} ms.` : `Source block failed: ${outcome.message}`);
 }
 

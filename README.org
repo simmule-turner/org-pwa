@@ -159,7 +159,7 @@ Landing on a step identical to the last saved text clears the modified indicator
 :END:
 
 - *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions.
-- *Checkboxes* cycle unchecked → in-progress → done. A progress cookie in a heading's title (~[3/8]~, ~[40%]~, or the blank ~[/]~) is recalculated whenever a checkbox in its subtree changes, counting its own list and every descendant heading's, as org does. A ~:COOKIE_DATA:~ property changes what is counted: ~checkbox~ or ~todo~ picks the kind when a heading has both, both words count both, and ~recursive~ with ~todo~ extends TODO counting to the whole subtree. Without it, only checkboxes are counted, recursively.
+- *Checkboxes* cycle unchecked → in-progress → done. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
 - *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table, and ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
 - *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. A caption shows in italics with its markup rendered; ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~ and ~em~ work). The other lines stay visible as small muted text, exactly as written.
@@ -223,7 +223,7 @@ For example, after *Recalculate* the ~Tot~ column below holds price × quantity 
 - Adding or subtracting a number shifts a date by that many days and writes it back as a timestamp with its day name: ~$1 + 14~ on ~<2026-08-25>~ gives ~[2026-09-08 Tue]~. A day past the end of the month rolls into the next.
 - Hours between two timestamps: ~($2 - $1) * 24;%.2f~ gives ~8.50~. ~now()~ is the current date and time.
 - ~date-to-time(ref)~ accepts every timestamp ~date()~ does, plus ISO 8601 (~2026-01-15T10:30:00Z~), RFC 822 and US (~01/15/2026~) strings, parsed by the browser. An unparseable string gives ~#ERROR~.
-- ~format-time-string(fmt, time, utc)~ uses the capture-template ~%~ codes: ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~. ~time~ defaults to now and takes a date value or Unix seconds; a non-zero ~utc~ formats in UTC, otherwise the device's time zone is used.
+- ~format-time-string(fmt, time, utc)~ is Emacs's: every ~%~ code and flag of [[#capture-templates][Capture templates]] works, ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~. ~time~ defaults to now and takes a date value or Unix seconds; a non-zero ~utc~ formats in UTC, otherwise the device's time zone is used.
 
 *References*: ~$N~ is column N of the current row, ~@N$M~ is row N, column M, ~@-N~ and ~@+N~ are rows relative to the target, ~@<~, ~@>~, ~$<~ and ~$>~ are the first and last row or column, and a range such as ~$1..$3~ or ~@1$1..@3$2~ is an aggregate function's argument. A range may omit the column (~@2..@6~) to mean those rows in the formula's own column. Rows count every actual row, including the header; a horizontal rule has no row number. The column shorthand ~$M=~ (no ~@~, applied to every row) skips rows before the first horizontal rule, while an explicit ~@1$2=~ still changes that row. A table with no rule has no header, so nothing is skipped.
 
@@ -441,7 +441,9 @@ Example: ~^\(Buy\|Fix\)~ finds headings whose title starts with "Buy" or "Fix".
 
 *Match*, beside *Regex* in the options popover (the ~⋯~ button at the search bar's right edge, which shows a check mark by the active one and a dot when either is on), uses org's tag and property match grammar, the one behind ~C-c / m~. Match and Regex are mutually exclusive.
 
-~|~ is the lowest-precedence operator and splits the query into OR'd groups. Within a group, ~+family~ (or a bare ~family~) and ~-work~ combine as AND, so ~family+work|urgent~ means "(family AND work) OR urgent". A condition can also compare a property, ~PROPERTY="value"~ with ~=~, ~<>~, ~<~, ~>~, ~<=~ or ~>=~, combined freely with tags (~work+PRIORITY_TEST="B"~). ~TODO~, ~LEVEL~, ~PRIORITY~ and ~CATEGORY~ work as pseudo-properties, as in org. An empty query, an empty group beside a stray ~|~, or an unparseable condition gives a clear error. Replace is disabled in this mode.
+The grammar is ~org-make-tags-matcher~ itself, checked against Emacs on 93 queries. ~|~ is the lowest-precedence operator and splits the query into OR'd groups. Within a group, ~+family~ (or a bare ~family~) and ~-work~ combine as AND, so ~family+work|urgent~ means "(family AND work) OR urgent". ~{^w}~ matches a tag by regular expression. ~LEVEL>1~ compares the level. A condition can compare a property, ~Effort<"1:00"~ (text), ~SIZE>3~ (number), ~NAME={^x}~ (regexp) or ~DEADLINE<"<today>"~ (time, also ~<now>~, ~<+2d>~, ~<2026-10-20>~), with ~=~, ~<>~, ~<~, ~>~, ~<=~ or ~>=~, combined freely with tags. ~TODO~, ~PRIORITY~, ~CATEGORY~, ~ITEM~, ~TAGS~, ~ALLTAGS~, ~SCHEDULED~, ~DEADLINE~ and ~CLOSED~ work as pseudo-properties. After the last ~/~ come the keywords the heading must have: ~work/TODO|NEXT~, and ~/!~ means any TODO item that is not done. Text the grammar does not read is left unread, as Emacs leaves it (~work+!!~ is ~work~), so nothing here gives an error. Replace is disabled in this mode.
+
+Differences from Emacs: none known in the grammar. A property is looked up on the heading itself unless property inheritance is on, as ~org-use-property-inheritance~ says.
 
 Example: ~work+urgent|blocked~ finds headings tagged both ~work~ and ~urgent~, or tagged ~blocked~.
 
@@ -494,7 +496,7 @@ A fixed two-row bar at the bottom of the screen, laid out like Emacs's frame: a 
 - *Modified indicator*: ~--~ unmodified, ~**~ modified, ~%%~ read-only, ~%*~ read-only and modified, Emacs's four states. Emacs's coding-system and line-ending segment is omitted, since the app always writes UTF-8 with Unix line endings.
 - *Buffer name*: the document's name plus a suffix, ~(GitHub)~, ~(WebDAV)~, ~(Local)~ or ~(Imported)~.
 - *Position*: ~Top~, ~Bot~, ~All~ or a percentage for how far down the visible area is, plus ~L~ and the line number when a heading is focused, and ~C~ and the column only while a text field is being edited. The app has no persistent cursor between edits, so otherwise there is no real column to show.
-- *Date and time*, when ~display-time-mode~ is on (the default): formatted by ~display-time-format~ (default ~"%H:%M"~), using the same ~%<FORMAT>~ subset as [[#capture-templates][Capture templates]]. It updates at least every 30 seconds.
+- *Date and time*, when ~display-time-mode~ is on (the default): formatted by ~display-time-format~ (default ~"%H:%M"~), using the same ~format-time-string~ as [[#capture-templates][Capture templates]]. It updates at least every 30 seconds.
 - *Clock*, when a clock is running anywhere in the document: the elapsed time of this clock-in in brackets, then the heading's title, like ~[⏱ 0:35] Write the quarterly report~. It shows the current session, not the task's lifetime total.
 
 *The minibuffer*, below it, is the one strip for the status line, god-mode's chord echo and the search box (see [[#searching][Searching]]). Only one shows at a time: the search box while search is open, then the god-mode echo while a chord is in progress or has just completed (the chord and its command's name; see [[#god-mode][God-mode]]), and otherwise the last status message. A status message clears at your next keypress or tap, as Emacs's echo area clears at each new command.
@@ -504,7 +506,7 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 | Variable | Default | Effect |
 |---+---+---|
 | ~display-time-mode~ | ~1~ (on) | Emacs's minor-mode toggle, with its ~1~ and ~0~ convention instead of ~t~ and ~nil~. ~0~ hides the date and time. |
-| ~display-time-format~ | ~"%H:%M"~ | Emacs's variable and default. Any ~%<FORMAT>~ token that [[#capture-templates][Capture templates]] support works. |
+| ~display-time-format~ | ~"%H:%M"~ | Emacs's variable and default. Any ~format-time-string~ code that [[#capture-templates][Capture templates]] list works. |
 
 -----
 
@@ -683,6 +685,11 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
+| ~org-icalendar-alarm-time~ | ~0~ | Minutes before a timed event that Calendar (.ics) export puts a display alarm; ~0~ for none (an ~:APPT_WARNTIME:~ property sets one for one heading) |
+| ~org-icalendar-include-todo~ | ~nil~ | Whether Calendar (.ics) export also writes TODO items as tasks: ~nil~, ~t~ (not done), ~'unblocked~ or ~'all~ |
+| ~org-icalendar-use-deadline~ | ~(event-if-not-todo todo-due)~ | Which DEADLINEs become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's deadline is its due date (~todo-due~) |
+| ~org-icalendar-use-scheduled~ | ~(todo-start)~ | Which SCHEDULED dates become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's scheduled date is its start (~todo-start~) |
+| ~org-icalendar-with-timestamps~ | ~'active~ | Which timestamps in a heading's title and text become events: ~'active~, ~'inactive~, ~t~ or ~nil~ |
 | ~org-inlinetask-min-level~ | ~15~ | With ~org-inlinetask~ in ~org-modules~: the number of stars from which a headline is an inline task (see Inline tasks under Export) |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
@@ -928,7 +935,7 @@ Each ~js~ block then has a *Run* button; ~C-c C-c~ or the palette's *Run source 
 | Q2 | 20 |
 
 ,#+BEGIN_SRC js :var data=sales
-return data.slice(1).map(([q, n]) => [q, n * 2]);
+return data.map(([q, n]) => [q, n * 2]);
 ,#+END_SRC
 
 ,#+RESULTS:
@@ -936,10 +943,13 @@ return data.slice(1).map(([q, n]) => [q, n * 2]);
 | Q2 | 40 |
 #+END_SRC
 
-- ~:results~: ~value~ (the default: what the block ~return~s) or ~output~ (the ~console.log~ lines), with ~table~, ~list~, ~raw~ or ~silent~.
-- ~:var name=value~: a number, a quoted string, or the ~#+NAME:~ of a table, which arrives as an array of rows.
+- ~:results~: ~value~ (the default: what the block ~return~s) or ~output~ (the ~console.log~ lines), with ~table~, ~list~, ~scalar~, ~verbatim~, ~raw~, ~org~, ~html~, ~latex~, ~code~, ~pp~, ~drawer~ or ~silent~, and ~replace~, ~append~ or ~prepend~. The result is laid out as ~org-babel-insert-result~ does: a list of lists becomes a table, a list a bullet list, a scalar a ~: ~ line, and ten or more lines of text an example block. ~file~, ~link~ and ~graphics~ results are not supported.
+- ~:var name=value~: a number, a quoted string, a quoted list such as ~'(1 2 3)~, or the ~#+NAME:~ of a table, which arrives as an array of rows. ~name[1,2]~ picks a cell, ~name[0:1,*]~ a range, a negative index counts from the end; rules count as rows. As in Org, a table whose first row is followed by one rule loses that header row; ~:colnames yes~ drops the first row, ~:rownames yes~ the first column (and the rules), and ~:hlines yes~ keeps the rules, which the script sees as the string ~"hline"~ (Emacs writes a bare ~hline~ that Node cannot run).
+- ~:prologue~ and ~:epilogue~: text put before and after the code when it runs (and when it is tangled).
 - ~:timeout N~: seconds, 5 by default and 60 at most. A block still running then is stopped.
 - ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.
+
+Differences from Emacs, kept on purpose: Emacs hands a ~js~ result to the Lisp reader, which cuts a string at its first space and rejects ~''~ or ~#~ (here the value arrives as it is); ~console.log~ output is not mixed into a ~value~ result; ~:post~ is refused; a long array or object in ~console.log~ stays on one line where Node breaks it; and ~:var~ of a name nothing defines is an error. Everything else in the results layout and the ~:var~ shaping was compared with Emacs 29.3 / Org 9.6.15 on over two thousand cases.
 
 The code runs in a sandbox with no access to the page, your files or your accounts, and no network unless the header asks and you allow it (see Network, position and cache). ~org.vars.get("calendar-latitude")~ reads a setting. The first run in a saved document asks for confirmation; an unsaved one asks every time.
 
@@ -1509,7 +1519,7 @@ Tap *View → TODO* for every active TODO-state heading in the file, whatever it
 
 It is a flat list in document order, each item showing its TODO keyword, title, category and SCHEDULED or DEADLINE date (overdue in red). The filter chips work as in the Agenda. *Sort* cycles through document order, date order (undated tasks last), least effort first and most effort first. Tap an item to jump to it in the outline; press and hold or swipe it as in the [[#agenda][Agenda]]. It has the same exclusions as Agenda (completed items, by the file's ~#+TODO:~ sequence, archived headings and commented headings, with the same [[#local-variables][Local Variables]] overrides).
 
-*Clock report*: a checkbox beside *Clock* shows org's ~org-clock-report~ (a ~clocktable~ block) read-only instead of writing it into the document. It asks for a start and end date (the last 7 days at first) and a ~maxlevel~ (1 to 10, default 2). Each row's total includes its descendants; headings with no clocked time are omitted, and a running clock is excluded. *Copy* gives valid org dynamic-block syntax to paste into a file.
+*Clock report*: a checkbox beside *Clock* shows org's ~org-clock-report~ (a ~clocktable~ block) read-only instead of writing it into the document. It asks for a start and end date (the last 7 days at first) and a ~maxlevel~ (1 to 10, default 2). The table is Org's: one time column per heading level, a total first, each row including its descendants, titles cut at 40 characters, and a clock that crosses the start or end counted only inside it. Headings with no clocked time are omitted and a running clock is excluded. The end day is included; the copied block says ~:tend~ with the day after, as Org reads it. *Copy* gives valid org dynamic-block syntax to paste into a file.
 
 -----
 
@@ -1553,34 +1563,40 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 
 *Template text, the %-escape language* (local time):
 
-- ~%<FORMAT>~ is a ~format-time-string~ subset. The examples use Wednesday, March 5, 2025, 14:30:07:
+- ~%<FORMAT>~ is ~format-time-string~ in full, checked against Emacs 29.3 on 742 formats at nine instants. The examples use Wednesday, March 5, 2025, 14:30:07 (Eastern time, so ~%z~ is ~-0500~):
 
 | Specifier | Meaning | Example output |
 |---+---+---|
-| ~%a~ | Abbreviated weekday name | ~Wed~ |
-| ~%A~ | Full weekday name | ~Wednesday~ |
-| ~%b~ | Abbreviated month name | ~Mar~ |
-| ~%B~ | Full month name | ~March~ |
-| ~%d~ | Day of month, zero-padded (01–31) | ~05~ |
-| ~%e~ | Day of month, space-padded ( 1–31) | ~␣5~ |
-| ~%F~ | ISO date (~%Y-%m-%d~ combined) | ~2025-03-05~ |
-| ~%H~ | Hour, 24-hour, zero-padded (00–23) | ~14~ |
-| ~%I~ | Hour, 12-hour, zero-padded (01–12) | ~02~ |
-| ~%j~ | Day of year, zero-padded to 3 digits (001–366) | ~064~ |
-| ~%m~ | Month, zero-padded (01–12) | ~03~ |
-| ~%M~ | Minute, zero-padded (00–59) | ~30~ |
-| ~%p~ | ~AM~ or ~PM~ | ~PM~ |
-| ~%R~ | Hour:minute (~%H:%M~ combined) | ~14:30~ |
-| ~%S~ | Second, zero-padded (00–59) | ~07~ |
-| ~%T~ | Hour:minute:second (~%H:%M:%S~ combined) | ~14:30:07~ |
-| ~%y~ | 2-digit year | ~25~ |
-| ~%Y~ | 4-digit year | ~2025~ |
-| ~%z~ | Numeric UTC offset (±HHMM); depends on the device's time zone (shown for US Eastern summer time) | ~-0400~ |
-| ~%Z~ | Time zone abbreviation; device-dependent like ~%z~ | ~EDT~ |
-| ~%%~ | A literal percent sign | ~%~ |
+| ~%a~ ~%A~ | Weekday name, short and full | ~Wed~ ~Wednesday~ |
+| ~%b~ ~%h~ ~%B~ | Month name, short and full | ~Mar~ ~March~ |
+| ~%c~ | Date and time as Emacs's default locale prints it | ~Wed Mar  5 14:30:07 2025~ |
+| ~%C~ | Century | ~20~ |
+| ~%d~ ~%e~ | Day of month, zero-padded and space-padded | ~05~ ~␣5~ |
+| ~%D~ ~%x~ | ~%m/%d/%y~ | ~03/05/25~ |
+| ~%F~ | ~%Y-%m-%d~ | ~2025-03-05~ |
+| ~%g~ ~%G~ | ISO week-numbering year, two and four digits | ~25~ ~2025~ |
+| ~%H~ ~%k~ | Hour 00–23, zero-padded and space-padded | ~14~ ~14~ |
+| ~%I~ ~%l~ | Hour 01–12, zero-padded and space-padded | ~02~ ~␣2~ |
+| ~%j~ | Day of the year (001–366) | ~064~ |
+| ~%m~ | Month (01–12) | ~03~ |
+| ~%M~ ~%S~ | Minute, second | ~30~ ~07~ |
+| ~%n~ ~%t~ | Newline, tab | |
+| ~%N~ | Nanoseconds; ~%3N~ is milliseconds, ~%6N~ microseconds | ~000000000~ |
+| ~%p~ ~%P~ | ~AM~ or ~PM~; ~am~ or ~pm~ | ~PM~ ~pm~ |
+| ~%q~ | Quarter of the year | ~1~ |
+| ~%r~ | ~%I:%M:%S %p~ | ~02:30:07 PM~ |
+| ~%R~ ~%T~ ~%X~ | ~%H:%M~, ~%H:%M:%S~ | ~14:30~ ~14:30:07~ |
+| ~%s~ | Seconds since 1970 | ~1741203007~ |
+| ~%u~ ~%w~ | Weekday number, Monday is 1; Sunday is 0 | ~3~ ~3~ |
+| ~%U~ ~%W~ ~%V~ | Week of the year, Sunday first; Monday first; ISO | ~09~ ~09~ ~10~ |
+| ~%y~ ~%Y~ | Year, two and four digits | ~25~ ~2025~ |
+| ~%z~ ~%:z~ ~%::z~ ~%:::z~ | UTC offset: ~-0500~, ~-05:00~, ~-05:00:00~, ~-05~ | ~-0500~ |
+| ~%Z~ | Time zone abbreviation; device-dependent | ~EST~ |
+| ~%%~ | A percent sign (inside ~%<...>~ only) | ~%~ |
 
-  An unrecognized specifier is left visible (~%Q~ stays ~%Q~).
+  Between ~%~ and the letter go the flags ~-~ (no padding), ~_~ (pad with spaces), ~0~ (pad with zeros), ~^~ (upper case) and ~#~ (the other case), then a width: ~%-d~ is ~5~, ~%_5H~ is ~␣␣␣14~, ~%^a~ is ~WED~. Names are English whatever the device's language, as in Emacs's default locale. Text that is not a conversion is left as written (~%Q~ stays ~%Q~). Differences from Emacs: ~%Z~ comes from the browser, which writes ~GMT+1~ for zones where Emacs writes ~CET~; the time has millisecond resolution, so ~%N~ ends in ~000000~.
 
+- Outside ~%<...>~, ~%%~ is not an escape, as in Emacs: it stays ~%%~, and ~%%t~ is a percent sign followed by a timestamp.
 - ~%t~, ~%T~: an active timestamp, date only or date and time. ~%u~, ~%U~: the same, inactive (~[...]~ instead of ~<...>~).
 - ~%i~ is content shared in from another app (see [[#capture-from-other-apps][Capturing from other apps]]), and ~%a~ is a link to the shared page, ~[[url][title]]~. Text before ~%i~ on its line is added before every later line, so a ~%i~ that follows indentation keeps every line indented. A shared line that would start a heading or a ~#+~ line gets a leading comma, so shared text can never change the document's structure, and only web and mail addresses become links. Both are empty when nothing was shared.
 - ~%x~ is the clipboard. It is read only for a template that uses it, the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
@@ -1589,6 +1605,7 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 - ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ or ~%?~ (1-based) instead of asking again. Out of range gives empty text. In the JSON text the backslash must be doubled: ~%\\1~.
 - ~@#~ is the table-formula row number, for ~table-line~ captures only (empty otherwise). It takes an offset, ~@# + n~ or ~@# - n~, with n a non-negative integer.
 - ~%?~ is org's cursor marker, treated as one more prompt: labeled "Text", asked on the form, and focused with the keyboard up when it is the first or only field.
+- Not supported, and left as written: ~%^g~ ~%^G~ (tag prompts), ~%^C~ ~%^L~, ~%c~ (kill ring), ~%f~ ~%F~ ~%k~ ~%K~ ~%n~ ~%l~ ~%L~, ~%(sexp)~, ~%[file]~ and ~%:keyword~; Emacs would expand them. ~%\N~ out of range is empty here, an error in Emacs.
 
 *Two worked examples:*
 
@@ -1919,26 +1936,25 @@ Org's ~org-org-export-as-org~: a fully processed copy of the document in a new u
 - follows ~#+OPTIONS:~ as Emacs does: planning lines (~p:~), property drawers (~prop:~), drawers (~d:~; LOGBOOK is left out by default), priority cookies (~pri:~), TODO keywords (~todo:~), tags (~tags:~), footnotes (~f:~), and the title, date, author and email lines;
 - shifts the top level to 1.
 
-Not implemented: running source blocks, macros whose text starts with ~(eval~, and citations, which stay as written where Emacs prints ~(, )~ without a citation processor. In an Extras entry it is ~'org-org-export-as-org~.
+Not implemented: running source blocks, and macros whose text starts with ~(eval~. In an Extras entry it is ~'org-org-export-as-org~.
 
 *** Calendar (.ics)
 
-Every dated item as an iCalendar file for any calendar app: SCHEDULED, DEADLINE, plain active title timestamps and [[#agenda][org-contacts-anniversaries]]. It follows the Agenda's exclusions (archived, commented and completed headings). Re-exporting gives the same event IDs, so a calendar app updates events instead of duplicating them.
+An iCalendar file for any calendar app, written as ~org-icalendar-export-to-ics~ writes it. By default the events are the active timestamps in a heading's title and text, and the DEADLINE of a heading that is not a TODO item (summary ~DL: Title~). Settings → Export changes that: ~org-icalendar-use-scheduled~ and ~org-icalendar-use-deadline~ say which SCHEDULED and DEADLINE dates become events (~S: Title~), ~org-icalendar-include-todo~ adds TODO items as tasks, ~org-icalendar-with-timestamps~ picks which timestamps count, and ~org-icalendar-alarm-time~ adds alarms. Re-exporting gives the same event IDs, so a calendar app updates events instead of duplicating them.
 
 *To*: the file is downloaded. *To: file* opens the share sheet instead, which on an iPhone has *Save to Files* (a downloaded .ics there goes straight to Calendar); *To: new buffer* leaves the text in a new buffer.
 
-*Scope*: *This file*, *Choose a heading…* and *This file + Agenda Files* write every dated item, with no window. *Agenda (as displayed)*, the last row, writes what [[#calendar-sync][the calendar sync]] sends: what View → Agenda shows, from a month back to six months ahead.
+*Scope*: *This file*, *Choose a heading…* and *This file + Agenda Files* write everything the settings select, with no window. *Agenda (as displayed)*, the last row, writes what [[#calendar-sync][the calendar sync]] sends: what View → Agenda shows, from a month back to six months ahead, with SCHEDULED, DEADLINE and alarms.
 
 | Org source | vCalendar field | Notes |
 |---+---+---|
-| SCHEDULED | ~DTSTART~, ~SUMMARY~ (~DESCRIPTION~ "Scheduled") | |
-| DEADLINE | ~DTSTART~, ~SUMMARY~ (~DESCRIPTION~ "Deadline") | A warning suffix (~-3d~) also becomes a ~VALARM~ reminder |
-| Plain active title timestamp | ~DTSTART~, ~SUMMARY~ | Only when the heading has no SCHEDULED or DEADLINE |
-| A repeater (~+1w~, ~++3d~, ~.+1m~) on any of these | ~RRULE~ | The calendar app expands the recurrence |
-| A time range (~09:00-10:15~) | ~DTEND~ | |
-| A heading's tags | ~CATEGORIES~ | |
-| ~:LOCATION:~ | ~LOCATION~ | |
-| The start of the body | ~DESCRIPTION~ | At most 400 characters |
+| A timestamp in the title or text | ~DTSTART~, ~DTEND~, ~SUMMARY~ (the title) | A date has an all-day end; a time without an end lasts two hours, or ~org-agenda-default-appointment-duration~ |
+| DEADLINE, SCHEDULED | The same, with ~DL: ~ or ~S: ~ before the title | |
+| A repeater (~+1w~, ~++3d~, ~.+1m~) | ~RRULE~ | The calendar app expands the recurrence |
+| The text below the heading | ~DESCRIPTION~ | As the ASCII export writes it, at most ~org-icalendar-include-body~ characters |
+| ~:SUMMARY:~, ~:DESCRIPTION:~, ~:LOCATION:~, ~:CLASS:~, ~:TIMEZONE:~ | The field of that name | |
+| Tags, ~:CATEGORY:~ | ~CATEGORIES~ | |
+| ~:APPT_WARNTIME:~ | ~VALARM~ | On a timed event |
 | org-contacts-anniversaries | ~DTSTART~ with a yearly ~RRULE~, ~SUMMARY~ (~Birthday: Name~) | One yearly event cannot carry an age, so the date is in the description |
 
 *** Contacts (.vcf)

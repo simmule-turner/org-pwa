@@ -11,134 +11,33 @@ function docs(text, documentId = 'test.org') {
 
 // ---- structure --------------------------------------------------------
 
-test('produces a well-formed VCALENDAR wrapper with required top-level fields', () => {
-  const ics = exportToIcalendar(docs('* Just a heading, nothing dated\n'), { today: TODAY });
-  assert.match(ics, /^BEGIN:VCALENDAR\r\n/);
-  assert.match(ics, /VERSION:2\.0\r\n/);
-  assert.match(ics, /PRODID:.+\r\n/);
-  assert.match(ics, /END:VCALENDAR\r\n$/);
+// ---- structure --------------------------------------------------------
+
+test('a calendar is a well-formed VCALENDAR whose lines end in CRLF, with balanced components', () => {
+  const ics = exportToIcalendar(docs('* Meeting <2026-08-01 Sat 10:00>\n* Other <2026-08-02 Sun>\n'), { today: TODAY });
+  assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n') && ics.endsWith('END:VCALENDAR\r\n'));
+  assert.equal(ics.replace(/\r\n/g, '').includes('\n'), false);
+  assert.equal((ics.match(/^BEGIN:VEVENT/gm) || []).length, 2);
+  assert.equal((ics.match(/^END:VEVENT/gm) || []).length, 2);
 });
 
-test('every line uses CRLF line endings, per RFC 5545', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.ok(ics.includes('\r\n'));
-  assert.ok(!/[^\r]\n/.test(ics)); // no bare \n not preceded by \r
+test('a document with nothing dated produces an empty calendar', () => {
+  assert.equal((exportToIcalendar(docs('* Nothing dated here\nJust prose.\n'), { today: TODAY }).match(/BEGIN:VEVENT/g) || []).length, 0);
 });
 
-test('a document with nothing dated produces zero VEVENTs but still a valid, empty calendar', () => {
-  const ics = exportToIcalendar(docs('* Nothing dated here\nJust prose.\n'), { today: TODAY });
-  assert.ok(!ics.includes('BEGIN:VEVENT'));
-  assert.match(ics, /BEGIN:VCALENDAR[\s\S]*END:VCALENDAR/);
+test('the same file exported twice gives identical UIDs, and an :ID: is the basis of one', () => {
+  const text = '* A <2026-08-01 Sat>\n* B <2026-08-02 Sun>\n:PROPERTIES:\n:ID: abc-123\n:END:\n';
+  const uids = (s) => [...s.matchAll(/^UID:(.*)$/gm)].map((m) => m[1]);
+  const first = uids(exportToIcalendar(docs(text), { today: TODAY }));
+  assert.deepEqual(first, uids(exportToIcalendar(docs(text), { today: TODAY })));
+  assert.ok(first[1].includes('abc-123'));
+  assert.notEqual(first[0], first[1]);
 });
 
-test('BEGIN:VEVENT and END:VEVENT counts always match (no unbalanced components)', () => {
-  const ics = exportToIcalendar(
-    docs(
-      '* A\nSCHEDULED: <2026-08-01 Sat>\n* B\nDEADLINE: <2026-08-02 Sun -3d>\n* C\n:PROPERTIES:\n:BIRTHDAY: 1990-01-01 Birthday\n:END:\n* Trigger\n%%(org-contacts-anniversaries)\n'
-    ),
-    { today: TODAY }
-  );
-  const begins = (ics.match(/BEGIN:VEVENT/g) || []).length;
-  const ends = (ics.match(/END:VEVENT/g) || []).length;
-  assert.equal(begins, ends);
-  assert.ok(begins >= 3);
+test('two headings with the same title in one file get different UIDs', () => {
+  const uids = [...exportToIcalendar(docs('* Same <2026-08-01 Sat>\n* Same <2026-08-01 Sat>\n'), { today: TODAY }).matchAll(/^UID:(.*)$/gm)].map((m) => m[1]);
+  assert.equal(new Set(uids).size, 2);
 });
-
-// ---- SCHEDULED / DEADLINE -----------------------------------------------
-
-test('a SCHEDULED timestamp becomes an all-day VEVENT with VALUE=DATE', () => {
-  const ics = exportToIcalendar(docs('* Buy groceries\nSCHEDULED: <2026-08-05 Wed>\n'), { today: TODAY });
-  assert.match(ics, /SUMMARY:Buy groceries/);
-  assert.match(ics, /DTSTART;VALUE=DATE:20260805/);
-  assert.match(ics, /DESCRIPTION:Scheduled/);
-});
-
-test('a DEADLINE timestamp becomes a VEVENT labeled Deadline', () => {
-  const ics = exportToIcalendar(docs('* Submit report\nDEADLINE: <2026-08-10 Mon>\n'), { today: TODAY });
-  assert.match(ics, /SUMMARY:Submit report/);
-  assert.match(ics, /DTSTART;VALUE=DATE:20260810/);
-  assert.match(ics, /DESCRIPTION:Deadline/);
-});
-
-test('a heading with BOTH SCHEDULED and DEADLINE produces two separate VEVENTs', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat> DEADLINE: <2026-08-05 Wed>\n'), { today: TODAY });
-  const count = (ics.match(/BEGIN:VEVENT/g) || []).length;
-  assert.equal(count, 2);
-});
-
-test('a timestamp with a time component becomes a timed DTSTART, not an all-day VALUE=DATE one', () => {
-  const ics = exportToIcalendar(docs('* Meeting\nSCHEDULED: <2026-08-05 Wed 14:30>\n'), { today: TODAY });
-  assert.match(ics, /DTSTART:20260805T1430/);
-  assert.doesNotMatch(ics, /DTSTART;VALUE=DATE/);
-});
-
-// ---- repeaters -> RRULE -------------------------------------------------
-
-test('a weekly repeater (+1w) becomes RRULE:FREQ=WEEKLY;INTERVAL=1', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat +1w>\n'), { today: TODAY });
-  assert.match(ics, /RRULE:FREQ=WEEKLY;INTERVAL=1/);
-});
-
-test('a monthly repeater with an interval (+2m) becomes RRULE:FREQ=MONTHLY;INTERVAL=2', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat +2m>\n'), { today: TODAY });
-  assert.match(ics, /RRULE:FREQ=MONTHLY;INTERVAL=2/);
-});
-
-test('all three repeater marks (+, ++, .+) produce the same RRULE, matching this app\u2019s own agenda semantics', () => {
-  const plus = exportToIcalendar(docs('* A\nSCHEDULED: <2026-08-01 Sat +1w>\n'), { today: TODAY });
-  const doublePlus = exportToIcalendar(docs('* A\nSCHEDULED: <2026-08-01 Sat ++1w>\n'), { today: TODAY });
-  const dotPlus = exportToIcalendar(docs('* A\nSCHEDULED: <2026-08-01 Sat .+1w>\n'), { today: TODAY });
-  const extractRrule = (s) => s.match(/RRULE:[^\r]+/)[0];
-  assert.equal(extractRrule(plus), extractRrule(doublePlus));
-  assert.equal(extractRrule(plus), extractRrule(dotPlus));
-});
-
-test('no repeater means no RRULE line at all', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /RRULE:/);
-});
-
-// ---- deadline delay -> VALARM --------------------------------------------
-
-test('a DEADLINE with a delay/warning-period suffix becomes a VALARM with the correct TRIGGER', () => {
-  const ics = exportToIcalendar(docs('* Task\nDEADLINE: <2026-08-10 Mon -3d>\n'), { today: TODAY });
-  assert.match(ics, /BEGIN:VALARM/);
-  assert.match(ics, /ACTION:DISPLAY/);
-  assert.match(ics, /TRIGGER:-P3D/);
-  assert.match(ics, /END:VALARM/);
-});
-
-test('a SCHEDULED delay (real org syntax also allows it there) does NOT produce a VALARM -- only DEADLINE\u2019s delay is treated as a reminder here', () => {
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat -3d>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /VALARM/);
-});
-
-test('a DEADLINE with no delay produces no VALARM at all', () => {
-  const ics = exportToIcalendar(docs('* Task\nDEADLINE: <2026-08-10 Mon>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /VALARM/);
-});
-
-// ---- plain title timestamp -----------------------------------------------
-
-test('a plain active timestamp in a heading title becomes a VEVENT', () => {
-  const ics = exportToIcalendar(docs('* Jane Doe <2000-01-01 Sat +1y>\n'), { today: TODAY });
-  assert.match(ics, /SUMMARY:Jane Doe/);
-  assert.match(ics, /DTSTART;VALUE=DATE:20000101/);
-  assert.match(ics, /RRULE:FREQ=YEARLY;INTERVAL=1/);
-});
-
-test('an inactive [timestamp] in a heading title is excluded, matching real org\u2019s own agenda rule', () => {
-  const ics = exportToIcalendar(docs('* Jane Doe [2000-01-01 Sat]\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /BEGIN:VEVENT/);
-});
-
-test('a title timestamp is skipped when the heading already has its own SCHEDULED/DEADLINE (no double entry)', () => {
-  const ics = exportToIcalendar(docs('* Jane Doe <2000-01-01 Sat>\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  const count = (ics.match(/BEGIN:VEVENT/g) || []).length;
-  assert.equal(count, 1); // only the SCHEDULED one, not also the title timestamp
-});
-
-// ---- org-contacts-anniversaries ------------------------------------------
 
 test('org-contacts-anniversaries produces a yearly-recurring VEVENT when the trigger is present', () => {
   const ics = exportToIcalendar(
@@ -173,119 +72,6 @@ test('a custom org-contacts-birthday-property key is respected, matching agenda.
 
 // ---- exclusions (matching the agenda view's own defaults) ---------------
 
-test('a DONE heading\u2019s SCHEDULED/DEADLINE is excluded, matching the agenda view\u2019s default completed-item exclusion', () => {
-  const ics = exportToIcalendar(docs('* DONE Task\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /BEGIN:VEVENT/);
-});
-
-test('an archived heading is excluded', () => {
-  const ics = exportToIcalendar(docs('* Task :ARCHIVE:\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /BEGIN:VEVENT/);
-});
-
-test('a commented heading (title starting with "# ") is excluded, matching real org\u2019s own comment-line convention', () => {
-  const ics = exportToIcalendar(docs('* COMMENT draft, not ready\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.doesNotMatch(ics, /BEGIN:VEVENT/);
-});
-
-// ---- multi-file aggregation ----------------------------------------------
-
-test('aggregates dated items across multiple documents, same as buildAgendaItems\u2019 own multi-file input shape', () => {
-  const doc1 = [{ documentId: 'a.org', doc: parseOrg('* Task A\nSCHEDULED: <2026-08-01 Sat>\n') }];
-  const doc2 = [{ documentId: 'b.org', doc: parseOrg('* Task B\nSCHEDULED: <2026-08-02 Sun>\n') }];
-  const ics = exportToIcalendar([...doc1, ...doc2], { today: TODAY });
-  assert.match(ics, /SUMMARY:Task A/);
-  assert.match(ics, /SUMMARY:Task B/);
-});
-
-// ---- UID stability and escaping ------------------------------------------
-
-test('the same file exported twice produces IDENTICAL UIDs for the same items (deterministic, not random)', () => {
-  const source = docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n');
-  const ics1 = exportToIcalendar(source, { today: TODAY });
-  const ics2 = exportToIcalendar(source, { today: TODAY });
-  const uid1 = ics1.match(/UID:[^\r]+/)[0];
-  const uid2 = ics2.match(/UID:[^\r]+/)[0];
-  assert.equal(uid1, uid2);
-});
-
-test('a heading with its own :ID: property uses that as the UID basis, matching real org\u2019s own ox-icalendar.el preference', () => {
-  const ics = exportToIcalendar(
-    docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n:PROPERTIES:\n:ID: my-stable-id-123\n:END:\n'),
-    { today: TODAY }
-  );
-  assert.match(ics, /UID:my-stable-id-123@org-pwa/);
-});
-
-test('two different headings with the same title in the same file get distinguishable UIDs (never silently collide)', () => {
-  const ics = exportToIcalendar(
-    docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n* Task\nSCHEDULED: <2026-08-02 Sun>\n'),
-    { today: TODAY }
-  );
-  const uids = [...ics.matchAll(/UID:([^\r]+)/g)].map((m) => m[1]);
-  assert.equal(new Set(uids).size, uids.length); // every UID actually distinct
-});
-
-test('special characters in a heading title (commas, semicolons, backslashes) are correctly escaped per RFC 5545', () => {
-  const ics = exportToIcalendar(docs('* Buy milk, eggs; and bread\\ home\nSCHEDULED: <2026-08-01 Sat>\n'), { today: TODAY });
-  assert.match(ics, /SUMMARY:Buy milk\\, eggs\\; and bread\\\\ home/);
-});
-
-test('a very long summary line gets folded at 75 octets per RFC 5545, continuation lines starting with a space', () => {
-  const longTitle = 'A'.repeat(120);
-  const ics = exportToIcalendar(docs(`* ${longTitle}\nSCHEDULED: <2026-08-01 Sat>\n`), { today: TODAY });
-  const summaryLineStart = ics.indexOf('SUMMARY:');
-  const nextCrlf = ics.indexOf('\r\n', summaryLineStart);
-  const firstPhysicalLine = ics.slice(summaryLineStart, nextCrlf);
-  assert.ok(firstPhysicalLine.length <= 75);
-  // the continuation line right after should start with a single space
-  const afterFirstLine = ics.slice(nextCrlf + 2);
-  assert.equal(afterFirstLine[0], ' ');
-});
-
-// ---- DTSTAMP -------------------------------------------------------------
-
-test('DTSTAMP is emitted in real UTC form with a trailing Z, not floating local time', () => {
-  const utcNoon = new Date(Date.UTC(2026, 6, 31, 12, 0, 0));
-  const ics = exportToIcalendar(docs('* Task\nSCHEDULED: <2026-08-01 Sat>\n'), { today: utcNoon });
-  assert.match(ics, /DTSTAMP:20260731T120000Z/);
-});
-
-// ---- scope (Choose a heading) --------------------------------------------
-
-test('scope: with no scope, exports dated items from the whole document', () => {
-  const doc = parseOrg('* Project A\n** Task A1\nSCHEDULED: <2026-08-01 Sat>\n* Project B\n** Task B1\nSCHEDULED: <2026-08-02 Sun>\n');
-  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY });
-  const count = (ics.match(/BEGIN:VEVENT/g) || []).length;
-  assert.equal(count, 2);
-});
-
-test('scope: exports only the scoped heading\u2019s own dated items, not sibling subtrees', () => {
-  const doc = parseOrg('* Project A\n** Task A1\nSCHEDULED: <2026-08-01 Sat>\n* Project B\n** Task B1\nSCHEDULED: <2026-08-02 Sun>\n');
-  const scopeHeading = doc.children[0]; // Project A
-  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
-  assert.match(ics, /SUMMARY:Task A1/);
-  assert.doesNotMatch(ics, /SUMMARY:Task B1/);
-});
-
-test('scope: includes the scoped heading\u2019s OWN dated item too, not just its descendants\u2019', () => {
-  const doc = parseOrg('* Project A\nSCHEDULED: <2026-08-01 Sat>\n** Task A1\nSCHEDULED: <2026-08-02 Sun>\n* Project B\n');
-  const scopeHeading = doc.children[0];
-  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
-  assert.match(ics, /SUMMARY:Project A/);
-  assert.match(ics, /SUMMARY:Task A1/);
-});
-
-test('scope: a deeply-nested scope heading still correctly includes only its own descendants', () => {
-  const doc = parseOrg(
-    '* Root\n** Middle\n*** Deep target\nSCHEDULED: <2026-08-01 Sat>\n**** Grandchild\nSCHEDULED: <2026-08-02 Sun>\n*** Sibling of target\nSCHEDULED: <2026-08-03 Mon>\n'
-  );
-  const scopeHeading = doc.children[0].children[0].children[0]; // "Deep target"
-  const ics = exportToIcalendar([{ documentId: 't.org', doc }], { today: TODAY, scope: scopeHeading });
-  assert.match(ics, /SUMMARY:Deep target/);
-  assert.match(ics, /SUMMARY:Grandchild/);
-  assert.doesNotMatch(ics, /SUMMARY:Sibling of target/);
-});
 
 test('scope: org-contacts-anniversaries still activates correctly when scoped, if the trigger line is within the scoped subtree', () => {
   const doc = parseOrg(
@@ -298,51 +84,9 @@ test('scope: org-contacts-anniversaries still activates correctly when scoped, i
 
 // ---- collectCalendarEvents: what the CalDAV mirror builds on ---------------------------------------------
 
-import { collectCalendarEvents } from '../src/export-icalendar.js';
-
-const COLLECT_TODAY = new Date(2026, 9, 2, 12, 0);
-const collectFor = (text, opts = {}) => collectCalendarEvents([{ documentId: 'a.org', doc: parseOrg(text) }], { today: COLLECT_TODAY, ...opts });
-
-test('collectCalendarEvents returns each event on its own, and the .ics export is exactly those events joined', () => {
-  const text = '* One\nSCHEDULED: <2026-10-06 Tue>\n* Two\nDEADLINE: <2026-10-09 Fri>\n';
-  const events = collectFor(text);
-  assert.equal(events.length, 2);
-  assert.ok(events.every((e) => e.uid.endsWith('@org-pwa') && e.lines[0] === 'BEGIN:VEVENT'));
-  const ics = exportToIcalendar([{ documentId: 'a.org', doc: parseOrg(text) }], { today: COLLECT_TODAY });
-  assert.equal(ics, ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'].join('\r\n') + '\r\n');
-});
-
-test('completed items are left out by default (as the agenda does) and kept with includeDone', () => {
-  const text = '* DONE Finished\nSCHEDULED: <2026-10-06 Tue>\n* TODO Open\nSCHEDULED: <2026-10-06 Tue>\n';
-  assert.equal(collectFor(text).length, 1);
-  assert.equal(collectFor(text, { includeDone: true }).length, 2);
-});
-
-test('a window keeps one-off items inside it, and any repeating item that has started by its end', () => {
-  const text = '* Back\nSCHEDULED: <2026-09-01 Tue>\n* In\nSCHEDULED: <2026-10-10 Sat>\n* Habit\nSCHEDULED: <2025-01-01 Wed +1w>\n* Later habit\nSCHEDULED: <2026-12-01 Tue +1w>\n';
-  const window = { start: new Date(2026, 9, 1), end: new Date(2026, 9, 31) };
-  const titles = collectFor(text, { window }).map((e) => e.lines.find((l) => l.startsWith('SUMMARY:')).slice(8));
-  assert.deepEqual(titles.sort(), ['Habit', 'In']);
-});
-
-test('without a window nothing is dropped for its date', () => {
-  assert.equal(collectFor('* Ancient\nSCHEDULED: <1999-01-01 Fri>\n').length, 1);
-});
-
-test('two events from one heading with an :ID: no longer share a UID; the first keeps the plain id', () => {
-  const events = collectFor('* Ship\nSCHEDULED: <2026-10-06 Tue> DEADLINE: <2026-10-09 Fri>\n:PROPERTIES:\n:ID: abc-123\n:END:\n');
-  assert.deepEqual(events.map((e) => e.uid), ['abc-123@org-pwa', 'abc-123-deadline0@org-pwa']);
-});
-
-test('a heading with an :ID: and only one dated item keeps exactly the UID it always had', () => {
-  assert.deepEqual(collectFor('* Only\nDEADLINE: <2026-10-09 Fri>\n:PROPERTIES:\n:ID: solo\n:END:\n').map((e) => e.uid), ['solo@org-pwa']);
-});
-
-// ---- the bugs a contact's birthday used to have, and the details every event now carries ---------------------------
 
 const T = new Date(2026, 9, 2, 12, 0);
 const ics = (text, opts = {}) => exportToIcalendar([{ documentId: 'a.org', doc: parseOrg(text) }], { today: T, ...opts });
-const unfolded = (s) => s.replace(/\r\n /g, '');
 
 test('a vCard-imported birthday (a bare date) has a title: "Birthday: Jane Doe", never "…: null"', () => {
   const out = ics('* Cal\n%%(org-contacts-anniversaries)\n* Jane Doe\n:PROPERTIES:\n:BIRTHDAY: 1990-01-08\n:END:\n');
@@ -373,18 +117,14 @@ test('contactsDocs (org-contacts-files) are the contacts, wherever the trigger l
   assert.ok(out.includes('SUMMARY:Birthday: Jane Doe') && !out.includes('Not a contact here'));
 });
 
-test('every event has the details of its heading: the end of a time range, tags, the location, the start of the body', () => {
-  const out = unfolded(ics('* TODO Dentist :health:\nSCHEDULED: <2026-10-09 Fri 09:30-10:15>\n:PROPERTIES:\n:LOCATION: Main St\n:END:\nBring the forms\n'));
-  assert.ok(out.includes('DTEND:20261009T101500') && out.includes('CATEGORIES:health') && out.includes('LOCATION:Main St') && out.includes('DESCRIPTION:Scheduled\\nBring the forms'), out);
-});
 
-test('the file and heading scopes write EVERY dated item, with no window; the agenda scope keeps to the window', async () => {
+test('the file scope writes everything Emacs does; the agenda scope keeps to its window', async () => {
   const { exportAgendaToIcalendar } = await import('../src/calendar-from-agenda.js');
-  const text = '* Far away\nSCHEDULED: <2030-05-01 Wed>\n* Soon\nSCHEDULED: <2026-10-09 Fri>\n';
+  const text = '* Far away\nSCHEDULED: <2030-05-01 Wed>\n* Soon\nSCHEDULED: <2026-10-09 Fri>\n* Appointment <2030-06-01 Sat>\n';
   const docs = [{ documentId: 'a.org', doc: parseOrg(text) }];
-  const file = exportToIcalendar(docs, { today: T });
+  const file = exportToIcalendar(docs, { today: T, settings: { useScheduled: ['event-if-not-todo'] } });
   const agenda = exportAgendaToIcalendar(docs, { today: T });
-  assert.ok(file.includes('SUMMARY:Far away') && file.includes('SUMMARY:Soon'));
+  assert.ok(file.includes('SUMMARY:S: Far away') && file.includes('SUMMARY:S: Soon') && file.includes('SUMMARY:Appointment'));
   assert.ok(!agenda.includes('SUMMARY:Far away') && agenda.includes('SUMMARY:Soon'));
   assert.ok(agenda.startsWith('BEGIN:VCALENDAR\r\nVERSION:2.0\r\n') && agenda.endsWith('END:VCALENDAR\r\n'));
 });

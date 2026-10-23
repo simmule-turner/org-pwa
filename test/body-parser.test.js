@@ -51,7 +51,7 @@ test('an item with no [@N] cookie has startValue null', () => {
 });
 
 test('[@N] cookie works alongside a checkbox', () => {
-  const [list] = parseBody(['3. [X] [@3] third item, already done']);
+  const [list] = parseBody(['3. [@3] [X] third item, already done']);
   const item = list.items[0];
   assert.equal(item.checkbox, 'X');
   assert.equal(item.startValue, 3);

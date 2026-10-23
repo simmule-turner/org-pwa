@@ -3,7 +3,7 @@
 /**
  * @typedef {{ type: 'tag' | 'todo' | 'priority', mode: string, values: string[] } | { type: 'property', mode: string, key: string, values: string[] } | { type: 'keyword', mode: string, value: string }} SearchFilter
  * @typedef {(text: string) => boolean} Matcher
- * @typedef {{ useRegex?: boolean, useTagInheritance?: TagInheritance, usePropertyInheritance?: boolean }} SearchOptions
+ * @typedef {{ useRegex?: boolean, useTagInheritance?: TagInheritance, usePropertyInheritance?: boolean, doneKeywords?: Iterable<string>, tagGroups?: Map<string, string[]>, now?: Date }} SearchOptions
  * @typedef {{ text: string, highlightStart: number, highlightLength: number }} Snippet
  * @typedef {{ type: string, heading: Heading, node: any, snippet: Snippet, documentId?: string }} SearchResult
  */
@@ -58,7 +58,7 @@ import { effectiveTagsOf } from './tag-inheritance.js';
  */
 
 import { emacsRegexToJs } from './emacs-regex.js';
-import { parseMatchQuery, evaluateMatchQuery } from './sparse-tree-matcher.js';
+import { makeTagsMatcher } from './tags-match.js';
 
 const SNIPPET_RADIUS = 40;
 
@@ -621,73 +621,61 @@ export function searchDocuments(docs, query, opts = /** @type {SearchOptions} */
   return results;
 }
 
-/** Collects every distinct property name a parsed match query references,
- *  so buildMatchEntry below only has to resolve inheritance for the
- *  properties actually in play, not every property that exists anywhere
- * @param {ReturnType<typeof parseMatchQuery>} parsedGroups
- *  in the document. */
-function collectPropertyNames(parsedGroups) {
-  const names = new Set();
-  for (const group of parsedGroups) {
-    for (const condition of group) {
-      if (condition.kind === 'property' && !PSEUDO_PROPERTY_NAMES.has(condition.name)) names.add(condition.name);
-    }
-  }
-  return names;
-}
-
-const PSEUDO_PROPERTY_NAMES = new Set(['TODO', 'LEVEL', 'PRIORITY', 'CATEGORY']);
-
-/** Builds the flat {tags, todo, priority, category, level, properties}
- *  shape evaluateMatchQuery expects, resolving tags and each property
- *  named in `propertyNames` through the SAME inheritance logic
- *  (effectiveTags/effectivePropertyValue) the existing tag:/key: filter
- *  syntax above already uses -- not a second, separate implementation of
+/** What the matcher reads of a heading: its keyword, tags, level, category, and any property (special ones like PRIORITY and DEADLINE
+ *  included, as `org-entry-get` answers them).
  * @param {Heading} heading
  * @param {Heading[]} ancestors
- * @param {Set<string>} propertyNames
  * @param {TagInheritance} useTagInheritance
  * @param {boolean} usePropertyInheritance
- *  the same idea. */
-function buildMatchEntry(heading, ancestors, propertyNames, useTagInheritance, usePropertyInheritance) {
-  /** @type {Record<string, string>} */ const properties = {};
-  for (const name of propertyNames) {
-    const value = effectivePropertyValue(heading, ancestors, name, usePropertyInheritance);
-    if (value !== null) properties[name] = value;
-  }
+ * @param {string} fileCategory
+ * @returns {import('./tags-match.js').MatchEntry}
+ */
+function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInheritance, fileCategory) {
+  const all = effectiveTags(heading, ancestors, useTagInheritance);
   return {
-    tags: effectiveTags(heading, ancestors, useTagInheritance),
-    todo: heading.todo || undefined,
-    priority: heading.priority || undefined,
-    category: effectivePropertyValue(heading, ancestors, 'CATEGORY', usePropertyInheritance) || undefined,
+    tags: all,
+    todo: heading.todo || null,
     level: heading.level,
-    properties,
+    category: effectivePropertyValue(heading, ancestors, 'CATEGORY', true) || fileCategory,
+    property(name) {
+      switch (name) {
+        case 'PRIORITY':
+          return heading.priority || 'B';
+        case 'DEADLINE':
+          return heading.planning?.deadline || null;
+        case 'SCHEDULED':
+          return heading.planning?.scheduled || null;
+        case 'CLOSED':
+          return heading.planning?.closed || null;
+        case 'ITEM':
+          return heading.title;
+        case 'TAGS':
+          return heading.tags && heading.tags.length ? `:${heading.tags.join(':')}:` : null;
+        case 'ALLTAGS':
+          return all.length ? `:${all.join(':')}:` : null;
+        default:
+          return effectivePropertyValue(heading, ancestors, name, usePropertyInheritance);
+      }
+    },
   };
 }
 
-/** Searches `docs` using the real org-make-tags-matcher grammar (Match
- *  mode) instead of the plain-text/tag:/todo:/key: filter syntax
- *  searchDocuments above uses -- selecting Match mode replaces the whole
- *  query's own interpretation, per direct design decision, rather than
- *  the two grammars being merged or auto-detected from the query's own
- *  shape. Throws the parser's own clear error on a malformed query,
- *  surfaced by the caller the same way an invalid regex already is.
- *  Every matching heading is purely a structured-filter result --
- *  there's no free-text keyword concept in this mode, so every result's
- *  own snippet is the heading title with nothing to highlight, matching
+/** Searches `docs` with the match language of `org-make-tags-matcher` (see tags-match.js), as Emacs's `C-c / m` does.
+ *  Text the language does not read is left unread, as Emacs leaves it, so no query throws.
  * @param {{ documentId: string, doc: Doc }[]} docs
  * @param {string} query
- *  the existing "passed via structured filters" shape above exactly. */
+ */
 export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {SearchOptions} */ ({})) {
   const { useTagInheritance = true, usePropertyInheritance = false } = opts;
   const trimmed = String(query).trim();
   if (!trimmed) return [];
 
-  const parsedGroups = parseMatchQuery(trimmed); // throws its own clear error on malformed input
-  const propertyNames = collectPropertyNames(parsedGroups);
+  const matcher = makeTagsMatcher(trimmed, { doneKeywords: opts.doneKeywords, tagGroups: opts.tagGroups, now: opts.now });
 
   /** @type {any[]} */ const results = [];
   for (const { documentId, doc } of docs) {
+    const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'CATEGORY');
+    const fileCategory = kw && kw.value.trim() ? kw.value.trim() : (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
     /**
      * @param {Heading[]} nodes
      * @param {Heading[]} ancestors
@@ -695,8 +683,7 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
     function walk(nodes, ancestors) {
       for (const node of nodes) {
         if (node.type !== 'heading') continue;
-        const entry = buildMatchEntry(node, ancestors, propertyNames, useTagInheritance, usePropertyInheritance);
-        if (evaluateMatchQuery(parsedGroups, entry)) {
+        if (matcher.test(buildMatchEntry(node, ancestors, useTagInheritance, usePropertyInheritance, fileCategory))) {
           results.push({ type: 'heading', heading: node, node, documentId, snippet: { text: node.title, highlightStart: -1, highlightLength: 0 } });
         }
         walk(node.children || [], [...ancestors, node]);

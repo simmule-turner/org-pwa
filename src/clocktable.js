@@ -27,145 +27,127 @@
  * empty row conveys nothing worth taking up space for.
  */
 
-import { COMPLETED_CLOCK_RE, parseClockTimestampToDate, formatClockDuration } from './clock.js';
+import { COMPLETED_CLOCK_RE, parseClockTimestampToDate } from './clock.js';
+import { layoutTable, widthWithLinks } from './org-table-layout.js';
 
 /**
- * Parses two "YYYY-MM-DD" date-picker strings into the inclusive
- * `{ tstart, tend }` Date range a clocktable filters against --
- * `tstart` at the very start of that day (00:00:00), `tend` at the
- * very end of it (23:59:59.999), so a clock entry beginning at any
- * point during the end date is still included, not just ones ending
- * exactly at midnight. Either can be null/empty for an unbounded side
- * of the range (an empty start date picker means "everything up to
- * tend", not "nothing").
- * @param {string} tstartStr
- * @param {string} tendStr
+ * `:tstart` / `:tend` as Org reads them: "YYYY-MM-DD", optionally followed by " HH:MM". The start is included and the end
+ * is not, so `:tend "2026-08-07"` stops at midnight before the 7th. Either may be empty for an open side.
+ * @param {string | null | undefined} tstartStr
+ * @param {string | null | undefined} tendStr
  */
 function parseClocktableRange(tstartStr, tendStr) {
-  const tstart = tstartStr ? new Date(tstartStr + 'T00:00:00') : null;
-  const tend = tendStr ? new Date(tendStr + 'T23:59:59.999') : null;
-  return { tstart, tend };
+  /** @param {string | null | undefined} str */
+  const read = (str) => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d))?$/.exec((str || '').trim());
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0)) : null;
+  };
+  return { tstart: read(tstartStr), tend: read(tendStr) };
 }
 
-/** Every completed CLOCK line directly on `heading` (not descendants)
- *  whose own start timestamp falls within `[tstart, tend]` inclusive,
- *  summed in minutes. A currently-running (not-yet-closed) clock is
- *  deliberately excluded -- real org's own default clocktable
- *  behavior only counts completed sessions unless explicitly told
- *  otherwise, and an in-progress duration would keep changing every
- *  time this report is viewed, which isn't what "a report for this
+/**
+ * The minutes of `heading`'s own completed CLOCK lines inside `[tstart, tend)`, a clock that straddles an end counting only
+ * the part inside. A running clock is not counted.
  * @param {Heading} heading
- * @param {any} [tstart]
- * @param {any} [tend]
- *  date range" should mean. */
+ * @param {Date | null} tstart
+ * @param {Date | null} tend
+ */
 function ownMinutesInRange(heading, tstart, tend) {
   let total = 0;
   for (const line of heading.logbookLines || []) {
     const m = COMPLETED_CLOCK_RE.exec(line);
     if (!m) continue;
-    const startDate = parseClockTimestampToDate(m[1]);
-    if (!startDate) continue;
-    if (tstart && startDate < tstart) continue;
-    if (tend && startDate > tend) continue;
-    total += Number(m[3]) * 60 + Number(m[4]);
+    const from = parseClockTimestampToDate(m[1]);
+    const to = parseClockTimestampToDate(m[2]);
+    if (!from || !to) continue;
+    const start = tstart && from < tstart ? tstart : from;
+    const end = tend && to > tend ? tend : to;
+    if (end > start) total += Math.round((end.getTime() - start.getTime()) / 60000);
   }
   return total;
 }
 
-/** Bottom-up: every heading's own-plus-descendants total, in minutes,
- *  within the given range -- a Map so this never mutates the actual
- * @param {Heading[]} headings
- * @param {any} [tstart]
- * @param {any} [tend]
- * @param {any} [totals]
- *  document/heading objects just to produce a report from them. */
-function computeSubtreeTotals(headings, tstart, tend, totals) {
-  for (const heading of headings) {
-    computeSubtreeTotals(heading.children || [], tstart, tend, totals);
-    let total = ownMinutesInRange(heading, tstart, tend);
-    for (const child of heading.children || []) {
-      total += totals.get(child) || 0;
-    }
-    totals.set(heading, total);
-  }
-  return totals;
-}
-
-/** Builds the actual rows to display: a heading at or above maxlevel
- *  with any relevant clocked time (its own or rolled up from
- *  descendants) gets a row and its children are considered too (up to
- *  maxlevel); deeper headings contribute upward but never get a row
- * @param {Heading[]} headings
- * @param {number} level
- * @param {number} maxlevel
- * @param {any} [totals]
- * @param {any} [rows]
- *  of their own. */
-function buildClocktableRows(headings, level, maxlevel, totals, rows) {
-  for (const heading of headings) {
-    const minutes = totals.get(heading) || 0;
-    if (minutes <= 0) continue; // nothing relevant anywhere in this subtree -- omit, matching real org
-    if (level > maxlevel) continue; // rolled up into an ancestor's own row already; no row of its own
-    rows.push({ heading, level, minutes });
-    buildClocktableRows(heading.children || [], level + 1, maxlevel, totals, rows);
-  }
-}
-
 /**
- * Computes a clocktable for `doc` over `[tstartStr, tendStr]`
- * ("YYYY-MM-DD" strings, either may be empty/null for an unbounded
- * side). Returns `{ rows, totalMinutes }` -- `rows` an array of
- * `{ heading, level, minutes }` in document order, `totalMinutes` the
- * grand total (the sum of every top-level row's own total, which
- * already includes every descendant).
+ * Computes a clocktable for `doc` over `[tstartStr, tendStr)` (see parseClocktableRange). A heading at or above `maxlevel`
+ * gets a row with its own time and its descendants'; deeper headings add their time to the nearest ancestor that has a
+ * row. A heading with no time in the range has no row. Levels are the headings' own levels.
  * @param {Doc} doc
- * @param {any} [tstartStr]
- * @param {any} [tendStr]
+ * @param {string | null | undefined} [tstartStr]
+ * @param {string | null | undefined} [tendStr]
+ * @param {number} [maxlevel]
+ * @returns {{ rows: { heading: Heading, level: number, minutes: number, title: string }[], totalMinutes: number }}
  */
 function computeClocktable(doc, tstartStr, tendStr, maxlevel = 2) {
   const { tstart, tend } = parseClocktableRange(tstartStr, tendStr);
-  const totals = computeSubtreeTotals(doc.children || [], tstart, tend, new Map());
-  /** @type {any[]} */ const rows = [];
-  buildClocktableRows(doc.children || [], 1, maxlevel, totals, rows);
-  const totalMinutes = rows.filter((r) => r.level === 1).reduce((sum, r) => sum + r.minutes, 0);
-  return { rows, totalMinutes };
+  /** @type {{ heading: Heading, level: number, minutes: number, title: string }[]} */
+  const rows = [];
+  let totalMinutes = 0;
+  /** @param {Heading} heading @param {boolean} counted  an ancestor already has a row @returns {number} */
+  const walk = (heading, counted) => {
+    const level = heading.level;
+    const hasRow = level <= maxlevel;
+    /** @type {{ heading: Heading, level: number, minutes: number, title: string } | null} */
+    const row = hasRow ? { heading, level, minutes: 0, title: cleanTitle(heading) } : null;
+    if (row) rows.push(row);
+    let minutes = ownMinutesInRange(heading, tstart, tend);
+    for (const child of heading.children || []) minutes += walk(child, counted || hasRow);
+    if (row) {
+      row.minutes = minutes;
+      if (!counted) totalMinutes += minutes;
+    }
+    return minutes;
+  };
+  for (const heading of doc.children || []) walk(heading, false);
+  return { rows: rows.filter((r) => r.minutes > 0), totalMinutes };
 }
 
-/** "H:MM" -- real org's own clocktable duration format, matching
- *  clock.js's own formatClockDuration exactly (reused directly rather
- * @param {any} [minutes]
- *  than reimplemented, so the two can never drift apart). */
+/** A heading's text as the clocktable shows it: no keyword, priority or tags, and nothing past 40 characters. @param {Heading} heading */
+function cleanTitle(heading) {
+  const text = heading.title.replace(/^COMMENT\s+/, '').trim();
+  if (text.length <= 40) return text;
+  const cut = text.slice(0, 37);
+  return (text[37] === ' ' ? cut : cut.replace(/\s+\S*$/, '')) + '...';
+}
+
+/** "H:MM"; a day or more reads "1d 2:05". @param {number} minutes */
 function formatClocktableDuration(minutes) {
-  return formatClockDuration(minutes);
+  const days = Math.floor(minutes / 1440);
+  const rest = minutes % 1440;
+  const clock = `${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`;
+  return days ? `${days}d ${clock}` : clock;
 }
 
 /**
- * Renders a computed `{ rows, totalMinutes }` (from computeClocktable)
- * as the literal org dynamic-block text real org itself would produce
- * -- `#+BEGIN: clocktable ... #+END:`, ready to read, copy, or (if
- * the caller chooses to) insert directly into a document as valid org
- * source. `now` (a Date) drives the `#+CAPTION:` timestamp -- "Clock
- * summary at [...]", real org's own exact wording and inactive-
- * timestamp-with-day-name-and-HH:MM format (no seconds).
- * @param {any} tstartStr
- * @param {any} tendStr
+ * The org dynamic block `#+BEGIN: clocktable ... #+END:` for a computed table, as Org writes it: one time column per level,
+ * the total first, then a row per heading.
+ * @param {{ rows: { level: number, minutes: number, title: string }[], totalMinutes: number }} computed
+ * @param {string | null | undefined} tstartStr
+ * @param {string | null | undefined} tendStr
+ * @param {Date} [now]
+ * @param {number} [maxlevel]
  */
-function renderClocktable({ rows, totalMinutes }, /** @type {any} */ tstartStr, tendStr, now = new Date(), maxlevel = 2) {
-  const lines = [];
+function renderClocktable({ rows, totalMinutes }, tstartStr, tendStr, now = new Date(), maxlevel = 2) {
   const tstartPart = tstartStr ? ` :tstart "${tstartStr}"` : '';
   const tendPart = tendStr ? ` :tend "${tendStr}"` : '';
-  lines.push(`#+BEGIN: clocktable :maxlevel ${maxlevel} :scope file${tstartPart}${tendPart}`);
-  lines.push(`#+CAPTION: Clock summary at [${formatCaptionTimestamp(now)}]`);
-  lines.push('| Headline | Time |');
-  lines.push('|----------------------------------------+-------|');
-  lines.push(`| *Total time* | *${formatClocktableDuration(totalMinutes)}* |`);
-  lines.push('|----------------------------------------+-------|');
+  const deepest = Math.max(1, ...rows.map((r) => r.level));
+  const columns = 1 + deepest;
+  /** @param {string[]} cells */
+  const pad = (cells) => [...cells, ...Array(Math.max(0, columns - cells.length)).fill('')];
+  /** @type {(string[] | null)[]} */
+  const table = [pad(['Headline', 'Time']), null, pad(['*Total time*', `*${formatClocktableDuration(totalMinutes)}*`])];
+  if (rows.length) table.push(null);
   for (const row of rows) {
-    const indent = '\\_  '.repeat(row.level - 1);
-    lines.push(`| ${indent}${row.heading.title} | ${formatClocktableDuration(row.minutes)} |`);
+    const cells = Array(columns).fill('');
+    cells[0] = (row.level > 1 ? '\\_' + ' '.repeat(2 * (row.level - 1)) : '') + row.title;
+    cells[row.level] = formatClocktableDuration(row.minutes);
+    table.push(cells);
   }
-  lines.push('#+END:');
-  return lines.join('\n');
+  return [
+    `#+BEGIN: clocktable :maxlevel ${maxlevel} :scope file${tstartPart}${tendPart}`,
+    `#+CAPTION: Clock summary at [${formatCaptionTimestamp(now)}]`,
+    ...layoutTable(table.map((r) => (r ? r.flatMap((c, i) => (i === 0 ? c.split('|').map((x) => x.trim()) : [c])) : null)), widthWithLinks),
+    '#+END:',
+  ].join('\n');
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

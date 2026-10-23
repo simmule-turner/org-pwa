@@ -244,9 +244,9 @@ test('expandTemplate %? at the very start substitutes correctly there too', () =
 
 // ---- expandTemplate: %% literal percent -----------------------------------
 
-test('expandTemplate %% becomes a literal percent sign', () => {
+test('expandTemplate leaves %% as it is, as Emacs does (only %<...> reads %% as a percent sign)', () => {
   const { text } = expandTemplate('100%% complete', { now: NOW });
-  assert.equal(text, '100% complete');
+  assert.equal(text, '100%% complete');
 });
 
 // ---- expandTemplate: THE EXACT REQUEST EXAMPLES ----------------------------
@@ -1148,8 +1148,8 @@ test('%<...> still takes its own %a (weekday): the new token does not reach insi
   assert.equal(expandTemplate('%<%a %b>', { now, shared: SHARED }).text, 'Tue Sep');
 });
 
-test('%%i is a literal percent followed by i, not the new token', () => {
-  assert.equal(expandTemplate('%%i and %%a and %%x', { now, shared: SHARED, clipboard: 'c' }).text, '%i and %a and %x');
+test('%%i is a percent sign followed by the shared text, as in Emacs, where %% is not an escape', () => {
+  assert.equal(expandTemplate('%%i and %%x', { now, shared: SHARED, clipboard: 'c' }).text, '%First line\n%Second line and %c');
 });
 
 test('the new tokens are not prompts: they add no question to a template\u2019s form', () => {

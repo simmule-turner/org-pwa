@@ -1,0 +1,38 @@
+#+TITLE: Checkboxes and progress cookies
+#+STARTUP: showall
+
+A cookbook for =[/]= and =[%]= cookies. Toggling a checkbox or a TODO state updates the cookie above it; in Emacs, =C-c C-c= on a cookie does it, and =org-update-statistics-cookies= does the whole buffer. The cookies below are what Emacs 29.3 (Org 9.6.15) leaves after updating this file; the app gives the same.
+
+* Packing [2/4]
+- [X] passport
+- [ ] charger
+- [X] tickets
+- [ ] umbrella
+
+* Packing, as a percentage [50%]
+- [X] passport
+- [ ] charger
+- [X] tickets
+- [ ] umbrella
+
+* Nested lists [1/2]
+- [X] food [2/2]
+  - [X] bread
+  - [X] cheese
+- [ ] drink [1/3]
+  - [X] water
+  - [ ] tea
+  - [ ] coffee
+
+* Heading cookies [2/3]
+** DONE Book the flight
+** DONE Book the hotel
+** TODO Book the train
+
+* Cookies with =COOKIE_DATA= [2/3]
+:PROPERTIES:
+:COOKIE_DATA: recursive
+:END:
+** DONE Parent step [1/1]
+*** DONE Child step
+** TODO Second step

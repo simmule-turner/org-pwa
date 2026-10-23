@@ -826,8 +826,12 @@ export function buildClocktableSection() {
   /** @type {string | null} */
   let rendered = null;
   if (S.showClocktable) {
-    const result = computeClocktable(S.state.doc, S.clocktableStart, S.clocktableEnd, S.clocktableMaxlevel);
-    rendered = renderClocktable(result, S.clocktableStart, S.clocktableEnd, new Date(), S.clocktableMaxlevel);
+    // the pickers give the first and last day; Org's :tend is the first day not included
+    const lastDay = S.clocktableEnd ? new Date(S.clocktableEnd + 'T00:00:00') : null;
+    if (lastDay) lastDay.setDate(lastDay.getDate() + 1);
+    const until = lastDay ? dateInputValue(lastDay) : '';
+    const result = computeClocktable(S.state.doc, S.clocktableStart, until, S.clocktableMaxlevel);
+    rendered = renderClocktable(result, S.clocktableStart, until, new Date(), S.clocktableMaxlevel);
 
     const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
       try {

@@ -46,16 +46,13 @@ test('a script-defined %%(…) function in a <%%(…)> line is exported like a b
 
 import { exportToIcalendar } from '../src/export-icalendar.js';
 
-test('timed events get a display alarm that many minutes before, all-day ones and a setting of 0 get none', () => {
-  const doc = parseOrg('* TODO Dentist\nSCHEDULED: <2026-10-15 Thu 09:30>\n* TODO Pay rent\nDEADLINE: <2026-10-16 Fri -3d>\n* Lunch <2026-10-17 Sat 12:00>\n');
-  const ics = (alarmMinutes) => exportToIcalendar([{ documentId: 'a.org', doc }], { today, alarmMinutes });
-  const none = ics(0);
-  assert.equal((none.match(/TRIGGER:-PT/g) || []).length, 0);
-  assert.equal((none.match(/TRIGGER:-P3D/g) || []).length, 1); // the deadline's warning, unchanged
+test('the file export puts an alarm on timed events when org-icalendar-alarm-time is set, as Emacs does; all-day ones and 0 get none', () => {
+  const doc = parseOrg('* Dentist <2026-10-15 Thu 09:30>\n* Pay rent <2026-10-16 Fri>\n* Lunch <2026-10-17 Sat 12:00>\n');
+  const ics = (alarmTime) => exportToIcalendar([{ documentId: 'a.org', doc }], { today, settings: { alarmTime } });
+  assert.equal((ics(0).match(/BEGIN:VALARM/g) || []).length, 0);
   const ten = ics(10);
-  assert.equal((ten.match(/TRIGGER:-PT10M/g) || []).length, 2); // the 09:30 scheduled and the 12:00 timestamp; the all-day deadline gets none
-  assert.equal((ten.match(/TRIGGER:-P3D/g) || []).length, 1);
-  assert.match(ten, /BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Dentist\r\nTRIGGER:-PT10M\r\nEND:VALARM/);
+  assert.equal((ten.match(/TRIGGER:-P0DT0H10M0S/g) || []).length, 2); // the 09:30 and the 12:00 events; the all-day one gets none
+  assert.match(ten, /BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Dentist <2026-10-15 Thu 09:30>\r\nTRIGGER:-P0DT0H10M0S\r\nEND:VALARM/);
 });
 
 test('the same alarm reaches the agenda-based export and sync', () => {

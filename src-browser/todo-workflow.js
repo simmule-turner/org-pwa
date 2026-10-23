@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: todo workflow.
 import { computeNonCollidingKeys } from '../src/capture-template.js';
-import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
+import { updateTodoCookiesUpward } from '../src/checkbox-cookie.js';
 import { getClosedKeepWhenNoTodo, parseLocalVariables } from '../src/local-variables.js';
 import { formatStateLogLine } from '../src/logbook.js';
 import { serializeOrg } from '../src/org-parser.js';
@@ -108,8 +108,8 @@ export function applyTodoTransition(heading, performChange) {
   // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"
   // cookie on some ancestor counts -- this transition may have just
   // changed that count, the same reasoning a checkbox toggle already
-  // has its own updateCheckboxCookiesUpward call for.
-  updateCheckboxCookiesUpward(S.state.doc, heading, sequence.doneKeywords);
+  // has its own updateCheckboxCookie call for.
+  updateTodoCookiesUpward(S.state.doc, heading, sequence.doneKeywords);
   if (fromTodo !== heading.todo) emitExtensionEvent('todo-change', { heading, from: fromTodo || null, to: heading.todo || null });
 }
 

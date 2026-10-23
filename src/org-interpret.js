@@ -12,11 +12,14 @@
  *   todoKeywords: Set<string>, todo: boolean, priority: boolean, tags: boolean, planning: boolean, properties: boolean,
  *   drawer: (name: string) => boolean, footnotes: boolean, title: boolean, author: boolean, date: boolean, email: boolean,
  *   selective?: boolean, nested?: boolean, referenced?: Set<string>,
+ *   cite?: { text: (c: any) => string, bibliography: string[] },
  * }} InterpretOptions
  */
 
+import { parseCitationAt } from './cite.js';
+import { layoutTable, width } from './org-table-layout.js';
+
 const TAGS_COLUMN = 77;
-const NUMBER_FRACTION = 0.5;
 
 /** @param {string} s */
 const isBlank = (s) => s.trim() === '';
@@ -40,16 +43,6 @@ function dedent(lines) {
 
 /** @param {string[]} lines @param {number} n */
 const indentLines = (lines, n) => lines.map((l) => (l === '' ? '' : ' '.repeat(n) + l));
-
-/** Display width: East Asian wide characters take two columns. @param {string} s */
-function width(s) {
-  let w = 0;
-  for (const ch of s) {
-    const c = /** @type {number} */ (ch.codePointAt(0));
-    w += (c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe30 && c <= 0xfe6f) || (c >= 0xff00 && c <= 0xff60) || (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x20000 && c <= 0x3fffd) ? 2 : c >= 0x300 && c <= 0x36f ? 0 : 1;
-  }
-  return w;
-}
 
 // ---- objects -----------------------------------------------------------------------------------------------------
 
@@ -81,9 +74,30 @@ function inline(text, opts) {
   return parts.join('');
 }
 
+/**
+ * `text` with each citation written out; one that prints nothing goes, and the space before it is replaced by the blanks after it.
+ * @param {string} text @param {(c: any) => string} write
+ */
+function citations(text, write) {
+  if (!text.includes('[cite')) return text;
+  let out = '';
+  for (let i = 0; i < text.length; ) {
+    const hit = text[i] === '[' ? parseCitationAt(text, i) : null;
+    if (!hit) {
+      out += text[i++];
+      continue;
+    }
+    const written = write(hit.node);
+    out = written === '' ? out.replace(/[ \t]+$/, '') + ' '.repeat(hit.node.blanks) : out + written + ' '.repeat(hit.node.blanks);
+    i += hit.length;
+  }
+  return out;
+}
+
 /** @param {string} text @param {InterpretOptions} opts */
 function objects(text, opts) {
-  let out = text.replace(/@@[A-Za-z0-9-]+:[\s\S]*?@@/g, '');
+  let out = opts.cite ? citations(text, opts.cite.text) : text;
+  out = out.replace(/@@[A-Za-z0-9-]+:[\s\S]*?@@/g, '');
   out = out.replace(/\[\[([^\][]+)(\]\[[^\]]*)?\]\]/g, (whole, target, desc) => (/^(?:\.{1,2}\/|\/|~\/)/.test(target) ? `[[file:${target}${desc || ''}]]` : whole));
   out = out.replace(TIMESTAMP_RE, (_whole, a, b, spaces) => splitTimeRange(a) + (b ? '--' + splitTimeRange(b) : '') + (spaces ? spaces + spaces : ''));
   if (!opts.footnotes) out = out.replace(/\[fn:[^\]\s]*(?::[^\]]*)?\]/g, '');
@@ -92,7 +106,6 @@ function objects(text, opts) {
 
 // ---- tables -------------------------------------------------------------------------------------------------------
 
-const NUMBER_RE = /^(?:[<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%]*|0[xX][0-9a-fA-F]+|nan|[-+]?inf)$/;
 const COOKIE_RE = /^<(?:[lrc])?\d*>$/;
 const SPECIAL_MARKS = new Set(['', '#', '!', '$', '*', '_', '/', '^']);
 const SPECIAL_ROWS = new Set(['!', '^', '$', '_', '/']);
@@ -111,18 +124,8 @@ function table(lines, opts) {
   }
   rows = rows.filter((r) => !r || !(r.some((c) => c !== '') && r.every((c) => c === '' || COOKIE_RE.test(c))));
   const data = /** @type {string[][]} */ (rows.filter(Boolean));
-  const columns = Math.max(0, ...data.map((r) => r.length));
-  if (!columns) return [];
-  const cells = rows.map((r) => (r ? Array.from({ length: columns }, (_, i) => inline(r[i] ?? '', opts)) : null));
-  const widths = Array.from({ length: columns }, (_, i) => Math.max(1, ...cells.map((r) => (r ? width(r[i]) : 0))));
-  const right = Array.from({ length: columns }, (_, i) => {
-    const filled = cells.filter((r) => r && r[i] !== '');
-    return filled.length > 0 && filled.filter((r) => NUMBER_RE.test(/** @type {string[]} */ (r)[i])).length / filled.length >= NUMBER_FRACTION;
-  });
-  return cells.map((r) => {
-    if (!r) return '|' + widths.map((w) => '-'.repeat(w + 2)).join('+') + '|';
-    return '| ' + r.map((c, i) => (right[i] ? ' '.repeat(widths[i] - width(c)) + c : c + ' '.repeat(widths[i] - width(c)))).join(' | ') + ' |';
-  });
+  if (!data.length) return [];
+  return layoutTable(rows.map((r) => (r ? r.map((c) => inline(c, opts)) : null)));
 }
 
 // ---- elements ---------------------------------------------------------------------------------------------------------
@@ -242,6 +245,10 @@ function render(lines, opts) {
         continue;
       }
       afterTable = false;
+      if (key.toUpperCase() === 'PRINT_BIBLIOGRAPHY' && opts.cite?.bibliography.length) {
+        out.push(...opts.cite.bibliography.flatMap((entry, n) => (n ? ['', entry] : [entry])));
+        continue;
+      }
       out.push(`#+${key.toLowerCase()}: ${keyword[2]}`);
       continue;
     }
@@ -312,7 +319,9 @@ function render(lines, opts) {
     while (i < lines.length && !interrupts(lines[i], opts.nested)) i++;
     const text = lines.slice(start, i);
     if (!opts.footnotes && /^\[fn:[^\]\s]+\]/.test(text[0])) continue;
-    out.push(...dedent(text).map((l) => inline(l, opts)));
+    const written = dedent(text).map((l) => inline(l, opts));
+    if (opts.cite && /^\[cite/.test(text[0].trimStart())) written[0] = written[0].trimStart(); // a paragraph does not begin with a blank
+    out.push(...written);
   }
   return out;
 }

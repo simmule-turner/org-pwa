@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { blockLanguage, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { HLINE, headerText, blockLanguage, findNamedTable, indexList, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { parseBody } from '../src/body-parser.js';
 import { getBabelJs } from '../src/local-variables.js';
 
-const fmt = (value, results = '', wrap = '') => formatResult(value, parseResultsSpec(results), { wrap });
+const fmt = (value, results = '', wrap = null) => formatResult(value, parseResultsSpec(results), { wrap });
 
 test('language and header arguments', () => {
   assert.equal(blockLanguage('JS :results table'), 'js');
@@ -20,7 +20,9 @@ test('language and header arguments', () => {
 });
 
 test('results spec and timeout', () => {
-  assert.deepEqual(parseResultsSpec('output raw'), { collect: 'output', format: 'raw', silent: false, unsupported: null });
+  assert.deepEqual(parseResultsSpec('output raw'), { collect: 'output', words: new Set(['raw']), handling: 'replace', silent: false, unsupported: null });
+  assert.deepEqual([...parseResultsSpec('table raw').words], ['table', 'raw']);
+  assert.equal(parseResultsSpec('append').handling, 'append');
   assert.equal(parseResultsSpec('silent').silent, true);
   assert.equal(parseResultsSpec('file').unsupported, 'file');
   assert.equal(timeoutMs({}), 5000);
@@ -45,33 +47,49 @@ test('result formats match Org (ob-js)', () => {
 });
 
 test('other result shapes', () => {
-  assert.deepEqual(fmt('a\n\nb'), [': a', ':', ': b']);
-  assert.deepEqual(fmt('*bold*', 'raw'), ['*bold*']);
-  assert.deepEqual(fmt({ k: 1 }), [': {"k":1}']);
-  assert.deepEqual(fmt([]), [': []']);
+  assert.deepEqual(fmt('a\n\nb'), [': a', ': ', ': b']);
+  assert.deepEqual(fmt('*bold*', 'raw'), ["'*bold*'"]); // raw keeps the text Node printed, quotes and all
+  assert.deepEqual(fmt({ k: 1 }), [': { k: 1 }']);
+  assert.deepEqual(fmt([]), []);
   assert.deepEqual(fmt('x', 'table'), ['| x |']);
-  assert.deepEqual(fmt([['a|b', null]]), ['| a\\vert{}b |  |']);
+  assert.deepEqual(fmt([['a|b', null]]), ['| a\\vert{}b | null |']);
   assert.deepEqual(fmt('', 'output'), []);
   assert.deepEqual(fmt(undefined), [': undefined']);
-  assert.deepEqual(fmt('x', '', 'SRC js'), ['#+begin_SRC js'.replace('SRC', 'src'), 'x', '#+end_src']);
+  assert.deepEqual(fmt('x', '', 'SRC js'), ['#+begin_SRC js', 'x', '#+end_SRC']);
   assert.deepEqual(formatError('boom', 3), [': Error: boom (line 3)']);
 });
 
 test(':var values and named tables', () => {
   const lines = ['#+NAME: sales', '| q | n |', '|---+---|', '| Q1 | 10 |', '| Q2 | 2.5 |', '', 'text'];
-  assert.deepEqual(findNamedTable(lines, 'sales'), [['q', 'n'], ['Q1', 10], ['Q2', 2.5]]);
+  assert.deepEqual(findNamedTable(lines, 'sales'), [['q', 'n'], HLINE, ['Q1', 10], ['Q2', 2.5]]);
   assert.equal(findNamedTable(lines, 'nope'), null);
   const lookup = (n) => findNamedTable(lines, n);
   assert.deepEqual(resolveVars(['a=1 b="x y"', 'c=sales', 'd=t', "e='s'", 'f=nil'], lookup), {
     a: 1,
     b: 'x y',
-    c: [['q', 'n'], ['Q1', 10], ['Q2', 2.5]],
+    c: [['Q1', 10], ['Q2', 2.5]],
     d: true,
     e: 's',
     f: null,
   });
   assert.throws(() => resolveVars(['x=missing'], lookup), /no table named "missing"/);
   assert.throws(() => resolveVars(['junk'], lookup), /expected name=value/);
+  assert.deepEqual(resolveVars(['c=sales'], lookup, { hlines: 'yes', colnames: 'no' }).c, [['q', 'n'], 'hline', ['Q1', 10], ['Q2', 2.5]]);
+  assert.deepEqual(resolveVars(['c=sales[2,1]', "l='(1 \"a b\" (3))"], lookup), { c: 10, l: [1, 'a b', [3]] });
+});
+
+test('prologue text is read as a Lisp string when quoted', () => {
+  assert.equal(headerText('"a\\nb"'), 'a\nb');
+  assert.equal(headerText('x = 1'), 'x = 1');
+});
+
+test('indexList picks like org-babel-ref-index-list', () => {
+  const t = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+  assert.deepEqual(indexList('1', t), [4, 5, 6]);
+  assert.deepEqual(indexList('-1,0', t), 7);
+  assert.deepEqual(indexList('0:1,*', t), [[1, 2, 3], [4, 5, 6]]);
+  assert.deepEqual(indexList('*,2', t), [3, 6, 9]);
+  assert.deepEqual(indexList('9', t), []);
 });
 
 function blockOf(lines) {

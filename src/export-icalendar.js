@@ -32,11 +32,11 @@
  * more confusing than useful.
  */
 
-import { walkHeadings, parseRepeater, parseContactsAnniversariesTrigger, contactEventFor, contactSpouse, formatContactEventTitle, defaultEventDescription, delayToDays } from './agenda.js';
-import { parseOrgTimestamp, findTimestamps, parseDelay } from './org-timestamp.js';
+import { walkHeadings, parseRepeater, parseContactsAnniversariesTrigger, contactEventFor, contactSpouse, formatContactEventTitle, defaultEventDescription } from './agenda.js';
+import { findTimestamps } from './org-timestamp.js';
 import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
-import { resolveTodoSequence } from './todo-cycle.js';
+import { exportOrgIcalendar } from './ox-icalendar.js';
 
 // ---- RRULE ----------------------------------------------------------------
 
@@ -206,35 +206,23 @@ export function titleWithoutTimestamps(title) {
 }
 
 /**
- * Exports every dated item across `docs` (an array of `{ documentId,
- * doc }` pairs, matching agenda.js's own buildAgendaItems input shape)
- * to a complete .ics file string. `opts.today` controls DTSTAMP's
- * "generated at" timestamp (defaults to now) -- exposed for
- * deterministic testing, the same convention buildAgendaItems itself
- * already uses for its own `today` option.
+ * The calendar file for `docs` (`{ documentId, doc, name? }` entries) the way Emacs's `org-icalendar-export-to-ics` writes it
+ * (see ox-icalendar.js), plus the yearly events of an `%%(org-contacts-anniversaries)` line, which Emacs cannot export.
+ * `opts.today` is DTSTAMP's time, `opts.scope` a heading to export the subtree of, `opts.settings` the `org-icalendar-*`
+ * variables, and `opts.contactsDocs` / `opts.birthdayProperty` as for the Agenda's anniversaries.
  * @param {any} [docs]
  */
-export function exportToIcalendar(docs, opts = ({})) {
-  const events = collectCalendarEvents(docs, opts);
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//org-pwa//org-pwa//EN', 'CALSCALE:GREGORIAN', ...events.flatMap((e) => e.lines), 'END:VCALENDAR'];
-  return lines.join('\r\n') + '\r\n';
+export function exportToIcalendar(docs, opts = /** @type {any} */ ({})) {
+  const extra = collectAnniversaryEvents(docs, opts).flatMap((e) => e.lines).map((l) => l + '\r\n').join('');
+  return exportOrgIcalendar(docs, { settings: opts.settings, stamp: opts.today, scope: opts.scope, extra });
 }
 
 /**
- * The dated items of `docs` as separate events, `[{ uid, documentId, lines }]` (`lines` is one folded VEVENT, and
- * `documentId` is the file it came from). The .ics export
- * above joins them into one file; the CalDAV mirror (calendar-mirror.js) needs them one by one, because a calendar
- * server stores one object per event. Options beyond the export's own:
- *   includeDone -- keep completed items (the export leaves them out, as the agenda does)
- *   window      -- `{ start, end }`: a one-off item is kept only if its date falls inside it. A repeating item has no
- *                  end, so it is kept whenever it has started by `window.end`. Birthdays are always kept.
- * A heading with an :ID: property would give its SCHEDULED and its DEADLINE the same UID, one overwriting the other
- * in any store that keys by UID; the first keeps the plain id (so earlier exports still match) and later ones get a
- * suffix.
+ * The yearly events of the `%%(org-contacts-anniversaries)` lines of `docs`, `[{ uid, documentId, lines }]`.
  * @param {any} [docs]
  */
-export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
-  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, includeDone = false, window = null, contactsDocs = null, alarmMinutes = 0 } = opts;
+export function collectAnniversaryEvents(docs, opts = /** @type {any} */ ({})) {
+  const { today = new Date(), birthdayProperty = 'BIRTHDAY', scope = null, contactsDocs = null } = opts;
   /** @type {any[]} */ const events = [];
   const usedUids = new Set();
   /**
@@ -250,15 +238,6 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
     usedUids.add(uid);
     return uid;
   };
-  /** @param {any} [d] */
-  const dayNumber = (d) => Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
-  /** @param {any} [parsed] */
-  const keep = (parsed) => {
-    if (!window) return true;
-    if (parsed.repeater) return dayNumber(parsed.date) <= dayNumber(window.end);
-    return dayNumber(parsed.date) >= dayNumber(window.start) && dayNumber(parsed.date) <= dayNumber(window.end);
-  };
-
   // When scoped to a single heading, walk just that heading's own
   // subtree (itself and its descendants) -- a lightweight, doc-shaped
   // wrapper around just the scope heading, reusing walkHeadings exactly
@@ -329,81 +308,13 @@ export function collectCalendarEvents(docs, opts = /** @type {any} */ ({})) {
     }
   }
 
-  for (const { documentId, doc } of docs) {
-    const { doneKeywords } = resolveTodoSequence(doc);
-    walkScope(doc, (/** @type {any} */ heading) => {
-      if (isArchived(heading)) return;
-      if (isCommentedHeading(heading)) return;
-      const isDone = doneKeywords.includes(heading.todo);
-      if (isDone && !includeDone) return; // matches the agenda/TODO views' own default exclusion of completed items
-      const doneNote = isDone ? ` (${heading.todo})` : '';
-
-      let hasPlanning = false;
-      for (const kind of ['scheduled', 'deadline']) {
-        const raw = heading.planning && heading.planning[kind];
-        if (!raw) continue;
-        const parsed = parseOrgTimestamp(raw);
-        if (!parsed) continue;
-        hasPlanning = true;
-        if (!keep(parsed)) continue;
-        const delay = kind === 'deadline' && parsed.delay ? parseDelay(parsed.delay) : null;
-        const uid = uniqueUid(documentId, heading, kind, 0, parsed.date);
-        const details = eventDetails(heading);
-        events.push({
-          uid,
-          documentId,
-          lines: buildVevent({
-            uid,
-            summary: heading.title,
-            description: [(kind === 'deadline' ? 'Deadline' : 'Scheduled') + doneNote, details.body].filter(Boolean).join('\n'),
-            date: parsed.date,
-            endDate: parsed.endDate,
-            hasTime: parsed.hasTime,
-            rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
-            alarmDaysBefore: delay ? delayToDays(delay) : 0,
-            alarmMinutesBefore: alarmMinutes,
-            categories: details.categories,
-            location: details.location,
-            stamp: today,
-          }),
-        });
-      }
-
-      // Plain timestamps written directly in the heading title -- same
-      // source and scoping (title only, active timestamps only, skipped
-      // when the heading already has its own SCHEDULED/DEADLINE) as
-      // buildAgendaItems uses for this in agenda.js, so the two can
-      // never disagree about what counts.
-      if (!hasPlanning) {
-        findTimestamps(heading.title).forEach((parsed, index) => {
-          if (!parsed.active) return;
-          if (!keep(parsed)) return;
-          const uid = uniqueUid(documentId, heading, 'timestamp', index, parsed.date);
-          const details = eventDetails(heading);
-          events.push({
-            uid,
-            documentId,
-            lines: buildVevent({
-              uid,
-              summary: titleWithoutTimestamps(heading.title),
-              description: [doneNote ? doneNote.trim() : null, details.body].filter(Boolean).join('\n') || null,
-              date: parsed.date,
-              endDate: parsed.endDate,
-              hasTime: parsed.hasTime,
-              rrule: parsed.repeater ? repeaterToRRule(parsed.repeater) : null,
-              alarmDaysBefore: 0,
-              alarmMinutesBefore: alarmMinutes,
-              categories: details.categories,
-              location: details.location,
-              stamp: today,
-            }),
-          });
-        });
-      }
-
-      if (contactsTriggers.length && !contactsDocs) pushAnniversaries(documentId, heading);
-    });
+  if (contactsTriggers.length && !contactsDocs) {
+    for (const { documentId, doc } of docs) {
+      walkScope(doc, (/** @type {any} */ heading) => {
+        if (isArchived(heading) || isCommentedHeading(heading)) return;
+        pushAnniversaries(documentId, heading);
+      });
+    }
   }
-
   return events;
 }

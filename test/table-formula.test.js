@@ -807,9 +807,9 @@ test('THE FEATURE: format-time-string()\u2019s own TIME argument accepts a plain
   assert.equal(result[0].cells[0], '2026-01-15');
 });
 
-test('THE FEATURE: %Z/%z under UNIVERSAL/utc mode always resolve to "UTC"/"+0000" exactly -- fixed regardless of the machine\u2019s own real timezone, confirming the UTC-mode\u2019s own "fake local" Date trick doesn\u2019t leak the machine\u2019s own actual zone into these two codes specifically', () => {
+test('THE FEATURE: %Z/%z under UNIVERSAL/utc mode always resolve to "GMT"/"+0000" exactly, as Emacs 29.3 prints them -- fixed regardless of the machine\u2019s own real timezone, confirming the UTC-mode\u2019s own "fake local" Date trick doesn\u2019t leak the machine\u2019s own actual zone into these two codes specifically', () => {
   const result = recalculateTable(mkTable('$1 = format-time-string("%Z %z", date-to-time($2), 1)', [['', '2026-07-15T12:00:00Z']]));
-  assert.equal(result[0].cells[0], 'UTC +0000');
+  assert.equal(result[0].cells[0], 'GMT +0000');
 });
 
 test('THE FEATURE: %Z/%z without UNIVERSAL/utc reflect the machine\u2019s own actual local timezone, verified against independently-computed expected values (not by re-calling format-time-string() itself)', () => {

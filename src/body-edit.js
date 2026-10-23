@@ -271,7 +271,7 @@ export function editListItemText(heading, item, newText) {
   const checkboxPart = item.checkbox !== null ? `[${item.checkbox}] ` : '';
   const startValuePart = item.startValue != null ? `[@${item.startValue}] ` : '';
   const tagPart = item.tag ? `${item.tag} :: ` : '';
-  const line = `${item.indent}${item.marker} ${checkboxPart}${startValuePart}${tagPart}${sanitized}`;
+  const line = `${item.indent}${item.marker} ${startValuePart}${checkboxPart}${tagPart}${sanitized}`;
   commitLines(heading, item.lineIndex, 1, [line]);
 }
 

@@ -11,7 +11,7 @@
  * exist is simply created (the files are delivered together, usually as a zip).
  */
 import { collectDocumentBlocks, headingSearchText, removeIndentation } from './babel-blocks.js';
-import { resolveVars, findNamedTable } from './babel.js';
+import { resolveVars, findNamedTable, headerText } from './babel.js';
 import { expandNoweb, nowebAllows } from './noweb.js';
 import { serializeOrg } from './org-parser.js';
 
@@ -209,15 +209,15 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
       let body = nowebAllows(b.args, 'tangle') ? expandNoweb(doc, blocks, b, { context: 'tangle', wrapChunk }) : b.body;
       if (!('no-expand' in b.args)) {
         const parts = [];
-        if (b.args.prologue) parts.push(b.args.prologue);
+        if (b.args.prologue) parts.push(headerText(b.args.prologue));
         if (b.args.var.length) {
           if (b.lang === 'js' || b.lang === 'javascript') {
-            const vars = resolveVars(b.args.var, lookupTable);
+            const vars = resolveVars(b.args.var, lookupTable, { colnames: b.args.colnames, rownames: b.args.rownames, hlines: b.args.hlines });
             for (const [name, value] of Object.entries(vars)) parts.push(`var ${name}=${jsValue(value)};`);
           } else warnings.push(`${where}: :var is not added to ${b.lang} blocks`);
         }
         parts.push(body);
-        if (b.args.epilogue) parts.push(b.args.epilogue);
+        if (b.args.epilogue) parts.push(headerText(b.args.epilogue));
         body = parts.join('\n');
       }
       body = orgTrim(removeIndentation(body.split('\n')).join('\n'));

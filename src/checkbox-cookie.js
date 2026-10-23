@@ -2,37 +2,33 @@
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
- * Checkbox statistics cookies: `[3/8]` or `[40%]` in a heading's title,
- * kept in sync with the actual checkbox state in that heading's subtree —
- * matching real org-mode's default (hierarchical/recursive) behavior:
- * counts every checkbox in the heading's own body AND every descendant
- * heading's body, not just its own direct list.
+ * Statistics cookies (`[2/5]`, `[40%]`) in a heading's title, kept in sync the way Org 9.6 does it
+ * (`org-update-checkbox-count`, `org-update-parent-todo-statistics`):
  *
- * A cookie can appear with blank numbers (`[/]`, `[/11]`) before it's
- * ever been computed — both forms are valid org syntax and are matched
- * here the same way real org would fill them in once counted.
- *
- * A heading's own :COOKIE_DATA: property (real org's own documented
- * mechanism -- checked directly against the Org manual) can override
- * what actually gets counted: "checkbox" or "todo" resolve the
- * ambiguity real org itself describes when a heading has BOTH
- * checkboxes and TODO-keyword child headings below it (which one the
- * cookie should actually reflect); both words together count both
- * kinds combined into the same total. "recursive" (only meaningful
- * alongside "todo") makes TODO counting reach the whole subtree at
- * any depth, not just direct children -- the Org manual's own literal
- * wording treats direct-children-only as the baseline for TODO
- * counting before "recursive" is added, unlike checkbox counting
- * (already recursive by default, both in real org and in this app's
- * own existing behavior, with no COOKIE_DATA involved at all).
+ * - Toggling a checkbox updates the cookie of the heading whose section holds the list.  It counts that section's own
+ *   lists, top-level items only; `:COOKIE_DATA: recursive` also counts nested items.  Child headings are not
+ *   included.  A heading with `todo` in :COOKIE_DATA: is left alone.
+ * - Changing a TODO state updates the cookie of the parent heading: it counts the child headings that have a TODO
+ *   keyword, done ones as done.  Only direct children count, unless :COOKIE_DATA: (own or inherited) says
+ *   `recursive`, which also climbs to the ancestors up to the heading that sets it.  A heading with `checkbox` in
+ *   its :COOKIE_DATA: is left alone.
+ * - `updateAllStatisticsCookies` does both for the whole document (`org-update-statistics-cookies` with a prefix
+ *   argument): a heading with child headings ends up with its TODO count unless it says `checkbox`.
+ * - A cookie in a list item (`- [ ] Steps [/]`) counts that item's sub-list, nested items too with `recursive`.
+ * - Percentages round down; blank numbers (`[/]`, `[%]`) are filled in; every cookie in the title is updated.
  */
 
 import { findAncestorPath, getProperty } from './archive-model.js';
+import { inheritedProperty } from './babel-args.js';
+import { parseInline } from './inline-markup.js';
 
-const COOKIE_RE = /\[(\d*)\/(\d*)\]|\[(\d*)%\]/;
+const COOKIE_RE = /\[\d*\/\d*\]|\[\d*%\]/g;
 
-/** @param {any} [items] */
-function walkListForCheckboxes(items) {
+/**
+ * @param {any[]} items
+ * @param {boolean} recursive
+ */
+function walkListForCheckboxes(items, recursive) {
   let total = 0;
   let checked = 0;
   for (const item of items) {
@@ -40,8 +36,9 @@ function walkListForCheckboxes(items) {
       total++;
       if (item.checkbox === 'X') checked++;
     }
+    if (!recursive) continue;
     for (const nested of item.children || []) {
-      const sub = walkListForCheckboxes(nested.items);
+      const sub = walkListForCheckboxes(nested.items, true);
       total += sub.total;
       checked += sub.checked;
     }
@@ -49,48 +46,109 @@ function walkListForCheckboxes(items) {
   return { total, checked };
 }
 
-/** Counts every checkbox in `heading`'s own body content and recursively
+/** The checkboxes of `heading`'s own section (not its child headings): top-level items of every list, plus the
+ * nested ones when `recursive`.
  * @param {Heading} heading
- *  through every descendant heading's body content. */
-export function countCheckboxes(heading) {
+ * @param {boolean} [recursive]
+ */
+export function countCheckboxes(heading, recursive = false) {
   let total = 0;
   let checked = 0;
   for (const node of heading.body || []) {
     if (node.type !== 'list') continue;
-    const sub = walkListForCheckboxes(node.items);
-    total += sub.total;
-    checked += sub.checked;
-  }
-  for (const child of heading.children || []) {
-    const sub = countCheckboxes(child);
+    const sub = walkListForCheckboxes(node.items, recursive);
     total += sub.total;
     checked += sub.checked;
   }
   return { total, checked };
 }
 
-/** Counts TODO-keyword child headings for :COOKIE_DATA: "todo" mode --
- *  `heading`'s own direct children only when `recursive` is false (the
- *  default absent an explicit "recursive" keyword in COOKIE_DATA), or
- *  the whole subtree at any depth when true. Only a heading that
- *  actually carries a TODO keyword counts at all (an ordinary heading
- *  with none isn't part of either total) -- this is a TODO-ITEM
- *  count, not a generic child-heading count, matching real org's own
- *  actual behavior. "checked" means the child's own keyword is one of
+/** @param {Heading} heading @returns {string} */
+function ownCookieData(heading) {
+  return String(getProperty(heading, 'COOKIE_DATA') || '').toLowerCase();
+}
+
+/** @param {string} data @param {string} word */
+const hasWord = (data, word) => new RegExp(`\\b${word}\\b`).test(data);
+
+/** Rewrites every cookie in the title; true when the title changed.
  * @param {Heading} heading
- * @param {any} doneKeywords
+ * @param {number} checked
+ * @param {number} total
+ */
+function writeCookies(heading, checked, total) {
+  const before = heading.title;
+  heading.title = before.replace(COOKIE_RE, (cookie) => formatCookie(cookie, checked, total));
+  return heading.title !== before;
+}
+
+/** @param {number} checked @param {number} total @param {string} cookie */
+const formatCookie = (cookie, checked, total) =>
+  cookie.includes('%') ? `[${Math.floor((100 * checked) / Math.max(1, total))}%]` : `[${checked}/${total}]`;
+
+/**
+ * Cookies in list items: each counts its own sub-list.
+ * @param {Heading} heading
+ * @param {any[]} items
  * @param {boolean} recursive
- *  `doneKeywords`. */
-function countTodoChildren(heading, doneKeywords, recursive) {
+ */
+function updateItemCookies(heading, items, recursive) {
+  let changed = false;
+  for (const item of items) {
+    for (const list of item.children || []) updateItemCookies(heading, list.items, recursive) && (changed = true);
+    if (!new RegExp(COOKIE_RE.source).test(item.text)) continue;
+    let total = 0;
+    let checked = 0;
+    for (const list of item.children || []) {
+      const sub = walkListForCheckboxes(list.items, recursive);
+      total += sub.total;
+      checked += sub.checked;
+    }
+    const text = item.text.replace(COOKIE_RE, (/** @type {string} */ c) => formatCookie(c, checked, total));
+    if (text === item.text) continue;
+    item.text = text;
+    item.inline = parseInline(text);
+    const line = heading.bodyLines && heading.bodyLines[item.lineIndex];
+    if (typeof line === 'string') heading.bodyLines[item.lineIndex] = line.replace(COOKIE_RE, (c) => formatCookie(c, checked, total));
+    changed = true;
+  }
+  return changed;
+}
+
+/**
+ * After a checkbox change under `heading`: refreshes the cookies in its own title and in its list items.
+ * @param {Heading} heading
+ * @returns {boolean} whether anything changed
+ */
+export function updateCheckboxCookie(heading) {
+  const data = ownCookieData(heading);
+  if (hasWord(data, 'todo')) return false;
+  const recursive = hasWord(data, 'recursive');
+  const { total, checked } = countCheckboxes(heading, recursive);
+  let changed = writeCookies(heading, checked, total);
+  for (const node of heading.body || []) {
+    if (node.type === 'list' && updateItemCookies(heading, node.items, recursive)) changed = true;
+  }
+  return changed;
+}
+
+/**
+ * @param {Heading} parent
+ * @param {boolean} recursive
+ * @param {Set<string> | string[]} doneKeywords
+ * @param {number} [depth]
+ */
+function countTodoChildren(parent, recursive, doneKeywords, depth = 0) {
+  const done = new Set(doneKeywords);
   let total = 0;
   let checked = 0;
-  for (const child of heading.children || []) {
-    if (child.todo !== null) {
+  for (const child of parent.children || []) {
+    if (child.todo) {
       total++;
-      if (doneKeywords.includes(child.todo)) checked++;
+      if (done.has(child.todo)) checked++;
     }
     if (recursive) {
-      const sub = countTodoChildren(child, doneKeywords, true);
+      const sub = countTodoChildren(child, true, doneKeywords, depth + 1);
       total += sub.total;
       checked += sub.checked;
     }
@@ -98,89 +156,56 @@ function countTodoChildren(heading, doneKeywords, recursive) {
   return { total, checked };
 }
 
-/** Parses a heading's own :COOKIE_DATA: property value into which
- *  counting mode(s) actually apply -- real org's own documented,
- *  space-separated keyword syntax ("checkbox", "todo", "recursive",
- *  e.g. "todo recursive"; see this file's own header comment for the
- *  full reasoning). Absent or empty (by far the common case): pure
- *  checkbox counting, unchanged from this app's own existing,
- * @param {string | undefined} value
- *  already-shipped default -- nothing here alters that case at all. */
-function parseCookieData(value) {
-  const words = String(value || '')
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
-  const hasCheckbox = words.includes('checkbox');
-  const hasTodo = words.includes('todo');
-  if (!hasCheckbox && !hasTodo) {
-    return { countCheckbox: true, countTodo: false, recursiveTodo: true };
-  }
-  return {
-    countCheckbox: hasCheckbox,
-    countTodo: hasTodo,
-    recursiveTodo: words.includes('recursive'),
-  };
-}
-
 /**
- * If `heading`'s title contains a checkbox cookie, recomputes it from the
- * heading's current subtree state (checkboxes, TODO-keyword children, or
- * both -- see :COOKIE_DATA: above) and updates the title in place.
- * Returns true if the title actually changed (false if there was no
- * cookie to update, or the numbers were already correct). `doneKeywords`
- * is only actually consulted when :COOKIE_DATA: requests TODO counting;
- * omitting it is harmless for the far more common checkbox-only case.
- * @param {Heading} heading
- * @param {any} [doneKeywords]
- */
-export function updateHeadingCheckboxCookie(heading, doneKeywords = []) {
-  const match = heading.title.match(COOKIE_RE);
-  if (!match) return false;
-
-  const cookieData = parseCookieData(getProperty(heading, 'COOKIE_DATA'));
-  let total = 0;
-  let checked = 0;
-  if (cookieData.countCheckbox) {
-    const sub = countCheckboxes(heading);
-    total += sub.total;
-    checked += sub.checked;
-  }
-  if (cookieData.countTodo) {
-    const sub = countTodoChildren(heading, doneKeywords, cookieData.recursiveTodo);
-    total += sub.total;
-    checked += sub.checked;
-  }
-
-  const isPercent = match[0].includes('%');
-  const newCookie = isPercent
-    ? `[${total === 0 ? 0 : Math.round((checked / total) * 100)}%]`
-    : `[${checked}/${total}]`;
-
-  if (newCookie === match[0]) return false;
-  heading.title = heading.title.slice(0, /** @type {number} */ (match.index)) + newCookie + heading.title.slice(/** @type {number} */ (match.index) + match[0].length);
-  return true;
-}
-
-/**
- * Call this after any checkbox add/remove/toggle (or TODO-state change,
- * for the :COOKIE_DATA: "todo" case): updates the cookie on
- * `owningHeading` itself (a heading's cookie commonly counts its own
- * direct checklist) and on every ancestor above it (whose cookies, if
- * present, count recursively and so are also affected). Each heading's
- * cookie is independent of the others -- including its own, individually
- * set :COOKIE_DATA: override -- so update order doesn't matter.
- * `doneKeywords` is passed straight through to updateHeadingCheckboxCookie
- * for each one. Returns true if anything actually changed.
+ * After a TODO-state change on `heading`: refreshes the cookie of its parent heading (and, with
+ * :COOKIE_DATA: recursive, of the ancestors above it).
  * @param {Doc} doc
- * @param {Heading | null} [owningHeading]
- * @param {string[]} [doneKeywords]
+ * @param {Heading} heading
+ * @param {Set<string> | string[]} [doneKeywords]
+ * @returns {boolean} whether any title changed
  */
-export function updateCheckboxCookiesUpward(doc, owningHeading, doneKeywords = []) {
-  const ancestors = findAncestorPath(doc, /** @type {Heading} */ (owningHeading)) || [];
-  let changed = false;
-  for (const heading of [...ancestors, /** @type {Heading} */ (owningHeading)]) {
-    if (updateHeadingCheckboxCookie(heading, doneKeywords)) changed = true;
+export function updateTodoCookiesUpward(doc, heading, doneKeywords = []) {
+  const ancestors = findAncestorPath(doc, heading) || [];
+  if (!ancestors.length) return false;
+  const inherited = String(inheritedProperty(doc, ancestors, 'COOKIE_DATA') || '').toLowerCase();
+  const recursive = hasWord(inherited, 'recursive');
+  // the heading that sets the inherited value bounds the climb
+  let limit = 0;
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    if (getProperty(ancestors[i], 'COOKIE_DATA') !== undefined) {
+      limit = i;
+      break;
+    }
   }
+  let changed = false;
+  for (let i = ancestors.length - 1; i >= limit; i--) {
+    if (hasWord(ownCookieData(ancestors[i]), 'checkbox')) break;
+    const { total, checked } = countTodoChildren(ancestors[i], recursive, doneKeywords);
+    if (writeCookies(ancestors[i], checked, total)) changed = true;
+    if (!recursive) break;
+  }
+  return changed;
+}
+
+/**
+ * Every cookie in the document, the way `org-update-statistics-cookies` does it with a prefix argument.
+ * @param {Doc} doc
+ * @param {Set<string> | string[]} [doneKeywords]
+ * @returns {boolean} whether any title changed
+ */
+export function updateAllStatisticsCookies(doc, doneKeywords = []) {
+  let changed = false;
+  /** @type {Heading[]} */
+  const all = [];
+  /** @param {{ children?: Heading[] }} node */
+  const walk = (node) => {
+    for (const child of node.children || []) {
+      all.push(child);
+      walk(child);
+    }
+  };
+  walk(doc);
+  for (const heading of all) if (updateCheckboxCookie(heading)) changed = true;
+  for (const heading of all) if (updateTodoCookiesUpward(doc, heading, doneKeywords)) changed = true;
   return changed;
 }

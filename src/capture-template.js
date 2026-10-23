@@ -27,111 +27,17 @@
 
 import { placeInsertedText, sharedAnnotation } from './capture-shared.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
+import { formatTimeString } from './format-time.js';
 import { parseOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
 import { insertTable, insertTableRow, setTableCell, commitLines } from './body-edit.js';
 import { parseBody } from './body-parser.js';
 
-// ---- %<FORMAT> (format-time-string subset) -------------------------------
+// ---- %<FORMAT> (format-time-string) ---------------------------------------
 
-const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES_FULL = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-const MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** @param {number} n */
-function pad(n, width = 2) {
-  return String(n).padStart(width, '0');
-}
-
-/** @param {Date} date */
-function dayOfYear(date) {
-  const start = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
-}
-
-/**
- * A practical subset of Emacs's format-time-string specifiers — the ones
- * that actually show up in real capture templates (dates, times, weekday
- * and month names), not the complete, much longer C strftime table.
- * An unrecognized specifier is left untouched (e.g. an unsupported %Z
- * stays as literal "%Z" in the output) rather than silently dropped,
- * since silently eating unknown input is a worse failure mode than
- * leaving a visible, debuggable trace of what wasn't understood.
- * @param {number | Date | undefined} date
- */
-function timezoneAbbreviation(date) {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
-  const tz = parts.find((p) => p.type === 'timeZoneName');
-  return tz ? tz.value : '';
-}
-
-/** @param {any} [date] */
-function timezoneOffsetString(date) {
-  const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
-  const sign = totalMinutes < 0 ? '-' : '+';
-  const abs = Math.abs(totalMinutes);
-  return sign + pad(Math.floor(abs / 60)) + pad(abs % 60);
-}
-
-/**
- * @param {Date} date
- * @param {string} format
- */
+/** @param {Date} date @param {string} format */
 function formatTime(date, format) {
-  return format.replace(/%(.)/g, (whole, /** @type {string} */ spec) => {
-    switch (spec) {
-      case 'Y':
-        return String(date.getFullYear());
-      case 'y':
-        return pad(date.getFullYear() % 100);
-      case 'm':
-        return pad(date.getMonth() + 1);
-      case 'd':
-        return pad(date.getDate());
-      case 'e':
-        return String(date.getDate()).padStart(2, ' ');
-      case 'H':
-        return pad(date.getHours());
-      case 'I': {
-        const h = date.getHours() % 12 || 12;
-        return pad(h);
-      }
-      case 'M':
-        return pad(date.getMinutes());
-      case 'S':
-        return pad(date.getSeconds());
-      case 'p':
-        return date.getHours() < 12 ? 'AM' : 'PM';
-      case 'A':
-        return DAY_NAMES_FULL[date.getDay()];
-      case 'a':
-        return DAY_NAMES_ABBR[date.getDay()];
-      case 'B':
-        return MONTH_NAMES_FULL[date.getMonth()];
-      case 'b':
-        return MONTH_NAMES_ABBR[date.getMonth()];
-      case 'j':
-        return pad(dayOfYear(date), 3);
-      case 'F':
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-      case 'R':
-        return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-      case 'T':
-        return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-      case 'Z':
-        return timezoneAbbreviation(date);
-      case 'z':
-        return timezoneOffsetString(date);
-      case '%':
-        return '%';
-      default:
-        return whole; // unrecognized -- leave as-is, don't silently drop it
-    }
-  });
+  return formatTimeString(date, format);
 }
 
 // ---- %^{PROMPT} scanning --------------------------------------------------
@@ -220,8 +126,8 @@ function expandTemplate(template, context = {}) {
   const shared = /** @type {any} */ (context).shared || null; // content shared in from another app, for %i and %a (see capture-shared.js)
   const clipboard = typeof /** @type {any} */ (context).clipboard === 'string' ? /** @type {any} */ (context).clipboard : ''; // for %x
 
-  const hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-  const TOKEN_RE = /%%|%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?iax]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
+  const hhmm = formatTime(now, '%H:%M');
+  const TOKEN_RE = /%<([^>]*)>|%\^\{([^}]*)\}|%\\(\d+)|%[tTuU?iax]|@#(?:\s*([+-])\s*(\d+))?|%\^([tTuU])/g;
 
   let result = '';
   let lastIndex = 0;
@@ -233,9 +139,7 @@ function expandTemplate(template, context = {}) {
     lastIndex = TOKEN_RE.lastIndex;
     const token = match[0];
 
-    if (token === '%%') {
-      result += '%';
-    } else if (token.startsWith('%<')) {
+    if (token.startsWith('%<')) {
       result += formatTime(now, match[1]);
     } else if (token.startsWith('%^{')) {
       const answer = promptAnswers[promptIndex];

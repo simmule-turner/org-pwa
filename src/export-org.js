@@ -54,6 +54,8 @@ import { buildFilter, parseHtmlOptions } from './export-html.js';
 import { rawExportOptions } from './export-options.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { interpretOrg } from './org-interpret.js';
+import { citeExportFor } from './cite.js';
+import { parseInline } from './inline-markup.js';
 
 const MACRO_USE_RE = /\{\{\{([a-zA-Z][-a-zA-Z0-9_]*)(\(([^)]*)\))?\}\}\}/g;
 
@@ -411,7 +413,11 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
   const select = new Set((processed.keywords || []).filter((k) => k.key.toUpperCase() === 'SELECT_TAGS').flatMap((k) => k.value.split(/\s+/)).filter(Boolean).map((t) => t.toLowerCase()));
   /** @param {Heading[]} list @returns {boolean} */
   const anySelected = (list) => list.some((h) => (h.tags || []).some((t) => select.has(String(t).toLowerCase())) || anySelected(h.children || []));
+  /** @param {import('./cite.js').Segment[]} segments @returns {string} */
+  const segmentText = (segments) => segments.map((s) => (typeof s === 'string' ? s : 'org' in s ? s.org : '/' + segmentText(s.italic) + '/')).join('');
+  const cite = citeExportFor(processed, undefined, parseInline, true);
   return interpretOrg(serializeOrg(processed), {
+    cite: { text: (c) => { const segments = cite.formatCitation(c); return segments ? segmentText(segments) : ''; }, bibliography: cite.bibliography().map(segmentText) },
     todoKeywords: new Set(sequences.flatMap((q) => [...q.todoKeywords, ...q.doneKeywords])),
     todo: flag('todo', true),
     priority: flag('pri', false),

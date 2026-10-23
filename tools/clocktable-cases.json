@@ -1,0 +1,58 @@
+[
+{
+"org": "* Project Alpha\n** Task 1: Setup repo\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 09:00]--[2026-08-01 Sat 11:00] =>  2:00\n:END:\n** Task 2: Fix bug #42\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 14:00]--[2026-08-02 Sun 16:15] =>  2:15\n:END:\n*** Deep\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 17:00]--[2026-08-02 Sun 17:30] =>  0:30\n:END:\n* Administrative\n:LOGBOOK:\nCLOCK: [2026-08-04 Tue 09:00]--[2026-08-04 Tue 09:10] =>  0:10\n:END:\n** Team meeting\n:LOGBOOK:\nCLOCK: [2026-08-03 Mon 10:00]--[2026-08-03 Mon 11:30] =>  1:30\n:END:\n* Empty\n",
+"params": ":maxlevel 2 :scope file :tstart \"2026-08-01\" :tend \"2026-08-07\""
+},
+{
+"org": "* TODO [#A] Big task [1/2] :tag1:\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 23:00]--[2026-08-01 Sat 02:00] =>  3:00\nCLOCK: [2026-08-07 Fri 22:00]--[2026-08-08 Sat 01:30] =>  3:30\nCLOCK: [2026-09-01 Tue 10:00]--[2026-09-01 Tue 36:00] =>  26:00\n:END:\n** DONE See [[https://x.org][the site]] <2026-08-02 Sun>\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:05] =>  0:05\n:END:\n*** Level three\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:01] =>  0:01\n:END:\n**** Level four\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 11:00]--[2026-08-02 Sun 12:40] =>  1:40\n:END:\n* Another with a very long title that goes past the forty column narrow limit for sure yes\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* COMMENT Commented\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* Outside\n:LOGBOOK:\nCLOCK: [2025-01-01 Wed 09:00]--[2025-01-01 Wed 09:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 2 :scope file :tstart \"2026-08-01\" :tend \"2026-08-07\""
+},
+{
+"org": "* TODO [#A] Big task [1/2] :tag1:\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 23:00]--[2026-08-01 Sat 02:00] =>  3:00\nCLOCK: [2026-08-07 Fri 22:00]--[2026-08-08 Sat 01:30] =>  3:30\nCLOCK: [2026-09-01 Tue 10:00]--[2026-09-01 Tue 36:00] =>  26:00\n:END:\n** DONE See [[https://x.org][the site]] <2026-08-02 Sun>\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:05] =>  0:05\n:END:\n*** Level three\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:01] =>  0:01\n:END:\n**** Level four\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 11:00]--[2026-08-02 Sun 12:40] =>  1:40\n:END:\n* Another with a very long title that goes past the forty column narrow limit for sure yes\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* COMMENT Commented\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* Outside\n:LOGBOOK:\nCLOCK: [2025-01-01 Wed 09:00]--[2025-01-01 Wed 09:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 1 :scope file"
+},
+{
+"org": "* TODO [#A] Big task [1/2] :tag1:\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 23:00]--[2026-08-01 Sat 02:00] =>  3:00\nCLOCK: [2026-08-07 Fri 22:00]--[2026-08-08 Sat 01:30] =>  3:30\nCLOCK: [2026-09-01 Tue 10:00]--[2026-09-01 Tue 36:00] =>  26:00\n:END:\n** DONE See [[https://x.org][the site]] <2026-08-02 Sun>\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:05] =>  0:05\n:END:\n*** Level three\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:01] =>  0:01\n:END:\n**** Level four\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 11:00]--[2026-08-02 Sun 12:40] =>  1:40\n:END:\n* Another with a very long title that goes past the forty column narrow limit for sure yes\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* COMMENT Commented\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* Outside\n:LOGBOOK:\nCLOCK: [2025-01-01 Wed 09:00]--[2025-01-01 Wed 09:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 3 :scope file :tstart \"2026-08-01\" :tend \"2026-08-31\""
+},
+{
+"org": "* TODO [#A] Big task [1/2] :tag1:\n:LOGBOOK:\nCLOCK: [2026-07-31 Fri 23:00]--[2026-08-01 Sat 02:00] =>  3:00\nCLOCK: [2026-08-07 Fri 22:00]--[2026-08-08 Sat 01:30] =>  3:30\nCLOCK: [2026-09-01 Tue 10:00]--[2026-09-01 Tue 36:00] =>  26:00\n:END:\n** DONE See [[https://x.org][the site]] <2026-08-02 Sun>\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:05] =>  0:05\n:END:\n*** Level three\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:01] =>  0:01\n:END:\n**** Level four\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 11:00]--[2026-08-02 Sun 12:40] =>  1:40\n:END:\n* Another with a very long title that goes past the forty column narrow limit for sure yes\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* COMMENT Commented\n:LOGBOOK:\nCLOCK: [2026-08-02 Sun 09:00]--[2026-08-02 Sun 09:30] =>  0:30\n:END:\n* Outside\n:LOGBOOK:\nCLOCK: [2025-01-01 Wed 09:00]--[2025-01-01 Wed 09:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 5 :scope file"
+},
+{
+"org": "* A\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 00:00]--[2026-08-02 Sun 00:00] =>  24:00\n:END:\n* B\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 00:00]--[2026-08-02 Sun 02:05] =>  26:05\n:END:\n* C\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 00:00]--[2026-08-01 Sat 23:59] =>  23:59\n:END:\n* D\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 00:00]--[2026-08-04 Tue 00:00] => 72:00\n:END:\n* E\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:00] =>  0:00\nCLOCK: [2026-08-02 Sun 10:00]\n:END:\n* F |pipe| and *bold* =verb= \\alpha\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* Short title exactly forty chars long xxx\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* Title with forty-one chars long xxxxxxxx\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* Tag stripped :work:\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* NEXT [#B] Keyword priority text <2026-08-02 Sun> end\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 2 :scope file"
+},
+{
+"org": "* Nothing\n",
+"params": ":maxlevel 2 :scope file"
+},
+{
+"org": "* TODO Keep todo stripped\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* DONE [#A] both\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* <2026-08-02 Sun> ts first\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* mid <2026-08-02 Sun> ts then text\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* [2026-08-02 Sun] inactive ts\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* range <2026-08-02 Sun>--<2026-08-03 Mon> r\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* link [[https://x.org][desc]] and more\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* [[file:a.org]] bare\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* *bold* /it/ =v= ~c~\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* COMMENT hidden :t:\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* has \\alpha entity\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* exactly 40 chars: aaaaaaaaaaaaaaaaaaaaaa\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* exactly 41 chars: aaaaaaaaaaaaaaaaaaaaaaa\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* trailing space   \n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* [1/3] cookie [50%] x\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 1 :scope file"
+},
+{
+"org": "* A\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 4 :scope file"
+},
+{
+"org": "* A\n** B\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 4 :scope file"
+},
+{
+"org": "#+TODO: NEXT | FIN\n* NEXT [#C] kw\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n* FIN done :a:b:\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 1 :scope file"
+},
+{
+"org": "** Two\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n*** Three\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 11:00]--[2026-08-01 Sat 11:10] =>  0:10\n:END:\n**** Four\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 12:00]--[2026-08-01 Sat 12:05] =>  0:05\n:END:\n* One\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:01] =>  0:01\n:END:\n**** Skip\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 12:00]--[2026-08-01 Sat 12:02] =>  0:02\n:END:\n",
+"params": ":maxlevel 3 :scope file"
+},
+{
+"org": "** Two\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\n:END:\n*** Three\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 11:00]--[2026-08-01 Sat 11:10] =>  0:10\n:END:\n**** Four\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 12:00]--[2026-08-01 Sat 12:05] =>  0:05\n:END:\n* One\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:01] =>  0:01\n:END:\n**** Skip\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 12:00]--[2026-08-01 Sat 12:02] =>  0:02\n:END:\n",
+"params": ":maxlevel 2 :scope file"
+},
+{
+"org": "* A\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:30] =>  0:30\n:END:\n",
+"params": ":maxlevel 2 :scope file :tstart \"2026-08-01 10:15\" :tend \"2026-08-02 10:10\""
+}
+]

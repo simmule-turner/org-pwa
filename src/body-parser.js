@@ -41,7 +41,7 @@ const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
 const TABLE_RULE_RE = /^\s*\|-/; // as in Org, any row that starts with |- is a horizontal rule (|---|---| too)
 const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
 const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
-const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[([ xX-])\]\s+)?(.*)$/;
+const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\]\s+)?(.*)$/;
 // Real org: "a line consisting of only dashes, and at least 5 of them,
 // is exported as a horizontal line." Whitespace around the dashes is
 // tolerated (indentation, trailing spaces), matching how org itself is
@@ -154,16 +154,12 @@ function isInsideLiteralSpan(text, pos) {
 /** @param {string} line */
 function parseListItemLine(line) {
   const m = /** @type {RegExpExecArray} */ (LIST_ITEM_RE.exec(line));
-  const [, indent, marker, checkbox, rest] = m;
+  const [, indent, marker, counter, checkbox, rest] = m;
   let text = rest;
 
   /** @type {number | null} */
   let startValue = null;
-  const startValueMatch = /^\[@(\d+|[A-Za-z])\]\s*/.exec(text);
-  if (startValueMatch) {
-    startValue = /^\d+$/.test(startValueMatch[1]) ? Number(startValueMatch[1]) : startValueMatch[1].toLowerCase().charCodeAt(0) - 96; // [@c] is 3
-    text = text.slice(startValueMatch[0].length);
-  }
+  if (counter) startValue = /^\d+$/.test(counter) ? Number(counter) : counter.toLowerCase().charCodeAt(0) - 96; // [@c] is 3
 
   /** @type {string | null} */
   let tag = null;

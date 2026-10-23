@@ -141,3 +141,48 @@ export function withLatexTocFix(header, on) {
   const bare = header.split(LATEX_TOC_FIX_HEADER).join('').replace(/\n{3,}/g, '\n\n').trim();
   return on ? (bare ? bare + '\n' : '') + LATEX_TOC_FIX_HEADER : bare;
 }
+
+/** The symbols of a Lisp list value (`'(a b)`, `(a b)`), or null when the value is not set. @param {unknown} raw @returns {string[] | null} */
+function lispSymbols(raw) {
+  const v = typeof raw === 'string' ? raw.trim().replace(/^'/, '') : '';
+  if (!v) return null;
+  if (v.toLowerCase() === 'nil') return [];
+  return v.replace(/[()']/g, ' ').split(/\s+/).filter(Boolean);
+}
+
+/**
+ * The `org-icalendar-*` variables (and `org-agenda-default-appointment-duration`, which sets the length of an event without an
+ * end) that are set in `vars`, as the settings of ox-icalendar.js.
+ * @param {Record<string, string> | null | undefined} vars
+ * @returns {Partial<import('./ox-icalendar.js').IcalendarSettings>}
+ */
+export function icalendarExportSettings(vars) {
+  const v = vars || {};
+  /** @type {Record<string, any>} */
+  const out = {};
+  const symbol = (/** @type {string} */ key) => (typeof v[key] === 'string' ? v[key].trim().replace(/^'/, '').toLowerCase() : '');
+  const include = symbol('org-icalendar-include-todo');
+  if (['nil', 't', 'unblocked', 'all'].includes(include)) out.includeTodo = include;
+  for (const [key, field] of [['org-icalendar-use-deadline', 'useDeadline'], ['org-icalendar-use-scheduled', 'useScheduled'], ['org-icalendar-categories', 'categories']]) {
+    const list = lispSymbols(v[key]);
+    if (list) out[field] = list;
+  }
+  const stamps = symbol('org-icalendar-with-timestamps');
+  if (['active', 'inactive', 't', 'nil'].includes(stamps)) out.withTimestamps = stamps;
+  const body = symbol('org-icalendar-include-body');
+  if (body === 't') out.includeBody = true;
+  else if (body === 'nil') out.includeBody = false;
+  else if (/^\d+$/.test(body)) out.includeBody = Number(body);
+  const alarm = symbol('org-icalendar-alarm-time');
+  if (/^\d+$/.test(alarm)) out.alarmTime = Number(alarm);
+  if (symbol('org-icalendar-force-alarm') === 't') out.forceAlarm = true;
+  const duration = symbol('org-agenda-default-appointment-duration');
+  if (/^\d+$/.test(duration)) out.appointmentDuration = Number(duration);
+  for (const [key, field] of [['org-icalendar-scheduled-summary-prefix', 'scheduledPrefix'], ['org-icalendar-deadline-summary-prefix', 'deadlinePrefix'], ['org-icalendar-date-time-format', 'dateTimeFormat'], ['org-icalendar-timezone', 'timezone'], ['org-icalendar-combined-name', 'combinedName'], ['org-icalendar-combined-description', 'combinedDescription'], ['user-full-name', 'userFullName']]) {
+    const text = lispStringValue(v[key]);
+    if (text !== null) out[field] = text;
+  }
+  const excluded = typeof v['org-icalendar-exclude-tags'] === 'string' ? [...v['org-icalendar-exclude-tags'].matchAll(/"([^"]*)"/g)].map((m) => m[1]) : [];
+  if (excluded.length) out.excludeTags = excluded;
+  return out;
+}

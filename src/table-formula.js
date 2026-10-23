@@ -62,15 +62,6 @@
  * then col 4 = col3*2) without needing a full dependency graph.
  */
 
-// ---- format-time-string's own strftime-style formatter ----------------
-// Duplicated from src/capture-template.js's own formatTime (used there
-// for %<FORMAT>) rather than imported -- this module has zero imports
-// today, a deliberate, self-contained design, and this small, static,
-// pure function is cheap to duplicate versus this module's first-ever
-// cross-module dependency on an unrelated file. Kept behaviorally
-// identical (same format codes, same "leave the unrecognized specifier
-// untouched" fallback) so the two stay interchangeable in practice.
-
 // This module's first (and so far only) external dependency -- a
 // tree-shaken mathjs subset (Unit, BigNumber, Fraction, plus the
 // arithmetic/transcendental functions each depends on) vendored
@@ -93,6 +84,7 @@ import {
   cSin, cCos, cTan, cAsin, cAcos, cAtan, cEquals, cAggregate,
 } from './calc-complex.js';
 import * as Sym from './calc-symbolic.js';
+import { formatTimeString } from './format-time.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
 } from './calc-vector.js';
@@ -143,118 +135,6 @@ function mathjsForPrecision(precision) {
     mathjsByPrecision.set(precision, instance);
   }
   return instance;
-}
-
-const TIME_FORMAT_DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_FORMAT_DAY_NAMES_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const TIME_FORMAT_MONTH_NAMES_FULL = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-const TIME_FORMAT_MONTH_NAMES_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** @param {number | string} n */
-function timeFormatPad(n, width = 2) {
-  return String(n).padStart(width, '0');
-}
-
-/** @param {Date} date */
-function timeFormatDayOfYear(date) {
-  const start = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date.getTime() - start.getTime()) / 86400000) + 1;
-}
-
-/** format-time-string's own actual formatter -- a practical subset of
- *  real Emacs's format-time-string specifiers (the ones that actually
- *  show up in real use: dates, times, weekday and month names), not
- *  the complete, much longer C strftime table, matching %<FORMAT>'s
- *  own already-established scope exactly. `date` is read via its own
- *  LOCAL getters throughout -- callers wanting UTC output construct a
- *  "fake local" Date from the UTC components first (see the
- *  formatTimeCall evaluator below), rather than this function having
- * @param {Date} date
- *  two separate code paths for the same formatting logic. */
-function timeFormatTimezoneAbbreviation(date) {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(date);
-  const tz = parts.find((p) => p.type === 'timeZoneName');
-  return tz ? tz.value : '';
-}
-
-/** @param {Date} date */
-function timeFormatTimezoneOffsetString(date) {
-  const totalMinutes = -date.getTimezoneOffset(); // getTimezoneOffset() is UTC-minus-local, the opposite sign from ±HHMM
-  const sign = totalMinutes < 0 ? '-' : '+';
-  const abs = Math.abs(totalMinutes);
-  return sign + timeFormatPad(Math.floor(abs / 60)) + timeFormatPad(abs % 60);
-}
-
-/** format-time-string's own actual formatter -- a practical subset of
- *  real Emacs's format-time-string specifiers (the ones that actually
- *  show up in real use: dates, times, weekday and month names), not
- *  the complete, much longer C strftime table, matching %<FORMAT>'s
- *  own already-established scope exactly. `date` is read via its own
- *  LOCAL getters throughout -- callers wanting UTC output construct a
- *  "fake local" Date from the UTC components first (see the
- *  formatTimeCall evaluator below), rather than this function having
- *  two separate code paths for the same formatting logic -- EXCEPT
- *  for %Z/%z specifically, which can't use that same trick (a "fake
- *  local" Date's own real timezone getters would report whatever zone
- *  the machine itself is actually in, not UTC), so `isUTC` short-
- *  circuits straight to the fixed, correct "UTC"/"+0000" for those
- * @param {Date} date
- * @param {string} format
- *  two codes only when set. */
-function formatTimeStringImpl(date, format, isUTC = false) {
-  return format.replace(/%(.)/g, (whole, /** @type {string} */ spec) => {
-    switch (spec) {
-      case 'Y':
-        return String(date.getFullYear());
-      case 'y':
-        return timeFormatPad(date.getFullYear() % 100);
-      case 'm':
-        return timeFormatPad(date.getMonth() + 1);
-      case 'd':
-        return timeFormatPad(date.getDate());
-      case 'e':
-        return String(date.getDate()).padStart(2, ' ');
-      case 'H':
-        return timeFormatPad(date.getHours());
-      case 'I': {
-        const h = date.getHours() % 12 || 12;
-        return timeFormatPad(h);
-      }
-      case 'M':
-        return timeFormatPad(date.getMinutes());
-      case 'S':
-        return timeFormatPad(date.getSeconds());
-      case 'p':
-        return date.getHours() < 12 ? 'AM' : 'PM';
-      case 'A':
-        return TIME_FORMAT_DAY_NAMES_FULL[date.getDay()];
-      case 'a':
-        return TIME_FORMAT_DAY_NAMES_ABBR[date.getDay()];
-      case 'B':
-        return TIME_FORMAT_MONTH_NAMES_FULL[date.getMonth()];
-      case 'b':
-        return TIME_FORMAT_MONTH_NAMES_ABBR[date.getMonth()];
-      case 'j':
-        return timeFormatPad(timeFormatDayOfYear(date), 3);
-      case 'F':
-        return `${date.getFullYear()}-${timeFormatPad(date.getMonth() + 1)}-${timeFormatPad(date.getDate())}`;
-      case 'R':
-        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}`;
-      case 'T':
-        return `${timeFormatPad(date.getHours())}:${timeFormatPad(date.getMinutes())}:${timeFormatPad(date.getSeconds())}`;
-      case 'Z':
-        return isUTC ? 'UTC' : timeFormatTimezoneAbbreviation(date);
-      case 'z':
-        return isUTC ? '+0000' : timeFormatTimezoneOffsetString(date);
-      case '%':
-        return '%';
-      default:
-        return whole; // unrecognized -- leave as-is, don't silently drop it
-    }
-  });
 }
 
 // ---- reference parsing ------------------------------------------------
@@ -1810,18 +1690,7 @@ function complexScalarCall(name, argValues, ctx) {
       }
 
       /** @type {any} */ const universal = node.args.length >= 3 && isTruthyValue(evaluateAst(node.args[2], ctx));
-      /** @type {any} */ const dateForFormatting = universal
-        ? new Date(
-            instant.getUTCFullYear(),
-            instant.getUTCMonth(),
-            instant.getUTCDate(),
-            instant.getUTCHours(),
-            instant.getUTCMinutes(),
-            instant.getUTCSeconds()
-          )
-        : instant;
-
-      return formatTimeStringImpl(dateForFormatting, formatStr, universal);
+      return formatTimeString(instant, formatStr, { utc: !!universal });
     }
     case 'stringCall': {
       if (node.arg.type === 'ref') {

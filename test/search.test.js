@@ -718,8 +718,8 @@ test('an empty query returns no results rather than throwing or matching everyth
   assert.deepEqual(searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], '   '), []);
 });
 
-test('a malformed match query throws the parser\u2019s own clear error, surfaced the same way an invalid regex already is', () => {
-  assert.throws(() => searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], '!!!'), /could not parse/i);
+test('text the match language does not read is left unread, as Emacs leaves it, so nothing throws', () => {
+  assert.doesNotThrow(() => searchDocumentsByMatchQuery([{ documentId: 'doc1', doc: matchFixtureDoc() }], '!!!'));
 });
 
 test('results span multiple documents, each carrying its own documentId, matching searchDocuments\u2019 own existing shape', () => {

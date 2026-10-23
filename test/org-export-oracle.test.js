@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { exportOrgText } from '../src/export-org.js';
+import { cacheBibliography } from '../src/cite.js';
+
+cacheBibliography('refs.bib', readFileSync(new URL('./fixtures/html/refs.bib', import.meta.url), 'utf8'));
 
 // Emacs 29.3 / Org 9.6.15: what ox-org writes (tools/gen-org-export-oracle.mjs)
 const cases = JSON.parse(readFileSync(new URL('./fixtures/org-export-oracle.json', import.meta.url), 'utf8'));

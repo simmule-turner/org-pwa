@@ -1,0 +1,78 @@
+#+TITLE: Match queries
+#+STARTUP: showall
+#+TODO: TODO NEXT WAITING | DONE
+#+CATEGORY: demo
+
+A cookbook for the match language of =C-c / m= (sparse tree) and the agenda's *Match* view. The table in the last section lists, for each query, the headings Emacs 29.3 (Org 9.6.15) finds in this file (=org-map-entries=); the app finds the same ones. Try them in *Search → Match*.
+
+* Project A                                                     :work:big:
+:PROPERTIES:
+:Effort: 3:00
+:END:
+** TODO Write the spec                                        :writing:
+DEADLINE: <2026-10-30 Fri>
+:PROPERTIES:
+:Effort: 2:00
+:SIZE: 3
+:END:
+** NEXT Review the draft                                      :review:
+SCHEDULED: <2026-11-02 Mon>
+:PROPERTIES:
+:Effort: 0:30
+:SIZE: 1
+:END:
+** DONE Kick-off                                                :admin:
+CLOSED: [2026-10-01 Thu 09:00]
+* Home                                                      :home:errands:
+** TODO Buy milk                                              :errands:
+:PROPERTIES:
+:SIZE: 2
+:END:
+** WAITING Parcel
+:PROPERTIES:
+:Effort: 1:00
+:END:
+** Taxes                                                        :admin:
+* Reading                                                    :@train:
+** TODO Org manual
+** TODO Emacs Lisp book                                     :work:
+
+* Queries and their matches
+:PROPERTIES:
+:ID: queries
+:END:
+- =work= :: Project A; Write the spec; Review the draft; Kick-off; Emacs Lisp book
+- =work&admin= :: Kick-off
+- =work|home= :: Project A; Write the spec; Review the draft; Kick-off; Home; Buy milk; Parcel; Taxes; Emacs Lisp book
+- =+work-big= :: Emacs Lisp book
+- =errands+home= :: Home; Buy milk; Parcel; Taxes
+- ={^w}= :: Project A; Write the spec; Review the draft; Kick-off; Emacs Lisp book
+- =LEVEL=2= :: Write the spec; Review the draft; Kick-off; Buy milk; Parcel; Taxes; Org manual; Emacs Lisp book; Reading the table
+- =LEVEL>1+work= :: Write the spec; Review the draft; Kick-off; Emacs Lisp book
+- =TODO="TODO"= :: Write the spec; Buy milk; Org manual; Emacs Lisp book
+- =TODO="NEXT"|TODO="WAITING"= :: Review the draft; Parcel
+- =work/TODO= :: Write the spec; Emacs Lisp book
+- =/!= :: Write the spec; Review the draft; Buy milk; Parcel; Org manual; Emacs Lisp book
+- =/NEXT|WAITING= :: Review the draft; Parcel
+- =Effort>"1:00"= :: Project A; Write the spec
+- =Effort<"1:00"= :: Review the draft; Kick-off; Home; Buy milk; Taxes; Reading; Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =SIZE>1= :: Write the spec; Buy milk
+- =SIZE<=2= :: Project A; Review the draft; Kick-off; Home; Buy milk; Parcel; Taxes; Reading; Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =SIZE=3= :: Write the spec
+- =CATEGORY="demo"= :: Project A; Write the spec; Review the draft; Kick-off; Home; Buy milk; Parcel; Taxes; Reading; Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =DEADLINE<"<2026-11-01>"= :: Write the spec
+- =SCHEDULED>="<2026-11-02>"= :: Review the draft
+- =PRIORITY="B"= :: Project A; Write the spec; Review the draft; Kick-off; Home; Buy milk; Parcel; Taxes; Reading; Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =ITEM={Review}= :: Review the draft
+- =ITEM<>"Taxes"= :: Project A; Write the spec; Review the draft; Kick-off; Home; Buy milk; Parcel; Reading; Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =TAGS={^e}= :: (none)
+- =@train= :: Reading; Org manual; Emacs Lisp book
+- =-work+LEVEL=2= :: Buy milk; Parcel; Taxes; Org manual; Reading the table
+
+** Reading the table
+- =work&admin= is "and", =work|home= is "or", =+work-big= adds and removes a tag, ={^w}= matches tags by regexp.
+- =LEVEL=2=, =TODO="NEXT"=, =CATEGORY="demo"=, =ITEM=, =TAGS=, =DEADLINE= and =SCHEDULED= are special properties; any other name (=Effort=, =SIZE=) is read from the heading's own properties.
+- Text in double quotes is compared as text, a bare number as a number: =Effort>"1:00"= is a text comparison, =SIZE>1= a numeric one. A heading without the property compares as empty text or 0.
+- After the last =/= come TODO keywords: =work/TODO=, =/NEXT|WAITING=, and =/!= for every task that is not done.
+- Tags are inherited, so =@train= finds the headings under *Reading*.
+- A query Org cannot read is not an error: it matches what is left over, as in Emacs.

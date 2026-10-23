@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
-import { htmlExportDefaults, latexExportDefaults } from '../src/export-defaults.js';
+import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
@@ -157,11 +157,11 @@ export async function performExport(format, scope) {
       }
       ics = build();
     } else {
-      const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc }];
+      const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc, name: baseName }];
       const icsScope = scope && typeof scope === 'object' ? scope : null;
       // for the agenda files, the contacts are those of org-contacts-files, as in the agenda
       const contactsDocs = scope === 'agenda-files' ? await loadContactsDocsForSync(docs.filter((d) => d.doc)) : null;
-      ics = exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs, alarmMinutes: calendarAlarmMinutes() });
+      ics = exportToIcalendar(docs, { scope: icsScope, birthdayProperty, contactsDocs, settings: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, ...icalendarExportSettings(S.globalVariables) } });
     }
     if (S.exportIcsToNewBuffer) {
       const count = (ics.match(/^BEGIN:VEVENT/gim) || []).length;

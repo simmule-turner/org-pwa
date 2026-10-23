@@ -17,6 +17,8 @@
  * else of the app is reachable from there.
  */
 
+import { formatLog } from '../src/js-inspect.js';
+
 /** Runs first inside every worker. Belt and braces: the CSP already blocks the network; remove the entry points too. */
 export function lockDown() {
   for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'importScripts', 'indexedDB', 'caches', 'BroadcastChannel', 'SharedWorker', 'Worker']) {
@@ -32,15 +34,6 @@ export function lockDown() {
  *  this module. */
 function workerMain() {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  /** @param {any} [v] */
-  const show = (v) => {
-    if (typeof v === 'string') return v;
-    try {
-      return typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
-    } catch (e) {
-      return String(v);
-    }
-  };
   /** @param {any} [v] */
   /** @returns {any} */ const plain = (/** @type {any} */ v) => {
     if (v === undefined || v === null || ['string', 'number', 'boolean'].includes(typeof v)) return v;
@@ -97,7 +90,7 @@ function workerMain() {
     }
     const { id, code, vars, variables, maxBytes } = e.data;
     /** @type {any[]} */ const lines = [];
-    const log = (/** @type {any[]} */ ...a) => lines.push(a.map(show).join(' '));
+    const log = (/** @type {any[]} */ ...a) => lines.push(a.map(plain)); // the page formats these as Node's console.log does
     const consoleShim = Object.freeze({ log, info: log, warn: log, error: log, debug: log });
     const org = Object.freeze({
       apiVersion: 1,
@@ -110,15 +103,14 @@ function workerMain() {
       const fn = new AsyncFunction('org', 'console', ...names, code);
       const value = await fn(org, consoleShim, ...names.map((n) => vars[n]));
       const result = plain(value);
-      const output = lines.join('\n');
-      if (JSON.stringify(result === undefined ? null : result).length + output.length > maxBytes) {
+      if (JSON.stringify(result === undefined ? null : result).length + JSON.stringify(lines).length > maxBytes) {
         throw new Error('Result is larger than ' + Math.round(maxBytes / 1024) + ' KB');
       }
-      self.postMessage({ type: 'result', id, ok: true, hasValue: value !== undefined, value: result, output });
+      self.postMessage({ type: 'result', id, ok: true, hasValue: value !== undefined, value: result, logs: lines });
     } catch (err) {
       const stack = String((err && err.stack) || '');
       const at = /<anonymous>:(\d+):\d+/.exec(stack);
-      self.postMessage({ type: 'result', id, ok: false, message: String((err && err.message) || err), line: at ? Math.max(1, Number(at[1]) - 2) : null, output: lines.join('\n') });
+      self.postMessage({ type: 'result', id, ok: false, message: String((err && err.message) || err), line: at ? Math.max(1, Number(at[1]) - 2) : null, logs: lines });
     }
   };
 }
@@ -239,7 +231,8 @@ export function runJavaScript(/** @type {any} */ { code, vars = {}, variables = 
       } else if (m.type === 'fatal') {
         finish({ ok: false, message: 'The sandbox could not start: ' + m.message });
       } else if (m.type === 'result' && m.id === id) {
-        finish(m.ok ? { ok: true, hasValue: m.hasValue, value: m.value, output: m.output } : { ok: false, message: m.message, line: m.line, output: m.output });
+        const output = (m.logs || []).map(formatLog).join('\n'); // what console.log wrote, as Node writes it
+        finish(m.ok ? { ok: true, hasValue: m.hasValue, value: m.value, output } : { ok: false, message: m.message, line: m.line, output });
       }
     };
     addEventListener('message', onMessage);

@@ -12,7 +12,7 @@ import { readPriorityFaces } from '../src/priorities.js';
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
-import { updateCheckboxCookiesUpward } from '../src/checkbox-cookie.js';
+import { updateCheckboxCookie } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
 import { isJsBlock } from '../src/babel.js';
@@ -484,7 +484,7 @@ export function renderRow(row, todoSequence) {
       el.onclick = (e) => {
         if (/** @type {Element} */ (e.target).closest('[data-inline-link]')) return;
         cycleItemCheckbox(row.heading, row.item);
-        updateCheckboxCookiesUpward(S.state.doc, row.heading, todoSequence.doneKeywords);
+        updateCheckboxCookie(row.heading);
         commitAndRender('Toggled checkbox');
       };
       const box = document.createElement('span');
@@ -561,7 +561,7 @@ export function renderRow(row, todoSequence) {
               const oldLineIndex = row.item.lineIndex;
               const newItem = insertListItem(row.heading, row.item, '');
               resyncKeyboardFocusToBodyRow(row.heading, 'list-item', oldLineIndex);
-              updateCheckboxCookiesUpward(S.state.doc, row.heading, todoSequence.doneKeywords);
+              updateCheckboxCookie(row.heading);
               S.editingListItem = { heading: row.heading, item: newItem };
               commitAndRender('Added list item');
               openListItemEditor(row.heading, newItem);
@@ -579,7 +579,7 @@ export function renderRow(row, todoSequence) {
                 S.keyboardFocusedBodyRow = null;
               }
               deleteListItem(row.heading, row.item);
-              updateCheckboxCookiesUpward(S.state.doc, row.heading, todoSequence.doneKeywords);
+              updateCheckboxCookie(row.heading);
               commitAndRender('Deleted list item');
             },
           },

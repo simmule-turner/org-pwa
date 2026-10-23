@@ -1,0 +1,101 @@
+[
+{
+"org": "* A [/]\n- [X] one\n- [ ] two\n- [ ] three\n** B [/]\n- [X] b1\n- [ ] b2\n"
+},
+{
+"org": "* P [%]\n- [X] a\n- [ ] b\n- [ ] c\n"
+},
+{
+"org": "* Q [%]\n- [X] a\n- [X] b\n- [ ] c\n"
+},
+{
+"org": "* R [0/0]\nno boxes\n"
+},
+{
+"org": "* S [/]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n- [X] x\n** child\n- [ ] y\n"
+},
+{
+"org": "* T [/]\n- [X] top\n  - [X] nested\n  - [ ] nested2\n- [-] mid\n- [ ] [1/1] item\n  - [X] sub\n"
+},
+{
+"org": "* U [/]\n** TODO c1\n** DONE c2\n** c3\n"
+},
+{
+"org": "* V [/]\n:PROPERTIES:\n:COOKIE_DATA: todo\n:END:\n** TODO c1\n** DONE c2\n*** TODO g1\n"
+},
+{
+"org": "* A1 [/]\n:PROPERTIES:\n:COOKIE_DATA: checkbox\n:END:\n- [X] one\n** kid\n- [ ] two\n"
+},
+{
+"org": "* A2 [/]\n:PROPERTIES:\n:COOKIE_DATA: checkbox recursive\n:END:\n- [X] one\n  - [ ] n\n** kid\n- [ ] two\n"
+},
+{
+"org": "* A3 [/]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n- [X] one\n  - [ ] n\n"
+},
+{
+"org": "* A4 [/]\n:PROPERTIES:\n:COOKIE_DATA: todo recursive\n:END:\n** TODO c1\n*** DONE c2\n** c3\n**** DONE c4\n"
+},
+{
+"org": "* A5 [/]\n:PROPERTIES:\n:COOKIE_DATA: todo checkbox\n:END:\n- [X] a\n** TODO c1\n"
+},
+{
+"org": "* A6 [/]\n- [X] a\n- [ ] b\n\ntext\n\n- [X] c\n"
+},
+{
+"org": "* A7 [/]\n** TODO x\n- [X] a\n"
+},
+{
+"org": "* A8 [%]\n** TODO x\n** DONE y\n** DONE z\n"
+},
+{
+"org": "* A9 [/]\n1. [X] a\n2. [ ] b\n   - [X] c\n"
+},
+{
+"org": "* A10 [1/9]\n- [-] a\n  - [X] b\n  - [ ] c\n- [ ] d [/]\n  - [X] e\n  - [ ] f\n- item [%]\n  - [X] g\n  - [X] h\n  - [ ] i\n"
+},
+{
+"org": "* A11 []\n- [X] a\n"
+},
+{
+"org": "* A12 [ /]\n- [X] a\n"
+},
+{
+"org": "* A13 [/] [%] twice\n- [X] a\n- [ ] b\n"
+},
+{
+"org": "* A14 [50%]\n- [X] a\n- [ ] b\n- [ ] c\n- [ ] d\n- [ ] e\n- [ ] f\n- [ ] g\n- [ ] h\n"
+},
+{
+"org": "* A15 [/]\n#+BEGIN_EXAMPLE\n- [X] a\n#+END_EXAMPLE\n- [X] real\n"
+},
+{
+"org": "* A16 [/]\n- [X] a :: desc\n- [x] b\n- [X] c\n"
+},
+{
+"org": "* A [/]\n- [X] one\n- [ ] two\n- [ ] three\n** B [/]\n- [X] b1\n- [ ] b2\n* P [%]\n- [X] a\n- [ ] b\n- [ ] c\n* Q [%]\n- [X] a\n- [X] b\n- [ ] c\n* R [0/0]\nno boxes\n* S [/]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n- [X] x\n** child\n- [ ] y\n* T [/]\n- [X] top\n  - [X] nested\n  - [ ] nested2\n- [-] mid\n- [ ] [1/1] item\n  - [X] sub\n* U [/]\n** TODO c1\n** DONE c2\n** c3\n* V [/]\n:PROPERTIES:\n:COOKIE_DATA: todo\n:END:\n** TODO c1\n** DONE c2\n*** TODO g1\n"
+},
+{
+"org": "* A1 [/]\n:PROPERTIES:\n:COOKIE_DATA: checkbox\n:END:\n- [X] one\n** kid\n- [ ] two\n* A2 [/]\n:PROPERTIES:\n:COOKIE_DATA: checkbox recursive\n:END:\n- [X] one\n  - [ ] n\n** kid\n- [ ] two\n* A3 [/]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n- [X] one\n  - [ ] n\n* A4 [/]\n:PROPERTIES:\n:COOKIE_DATA: todo recursive\n:END:\n** TODO c1\n*** DONE c2\n** c3\n**** DONE c4\n* A5 [/]\n:PROPERTIES:\n:COOKIE_DATA: todo checkbox\n:END:\n- [X] a\n** TODO c1\n* A6 [/]\n- [X] a\n- [ ] b\n\ntext\n\n- [X] c\n* A7 [/]\n** TODO x\n- [X] a\n* A8 [%]\n** TODO x\n** DONE y\n** DONE z\n* A9 [/]\n1. [X] a\n2. [ ] b\n   - [X] c\n* A10 [1/9]\n- [-] a\n  - [X] b\n  - [ ] c\n- [ ] d [/]\n  - [X] e\n  - [ ] f\n- item [%]\n  - [X] g\n  - [X] h\n  - [ ] i\n* A11 []\n- [X] a\n* A12 [ /]\n- [X] a\n* A13 [/] [%] twice\n- [X] a\n- [ ] b\n* A14 [50%]\n- [X] a\n- [ ] b\n- [ ] c\n- [ ] d\n- [ ] e\n- [ ] f\n- [ ] g\n- [ ] h\n* A15 [/]\n#+BEGIN_EXAMPLE\n- [X] a\n#+END_EXAMPLE\n- [X] real\n* A16 [/]\n- [X] a :: desc\n- [x] b\n- [X] c\n"
+},
+{
+"org": "* P [/]\n:PROPERTIES:\n:COOKIE_DATA: todo recursive\n:END:\n** Q [/]\n*** TODO a\n*** DONE b\n** TODO c\n"
+},
+{
+"org": "* P [/]\n** Q [/]\n:PROPERTIES:\n:COOKIE_DATA: checkbox\n:END:\n- [X] a\n*** TODO a\n*** DONE b\n"
+},
+{
+"org": "* TODO P [%]\n** DONE a\n** TODO b\n** CANCELED c\n** WAITING d\n"
+},
+{
+"org": "* P [/] [%]\n- [X] a\n- [ ] b\n+ [X] c\n"
+},
+{
+"org": "* P [/]\n1) [X] a\n2) [ ] b\n"
+},
+{
+"org": "* P [/]\n- [@3] [X] a\n- [@4] [-] b\n"
+},
+{
+"org": "* P [/]\n- [X] a\n  - [X] b\n    - [ ] c\n"
+}
+]

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cases = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'org-export-cases.json'), 'utf8'));
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'org-oracle-'));
+fs.copyFileSync(path.join(root, 'test', 'fixtures', 'html', 'refs.bib'), path.join(dir, 'refs.bib'));
 cases.forEach((c, i) => fs.writeFileSync(path.join(dir, `${String(i).padStart(4, '0')}.org`), c + '\n'));
 const lisp = `(progn (require 'ox-org) (setq org-export-use-babel nil org-export-with-broken-links t)
  (dolist (f (directory-files "${dir}" t "\\\\.org$")) (with-current-buffer (find-file-noselect f)

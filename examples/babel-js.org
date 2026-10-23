@@ -1,0 +1,105 @@
+#+TITLE: JavaScript blocks
+#+STARTUP: showall
+
+A cookbook for =js= source blocks. Turn on *Run JavaScript source blocks* in Settings, then use the block's *Run* button (in Emacs, =C-c C-c= with =(js . t)= in =org-babel-load-languages=). The =#+RESULTS:= under each block is what Emacs 29.3 (Org 9.6.15) writes for it; the app writes the same text. The last section says where the two differ.
+
+* A value and its layout
+A block's =return= value is laid out by its type: a number is a =: = line, an array of arrays is a table, an array of values is a list.
+
+#+begin_src js
+return 6 * 7;
+#+end_src
+
+#+RESULTS:
+: 42
+
+#+begin_src js
+return [[1, 2], [3, 4]];
+#+end_src
+
+#+RESULTS:
+| 1 | 2 |
+| 3 | 4 |
+
+#+begin_src js :results list
+return [1, 2, 3];
+#+end_src
+
+#+RESULTS:
+- 1
+- 2
+- 3
+
+* Tables in, tables out
+=:var= takes a named table. A header row followed by one rule is left out, as in Org; =:colnames yes= leaves out the first row of a table without a rule, and =:rownames yes= the first column.
+
+#+NAME: sales
+| quarter | amount |
+|---------+--------|
+| Q1      |     10 |
+| Q2      |     20 |
+
+#+begin_src js :var data=sales
+return data.map(([q, n]) => [q, n * 2]);
+#+end_src
+
+#+RESULTS:
+| Q1 | 20 |
+| Q2 | 40 |
+
+Pick a cell or a range with =name[row,column]=; indices count from 0 and from the end when negative, and a rule counts as a row.
+
+#+begin_src js :var last=sales[-1,1]
+return last;
+#+end_src
+
+#+RESULTS:
+: 20
+
+* Output instead of value
+=:results output= collects =console.log= lines.
+
+#+begin_src js :results output
+console.log('one');
+console.log([1, 'two'], { a: 3 });
+#+end_src
+
+#+RESULTS:
+: one
+: [ 1, 'two' ] { a: 3 }
+
+* Wrapping and other result types
+=:results raw= pastes the text as Org; =:wrap= puts the result in a block of that name.
+
+#+begin_src js :results output raw
+console.log('*bold* and /italic/');
+#+end_src
+
+#+RESULTS:
+*bold* and /italic/
+
+#+begin_src js :wrap quote
+return 42;
+#+end_src
+
+#+RESULTS:
+#+begin_quote
+42
+#+end_quote
+
+* Around the code
+=:prologue= and =:epilogue= put text before and after the code.
+
+#+begin_src js :prologue "const base = 100;" :epilogue "// done"
+return base + 1;
+#+end_src
+
+#+RESULTS:
+: 101
+
+* Where the app differs from Emacs
+- Emacs hands a =:results value= string to the Lisp reader, which cuts it at its first space, drops backslashes and refuses =''= or =#=; =:results raw= of =return '*bold*'= comes out as ='*bold*'=. The app keeps the string whole.
+- Emacs mixes =console.log= lines into a =:results value= block's result in some versions; the app never does.
+- =:hlines yes= passes a rule to the script. Emacs writes the bare word =hline=, which Node cannot run; the app passes the string ="hline"=.
+- =:post=, and =file=, =link= and =graphics= results, are not supported.
+- A long array or object in =console.log= stays on one line; Node breaks it over several.

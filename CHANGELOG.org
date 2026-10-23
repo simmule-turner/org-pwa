@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v616 — Match queries, time formats and Babel as Emacs does
+Match queries (=C-c / m=, the Agenda's Match view) now use Org's own matcher: =LEVEL=, property comparisons for text, numbers, regexps and times, =/TODO|NEXT= and =/!=. =format-time-string= formats (flags, widths, =%N=, =%z=) are Emacs's, in capture templates and table formulas; =%%= is no longer an escape. =js= blocks lay results out as Org does (tables, lists, examples, =:wrap=, =append= and =prepend=), and =:var= takes =name[1,2]= indexes, quoted lists, =:colnames=, =:rownames= and =:hlines=, with =:prologue= and =:epilogue=. Calendar export wraps descriptions at 70 columns as Emacs does. Citations and the As-org bibliography follow Emacs. The =examples/= cookbook gains an index and files for cookies, clock tables, match queries, Babel and calendar export.
+Verified: match, time-format, Babel and calendar cases, and the new example files, compared with Emacs 29.3.
+
 * v615 — As-org and HTML export match Emacs
 As-org is now in the Export menu and writes what Emacs writes: lower-case keywords, aligned tags and tables, no priority, planning, property or LOGBOOK lines unless =#+OPTIONS:= asks, and export blocks for other back ends dropped. HTML export shows checkboxes as text (=[X]=, =[-]=) like Emacs, splits time ranges, applies smart quotes, encodes spaces in URLs and leaves =align= environments unescaped. Table formulas show complex comparisons and impossible dates as written. The Markdown exporter is removed.
 Verified: 261 As-org cases and the HTML cases compared with Emacs 29.3.
