@@ -1,0 +1,106 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Lists</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">one
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">two [X]
+</text:p>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">nested a
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">nested b [-]
+</text:p>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">deep one
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">deep two
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+</text:list>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">three [ ]
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">first
+</text:p>
+</text:list-item>
+<text:list-item text:start-value="5">
+<text:p text:style-name="Text_20_body">fifth
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">sixth
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">definition one
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">definition with more text
+</text:p>
+<text:p text:style-name="Text_20_body">second para
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">:: no term
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">item with table
+</text:p>
+</text:list-item>
+</text:list>
+<text:section text:style-name="OrgIndentedSection-Level-1" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsRight">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsRight">b</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsRight">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsRight">2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-header>
+<text:p text:style-name="Text_20_body">after table
+</text:p>
+</text:list-header>
+<text:list-item>
+<text:p text:style-name="Text_20_body">last
+</text:p>
+</text:list-item>
+</text:list>

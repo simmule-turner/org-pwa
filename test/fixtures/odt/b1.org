@@ -1,0 +1,67 @@
+#+TITLE: Blocks
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+#+BEGIN_SRC python
+def f(x):
+    return x  # comment
+#+END_SRC
+
+#+CAPTION: A listing
+#+NAME: lst
+#+BEGIN_SRC emacs-lisp -n -r
+(setq a 1) (ref:one)
+(setq b 2)
+#+END_SRC
+
+See [[(one)]] and [[lst]].
+
+#+BEGIN_EXAMPLE
+  example   text
+	tab line
+#+END_EXAMPLE
+
+: fixed width
+:   indented
+
+#+BEGIN_QUOTE
+Quoted *bold* text.
+
+Second para.
+#+END_QUOTE
+
+#+BEGIN_CENTER
+Centered.
+#+END_CENTER
+
+#+BEGIN_VERSE
+Verse line 1
+  indented line 2
+#+END_VERSE
+
+#+BEGIN_EXPORT odt
+<text:p>raw odt</text:p>
+#+END_EXPORT
+
+#+ODT: <text:p>kw odt</text:p>
+
+@@odt:<text:span>snippet</text:span>@@ after.
+
+-----
+
+#+BEGIN_ANNOTATION
+Note.
+#+END_ANNOTATION
+
+#+BEGIN_foo
+special
+#+END_foo
+
+:DRAWER:
+in drawer
+:END:
+
+\begin{equation}
+x^2
+\end{equation}
+
+Inline $a^2$ and \(b\) and H_2O and E=mc^2 and x_{ab}^{cd} and \alpha \beta\nbsp{}x \copy.

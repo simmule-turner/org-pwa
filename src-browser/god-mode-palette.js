@@ -56,6 +56,7 @@ import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
+import { openAgendaCommands, openQueryView } from './agenda-query-view.js';
 
 export function globalCycleFold() {
   if (!S.state.doc) return;
@@ -577,6 +578,9 @@ export function paletteCommandList() {
     { id: 'contacts-rebuild', label: 'Rebuild contacts from the contacts files', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'reset', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true, rebuild: true }) },
     { id: 'calendar-rebuild', label: 'Rebuild calendar from the agenda', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'reset'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true, rebuild: true }) },
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
+    { id: 'tags-view', label: 'Match tags, properties and TODO state', orgName: 'org-tags-view', group: 'View', keywords: ['tags', 'match', 'find', 'query'], needs: ['doc'], run: () => openQueryView('tags') },
+    { id: 'search-view', label: 'Search for keywords in the agenda files', orgName: 'org-search-view', group: 'View', keywords: ['find', 'words', 'phrase'], needs: ['doc'], run: () => openQueryView('search') },
+    { id: 'agenda-commands', label: 'Agenda commands', orgName: 'org-agenda-custom-commands', group: 'View', keywords: ['saved', 'queries', 'dispatcher'], needs: ['doc'], run: () => openAgendaCommands() },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },

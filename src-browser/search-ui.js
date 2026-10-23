@@ -20,6 +20,7 @@ import { agendaFilesCache } from './singletons.js';
 import { switchToTab } from './tabs.js';
 import { VH_UNIT, appendSnippetWithHighlight, tableActionButton } from './ui-widgets.js';
 import { promptText } from './dialogs.js';
+import { openQueryView, saveQueryAsCommand } from './agenda-query-view.js';
 
 export function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
@@ -179,6 +180,26 @@ export function renderSearchOptionsMenu() {
         if (S.searchUseMatch) S.searchUseRegex = false; // mutually exclusive: selecting Match turns off Regex
         renderMinibufferSearch();
         renderSearchResults();
+      })
+    );
+  }
+  if (S.currentView !== 'text') {
+    // the panel's query as an Agenda view: Match as Match, Regex as a {regexp} word, anything else as Search words
+    const asView = () => {
+      const query = S.searchQuery.trim();
+      const kind = S.searchUseMatch ? 'tags' : 'search';
+      const text = S.searchUseRegex ? `{${query}}` : query;
+      S.searchOpen = false;
+      S.searchQuery = '';
+      S.searchOptionsMenuOpen = false;
+      renderSearchPanel();
+      openQueryView(kind, { query: text });
+    };
+    optionsRow.appendChild(optionButton('Open as Agenda view', false, S.searchQuery.trim() === '', asView));
+    optionsRow.appendChild(
+      optionButton('Save as agenda command…', false, S.searchQuery.trim() === '', () => {
+        const query = S.searchQuery.trim();
+        saveQueryAsCommand(S.searchUseMatch ? 'tags' : 'search', S.searchUseRegex ? `{${query}}` : query, false);
       })
     );
   }

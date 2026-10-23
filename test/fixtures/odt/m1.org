@@ -1,0 +1,22 @@
+#+TITLE: Misc 2
+#+AUTHOR: Me
+#+EMAIL: me@x.org
+#+OPTIONS: toc:nil email:t creator:t d:t
+* Heading with drawer
+:LOGBOOK:
+CLOCK: [2024-05-06 Mon 10:00]--[2024-05-06 Mon 11:00] =>  1:00
+:END:
+:MYDRAWER:
+drawer text
+:END:
+CLOCK: [2024-05-06 Mon 10:00]--[2024-05-06 Mon 11:00] =>  1:00
+Text.
+
+- [ ] a
+- [X] b
+  continued line
+- [-] c
+  - [ ] c1
+
+1. [@3] three
+   - sub

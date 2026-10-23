@@ -1,401 +1,130 @@
 [
-{
-"org": "#+TITLE: Cal\n* Dentist <2026-10-20 Tue 09:00-10:00> :health:\nBring the card.\n:PROPERTIES:\n:LOCATION: Main St\n:END:\n* TODO Report\nSCHEDULED: <2026-10-18 Sun> DEADLINE: <2026-10-25 Sun -3d>\n* Pay rent\nDEADLINE: <2026-11-01 Sun +1m>\n* Meeting <2026-10-21 Wed 14:00>\n* DONE Old\nSCHEDULED: <2026-10-01 Thu>\n",
-"js": {}
-},
-{
-"org": "* Plain <2026-10-20 Tue>\n* Range <2026-10-20 Tue>--<2026-10-22 Thu>\n* Timed range <2026-10-20 Tue 09:00>--<2026-10-20 Tue 11:30>\n* Weekly <2026-10-20 Tue 08:00 +1w>\n* Hourly <2026-10-20 Tue 08:00 ++2h>\n",
-"js": {}
-},
-{
-"org": "* Two <2026-10-20 Tue> and <2026-10-21 Wed 10:00>\nText with <2026-10-22 Thu> and [2026-10-23 Fri] inside.\n",
-"js": {}
-},
-{
-"org": "* Inactive [2026-10-20 Tue]\n",
-"lisp": "((org-icalendar-with-timestamps 'inactive))",
-"js": {
-"withTimestamps": "inactive"
-}
-},
-{
-"org": "* Both <2026-10-20 Tue> [2026-10-21 Wed]\n",
-"lisp": "((org-icalendar-with-timestamps t))",
-"js": {
-"withTimestamps": "t"
-}
-},
-{
-"org": "* None <2026-10-20 Tue>\n",
-"lisp": "((org-icalendar-with-timestamps nil))",
-"js": {
-"withTimestamps": "nil"
-}
-},
-{
-"org": "* Event\nDEADLINE: <2026-10-20 Tue 17:00>\n* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\n",
-"lisp": "((org-icalendar-use-deadline '(event-if-todo event-if-not-todo)))",
-"js": {
-"useDeadline": [
-"event-if-todo",
-"event-if-not-todo"
-]
-}
-},
-{
-"org": "* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\nSCHEDULED: <2026-10-20 Tue>\n* Plain\nSCHEDULED: <2026-10-23 Fri>\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-todo-not-done event-if-not-todo)))",
-"js": {
-"useScheduled": [
-"event-if-todo-not-done",
-"event-if-not-todo"
-]
-}
-},
-{
-"org": "* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\nSCHEDULED: <2026-10-20 Tue>\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-todo)) (org-icalendar-use-deadline '(event-if-todo)))",
-"js": {
-"useDeadline": [
-"event-if-todo"
-],
-"useScheduled": [
-"event-if-todo"
-]
-}
-},
-{
-"org": "* TODO [#A] Task one :work:\nSCHEDULED: <2026-10-19 Mon>\nDEADLINE: <2026-10-30 Fri>\n* DONE Finished\nSCHEDULED: <2026-10-20 Tue>\n* TODO [#C] Low\nSCHEDULED: <2026-10-21 Wed>\n",
-"lisp": "((org-icalendar-include-todo t))",
-"js": {
-"includeTodo": "t"
-}
-},
-{
-"org": "* TODO Parent\nSCHEDULED: <2026-10-19 Mon>\n** TODO Child\nSCHEDULED: <2026-10-20 Tue>\n* TODO Alone\nSCHEDULED: <2026-10-21 Wed>\n",
-"lisp": "((org-icalendar-include-todo 'unblocked))",
-"js": {
-"includeTodo": "unblocked"
-}
-},
-{
-"org": "* TODO A\nSCHEDULED: <2026-10-19 Mon>\n* DONE B\nSCHEDULED: <2026-10-20 Tue>\n",
-"lisp": "((org-icalendar-include-todo 'all))",
-"js": {
-"includeTodo": "all"
-}
-},
-{
-"org": "* TODO Ordered\n:PROPERTIES:\n:ORDERED: t\n:END:\n** TODO One\nSCHEDULED: <2026-10-19 Mon>\n** TODO Two\nSCHEDULED: <2026-10-20 Tue>\n",
-"lisp": "((org-icalendar-include-todo 'unblocked))",
-"js": {
-"includeTodo": "unblocked"
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:APPT_WARNTIME: 15\n:END:\n* Other <2026-10-21 Wed 10:00>\n* Allday <2026-10-22 Thu>\n:PROPERTIES:\n:APPT_WARNTIME: 15\n:END:\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n* Allday <2026-10-22 Thu>\n",
-"lisp": "((org-icalendar-alarm-time 20))",
-"js": {
-"alarmTime": 20
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n",
-"lisp": "((org-icalendar-alarm-time 0) (org-icalendar-force-alarm t))",
-"js": {
-"alarmTime": 0,
-"forceAlarm": true
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n",
-"lisp": "((org-agenda-default-appointment-duration 60))",
-"js": {
-"appointmentDuration": 60
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n",
-"lisp": "((org-icalendar-date-time-format \";TZID=%Z:%Y%m%dT%H%M%S\"))",
-"js": {
-"dateTimeFormat": ";TZID=%Z:%Y%m%dT%H%M%S"
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:TIMEZONE: Europe/London\n:END:\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:SUMMARY: Custom, summary; here\n:DESCRIPTION: Custom description\n:LOCATION: Room 5, Floor 2\n:CLASS: PRIVATE\n:END:\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00> :a:b:\n",
-"lisp": "((org-icalendar-categories '(all-tags todo-state)))",
-"js": {
-"categories": [
-"all-tags",
-"todo-state"
-]
-}
-},
-{
-"org": "#+CATEGORY: work\n* TODO Meeting <2026-10-20 Tue 10:00> :a:\n",
-"lisp": "((org-icalendar-categories '(todo-state category local-tags)))",
-"js": {
-"categories": [
-"todo-state",
-"category",
-"local-tags"
-]
-}
-},
-{
-"org": "* Parent :p:\n:PROPERTIES:\n:CATEGORY: home\n:END:\n** Child <2026-10-20 Tue> :c:\n",
-"lisp": "((org-icalendar-categories '(all-tags category)))",
-"js": {
-"categories": [
-"all-tags",
-"category"
-]
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nA paragraph that is long enough to need filling when it is written out as plain text by the ASCII back end, over 72 columns.\n\n- item one\n- item two\n\n| a | b |\n|---+---|\n| 1 | 2 |\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nThis text is cut off after twenty characters.\n",
-"lisp": "((org-icalendar-include-body 20))",
-"js": {
-"includeBody": 20
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nNo body wanted.\n",
-"lisp": "((org-icalendar-include-body nil))",
-"js": {
-"includeBody": false
-}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nSome *bold* and /italic/ and =verbatim= text with [[https://example.org][a link]].\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:LOGBOOK:\nCLOCK: [2026-10-01 Thu 10:00]--[2026-10-01 Thu 11:00] =>  1:00\n:END:\nBody.\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n#+BEGIN_SRC emacs-lisp\n(message \"<2026-10-21 Wed>\")\n#+END_SRC\n=<2026-10-22 Thu>= and ~<2026-10-23 Fri>~\n",
-"js": {}
-},
-{
-"org": "* Parent <2026-10-20 Tue>\nText <2026-10-21 Wed>\n** Child <2026-10-22 Thu>\nChild text <2026-10-23 Fri>\n* Next <2026-10-24 Sat>\n",
-"js": {}
-},
-{
-"org": "* COMMENT Hidden <2026-10-20 Tue>\n* Visible <2026-10-21 Wed>\n** COMMENT Sub <2026-10-22 Thu>\n",
-"js": {}
-},
-{
-"org": "* Archived <2026-10-20 Tue> :ARCHIVE:\nBody <2026-10-21 Wed>\n** Child <2026-10-22 Thu>\n* Normal <2026-10-23 Fri>\n",
-"js": {}
-},
-{
-"org": "* Skip <2026-10-20 Tue> :private:\n* Keep <2026-10-21 Wed>\n",
-"lisp": "((org-icalendar-exclude-tags '(\"private\")))",
-"js": {
-"excludeTags": [
-"private"
-]
-}
-},
-{
-"org": "#+ICALENDAR_EXCLUDE_TAGS: private\n* Skip <2026-10-20 Tue> :private:\n* Keep <2026-10-21 Wed> :noexport:\n",
-"js": {}
-},
-{
-"org": "#+TITLE: A calendar\n#+AUTHOR: Jane Doe\n* Meeting <2026-10-20 Tue 10:00>\n",
-"js": {}
-},
-{
-"org": "* Dated\nDEADLINE: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n",
-"js": {}
-},
-{
-"org": "* Dated, with a title that is long enough that the SUMMARY line has to be folded over the 75 character limit <2026-10-20 Tue>\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:ID: myid-1234\n:END:\n",
-"js": {}
-},
-{
-"org": "* Deadline with ID\nDEADLINE: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n:PROPERTIES:\n:ID: myid-5678\n:END:\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)))",
-"js": {
-"useScheduled": [
-"event-if-not-todo"
-]
-}
-},
-{
-"org": "* Sing \"quoted\" & <2026-10-20 Tue> with \\ backslash; semicolon, comma\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nFirst line\nsecond line\n\nSecond paragraph.\n",
-"js": {}
-},
-{
-"org": "* Scheduled\nSCHEDULED: <2026-10-20 Tue 09:00-10:30>\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)))",
-"js": {
-"useScheduled": [
-"event-if-not-todo"
-]
-}
-},
-{
-"org": "* Prefixes\nSCHEDULED: <2026-10-20 Tue>\nDEADLINE: <2026-10-21 Wed>\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)) (org-icalendar-scheduled-summary-prefix \"Plan: \") (org-icalendar-deadline-summary-prefix \"Due \"))",
-"js": {
-"useScheduled": [
-"event-if-not-todo"
-],
-"scheduledPrefix": "Plan: ",
-"deadlinePrefix": "Due "
-}
-},
-{
-"org": "* See [[https://x.org][the site]] and *bold* <2026-10-20 Tue>\nA [[https://example.org][link]] and [[file:notes.org]] in text.\n",
-"js": {}
-},
-{
-"org": "* TODO [#A] Pay bills :money:home: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n",
-"js": {}
-},
-{
-"org": "* Parent\n:PROPERTIES:\n:LOCATION: HQ\n:CLASS: PRIVATE\n:END:\n** Child <2026-10-20 Tue 10:00>\n",
-"js": {}
-},
-{
-"org": "* Repeats\nDEADLINE: <2026-10-20 Tue +1w -2d>\n* Habit\nDEADLINE: <2026-10-21 Wed .+1d>\n",
-"lisp": "((org-icalendar-use-deadline '(event-if-not-todo)))",
-"js": {
-"useDeadline": [
-"event-if-not-todo"
-]
-}
-},
-{
-"org": "* Repeating range <2026-10-20 Tue 09:00-10:00 +1w>\n",
-"js": {}
-},
-{
-"org": "* Footnoted <2026-10-20 Tue>\nText with a note[fn:1].\n\n[fn:1] The note.\n",
-"js": {}
-},
-{
-"org": "* <2026-10-20 Tue>\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n# a comment\nVisible text.\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:WHEN: <2026-10-25 Sun>\n:END:\nBody.\n",
-"js": {}
-},
-{
-"org": "* Greek \\alpha and a -- dash... <2026-10-20 Tue>\nMore \\beta text -- here.\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\n1. first\n2. second\n   - [ ] nested box\n   - [X] done box\n\n#+BEGIN_QUOTE\nQuoted words.\n#+END_QUOTE\n\n#+BEGIN_EXAMPLE\nexample  text\n#+END_EXAMPLE\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nText.\n#+BEGIN_SRC python\nprint(1)\n#+END_SRC\n",
-"js": {}
-},
-{
-"org": "* Done thing <2026-10-20 Tue>\nCLOSED: [2026-10-20 Tue 12:00]\n* DONE Closed task\nCLOSED: [2026-10-20 Tue 12:00] SCHEDULED: <2026-10-19 Mon>\n",
-"lisp": "((org-icalendar-use-scheduled '(event-if-todo)))",
-"js": {
-"useScheduled": [
-"event-if-todo"
-]
-}
-},
-{
-"org": "#+TODO: TODO NEXT | DONE CANCELLED\n* NEXT Next thing\nSCHEDULED: <2026-10-20 Tue>\n* CANCELLED Gone\nSCHEDULED: <2026-10-21 Wed>\n",
-"lisp": "((org-icalendar-include-todo t))",
-"js": {
-"includeTodo": "t"
-}
-},
-{
-"org": "* Top <2026-10-20 Tue>\n** Target heading <2026-10-21 Wed> :t:\nTarget body <2026-10-22 Thu>\n*** Sub <2026-10-23 Fri>\n** Other <2026-10-24 Sat>\n",
-"subtree": "^\\\\*\\\\* Target",
-"js": {}
-},
-{
-"org": "* Event\n:PROPERTIES:\n:CATEGORY: private\n:END:\n** Inner <2026-10-20 Tue>\n",
-"js": {}
-},
-{
-"org": "* Multi\n<2026-10-20 Tue 09:00>\n<2026-10-21 Wed 09:00>\n",
-"js": {}
-},
-{
-"org": "* Table <2026-10-20 Tue>\n| Name | When |\n|------+------|\n| A    | <2026-10-21 Wed> |\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 23:30>\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 23:30-23:45>\n",
-"js": {}
-},
-{
-"org": "* Late <2026-10-31 Sat>--<2026-11-02 Mon>\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w1\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17 w\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29\n",
-"js": {}
-},
-{
-"org": "* Meeting <2026-10-20 Tue 10:00>\nLine one is here.\nLine two is long enough to wrap around the fill column of seventy, yes it is.\n",
-"js": {}
-}
+{"org": "#+TITLE: Cal\n* Dentist <2026-10-20 Tue 09:00-10:00> :health:\nBring the card.\n:PROPERTIES:\n:LOCATION: Main St\n:END:\n* TODO Report\nSCHEDULED: <2026-10-18 Sun> DEADLINE: <2026-10-25 Sun -3d>\n* Pay rent\nDEADLINE: <2026-11-01 Sun +1m>\n* Meeting <2026-10-21 Wed 14:00>\n* DONE Old\nSCHEDULED: <2026-10-01 Thu>\n", "js": {}},
+{"org": "* Plain <2026-10-20 Tue>\n* Range <2026-10-20 Tue>--<2026-10-22 Thu>\n* Timed range <2026-10-20 Tue 09:00>--<2026-10-20 Tue 11:30>\n* Weekly <2026-10-20 Tue 08:00 +1w>\n* Hourly <2026-10-20 Tue 08:00 ++2h>\n", "js": {}},
+{"org": "* Two <2026-10-20 Tue> and <2026-10-21 Wed 10:00>\nText with <2026-10-22 Thu> and [2026-10-23 Fri] inside.\n", "js": {}},
+{"org": "* Inactive [2026-10-20 Tue]\n", "lisp": "((org-icalendar-with-timestamps 'inactive))", "js": {"withTimestamps": "inactive"}},
+{"org": "* Both <2026-10-20 Tue> [2026-10-21 Wed]\n", "lisp": "((org-icalendar-with-timestamps t))", "js": {"withTimestamps": "t"}},
+{"org": "* None <2026-10-20 Tue>\n", "lisp": "((org-icalendar-with-timestamps nil))", "js": {"withTimestamps": "nil"}},
+{"org": "* Event\nDEADLINE: <2026-10-20 Tue 17:00>\n* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\n", "lisp": "((org-icalendar-use-deadline '(event-if-todo event-if-not-todo)))", "js": {"useDeadline": ["event-if-todo", "event-if-not-todo"]}},
+{"org": "* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\nSCHEDULED: <2026-10-20 Tue>\n* Plain\nSCHEDULED: <2026-10-23 Fri>\n", "lisp": "((org-icalendar-use-scheduled '(event-if-todo-not-done event-if-not-todo)))", "js": {"useScheduled": ["event-if-todo-not-done", "event-if-not-todo"]}},
+{"org": "* TODO Task\nDEADLINE: <2026-10-21 Wed>\nSCHEDULED: <2026-10-19 Mon>\n* DONE Finished\nDEADLINE: <2026-10-22 Thu>\nSCHEDULED: <2026-10-20 Tue>\n", "lisp": "((org-icalendar-use-scheduled '(event-if-todo)) (org-icalendar-use-deadline '(event-if-todo)))", "js": {"useDeadline": ["event-if-todo"], "useScheduled": ["event-if-todo"]}},
+{"org": "* TODO [#A] Task one :work:\nSCHEDULED: <2026-10-19 Mon>\nDEADLINE: <2026-10-30 Fri>\n* DONE Finished\nSCHEDULED: <2026-10-20 Tue>\n* TODO [#C] Low\nSCHEDULED: <2026-10-21 Wed>\n", "lisp": "((org-icalendar-include-todo t))", "js": {"includeTodo": "t"}},
+{"org": "* TODO Parent\nSCHEDULED: <2026-10-19 Mon>\n** TODO Child\nSCHEDULED: <2026-10-20 Tue>\n* TODO Alone\nSCHEDULED: <2026-10-21 Wed>\n", "lisp": "((org-icalendar-include-todo 'unblocked))", "js": {"includeTodo": "unblocked"}},
+{"org": "* TODO A\nSCHEDULED: <2026-10-19 Mon>\n* DONE B\nSCHEDULED: <2026-10-20 Tue>\n", "lisp": "((org-icalendar-include-todo 'all))", "js": {"includeTodo": "all"}},
+{"org": "* TODO Ordered\n:PROPERTIES:\n:ORDERED: t\n:END:\n** TODO One\nSCHEDULED: <2026-10-19 Mon>\n** TODO Two\nSCHEDULED: <2026-10-20 Tue>\n", "lisp": "((org-icalendar-include-todo 'unblocked))", "js": {"includeTodo": "unblocked"}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:APPT_WARNTIME: 15\n:END:\n* Other <2026-10-21 Wed 10:00>\n* Allday <2026-10-22 Thu>\n:PROPERTIES:\n:APPT_WARNTIME: 15\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n* Allday <2026-10-22 Thu>\n", "lisp": "((org-icalendar-alarm-time 20))", "js": {"alarmTime": 20}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n", "lisp": "((org-icalendar-alarm-time 0) (org-icalendar-force-alarm t))", "js": {"alarmTime": 0, "forceAlarm": true}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n", "lisp": "((org-agenda-default-appointment-duration 60))", "js": {"appointmentDuration": 60}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n", "lisp": "((org-icalendar-date-time-format \";TZID=%Z:%Y%m%dT%H%M%S\"))", "js": {"dateTimeFormat": ";TZID=%Z:%Y%m%dT%H%M%S"}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:TIMEZONE: Europe/London\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:SUMMARY: Custom, summary; here\n:DESCRIPTION: Custom description\n:LOCATION: Room 5, Floor 2\n:CLASS: PRIVATE\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00> :a:b:\n", "lisp": "((org-icalendar-categories '(all-tags todo-state)))", "js": {"categories": ["all-tags", "todo-state"]}},
+{"org": "#+CATEGORY: work\n* TODO Meeting <2026-10-20 Tue 10:00> :a:\n", "lisp": "((org-icalendar-categories '(todo-state category local-tags)))", "js": {"categories": ["todo-state", "category", "local-tags"]}},
+{"org": "* Parent :p:\n:PROPERTIES:\n:CATEGORY: home\n:END:\n** Child <2026-10-20 Tue> :c:\n", "lisp": "((org-icalendar-categories '(all-tags category)))", "js": {"categories": ["all-tags", "category"]}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nA paragraph that is long enough to need filling when it is written out as plain text by the ASCII back end, over 72 columns.\n\n- item one\n- item two\n\n| a | b |\n|---+---|\n| 1 | 2 |\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nThis text is cut off after twenty characters.\n", "lisp": "((org-icalendar-include-body 20))", "js": {"includeBody": 20}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nNo body wanted.\n", "lisp": "((org-icalendar-include-body nil))", "js": {"includeBody": false}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nSome *bold* and /italic/ and =verbatim= text with [[https://example.org][a link]].\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:LOGBOOK:\nCLOCK: [2026-10-01 Thu 10:00]--[2026-10-01 Thu 11:00] =>  1:00\n:END:\nBody.\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n#+BEGIN_SRC emacs-lisp\n(message \"<2026-10-21 Wed>\")\n#+END_SRC\n=<2026-10-22 Thu>= and ~<2026-10-23 Fri>~\n", "js": {}},
+{"org": "* Parent <2026-10-20 Tue>\nText <2026-10-21 Wed>\n** Child <2026-10-22 Thu>\nChild text <2026-10-23 Fri>\n* Next <2026-10-24 Sat>\n", "js": {}},
+{"org": "* COMMENT Hidden <2026-10-20 Tue>\n* Visible <2026-10-21 Wed>\n** COMMENT Sub <2026-10-22 Thu>\n", "js": {}},
+{"org": "* Archived <2026-10-20 Tue> :ARCHIVE:\nBody <2026-10-21 Wed>\n** Child <2026-10-22 Thu>\n* Normal <2026-10-23 Fri>\n", "js": {}},
+{"org": "* Skip <2026-10-20 Tue> :private:\n* Keep <2026-10-21 Wed>\n", "lisp": "((org-icalendar-exclude-tags '(\"private\")))", "js": {"excludeTags": ["private"]}},
+{"org": "#+ICALENDAR_EXCLUDE_TAGS: private\n* Skip <2026-10-20 Tue> :private:\n* Keep <2026-10-21 Wed> :noexport:\n", "js": {}},
+{"org": "#+TITLE: A calendar\n#+AUTHOR: Jane Doe\n* Meeting <2026-10-20 Tue 10:00>\n", "js": {}},
+{"org": "* Dated\nDEADLINE: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n", "js": {}},
+{"org": "* Dated, with a title that is long enough that the SUMMARY line has to be folded over the 75 character limit <2026-10-20 Tue>\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:ID: myid-1234\n:END:\n", "js": {}},
+{"org": "* Deadline with ID\nDEADLINE: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n:PROPERTIES:\n:ID: myid-5678\n:END:\n", "lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)))", "js": {"useScheduled": ["event-if-not-todo"]}},
+{"org": "* Sing \"quoted\" & <2026-10-20 Tue> with \\ backslash; semicolon, comma\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nFirst line\nsecond line\n\nSecond paragraph.\n", "js": {}},
+{"org": "* Scheduled\nSCHEDULED: <2026-10-20 Tue 09:00-10:30>\n", "lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)))", "js": {"useScheduled": ["event-if-not-todo"]}},
+{"org": "* Prefixes\nSCHEDULED: <2026-10-20 Tue>\nDEADLINE: <2026-10-21 Wed>\n", "lisp": "((org-icalendar-use-scheduled '(event-if-not-todo)) (org-icalendar-scheduled-summary-prefix \"Plan: \") (org-icalendar-deadline-summary-prefix \"Due \"))", "js": {"useScheduled": ["event-if-not-todo"], "scheduledPrefix": "Plan: ", "deadlinePrefix": "Due "}},
+{"org": "* See [[https://x.org][the site]] and *bold* <2026-10-20 Tue>\nA [[https://example.org][link]] and [[file:notes.org]] in text.\n", "js": {}},
+{"org": "* TODO [#A] Pay bills :money:home: <2026-10-20 Tue>\nSCHEDULED: <2026-10-19 Mon>\n", "js": {}},
+{"org": "* Parent\n:PROPERTIES:\n:LOCATION: HQ\n:CLASS: PRIVATE\n:END:\n** Child <2026-10-20 Tue 10:00>\n", "js": {}},
+{"org": "* Repeats\nDEADLINE: <2026-10-20 Tue +1w -2d>\n* Habit\nDEADLINE: <2026-10-21 Wed .+1d>\n", "lisp": "((org-icalendar-use-deadline '(event-if-not-todo)))", "js": {"useDeadline": ["event-if-not-todo"]}},
+{"org": "* Repeating range <2026-10-20 Tue 09:00-10:00 +1w>\n", "js": {}},
+{"org": "* Footnoted <2026-10-20 Tue>\nText with a note[fn:1].\n\n[fn:1] The note.\n", "js": {}},
+{"org": "* <2026-10-20 Tue>\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n# a comment\nVisible text.\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:WHEN: <2026-10-25 Sun>\n:END:\nBody.\n", "js": {}},
+{"org": "* Greek \\alpha and a -- dash... <2026-10-20 Tue>\nMore \\beta text -- here.\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n1. first\n2. second\n   - [ ] nested box\n   - [X] done box\n\n#+BEGIN_QUOTE\nQuoted words.\n#+END_QUOTE\n\n#+BEGIN_EXAMPLE\nexample  text\n#+END_EXAMPLE\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nText.\n#+BEGIN_SRC python\nprint(1)\n#+END_SRC\n", "js": {}},
+{"org": "* Done thing <2026-10-20 Tue>\nCLOSED: [2026-10-20 Tue 12:00]\n* DONE Closed task\nCLOSED: [2026-10-20 Tue 12:00] SCHEDULED: <2026-10-19 Mon>\n", "lisp": "((org-icalendar-use-scheduled '(event-if-todo)))", "js": {"useScheduled": ["event-if-todo"]}},
+{"org": "#+TODO: TODO NEXT | DONE CANCELLED\n* NEXT Next thing\nSCHEDULED: <2026-10-20 Tue>\n* CANCELLED Gone\nSCHEDULED: <2026-10-21 Wed>\n", "lisp": "((org-icalendar-include-todo t))", "js": {"includeTodo": "t"}},
+{"org": "* Top <2026-10-20 Tue>\n** Target heading <2026-10-21 Wed> :t:\nTarget body <2026-10-22 Thu>\n*** Sub <2026-10-23 Fri>\n** Other <2026-10-24 Sat>\n", "subtree": "^\\\\*\\\\* Target", "js": {}},
+{"org": "* Event\n:PROPERTIES:\n:CATEGORY: private\n:END:\n** Inner <2026-10-20 Tue>\n", "js": {}},
+{"org": "* Multi\n<2026-10-20 Tue 09:00>\n<2026-10-21 Wed 09:00>\n", "js": {}},
+{"org": "* Table <2026-10-20 Tue>\n| Name | When |\n|------+------|\n| A    | <2026-10-21 Wed> |\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 23:30>\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 23:30-23:45>\n", "js": {}},
+{"org": "* Late <2026-10-31 Sat>--<2026-11-02 Mon>\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w1\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17 w\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nw00 w01 w02 w03 w04 w05 w06 w07 w08 w09 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\nLine one is here.\nLine two is long enough to wrap around the fill column of seventy, yes it is.\n", "js": {}},
+{"org": "* Before fall back <2026-11-01 Sun 00:30>\n* During <2026-11-01 Sun 01:30>\n* After <2026-11-01 Sun 03:00>\n", "js": {}},
+{"org": "* Spring forward <2027-03-14 Sun 02:30>\n* Next <2027-03-14 Sun 03:30-04:30>\n", "js": {}},
+{"org": "* Yearly <2026-10-20 Tue +1y>\n* Daily <2026-10-20 Tue 06:00 +1d>\n* Monthly <2026-10-31 Sat ++1m>\n* Catch <2026-10-20 Tue .+2w>\n", "js": {}},
+{"org": "* Two year range <2026-10-20 Tue 09:00 +1y>--<2026-10-20 Tue 10:00 +1y>\n", "js": {}},
+{"org": "* Warning <2026-10-20 Tue -3d>\n* Both <2026-10-21 Wed +1w -1d>\n", "js": {}},
+{"org": "* Across midnight <2026-10-20 Tue 22:00>--<2026-10-21 Wed 02:00>\n", "js": {}},
+{"org": "* Long range <2026-10-20 Tue 09:00>--<2026-10-23 Fri 17:00>\n", "js": {}},
+{"org": "* Ends midnight <2026-10-20 Tue 20:00-24:00>\n", "js": {}},
+{"org": "* Time words <2026-10-20 Tue 9:05>\n* One digit <2026-10-21 Wed 7:00-8:00>\n", "js": {}},
+{"org": "* TODO Task no dates\n* TODO Task scheduled\nSCHEDULED: <2026-10-20 Tue>\n* TODO Task deadline\nDEADLINE: <2026-10-22 Thu>\n", "js": {"includeTodo": "t"}, "lisp": "((org-icalendar-include-todo t))"},
+{"org": "* TODO Both dates\nSCHEDULED: <2026-10-20 Tue 09:00>\nDEADLINE: <2026-10-22 Thu 17:00>\n", "js": {"includeTodo": "t", "useDeadline": ["todo-due", "event-if-todo"], "useScheduled": ["todo-start", "event-if-todo"]}, "lisp": "((org-icalendar-include-todo t) (org-icalendar-use-deadline '(todo-due event-if-todo)) (org-icalendar-use-scheduled '(todo-start event-if-todo)))"},
+{"org": "* TODO Todo with ts <2026-10-20 Tue>\n* NEXT Other keyword <2026-10-21 Wed>\n", "js": {"includeTodo": "t"}, "lisp": "((org-icalendar-include-todo t))"},
+{"org": "* DONE Done with closed\nCLOSED: [2026-10-20 Tue 08:00]\nSCHEDULED: <2026-10-19 Mon>\n", "js": {"includeTodo": "all"}, "lisp": "((org-icalendar-include-todo 'all))"},
+{"org": "* TODO Done-state tasks\nSCHEDULED: <2026-10-20 Tue>\n** DONE Child done\nSCHEDULED: <2026-10-21 Wed>\n** TODO Child open\nSCHEDULED: <2026-10-22 Thu>\n", "js": {"includeTodo": "unblocked"}, "lisp": "((org-icalendar-include-todo 'unblocked))"},
+{"org": "* TODO [#B] Prio\nSCHEDULED: <2026-10-20 Tue>\n* TODO [#C] Low\nSCHEDULED: <2026-10-20 Tue>\n* TODO No prio\nSCHEDULED: <2026-10-20 Tue>\n* TODO [#A] High\nSCHEDULED: <2026-10-20 Tue>\n", "js": {"includeTodo": "t"}, "lisp": "((org-icalendar-include-todo t))"},
+{"org": "* TODO Task :tag:\nSCHEDULED: <2026-10-20 Tue>\nBody text here.\n", "js": {"includeTodo": "t", "categories": ["all-tags", "todo-state"]}, "lisp": "((org-icalendar-include-todo t) (org-icalendar-categories '(all-tags todo-state)))"},
+{"org": "* TODO Task\nSCHEDULED: <2026-10-20 Tue>\n:PROPERTIES:\n:LOCATION: Home\n:END:\nDescription.\n", "js": {"includeTodo": "t"}, "lisp": "((org-icalendar-include-todo t))"},
+{"org": "* TODO Title with [[https://x.org][link]] <2026-10-20 Tue>\n", "js": {}},
+{"org": "* Title with ~code~ and =verb= <2026-10-20 Tue>\n", "js": {}},
+{"org": "* Title [1/3] cookie <2026-10-20 Tue>\n* Title [50%] <2026-10-21 Wed>\n", "js": {}},
+{"org": "* Very long title with many words to force a fold of the summary line past seventy-five octets total <2026-10-20 Tue>\nAnd a very long description line that has no spaces: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n", "js": {}},
+{"org": "* \u00dcn\u00efc\u00f6d\u00e9 t\u00edtle <2026-10-20 Tue 10:00>\nB\u00f6dy with \u00e9moji \ud83d\ude00 and \u65e5\u672c\u8a9e text that is rather long so it may need folding at the right octet boundary here.\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:DESCRIPTION: From property\n:END:\nBody that is ignored?\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:LOCATION: Room 5; Floor 2, Bldg\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:CLASS: CONFIDENTIAL\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:URL: https://example.org/x\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:TIMEZONE: America/Los_Angeles\n:END:\n* All day <2026-10-21 Wed>\n:PROPERTIES:\n:TIMEZONE: Europe/Berlin\n:END:\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:ICALENDAR_EXCLUDE: t\n:END:\n* Other <2026-10-21 Wed>\n", "js": {}},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n:PROPERTIES:\n:APPT_WARNTIME: 0\n:END:\n", "js": {"alarmTime": 15}, "lisp": "((org-icalendar-alarm-time 15))"},
+{"org": "* Meeting <2026-10-20 Tue 10:00>\n* Allday <2026-10-21 Wed>\n", "js": {"alarmTime": 15, "forceAlarm": true}, "lisp": "((org-icalendar-alarm-time 15) (org-icalendar-force-alarm t))"},
+{"org": "* Event <2026-10-20 Tue 10:00>\n", "js": {"alarmTime": 60}, "lisp": "((org-icalendar-alarm-time 60))"},
+{"org": "* Event <2026-10-20 Tue 10:00-10:30>\n", "js": {"appointmentDuration": 90}, "lisp": "((org-agenda-default-appointment-duration 90))"},
+{"org": "* Event <2026-10-20 Tue 10:00>\n", "js": {"withTimestamps": "active"}, "lisp": "((org-icalendar-with-timestamps 'active) (org-agenda-default-appointment-duration nil))"},
+{"org": "#+CATEGORY: top\n* A <2026-10-20 Tue>\n#+CATEGORY: mid\n* B <2026-10-21 Wed>\n", "js": {}},
+{"org": "* Parent\n** Child with <2026-10-20 Tue>\n*** Grandchild with <2026-10-21 Wed>\n**** Deep <2026-10-22 Thu>\n", "js": {}},
+{"org": "* Parent <2026-10-20 Tue>\n:PROPERTIES:\n:LOCATION: HQ\n:END:\n** Child <2026-10-21 Wed>\n:PROPERTIES:\n:LOCATION: Branch\n:END:\n", "js": {}},
+{"org": "* A <2026-10-20 Tue> :x:\n* B <2026-10-21 Wed> :y:z:\n", "js": {"excludeTags": ["y"]}, "lisp": "((org-icalendar-exclude-tags '(\"y\")))"},
+{"org": "* Parent :work:\n** Child <2026-10-20 Tue>\n", "js": {"excludeTags": ["work"]}, "lisp": "((org-icalendar-exclude-tags '(\"work\")))"},
+{"org": "* Top\n** A <2026-10-20 Tue>\n** B <2026-10-21 Wed>\n** C <2026-10-22 Thu>\n", "js": {}, "subtree": "^\\\\*\\\\* B"},
+{"org": "* A\n** Sub <2026-10-20 Tue>\n:PROPERTIES:\n:ID: abc-def\n:END:\n** Other\nDEADLINE: <2026-10-21 Wed>\n", "js": {"useDeadline": ["event-if-not-todo"]}, "lisp": "((org-icalendar-use-deadline '(event-if-not-todo)))"},
+{"org": "#+TITLE: Hello\n#+OPTIONS: toc:nil\n* A <2026-10-20 Tue>\n", "js": {}},
+{"org": "#+SELECT_TAGS: keep\n* A <2026-10-20 Tue> :keep:\n* B <2026-10-21 Wed>\n", "js": {}},
+{"org": "#+EXCLUDE_TAGS: skip\n* A <2026-10-20 Tue> :skip:\n* B <2026-10-21 Wed>\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n#+BEGIN_EXAMPLE\n<2026-10-21 Wed>\n#+END_EXAMPLE\n: <2026-10-22 Thu>\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n[[file:x.org][link <2026-10-21 Wed>]]\n", "js": {}},
+{"org": "* A\n<2026-10-20 Tue>\n\n#+BEGIN_QUOTE\nQuoted <2026-10-21 Wed>\n#+END_QUOTE\n", "js": {}},
+{"org": "* A\n- item with <2026-10-20 Tue>\n- [ ] box with <2026-10-21 Wed 10:00>\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n:LOGBOOK:\n- State \"DONE\" from \"TODO\" [2026-10-19 Mon 10:00]\n:END:\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n:PROPERTIES:\n:Effort: 1:00\n:END:\nBody\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n#+BEGIN_VERSE\nverse line one\n  verse two\n#+END_VERSE\n", "js": {}},
+{"org": "#+EXCLUDE_TAGS: a\n#+ICALENDAR_EXCLUDE_TAGS: b\n* A <2026-10-20 Tue> :a:\n* B <2026-10-21 Wed> :b:\n* C <2026-10-22 Thu> :noexport:\n* D <2026-10-23 Fri>\n", "js": {}},
+{"org": "#+EXCLUDE_TAGS: skip\n* A <2026-10-20 Tue> :noexport:\n* B <2026-10-21 Wed> :skip:\n", "js": {}},
+{"org": "* A <2026-10-20 Tue> :noexport:\n* B <2026-10-21 Wed>\n", "js": {}},
+{"org": "#+EXCLUDE_TAGS: a\n* A <2026-10-20 Tue> :a:\n* B <2026-10-21 Wed> :b:\n", "js": {"excludeTags": ["b"]}, "lisp": "((org-icalendar-exclude-tags '(\"b\")))"},
+{"org": "#+CATEGORY: one\n* A <2026-10-20 Tue>\n* B <2026-10-21 Wed>\n#+CATEGORY: two\n* C <2026-10-22 Thu>\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\n#+CATEGORY: late\n* B <2026-10-21 Wed>\n", "js": {}},
+{"org": "* A <2026-10-20 Tue>\nSee [[https://x.org][site <2026-10-21 Wed> here]] and <2026-10-22 Thu>.\n", "js": {}}
 ]

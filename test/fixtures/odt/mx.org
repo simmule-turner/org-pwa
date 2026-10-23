@@ -1,0 +1,9 @@
+#+TITLE: Math
+#+AUTHOR: Me
+Inline $x^2+1$ and \(\alpha\) here.
+
+\[ \int_0^1 x\,dx = 1/2 \]
+
+\begin{equation}
+E = mc^2
+\end{equation}

@@ -264,12 +264,19 @@ test('solarDaylight truncates to "H:MM" as Emacs’s solar-daylight does', () =>
 });
 
 test('solarSunriseSunset: local rise and set in decimal hours, the zone, and the daylight', () => {
-  const day = new Date(2026, 5, 21);
-  const sun = solarSunriseSunset(day, 35.994, -78.8986);
-  assert.ok(sun.rise !== null && sun.set !== null);
-  assert.match(sun.daylight, /^14:\d\d$/);
-  assert.equal(typeof sun.zone, 'string');
-  assert.ok(Math.abs((((sun.set - sun.rise) % 24) + 24) % 24 - computeDaylightHours(day, 35.994, -78.8986)) < 0.05);
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/New_York'; // sun times are in the device zone
+  try {
+    const day = new Date(2026, 5, 21);
+    const sun = solarSunriseSunset(day, 35.994, -78.8986);
+    assert.ok(sun.rise !== null && sun.set !== null);
+    assert.match(sun.daylight, /^14:\d\d$/);
+    assert.equal(typeof sun.zone, 'string');
+    assert.ok(Math.abs((((sun.set - sun.rise) % 24) + 24) % 24 - computeDaylightHours(day, 35.994, -78.8986)) < 0.05);
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });
 
 test('solarSunriseSunset: the height argument gives the twilights, earlier the lower the sun', () => {

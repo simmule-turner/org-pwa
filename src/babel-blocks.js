@@ -6,6 +6,7 @@
  * its language, header text, name, normalised body, the headings above it, and its position among its heading's blocks.
  */
 import { isCommentedHeading } from './comment-model.js';
+import { removeColumns } from './code-lines.js';
 import { effectiveHeaderArgs } from './babel-args.js';
 
 const BEGIN_SRC_RE = /^(\s*)#\+begin_src(?:\s+(\S+))?(?:[ \t]+(.*))?$/i;
@@ -23,13 +24,7 @@ const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
  * @param {string[]} lines
  */
 export function removeIndentation(lines) {
-  let min = Infinity;
-  for (const l of lines) {
-    if (!l.trim()) continue;
-    min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
-  }
-  if (!Number.isFinite(min) || min === 0) return lines.slice();
-  return lines.map((l) => (l.trim() ? l.slice(min) : ''));
+  return removeColumns(lines).map((l) => (l.trim() ? l : ''));
 }
 
 /**

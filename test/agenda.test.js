@@ -1757,14 +1757,21 @@ test('a heading’s solar-time-string follows the calendarTimeDisplayForm option
 });
 
 test('a %%(let ...) body line builds its sun times from solar-sunrise-sunset, solar-time-string and apply', () => {
-  const doc = parseOrg(`* Sun
-%%(let ((l (solar-sunrise-sunset date))) (format "Sun: %s | %s | %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l)))
-%%(format "Civil dawn %s" (apply 'solar-time-string (car (solar-sunrise-sunset date -6))))
-`);
-  const day = new Date(2026, 9, 20);
-  const run = (/** @type {string} */ form) => buildAgendaItems([{ documentId: 'test.org', doc }], { rangeStart: day, rangeEnd: day, today: day, calendarLatitude: 35.994, calendarLongitude: -78.8986, calendarTimeDisplayForm: form }).map((i) => i.title);
-  const [sun, dawn] = run('(24-hours ":" minutes)');
-  assert.match(sun, /^Sun: \d\d:\d\d \| \d\d:\d\d \| 1[01]:\d\d$/);
-  assert.match(dawn, /^Civil dawn \d\d:\d\d$/);
-  assert.match(run('(12-hours ":" minutes am-pm)')[0], /^Sun: \d{1,2}:\d\d(am|pm) \| \d{1,2}:\d\d(am|pm) \| 1[01]:\d\d$/);
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/New_York'; // sun times are in the device zone
+  try {
+    const doc = parseOrg(`* Sun
+  %%(let ((l (solar-sunrise-sunset date))) (format "Sun: %s | %s | %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l)))
+  %%(format "Civil dawn %s" (apply 'solar-time-string (car (solar-sunrise-sunset date -6))))
+  `);
+    const day = new Date(2026, 9, 20);
+    const run = (/** @type {string} */ form) => buildAgendaItems([{ documentId: 'test.org', doc }], { rangeStart: day, rangeEnd: day, today: day, calendarLatitude: 35.994, calendarLongitude: -78.8986, calendarTimeDisplayForm: form }).map((i) => i.title);
+    const [sun, dawn] = run('(24-hours ":" minutes)');
+    assert.match(sun, /^Sun: \d\d:\d\d \| \d\d:\d\d \| 1[01]:\d\d$/);
+    assert.match(dawn, /^Civil dawn \d\d:\d\d$/);
+    assert.match(run('(12-hours ":" minutes am-pm)')[0], /^Sun: \d{1,2}:\d\d(am|pm) \| \d{1,2}:\d\d(am|pm) \| 1[01]:\d\d$/);
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });

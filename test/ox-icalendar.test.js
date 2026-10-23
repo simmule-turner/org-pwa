@@ -1,3 +1,4 @@
+process.env.TZ = "America/New_York"; // the oracle files were written there; a time skipped by daylight saving time is moved forward only there
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,7 +18,8 @@ const normalize = (/** @type {string} */ ics) =>
 for (const [i, c] of oracle.entries()) {
   test(`calendar export matches Emacs: case ${i} (${JSON.stringify(c.org.slice(0, 45))}${c.lisp ? ' ' + c.lisp.slice(0, 50) : ''})`, () => {
     const doc = parseOrg(c.org);
-    const scope = c.subtree ? doc.children[0].children[0] : null;
+    const walk = (hs) => hs.flatMap((h) => [h, ...walk(h.children || [])]);
+    const scope = c.subtree ? walk(doc.children).find((h) => new RegExp(c.subtree.replace(/\\\\/g, '\\')).test('*'.repeat(h.level) + ' ' + h.title)) : null;
     const ics = exportOrgIcalendar([{ documentId: `cal${i}.org`, doc, name: `cal${i}.org` }], {
       scope,
       stamp: new Date(Date.UTC(2026, 9, 22, 12, 0, 0)),

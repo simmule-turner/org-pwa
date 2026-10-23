@@ -93,6 +93,6 @@ test('org-use-sub-superscripts also reaches ASCII and ODT export, and the file\'
     return readFileSync(path.join(dir, 'content.xml'), 'utf8');
   };
   assert.match(odt(org, '{}'), /Effort_ALL: values/);
-  assert.match(odt(org, 't'), /Effort<text:span text:style-name="Subscript">ALL<\/text:span>/);
-  assert.match(odt('#+OPTIONS: ^:t\n' + org, '{}'), /Effort<text:span text:style-name="Subscript">ALL/);
+  assert.match(odt(org, 't'), /Effort<text:span text:style-name="OrgSubscript">ALL<\/text:span>/);
+  assert.match(odt('#+OPTIONS: ^:t\n' + org, '{}'), /Effort<text:span text:style-name="OrgSubscript">ALL/);
 });

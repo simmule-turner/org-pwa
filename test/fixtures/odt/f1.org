@@ -1,0 +1,14 @@
+#+TITLE: Footnotes
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+Text[fn:1] more[fn:two] anon[fn::inline *def*] again[fn:1].
+
+[fn:1] Def one
+with para.
+
+Second paragraph in def.
+
+[fn:two] Def two.
+
+* Footnotes
+[fn:3] ignored?

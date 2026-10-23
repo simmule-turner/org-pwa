@@ -1,0 +1,20 @@
+#+TITLE: List table
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+#+ATTR_ODT: :list-table t
+- Row1
+  - c1
+  - c2
+- Row2
+  - d1
+  - d2
+
+* Item headings
+** Table in low-level
+***** Low with table
+| a | b |
+
+- list
+  | x | y |
+  | 1 | 2 |
+- more

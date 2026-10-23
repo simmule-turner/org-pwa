@@ -1,0 +1,18 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Entities 2</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Line one<text:line-break/>line two <text:line-break/>line three <text:a xlink:type="simple" xlink:href="http://x.org">http://x.org</text:a>
+<text:line-break/>
+<text:span text:style-name="OrgCode">verb</text:span>
+<text:span text:style-name="OrgCode">code</text:span>
+<text:span text:style-name="Strikethrough">strike</text:span>
+<text:span text:style-name="Underline">under</text:span>
+<text:span text:style-name="Bold">bold</text:span>
+<text:span text:style-name="Emphasis">ital</text:span>
+<text:line-break/>
+</text:p>

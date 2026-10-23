@@ -1,0 +1,17 @@
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:list text:style-name="OrgSrcBlockNumberedLine" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="OrgSrcBlock">
+<text:span text:style-name="OrgSrcFontLockKeywordFace">const</text:span> a = <text:span text:style-name="OrgSrcFontLockStringFace">"x"</text:span>; <text:span text:style-name="OrgSrcFontLockCommentFace">// hi</text:span>
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="OrgSrcBlockLastLine">
+<text:span text:style-name="OrgSrcFontLockKeywordFace">function</text:span>
+<text:span text:style-name="OrgSrcFontLockFunctionNameFace">f</text:span>() { <text:span text:style-name="OrgSrcFontLockKeywordFace">return</text:span>
+<text:span text:style-name="OrgSrcFontLockConstantFace">1</text:span> }</text:p>
+</text:list-item>
+</text:list>

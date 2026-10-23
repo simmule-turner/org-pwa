@@ -1,0 +1,53 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Misc 2</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:a xlink:type="simple" xlink:href="mailto:me@x.org">
+<text:initial-creator>Me</text:initial-creator>
+</text:a>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Heading with drawer
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">drawer text
+</text:p>
+<text:p text:style-name="Text_20_body">Text.
+</text:p>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[ ] </text:span>a
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[&#x2713;] </text:span>b continued line
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[-] </text:span>c
+</text:p>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[ ] </text:span>c1
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+<text:list-item text:start-value="3">
+<text:p text:style-name="Text_20_body">three
+</text:p>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">sub
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+</text:list>

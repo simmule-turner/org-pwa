@@ -60,7 +60,8 @@ test('targets: ASCII export reads those links as Org does: section numbers, or [
 test('targets: ODT export puts bookmarks at them and links to those bookmarks', () => {
   const xml = exportToOdt(parseOrg(linked));
   const text = typeof xml === 'string' ? xml : Buffer.from(xml).toString('latin1');
-  assert.match(text, /<text:bookmark text:name="org-target-spot"\/>/);
-  assert.match(text, /<text:bookmark-start text:name="org-target-big-apple"\/>big apple<text:bookmark-end text:name="org-target-big-apple"\/>/);
-  assert.match(text, /xlink:href="#org-target-spot">1\.1<\/text:a>/);
+  // as ox-odt: every target gets an OrgXref bookmark (and a plain one) under a generated name
+  assert.match(text, /<text:bookmark-start text:name="OrgXref\.(org[0-9a-f]+)"\/>\n<text:bookmark text:name="\1"\/>big apple\n<text:bookmark-end text:name="OrgXref\.\1"\/>/);
+  assert.match(text, /<text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref\.org[0-9a-f]+">1\.1<\/text:bookmark-ref>/);
+  assert.match(text, /<text:bookmark-ref text:reference-format="text" text:ref-name="OrgXref\.org[0-9a-f]+">Big Apple<\/text:bookmark-ref>/);
 });

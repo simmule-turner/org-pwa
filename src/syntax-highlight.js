@@ -128,6 +128,13 @@ const ALIASES = {
 /** @param {any} [t] */
 const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Whether `lang` is a language this lexer colors. @param {string | null | undefined} lang */
+export function knowsLanguage(lang) {
+  const name = String(lang || '').toLowerCase();
+  const key = Object.hasOwn(ALIASES, name) ? ALIASES[/** @type {keyof typeof ALIASES} */ (name)] : name;
+  return Object.hasOwn(LANGS, key);
+}
+
 /**
  * Wraps `text` in a span of the given face, one span per line.
  * @param {string | null} face

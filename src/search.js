@@ -9,7 +9,7 @@
  */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
-import { effectiveTagsOf } from './tag-inheritance.js';
+import { tagInherits, effectiveTagsOf } from './tag-inheritance.js';
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't
@@ -628,10 +628,13 @@ export function searchDocuments(docs, query, opts = /** @type {SearchOptions} */
  * @param {TagInheritance} useTagInheritance
  * @param {boolean} usePropertyInheritance
  * @param {string} fileCategory
+ * @param {string[]} [fileTags]
  * @returns {import('./tags-match.js').MatchEntry}
  */
-function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInheritance, fileCategory) {
+function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags = []) {
   const all = effectiveTags(heading, ancestors, useTagInheritance);
+  // #+FILETAGS: tags are inherited by every heading, as if from a level-0 parent
+  for (const tag of fileTags) if (!all.includes(tag) && tagInherits(useTagInheritance || false, tag)) all.push(tag);
   return {
     tags: all,
     todo: heading.todo || null,
@@ -676,6 +679,7 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
   for (const { documentId, doc } of docs) {
     const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'CATEGORY');
     const fileCategory = kw && kw.value.trim() ? kw.value.trim() : (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
+    const fileTags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
     /**
      * @param {Heading[]} nodes
      * @param {Heading[]} ancestors
@@ -683,8 +687,9 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
     function walk(nodes, ancestors) {
       for (const node of nodes) {
         if (node.type !== 'heading') continue;
-        if (matcher.test(buildMatchEntry(node, ancestors, useTagInheritance, usePropertyInheritance, fileCategory))) {
-          results.push({ type: 'heading', heading: node, node, documentId, snippet: { text: node.title, highlightStart: -1, highlightLength: 0 } });
+        const entry = buildMatchEntry(node, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags);
+        if (matcher.test(entry)) {
+          results.push({ type: 'heading', heading: node, node, documentId, ancestors, category: entry.category, snippet: { text: node.title, highlightStart: -1, highlightLength: 0 } });
         }
         walk(node.children || [], [...ancestors, node]);
       }

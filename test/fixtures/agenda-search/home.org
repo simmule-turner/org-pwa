@@ -1,0 +1,15 @@
+#+TITLE: Home
+#+TODO: TODO | DONE
+
+* TODO [#A] Buy milk :errand:
+:PROPERTIES:
+:CATEGORY: chores
+:END:
+Remember the budget for groceries.
+* TODO Plan holiday budget :money:
+** TODO [#C] Compare flights :errand:
+* DONE Pay rent :money:
+* Notes :money:
+The family budget plan lives here.
+** Sub note
+Q4 plan of the house.

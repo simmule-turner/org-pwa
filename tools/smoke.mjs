@@ -764,6 +764,64 @@ check('TODO view: org-agenda-sorting-strategy priority-down orders the list, ove
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
+check('Match and Search views: Match lists tag matches and TODO only, Keyword search takes +word -word and "phrase", the sorting strategy orders both, the Search panel opens its query here, and a query is saved as an agenda command', async () => {
+  const { context, page, errors } = await freshPage();
+  const body = ['#+TODO: TODO | DONE', '* TODO [#B] Ship notes :urgent:', 'Write the Q4 plan and the budget.', '* DONE Pay invoice :urgent:', '* TODO [#A] Draft budget :urgent:', 'Draft only.', '* Meeting :other:', 'Q4 plan review', ''];
+  await newDocument(page, [...body, '# Local Variables:', '# org-agenda-sorting-strategy: ((tags priority-down) (search alpha-up))', '# End:', ''].join('\n'));
+  const rows = async () => (await page.locator('[data-query-results]').innerText());
+  const at = (text, words) => words.map((w) => text.indexOf(w));
+  await viewMenu(page, 'Match');
+  await page.waitForSelector('[data-query-input]');
+  await page.fill('[data-query-input]', 'urgent');
+  await page.waitForTimeout(400);
+  let t = await rows();
+  let a = at(t, ['Draft budget', 'Ship notes', 'Pay invoice']);
+  expect(t.includes('3 entries') && a[0] > 0 && a[0] < a[1] && a[1] < a[2], `Match urgent, priority-down: ${t}`);
+  await page.locator('button', { hasText: 'TODO only' }).click();
+  await page.waitForTimeout(300);
+  t = await rows();
+  expect(t.includes('2 entries') && !t.includes('Pay invoice'), `TODO only drops the DONE entry: ${t}`);
+
+  await viewMenu(page, 'Keyword search');
+  await page.waitForSelector('[data-query-input]');
+  await page.fill('[data-query-input]', '+budget -draft');
+  await page.waitForTimeout(400);
+  t = await rows();
+  expect(t.includes('1 entry') && t.includes('Ship notes') && !t.includes('Draft budget'), `+budget -draft: ${t}`);
+  await page.fill('[data-query-input]', '+"Q4 plan"');
+  await page.waitForTimeout(400);
+  t = await rows();
+  a = at(t, ['Ship notes', 'Meeting']); // alpha-up reads the whole row, so Ship's "[#B]" sorts before Meeting, as in Emacs
+  expect(t.includes('2 entries') && a[0] > 0 && a[0] < a[1], `a quoted phrase, alpha-up: ${t}`);
+  expect((await page.locator('[data-query-results] mark').count()) >= 1, 'the match is marked');
+  await page.fill('[data-query-input]', '{bad(');
+  await page.waitForTimeout(400);
+
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.fill('#search-query-input', 'urgent');
+  await page.click('#search-options-btn');
+  await page.locator('button', { hasText: 'Open as Agenda view' }).click();
+  await page.waitForSelector('[data-query-input]');
+  expect((await page.inputValue('[data-query-input]')) === 'urgent', 'the panel query opens in the Search view');
+
+  await page.locator('button', { hasText: 'Save…' }).click();
+  await page.waitForSelector('[data-bottom-sheet] input[type=text]');
+  const fields = page.locator('[data-bottom-sheet] input[type=text]');
+  await fields.nth(0).fill('u');
+  await fields.nth(1).fill('Urgent things');
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Save' }).last().click();
+  await page.waitForTimeout(400);
+  await page.locator('button', { hasText: 'Commands' }).click();
+  await page.waitForSelector('[data-bottom-sheet]');
+  const sheet = await page.locator('[data-bottom-sheet]').innerText();
+  expect(sheet.includes('Urgent things') && sheet.includes('Global TODO list'), `the sheet lists the saved command and the built-in ones: ${sheet}`);
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Urgent things' }).click();
+  await page.waitForTimeout(400);
+  expect((await page.inputValue('[data-query-input]')) === 'urgent', 'a saved command opens its query');
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
 check('TODO view: Emacs variables set the starting sort and chips; none-of, Search, Top heading and Effort filters work', async () => {
   const { context, page, errors } = await freshPage();
   const body = ['#+TODO: TODO | DONE', '* Work', '** TODO Write report :urgent:', ':PROPERTIES:', ':EFFORT: 2:00', ':END:', '** TODO Call dentist', ':PROPERTIES:', ':EFFORT: 0:30', ':END:', '* Home', '** TODO Pay rent :urgent:', ':PROPERTIES:', ':EFFORT: 1:00', ':END:', ''];
@@ -4184,6 +4242,9 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
     const { installPlatform } = await import('/src-browser/platform.js');
     window.__saved = [];
     installPlatform({ saveFile: async (name, content) => { window.__saved.push({ name, content: String(content) }); return { where: 'test' }; } });
+    // Emacs's defaults write neither a TODO's deadline nor a plain SCHEDULED as an event; ask for them so the scopes can be compared
+    const { S } = await import('/src-browser/app-state.js');
+    S.globalVariables = { ...S.globalVariables, 'org-icalendar-use-deadline': '(event-if-todo event-if-not-todo)', 'org-icalendar-use-scheduled': '(event-if-todo event-if-not-todo)' };
   });
   await openDav(page, 'notes.org');
   const panelText = async () => (await page.locator('#morePanel').innerText()).replace(/\s+/g, ' ');
@@ -4205,7 +4266,7 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
   await pick(page, '#morePanel', 'This file');
   for (let n = 0; n < 40 && !(await savedIcs()); n++) await page.waitForTimeout(250);
   const fileIcs = await savedIcs();
-  expect(fileIcs && fileIcs.content.includes('SUMMARY:Far away') && fileIcs.content.includes('SUMMARY:Pay rent'), 'the file scope still writes every dated item, whatever the window');
+  expect(fileIcs && fileIcs.content.includes('SUMMARY:S: Far away') && fileIcs.content.includes('SUMMARY:DL: Pay rent'), 'the file scope still writes every dated item, whatever the window');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5516,7 +5577,7 @@ check('JavaScript blocks: values, tables, :var from a named table, output, error
     page,
     babelDoc(
       '#+BEGIN_SRC js', 'return 6 * 7;', '#+END_SRC', '',
-      '#+BEGIN_SRC js :var data=sales', 'return data.slice(1).map(([q, n]) => [q, n * 2]);', '#+END_SRC', '',
+      '#+BEGIN_SRC js :var data=sales', 'return data.map(([q, n]) => [q, n * 2]);', '#+END_SRC', '',
       '#+BEGIN_SRC js :results output', 'console.log("one"); console.log("two");', '#+END_SRC', '',
       '#+BEGIN_SRC js :results list', 'return ["a", "b"];', '#+END_SRC', '',
       '#+BEGIN_SRC js', 'throw new Error("boom");', '#+END_SRC'
@@ -5587,7 +5648,7 @@ check('JavaScript blocks: fetch, position and cache need the header and the pers
   await page.getByRole('button', { name: 'Allow', exact: true }).click();
   await waitForStatus(page, 'Ran in');
   const text = await documentText(page);
-  expect(text.includes('| 200 | true | 40.7128 | -74.006 | 7 |  |'), `fetch, position, cache: ${text}`);
+  expect(text.includes('| 200 | true | 40.7128 | -74.006 | 7 | null |'), `fetch, position, cache: ${text}`);
   await runBlock(page, 2);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await waitForStatus(page, 'Not allowed');
@@ -5688,7 +5749,7 @@ check('extensions: a script adds a table function, a link type and an export', a
   await page.getByText('Recalculate this table').or(page.getByText('Calc')).first().click();
   await waitForStatus(page, 'Recalculated table');
   const text = await documentText(page);
-  expect(text.includes('| 2 | 4 |') && text.includes('| 5 | 10 |'), `table: ${text}`);
+  expect(text.includes('| 2 |  4 |') && text.includes('| 5 | 10 |'), `table: ${text}`);
   await page.evaluate(() => {
     window.__opened = [];
     window.open = (url) => window.__opened.push(url);
@@ -5941,7 +6002,7 @@ check('extensions: hooks run on open, save, a TODO change and capture; a hook ca
   await waitForStatus(page, 'hook: TODO to DONE');
   await page.waitForTimeout(500);
   const text = await documentText(page);
-  expect(/^\* NEXT One$/m.test(text) && text.includes(':LAST: TODO>DONE'), `the hook's edits were applied:\n${text}`);
+  expect(/^\* NEXT One$/m.test(text) && /^:LAST:\s+TODO>DONE$/m.test(text), `the hook's edits were applied:\n${text}`);
   expect((text.match(/:LAST:/g) || []).length === 1, 'the hook did not fire again for its own change');
 
   await page.evaluate(async () => {
@@ -6863,7 +6924,7 @@ check('id: links: a link to a heading with that :ID: goes to it in another open 
   const first = await copy();
   const m = /^\[\[id:([0-9a-f-]{36})\]\[Source\]\]$/.exec(first);
   expect(m, `a link with a new UUID: ${first}`);
-  expect((await documentText(page)).includes(':ID: ' + m[1]), 'and the heading now has that :ID:');
+  expect(new RegExp('^:ID:\\s+' + m[1] + '$', 'm').test(await documentText(page)), 'and the heading now has that :ID:');
   expect((await copy()) === first, 'a second copy reuses the ID');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
@@ -7243,7 +7304,13 @@ check('every action in a row\'s tap menu runs without a page error and does some
     await made.page.waitForTimeout(150);
     return made;
   };
-  const visible = (page) => page.evaluate(() => document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length);
+  // the file's own text counts too: demoting a first heading changes its stars, not how the row looks
+  const visible = (page) =>
+    page.evaluate(async () => {
+      const { S } = await import('/src-browser/app-state.js');
+      const { serializeOrg } = await import('/src/org-parser.js');
+      return document.body.innerText + '|' + document.querySelectorAll('textarea, input, [role=dialog]').length + '|' + serializeOrg(S.state.doc);
+    });
   for (const rowText of rows) {
     const first = await open(rowText);
     const labels = (await first.page.locator('button[aria-label]').evaluateAll((els) => els.filter((e) => !e.closest('#topBar, #tabBar, header')).map((e) => e.getAttribute('aria-label')))).filter((l) => !skip.test(l));

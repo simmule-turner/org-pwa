@@ -14,16 +14,17 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] The =tags= and =search= entries of =org-agenda-sorting-strategy=
-Read, with no view of those types to apply them to; they follow if the Agenda gains a tags-match or search view. Effort: S. Impact: S.
+** [#C] Match and Keyword search views: possible updates
+Where the two views and agenda commands differ from Emacs, or stop short of it:
+- Rows show the matching words marked and one matching line of text; Emacs shows the heading line only.
+- The Keyword search box does not read the Search panel's =tag:=, =todo:= and =key:value= tokens; the panel does not read the Emacs grammar. They are two grammars.
+- Custom commands: only =tags=, =tags-todo=, =search=, =agenda= and =alltodo=, with the setting =org-agenda-sorting-strategy=. Missing: =todo= and =stuck= commands, composite blocks, other per-command settings (=org-agenda-files=, filter presets), and Lisp functions as commands.
+- =org-agenda-search-view-max-outline-level= is not read; the Search panel's =tag:= filter and Agenda tag chips do not yet count =#+FILETAGS:= tags as inherited (the Match view does).
+- Effort: M. Impact: S.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
-** [#B] Diary sexp functions: the rest
-=diary-entry-time= does not exist here. =diary-sunrise-sunset=, =diary-phases-of-moon= and =diary-equinoxes-solstices= were not compared (Emacs needs a location set in batch mode). Effort: S. Impact: S.
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date=, =diary-french-date= and =diary-chinese-date= need equinox and new-moon calculation (L). Hebrew, Islamic, Bahá'í, Julian, ISO and astronomical day numbers are done.
-** [#C] Holidays and the diary file: a second look
-Holidays, the diary file's date formats and its =#include= lines were compared with Emacs earlier, not yet with fresh cases in this sweep. Plan: new cases through =tools/gen-diary-oracle.mjs= and the holiday fixtures. Effort: S.
 ** [#C] Chinese holidays
 =holiday-oriental-holidays= and =diary-chinese-date= need the Chinese calendar's new-moon and solar-term calculation, which the solar holidays' equinox and solstice code does not cover. Effort: L. Impact: S.
 
@@ -54,15 +55,12 @@ The display of what Calc cannot reduce is done (v614). Not yet: symbolic simplif
   - Page breaks inside a frame that is too long are the browser's, not =allowframebreaks=.
 - Effort: M for the flattened version, L with a page per overlay step. Impact: S to M for those who give talks from a phone.
 
-** [#B] ODT export: where it differs from ox-odt
-The app writes ODF directly, with a small set of styles; ox-odt fills a template. A comparison with Emacs 29.3 on a few files shows:
-- Tables: special columns and rows (=#=, =*=, =!=, =_=, =^=, =$=, =/ < >=) print as cells, alignment cookies and numeric alignment are not applied, and there are no header rows or column groups. =table-model.js= already holds ox's rules for HTML and LaTeX.
-- The title block (subtitle, author), heading numbers (written as text, where Emacs numbers through styles), =UNNUMBERED= and the style names differ.
-- Images are referenced, not embedded.
-- Read: =f:= and =|:= from =#+OPTIONS:=, and the text of =[fn:label]= definitions.
-- Tests: Emacs writes a zip, so the oracle compares =content.xml= reduced to its structure. Effort: L. Impact: S to M.
-** [#C] iCalendar export: a second look
-=ox-icalendar= has 71 fixtures from Emacs. Not yet compared with fresh cases in this sweep.
+** [#C] ODT export: what is left after the port
+=src/ox-odt.js= follows ox-odt on the files checked with Emacs 29.3 (headings, lists, tables, blocks, links, footnotes, timestamps, table of contents, captions, planning, options). What is left:
+- =org-odt-table-styles= from the Lisp init is not read.
+- =#+TOC: tables= and =listings= are ignored, as in Emacs. =org-odt-preferred-output-format= (docx, pdf conversion) has no counterpart: the file is always =.odt=.
+- Source coloring is the app's own highlighter, for the languages it knows; Emacs colors through =htmlfontify= and the major mode, so the faces can differ.
+- Tests: more Emacs-made fixtures (=test/fixtures/odt/=, =tools/gen-odt-fixtures.mjs=). Effort: S. Impact: S.
 ** [#B] LaTeX export: where it differs from Emacs
 Found by about 375 small probes run through Emacs 29.3 and the app and compared line by line; the wrong or lost output and the =#+OPTIONS:=, property and figure differences are fixed and kept as fixtures. What is left:
 - Links: =~/= paths are not expanded to the home directory and =docview:= links are not written as Emacs writes them (both depend on the machine Emacs ran on).
@@ -76,9 +74,8 @@ Impact = how often the gap meets everyday use. Effort: S under a day, M a day or
 
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
-| 1 | ODT export: where it differs | S to M | L | Reuses the table rules; styles are the bulk |
-| 2 | Slides as HTML | S | M | Reuses the Beamer walk; overlays decide the size |
-| 3 | Chinese holidays | S | L | Needs a new astronomical calculation for little everyday use |
+| 1 | Slides as HTML | S | M | Reuses the Beamer walk; overlays decide the size |
+| 2 | Chinese holidays | S | L | Needs a new astronomical calculation for little everyday use |
 
 Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
 

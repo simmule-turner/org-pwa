@@ -1,0 +1,2443 @@
+2000-01-01 New Year's Day
+2000-01-17 Martin Luther King Day
+2000-02-02 Groundhog Day
+2000-02-14 Valentine's Day
+2000-02-21 President's Day
+2000-03-08 Ash Wednesday
+2000-03-17 St. Patrick's Day
+2000-03-21 Bahá’í New Year (Naw-Ruz) 157
+2000-04-01 April Fools' Day
+2000-04-06 Islamic New Year 1421
+2000-04-20 Passover
+2000-04-21 First Day of Ridvan
+2000-04-21 Good Friday
+2000-04-23 Easter Sunday
+2000-04-29 Ninth Day of Ridvan
+2000-05-02 Twelfth Day of Ridvan
+2000-05-14 Mother's Day
+2000-05-23 Declaration of the Báb
+2000-05-29 Ascension of Bahá’u’lláh
+2000-05-29 Memorial Day
+2000-06-09 Shavuot
+2000-06-14 Flag Day
+2000-06-18 Father's Day
+2000-07-04 Independence Day
+2000-07-09 Martyrdom of the Báb
+2000-09-04 Labor Day
+2000-09-30 Rosh HaShanah 5761
+2000-10-09 Yom Kippur
+2000-10-09 Columbus Day
+2000-10-14 Sukkot
+2000-10-20 Birth of the Báb
+2000-10-21 Shemini Atzeret
+2000-10-22 Simchat Torah
+2000-10-31 Halloween
+2000-11-11 Veteran's Day
+2000-11-12 Birth of Bahá’u’lláh
+2000-11-23 Thanksgiving
+2000-11-28 Ramadan Begins
+2000-12-22 Hanukkah
+2000-12-25 Christmas
+2001-01-01 New Year's Day
+2001-01-15 Martin Luther King Day
+2001-02-02 Groundhog Day
+2001-02-14 Valentine's Day
+2001-02-19 President's Day
+2001-02-28 Ash Wednesday
+2001-03-17 St. Patrick's Day
+2001-03-21 Bahá’í New Year (Naw-Ruz) 158
+2001-03-26 Islamic New Year 1422
+2001-04-01 April Fools' Day
+2001-04-08 Passover
+2001-04-13 Good Friday
+2001-04-15 Easter Sunday
+2001-04-21 First Day of Ridvan
+2001-04-29 Ninth Day of Ridvan
+2001-05-02 Twelfth Day of Ridvan
+2001-05-13 Mother's Day
+2001-05-23 Declaration of the Báb
+2001-05-28 Shavuot
+2001-05-28 Memorial Day
+2001-05-29 Ascension of Bahá’u’lláh
+2001-06-14 Flag Day
+2001-06-17 Father's Day
+2001-07-04 Independence Day
+2001-07-09 Martyrdom of the Báb
+2001-09-03 Labor Day
+2001-09-18 Rosh HaShanah 5762
+2001-09-27 Yom Kippur
+2001-10-02 Sukkot
+2001-10-08 Columbus Day
+2001-10-09 Shemini Atzeret
+2001-10-10 Simchat Torah
+2001-10-20 Birth of the Báb
+2001-10-31 Halloween
+2001-11-11 Veteran's Day
+2001-11-12 Birth of Bahá’u’lláh
+2001-11-17 Ramadan Begins
+2001-11-22 Thanksgiving
+2001-12-10 Hanukkah
+2001-12-25 Christmas
+2002-01-01 New Year's Day
+2002-01-21 Martin Luther King Day
+2002-02-02 Groundhog Day
+2002-02-13 Ash Wednesday
+2002-02-14 Valentine's Day
+2002-02-18 President's Day
+2002-03-15 Islamic New Year 1423
+2002-03-17 St. Patrick's Day
+2002-03-21 Bahá’í New Year (Naw-Ruz) 159
+2002-03-28 Passover
+2002-03-29 Good Friday
+2002-03-31 Easter Sunday
+2002-04-01 April Fools' Day
+2002-04-21 First Day of Ridvan
+2002-04-29 Ninth Day of Ridvan
+2002-05-02 Twelfth Day of Ridvan
+2002-05-12 Mother's Day
+2002-05-17 Shavuot
+2002-05-23 Declaration of the Báb
+2002-05-27 Memorial Day
+2002-05-29 Ascension of Bahá’u’lláh
+2002-06-14 Flag Day
+2002-06-16 Father's Day
+2002-07-04 Independence Day
+2002-07-09 Martyrdom of the Báb
+2002-09-02 Labor Day
+2002-09-07 Rosh HaShanah 5763
+2002-09-16 Yom Kippur
+2002-09-21 Sukkot
+2002-09-28 Shemini Atzeret
+2002-09-29 Simchat Torah
+2002-10-14 Columbus Day
+2002-10-20 Birth of the Báb
+2002-10-31 Halloween
+2002-11-06 Ramadan Begins
+2002-11-11 Veteran's Day
+2002-11-12 Birth of Bahá’u’lláh
+2002-11-28 Thanksgiving
+2002-11-30 Hanukkah
+2002-12-25 Christmas
+2003-01-01 New Year's Day
+2003-01-20 Martin Luther King Day
+2003-02-02 Groundhog Day
+2003-02-14 Valentine's Day
+2003-02-17 President's Day
+2003-03-05 Islamic New Year 1424
+2003-03-05 Ash Wednesday
+2003-03-17 St. Patrick's Day
+2003-03-21 Bahá’í New Year (Naw-Ruz) 160
+2003-04-01 April Fools' Day
+2003-04-17 Passover
+2003-04-18 Good Friday
+2003-04-20 Easter Sunday
+2003-04-21 First Day of Ridvan
+2003-04-29 Ninth Day of Ridvan
+2003-05-02 Twelfth Day of Ridvan
+2003-05-11 Mother's Day
+2003-05-23 Declaration of the Báb
+2003-05-26 Memorial Day
+2003-05-29 Ascension of Bahá’u’lláh
+2003-06-06 Shavuot
+2003-06-14 Flag Day
+2003-06-15 Father's Day
+2003-07-04 Independence Day
+2003-07-09 Martyrdom of the Báb
+2003-09-01 Labor Day
+2003-09-27 Rosh HaShanah 5764
+2003-10-06 Yom Kippur
+2003-10-11 Sukkot
+2003-10-13 Columbus Day
+2003-10-18 Shemini Atzeret
+2003-10-19 Simchat Torah
+2003-10-20 Birth of the Báb
+2003-10-27 Ramadan Begins
+2003-10-31 Halloween
+2003-11-11 Veteran's Day
+2003-11-12 Birth of Bahá’u’lláh
+2003-11-27 Thanksgiving
+2003-12-20 Hanukkah
+2003-12-25 Christmas
+2004-01-01 New Year's Day
+2004-01-19 Martin Luther King Day
+2004-02-02 Groundhog Day
+2004-02-14 Valentine's Day
+2004-02-16 President's Day
+2004-02-22 Islamic New Year 1425
+2004-02-25 Ash Wednesday
+2004-03-17 St. Patrick's Day
+2004-03-21 Bahá’í New Year (Naw-Ruz) 161
+2004-04-01 April Fools' Day
+2004-04-06 Passover
+2004-04-09 Good Friday
+2004-04-11 Easter Sunday
+2004-04-21 First Day of Ridvan
+2004-04-29 Ninth Day of Ridvan
+2004-05-02 Twelfth Day of Ridvan
+2004-05-09 Mother's Day
+2004-05-23 Declaration of the Báb
+2004-05-26 Shavuot
+2004-05-29 Ascension of Bahá’u’lláh
+2004-05-31 Memorial Day
+2004-06-14 Flag Day
+2004-06-20 Father's Day
+2004-07-04 Independence Day
+2004-07-09 Martyrdom of the Báb
+2004-09-06 Labor Day
+2004-09-16 Rosh HaShanah 5765
+2004-09-25 Yom Kippur
+2004-09-30 Sukkot
+2004-10-07 Shemini Atzeret
+2004-10-08 Simchat Torah
+2004-10-11 Columbus Day
+2004-10-15 Ramadan Begins
+2004-10-20 Birth of the Báb
+2004-10-31 Halloween
+2004-11-11 Veteran's Day
+2004-11-12 Birth of Bahá’u’lláh
+2004-11-25 Thanksgiving
+2004-12-08 Hanukkah
+2004-12-25 Christmas
+2005-01-01 New Year's Day
+2005-01-17 Martin Luther King Day
+2005-02-02 Groundhog Day
+2005-02-09 Ash Wednesday
+2005-02-10 Islamic New Year 1426
+2005-02-14 Valentine's Day
+2005-02-21 President's Day
+2005-03-17 St. Patrick's Day
+2005-03-21 Bahá’í New Year (Naw-Ruz) 162
+2005-03-25 Good Friday
+2005-03-27 Easter Sunday
+2005-04-01 April Fools' Day
+2005-04-21 First Day of Ridvan
+2005-04-24 Passover
+2005-04-29 Ninth Day of Ridvan
+2005-05-02 Twelfth Day of Ridvan
+2005-05-08 Mother's Day
+2005-05-23 Declaration of the Báb
+2005-05-29 Ascension of Bahá’u’lláh
+2005-05-30 Memorial Day
+2005-06-13 Shavuot
+2005-06-14 Flag Day
+2005-06-19 Father's Day
+2005-07-04 Independence Day
+2005-07-09 Martyrdom of the Báb
+2005-09-05 Labor Day
+2005-10-04 Ramadan Begins
+2005-10-04 Rosh HaShanah 5766
+2005-10-10 Columbus Day
+2005-10-13 Yom Kippur
+2005-10-18 Sukkot
+2005-10-20 Birth of the Báb
+2005-10-25 Shemini Atzeret
+2005-10-26 Simchat Torah
+2005-10-31 Halloween
+2005-11-11 Veteran's Day
+2005-11-12 Birth of Bahá’u’lláh
+2005-11-24 Thanksgiving
+2005-12-25 Christmas
+2005-12-26 Hanukkah
+2006-01-01 New Year's Day
+2006-01-16 Martin Luther King Day
+2006-01-31 Islamic New Year 1427
+2006-02-02 Groundhog Day
+2006-02-14 Valentine's Day
+2006-02-20 President's Day
+2006-03-01 Ash Wednesday
+2006-03-17 St. Patrick's Day
+2006-03-21 Bahá’í New Year (Naw-Ruz) 163
+2006-04-01 April Fools' Day
+2006-04-13 Passover
+2006-04-14 Good Friday
+2006-04-16 Easter Sunday
+2006-04-21 First Day of Ridvan
+2006-04-29 Ninth Day of Ridvan
+2006-05-02 Twelfth Day of Ridvan
+2006-05-14 Mother's Day
+2006-05-23 Declaration of the Báb
+2006-05-29 Ascension of Bahá’u’lláh
+2006-05-29 Memorial Day
+2006-06-02 Shavuot
+2006-06-14 Flag Day
+2006-06-18 Father's Day
+2006-07-04 Independence Day
+2006-07-09 Martyrdom of the Báb
+2006-09-04 Labor Day
+2006-09-23 Rosh HaShanah 5767
+2006-09-24 Ramadan Begins
+2006-10-02 Yom Kippur
+2006-10-07 Sukkot
+2006-10-09 Columbus Day
+2006-10-14 Shemini Atzeret
+2006-10-15 Simchat Torah
+2006-10-20 Birth of the Báb
+2006-10-31 Halloween
+2006-11-11 Veteran's Day
+2006-11-12 Birth of Bahá’u’lláh
+2006-11-23 Thanksgiving
+2006-12-16 Hanukkah
+2006-12-25 Christmas
+2007-01-01 New Year's Day
+2007-01-15 Martin Luther King Day
+2007-01-20 Islamic New Year 1428
+2007-02-02 Groundhog Day
+2007-02-14 Valentine's Day
+2007-02-19 President's Day
+2007-02-21 Ash Wednesday
+2007-03-17 St. Patrick's Day
+2007-03-21 Bahá’í New Year (Naw-Ruz) 164
+2007-04-01 April Fools' Day
+2007-04-03 Passover
+2007-04-06 Good Friday
+2007-04-08 Easter Sunday
+2007-04-21 First Day of Ridvan
+2007-04-29 Ninth Day of Ridvan
+2007-05-02 Twelfth Day of Ridvan
+2007-05-13 Mother's Day
+2007-05-23 Declaration of the Báb
+2007-05-23 Shavuot
+2007-05-28 Memorial Day
+2007-05-29 Ascension of Bahá’u’lláh
+2007-06-14 Flag Day
+2007-06-17 Father's Day
+2007-07-04 Independence Day
+2007-07-09 Martyrdom of the Báb
+2007-09-03 Labor Day
+2007-09-13 Ramadan Begins
+2007-09-13 Rosh HaShanah 5768
+2007-09-22 Yom Kippur
+2007-09-27 Sukkot
+2007-10-04 Shemini Atzeret
+2007-10-05 Simchat Torah
+2007-10-08 Columbus Day
+2007-10-20 Birth of the Báb
+2007-10-31 Halloween
+2007-11-11 Veteran's Day
+2007-11-12 Birth of Bahá’u’lláh
+2007-11-22 Thanksgiving
+2007-12-05 Hanukkah
+2007-12-25 Christmas
+2008-01-01 New Year's Day
+2008-01-10 Islamic New Year 1429
+2008-01-21 Martin Luther King Day
+2008-02-02 Groundhog Day
+2008-02-06 Ash Wednesday
+2008-02-14 Valentine's Day
+2008-02-18 President's Day
+2008-03-17 St. Patrick's Day
+2008-03-21 Bahá’í New Year (Naw-Ruz) 165
+2008-03-21 Good Friday
+2008-03-23 Easter Sunday
+2008-04-01 April Fools' Day
+2008-04-20 Passover
+2008-04-21 First Day of Ridvan
+2008-04-29 Ninth Day of Ridvan
+2008-05-02 Twelfth Day of Ridvan
+2008-05-11 Mother's Day
+2008-05-23 Declaration of the Báb
+2008-05-26 Memorial Day
+2008-05-29 Ascension of Bahá’u’lláh
+2008-06-09 Shavuot
+2008-06-14 Flag Day
+2008-06-15 Father's Day
+2008-07-04 Independence Day
+2008-07-09 Martyrdom of the Báb
+2008-09-01 Labor Day
+2008-09-02 Ramadan Begins
+2008-09-30 Rosh HaShanah 5769
+2008-10-09 Yom Kippur
+2008-10-13 Columbus Day
+2008-10-14 Sukkot
+2008-10-20 Birth of the Báb
+2008-10-21 Shemini Atzeret
+2008-10-22 Simchat Torah
+2008-10-31 Halloween
+2008-11-11 Veteran's Day
+2008-11-12 Birth of Bahá’u’lláh
+2008-11-27 Thanksgiving
+2008-12-22 Hanukkah
+2008-12-25 Christmas
+2008-12-29 Islamic New Year 1430
+2009-01-01 New Year's Day
+2009-01-19 Martin Luther King Day
+2009-02-02 Groundhog Day
+2009-02-14 Valentine's Day
+2009-02-16 President's Day
+2009-02-25 Ash Wednesday
+2009-03-17 St. Patrick's Day
+2009-03-21 Bahá’í New Year (Naw-Ruz) 166
+2009-04-01 April Fools' Day
+2009-04-09 Passover
+2009-04-10 Good Friday
+2009-04-12 Easter Sunday
+2009-04-21 First Day of Ridvan
+2009-04-29 Ninth Day of Ridvan
+2009-05-02 Twelfth Day of Ridvan
+2009-05-10 Mother's Day
+2009-05-23 Declaration of the Báb
+2009-05-25 Memorial Day
+2009-05-29 Ascension of Bahá’u’lláh
+2009-05-29 Shavuot
+2009-06-14 Flag Day
+2009-06-21 Father's Day
+2009-07-04 Independence Day
+2009-07-09 Martyrdom of the Báb
+2009-08-22 Ramadan Begins
+2009-09-07 Labor Day
+2009-09-19 Rosh HaShanah 5770
+2009-09-28 Yom Kippur
+2009-10-03 Sukkot
+2009-10-10 Shemini Atzeret
+2009-10-11 Simchat Torah
+2009-10-12 Columbus Day
+2009-10-20 Birth of the Báb
+2009-10-31 Halloween
+2009-11-11 Veteran's Day
+2009-11-12 Birth of Bahá’u’lláh
+2009-11-26 Thanksgiving
+2009-12-12 Hanukkah
+2009-12-18 Islamic New Year 1431
+2009-12-25 Christmas
+2010-01-01 New Year's Day
+2010-01-18 Martin Luther King Day
+2010-02-02 Groundhog Day
+2010-02-14 Valentine's Day
+2010-02-15 President's Day
+2010-02-17 Ash Wednesday
+2010-03-17 St. Patrick's Day
+2010-03-21 Bahá’í New Year (Naw-Ruz) 167
+2010-03-30 Passover
+2010-04-01 April Fools' Day
+2010-04-02 Good Friday
+2010-04-04 Easter Sunday
+2010-04-21 First Day of Ridvan
+2010-04-29 Ninth Day of Ridvan
+2010-05-02 Twelfth Day of Ridvan
+2010-05-09 Mother's Day
+2010-05-19 Shavuot
+2010-05-23 Declaration of the Báb
+2010-05-29 Ascension of Bahá’u’lláh
+2010-05-31 Memorial Day
+2010-06-14 Flag Day
+2010-06-20 Father's Day
+2010-07-04 Independence Day
+2010-07-09 Martyrdom of the Báb
+2010-08-11 Ramadan Begins
+2010-09-06 Labor Day
+2010-09-09 Rosh HaShanah 5771
+2010-09-18 Yom Kippur
+2010-09-23 Sukkot
+2010-09-30 Shemini Atzeret
+2010-10-01 Simchat Torah
+2010-10-11 Columbus Day
+2010-10-20 Birth of the Báb
+2010-10-31 Halloween
+2010-11-11 Veteran's Day
+2010-11-12 Birth of Bahá’u’lláh
+2010-11-25 Thanksgiving
+2010-12-02 Hanukkah
+2010-12-08 Islamic New Year 1432
+2010-12-25 Christmas
+2011-01-01 New Year's Day
+2011-01-17 Martin Luther King Day
+2011-02-02 Groundhog Day
+2011-02-14 Valentine's Day
+2011-02-21 President's Day
+2011-03-09 Ash Wednesday
+2011-03-17 St. Patrick's Day
+2011-03-21 Bahá’í New Year (Naw-Ruz) 168
+2011-04-01 April Fools' Day
+2011-04-19 Passover
+2011-04-21 First Day of Ridvan
+2011-04-22 Good Friday
+2011-04-24 Easter Sunday
+2011-04-29 Ninth Day of Ridvan
+2011-05-02 Twelfth Day of Ridvan
+2011-05-08 Mother's Day
+2011-05-23 Declaration of the Báb
+2011-05-29 Ascension of Bahá’u’lláh
+2011-05-30 Memorial Day
+2011-06-08 Shavuot
+2011-06-14 Flag Day
+2011-06-19 Father's Day
+2011-07-04 Independence Day
+2011-07-09 Martyrdom of the Báb
+2011-08-01 Ramadan Begins
+2011-09-05 Labor Day
+2011-09-29 Rosh HaShanah 5772
+2011-10-08 Yom Kippur
+2011-10-10 Columbus Day
+2011-10-13 Sukkot
+2011-10-20 Birth of the Báb
+2011-10-20 Shemini Atzeret
+2011-10-21 Simchat Torah
+2011-10-31 Halloween
+2011-11-11 Veteran's Day
+2011-11-12 Birth of Bahá’u’lláh
+2011-11-24 Thanksgiving
+2011-11-27 Islamic New Year 1433
+2011-12-21 Hanukkah
+2011-12-25 Christmas
+2012-01-01 New Year's Day
+2012-01-16 Martin Luther King Day
+2012-02-02 Groundhog Day
+2012-02-14 Valentine's Day
+2012-02-20 President's Day
+2012-02-22 Ash Wednesday
+2012-03-17 St. Patrick's Day
+2012-03-21 Bahá’í New Year (Naw-Ruz) 169
+2012-04-01 April Fools' Day
+2012-04-06 Good Friday
+2012-04-07 Passover
+2012-04-08 Easter Sunday
+2012-04-21 First Day of Ridvan
+2012-04-29 Ninth Day of Ridvan
+2012-05-02 Twelfth Day of Ridvan
+2012-05-13 Mother's Day
+2012-05-23 Declaration of the Báb
+2012-05-27 Shavuot
+2012-05-28 Memorial Day
+2012-05-29 Ascension of Bahá’u’lláh
+2012-06-14 Flag Day
+2012-06-17 Father's Day
+2012-07-04 Independence Day
+2012-07-09 Martyrdom of the Báb
+2012-07-20 Ramadan Begins
+2012-09-03 Labor Day
+2012-09-17 Rosh HaShanah 5773
+2012-09-26 Yom Kippur
+2012-10-01 Sukkot
+2012-10-08 Shemini Atzeret
+2012-10-08 Columbus Day
+2012-10-09 Simchat Torah
+2012-10-20 Birth of the Báb
+2012-10-31 Halloween
+2012-11-11 Veteran's Day
+2012-11-12 Birth of Bahá’u’lláh
+2012-11-15 Islamic New Year 1434
+2012-11-22 Thanksgiving
+2012-12-09 Hanukkah
+2012-12-25 Christmas
+2013-01-01 New Year's Day
+2013-01-21 Martin Luther King Day
+2013-02-02 Groundhog Day
+2013-02-13 Ash Wednesday
+2013-02-14 Valentine's Day
+2013-02-18 President's Day
+2013-03-17 St. Patrick's Day
+2013-03-21 Bahá’í New Year (Naw-Ruz) 170
+2013-03-26 Passover
+2013-03-29 Good Friday
+2013-03-31 Easter Sunday
+2013-04-01 April Fools' Day
+2013-04-21 First Day of Ridvan
+2013-04-29 Ninth Day of Ridvan
+2013-05-02 Twelfth Day of Ridvan
+2013-05-12 Mother's Day
+2013-05-15 Shavuot
+2013-05-23 Declaration of the Báb
+2013-05-27 Memorial Day
+2013-05-29 Ascension of Bahá’u’lláh
+2013-06-14 Flag Day
+2013-06-16 Father's Day
+2013-07-04 Independence Day
+2013-07-09 Martyrdom of the Báb
+2013-07-09 Ramadan Begins
+2013-09-02 Labor Day
+2013-09-05 Rosh HaShanah 5774
+2013-09-14 Yom Kippur
+2013-09-19 Sukkot
+2013-09-26 Shemini Atzeret
+2013-09-27 Simchat Torah
+2013-10-14 Columbus Day
+2013-10-20 Birth of the Báb
+2013-10-31 Halloween
+2013-11-05 Islamic New Year 1435
+2013-11-11 Veteran's Day
+2013-11-12 Birth of Bahá’u’lláh
+2013-11-28 Hanukkah
+2013-11-28 Thanksgiving
+2013-12-25 Christmas
+2014-01-01 New Year's Day
+2014-01-20 Martin Luther King Day
+2014-02-02 Groundhog Day
+2014-02-14 Valentine's Day
+2014-02-17 President's Day
+2014-03-05 Ash Wednesday
+2014-03-17 St. Patrick's Day
+2014-03-21 Bahá’í New Year (Naw-Ruz) 171
+2014-04-01 April Fools' Day
+2014-04-15 Passover
+2014-04-18 Good Friday
+2014-04-20 Easter Sunday
+2014-04-21 First Day of Ridvan
+2014-04-29 Ninth Day of Ridvan
+2014-05-02 Twelfth Day of Ridvan
+2014-05-11 Mother's Day
+2014-05-23 Declaration of the Báb
+2014-05-26 Memorial Day
+2014-05-29 Ascension of Bahá’u’lláh
+2014-06-04 Shavuot
+2014-06-14 Flag Day
+2014-06-15 Father's Day
+2014-06-29 Ramadan Begins
+2014-07-04 Independence Day
+2014-07-09 Martyrdom of the Báb
+2014-09-01 Labor Day
+2014-09-25 Rosh HaShanah 5775
+2014-10-04 Yom Kippur
+2014-10-09 Sukkot
+2014-10-13 Columbus Day
+2014-10-16 Shemini Atzeret
+2014-10-17 Simchat Torah
+2014-10-20 Birth of the Báb
+2014-10-25 Islamic New Year 1436
+2014-10-31 Halloween
+2014-11-11 Veteran's Day
+2014-11-12 Birth of Bahá’u’lláh
+2014-11-27 Thanksgiving
+2014-12-17 Hanukkah
+2014-12-25 Christmas
+2015-01-01 New Year's Day
+2015-01-19 Martin Luther King Day
+2015-02-02 Groundhog Day
+2015-02-14 Valentine's Day
+2015-02-16 President's Day
+2015-02-18 Ash Wednesday
+2015-03-17 St. Patrick's Day
+2015-03-21 Bahá’í New Year (Naw-Ruz) 172
+2015-04-01 April Fools' Day
+2015-04-03 Good Friday
+2015-04-04 Passover
+2015-04-05 Easter Sunday
+2015-04-21 First Day of Ridvan
+2015-04-29 Ninth Day of Ridvan
+2015-05-02 Twelfth Day of Ridvan
+2015-05-10 Mother's Day
+2015-05-23 Declaration of the Báb
+2015-05-24 Shavuot
+2015-05-25 Memorial Day
+2015-05-29 Ascension of Bahá’u’lláh
+2015-06-14 Flag Day
+2015-06-18 Ramadan Begins
+2015-06-21 Father's Day
+2015-07-04 Independence Day
+2015-07-09 Martyrdom of the Báb
+2015-09-07 Labor Day
+2015-09-14 Rosh HaShanah 5776
+2015-09-23 Yom Kippur
+2015-09-28 Sukkot
+2015-10-05 Shemini Atzeret
+2015-10-06 Simchat Torah
+2015-10-12 Columbus Day
+2015-10-15 Islamic New Year 1437
+2015-10-20 Birth of the Báb
+2015-10-31 Halloween
+2015-11-11 Veteran's Day
+2015-11-12 Birth of Bahá’u’lláh
+2015-11-26 Thanksgiving
+2015-12-07 Hanukkah
+2015-12-25 Christmas
+2016-01-01 New Year's Day
+2016-01-18 Martin Luther King Day
+2016-02-02 Groundhog Day
+2016-02-10 Ash Wednesday
+2016-02-14 Valentine's Day
+2016-02-15 President's Day
+2016-03-17 St. Patrick's Day
+2016-03-21 Bahá’í New Year (Naw-Ruz) 173
+2016-03-25 Good Friday
+2016-03-27 Easter Sunday
+2016-04-01 April Fools' Day
+2016-04-21 First Day of Ridvan
+2016-04-23 Passover
+2016-04-29 Ninth Day of Ridvan
+2016-05-02 Twelfth Day of Ridvan
+2016-05-08 Mother's Day
+2016-05-23 Declaration of the Báb
+2016-05-29 Ascension of Bahá’u’lláh
+2016-05-30 Memorial Day
+2016-06-07 Ramadan Begins
+2016-06-12 Shavuot
+2016-06-14 Flag Day
+2016-06-19 Father's Day
+2016-07-04 Independence Day
+2016-07-09 Martyrdom of the Báb
+2016-09-05 Labor Day
+2016-10-03 Islamic New Year 1438
+2016-10-03 Rosh HaShanah 5777
+2016-10-10 Columbus Day
+2016-10-12 Yom Kippur
+2016-10-17 Sukkot
+2016-10-20 Birth of the Báb
+2016-10-24 Shemini Atzeret
+2016-10-25 Simchat Torah
+2016-10-31 Halloween
+2016-11-11 Veteran's Day
+2016-11-12 Birth of Bahá’u’lláh
+2016-11-24 Thanksgiving
+2016-12-25 Hanukkah
+2016-12-25 Christmas
+2017-01-01 New Year's Day
+2017-01-16 Martin Luther King Day
+2017-02-02 Groundhog Day
+2017-02-14 Valentine's Day
+2017-02-20 President's Day
+2017-03-01 Ash Wednesday
+2017-03-17 St. Patrick's Day
+2017-03-21 Bahá’í New Year (Naw-Ruz) 174
+2017-04-01 April Fools' Day
+2017-04-11 Passover
+2017-04-14 Good Friday
+2017-04-16 Easter Sunday
+2017-04-21 First Day of Ridvan
+2017-04-29 Ninth Day of Ridvan
+2017-05-02 Twelfth Day of Ridvan
+2017-05-14 Mother's Day
+2017-05-23 Declaration of the Báb
+2017-05-27 Ramadan Begins
+2017-05-29 Ascension of Bahá’u’lláh
+2017-05-29 Memorial Day
+2017-05-31 Shavuot
+2017-06-14 Flag Day
+2017-06-18 Father's Day
+2017-07-04 Independence Day
+2017-07-09 Martyrdom of the Báb
+2017-09-04 Labor Day
+2017-09-21 Rosh HaShanah 5778
+2017-09-22 Islamic New Year 1439
+2017-09-30 Yom Kippur
+2017-10-05 Sukkot
+2017-10-09 Columbus Day
+2017-10-12 Shemini Atzeret
+2017-10-13 Simchat Torah
+2017-10-20 Birth of the Báb
+2017-10-31 Halloween
+2017-11-11 Veteran's Day
+2017-11-12 Birth of Bahá’u’lláh
+2017-11-23 Thanksgiving
+2017-12-13 Hanukkah
+2017-12-25 Christmas
+2018-01-01 New Year's Day
+2018-01-15 Martin Luther King Day
+2018-02-02 Groundhog Day
+2018-02-14 Ash Wednesday
+2018-02-14 Valentine's Day
+2018-02-19 President's Day
+2018-03-17 St. Patrick's Day
+2018-03-21 Bahá’í New Year (Naw-Ruz) 175
+2018-03-30 Good Friday
+2018-03-31 Passover
+2018-04-01 Easter Sunday
+2018-04-01 April Fools' Day
+2018-04-21 First Day of Ridvan
+2018-04-29 Ninth Day of Ridvan
+2018-05-02 Twelfth Day of Ridvan
+2018-05-13 Mother's Day
+2018-05-16 Ramadan Begins
+2018-05-20 Shavuot
+2018-05-23 Declaration of the Báb
+2018-05-28 Memorial Day
+2018-05-29 Ascension of Bahá’u’lláh
+2018-06-14 Flag Day
+2018-06-17 Father's Day
+2018-07-04 Independence Day
+2018-07-09 Martyrdom of the Báb
+2018-09-03 Labor Day
+2018-09-10 Rosh HaShanah 5779
+2018-09-12 Islamic New Year 1440
+2018-09-19 Yom Kippur
+2018-09-24 Sukkot
+2018-10-01 Shemini Atzeret
+2018-10-02 Simchat Torah
+2018-10-08 Columbus Day
+2018-10-20 Birth of the Báb
+2018-10-31 Halloween
+2018-11-11 Veteran's Day
+2018-11-12 Birth of Bahá’u’lláh
+2018-11-22 Thanksgiving
+2018-12-03 Hanukkah
+2018-12-25 Christmas
+2019-01-01 New Year's Day
+2019-01-21 Martin Luther King Day
+2019-02-02 Groundhog Day
+2019-02-14 Valentine's Day
+2019-02-18 President's Day
+2019-03-06 Ash Wednesday
+2019-03-17 St. Patrick's Day
+2019-03-21 Bahá’í New Year (Naw-Ruz) 176
+2019-04-01 April Fools' Day
+2019-04-19 Good Friday
+2019-04-20 Passover
+2019-04-21 First Day of Ridvan
+2019-04-21 Easter Sunday
+2019-04-29 Ninth Day of Ridvan
+2019-05-02 Twelfth Day of Ridvan
+2019-05-06 Ramadan Begins
+2019-05-12 Mother's Day
+2019-05-23 Declaration of the Báb
+2019-05-27 Memorial Day
+2019-05-29 Ascension of Bahá’u’lláh
+2019-06-09 Shavuot
+2019-06-14 Flag Day
+2019-06-16 Father's Day
+2019-07-04 Independence Day
+2019-07-09 Martyrdom of the Báb
+2019-09-01 Islamic New Year 1441
+2019-09-02 Labor Day
+2019-09-30 Rosh HaShanah 5780
+2019-10-09 Yom Kippur
+2019-10-14 Sukkot
+2019-10-14 Columbus Day
+2019-10-20 Birth of the Báb
+2019-10-21 Shemini Atzeret
+2019-10-22 Simchat Torah
+2019-10-31 Halloween
+2019-11-11 Veteran's Day
+2019-11-12 Birth of Bahá’u’lláh
+2019-11-28 Thanksgiving
+2019-12-23 Hanukkah
+2019-12-25 Christmas
+2020-01-01 New Year's Day
+2020-01-20 Martin Luther King Day
+2020-02-02 Groundhog Day
+2020-02-14 Valentine's Day
+2020-02-17 President's Day
+2020-02-26 Ash Wednesday
+2020-03-17 St. Patrick's Day
+2020-03-21 Bahá’í New Year (Naw-Ruz) 177
+2020-04-01 April Fools' Day
+2020-04-09 Passover
+2020-04-10 Good Friday
+2020-04-12 Easter Sunday
+2020-04-21 First Day of Ridvan
+2020-04-24 Ramadan Begins
+2020-04-29 Ninth Day of Ridvan
+2020-05-02 Twelfth Day of Ridvan
+2020-05-10 Mother's Day
+2020-05-23 Declaration of the Báb
+2020-05-25 Memorial Day
+2020-05-29 Ascension of Bahá’u’lláh
+2020-05-29 Shavuot
+2020-06-14 Flag Day
+2020-06-21 Father's Day
+2020-07-04 Independence Day
+2020-07-09 Martyrdom of the Báb
+2020-08-20 Islamic New Year 1442
+2020-09-07 Labor Day
+2020-09-19 Rosh HaShanah 5781
+2020-09-28 Yom Kippur
+2020-10-03 Sukkot
+2020-10-10 Shemini Atzeret
+2020-10-11 Simchat Torah
+2020-10-12 Columbus Day
+2020-10-20 Birth of the Báb
+2020-10-31 Halloween
+2020-11-11 Veteran's Day
+2020-11-12 Birth of Bahá’u’lláh
+2020-11-26 Thanksgiving
+2020-12-11 Hanukkah
+2020-12-25 Christmas
+2021-01-01 New Year's Day
+2021-01-18 Martin Luther King Day
+2021-02-02 Groundhog Day
+2021-02-14 Valentine's Day
+2021-02-15 President's Day
+2021-02-17 Ash Wednesday
+2021-03-17 St. Patrick's Day
+2021-03-21 Bahá’í New Year (Naw-Ruz) 178
+2021-03-28 Passover
+2021-04-01 April Fools' Day
+2021-04-02 Good Friday
+2021-04-04 Easter Sunday
+2021-04-13 Ramadan Begins
+2021-04-21 First Day of Ridvan
+2021-04-29 Ninth Day of Ridvan
+2021-05-02 Twelfth Day of Ridvan
+2021-05-09 Mother's Day
+2021-05-17 Shavuot
+2021-05-23 Declaration of the Báb
+2021-05-29 Ascension of Bahá’u’lláh
+2021-05-31 Memorial Day
+2021-06-14 Flag Day
+2021-06-20 Father's Day
+2021-07-04 Independence Day
+2021-07-09 Martyrdom of the Báb
+2021-08-10 Islamic New Year 1443
+2021-09-06 Labor Day
+2021-09-07 Rosh HaShanah 5782
+2021-09-16 Yom Kippur
+2021-09-21 Sukkot
+2021-09-28 Shemini Atzeret
+2021-09-29 Simchat Torah
+2021-10-11 Columbus Day
+2021-10-20 Birth of the Báb
+2021-10-31 Halloween
+2021-11-11 Veteran's Day
+2021-11-12 Birth of Bahá’u’lláh
+2021-11-25 Thanksgiving
+2021-11-29 Hanukkah
+2021-12-25 Christmas
+2022-01-01 New Year's Day
+2022-01-17 Martin Luther King Day
+2022-02-02 Groundhog Day
+2022-02-14 Valentine's Day
+2022-02-21 President's Day
+2022-03-02 Ash Wednesday
+2022-03-17 St. Patrick's Day
+2022-03-21 Bahá’í New Year (Naw-Ruz) 179
+2022-04-01 April Fools' Day
+2022-04-03 Ramadan Begins
+2022-04-15 Good Friday
+2022-04-16 Passover
+2022-04-17 Easter Sunday
+2022-04-21 First Day of Ridvan
+2022-04-29 Ninth Day of Ridvan
+2022-05-02 Twelfth Day of Ridvan
+2022-05-08 Mother's Day
+2022-05-23 Declaration of the Báb
+2022-05-29 Ascension of Bahá’u’lláh
+2022-05-30 Memorial Day
+2022-06-05 Shavuot
+2022-06-14 Flag Day
+2022-06-19 Father's Day
+2022-07-04 Independence Day
+2022-07-09 Martyrdom of the Báb
+2022-07-30 Islamic New Year 1444
+2022-09-05 Labor Day
+2022-09-26 Rosh HaShanah 5783
+2022-10-05 Yom Kippur
+2022-10-10 Sukkot
+2022-10-10 Columbus Day
+2022-10-17 Shemini Atzeret
+2022-10-18 Simchat Torah
+2022-10-20 Birth of the Báb
+2022-10-31 Halloween
+2022-11-11 Veteran's Day
+2022-11-12 Birth of Bahá’u’lláh
+2022-11-24 Thanksgiving
+2022-12-19 Hanukkah
+2022-12-25 Christmas
+2023-01-01 New Year's Day
+2023-01-16 Martin Luther King Day
+2023-02-02 Groundhog Day
+2023-02-14 Valentine's Day
+2023-02-20 President's Day
+2023-02-22 Ash Wednesday
+2023-03-17 St. Patrick's Day
+2023-03-21 Bahá’í New Year (Naw-Ruz) 180
+2023-03-23 Ramadan Begins
+2023-04-01 April Fools' Day
+2023-04-06 Passover
+2023-04-07 Good Friday
+2023-04-09 Easter Sunday
+2023-04-21 First Day of Ridvan
+2023-04-29 Ninth Day of Ridvan
+2023-05-02 Twelfth Day of Ridvan
+2023-05-14 Mother's Day
+2023-05-23 Declaration of the Báb
+2023-05-26 Shavuot
+2023-05-29 Ascension of Bahá’u’lláh
+2023-05-29 Memorial Day
+2023-06-14 Flag Day
+2023-06-18 Father's Day
+2023-07-04 Independence Day
+2023-07-09 Martyrdom of the Báb
+2023-07-19 Islamic New Year 1445
+2023-09-04 Labor Day
+2023-09-16 Rosh HaShanah 5784
+2023-09-25 Yom Kippur
+2023-09-30 Sukkot
+2023-10-07 Shemini Atzeret
+2023-10-08 Simchat Torah
+2023-10-09 Columbus Day
+2023-10-20 Birth of the Báb
+2023-10-31 Halloween
+2023-11-11 Veteran's Day
+2023-11-12 Birth of Bahá’u’lláh
+2023-11-23 Thanksgiving
+2023-12-08 Hanukkah
+2023-12-25 Christmas
+2024-01-01 New Year's Day
+2024-01-15 Martin Luther King Day
+2024-02-02 Groundhog Day
+2024-02-14 Ash Wednesday
+2024-02-14 Valentine's Day
+2024-02-19 President's Day
+2024-03-11 Ramadan Begins
+2024-03-17 St. Patrick's Day
+2024-03-21 Bahá’í New Year (Naw-Ruz) 181
+2024-03-29 Good Friday
+2024-03-31 Easter Sunday
+2024-04-01 April Fools' Day
+2024-04-21 First Day of Ridvan
+2024-04-23 Passover
+2024-04-29 Ninth Day of Ridvan
+2024-05-02 Twelfth Day of Ridvan
+2024-05-12 Mother's Day
+2024-05-23 Declaration of the Báb
+2024-05-27 Memorial Day
+2024-05-29 Ascension of Bahá’u’lláh
+2024-06-12 Shavuot
+2024-06-14 Flag Day
+2024-06-16 Father's Day
+2024-07-04 Independence Day
+2024-07-08 Islamic New Year 1446
+2024-07-09 Martyrdom of the Báb
+2024-09-02 Labor Day
+2024-10-03 Rosh HaShanah 5785
+2024-10-12 Yom Kippur
+2024-10-14 Columbus Day
+2024-10-17 Sukkot
+2024-10-20 Birth of the Báb
+2024-10-24 Shemini Atzeret
+2024-10-25 Simchat Torah
+2024-10-31 Halloween
+2024-11-11 Veteran's Day
+2024-11-12 Birth of Bahá’u’lláh
+2024-11-28 Thanksgiving
+2024-12-25 Christmas
+2024-12-26 Hanukkah
+2025-01-01 New Year's Day
+2025-01-20 Martin Luther King Day
+2025-02-02 Groundhog Day
+2025-02-14 Valentine's Day
+2025-02-17 President's Day
+2025-03-01 Ramadan Begins
+2025-03-05 Ash Wednesday
+2025-03-17 St. Patrick's Day
+2025-03-21 Bahá’í New Year (Naw-Ruz) 182
+2025-04-01 April Fools' Day
+2025-04-13 Passover
+2025-04-18 Good Friday
+2025-04-20 Easter Sunday
+2025-04-21 First Day of Ridvan
+2025-04-29 Ninth Day of Ridvan
+2025-05-02 Twelfth Day of Ridvan
+2025-05-11 Mother's Day
+2025-05-23 Declaration of the Báb
+2025-05-26 Memorial Day
+2025-05-29 Ascension of Bahá’u’lláh
+2025-06-02 Shavuot
+2025-06-14 Flag Day
+2025-06-15 Father's Day
+2025-06-27 Islamic New Year 1447
+2025-07-04 Independence Day
+2025-07-09 Martyrdom of the Báb
+2025-09-01 Labor Day
+2025-09-23 Rosh HaShanah 5786
+2025-10-02 Yom Kippur
+2025-10-07 Sukkot
+2025-10-13 Columbus Day
+2025-10-14 Shemini Atzeret
+2025-10-15 Simchat Torah
+2025-10-20 Birth of the Báb
+2025-10-31 Halloween
+2025-11-11 Veteran's Day
+2025-11-12 Birth of Bahá’u’lláh
+2025-11-27 Thanksgiving
+2025-12-15 Hanukkah
+2025-12-25 Christmas
+2026-01-01 New Year's Day
+2026-01-19 Martin Luther King Day
+2026-02-02 Groundhog Day
+2026-02-14 Valentine's Day
+2026-02-16 President's Day
+2026-02-18 Ramadan Begins
+2026-02-18 Ash Wednesday
+2026-03-17 St. Patrick's Day
+2026-03-21 Bahá’í New Year (Naw-Ruz) 183
+2026-04-01 April Fools' Day
+2026-04-02 Passover
+2026-04-03 Good Friday
+2026-04-05 Easter Sunday
+2026-04-21 First Day of Ridvan
+2026-04-29 Ninth Day of Ridvan
+2026-05-02 Twelfth Day of Ridvan
+2026-05-10 Mother's Day
+2026-05-22 Shavuot
+2026-05-23 Declaration of the Báb
+2026-05-25 Memorial Day
+2026-05-29 Ascension of Bahá’u’lláh
+2026-06-14 Flag Day
+2026-06-17 Islamic New Year 1448
+2026-06-21 Father's Day
+2026-07-04 Independence Day
+2026-07-09 Martyrdom of the Báb
+2026-09-07 Labor Day
+2026-09-12 Rosh HaShanah 5787
+2026-09-21 Yom Kippur
+2026-09-26 Sukkot
+2026-10-03 Shemini Atzeret
+2026-10-04 Simchat Torah
+2026-10-12 Columbus Day
+2026-10-20 Birth of the Báb
+2026-10-31 Halloween
+2026-11-11 Veteran's Day
+2026-11-12 Birth of Bahá’u’lláh
+2026-11-26 Thanksgiving
+2026-12-05 Hanukkah
+2026-12-25 Christmas
+2027-01-01 New Year's Day
+2027-01-18 Martin Luther King Day
+2027-02-02 Groundhog Day
+2027-02-08 Ramadan Begins
+2027-02-10 Ash Wednesday
+2027-02-14 Valentine's Day
+2027-02-15 President's Day
+2027-03-17 St. Patrick's Day
+2027-03-21 Bahá’í New Year (Naw-Ruz) 184
+2027-03-26 Good Friday
+2027-03-28 Easter Sunday
+2027-04-01 April Fools' Day
+2027-04-21 First Day of Ridvan
+2027-04-22 Passover
+2027-04-29 Ninth Day of Ridvan
+2027-05-02 Twelfth Day of Ridvan
+2027-05-09 Mother's Day
+2027-05-23 Declaration of the Báb
+2027-05-29 Ascension of Bahá’u’lláh
+2027-05-31 Memorial Day
+2027-06-06 Islamic New Year 1449
+2027-06-11 Shavuot
+2027-06-14 Flag Day
+2027-06-20 Father's Day
+2027-07-04 Independence Day
+2027-07-09 Martyrdom of the Báb
+2027-09-06 Labor Day
+2027-10-02 Rosh HaShanah 5788
+2027-10-11 Yom Kippur
+2027-10-11 Columbus Day
+2027-10-16 Sukkot
+2027-10-20 Birth of the Báb
+2027-10-23 Shemini Atzeret
+2027-10-24 Simchat Torah
+2027-10-31 Halloween
+2027-11-11 Veteran's Day
+2027-11-12 Birth of Bahá’u’lláh
+2027-11-25 Thanksgiving
+2027-12-25 Hanukkah
+2027-12-25 Christmas
+2028-01-01 New Year's Day
+2028-01-17 Martin Luther King Day
+2028-01-28 Ramadan Begins
+2028-02-02 Groundhog Day
+2028-02-14 Valentine's Day
+2028-02-21 President's Day
+2028-03-01 Ash Wednesday
+2028-03-17 St. Patrick's Day
+2028-03-21 Bahá’í New Year (Naw-Ruz) 185
+2028-04-01 April Fools' Day
+2028-04-11 Passover
+2028-04-14 Good Friday
+2028-04-16 Easter Sunday
+2028-04-21 First Day of Ridvan
+2028-04-29 Ninth Day of Ridvan
+2028-05-02 Twelfth Day of Ridvan
+2028-05-14 Mother's Day
+2028-05-23 Declaration of the Báb
+2028-05-25 Islamic New Year 1450
+2028-05-29 Ascension of Bahá’u’lláh
+2028-05-29 Memorial Day
+2028-05-31 Shavuot
+2028-06-14 Flag Day
+2028-06-18 Father's Day
+2028-07-04 Independence Day
+2028-07-09 Martyrdom of the Báb
+2028-09-04 Labor Day
+2028-09-21 Rosh HaShanah 5789
+2028-09-30 Yom Kippur
+2028-10-05 Sukkot
+2028-10-09 Columbus Day
+2028-10-12 Shemini Atzeret
+2028-10-13 Simchat Torah
+2028-10-20 Birth of the Báb
+2028-10-31 Halloween
+2028-11-11 Veteran's Day
+2028-11-12 Birth of Bahá’u’lláh
+2028-11-23 Thanksgiving
+2028-12-13 Hanukkah
+2028-12-25 Christmas
+2029-01-01 New Year's Day
+2029-01-15 Martin Luther King Day
+2029-01-16 Ramadan Begins
+2029-02-02 Groundhog Day
+2029-02-14 Ash Wednesday
+2029-02-14 Valentine's Day
+2029-02-19 President's Day
+2029-03-17 St. Patrick's Day
+2029-03-21 Bahá’í New Year (Naw-Ruz) 186
+2029-03-30 Good Friday
+2029-03-31 Passover
+2029-04-01 Easter Sunday
+2029-04-01 April Fools' Day
+2029-04-21 First Day of Ridvan
+2029-04-29 Ninth Day of Ridvan
+2029-05-02 Twelfth Day of Ridvan
+2029-05-13 Mother's Day
+2029-05-15 Islamic New Year 1451
+2029-05-20 Shavuot
+2029-05-23 Declaration of the Báb
+2029-05-28 Memorial Day
+2029-05-29 Ascension of Bahá’u’lláh
+2029-06-14 Flag Day
+2029-06-17 Father's Day
+2029-07-04 Independence Day
+2029-07-09 Martyrdom of the Báb
+2029-09-03 Labor Day
+2029-09-10 Rosh HaShanah 5790
+2029-09-19 Yom Kippur
+2029-09-24 Sukkot
+2029-10-01 Shemini Atzeret
+2029-10-02 Simchat Torah
+2029-10-08 Columbus Day
+2029-10-20 Birth of the Báb
+2029-10-31 Halloween
+2029-11-11 Veteran's Day
+2029-11-12 Birth of Bahá’u’lláh
+2029-11-22 Thanksgiving
+2029-12-02 Hanukkah
+2029-12-25 Christmas
+2030-01-01 New Year's Day
+2030-01-06 Ramadan Begins
+2030-01-21 Martin Luther King Day
+2030-02-02 Groundhog Day
+2030-02-14 Valentine's Day
+2030-02-18 President's Day
+2030-03-06 Ash Wednesday
+2030-03-17 St. Patrick's Day
+2030-03-21 Bahá’í New Year (Naw-Ruz) 187
+2030-04-01 April Fools' Day
+2030-04-18 Passover
+2030-04-19 Good Friday
+2030-04-21 First Day of Ridvan
+2030-04-21 Easter Sunday
+2030-04-29 Ninth Day of Ridvan
+2030-05-02 Twelfth Day of Ridvan
+2030-05-04 Islamic New Year 1452
+2030-05-12 Mother's Day
+2030-05-23 Declaration of the Báb
+2030-05-27 Memorial Day
+2030-05-29 Ascension of Bahá’u’lláh
+2030-06-07 Shavuot
+2030-06-14 Flag Day
+2030-06-16 Father's Day
+2030-07-04 Independence Day
+2030-07-09 Martyrdom of the Báb
+2030-09-02 Labor Day
+2030-09-28 Rosh HaShanah 5791
+2030-10-07 Yom Kippur
+2030-10-12 Sukkot
+2030-10-14 Columbus Day
+2030-10-19 Shemini Atzeret
+2030-10-20 Birth of the Báb
+2030-10-20 Simchat Torah
+2030-10-31 Halloween
+2030-11-11 Veteran's Day
+2030-11-12 Birth of Bahá’u’lláh
+2030-11-28 Thanksgiving
+2030-12-21 Hanukkah
+2030-12-25 Christmas
+2030-12-26 Ramadan Begins
+2031-01-01 New Year's Day
+2031-01-20 Martin Luther King Day
+2031-02-02 Groundhog Day
+2031-02-14 Valentine's Day
+2031-02-17 President's Day
+2031-02-26 Ash Wednesday
+2031-03-17 St. Patrick's Day
+2031-03-21 Bahá’í New Year (Naw-Ruz) 188
+2031-04-01 April Fools' Day
+2031-04-08 Passover
+2031-04-11 Good Friday
+2031-04-13 Easter Sunday
+2031-04-21 First Day of Ridvan
+2031-04-23 Islamic New Year 1453
+2031-04-29 Ninth Day of Ridvan
+2031-05-02 Twelfth Day of Ridvan
+2031-05-11 Mother's Day
+2031-05-23 Declaration of the Báb
+2031-05-26 Memorial Day
+2031-05-28 Shavuot
+2031-05-29 Ascension of Bahá’u’lláh
+2031-06-14 Flag Day
+2031-06-15 Father's Day
+2031-07-04 Independence Day
+2031-07-09 Martyrdom of the Báb
+2031-09-01 Labor Day
+2031-09-18 Rosh HaShanah 5792
+2031-09-27 Yom Kippur
+2031-10-02 Sukkot
+2031-10-09 Shemini Atzeret
+2031-10-10 Simchat Torah
+2031-10-13 Columbus Day
+2031-10-20 Birth of the Báb
+2031-10-31 Halloween
+2031-11-11 Veteran's Day
+2031-11-12 Birth of Bahá’u’lláh
+2031-11-27 Thanksgiving
+2031-12-10 Hanukkah
+2031-12-15 Ramadan Begins
+2031-12-25 Christmas
+2032-01-01 New Year's Day
+2032-01-19 Martin Luther King Day
+2032-02-02 Groundhog Day
+2032-02-11 Ash Wednesday
+2032-02-14 Valentine's Day
+2032-02-16 President's Day
+2032-03-17 St. Patrick's Day
+2032-03-21 Bahá’í New Year (Naw-Ruz) 189
+2032-03-26 Good Friday
+2032-03-27 Passover
+2032-03-28 Easter Sunday
+2032-04-01 April Fools' Day
+2032-04-12 Islamic New Year 1454
+2032-04-21 First Day of Ridvan
+2032-04-29 Ninth Day of Ridvan
+2032-05-02 Twelfth Day of Ridvan
+2032-05-09 Mother's Day
+2032-05-16 Shavuot
+2032-05-23 Declaration of the Báb
+2032-05-29 Ascension of Bahá’u’lláh
+2032-05-31 Memorial Day
+2032-06-14 Flag Day
+2032-06-20 Father's Day
+2032-07-04 Independence Day
+2032-07-09 Martyrdom of the Báb
+2032-09-06 Rosh HaShanah 5793
+2032-09-06 Labor Day
+2032-09-15 Yom Kippur
+2032-09-20 Sukkot
+2032-09-27 Shemini Atzeret
+2032-09-28 Simchat Torah
+2032-10-11 Columbus Day
+2032-10-20 Birth of the Báb
+2032-10-31 Halloween
+2032-11-11 Veteran's Day
+2032-11-12 Birth of Bahá’u’lláh
+2032-11-25 Thanksgiving
+2032-11-28 Hanukkah
+2032-12-04 Ramadan Begins
+2032-12-25 Christmas
+2033-01-01 New Year's Day
+2033-01-17 Martin Luther King Day
+2033-02-02 Groundhog Day
+2033-02-14 Valentine's Day
+2033-02-21 President's Day
+2033-03-02 Ash Wednesday
+2033-03-17 St. Patrick's Day
+2033-03-21 Bahá’í New Year (Naw-Ruz) 190
+2033-04-01 Islamic New Year 1455
+2033-04-01 April Fools' Day
+2033-04-14 Passover
+2033-04-15 Good Friday
+2033-04-17 Easter Sunday
+2033-04-21 First Day of Ridvan
+2033-04-29 Ninth Day of Ridvan
+2033-05-02 Twelfth Day of Ridvan
+2033-05-08 Mother's Day
+2033-05-23 Declaration of the Báb
+2033-05-29 Ascension of Bahá’u’lláh
+2033-05-30 Memorial Day
+2033-06-03 Shavuot
+2033-06-14 Flag Day
+2033-06-19 Father's Day
+2033-07-04 Independence Day
+2033-07-09 Martyrdom of the Báb
+2033-09-05 Labor Day
+2033-09-24 Rosh HaShanah 5794
+2033-10-03 Yom Kippur
+2033-10-08 Sukkot
+2033-10-10 Columbus Day
+2033-10-15 Shemini Atzeret
+2033-10-16 Simchat Torah
+2033-10-20 Birth of the Báb
+2033-10-31 Halloween
+2033-11-11 Veteran's Day
+2033-11-12 Birth of Bahá’u’lláh
+2033-11-23 Ramadan Begins
+2033-11-24 Thanksgiving
+2033-12-17 Hanukkah
+2033-12-25 Christmas
+2034-01-01 New Year's Day
+2034-01-16 Martin Luther King Day
+2034-02-02 Groundhog Day
+2034-02-14 Valentine's Day
+2034-02-20 President's Day
+2034-02-22 Ash Wednesday
+2034-03-17 St. Patrick's Day
+2034-03-21 Bahá’í New Year (Naw-Ruz) 191
+2034-03-21 Islamic New Year 1456
+2034-04-01 April Fools' Day
+2034-04-04 Passover
+2034-04-07 Good Friday
+2034-04-09 Easter Sunday
+2034-04-21 First Day of Ridvan
+2034-04-29 Ninth Day of Ridvan
+2034-05-02 Twelfth Day of Ridvan
+2034-05-14 Mother's Day
+2034-05-23 Declaration of the Báb
+2034-05-24 Shavuot
+2034-05-29 Ascension of Bahá’u’lláh
+2034-05-29 Memorial Day
+2034-06-14 Flag Day
+2034-06-18 Father's Day
+2034-07-04 Independence Day
+2034-07-09 Martyrdom of the Báb
+2034-09-04 Labor Day
+2034-09-14 Rosh HaShanah 5795
+2034-09-23 Yom Kippur
+2034-09-28 Sukkot
+2034-10-05 Shemini Atzeret
+2034-10-06 Simchat Torah
+2034-10-09 Columbus Day
+2034-10-20 Birth of the Báb
+2034-10-31 Halloween
+2034-11-11 Veteran's Day
+2034-11-12 Birth of Bahá’u’lláh
+2034-11-12 Ramadan Begins
+2034-11-23 Thanksgiving
+2034-12-07 Hanukkah
+2034-12-25 Christmas
+2035-01-01 New Year's Day
+2035-01-15 Martin Luther King Day
+2035-02-02 Groundhog Day
+2035-02-07 Ash Wednesday
+2035-02-14 Valentine's Day
+2035-02-19 President's Day
+2035-03-11 Islamic New Year 1457
+2035-03-17 St. Patrick's Day
+2035-03-21 Bahá’í New Year (Naw-Ruz) 192
+2035-03-23 Good Friday
+2035-03-25 Easter Sunday
+2035-04-01 April Fools' Day
+2035-04-21 First Day of Ridvan
+2035-04-24 Passover
+2035-04-29 Ninth Day of Ridvan
+2035-05-02 Twelfth Day of Ridvan
+2035-05-13 Mother's Day
+2035-05-23 Declaration of the Báb
+2035-05-28 Memorial Day
+2035-05-29 Ascension of Bahá’u’lláh
+2035-06-13 Shavuot
+2035-06-14 Flag Day
+2035-06-17 Father's Day
+2035-07-04 Independence Day
+2035-07-09 Martyrdom of the Báb
+2035-09-03 Labor Day
+2035-10-04 Rosh HaShanah 5796
+2035-10-08 Columbus Day
+2035-10-13 Yom Kippur
+2035-10-18 Sukkot
+2035-10-20 Birth of the Báb
+2035-10-25 Shemini Atzeret
+2035-10-26 Simchat Torah
+2035-10-31 Halloween
+2035-11-02 Ramadan Begins
+2035-11-11 Veteran's Day
+2035-11-12 Birth of Bahá’u’lláh
+2035-11-22 Thanksgiving
+2035-12-25 Christmas
+2035-12-26 Hanukkah
+2036-01-01 New Year's Day
+2036-01-21 Martin Luther King Day
+2036-02-02 Groundhog Day
+2036-02-14 Valentine's Day
+2036-02-18 President's Day
+2036-02-27 Ash Wednesday
+2036-02-28 Islamic New Year 1458
+2036-03-17 St. Patrick's Day
+2036-03-21 Bahá’í New Year (Naw-Ruz) 193
+2036-04-01 April Fools' Day
+2036-04-11 Good Friday
+2036-04-12 Passover
+2036-04-13 Easter Sunday
+2036-04-21 First Day of Ridvan
+2036-04-29 Ninth Day of Ridvan
+2036-05-02 Twelfth Day of Ridvan
+2036-05-11 Mother's Day
+2036-05-23 Declaration of the Báb
+2036-05-26 Memorial Day
+2036-05-29 Ascension of Bahá’u’lláh
+2036-06-01 Shavuot
+2036-06-14 Flag Day
+2036-06-15 Father's Day
+2036-07-04 Independence Day
+2036-07-09 Martyrdom of the Báb
+2036-09-01 Labor Day
+2036-09-22 Rosh HaShanah 5797
+2036-10-01 Yom Kippur
+2036-10-06 Sukkot
+2036-10-13 Shemini Atzeret
+2036-10-13 Columbus Day
+2036-10-14 Simchat Torah
+2036-10-20 Birth of the Báb
+2036-10-21 Ramadan Begins
+2036-10-31 Halloween
+2036-11-11 Veteran's Day
+2036-11-12 Birth of Bahá’u’lláh
+2036-11-27 Thanksgiving
+2036-12-14 Hanukkah
+2036-12-25 Christmas
+2037-01-01 New Year's Day
+2037-01-19 Martin Luther King Day
+2037-02-02 Groundhog Day
+2037-02-14 Valentine's Day
+2037-02-16 President's Day
+2037-02-17 Islamic New Year 1459
+2037-02-18 Ash Wednesday
+2037-03-17 St. Patrick's Day
+2037-03-21 Bahá’í New Year (Naw-Ruz) 194
+2037-03-31 Passover
+2037-04-01 April Fools' Day
+2037-04-03 Good Friday
+2037-04-05 Easter Sunday
+2037-04-21 First Day of Ridvan
+2037-04-29 Ninth Day of Ridvan
+2037-05-02 Twelfth Day of Ridvan
+2037-05-10 Mother's Day
+2037-05-20 Shavuot
+2037-05-23 Declaration of the Báb
+2037-05-25 Memorial Day
+2037-05-29 Ascension of Bahá’u’lláh
+2037-06-14 Flag Day
+2037-06-21 Father's Day
+2037-07-04 Independence Day
+2037-07-09 Martyrdom of the Báb
+2037-09-07 Labor Day
+2037-09-10 Rosh HaShanah 5798
+2037-09-19 Yom Kippur
+2037-09-24 Sukkot
+2037-10-01 Shemini Atzeret
+2037-10-02 Simchat Torah
+2037-10-11 Ramadan Begins
+2037-10-12 Columbus Day
+2037-10-20 Birth of the Báb
+2037-10-31 Halloween
+2037-11-11 Veteran's Day
+2037-11-12 Birth of Bahá’u’lláh
+2037-11-26 Thanksgiving
+2037-12-03 Hanukkah
+2037-12-25 Christmas
+2038-01-01 New Year's Day
+2038-01-18 Martin Luther King Day
+2038-02-02 Groundhog Day
+2038-02-06 Islamic New Year 1460
+2038-02-14 Valentine's Day
+2038-02-15 President's Day
+2038-03-10 Ash Wednesday
+2038-03-17 St. Patrick's Day
+2038-03-21 Bahá’í New Year (Naw-Ruz) 195
+2038-04-01 April Fools' Day
+2038-04-20 Passover
+2038-04-21 First Day of Ridvan
+2038-04-23 Good Friday
+2038-04-25 Easter Sunday
+2038-04-29 Ninth Day of Ridvan
+2038-05-02 Twelfth Day of Ridvan
+2038-05-09 Mother's Day
+2038-05-23 Declaration of the Báb
+2038-05-29 Ascension of Bahá’u’lláh
+2038-05-31 Memorial Day
+2038-06-09 Shavuot
+2038-06-14 Flag Day
+2038-06-20 Father's Day
+2038-07-04 Independence Day
+2038-07-09 Martyrdom of the Báb
+2038-09-06 Labor Day
+2038-09-30 Ramadan Begins
+2038-09-30 Rosh HaShanah 5799
+2038-10-09 Yom Kippur
+2038-10-11 Columbus Day
+2038-10-14 Sukkot
+2038-10-20 Birth of the Báb
+2038-10-21 Shemini Atzeret
+2038-10-22 Simchat Torah
+2038-10-31 Halloween
+2038-11-11 Veteran's Day
+2038-11-12 Birth of Bahá’u’lláh
+2038-11-25 Thanksgiving
+2038-12-22 Hanukkah
+2038-12-25 Christmas
+2039-01-01 New Year's Day
+2039-01-17 Martin Luther King Day
+2039-01-26 Islamic New Year 1461
+2039-02-02 Groundhog Day
+2039-02-14 Valentine's Day
+2039-02-21 President's Day
+2039-02-23 Ash Wednesday
+2039-03-17 St. Patrick's Day
+2039-03-21 Bahá’í New Year (Naw-Ruz) 196
+2039-04-01 April Fools' Day
+2039-04-08 Good Friday
+2039-04-09 Passover
+2039-04-10 Easter Sunday
+2039-04-21 First Day of Ridvan
+2039-04-29 Ninth Day of Ridvan
+2039-05-02 Twelfth Day of Ridvan
+2039-05-08 Mother's Day
+2039-05-23 Declaration of the Báb
+2039-05-29 Ascension of Bahá’u’lláh
+2039-05-29 Shavuot
+2039-05-30 Memorial Day
+2039-06-14 Flag Day
+2039-06-19 Father's Day
+2039-07-04 Independence Day
+2039-07-09 Martyrdom of the Báb
+2039-09-05 Labor Day
+2039-09-19 Ramadan Begins
+2039-09-19 Rosh HaShanah 5800
+2039-09-28 Yom Kippur
+2039-10-03 Sukkot
+2039-10-10 Shemini Atzeret
+2039-10-10 Columbus Day
+2039-10-11 Simchat Torah
+2039-10-20 Birth of the Báb
+2039-10-31 Halloween
+2039-11-11 Veteran's Day
+2039-11-12 Birth of Bahá’u’lláh
+2039-11-24 Thanksgiving
+2039-12-12 Hanukkah
+2039-12-25 Christmas
+2040-01-01 New Year's Day
+2040-01-16 Islamic New Year 1462
+2040-01-16 Martin Luther King Day
+2040-02-02 Groundhog Day
+2040-02-14 Valentine's Day
+2040-02-15 Ash Wednesday
+2040-02-20 President's Day
+2040-03-17 St. Patrick's Day
+2040-03-21 Bahá’í New Year (Naw-Ruz) 197
+2040-03-29 Passover
+2040-03-30 Good Friday
+2040-04-01 Easter Sunday
+2040-04-01 April Fools' Day
+2040-04-21 First Day of Ridvan
+2040-04-29 Ninth Day of Ridvan
+2040-05-02 Twelfth Day of Ridvan
+2040-05-13 Mother's Day
+2040-05-18 Shavuot
+2040-05-23 Declaration of the Báb
+2040-05-28 Memorial Day
+2040-05-29 Ascension of Bahá’u’lláh
+2040-06-14 Flag Day
+2040-06-17 Father's Day
+2040-07-04 Independence Day
+2040-07-09 Martyrdom of the Báb
+2040-09-03 Labor Day
+2040-09-08 Ramadan Begins
+2040-09-08 Rosh HaShanah 5801
+2040-09-17 Yom Kippur
+2040-09-22 Sukkot
+2040-09-29 Shemini Atzeret
+2040-09-30 Simchat Torah
+2040-10-08 Columbus Day
+2040-10-20 Birth of the Báb
+2040-10-31 Halloween
+2040-11-11 Veteran's Day
+2040-11-12 Birth of Bahá’u’lláh
+2040-11-22 Thanksgiving
+2040-11-30 Hanukkah
+2040-12-25 Christmas
+2041-01-01 New Year's Day
+2041-01-04 Islamic New Year 1463
+2041-01-21 Martin Luther King Day
+2041-02-02 Groundhog Day
+2041-02-14 Valentine's Day
+2041-02-18 President's Day
+2041-03-06 Ash Wednesday
+2041-03-17 St. Patrick's Day
+2041-03-21 Bahá’í New Year (Naw-Ruz) 198
+2041-04-01 April Fools' Day
+2041-04-16 Passover
+2041-04-19 Good Friday
+2041-04-21 First Day of Ridvan
+2041-04-21 Easter Sunday
+2041-04-29 Ninth Day of Ridvan
+2041-05-02 Twelfth Day of Ridvan
+2041-05-12 Mother's Day
+2041-05-23 Declaration of the Báb
+2041-05-27 Memorial Day
+2041-05-29 Ascension of Bahá’u’lláh
+2041-06-05 Shavuot
+2041-06-14 Flag Day
+2041-06-16 Father's Day
+2041-07-04 Independence Day
+2041-07-09 Martyrdom of the Báb
+2041-08-28 Ramadan Begins
+2041-09-02 Labor Day
+2041-09-26 Rosh HaShanah 5802
+2041-10-05 Yom Kippur
+2041-10-10 Sukkot
+2041-10-14 Columbus Day
+2041-10-17 Shemini Atzeret
+2041-10-18 Simchat Torah
+2041-10-20 Birth of the Báb
+2041-10-31 Halloween
+2041-11-11 Veteran's Day
+2041-11-12 Birth of Bahá’u’lláh
+2041-11-28 Thanksgiving
+2041-12-18 Hanukkah
+2041-12-24 Islamic New Year 1464
+2041-12-25 Christmas
+2042-01-01 New Year's Day
+2042-01-20 Martin Luther King Day
+2042-02-02 Groundhog Day
+2042-02-14 Valentine's Day
+2042-02-17 President's Day
+2042-02-19 Ash Wednesday
+2042-03-17 St. Patrick's Day
+2042-03-21 Bahá’í New Year (Naw-Ruz) 199
+2042-04-01 April Fools' Day
+2042-04-04 Good Friday
+2042-04-05 Passover
+2042-04-06 Easter Sunday
+2042-04-21 First Day of Ridvan
+2042-04-29 Ninth Day of Ridvan
+2042-05-02 Twelfth Day of Ridvan
+2042-05-11 Mother's Day
+2042-05-23 Declaration of the Báb
+2042-05-25 Shavuot
+2042-05-26 Memorial Day
+2042-05-29 Ascension of Bahá’u’lláh
+2042-06-14 Flag Day
+2042-06-15 Father's Day
+2042-07-04 Independence Day
+2042-07-09 Martyrdom of the Báb
+2042-08-17 Ramadan Begins
+2042-09-01 Labor Day
+2042-09-15 Rosh HaShanah 5803
+2042-09-24 Yom Kippur
+2042-09-29 Sukkot
+2042-10-06 Shemini Atzeret
+2042-10-07 Simchat Torah
+2042-10-13 Columbus Day
+2042-10-20 Birth of the Báb
+2042-10-31 Halloween
+2042-11-11 Veteran's Day
+2042-11-12 Birth of Bahá’u’lláh
+2042-11-27 Thanksgiving
+2042-12-08 Hanukkah
+2042-12-14 Islamic New Year 1465
+2042-12-25 Christmas
+2043-01-01 New Year's Day
+2043-01-19 Martin Luther King Day
+2043-02-02 Groundhog Day
+2043-02-11 Ash Wednesday
+2043-02-14 Valentine's Day
+2043-02-16 President's Day
+2043-03-17 St. Patrick's Day
+2043-03-21 Bahá’í New Year (Naw-Ruz) 200
+2043-03-27 Good Friday
+2043-03-29 Easter Sunday
+2043-04-01 April Fools' Day
+2043-04-21 First Day of Ridvan
+2043-04-25 Passover
+2043-04-29 Ninth Day of Ridvan
+2043-05-02 Twelfth Day of Ridvan
+2043-05-10 Mother's Day
+2043-05-23 Declaration of the Báb
+2043-05-25 Memorial Day
+2043-05-29 Ascension of Bahá’u’lláh
+2043-06-14 Shavuot
+2043-06-14 Flag Day
+2043-06-21 Father's Day
+2043-07-04 Independence Day
+2043-07-09 Martyrdom of the Báb
+2043-08-07 Ramadan Begins
+2043-09-07 Labor Day
+2043-10-05 Rosh HaShanah 5804
+2043-10-12 Columbus Day
+2043-10-14 Yom Kippur
+2043-10-19 Sukkot
+2043-10-20 Birth of the Báb
+2043-10-26 Shemini Atzeret
+2043-10-27 Simchat Torah
+2043-10-31 Halloween
+2043-11-11 Veteran's Day
+2043-11-12 Birth of Bahá’u’lláh
+2043-11-26 Thanksgiving
+2043-12-03 Islamic New Year 1466
+2043-12-25 Christmas
+2043-12-27 Hanukkah
+2044-01-01 New Year's Day
+2044-01-18 Martin Luther King Day
+2044-02-02 Groundhog Day
+2044-02-14 Valentine's Day
+2044-02-15 President's Day
+2044-03-02 Ash Wednesday
+2044-03-17 St. Patrick's Day
+2044-03-21 Bahá’í New Year (Naw-Ruz) 201
+2044-04-01 April Fools' Day
+2044-04-12 Passover
+2044-04-15 Good Friday
+2044-04-17 Easter Sunday
+2044-04-21 First Day of Ridvan
+2044-04-29 Ninth Day of Ridvan
+2044-05-02 Twelfth Day of Ridvan
+2044-05-08 Mother's Day
+2044-05-23 Declaration of the Báb
+2044-05-29 Ascension of Bahá’u’lláh
+2044-05-30 Memorial Day
+2044-06-01 Shavuot
+2044-06-14 Flag Day
+2044-06-19 Father's Day
+2044-07-04 Independence Day
+2044-07-09 Martyrdom of the Báb
+2044-07-26 Ramadan Begins
+2044-09-05 Labor Day
+2044-09-22 Rosh HaShanah 5805
+2044-10-01 Yom Kippur
+2044-10-06 Sukkot
+2044-10-10 Columbus Day
+2044-10-13 Shemini Atzeret
+2044-10-14 Simchat Torah
+2044-10-20 Birth of the Báb
+2044-10-31 Halloween
+2044-11-11 Veteran's Day
+2044-11-12 Birth of Bahá’u’lláh
+2044-11-22 Islamic New Year 1467
+2044-11-24 Thanksgiving
+2044-12-15 Hanukkah
+2044-12-25 Christmas
+2045-01-01 New Year's Day
+2045-01-16 Martin Luther King Day
+2045-02-02 Groundhog Day
+2045-02-14 Valentine's Day
+2045-02-20 President's Day
+2045-02-22 Ash Wednesday
+2045-03-17 St. Patrick's Day
+2045-03-21 Bahá’í New Year (Naw-Ruz) 202
+2045-04-01 April Fools' Day
+2045-04-02 Passover
+2045-04-07 Good Friday
+2045-04-09 Easter Sunday
+2045-04-21 First Day of Ridvan
+2045-04-29 Ninth Day of Ridvan
+2045-05-02 Twelfth Day of Ridvan
+2045-05-14 Mother's Day
+2045-05-22 Shavuot
+2045-05-23 Declaration of the Báb
+2045-05-29 Ascension of Bahá’u’lláh
+2045-05-29 Memorial Day
+2045-06-14 Flag Day
+2045-06-18 Father's Day
+2045-07-04 Independence Day
+2045-07-09 Martyrdom of the Báb
+2045-07-16 Ramadan Begins
+2045-09-04 Labor Day
+2045-09-12 Rosh HaShanah 5806
+2045-09-21 Yom Kippur
+2045-09-26 Sukkot
+2045-10-03 Shemini Atzeret
+2045-10-04 Simchat Torah
+2045-10-09 Columbus Day
+2045-10-20 Birth of the Báb
+2045-10-31 Halloween
+2045-11-11 Islamic New Year 1468
+2045-11-11 Veteran's Day
+2045-11-12 Birth of Bahá’u’lláh
+2045-11-23 Thanksgiving
+2045-12-04 Hanukkah
+2045-12-25 Christmas
+2046-01-01 New Year's Day
+2046-01-15 Martin Luther King Day
+2046-02-02 Groundhog Day
+2046-02-07 Ash Wednesday
+2046-02-14 Valentine's Day
+2046-02-19 President's Day
+2046-03-17 St. Patrick's Day
+2046-03-21 Bahá’í New Year (Naw-Ruz) 203
+2046-03-23 Good Friday
+2046-03-25 Easter Sunday
+2046-04-01 April Fools' Day
+2046-04-21 First Day of Ridvan
+2046-04-21 Passover
+2046-04-29 Ninth Day of Ridvan
+2046-05-02 Twelfth Day of Ridvan
+2046-05-13 Mother's Day
+2046-05-23 Declaration of the Báb
+2046-05-28 Memorial Day
+2046-05-29 Ascension of Bahá’u’lláh
+2046-06-10 Shavuot
+2046-06-14 Flag Day
+2046-06-17 Father's Day
+2046-07-04 Independence Day
+2046-07-05 Ramadan Begins
+2046-07-09 Martyrdom of the Báb
+2046-09-03 Labor Day
+2046-10-01 Rosh HaShanah 5807
+2046-10-08 Columbus Day
+2046-10-10 Yom Kippur
+2046-10-15 Sukkot
+2046-10-20 Birth of the Báb
+2046-10-22 Shemini Atzeret
+2046-10-23 Simchat Torah
+2046-10-31 Islamic New Year 1469
+2046-10-31 Halloween
+2046-11-11 Veteran's Day
+2046-11-12 Birth of Bahá’u’lláh
+2046-11-22 Thanksgiving
+2046-12-24 Hanukkah
+2046-12-25 Christmas
+2047-01-01 New Year's Day
+2047-01-21 Martin Luther King Day
+2047-02-02 Groundhog Day
+2047-02-14 Valentine's Day
+2047-02-18 President's Day
+2047-02-27 Ash Wednesday
+2047-03-17 St. Patrick's Day
+2047-03-21 Bahá’í New Year (Naw-Ruz) 204
+2047-04-01 April Fools' Day
+2047-04-11 Passover
+2047-04-12 Good Friday
+2047-04-14 Easter Sunday
+2047-04-21 First Day of Ridvan
+2047-04-29 Ninth Day of Ridvan
+2047-05-02 Twelfth Day of Ridvan
+2047-05-12 Mother's Day
+2047-05-23 Declaration of the Báb
+2047-05-27 Memorial Day
+2047-05-29 Ascension of Bahá’u’lláh
+2047-05-31 Shavuot
+2047-06-14 Flag Day
+2047-06-16 Father's Day
+2047-06-24 Ramadan Begins
+2047-07-04 Independence Day
+2047-07-09 Martyrdom of the Báb
+2047-09-02 Labor Day
+2047-09-21 Rosh HaShanah 5808
+2047-09-30 Yom Kippur
+2047-10-05 Sukkot
+2047-10-12 Shemini Atzeret
+2047-10-13 Simchat Torah
+2047-10-14 Columbus Day
+2047-10-20 Birth of the Báb
+2047-10-21 Islamic New Year 1470
+2047-10-31 Halloween
+2047-11-11 Veteran's Day
+2047-11-12 Birth of Bahá’u’lláh
+2047-11-28 Thanksgiving
+2047-12-13 Hanukkah
+2047-12-25 Christmas
+2048-01-01 New Year's Day
+2048-01-20 Martin Luther King Day
+2048-02-02 Groundhog Day
+2048-02-14 Valentine's Day
+2048-02-17 President's Day
+2048-02-19 Ash Wednesday
+2048-03-17 St. Patrick's Day
+2048-03-21 Bahá’í New Year (Naw-Ruz) 205
+2048-03-29 Passover
+2048-04-01 April Fools' Day
+2048-04-03 Good Friday
+2048-04-05 Easter Sunday
+2048-04-21 First Day of Ridvan
+2048-04-29 Ninth Day of Ridvan
+2048-05-02 Twelfth Day of Ridvan
+2048-05-10 Mother's Day
+2048-05-18 Shavuot
+2048-05-23 Declaration of the Báb
+2048-05-25 Memorial Day
+2048-05-29 Ascension of Bahá’u’lláh
+2048-06-13 Ramadan Begins
+2048-06-14 Flag Day
+2048-06-21 Father's Day
+2048-07-04 Independence Day
+2048-07-09 Martyrdom of the Báb
+2048-09-07 Labor Day
+2048-09-08 Rosh HaShanah 5809
+2048-09-17 Yom Kippur
+2048-09-22 Sukkot
+2048-09-29 Shemini Atzeret
+2048-09-30 Simchat Torah
+2048-10-09 Islamic New Year 1471
+2048-10-12 Columbus Day
+2048-10-20 Birth of the Báb
+2048-10-31 Halloween
+2048-11-11 Veteran's Day
+2048-11-12 Birth of Bahá’u’lláh
+2048-11-26 Thanksgiving
+2048-11-30 Hanukkah
+2048-12-25 Christmas
+2049-01-01 New Year's Day
+2049-01-18 Martin Luther King Day
+2049-02-02 Groundhog Day
+2049-02-14 Valentine's Day
+2049-02-15 President's Day
+2049-03-03 Ash Wednesday
+2049-03-17 St. Patrick's Day
+2049-03-21 Bahá’í New Year (Naw-Ruz) 206
+2049-04-01 April Fools' Day
+2049-04-16 Good Friday
+2049-04-17 Passover
+2049-04-18 Easter Sunday
+2049-04-21 First Day of Ridvan
+2049-04-29 Ninth Day of Ridvan
+2049-05-02 Twelfth Day of Ridvan
+2049-05-09 Mother's Day
+2049-05-23 Declaration of the Báb
+2049-05-29 Ascension of Bahá’u’lláh
+2049-05-31 Memorial Day
+2049-06-02 Ramadan Begins
+2049-06-06 Shavuot
+2049-06-14 Flag Day
+2049-06-20 Father's Day
+2049-07-04 Independence Day
+2049-07-09 Martyrdom of the Báb
+2049-09-06 Labor Day
+2049-09-27 Rosh HaShanah 5810
+2049-09-28 Islamic New Year 1472
+2049-10-06 Yom Kippur
+2049-10-11 Sukkot
+2049-10-11 Columbus Day
+2049-10-18 Shemini Atzeret
+2049-10-19 Simchat Torah
+2049-10-20 Birth of the Báb
+2049-10-31 Halloween
+2049-11-11 Veteran's Day
+2049-11-12 Birth of Bahá’u’lláh
+2049-11-25 Thanksgiving
+2049-12-20 Hanukkah
+2049-12-25 Christmas
+2050-01-01 New Year's Day
+2050-01-17 Martin Luther King Day
+2050-02-02 Groundhog Day
+2050-02-14 Valentine's Day
+2050-02-21 President's Day
+2050-02-23 Ash Wednesday
+2050-03-17 St. Patrick's Day
+2050-03-21 Bahá’í New Year (Naw-Ruz) 207
+2050-04-01 April Fools' Day
+2050-04-07 Passover
+2050-04-08 Good Friday
+2050-04-10 Easter Sunday
+2050-04-21 First Day of Ridvan
+2050-04-29 Ninth Day of Ridvan
+2050-05-02 Twelfth Day of Ridvan
+2050-05-08 Mother's Day
+2050-05-22 Ramadan Begins
+2050-05-23 Declaration of the Báb
+2050-05-27 Shavuot
+2050-05-29 Ascension of Bahá’u’lláh
+2050-05-30 Memorial Day
+2050-06-14 Flag Day
+2050-06-19 Father's Day
+2050-07-04 Independence Day
+2050-07-09 Martyrdom of the Báb
+2050-09-05 Labor Day
+2050-09-17 Rosh HaShanah 5811
+2050-09-18 Islamic New Year 1473
+2050-09-26 Yom Kippur
+2050-10-01 Sukkot
+2050-10-08 Shemini Atzeret
+2050-10-09 Simchat Torah
+2050-10-10 Columbus Day
+2050-10-20 Birth of the Báb
+2050-10-31 Halloween
+2050-11-11 Veteran's Day
+2050-11-12 Birth of Bahá’u’lláh
+2050-11-24 Thanksgiving
+2050-12-10 Hanukkah
+2050-12-25 Christmas
+2051-01-01 New Year's Day
+2051-01-16 Martin Luther King Day
+2051-02-02 Groundhog Day
+2051-02-14 Valentine's Day
+2051-02-15 Ash Wednesday
+2051-02-20 President's Day
+2051-03-17 St. Patrick's Day
+2051-03-21 Bahá’í New Year (Naw-Ruz) 208
+2051-03-28 Passover
+2051-03-31 Good Friday
+2051-04-01 April Fools' Day
+2051-04-02 Easter Sunday
+2051-04-21 First Day of Ridvan
+2051-04-29 Ninth Day of Ridvan
+2051-05-02 Twelfth Day of Ridvan
+2051-05-12 Ramadan Begins
+2051-05-14 Mother's Day
+2051-05-17 Shavuot
+2051-05-23 Declaration of the Báb
+2051-05-29 Ascension of Bahá’u’lláh
+2051-05-29 Memorial Day
+2051-06-14 Flag Day
+2051-06-18 Father's Day
+2051-07-04 Independence Day
+2051-07-09 Martyrdom of the Báb
+2051-09-04 Labor Day
+2051-09-07 Islamic New Year 1474
+2051-09-07 Rosh HaShanah 5812
+2051-09-16 Yom Kippur
+2051-09-21 Sukkot
+2051-09-28 Shemini Atzeret
+2051-09-29 Simchat Torah
+2051-10-09 Columbus Day
+2051-10-20 Birth of the Báb
+2051-10-31 Halloween
+2051-11-11 Veteran's Day
+2051-11-12 Birth of Bahá’u’lláh
+2051-11-23 Thanksgiving
+2051-11-29 Hanukkah
+2051-12-25 Christmas
+2052-01-01 New Year's Day
+2052-01-15 Martin Luther King Day
+2052-02-02 Groundhog Day
+2052-02-14 Valentine's Day
+2052-02-19 President's Day
+2052-03-06 Ash Wednesday
+2052-03-17 St. Patrick's Day
+2052-03-21 Bahá’í New Year (Naw-Ruz) 209
+2052-04-01 April Fools' Day
+2052-04-14 Passover
+2052-04-19 Good Friday
+2052-04-21 First Day of Ridvan
+2052-04-21 Easter Sunday
+2052-04-29 Ninth Day of Ridvan
+2052-04-30 Ramadan Begins
+2052-05-02 Twelfth Day of Ridvan
+2052-05-12 Mother's Day
+2052-05-23 Declaration of the Báb
+2052-05-27 Memorial Day
+2052-05-29 Ascension of Bahá’u’lláh
+2052-06-03 Shavuot
+2052-06-14 Flag Day
+2052-06-16 Father's Day
+2052-07-04 Independence Day
+2052-07-09 Martyrdom of the Báb
+2052-08-26 Islamic New Year 1475
+2052-09-02 Labor Day
+2052-09-24 Rosh HaShanah 5813
+2052-10-03 Yom Kippur
+2052-10-08 Sukkot
+2052-10-14 Columbus Day
+2052-10-15 Shemini Atzeret
+2052-10-16 Simchat Torah
+2052-10-20 Birth of the Báb
+2052-10-31 Halloween
+2052-11-11 Veteran's Day
+2052-11-12 Birth of Bahá’u’lláh
+2052-11-28 Thanksgiving
+2052-12-16 Hanukkah
+2052-12-25 Christmas
+2053-01-01 New Year's Day
+2053-01-20 Martin Luther King Day
+2053-02-02 Groundhog Day
+2053-02-14 Valentine's Day
+2053-02-17 President's Day
+2053-02-19 Ash Wednesday
+2053-03-17 St. Patrick's Day
+2053-03-21 Bahá’í New Year (Naw-Ruz) 210
+2053-04-01 April Fools' Day
+2053-04-03 Passover
+2053-04-04 Good Friday
+2053-04-06 Easter Sunday
+2053-04-19 Ramadan Begins
+2053-04-21 First Day of Ridvan
+2053-04-29 Ninth Day of Ridvan
+2053-05-02 Twelfth Day of Ridvan
+2053-05-11 Mother's Day
+2053-05-23 Declaration of the Báb
+2053-05-23 Shavuot
+2053-05-26 Memorial Day
+2053-05-29 Ascension of Bahá’u’lláh
+2053-06-14 Flag Day
+2053-06-15 Father's Day
+2053-07-04 Independence Day
+2053-07-09 Martyrdom of the Báb
+2053-08-16 Islamic New Year 1476
+2053-09-01 Labor Day
+2053-09-13 Rosh HaShanah 5814
+2053-09-22 Yom Kippur
+2053-09-27 Sukkot
+2053-10-04 Shemini Atzeret
+2053-10-05 Simchat Torah
+2053-10-13 Columbus Day
+2053-10-20 Birth of the Báb
+2053-10-31 Halloween
+2053-11-11 Veteran's Day
+2053-11-12 Birth of Bahá’u’lláh
+2053-11-27 Thanksgiving
+2053-12-06 Hanukkah
+2053-12-25 Christmas
+2054-01-01 New Year's Day
+2054-01-19 Martin Luther King Day
+2054-02-02 Groundhog Day
+2054-02-11 Ash Wednesday
+2054-02-14 Valentine's Day
+2054-02-16 President's Day
+2054-03-17 St. Patrick's Day
+2054-03-21 Bahá’í New Year (Naw-Ruz) 211
+2054-03-27 Good Friday
+2054-03-29 Easter Sunday
+2054-04-01 April Fools' Day
+2054-04-09 Ramadan Begins
+2054-04-21 First Day of Ridvan
+2054-04-23 Passover
+2054-04-29 Ninth Day of Ridvan
+2054-05-02 Twelfth Day of Ridvan
+2054-05-10 Mother's Day
+2054-05-23 Declaration of the Báb
+2054-05-25 Memorial Day
+2054-05-29 Ascension of Bahá’u’lláh
+2054-06-12 Shavuot
+2054-06-14 Flag Day
+2054-06-21 Father's Day
+2054-07-04 Independence Day
+2054-07-09 Martyrdom of the Báb
+2054-08-05 Islamic New Year 1477
+2054-09-07 Labor Day
+2054-10-03 Rosh HaShanah 5815
+2054-10-12 Yom Kippur
+2054-10-12 Columbus Day
+2054-10-17 Sukkot
+2054-10-20 Birth of the Báb
+2054-10-24 Shemini Atzeret
+2054-10-25 Simchat Torah
+2054-10-31 Halloween
+2054-11-11 Veteran's Day
+2054-11-12 Birth of Bahá’u’lláh
+2054-11-26 Thanksgiving
+2054-12-25 Christmas
+2054-12-26 Hanukkah
+2055-01-01 New Year's Day
+2055-01-18 Martin Luther King Day
+2055-02-02 Groundhog Day
+2055-02-14 Valentine's Day
+2055-02-15 President's Day
+2055-03-03 Ash Wednesday
+2055-03-17 St. Patrick's Day
+2055-03-21 Bahá’í New Year (Naw-Ruz) 212
+2055-03-29 Ramadan Begins
+2055-04-01 April Fools' Day
+2055-04-13 Passover
+2055-04-16 Good Friday
+2055-04-18 Easter Sunday
+2055-04-21 First Day of Ridvan
+2055-04-29 Ninth Day of Ridvan
+2055-05-02 Twelfth Day of Ridvan
+2055-05-09 Mother's Day
+2055-05-23 Declaration of the Báb
+2055-05-29 Ascension of Bahá’u’lláh
+2055-05-31 Memorial Day
+2055-06-02 Shavuot
+2055-06-14 Flag Day
+2055-06-20 Father's Day
+2055-07-04 Independence Day
+2055-07-09 Martyrdom of the Báb
+2055-07-26 Islamic New Year 1478
+2055-09-06 Labor Day
+2055-09-23 Rosh HaShanah 5816
+2055-10-02 Yom Kippur
+2055-10-07 Sukkot
+2055-10-11 Columbus Day
+2055-10-14 Shemini Atzeret
+2055-10-15 Simchat Torah
+2055-10-20 Birth of the Báb
+2055-10-31 Halloween
+2055-11-11 Veteran's Day
+2055-11-12 Birth of Bahá’u’lláh
+2055-11-25 Thanksgiving
+2055-12-15 Hanukkah
+2055-12-25 Christmas
+2056-01-01 New Year's Day
+2056-01-17 Martin Luther King Day
+2056-02-02 Groundhog Day
+2056-02-14 Valentine's Day
+2056-02-16 Ash Wednesday
+2056-02-21 President's Day
+2056-03-17 St. Patrick's Day
+2056-03-18 Ramadan Begins
+2056-03-21 Bahá’í New Year (Naw-Ruz) 213
+2056-03-31 Good Friday
+2056-04-01 Passover
+2056-04-01 April Fools' Day
+2056-04-02 Easter Sunday
+2056-04-21 First Day of Ridvan
+2056-04-29 Ninth Day of Ridvan
+2056-05-02 Twelfth Day of Ridvan
+2056-05-14 Mother's Day
+2056-05-21 Shavuot
+2056-05-23 Declaration of the Báb
+2056-05-29 Ascension of Bahá’u’lláh
+2056-05-29 Memorial Day
+2056-06-14 Flag Day
+2056-06-18 Father's Day
+2056-07-04 Independence Day
+2056-07-09 Martyrdom of the Báb
+2056-07-14 Islamic New Year 1479
+2056-09-04 Labor Day
+2056-09-11 Rosh HaShanah 5817
+2056-09-20 Yom Kippur
+2056-09-25 Sukkot
+2056-10-02 Shemini Atzeret
+2056-10-03 Simchat Torah
+2056-10-09 Columbus Day
+2056-10-20 Birth of the Báb
+2056-10-31 Halloween
+2056-11-11 Veteran's Day
+2056-11-12 Birth of Bahá’u’lláh
+2056-11-23 Thanksgiving
+2056-12-03 Hanukkah
+2056-12-25 Christmas
+2057-01-01 New Year's Day
+2057-01-15 Martin Luther King Day
+2057-02-02 Groundhog Day
+2057-02-14 Valentine's Day
+2057-02-19 President's Day
+2057-03-07 Ramadan Begins
+2057-03-07 Ash Wednesday
+2057-03-17 St. Patrick's Day
+2057-03-21 Bahá’í New Year (Naw-Ruz) 214
+2057-04-01 April Fools' Day
+2057-04-19 Passover
+2057-04-20 Good Friday
+2057-04-21 First Day of Ridvan
+2057-04-22 Easter Sunday
+2057-04-29 Ninth Day of Ridvan
+2057-05-02 Twelfth Day of Ridvan
+2057-05-13 Mother's Day
+2057-05-23 Declaration of the Báb
+2057-05-28 Memorial Day
+2057-05-29 Ascension of Bahá’u’lláh
+2057-06-08 Shavuot
+2057-06-14 Flag Day
+2057-06-17 Father's Day
+2057-07-03 Islamic New Year 1480
+2057-07-04 Independence Day
+2057-07-09 Martyrdom of the Báb
+2057-09-03 Labor Day
+2057-09-29 Rosh HaShanah 5818
+2057-10-08 Yom Kippur
+2057-10-08 Columbus Day
+2057-10-13 Sukkot
+2057-10-20 Birth of the Báb
+2057-10-20 Shemini Atzeret
+2057-10-21 Simchat Torah
+2057-10-31 Halloween
+2057-11-11 Veteran's Day
+2057-11-12 Birth of Bahá’u’lláh
+2057-11-22 Thanksgiving
+2057-12-22 Hanukkah
+2057-12-25 Christmas
+2058-01-01 New Year's Day
+2058-01-21 Martin Luther King Day
+2058-02-02 Groundhog Day
+2058-02-14 Valentine's Day
+2058-02-18 President's Day
+2058-02-24 Ramadan Begins
+2058-02-27 Ash Wednesday
+2058-03-17 St. Patrick's Day
+2058-03-21 Bahá’í New Year (Naw-Ruz) 215
+2058-04-01 April Fools' Day
+2058-04-09 Passover
+2058-04-12 Good Friday
+2058-04-14 Easter Sunday
+2058-04-21 First Day of Ridvan
+2058-04-29 Ninth Day of Ridvan
+2058-05-02 Twelfth Day of Ridvan
+2058-05-12 Mother's Day
+2058-05-23 Declaration of the Báb
+2058-05-27 Memorial Day
+2058-05-29 Ascension of Bahá’u’lláh
+2058-05-29 Shavuot
+2058-06-14 Flag Day
+2058-06-16 Father's Day
+2058-06-23 Islamic New Year 1481
+2058-07-04 Independence Day
+2058-07-09 Martyrdom of the Báb
+2058-09-02 Labor Day
+2058-09-19 Rosh HaShanah 5819
+2058-09-28 Yom Kippur
+2058-10-03 Sukkot
+2058-10-10 Shemini Atzeret
+2058-10-11 Simchat Torah
+2058-10-14 Columbus Day
+2058-10-20 Birth of the Báb
+2058-10-31 Halloween
+2058-11-11 Veteran's Day
+2058-11-12 Birth of Bahá’u’lláh
+2058-11-28 Thanksgiving
+2058-12-11 Hanukkah
+2058-12-25 Christmas
+2059-01-01 New Year's Day
+2059-01-20 Martin Luther King Day
+2059-02-02 Groundhog Day
+2059-02-12 Ash Wednesday
+2059-02-14 Ramadan Begins
+2059-02-14 Valentine's Day
+2059-02-17 President's Day
+2059-03-17 St. Patrick's Day
+2059-03-21 Bahá’í New Year (Naw-Ruz) 216
+2059-03-28 Good Friday
+2059-03-29 Passover
+2059-03-30 Easter Sunday
+2059-04-01 April Fools' Day
+2059-04-21 First Day of Ridvan
+2059-04-29 Ninth Day of Ridvan
+2059-05-02 Twelfth Day of Ridvan
+2059-05-11 Mother's Day
+2059-05-18 Shavuot
+2059-05-23 Declaration of the Báb
+2059-05-26 Memorial Day
+2059-05-29 Ascension of Bahá’u’lláh
+2059-06-12 Islamic New Year 1482
+2059-06-14 Flag Day
+2059-06-15 Father's Day
+2059-07-04 Independence Day
+2059-07-09 Martyrdom of the Báb
+2059-09-01 Labor Day
+2059-09-08 Rosh HaShanah 5820
+2059-09-17 Yom Kippur
+2059-09-22 Sukkot
+2059-09-29 Shemini Atzeret
+2059-09-30 Simchat Torah
+2059-10-13 Columbus Day
+2059-10-20 Birth of the Báb
+2059-10-31 Halloween
+2059-11-11 Veteran's Day
+2059-11-12 Birth of Bahá’u’lláh
+2059-11-27 Thanksgiving
+2059-11-30 Hanukkah
+2059-12-25 Christmas
+2060-01-01 New Year's Day
+2060-01-19 Martin Luther King Day
+2060-02-02 Groundhog Day
+2060-02-03 Ramadan Begins
+2060-02-14 Valentine's Day
+2060-02-16 President's Day
+2060-03-03 Ash Wednesday
+2060-03-17 St. Patrick's Day
+2060-03-21 Bahá’í New Year (Naw-Ruz) 217
+2060-04-01 April Fools' Day
+2060-04-15 Passover
+2060-04-16 Good Friday
+2060-04-18 Easter Sunday
+2060-04-21 First Day of Ridvan
+2060-04-29 Ninth Day of Ridvan
+2060-05-02 Twelfth Day of Ridvan
+2060-05-09 Mother's Day
+2060-05-23 Declaration of the Báb
+2060-05-29 Ascension of Bahá’u’lláh
+2060-05-31 Islamic New Year 1483
+2060-05-31 Memorial Day
+2060-06-04 Shavuot
+2060-06-14 Flag Day
+2060-06-20 Father's Day
+2060-07-04 Independence Day
+2060-07-09 Martyrdom of the Báb
+2060-09-06 Labor Day
+2060-09-25 Rosh HaShanah 5821
+2060-10-04 Yom Kippur
+2060-10-09 Sukkot
+2060-10-11 Columbus Day
+2060-10-16 Shemini Atzeret
+2060-10-17 Simchat Torah
+2060-10-20 Birth of the Báb
+2060-10-31 Halloween
+2060-11-11 Veteran's Day
+2060-11-12 Birth of Bahá’u’lláh
+2060-11-25 Thanksgiving
+2060-12-18 Hanukkah
+2060-12-25 Christmas

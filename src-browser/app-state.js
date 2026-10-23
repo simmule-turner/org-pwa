@@ -16,3 +16,7 @@
  */
 /** @typedef {import('../src/types.js').AppState} AppState */
 export const S = /** @type {AppState} */ (/** @type {unknown} */ ({}));
+
+/** The views that list agenda rows and redraw when the agenda files load: the Agenda, the TODO list, and the Match and Search views.
+ * @param {string} view */
+export const isAgendaFamilyView = (view) => view === 'agenda' || view === 'tasklist' || view === 'match' || view === 'searchview';

@@ -1,0 +1,10 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Entities and macros</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Text Hello world \alpha \rightarrow a_b a^b -- --- ... \-
+</text:p>

@@ -1,0 +1,26 @@
+#+TITLE: Doc Title
+#+AUTHOR: Me
+#+OPTIONS: toc:nil num:t
+* TODO [#A] First heading :tag1:tag2:
+Text under first.
+** DONE Second level
+More text.
+*** Third level
+**** Fourth level
+***** Fifth deep (lowlevel? H:3)
+Deep text.
+***** Another deep
+Deep two.
+* Unnumbered :notoc:
+:PROPERTIES:
+:UNNUMBERED: t
+:END:
+Body.
+* Plain with =code= and [[*First heading][a link]] and <<tgt>> target
+See [[tgt]] and [[*Second level]] and [[#cid]].
+* With custom id
+:PROPERTIES:
+:CUSTOM_ID: cid
+:ID: abc-123
+:END:
+Link [[id:abc-123][by id]].

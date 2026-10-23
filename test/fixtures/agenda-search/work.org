@@ -1,0 +1,40 @@
+#+TITLE: Work
+#+CATEGORY: work
+#+TODO: TODO NEXT WAITING | DONE CANCELLED
+#+FILETAGS: :office:
+
+* TODO [#A] Ship release notes :urgent:
+SCHEDULED: <2026-10-24 Sat>
+Write the notes for the Q4 plan and the budget review.
+* NEXT [#B] Reply to vendor about the budget :blocked:
+:PROPERTIES:
+:Effort: 0:30
+:END:
+Waiting on their quote.
+** WAITING Chase refund :finance:
+Phone the bank; the refund is late.
+** DONE [#C] File expenses :finance:
+CLOSED: [2026-10-20 Tue 09:00]
+* Meeting notes: Q4 plan review
+Attendees listed here. Budget cuts discussed.
+The plan assumes growth.
+** Action items
+- Draft the budget memo
+- Send the Q4
+  plan to Dana
+* TODO Fix the flaky test :home:
+DEADLINE: <2026-10-30 Fri>
+* TODO Draft the Q4 budget :urgent:
+Draft only.
+* COMMENT TODO Hidden commented budget task
+budget words here
+* Archived stuff :ARCHIVE:
+** TODO Old budget item
+budget
+* CANCELLED Buy printer ink :home:
+* Phrase    spacing
+Q4   plan  with   extra   spaces
+* Café résumé budget
+Unicode body: naïve café.
+* Heading with {braces} and a-b-c words
+Body: mid-word budgetary and budget.

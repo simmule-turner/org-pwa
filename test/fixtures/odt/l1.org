@@ -1,0 +1,29 @@
+#+TITLE: Lists
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+- one
+- two [X]
+  - nested a
+  - nested b [-]
+    1. deep one
+    2. deep two
+- three [ ]
+
+1. first
+2. [@5] fifth
+3. sixth
+
+- term :: definition one
+- term two :: definition
+  with more text
+
+  second para
+- :: no term
+
+- item with table
+
+  | a | b |
+  | 1 | 2 |
+
+  after table
+- last

@@ -1,0 +1,37 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Math</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Inline 
+<draw:frame draw:style-name="OrgInlineFormula" text:anchor-type="as-char" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0001/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>$x^2+1$</svg:desc>
+</draw:frame> and 
+<draw:frame draw:style-name="OrgInlineFormula" text:anchor-type="as-char" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0002/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>\(\alpha\)</svg:desc>
+</draw:frame> here.
+</text:p>
+<text:p text:style-name="Text_20_body">
+<draw:frame draw:style-name="OrgCaptionedFormula" text:anchor-type="paragraph" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0003/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>\[ \int_0^1 x\,dx = 1/2 \]</svg:desc>
+</draw:frame>
+<text:tab/>(<text:sequence text:ref-name="eq1" text:name="Text" text:formula="ooow:Text+1" style:num-format="1">1</text:sequence>)
+</text:p>
+<text:p text:style-name="OrgFormula">
+<draw:frame draw:style-name="OrgCaptionedFormula" text:anchor-type="paragraph" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0004/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>\begin{equation}
+E = mc^2
+\end{equation}</svg:desc>
+</draw:frame>
+<text:tab/>(<text:sequence text:ref-name="eq2" text:name="Text" text:formula="ooow:Text+1" style:num-format="1">2</text:sequence>)</text:p>

@@ -37,6 +37,9 @@ const el = `
          ;; what (calendar-set-date-style STYLE) sets; a plain setq of the style leaves the American forms in place
          (diary-date-forms (symbol-value (intern (format "diary-%s-date-forms" (kget 'style c)))))
          (diary-file (kget 'path c))
+         (calendar-latitude (or (kget 'latitude c) calendar-latitude))
+         (calendar-longitude (or (kget 'longitude c) calendar-longitude))
+         (calendar-location-name (or (kget 'locationName c) calendar-location-name))
          (diary-abbreviated-year-flag (not (eq (kget 'abbreviatedYear c) :json-false)))
          (diary-show-holidays-flag (not (eq (kget 'showHolidays c) :json-false)))
          (diary-list-entries-hook (mapcar #'intern (kget 'hooks c)))

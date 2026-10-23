@@ -34,7 +34,7 @@ const exporters = {
   html: (doc, brokenLinks) => exportToHtml(doc, null, { defaults: { brokenLinks } }),
   ascii: (doc, brokenLinks) => exportToAscii(doc, null, 72, { brokenLinks }),
   latex: (doc, brokenLinks) => exportToLatex(doc, null, { defaults: { brokenLinks } }),
-  odt: (doc, brokenLinks) => contentXml(exportToOdt(doc, null, { brokenLinks })),
+  odt: (doc, brokenLinks) => contentXml(exportToOdt(doc, null, { brokenLinks, highlight: false })),
 };
 
 test('a link that leads nowhere stops every export by default, with Emacs\'s message', () => {
@@ -50,7 +50,7 @@ test('t leaves the link out, with the blanks after it', () => {
   assert.match(exporters.html(doc, 't'), /<p>\nSee and then <a href="#here">1<\/a>\.\n<\/p>/);
   assert.match(exporters.latex(doc, 't'), /\nSee and then \\ref\{sec:org[0-9a-f]+\}\.\n/);
   assert.match(exporters.ascii(doc, 't'), /\n {2}See and then 1\.\n/);
-  assert.match(exporters.odt(doc, 't'), /<text:p [^>]*>See and then <text:bookmark-ref /);
+  assert.match(exporters.odt(doc, 't'), /<text:p [^>]*>See {2}and {2}then <text:bookmark-ref /);
   const refs = parseOrg(CODEREF);
   assert.match(exporters.html(refs, 't'), /<p>\nA b \.\n<\/p>/);
   assert.match(exporters.latex(refs, 't'), /\nA b \.\n/);
@@ -104,8 +104,8 @@ test('ODT: a numbered block is a list that continues numbering, and a reference 
   const doc = parseOrg('* H\n#+begin_src python -n 5 -k\na = 1 (ref:one)\nb = 2\nc = 3 (ref:three)\n#+end_src\nSee [[(three)]] and [[(one)][here]].\n\n#+begin_src python +n -k\nd = 4\n#+end_src\n#+begin_example -n -r\nx (ref:ex)\ny\n#+end_example\nAlso [[(ex)]].\n');
   const xml = exporters.odt(doc, 'nil');
   assert.equal([...xml.matchAll(/<text:list text:style-name="OrgSrcBlockNumberedLine" text:continue-numbering="(\w+)">/g)].map((m) => m[1]).join(), 'true,true,false');
-  assert.ok(xml.includes('<text:bookmark-start text:name="OrgXref.coderef-one"/><text:bookmark text:name="coderef-one"/>a = 1 (one)<text:bookmark-end text:name="OrgXref.coderef-one"/>'));
-  assert.ok(xml.includes('See <text:bookmark-ref text:reference-format="number" text:ref-name="OrgXref.coderef-three">7</text:bookmark-ref> and here.'));
+  assert.ok(xml.includes('<text:bookmark-start text:name="OrgXref.coderef-one"/>\n<text:bookmark text:name="coderef-one"/>a = 1 (one)\n<text:bookmark-end text:name="OrgXref.coderef-one"/>'));
+  assert.ok(xml.includes('See <text:bookmark-ref text:reference-format="number" text:ref-name="OrgXref.coderef-three">7</text:bookmark-ref> and here.\n'));
   assert.ok(xml.includes('Also <text:bookmark-ref text:reference-format="number" text:ref-name="OrgXref.coderef-ex">1</text:bookmark-ref>.'));
   assert.equal((xml.match(/<text:list-item>/g) || []).length, 6);
 });

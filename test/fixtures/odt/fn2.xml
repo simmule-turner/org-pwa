@@ -1,0 +1,14 @@
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Inline<text:note text:id="fn1" text:note-class="footnote">
+<text:note-citation>1</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">separate def
+</text:p>
+</text:note-body>
+</text:note> and again<text:span text:style-name="OrgSuperscript">
+<text:note-ref text:note-class="footnote" text:reference-format="text" text:ref-name="fn1">1</text:note-ref>
+</text:span>.
+</text:p>

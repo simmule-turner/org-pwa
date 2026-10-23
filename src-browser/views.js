@@ -90,23 +90,28 @@ export function renderViewMenuContent() {
   viewMenuPanel.style.display = 'block';
 
   const viewMenuAliases = parseMenuAliases(getMenuAliases(S.state.localVariables)).view;
+  /** @type {Record<string, HTMLElement | null>} */
   const viewSwitchButtons = {};
   for (const [key, label] of [
     ['agenda', 'Agenda'],
     ['org', 'Org'],
     ['text', 'Text'],
     ['tasklist', 'TODO'],
+    ['match', 'Match'],
+    ['searchview', 'Keyword search'],
   ]) {
     const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === S.currentView) btn.style.fontWeight = '700';
-    /** @type {any} */ (viewSwitchButtons)[label] = btn;
+    viewSwitchButtons[label] = btn;
   }
 
   appendMenuButtonsInOrder(viewMenuPanel, viewMenuAliases, [
-    { label: 'Agenda', btn: /** @type {any} */ (viewSwitchButtons)['Agenda'] },
-    { label: 'Org', btn: /** @type {any} */ (viewSwitchButtons)['Org'] },
-    { label: 'Text', btn: /** @type {any} */ (viewSwitchButtons)['Text'] },
-    { label: 'TODO', btn: /** @type {any} */ (viewSwitchButtons)['TODO'] },
+    { label: 'Agenda', btn: viewSwitchButtons['Agenda'] },
+    { label: 'Org', btn: viewSwitchButtons['Org'] },
+    { label: 'Text', btn: viewSwitchButtons['Text'] },
+    { label: 'TODO', btn: viewSwitchButtons['TODO'] },
+    { label: 'Match', btn: viewSwitchButtons['Match'] },
+    { label: 'Keyword search', btn: viewSwitchButtons['Keyword search'] },
   ]);
   // The read-only toggle ("%%RO" / "**RW") used to be a separate item here.
   // It's reached through the command palette now (Toggle read-only) or

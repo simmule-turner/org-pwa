@@ -1,0 +1,4 @@
+#+AUTHOR: Me
+Inline[fn:3:inline *def*] and again[fn:3].
+
+[fn:3] separate def

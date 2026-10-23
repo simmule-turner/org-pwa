@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v627 — Match and Keyword search views, closer exports
+New Agenda views: Match (=m=, =M=) and Keyword search (=s=) list results as rows, ordered by the =tags= and =search= sorting strategies, and a query can be saved in =org-agenda-custom-commands=. ODT table width cookies, =doi:= links, paragraph links and footnote definitions follow Emacs. iCalendar export agrees with Emacs on daylight-saving times, =#+EXCLUDE_TAGS:= and =#+CATEGORY:=. The diary reads =diary-sunrise-sunset= for any latitude, with daylight-saving times.
+Verified: 56 Match, Search and command queries, 6 ODT cases, 128 iCalendar cases, 7,886 holidays for 2000–2060 and 8 diary files compared with Emacs 29.3.
+
+* v626 — ODT export as ox-odt writes it
+ODT export is now a port of =ox-odt=: Emacs's own styles and template, headings numbered through the outline style, tables with special rows and columns, alignment, header rows and column groups, captions and numbered labels, a real table of contents, and the same bookmark and style names. Images the app can read are embedded, LaTeX becomes editable formula objects (KaTeX's MathML, checked in LibreOffice), and source blocks are colored.
+Verified: 20 fixtures compared with Emacs 29.3; the only differences are the ones README.org lists.
+
 * v625 — diary-float as Emacs has it
 =diary-float= lets the Nth weekday after a day fall in the next month, accepts =nil= for DAY, and no longer reads its fifth argument as a year (in Emacs it is a calendar face). =diary-offset=, =diary-ordinal-suffix= and =calendar-nth-named-day= work.
 Verified: 15 expressions over 2026 to 2029 compared with Emacs 29.3.

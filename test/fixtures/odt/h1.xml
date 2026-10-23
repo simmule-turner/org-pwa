@@ -1,0 +1,87 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Doc Title</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:span text:style-name="OrgTodo">TODO</text:span> First heading<text:tab/>
+<text:span text:style-name="OrgTags">[<text:span text:style-name="OrgTag">tag1</text:span> : <text:span text:style-name="OrgTag">tag2</text:span>]</text:span>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">Text under first.
+</text:p>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:span text:style-name="OrgDone">DONE</text:span> Second level
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">More text.
+</text:p>
+<text:h text:style-name="Heading_20_3" text:outline-level="3" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Third level
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Fourth level
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:p>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Fifth deep (lowlevel? H:3)
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:p>
+<text:p text:style-name="Text_20_body">Deep text.
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Another deep
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:p>
+<text:p text:style-name="Text_20_body">Deep two.
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+</text:list>
+<text:h text:style-name="Heading_20_1_unnumbered" text:outline-level="1" text:is-list-header="true">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Unnumbered<text:tab/>
+<text:span text:style-name="OrgTags">[<text:span text:style-name="OrgTag">notoc</text:span>]</text:span>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">Body.
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Plain with <text:span text:style-name="OrgCode">code</text:span> and <text:a xlink:type="simple" xlink:href="#ORG">a link</text:a> and 
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:bookmark-end text:name="OrgXref.ORG"/> target
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">See <text:a xlink:type="simple" xlink:href="#ORG">(2)</text:a> and <text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref.ORG">1.1</text:bookmark-ref> and <text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref.ORG">3</text:bookmark-ref>.
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ID-abc-123"/>
+<text:bookmark text:name="ID-abc-123"/>
+<text:bookmark-end text:name="OrgXref.ID-abc-123"/>
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>With custom id
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">Link <text:a xlink:type="simple" xlink:href="#ORG">by id</text:a>.
+</text:p>

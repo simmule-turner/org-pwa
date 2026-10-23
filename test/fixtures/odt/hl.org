@@ -1,0 +1,5 @@
+#+AUTHOR: Me
+#+begin_src js -n
+const a = "x"; // hi
+function f() { return 1 }
+#+end_src

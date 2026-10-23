@@ -387,7 +387,7 @@ Math in a heading, paragraph or list item renders as typeset math with [[https:/
 
 ~\(...\)~, ~\[...\]~, ~$$...$$~ and ~\begin{env}...\end{env}~ can span lines, even across a blank line; ~$...$~ can span lines but not a blank line. KaTeX doesn't treat ~%~ as a comment. A fragment KaTeX can't render shows its raw source with a dashed border. KaTeX supports a large subset of LaTeX, not all of it.
 
-Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; ASCII and ODT export pass the raw source through as text.
+Math renders wherever inline markup does: the outline, the read-only Docs viewer and HTML export (KaTeX's CSS is added only when the export has math). LaTeX export writes it unchanged; ASCII export passes the raw source through as text. ODT export turns each fragment and environment into an embedded formula object (KaTeX's MathML), and a fragment KaTeX rejects stays as code.
 
 *Examples*: the source ~The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).~ renders inline with a proper fraction bar and a square-root radical. This ~align~ environment:
 
@@ -480,7 +480,22 @@ Replace works on heading titles, paragraphs, list items and table cells. Tags, T
 
 When at least one match is in the open document, the results show *Narrow* with a count of those matches (cross-file results aren't counted). It works with any search mode. Tapping it restricts the outline to the matching headings plus their ancestors, so each match keeps its context, and a banner shows the count with a *Widen* button. It composes with [[#narrowing][subtree narrowing]]: narrow to a subtree, then to matches within it. Like subtree narrowing it survives a reload, and a heading renamed or removed in the meantime simply drops out.
 
-Org's search is several tools (sparse trees, a match grammar, ~org-search-view~); here one box covers them, with Match mode for the fuller boolean grammar. Not included: sparse-tree refolding (Narrow is the nearest equivalent).
+Org's search is several tools (sparse trees, a match grammar, ~org-search-view~). The Search box finds as you type; *Narrow* is its sparse tree; Match mode takes the tag grammar; and the Agenda views below list the results as rows.
+
+*** Match and Keyword search views
+:PROPERTIES:
+:CUSTOM_ID: agenda-commands
+:END:
+
+Two Agenda views list a query's results as rows, with the Agenda's prefix format, filters, Effort chip, tap menu and ~org-agenda-sorting-strategy~. Open them from *View → Match* and *View → Keyword search*, the command palette (~org-tags-view~, ~org-search-view~), or the search options (~⋯~ → *Open as Agenda view*).
+
+*Match* is Emacs's ~m~: tags, properties and TODO state, such as ~work+urgent|blocked~ or ~/NEXT~. *TODO only* is ~M~, the unfinished TODO entries. Rows follow the ~tags~ sorting strategy.
+
+*Keyword search* is Emacs's ~s~. Without a leading ~+~, ~-~ or ~{~ the whole text is one phrase, and each space matches any run of whitespace. With one, the words are a Boolean list: ~+budget -draft~ needs "budget" and excludes "draft"; ~"Q4 plan"~ keeps its space; ~{regexp}~ is an Emacs regular expression. A leading ~*~ searches headlines only, then ~!~ limits to TODO entries, then ~:~ matches whole words. An entry is a heading with its own text, not its sub-headings. Rows follow the ~search~ strategy, and the matching words are marked.
+
+*Agenda commands* (the button in either view, or the palette) lists the built-in keys ~a~, ~t~, ~m~ and ~s~ and the queries in ~org-agenda-custom-commands~. *Save…* in either view, or *Save as agenda command…* in the search options, adds the current query under a key you choose.
+
+Example: ~+budget -draft~ in Keyword search, saved as ~b~.
 
 -----
 
@@ -644,6 +659,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
+| ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~agenda~ and ~alltodo~; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
@@ -651,11 +667,13 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
 | ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
+| ~org-agenda-search-view-always-boolean~ | ~nil~ | ~t~ reads every Keyword search as a Boolean list of words, without needing a leading ~+~ or ~-~ |
+| ~org-agenda-search-view-force-full-words~ | ~nil~ | ~t~ makes the words of a Keyword search match whole words |
 | ~org-agenda-show-all-dates~ | ~t~ | Whether days with nothing on them show in the Agenda; the *g* button toggles it for the session (see [[#agenda][Agenda]]); also Settings → Quick Settings → *Agenda* |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
-| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list. Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined~ keys have no opinion (~org-agenda-cmp-user-defined~ is ~nil~) |
+| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined~ keys have no opinion (~org-agenda-cmp-user-defined~ is ~nil~) |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
@@ -1428,7 +1446,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - ~calendar-day-of-week~ (0 is Sunday), ~calendar-last-day-of-month~, ~calendar-leap-year-p~, ~calendar-extract-month~, ~-day~, ~-year~ and ~calendar-current-date~: ~<%%(and (= (cadr date) (calendar-last-day-of-month (car date) (nth 2 date))) (memq (calendar-day-of-week date) '(1 2 3 4 5)))>~ is the last day of each month when it is a weekday.
 - ~calendar-absolute-from-gregorian~ and ~calendar-gregorian-from-absolute~ turn a date into a day count and back (day 1 is 1 January, year 1), plus ~min~, ~max~ and ~abs~. A count makes "every other week" and "N days until" rules easy: ~<%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))>~ counts down for the 30 days before.
 - ~(diary-remind SEXP DAYS)~: shows the entry on the day SEXP matches, and "Reminder: Only 3 days until ..." on the DAYS before it. ~DAYS~ is a number, a list (~'(1 3 7)~), or a negative number for every day up to it. ~%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving~ starts a week ahead. The variable ~entry~ is the text of the line, so ~(and (org-block 2026 12 20 2026 12 25) entry)~ also works.
-- ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-hebrew-date)~, ~(diary-islamic-date)~, ~(diary-bahai-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Hebrew date (until sunset): Heshvan 10, 5787", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line.
+- ~(diary-day-of-year)~, ~(diary-iso-date)~, ~(diary-julian-date)~, ~(diary-hebrew-date)~, ~(diary-islamic-date)~, ~(diary-bahai-date)~, ~(diary-astro-day-number)~ and ~(diary-lunar-phases)~ show the day's line as Emacs words it: "Day 290 of 2026; 75 days remaining in the year", "ISO date: Day 6 of week 42 of 2026", "Julian date: October 4, 2026", "Hebrew date (until sunset): Heshvan 10, 5787", "Astronomical (Julian) day number at noon UTC: 2461331.0" and, on the day of a quarter, "Full Moon 12:09am (EDT)" in this device's time zone. ~%%(diary-lunar-phases)~ also works as a body line. ~%%(diary-sunrise-sunset)~ gives "Sunrise 7:18am (EDT), sunset 6:01pm (EDT) at 40.7N, 74.0W (10:42 hrs daylight)" (the place is ~calendar-location-name~ when it is a string), and ~(diary-entry-time "9:30am x")~ gives 930, or -9999 when the text starts with no time.
 - ~(diary-offset SEXP DAYS)~ matches DAYS days after SEXP does; ~(diary-ordinal-suffix N)~ gives ~st~, ~nd~, ~rd~ or ~th~; ~(calendar-nth-named-day N DAYNAME MONTH YEAR [DAY])~ gives a date.
 - ~(today-p)~: this app's shorthand for ~(equal date (calendar-current-date))~. ~<%%(when (today-p) "Payday")>~ shows "Payday" only today.
 - ~(org-block Y M D Y M D)~ is an inclusive range, in either order. ~(org-date Y M D)~ takes, for each field, an integer, a list or ~t~: ~(org-date t '(10 11 12) 22)~ is the 22nd of October, November and December every year. Every date is year month day, and impossible dates match nothing.
@@ -1923,7 +1941,9 @@ For a table of contents with page numbers, tick *Add TOC with page numbers* in S
 
 *** ODT
 
-A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs. Headings are outline levels; bold, italic, underline, strikethrough and code use named character styles; checkboxes show as ☐ and ☑; footnotes are real, editable ODF footnotes; and internal links are bookmark references. Images are referenced by path, not embedded.
+A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs. It is a port of ~ox-odt~: the same styles file and content template as Emacs 29.3, the same style and bookmark names, and the same structure for headings (numbered through the outline style), lists, tables (special rows and columns, alignment cookies, header rows and column groups, ~#+ATTR_ODT:~), source, example, quote, center and special blocks, ~#+ODT:~ and ~@@odt:@@~, ~#+BEGIN_EXPORT odt~, footnotes, links, the table of contents, captions with numbered labels, and ~#+OPTIONS:~ such as ~toc:~, ~num:~, ~tags:~, ~todo:~, ~pri:~, ~p:~, ~f:~ and ~|:~. Images the app can read are embedded under ~Images/~ and sized from their pixels, ~#+ATTR_ODT: :width :height :scale~ or the page; one it cannot read stays a link. LaTeX fragments and environments become embedded formula objects that LibreOffice Writer shows and lets you edit, with a number on display equations. Source blocks in a language the app knows are colored with ~OrgSrcFontLock~ styles.
+
+Differences from Emacs are listed under [[#differences-from-emacs-org-mode][Differences from Emacs org-mode]].
 
 *** Line numbers and references in source blocks
 :PROPERTIES:
@@ -2046,7 +2066,7 @@ Both styles cover the same set of fields, which is smaller than org-vcard's full
 
 *** What is dropped
 
-Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are not exported. SCHEDULED and DEADLINE show as a small italic line under the heading in HTML and ODT; Calendar is built from them.
+Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are not exported. SCHEDULED and DEADLINE show as a small italic line under the heading in HTML, and in ODT when ~p:t~ is set (Emacs leaves them out of ODT by default); Calendar is built from them.
 
 -----
 
@@ -2405,7 +2425,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
-*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ and KaTeX in place of MathJax. ODT is written directly as ODF, not through ox-odt: its tables ignore special rows and columns, alignment cookies and header rows, and images are referenced, not embedded. HTML, LaTeX, ASCII and Org follow ox on tables, ~UNNUMBERED~ and the ~f:~ and ~|:~ options.
+*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ and KaTeX in place of MathJax. ODT is a port of ox-odt that follows it on the files compared. It differs on purpose in these places: LaTeX becomes KaTeX formula objects (Emacs needs an outside converter and otherwise prints the source), source blocks are colored with this app's highlighter, verse blocks keep their line breaks, a link to a target without a description prints the target's name (Emacs prints "nil"), and a character such as =<= from an entity is escaped. A missing author is left out unless ~user-full-name~ is set. HTML, LaTeX, ASCII and Org follow ox on tables, ~UNNUMBERED~ and the ~f:~ and ~|:~ options.
 
 *Refile* (see [[#refile][Refile]]): the destination is an existing heading.
 

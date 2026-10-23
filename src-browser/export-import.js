@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
-import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults } from '../src/export-defaults.js';
+import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults, lispStringValue } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
@@ -99,7 +99,7 @@ export async function performExport(format, scope) {
         saveOut(baseName + '.tex', (beamer ? exportToBeamer : exportToLatex)(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
-      saveOut(baseName + '.odt', exportToOdt(doc, scope, { sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, scope, { userFullName: lispStringValue(S.globalVariables['user-full-name']) || '', images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }).slice(), 'application/vnd.oasis.opendocument.text');
     }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err)); // e.g. "Unable to resolve link: ..." (org-export-with-broken-links)

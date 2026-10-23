@@ -593,6 +593,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-lisp-init', label: 'Lisp init (holiday-* lists, calendar-holidays)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
   { key: 'org-agenda-sorting-strategy', label: 'Agenda row order, per view (default: ((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep)))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
+  { key: 'org-agenda-custom-commands', label: 'Agenda commands (saved queries: (("w" "Urgent work" tags "work+urgent")))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-commands' },
   { key: 'org-modules', label: 'Modules (add org-inlinetask for inline tasks in exports)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
   { key: 'org-inlinetask-min-level', label: 'Inline task level (default 15)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },

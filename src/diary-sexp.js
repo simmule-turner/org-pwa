@@ -507,25 +507,37 @@ function timeZoneName(date) {
   return part ? part.value : '';
 }
 
+/** The device's short time zone name at `instant`, such as "EDT".
+ * @param {Date} instant */
+function zoneNameAt(instant) {
+  const part = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(instant).find((p) => p.type === 'timeZoneName');
+  return part ? part.value : '';
+}
+
 /** Emacs's solar-sunrise-sunset for `date`: local sunrise and sunset in decimal hours (null on a day without one) and the
  *  length of the daylight as "H:MM". `height` is the angle of the sun's center to the horizon; Emacs uses -0.61 for sunrise and
  *  sunset, and this takes -6, -12 and -18 as well for the civil, nautical and astronomical twilights.
+ *  As in dst-adjust-time, each event is a time of standard time moved to daylight saving time when that is in effect at that moment,
+ *  and it counts only if it then falls on `date` (a place far from the device's own zone loses events that land on another day).
+ *  `riseZone` and `setZone` name the zone of each event; `zone` is the one for the day.
  * @param {Date} date @param {number} latitude @param {number} longitude @param {number} [height]
- * @returns {{ rise: number | null, set: number | null, daylight: string, zone: string }} */
+ * @returns {{ rise: number | null, set: number | null, daylight: string, zone: string, riseZone: string, setZone: string }} */
 function solarSunriseSunset(date, latitude, longitude, height = -0.61) {
-  const offset = localOffsetMinutes(date);
   const standard = Math.min(localOffsetMinutes(new Date(date.getFullYear(), 0, 1)), localOffsetMinutes(new Date(date.getFullYear(), 6, 1)));
-  const saving = (offset - standard) / 60;
   const sun = emacsSunriseSunset(date.getMonth() + 1, date.getDate(), date.getFullYear(), latitude, longitude, standard, height);
-  /** Rounded to the minute, then moved to daylight saving time. Where the place is far from the device's own time zone the moment
-   *  can fall past midnight; it is shown as a time of day (Emacs would give no event, as it assumes the device is at the place).
-   * @param {number | null} h */
+  const midnight = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  /** @param {number | null} h */
   const local = (h) => {
-    if (h === null) return null;
-    const t = Math.round(60 * h) / 60 + saving;
-    return ((t % 24) + 24) % 24;
+    if (h === null) return { time: null, zone: '' };
+    const minutes = Math.round(60 * h);
+    const instant = new Date(midnight + (minutes - standard) * 60000);
+    const saving = -instant.getTimezoneOffset() - standard;
+    const total = minutes + saving;
+    return { time: total >= 0 && total < 1440 ? total / 60 : null, zone: zoneNameAt(instant) };
   };
-  return { rise: local(sun.rise), set: local(sun.set), daylight: solarDaylight(sun.length), zone: timeZoneName(date) };
+  const rise = local(sun.rise);
+  const set = local(sun.set);
+  return { rise: rise.time, set: set.time, daylight: solarDaylight(sun.length), zone: timeZoneName(date), riseZone: rise.zone, setZone: set.zone };
 }
 
 export {

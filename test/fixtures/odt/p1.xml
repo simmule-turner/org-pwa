@@ -1,0 +1,10 @@
+<text:p text:style-name="Text_20_body">Hello.  World. Next sentence continues here.  Line two with <text:span text:style-name="Bold">bold</text:span>   and spaces.  Tab here &#x2013; dash &#x2014; long &#x2026; dots &#x00ad; shy α &lt; &amp; &lt; &gt; "q".
+</text:p>
+<text:p text:style-name="OrgVerse"> line one<text:line-break/>
+<text:s text:c="2"/>line two<text:line-break/>
+<text:line-break/>
+line <text:span text:style-name="Bold">three</text:span>
+<text:line-break/>
+</text:p>
+<text:p text:style-name="Text_20_body">a<text:line-break/>b
+</text:p>

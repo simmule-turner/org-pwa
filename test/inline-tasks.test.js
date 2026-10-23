@@ -17,8 +17,8 @@ test('ODT export writes an inline task as a bordered title over its text', () =>
   writeFileSync(path.join(dir, 't.odt'), exportToOdt(parseOrg(src)));
   execFileSync('unzip', ['-o', '-q', path.join(dir, 't.odt'), '-d', dir]);
   const content = readFileSync(path.join(dir, 'content.xml'), 'utf8');
-  assert.match(content, /<text:p text:style-name="InlineTaskTitle"><text:span text:style-name="TodoKeywordActive">TODO<\/text:span> Fix it/);
-  assert.ok(content.indexOf('InlineTaskTitle') < content.indexOf('>body<') && content.indexOf('>body<') < content.indexOf('>after<'));
+  assert.match(content, /<text:p text:style-name="OrgInlineTaskHeading"><text:span text:style-name="OrgTodo">TODO<\/text:span> Fix it/);
+  assert.ok(content.indexOf('OrgInlineTaskHeading') < content.indexOf('>body\n<') && content.indexOf('>body\n<') < content.indexOf('>after\n<'));
 });
 
 test('org-inlinetask is read from org-modules, the Lisp init, or a require', () => {

@@ -1,0 +1,18 @@
+<text:p text:style-name="OrgTitle">
+<text:title>A &amp; B &lt;C&gt;</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me &amp; You</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Text with &amp; and &lt; and &gt; and "quotes" and 'single'.
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Head &amp; &lt;tags&gt;<text:tab/>
+<text:span text:style-name="OrgTags">[<text:span text:style-name="OrgTag">t1</text:span>]</text:span>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">Para
+</text:p>

@@ -1,0 +1,12 @@
+#+TITLE: Images
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+[[file:img.png]]
+
+#+CAPTION: Fig cap
+#+NAME: fig1
+[[file:img.png]]
+
+Inline [[file:img.png]] image and [[file:img.png][desc]] and [[http://x.org/a.png]].
+
+[[http://x.org][file:img.png]]

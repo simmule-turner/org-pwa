@@ -1,0 +1,36 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Images</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">
+<draw:frame draw:style-name="OrgDisplayImage" svg:width="3.17cm" svg:height="1.59cm" text:anchor-type="paragraph" >
+<draw:image xlink:href="Images/0001.png" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
+</draw:frame>
+</text:p>
+<text:p text:style-name="Text_20_body">
+<draw:frame draw:style-name="OrgImageCaptionFrame" svg:width="3.17cm" text:anchor-type="paragraph" >
+<draw:text-box  fo:min-height="1.59cm">
+<text:p text:style-name="Illustration">
+<draw:frame draw:style-name="OrgCaptionedImage" svg:width="3.17cm" svg:height="1.59cm" style:rel-width="100%" style:rel-height="scale" text:anchor-type="paragraph" >
+<draw:image xlink:href="Images/0002.png" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
+</draw:frame>
+<text:bookmark text:name="ORG"/>Figure <text:sequence text:ref-name="ORG" text:name="Illustration" text:formula="ooow:Illustration+1" style:num-format="1">1</text:sequence>: Fig cap</text:p>
+</draw:text-box>
+</draw:frame>
+</text:p>
+<text:p text:style-name="Text_20_body">Inline 
+<draw:frame draw:style-name="OrgInlineImage" svg:width="3.17cm" svg:height="1.59cm" text:anchor-type="as-char" >
+<draw:image xlink:href="Images/0003.png" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
+</draw:frame> image and <text:a xlink:type="simple" xlink:href="../img.png">desc</text:a> and <text:a xlink:type="simple" xlink:href="http://x.org/a.png">http://x.org/a.png</text:a>.
+</text:p>
+<text:p text:style-name="Text_20_body">
+<text:a xlink:type="simple" xlink:href="http://x.org">
+<draw:frame draw:style-name="OrgInlineImage" svg:width="3.17cm" svg:height="1.59cm" text:anchor-type="as-char" >
+<draw:image xlink:href="Images/0004.png" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>
+</draw:frame>
+</text:a>
+</text:p>

@@ -118,7 +118,8 @@ function stampAt(text, pos) {
 
 /** Every timestamp in `text`, with code and verbatim text left out. @param {string} text @returns {Stamp[]} */
 function stampsIn(text) {
-  const masked = text.replace(/(^|[\s({'"])([=~])(?=\S)([^\n]*?\S)\2(?=$|[\s\-.,:;!?')}"\\[])/g, (m) => ' '.repeat(m.length));
+  // code, verbatim text and links (a timestamp in a link's description is not an event) are left out
+  const masked = text.replace(/(^|[\s({'"])([=~])(?=\S)([^\n]*?\S)\2(?=$|[\s\-.,:;!?')}"\\[])/g, (m) => ' '.repeat(m.length)).replace(/\[\[[^\]\n]*\]\[[^\n]*?\]\]/g, (m) => ' '.repeat(m.length));
   /** @type {Stamp[]} */ const found = [];
   for (let i = 0; i < masked.length; i++) {
     if (masked[i] !== '<' && masked[i] !== '[') continue;
@@ -402,15 +403,15 @@ export function exportOrgIcalendar(docs, options = {}) {
     // the keywords that would put a title block into the text of an entry
     const dropped = new Set(['TITLE', 'AUTHOR', 'DATE', 'EMAIL', 'SUBTITLE']);
     const stripped = /** @type {Doc} */ ({ ...doc, keywords: (doc.keywords || []).filter((k) => !dropped.has(k.key.toUpperCase())), children: [] });
-    // only #+ICALENDAR_EXCLUDE_TAGS: excludes tags here (not "noexport")
+    // the tags left out: #+ICALENDAR_EXCLUDE_TAGS:, else #+EXCLUDE_TAGS:, else org-icalendar-exclude-tags ("noexport" is not one by default)
     const filterDoc = /** @type {Doc} */ ({
       ...doc,
-      keywords: [...(doc.keywords || []).filter((k) => k.key.toUpperCase() !== 'EXCLUDE_TAGS'), { key: 'EXCLUDE_TAGS', value: kw('ICALENDAR_EXCLUDE_TAGS').join(' ') || settings.excludeTags.join(' ') || '-', bodyLineIndex: 0 }],
+      keywords: [...(doc.keywords || []).filter((k) => k.key.toUpperCase() !== 'EXCLUDE_TAGS'), { key: 'EXCLUDE_TAGS', value: kw('ICALENDAR_EXCLUDE_TAGS').join(' ') || kw('EXCLUDE_TAGS').join(' ') || settings.excludeTags.join(' ') || '-', bodyLineIndex: 0 }],
     });
     const sequences = resolveTodoSequences(doc);
     const done = new Set(sequences.flatMap((q) => q.doneKeywords));
     const keep = buildFilter(/** @type {Parameters<typeof buildFilter>[0]} */ (/** @type {unknown} */ ({ doc: filterDoc, options: { comments: false, tasks: true }, doneKeywords: [...done] })));
-    const category = kw('CATEGORY')[0] || nameOf.replace(/\.[^./]*$/, '');
+    const category = [...serializeOrg(doc).matchAll(/^[ \t]*#\+CATEGORY:[ \t]*(.*)$/gim)].map((m) => m[1].trim()).at(-1) || nameOf.replace(/\.[^./]*$/, '');
     const ctx = {
       doc, name: nameOf, documentId, settings, stamp, category, done, uids: new Set(), keep, stripped,
       priorityHighest: options.priorityHighest ?? 65, priorityLowest: options.priorityLowest ?? 67,

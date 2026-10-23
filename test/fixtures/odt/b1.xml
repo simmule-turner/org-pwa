@@ -1,0 +1,77 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Blocks</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="OrgFixedWidthBlock">def f(x):</text:p>
+<text:p text:style-name="OrgFixedWidthBlockLastLine">
+<text:s text:c="3"/>return x <text:s text:c="1"/># comment</text:p>
+<text:p text:style-name="Listing">
+<text:bookmark text:name="ORG"/>Listing <text:sequence text:ref-name="ORG" text:name="Listing" text:formula="ooow:Listing+1" style:num-format="1">1</text:sequence>: A listing</text:p>
+<text:list text:style-name="OrgSrcBlockNumberedLine" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="OrgFixedWidthBlock">
+<text:bookmark-start text:name="OrgXref.coderef-one"/>
+<text:bookmark text:name="coderef-one"/>(setq a 1)
+<text:bookmark-end text:name="OrgXref.coderef-one"/>
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="OrgFixedWidthBlockLastLine">(setq b 2)</text:p>
+</text:list-item>
+</text:list>
+<text:p text:style-name="Text_20_body">See <text:bookmark-ref text:reference-format="number" text:ref-name="OrgXref.coderef-one">1</text:bookmark-ref> and <text:sequence-ref text:reference-format="value" text:ref-name="ORG">1</text:sequence-ref>.
+</text:p>
+<text:p text:style-name="OrgFixedWidthBlock">example <text:s text:c="2"/>text</text:p>
+<text:p text:style-name="OrgFixedWidthBlockLastLine">
+<text:s text:c="5"/>tab line</text:p>
+<text:p text:style-name="OrgFixedWidthBlock">fixed width</text:p>
+<text:p text:style-name="OrgFixedWidthBlockLastLine">
+<text:s text:c="1"/>indented</text:p>
+<text:p text:style-name="Quotations">Quoted <text:span text:style-name="Bold">bold</text:span> text.
+</text:p>
+<text:p text:style-name="Quotations">Second para.
+</text:p>
+<text:p text:style-name="OrgCenter">Centered.
+</text:p>
+<text:p text:style-name="OrgVerse">Verse line 1<text:line-break/>
+<text:s text:c="1"/>indented line 2<text:line-break/>
+</text:p>
+<text:p>raw odt</text:p>
+<text:p>kw odt</text:p>
+<text:p text:style-name="Text_20_body">
+<text:span>snippet</text:span> after.
+</text:p>
+<text:p text:style-name="Horizontal_20_Line">
+</text:p>
+<text:p text:style-name="Text_20_body">Note.
+</text:p>
+<text:p text:style-name="Text_20_body">special
+</text:p>
+<text:p text:style-name="Text_20_body">in drawer
+</text:p>
+<text:p text:style-name="OrgFormula">
+<draw:frame draw:style-name="OrgCaptionedFormula" text:anchor-type="paragraph" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0001/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>\begin{equation}
+x^2
+\end{equation}</svg:desc>
+</draw:frame>
+<text:tab/>(<text:sequence text:ref-name="eq1" text:name="Text" text:formula="ooow:Text+1" style:num-format="1">1</text:sequence>)</text:p>
+<text:p text:style-name="Text_20_body">Inline 
+<draw:frame draw:style-name="OrgInlineFormula" text:anchor-type="as-char" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0002/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>$a^2$</svg:desc>
+</draw:frame> and 
+<draw:frame draw:style-name="OrgInlineFormula" text:anchor-type="as-char" >
+<draw:object  xlink:show="embed" xlink:actuate="onLoad" xlink:href="Formula-0003/" xlink:type="simple"/>
+<svg:title>Latex-fragment</svg:title>
+<svg:desc>\(b\)</svg:desc>
+</draw:frame> and H<text:span text:style-name="OrgSubscript">2O</text:span> and E=mc<text:span text:style-name="OrgSuperscript">2</text:span> and x<text:span text:style-name="OrgSubscript">ab</text:span>
+<text:span text:style-name="OrgSuperscript">cd</text:span> and α β x ©.
+</text:p>

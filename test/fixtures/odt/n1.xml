@@ -1,0 +1,53 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Numbered</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">item
+</text:p>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">one
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">two
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">last
+</text:p>
+</text:list-item>
+</text:list>
+<text:p text:style-name="Text_20_body">See <text:a xlink:type="simple" xlink:href="#ORG">(1 2)</text:a> and <text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref.ORG">1</text:bookmark-ref>.
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Sec
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:a xlink:type="simple" xlink:href="#ORG">Linked</text:a> heading with <text:span text:style-name="Bold">bold</text:span> title <text:span text:style-name="OrgCode">code</text:span>
+<text:note text:id="fn1" text:note-class="footnote">
+<text:note-citation>1</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">note
+</text:p>
+</text:note-body>
+</text:note>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">text
+</text:p>

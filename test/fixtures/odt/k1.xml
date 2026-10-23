@@ -1,0 +1,34 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Links</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">
+<text:a xlink:type="simple" xlink:href="http://example.com/a?b=1&amp;c=2">ext</text:a> and <text:a xlink:type="simple" xlink:href="https://x.org">https://x.org</text:a> and <text:a xlink:type="simple" xlink:href="mailto:a@b.c">mail</text:a> and <text:a xlink:type="simple" xlink:href="http://plain.org">http://plain.org</text:a>.
+<text:a xlink:type="simple" xlink:href="../other.org">file link</text:a> and <text:a xlink:type="simple" xlink:href=".././rel/path.txt">.././rel/path.txt</text:a> and <text:a xlink:type="simple" xlink:href="file:///abs/path.txt">abs</text:a> and <text:a xlink:type="simple" xlink:href="../a.org">search</text:a>.
+https://doi.org/10.1/x 
+</text:p>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:bookmark-end text:name="OrgXref.ORG"/> text with <text:a xlink:type="simple" xlink:href="#ORG">target one</text:a> and <text:a xlink:type="simple" xlink:href="#ORG">described</text:a>.
+<text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref.ORG">1</text:bookmark-ref> and <text:a xlink:type="simple" xlink:href="#ORG">desc</text:a> and <text:bookmark-ref text:reference-format="chapter" text:ref-name="OrgXref.ORG">1</text:bookmark-ref>.
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Heading A
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Sub
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>radio
+<text:bookmark-end text:name="OrgXref.ORG"/> mention of <text:bookmark-ref text:reference-format="text" text:ref-name="OrgXref.ORG">radio</text:bookmark-ref> here and again <text:bookmark-ref text:reference-format="text" text:ref-name="OrgXref.ORG">radio</text:bookmark-ref>.
+</text:p>

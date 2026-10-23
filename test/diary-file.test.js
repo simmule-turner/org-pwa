@@ -1,3 +1,4 @@
+process.env.TZ = "America/New_York"; // sun times are the device zone's; the Emacs files were written there
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,7 +23,7 @@ function appRows(c, mergeRows) {
     options: { dateStyle: c.style, abbreviatedYear: c.abbreviatedYear, showHolidays: c.showHolidays, hooks: c.hooks || [], mergeRows },
   };
   /** @type {Map<string, string[]>} */ const byDay = new Map();
-  for (const item of buildDiaryItems(diary, start, end, { today: new Date(2026, 9, 18) }, buildAgendaItems)) {
+  for (const item of buildDiaryItems(diary, start, end, { today: new Date(2026, 9, 18), calendarDateStyle: c.style, calendarLatitude: c.latitude, calendarLongitude: c.longitude, calendarLocationName: c.locationName }, buildAgendaItems)) {
     const k = iso(item.date);
     byDay.set(k, [...(byDay.get(k) || []), item.title]);
   }

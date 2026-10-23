@@ -138,3 +138,25 @@ test('a southern latitude swaps the season names, as in Emacs', () => {
   setHolidayZone('America/New_York');
   assert.match(holidaysOn(new Date(2026, 2, 20)).join(), /Vernal Equinox/);
 });
+
+test('holidays match calendar-holiday-list for every month of 2000-2060, with the all-holidays flags off and on', async () => {
+  const { gunzipSync } = await import('node:zlib');
+  /** @param {string} flags */
+  const wide = (flags) => {
+    const vars = runInit(DEFAULT_LISTS + flags, new Map(), {});
+    const forms = ['general', 'christian', 'hebrew', 'islamic', 'bahai'].flatMap((g) => listItems(vars.get(`holiday-${g}-holidays`)) || []);
+    const out = new Set();
+    for (let year = 2000; year <= 2060; year++) {
+      for (let month = 1; month <= 12; month++) {
+        for (const h of holidayList(forms, { month, year, vars, sexp: null })) {
+          if (h.date[2] === year && h.date[0] === month) out.add(`${year}-${String(month).padStart(2, '0')}-${String(h.date[1]).padStart(2, '0')} ${h.name}`);
+        }
+      }
+    }
+    return [...out].sort().join('\n');
+  };
+  const sorted = (/** @type {string} */ t) => t.trim().split('\n').sort().join('\n');
+  assert.equal(wide(''), sorted(read('holidays-2000-2060.txt')));
+  const flags = '(setq calendar-christian-all-holidays-flag t calendar-hebrew-all-holidays-flag t calendar-islamic-all-holidays-flag t calendar-bahai-all-holidays-flag t)';
+  assert.equal(wide(flags), sorted(gunzipSync(fs.readFileSync(new URL('holidays-all-2000-2060.txt.gz', dir))).toString()));
+});

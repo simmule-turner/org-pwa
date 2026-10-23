@@ -1,0 +1,39 @@
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:span text:style-name="OrgTodo">TODO</text:span> One
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="OrgPlanning">
+<text:span text:style-name="OrgDeadlineKeyword">DEADLINE:</text:span>
+<text:span text:style-name="OrgActiveTimestamp">&lt;2024-03-06 Wed&gt;</text:span>
+<text:span text:style-name="OrgScheduledKeyword">SCHEDULED:</text:span>
+<text:span text:style-name="OrgActiveTimestamp">&lt;2024-03-05 Tue&gt; </text:span>
+</text:p>
+<text:p text:style-name="Text_20_body">text
+</text:p>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:span text:style-name="OrgDone">DONE</text:span> Two
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="OrgPlanning">
+<text:span text:style-name="OrgClosedKeyword">CLOSED:</text:span>
+<text:span text:style-name="OrgInactiveTimestamp">[2024-03-01 Fri 10:00]</text:span>
+</text:p>
+<text:p text:style-name="Text_20_body">more
+</text:p>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Three
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="OrgPlanning">
+<text:span text:style-name="OrgDeadlineKeyword">DEADLINE:</text:span>
+<text:span text:style-name="OrgActiveTimestamp">&lt;2024-04-01 Mon +1w&gt;</text:span>
+</text:p>

@@ -9,7 +9,7 @@ import { prefetchSetupFiles } from './setupfile.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { ensureDiaryLoaded, refreshDiary } from './diary-file-load.js';
 import { applyLispInit } from './lisp-init-load.js';
-import { S } from './app-state.js';
+import { S, isAgendaFamilyView } from './app-state.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
@@ -106,13 +106,13 @@ export function ensureAgendaFilesLoaded({ prompt = false } = {}) {
         if (loadedDoc) {
           void rememberIds(loadedDoc, scheme, path);
         }
-        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+        if (isAgendaFamilyView(S.currentView)) render();
         if (S.settingsOpen) renderSettingsView();
         if (S.searchOpen) renderSearchPanel();
       })
       .catch((/** @type {any} */ err) => {
         agendaFilesCache.set(key, { error: err.message });
-        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+        if (isAgendaFamilyView(S.currentView)) render();
         if (S.searchOpen) renderSearchPanel();
       });
     agendaFilesCache.set(key, { loading: true, promise });
@@ -163,7 +163,7 @@ async function readLocalEntry(path, prompt) {
 async function loadLocalAgendaFiles(entries, prompt) {
   for (const { key, path } of entries) {
     agendaFilesCache.set(key, await readLocalEntry(path, prompt));
-    if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+    if (isAgendaFamilyView(S.currentView)) render();
     if (S.settingsOpen) renderSettingsView();
     if (S.searchOpen) renderSearchPanel();
   }
@@ -305,7 +305,7 @@ export function ensureContactsFilesLoaded() {
       const promise = readLocalEntry(path, false).then((entry) => {
         contactsFilesCache.set(key, entry);
         if (S.settingsOpen) renderSettingsView();
-        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render(); // its contacts' birthdays may now be showable
+        if (isAgendaFamilyView(S.currentView)) render(); // its contacts' birthdays may now be showable
       });
       contactsFilesCache.set(key, { loading: true, promise });
       continue;
@@ -324,7 +324,7 @@ export function ensureContactsFilesLoaded() {
           result ? { doc: parseOrg(result.content), documentId: path } : { error: `"${path}" not found.` }
         );
         if (S.settingsOpen) renderSettingsView();
-        if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+        if (isAgendaFamilyView(S.currentView)) render();
       })
       .catch((/** @type {any} */ err) => {
         contactsFilesCache.set(key, { error: err.message });

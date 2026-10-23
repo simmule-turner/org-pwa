@@ -1,0 +1,14 @@
+#+TITLE: Links
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+[[http://example.com/a?b=1&c=2][ext]] and [[https://x.org]] and [[mailto:a@b.c][mail]] and <http://plain.org>.
+[[file:other.org][file link]] and [[./rel/path.txt]] and [[/abs/path.txt][abs]] and [[file:a.org::*Head][search]].
+[[doi:10.1/x][doi]] 
+
+<<target one>> text with [[target one]] and [[target one][described]].
+[[*Heading A]] and [[*Heading A][desc]] and [[Heading A]].
+
+
+* Heading A
+** Sub
+<<<radio>>> mention of radio here and again radio.

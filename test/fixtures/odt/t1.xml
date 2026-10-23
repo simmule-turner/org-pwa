@@ -1,0 +1,114 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Tables</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<text:p text:style-name="Table">
+<text:bookmark text:name="ORG"/>Table <text:sequence text:ref-name="ORG" text:name="Table" text:formula="ooow:Table+1" style:num-format="1">1</text:sequence>: A table</text:p>
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableHeadingLeft">h1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableHeadingRight">h2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsLeft">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsRight">1</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsLeft">bb</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsRight">22</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableHeadingRight">x</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableHeadingRight">y</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableHeadingRight">z</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableHeadingRight">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableHeadingRight">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableHeadingRight">3</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsRight">4</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsRight">5</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsRight">6</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:p text:style-name="Text_20_body">Reference to <text:sequence-ref text:reference-format="value" text:ref-name="ORG">1</text:sequence-ref> here.
+</text:p>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable3">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">p</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">q</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>

@@ -9,6 +9,7 @@ import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { renderAgendaView, renderTaskListView } from './agenda-view.js';
+import { renderQueryView } from './agenda-query-view.js';
 import { renderFloatingKeyboard } from './floating-keyboard.js';
 import { renderGodModeHints } from './god-mode-hints.js';
 import { S } from './app-state.js';
@@ -182,6 +183,11 @@ export function render() {
 
   if (S.currentView === 'tasklist') {
     renderTaskListView();
+    return;
+  }
+
+  if (S.currentView === 'match' || S.currentView === 'searchview') {
+    renderQueryView();
     return;
   }
 

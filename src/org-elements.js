@@ -19,6 +19,7 @@
  *   latex-line       { value }     (`#+LATEX:`)
  *   beamer-line      { value }     (`#+BEAMER:`)
  *   ascii-line       { value }     (`#+ASCII:`)
+ *   odt-line         { value }     (`#+ODT:`)
  *   toc              { value }     (`#+TOC:`)
  *   include          { value }     (`#+INCLUDE:`)
  *   print-bibliography { value }   (`#+PRINT_BIBLIOGRAPHY:`)
@@ -42,6 +43,7 @@
  *   { type: 'footnote-def', label: string, children: OrgElement[] } |
  *   { type: 'html-line', value: string } |
  *   { type: 'ascii-line', value: string } |
+ *   { type: 'odt-line', value: string } |
  *   { type: 'latex-line', value: string } |
  *   { type: 'beamer-line', value: string } |
  *   { type: 'toc', value: string } |
@@ -331,6 +333,7 @@ export function parseElements(lines) {
       else if (key === 'LATEX') push({ type: 'latex-line', value: kw[2] });
       else if (key === 'BEAMER') push({ type: 'beamer-line', value: kw[2] });
       else if (key === 'ASCII') push({ type: 'ascii-line', value: kw[2] });
+      else if (key === 'ODT') push({ type: 'odt-line', value: kw[2] });
       else if (key === 'TOC') push({ type: 'toc', value: kw[2] });
       else if (key === 'INDEX') push({ type: 'index', value: kw[2] });
       else if (key === 'INCLUDE') push({ type: 'include', value: kw[2] });

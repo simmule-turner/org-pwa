@@ -1,0 +1,126 @@
+<text:p text:style-name="OrgTitle">
+<text:title>List table</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable1">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="Text_20_body">Row1
+</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="Text_20_body">c1
+</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="Text_20_body">c2
+</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="Text_20_body">Row2
+</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="Text_20_body">d1
+</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="Text_20_body">d2
+</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Item headings
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Table in low-level
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Low with table
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:p>
+</text:list-item>
+</text:list>
+<text:section text:style-name="OrgIndentedSection-Level-1" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">b</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="true">
+<text:list-header>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">list
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+</text:list>
+<text:section text:style-name="OrgIndentedSection-Level-2" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsRight">x</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsRight">y</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsRight">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsRight">2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:list text:style-name="OrgNumberedList" text:continue-numbering="true">
+<text:list-item>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-header>
+</text:list-header>
+<text:list-item>
+<text:p text:style-name="Text_20_body">more
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-header>
+</text:list>

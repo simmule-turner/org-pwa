@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v625';
+const CACHE_NAME = 'org-pwa-shell-v627';
 
 const SHELL_FILES = [
   './',
@@ -57,6 +57,9 @@ const SHELL_FILES = [
   './src/agenda-variables.js',
   './src/agenda-prefix.js',
   './src/agenda-sort.js',
+  './src/agenda-search.js',
+  './src/agenda-queries.js',
+  './src/agenda-commands.js',
   './src/priorities.js',
   './src/holidays.js',
   './src/calendar-conv.js',
@@ -165,6 +168,8 @@ const SHELL_FILES = [
   './src-browser/setupfile.js',
   './src/export-links.js',
   './src/export-odt.js',
+  './src/ox-odt.js',
+  './src/odt-assets.js',
   './src/zip-writer.js',
   './src/ascii-fill.js',
   './src/lisp-read.js',
@@ -217,6 +222,7 @@ const SHELL_FILES = [
   './src-browser/bottom-sheet.js',
   './src-browser/view-filter-ui.js',
   './src-browser/agenda-view.js',
+  './src-browser/agenda-query-view.js',
   './src-browser/diary-file-load.js',
   './src-browser/lisp-init-load.js',
   './src-browser/diary-flow.js',

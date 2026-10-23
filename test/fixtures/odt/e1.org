@@ -1,0 +1,5 @@
+#+TITLE: Entities and macros
+#+AUTHOR: Me
+#+MACRO: hello Hello $1
+#+OPTIONS: toc:nil -:nil e:nil ^:nil
+Text {{{hello(world)}}} \alpha \rightarrow a_b a^b -- --- ... \-

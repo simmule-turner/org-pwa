@@ -7,7 +7,7 @@ import { isPlainTextFile } from '../src/plain-file.js';
 import { getAgendaIncludeDiary, getDiaryFile } from '../src/local-variables.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
-import { S } from './app-state.js';
+import { S, isAgendaFamilyView } from './app-state.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
 import { renderSettingsView } from './settings-view.js';
@@ -135,7 +135,7 @@ export function ensureDiaryLoaded({ prompt = false, force = false } = {}) {
     })
     .finally(() => {
       if (mine !== loaded.generation) return;
-      if (S.currentView === 'agenda' || S.currentView === 'tasklist') render();
+      if (isAgendaFamilyView(S.currentView)) render();
       if (S.settingsOpen) renderSettingsView();
       scheduleCalendarSync(); // the diary's entries are in the calendar too
     });

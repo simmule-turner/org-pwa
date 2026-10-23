@@ -15,10 +15,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cases = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'icalendar-cases.json'), 'utf8'));
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ical-oracle-'));
+// a task with no start begins "now": decode-time is pinned to the test's stamp, 08:00 in New York
 const out = cases.map((c, i) => {
   const file = path.join(dir, `cal${i}.org`);
   fs.writeFileSync(file, c.org);
-  const lisp = `(progn (require 'org) (require 'ox-icalendar) (setq user-full-name "") (find-file "${file}") (org-mode)
+  const lisp = `(progn (require 'org) (require 'ox-icalendar) (setq user-full-name "") (advice-add 'decode-time :around (lambda (f &rest a) (if a (apply f a) (funcall f (encode-time 0 0 8 22 10 2026))))) (find-file "${file}") (org-mode)
  (let ${c.lisp || '()'} ${c.subtree ? `(goto-char (point-min)) (re-search-forward "${c.subtree}") (org-icalendar-export-to-ics nil t)` : '(org-icalendar-export-to-ics)'}))`;
   execFileSync('emacs', ['-Q', '--batch', '--eval', lisp], { stdio: 'ignore', env: { ...process.env, TZ: 'America/New_York' } });
   return { ...c, emacs: fs.readFileSync(path.join(dir, `cal${i}.ics`), 'utf8') };

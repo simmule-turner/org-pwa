@@ -79,5 +79,62 @@
     "name": "edge",
     "file": "edge.diary",
     "style": "american"
+  },
+  {
+    "name": "more-american",
+    "file": "more.diary",
+    "style": "american"
+  },
+  {
+    "name": "more-european",
+    "file": "more-european.diary",
+    "style": "european"
+  },
+  {
+    "name": "more-iso",
+    "file": "more-iso.diary",
+    "style": "iso"
+  },
+  {
+    "name": "sun-durham",
+    "file": "sun.diary",
+    "style": "american",
+    "latitude": 35.994,
+    "longitude": -78.8986,
+    "showHolidays": false
+  },
+  {
+    "name": "sun-london",
+    "file": "sun.diary",
+    "style": "american",
+    "latitude": 51.5074,
+    "longitude": -0.1278,
+    "locationName": "London",
+    "showHolidays": false
+  },
+  {
+    "name": "sun-sydney",
+    "file": "sun.diary",
+    "style": "american",
+    "latitude": -33.87,
+    "longitude": 151.21,
+    "showHolidays": false
+  },
+  {
+    "name": "sun-tromso",
+    "file": "sun.diary",
+    "style": "american",
+    "latitude": 69.65,
+    "longitude": 18.96,
+    "locationName": "Tromso",
+    "showHolidays": false
+  },
+  {
+    "name": "sun-honolulu",
+    "file": "sun.diary",
+    "style": "american",
+    "latitude": 21.31,
+    "longitude": -157.86,
+    "showHolidays": false
   }
 ]

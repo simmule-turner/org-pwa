@@ -1,0 +1,13 @@
+#+OPTIONS: toc:nil
+Hello.  World. Next   sentence
+continues here.
+Line two with *bold*   and   spaces.   
+Tab	here -- dash --- long ... dots \- shy \alpha \lt & < > "q".
+
+#+BEGIN_VERse
+ line one
+   line two  
+line *three*
+#+END_VERSE
+a\\
+b

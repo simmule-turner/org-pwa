@@ -655,6 +655,14 @@ export function getCalendarLatitude(vars) {
   return n >= -90 && n <= 90 ? n : 35.994;
 }
 
+/** calendar-location-name when it is a plain string ("Home"); null means Emacs's default, such as "40.7N, 74.0W".
+ * @param {LocalVars} vars */
+export function getCalendarLocationName(vars) {
+  const raw = String((vars || {})['calendar-location-name'] ?? '').trim();
+  const m = /^"((?:[^"\\]|\\.)*)"$/.exec(raw);
+  return m ? m[1].replace(/\\(.)/g, '$1') : null;
+}
+
 /** calendar-longitude: real Emacs's own exact variable name. A
  *  non-numeric or out-of-range (-180 to 180) value falls back to the
  * @param {LocalVars} vars

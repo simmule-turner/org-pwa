@@ -1,0 +1,3 @@
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+A [[doi:10.1/x]] b [[doi:10.2/y][with desc]] c.

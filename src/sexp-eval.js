@@ -45,6 +45,7 @@ import { nthNamedDay } from './calendar-conv.js';
 import { nonGregorianDateLine } from './diary-nongregorian.js';
 import { hebrewBirthday, hebrewYahrzeit, hebrewOmer, hebrewRoshHodesh, hebrewParasha, isFriday } from './diary-hebrew.js';
 import { astroDayNumberLine, dayOfYearLine, isoDateLine, julianDateLine, lunarPhasesLine } from './diary-calendar.js';
+import { diaryEntryTime } from './diary-file.js';
 import { formatWeatherLine, isOrgWeatherLine } from './org-weather.js';
 import {
   expandOrgAnniversaryOccurrences,
@@ -485,7 +486,7 @@ function canonicalDiaryLine(line, style) {
       const sun = solarSunriseSunset(day, context.calendarLatitude, context.calendarLongitude);
       if (sun.set === null) return false;
       const minutes = typeof context.diaryHebrewSabbathCandlesMinutes === 'number' ? context.diaryHebrewSabbathCandlesMinutes : 18;
-      return `${solarTimeString(Math.round(sun.set * 60) / 60 - minutes / 60.0, sun.zone, context)} Sabbath candle lighting`;
+      return `${solarTimeString(Math.round(sun.set * 60) / 60 - minutes / 60.0, sun.setZone, context)} Sabbath candle lighting`;
     }
 
     case 'solar-sunrise-sunset': {
@@ -496,7 +497,22 @@ function canonicalDiaryLine(line, style) {
       if (!day) throw new LispError('not a date');
       const height = args[1] ? numberOf(ev(args[1], context)) : undefined;
       const sun = solarSunriseSunset(day, context.calendarLatitude, context.calendarLongitude, height);
-      return [sun.rise === null ? false : [sun.rise, sun.zone], sun.set === null ? false : [sun.set, sun.zone], sun.daylight];
+      return [sun.rise === null ? false : [sun.rise, sun.riseZone], sun.set === null ? false : [sun.set, sun.setZone], sun.daylight];
+    }
+
+    case 'diary-entry-time': {
+      // (diary-entry-time STRING): hhmm at the start of the entry, or -9999
+      const text = args.length ? ev(args[0], context) : false;
+      return typeof text === 'string' ? diaryEntryTime(text) : false;
+    }
+
+    case 'diary-sunrise-sunset': {
+      // solar-sunrise-sunset-string for the entry's day: "Sunrise 7:18am (EDT), sunset 6:01pm (EDT) at Home (10:42 hrs daylight)"
+      const c = context.candidateDate;
+      const sun = solarSunriseSunset(c, context.calendarLatitude, context.calendarLongitude);
+      const at = (/** @type {number | null} */ t, /** @type {string} */ zone) => (t === null ? '' : solarTimeString(t, zone, context));
+      const place = typeof context.calendarLocationName === 'string' ? context.calendarLocationName : defaultLocationName(context.calendarLatitude, context.calendarLongitude);
+      return `${sun.rise === null ? 'No sunrise' : 'Sunrise ' + at(sun.rise, sun.riseZone)}, ${sun.set === null ? 'no sunset' : 'sunset ' + at(sun.set, sun.setZone)} at ${place} (${sun.daylight} hrs daylight)`;
     }
 
     case 'solar-time-string': {
@@ -699,6 +715,11 @@ function lookupSymbol(/** @type {string} */ name, /** @type {Record<string, any>
   return false; // nil, and any unbound symbol
 }
 
+
+/** calendar-location-name's default: "40.7N, 74.0W". @param {number} lat @param {number} lon */
+function defaultLocationName(lat, lon) {
+  return `${Math.abs(lat).toFixed(1)}${lat > 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(1)}${lon > 0 ? 'E' : 'W'}`;
+}
 
 /** Emacs's solar-time-string: TIME in decimal hours, shown by evaluating each element of calendar-time-display-form, with
  *  12-hours, 24-hours, minutes, am-pm and time-zone bound the way solar.el binds them. */
@@ -965,7 +986,7 @@ function documentUsesOrgWeather(doc) {
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
 // form in diary-sexp.js, with its own text handling, and is left to that.
-const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-offset', 'diary-ordinal-suffix', 'calendar-nth-named-day', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles']);
+const GENERAL_BODY_LINE_HEADS = new Set(['diary-remind', 'format', 'diary-sunrise-sunset', 'diary-entry-time', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'and', 'or', 'not', 'when', 'unless', 'if', 'cond', 'progn', 'let', 'let*', '=', '/=', '<', '>', '<=', '>=', 'zerop', 'memq', 'member', 'org-class', 'org-date', 'diary-date', 'diary-offset', 'diary-ordinal-suffix', 'calendar-nth-named-day', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles']);
 
 /** Parses a `%%(expr) text` body line whose expression is one the general
  *  evaluator handles -- so `%%(and (org-block ...) (diary-float ...)) Term`

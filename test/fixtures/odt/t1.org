@@ -1,0 +1,20 @@
+#+TITLE: Tables
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+#+CAPTION: A table
+#+NAME: tab1
+| h1 | h2 |
+|----+----|
+| a  | 1  |
+| bb | 22 |
+
+| x | y | z |
+| 1 | 2 | 3 |
+|---+---+---|
+| 4 | 5 | 6 |
+
+Reference to [[tab1]] here.
+
+#+ATTR_ODT: :style GriddedTable
+| p | q |
+| 1 | 2 |

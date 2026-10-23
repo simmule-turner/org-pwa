@@ -1,0 +1,138 @@
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="6">
+<text:p text:style-name="OrgTableHeadingLeft">Name</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="21">
+<text:p text:style-name="OrgTableHeadingLeft">Description</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT" table:number-columns-spanned="6">
+<text:p text:style-name="OrgTableContentsLeft">a</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellT" table:number-columns-spanned="21">
+<text:p text:style-name="OrgTableContentsLeft">long text here</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB" table:number-columns-spanned="6">
+<text:p text:style-name="OrgTableContentsLeft">b</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellB" table:number-columns-spanned="21">
+<text:p text:style-name="OrgTableContentsLeft">more</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>

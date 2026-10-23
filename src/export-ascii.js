@@ -69,6 +69,7 @@ import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, bl
  *   shortCaption?: Item[] | null,
  *   nameKey?: string | null,
  *   attrAscii?: string[],
+ *   attrs?: Record<string, string[]>,
  *   label?: string | null,
  *   inline?: Item[] | null,
  *   fnNumber?: number,
@@ -119,7 +120,7 @@ export function normalizeAsciiCharset(value) {
  *   globalMargin: number, innerMargin: number, quoteMargin: number, listMargin: number,
  *   headlineLevels: number, numbering: boolean | number, toc: boolean | number,
  *   withTitle: boolean, withAuthor: boolean, withEmail: boolean, withDate: boolean, withCreator: boolean,
- *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean,
+ *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean, withPlanning: boolean,
  *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean, drawers: boolean | string[],
  *   fixedWidth: boolean, tex: boolean,
  *   linksToNotes: boolean, noFootnotes?: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
@@ -130,6 +131,8 @@ export function normalizeAsciiCharset(value) {
  *   named: Map<string, Node>, targets: Map<string, Node>, ordinals: Map<Node, number>,
  *   cite: ReturnType<typeof citeExportFor> | null,
  *   tableCache: Map<Node, TableInfo>,
+ *   verse?: boolean,
+ *   odt?: { plain: (text: string, I: Info) => string, snippet: string } | null,
  * }} Info
  */
 
@@ -180,6 +183,7 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
     withTags: tags === 'not-in-toc' ? 'not-in-toc' : flag(tags, true),
     withTodo: flag(o.get('todo'), true),
     withPriority: flag(o.get('pri'), false),
+    withPlanning: flag(o.get('p'), false),
     preserveBreaks: flag(o.get('\\n'), false),
     specialStrings: flag(o.get('-'), true),
     entities: flag(o.get('e'), true),
@@ -216,7 +220,7 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
  * @param {string} type @param {Node | null} parent @param {Partial<Node>} [props]
  * @returns {Node}
  */
-function mk(type, parent, props = {}) {
+export function mk(type, parent, props = {}) {
   return { type, parent, contents: [], postBlank: 0, ...props };
 }
 
@@ -244,10 +248,15 @@ function translateTimestamps(text) {
   const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
   return text.replace(TIMESTAMP_RE, (whole, open, y, mo, d, h1, m1, h2, m2, marks, close) => {
     if (open === '<' !== (close === '>')) return whole;
-    const date = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
-    const day = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${DAY_ABBREVIATIONS[date.getUTCDay()]}`;
+    const dayText = (/** @type {Date} */ date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${DAY_ABBREVIATIONS[date.getDay()]}`;
     const tail = marks.replace(/\/\d+[hdwmy]/g, '');
-    const stamp = (/** @type {string | undefined} */ hh, /** @type {string | undefined} */ mm) => `${open}${day}${hh === undefined ? '' : ` ${pad(Number(hh))}:${mm}`}${tail}${close}`;
+    // a time goes through the local clock, as encode-time does: 24:00 is midnight of the next day, and a time skipped by
+    // daylight saving time moves forward
+    const stamp = (/** @type {string | undefined} */ hh, /** @type {string | undefined} */ mm) => {
+      if (hh === undefined) return `${open}${dayText(new Date(Number(y), Number(mo) - 1, Number(d), 12))}${tail}${close}`;
+      const at = new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm));
+      return `${open}${dayText(at)} ${pad(at.getHours())}:${pad(at.getMinutes())}${tail}${close}`;
+    };
     return h2 === undefined ? stamp(h1, m1) : `${stamp(h1, m1)}--${stamp(h2, m2)}`;
   });
 }
@@ -258,6 +267,7 @@ function translateTimestamps(text) {
  * @returns {string}
  */
 function plainText(text, I) {
+  if (I.odt) return I.odt.plain(text, I);
   const pieces = [];
   let last = 0;
   if (I.entities) {
@@ -292,7 +302,7 @@ let inlineCode = [];
  * @param {string} text @param {Node | null} parent @param {Info} I @param {boolean} [radio]
  * @returns {Item[]}
  */
-function objects(text, parent, I, radio = true) {
+export function objects(text, parent, I, radio = true) {
   const marked = text.split('\n').map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l)).join('\n');
   const outer = inlineCode;
   inlineCode = [];
@@ -342,7 +352,7 @@ function convertInline(nodes, parent, I) {
         for (const m of text.matchAll(SNIPPET_RE)) {
           const at = m.index || 0;
           pushPlain(text.slice(last, at));
-          if (m[1].toLowerCase() === 'ascii') out.push(m[2]);
+          if (m[1].toLowerCase() === (I.odt ? I.odt.snippet : 'ascii')) out.push(m[2]);
           last = at + m[0].length;
         }
         pushPlain(text.slice(last));
@@ -371,7 +381,10 @@ function convertInline(nodes, parent, I) {
         out.push(linkNode(n.target, null, false, parent, I));
         break;
       case 'latex':
-        out.push(I.tex ? (n.raw !== undefined ? n.raw : n.displayMode ? `\\[${n.source}\\]` : `\\(${n.source}\\)`) : '');
+        {
+          const raw = n.raw !== undefined ? n.raw : n.displayMode ? `\\[${n.source}\\]` : `\\(${n.source}\\)`;
+          out.push(!I.tex ? '' : I.odt ? mk('latex-fragment', parent, { value: raw }) : raw);
+        }
         break;
       case 'footnote-ref':
         out.push(mk('footnote-reference', parent, { label: n.label, inline: null }));
@@ -445,6 +458,7 @@ function buildElements(list, parent, I) {
     if (el.aff) {
       node.nameKey = el.aff.name;
       if (el.aff.attr && el.aff.attr.ascii) node.attrAscii = el.aff.attr.ascii;
+      if (el.aff.attr) node.attrs = el.aff.attr;
       Object.assign(node, captionItems(el.aff.caption, node, I));
       if (el.aff.name) I.named.set(el.aff.name, node);
     }
@@ -525,6 +539,8 @@ function buildElement(el, parent, I) {
       return mk('keyword', parent, { key: 'TOC', value: el.value });
     case 'ascii-line':
       return mk('keyword', parent, { key: 'ASCII', value: el.value });
+    case 'odt-line':
+      return mk('keyword', parent, { key: 'ODT', value: el.value });
     case 'print-bibliography':
       return mk('keyword', parent, { key: 'PRINT_BIBLIOGRAPHY', value: el.value });
     default:
@@ -565,7 +581,12 @@ function buildBlock(el, parent, I) {
       return mk('export-block', parent, { name: (el.params.split(/\s+/)[0] || '').toUpperCase(), lines: el.lines });
     case 'verse': {
       const node = mk('verse-block', parent);
-      node.contents = objects(removeIndentation(el.lines).join('\n') + '\n', node, I);
+      I.verse = true;
+      try {
+        node.contents = objects(removeIndentation(el.lines).join('\n') + '\n', node, I);
+      } finally {
+        I.verse = false;
+      }
       return node;
     }
     default: {
@@ -645,7 +666,7 @@ function childrenOf(item) {
  * Applies `fn` to every node under `item` in document order (secondary strings included).
  * @param {Item} item @param {(n: Node) => boolean | void} fn  returns true to skip what is inside
  */
-function walk(item, fn) {
+export function walk(item, fn) {
   if (typeof item === 'string') return;
   if (fn(item) === true) return;
   for (const child of childrenOf(item)) walk(child, fn);
@@ -678,14 +699,14 @@ function numberHeadlines(I) {
 }
 
 /** @param {Node} h @param {Info} I */
-function isNumbered(h, I) {
+export function isNumbered(h, I) {
   const unnumbered = h.unnumbered;
   if (unnumbered && unnumbered.trim().toLowerCase() !== 'nil') return false;
   return typeof I.numbering === 'number' ? /** @type {number} */ (h.level) <= I.numbering : I.numbering;
 }
 
 /** 0 when the headline is a normal one, else how many levels past `H:` it is. @param {Node} h @param {Info} I */
-function lowLevel(h, I) {
+export function lowLevel(h, I) {
   const level = /** @type {number} */ (h.level);
   return level > I.headlineLevels ? level - I.headlineLevels : 0;
 }
@@ -714,11 +735,12 @@ function numberFootnotes(root, I) {
       }
       const number = I.fnList.length + 1;
       n.fnNumber = number;
-      const def = label && !n.inline ? I.defs.get(label) || null : null;
+      // a separate definition wins over the text written in the reference, as in org-export-get-footnote-definition
+      const def = label ? I.defs.get(label) || null : null;
       I.fnList.push({ number, label, inline: n.inline || null, def });
       if (label) I.fnLabels.set(label, number);
-      if (n.inline) for (const c of n.inline) visit(c);
-      else if (def) visit(def);
+      if (def) visit(def);
+      else if (n.inline) for (const c of n.inline) visit(c);
       return true;
     });
   if (I.footnotes) visit(root);
@@ -742,13 +764,13 @@ function collectOrdinals(root, I) {
 // ---- helpers on the tree -----------------------------------------------------------
 
 /** The nearest headline above `n` (not `n` itself). @param {Node} n */
-function parentHeadline(n) {
+export function parentHeadline(n) {
   for (let p = n.parent; p; p = p.parent) if (p.type === 'headline') return p;
   return null;
 }
 
 /** The ancestors of `n` from `n` itself up. @param {Node} n */
-function lineage(n) {
+export function lineage(n) {
   /** @type {Node[]} */
   const out = [];
   for (let p = /** @type {Node | null} */ (n); p; p = p.parent) out.push(p);
@@ -969,7 +991,7 @@ const normName = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
  * @param {Node} link @param {Info} I
  * @returns {Node | null}
  */
-function resolveLink(link, I) {
+export function resolveLink(link, I) {
   const path = link.path || '';
   if (link.linkType === 'custom-id') return I.headlines.find((h) => h.properties && h.properties.CUSTOM_ID === path) || I.named.get(path) || null;
   if (link.linkType === 'id') return I.headlines.find((h) => h.properties && h.properties.ID === path) || null;
@@ -978,7 +1000,7 @@ function resolveLink(link, I) {
 }
 
 /** The ordinal of a destination (a number, or the headline's number list), or null. @param {Node} dest @param {Info} I @returns {number | number[] | null} */
-function ordinalOf(dest, I) {
+export function ordinalOf(dest, I) {
   let el = dest;
   if (dest.type === 'target' || dest.type === 'radio-target') {
     const found = lineage(dest).find((e) => ['footnote-definition', 'footnote-reference', 'headline', 'item', 'table'].includes(e.type));
@@ -1007,7 +1029,7 @@ function describeDatum(dest, I) {
 }
 
 /** A headline's title as text. @param {Node} h @param {Info} I */
-function titleText(h, I) {
+export function titleText(h, I) {
   return exportItems(h.title || [], I).trim();
 }
 
@@ -1593,4 +1615,26 @@ export function wrapText(text, width) {
 /** Org's link brackets down to plain text: `[[target][description]]` reads `description (target)`. @param {string} text */
 export function stripLinksForAscii(text) {
   return text.replace(/\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g, (_, target, description) => (description ? `${description} (${target})` : target));
+}
+
+/**
+ * The element tree for an export back end built on the same tree (ox-odt): macros expanded, inline tasks folded, headlines
+ * numbered, footnotes numbered, ordinals collected.  `odt` supplies the plain-text transcoder and the name of the export-snippet back end.
+ * @param {Doc} doc
+ * @param {Heading | null | undefined} scope
+ * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, odt: NonNullable<Info['odt']> }} options
+ */
+export function buildExportTree(doc, scope, { sup = 't', brokenLinks = 'nil', odt }) {
+  ({ doc, scope } = foldInlineTasks(doc, scope));
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
+  const I = makeInfo(doc, scope || null, 72, 'utf-8', sup, brokenLinks);
+  I.odt = odt;
+  const skip = exclusion(doc);
+  const roots = scope ? scope.children || [] : doc.children || [];
+  I.cite = citeExportFor(doc, roots.filter((h) => !skip(h)), parseInline, !scope);
+  const root = buildTree(I);
+  numberHeadlines(I);
+  numberFootnotes(root, I);
+  collectOrdinals(root, I);
+  return { I, root };
 }

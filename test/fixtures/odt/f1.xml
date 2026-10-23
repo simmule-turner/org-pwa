@@ -1,0 +1,32 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Footnotes</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Text<text:note text:id="fn1" text:note-class="footnote">
+<text:note-citation>1</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">Def one with para.
+</text:p>
+<text:p text:style-name="Footnote">Second paragraph in def.
+</text:p>
+</text:note-body>
+</text:note> more<text:note text:id="fn2" text:note-class="footnote">
+<text:note-citation>2</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">Def two.
+</text:p>
+</text:note-body>
+</text:note> anon<text:note text:id="fn3" text:note-class="footnote">
+<text:note-citation>3</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">inline <text:span text:style-name="Bold">def</text:span>
+</text:p>
+</text:note-body>
+</text:note> again<text:span text:style-name="OrgSuperscript">
+<text:note-ref text:note-class="footnote" text:reference-format="text" text:ref-name="fn1">1</text:note-ref>
+</text:span>.
+</text:p>

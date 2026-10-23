@@ -1,0 +1,16 @@
+#+TITLE: Numbered
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+- item
+  1. one
+  2. two
+     <<in item>>
+- last
+
+See [[in item]] and [[*Sec]].
+
+* Sec
+** [[Sec][Linked]] heading with *bold* title =code= [fn:1]
+text
+
+[fn:1] note

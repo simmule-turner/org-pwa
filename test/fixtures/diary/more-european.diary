@@ -1,0 +1,41 @@
+&1/15/2026 Non-marking entry
+%%(diary-anniversary 14 3 1990) Anniversary %d
+%%(diary-block 10 2 2026 14 2 2026) Block one
+%%(diary-block 30 12 2026 2 1 2027) Block over the year
+%%(diary-cyclic 10 1 1 2026) Every ten days
+%%(diary-float 11 4 4) Thanksgiving
+%%(diary-float t 1 -1) Last Monday
+%%(diary-float 3 0 2 7) Second Sunday after the 7th
+%%(and (= (calendar-extract-day date) 13) (= (calendar-day-of-week date) 5)) Friday the 13th
+%%(diary-remind '(diary-date 1 6 2026) 3) Soon (%d)
+%%(diary-date 4 7 2026) Fourth
+%%(diary-date 5 t 2026) Every day in May
+%%(diary-date 29 2 t) Leap day
+%%(or (diary-date 1 1 t) (diary-date 1 7 t)) Half-years
+%%(diary-day-of-year) Day of year
+%%(diary-julian-date) Julian
+%%(diary-islamic-date) Islamic
+%%(diary-bahai-date) Bahai
+%%(diary-hebrew-date) Hebrew
+%%(diary-iso-date) ISO date
+%%(diary-astro-day-number) Astro
+%%(diary-lunar-phases) Moon
+%%(diary-offset '(diary-date 1 3 2026) 5) Offset
+%%(diary-rosh-hashanah) RH
+%%(diary-yahrzeit 3 14 2000) Yahrzeit
+%%(diary-hebrew-birthday 14 3 2000) HB
+%%(diary-islamic-date) dup
+%%(diary-sabbath-candles) Candles
+%%(diary-parasha) Parasha
+%%(diary-omer) Omer
+%%(diary-rosh-hodesh) Rosh Hodesh
+Hebrew-less text entry
+Tuesday Every Tuesday
+Mon, Wed Two days
+Dec 25 Christmas diary
+Dec 25, 2026 Christmas this year
+* * 5 Every month the fifth
+3/* Every March day
+*/15 Every 15th
+1/1/* Every New Year
+Jan-Feb 3 range-ish

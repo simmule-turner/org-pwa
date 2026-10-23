@@ -6,7 +6,7 @@ import { isAudioFilename } from '../src/attach.js';
 import { customLink, links as customLinks } from './extension-links.js';
 import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath, resolveLinkTarget } from '../src/link-resolve.js';
 import { getUseSubSuperscripts } from '../src/local-variables.js';
-import { radioTargetRegExp } from '../src/targets.js';
+import { findTargetHeading, radioTargetRegExp } from '../src/targets.js';
 import { citeDefaults, splitCitationKeys, citeEntry, bibliographyFiles } from '../src/cite.js';
 import { describeCiteKey } from './bibliography.js';
 import { S } from './app-state.js';
@@ -130,7 +130,9 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
     };
     return a;
   }
-  const resolution = resolveLinkTarget(targetDoc, node.target);
+  // a plain mention of a radio target goes to the heading holding it; [[name]] itself only finds dedicated targets
+  const radioHeading = /** @type {{ radio?: boolean }} */ (/** @type {unknown} */ (node)).radio ? findTargetHeading(targetDoc, node.target) : null;
+  const resolution = radioHeading ? /** @type {ReturnType<typeof resolveLinkTarget>} */ ({ type: 'heading', heading: radioHeading }) : resolveLinkTarget(targetDoc, node.target);
 
   if (resolution.type === 'external') {
     const a = document.createElement('a');

@@ -92,7 +92,7 @@ export function agendaComparator(keys, context = {}) {
     } else if (name === 'priority') {
       // Emacs adds to a scheduled row 99 plus the days it is overdue, and to a deadline row the days left (negative) or overdue
       const rank = (/** @type {AgendaItem} */ i) => {
-        if (!i.heading && !i.priority) return 0;
+        if ((!i.heading && !i.priority) || i.samePriority) return 0; // a Search row has the same priority whatever its cookie says
         const days = i.daysOverdue || 0;
         const bonus = i.kind === 'scheduled' ? 99 + Math.max(0, days) : i.kind === 'deadline' ? days : 0;
         return priorityRank(i.priority, range) + bonus;

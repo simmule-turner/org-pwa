@@ -315,20 +315,27 @@ test('solar-time-string follows calendar-time-display-form, a malformed one fall
 });
 
 test('solar-sunrise-sunset returns ((rise zone) (set zone) "H:MM") and takes a height for the twilights', () => {
-  const show = (/** @type {string} */ text, context = ctx(TODAY)) => evaluateSexpr(parseSexpr(`(format "%s" ${text})`), context);
-  const hours = (/** @type {string} */ text) => Number(show(text));
-  const rise = hours('(car (car (solar-sunrise-sunset date)))');
-  const set = hours('(car (cadr (solar-sunrise-sunset date)))');
-  const apart = (/** @type {number} */ from, /** @type {number} */ to) => (((to - from) % 24) + 24) % 24; // hours from one clock time to the next, in any zone
-  assert.ok(Math.abs(apart(rise, set) - 13.6) < 0.3, `${rise} ${set}`);
-  assert.equal(show('(cadr (car (solar-sunrise-sunset date)))'), show('(cadr (cadr (solar-sunrise-sunset date)))'));
-  assert.match(show('(nth 2 (solar-sunrise-sunset date))'), /^1[2-4]:\d\d$/);
-  assert.match(show('(length (solar-sunrise-sunset date))'), /^3$/);
-  const civil = hours('(car (car (solar-sunrise-sunset date -6)))');
-  const nautical = hours('(car (car (solar-sunrise-sunset date -12)))');
-  const astronomical = hours('(car (car (solar-sunrise-sunset date -18)))');
-  assert.ok(apart(civil, rise) > 0 && apart(civil, rise) < 1);
-  assert.ok(apart(astronomical, nautical) > 0 && apart(nautical, civil) > 0 && apart(astronomical, civil) < 3);
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/New_York'; // sun times are in the device zone
+  try {
+    const show = (/** @type {string} */ text, context = ctx(TODAY)) => evaluateSexpr(parseSexpr(`(format "%s" ${text})`), context);
+    const hours = (/** @type {string} */ text) => Number(show(text));
+    const rise = hours('(car (car (solar-sunrise-sunset date)))');
+    const set = hours('(car (cadr (solar-sunrise-sunset date)))');
+    const apart = (/** @type {number} */ from, /** @type {number} */ to) => (((to - from) % 24) + 24) % 24; // hours from one clock time to the next, in any zone
+    assert.ok(Math.abs(apart(rise, set) - 13.6) < 0.3, `${rise} ${set}`);
+    assert.equal(show('(cadr (car (solar-sunrise-sunset date)))'), show('(cadr (cadr (solar-sunrise-sunset date)))'));
+    assert.match(show('(nth 2 (solar-sunrise-sunset date))'), /^1[2-4]:\d\d$/);
+    assert.match(show('(length (solar-sunrise-sunset date))'), /^3$/);
+    const civil = hours('(car (car (solar-sunrise-sunset date -6)))');
+    const nautical = hours('(car (car (solar-sunrise-sunset date -12)))');
+    const astronomical = hours('(car (car (solar-sunrise-sunset date -18)))');
+    assert.ok(apart(civil, rise) > 0 && apart(civil, rise) < 1);
+    assert.ok(apart(astronomical, nautical) > 0 && apart(nautical, civil) > 0 && apart(astronomical, civil) < 3);
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });
 
 test('solar-sunrise-sunset gives nil for an event the day lacks (the polar night)', () => {
@@ -340,12 +347,19 @@ test('solar-sunrise-sunset gives nil for an event the day lacks (the polar night
 });
 
 test('apply spreads the last argument: the user\u2019s sun-times entry', () => {
-  const text = '(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: %s | %s | %s" (apply \'solar-time-string (car l)) (apply \'solar-time-string (cadr l)) (nth 2 l))))';
-  const result = evaluateSexpr(parseSexpr(text), { ...ctx(TODAY), calendarTimeDisplayForm: '(24-hours ":" minutes)' });
-  assert.match(result, /^Sun times: \d\d:\d\d \| \d\d:\d\d \| 1[2-4]:\d\d$/);
-  assert.equal(evaluateSexpr(parseSexpr(text), ctx(new Date(2026, 7, 13))), false);
-  assert.equal(evaluateSexpr(parseSexpr("(apply '+ 1 2 (list 3 4))"), ctx(TODAY)), true, 'a number result is a match');
-  assert.equal(evaluateSexpr(parseSexpr("(format \"%d\" (apply '+ 1 2 (list 3 4)))"), ctx(TODAY)), '10');
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/New_York'; // sun times are in the device zone
+  try {
+    const text = '(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: %s | %s | %s" (apply \'solar-time-string (car l)) (apply \'solar-time-string (cadr l)) (nth 2 l))))';
+    const result = evaluateSexpr(parseSexpr(text), { ...ctx(TODAY), calendarTimeDisplayForm: '(24-hours ":" minutes)' });
+    assert.match(result, /^Sun times: \d\d:\d\d \| \d\d:\d\d \| 1[2-4]:\d\d$/);
+    assert.equal(evaluateSexpr(parseSexpr(text), ctx(new Date(2026, 7, 13))), false);
+    assert.equal(evaluateSexpr(parseSexpr("(apply '+ 1 2 (list 3 4))"), ctx(TODAY)), true, 'a number result is a match');
+    assert.equal(evaluateSexpr(parseSexpr("(format \"%d\" (apply '+ 1 2 (list 3 4)))"), ctx(TODAY)), '10');
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });
 
 test('a day without the event leaves apply with nothing to pass: solar-time-string gives nil, not an error', () => {
@@ -353,4 +367,22 @@ test('a day without the event leaves apply with nothing to pass: solar-time-stri
   const text = `(let ((l (solar-sunrise-sunset date))) (format "Rise %s" (apply 'solar-time-string (car l))))`;
   assert.equal(evaluateSexpr(parseSexpr(text), polar), 'Rise nil');
   assert.equal(evaluateSexpr(parseSexpr(`(let ((l (solar-sunrise-sunset date))) (when (car l) "up"))`), polar), false);
+});
+
+test('diary-entry-time reads hhmm at the start of an entry, as Emacs does, and -9999 when there is none', () => {
+  const at = (text) => evaluateSexpr(parseSexpr(`(format "%d" (diary-entry-time "${text}"))`), { candidateDate: new Date(2026, 9, 24), today: new Date(2026, 9, 24) });
+  assert.deepEqual(['9:30am foo', 'foo', '1430 x', '12am'].map(at), ['930', '-9999', '1430', '0']); // all four as Emacs 29.3 answers
+});
+
+test('diary-sunrise-sunset writes the sentence Emacs does, with the location name or its default', () => {
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/New_York'; // sun times are in the device zone
+  try {
+    const line = (extra) => evaluateSexpr(parseSexpr('(format "%s" (diary-sunrise-sunset))'), { candidateDate: new Date(2026, 9, 24), today: new Date(2026, 9, 24), calendarLatitude: 40.7, calendarLongitude: -74.0, ...extra });
+    assert.match(line({}), /^Sunrise \d{1,2}:\d\d[ap]m \([A-Z]{3,4}\), sunset \d{1,2}:\d\d[ap]m \([A-Z]{3,4}\) at 40\.7N, 74\.0W \(\d+:\d\d hrs daylight\)$/);
+    assert.match(line({ calendarLocationName: 'NYC' }), / at NYC \(/);
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
 });

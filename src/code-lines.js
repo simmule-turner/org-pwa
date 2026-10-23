@@ -57,12 +57,34 @@ export function codeRefRegexp(format) {
  * @param {string[]} lines
  */
 function removeIndent(lines) {
+  return removeColumns(lines);
+}
+
+/**
+ * `org-remove-indentation`: the common indentation goes, counted in columns (a tab runs to the next multiple of 8); what is left of a
+ * line's own indentation is spaces.
+ * @param {string[]} lines
+ * @param {number} [n]
+ */
+export function removeColumns(lines, n) {
+  const width = (/** @type {string} */ ws) => {
+    let col = 0;
+    for (const ch of ws) col = ch === '\t' ? col + 8 - (col % 8) : col + 1;
+    return col;
+  };
   let min = Infinity;
   for (const l of lines) {
     if (!l.trim()) continue;
-    min = Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length);
+    min = Math.min(min, width((/^[ \t]*/.exec(l) || [''])[0]));
   }
-  return min === Infinity || min === 0 ? lines : lines.map((l) => l.slice(Math.min(min, (/^[ \t]*/.exec(l) || [''])[0].length)));
+  const cut = n === undefined ? min : n;
+  if (cut === Infinity || cut === 0) return lines;
+  return lines.map((l) => {
+    const ws = (/^[ \t]*/.exec(l) || [''])[0];
+    const cols = width(ws);
+    if (!l.trim()) return l;
+    return ' '.repeat(Math.max(0, cols - cut)) + l.slice(ws.length);
+  });
 }
 
 /**

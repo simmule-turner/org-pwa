@@ -1,0 +1,78 @@
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="4">
+<text:p text:style-name="OrgTableHeadingRight">A</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="3">
+<text:p text:style-name="OrgTableHeadingCenter">B</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableHeadingLeft">C</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="4">
+<text:p text:style-name="OrgTableContentsRight">x</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellTB" table:number-columns-spanned="3">
+<text:p text:style-name="OrgTableContentsCenter">y</text:p>
+</table:table-cell>
+<table:covered-table-cell/>
+<table:covered-table-cell/>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">z</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableHeadingLeft">p</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableHeadingLeft">q</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">&lt;4&gt;</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">r</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>

@@ -240,7 +240,7 @@ export function buildAgendaEffortPanel() {
 /**
  * The row prefix from `org-agenda-prefix-format` (null when the variable is unset for this view).
  * @param {import('../src/agenda.js').AgendaItem} item
- * @param {'agenda' | 'todo'} view
+ * @param {'agenda' | 'todo' | 'tags' | 'search'} view
  * @returns {{ text: string, usesTime: boolean, usesScheduling: boolean, usesEffort: boolean } | null}
  */
 function rowPrefix(item, view) {
@@ -936,7 +936,7 @@ export function buildClocktableSection() {
 
 /** The TODO view's effort filter chip: the same condition as the Agenda's ⏱ panel (at most, at least or exactly a duration), org's
  *  `_` filter. Shows the condition when one is set, with an ✕ to clear it. */
-function buildTodoEffortChip() {
+export function buildTodoEffortChip() {
   const wrap = document.createElement('div');
   wrap.setAttribute('data-todo-effort-filter', '');
   wrap.style.cssText = 'display:flex;align-items:center;';
@@ -987,6 +987,112 @@ function buildTodoEffortChip() {
     wrap.appendChild(clear);
   }
   return wrap;
+}
+
+/** Adds `text` to `parent`, the parts that match any of `patterns` marked.
+ * @param {HTMLElement} parent @param {string} text @param {RegExp[]} [patterns] */
+function appendMarked(parent, text, patterns) {
+  const spans = [];
+  for (const re of patterns || []) {
+    const m = new RegExp(re.source, re.flags.replace('g', '') + 'g').exec(text);
+    if (m && m[0]) spans.push([m.index, m.index + m[0].length]);
+  }
+  spans.sort((x, y) => x[0] - y[0]);
+  let at = 0;
+  for (const [from, to] of spans) {
+    if (from < at) continue;
+    if (from > at) parent.appendChild(document.createTextNode(text.slice(at, from)));
+    const mark = document.createElement('mark');
+    mark.textContent = text.slice(from, to);
+    parent.appendChild(mark);
+    at = to;
+  }
+  if (at < text.length) parent.appendChild(document.createTextNode(text.slice(at)));
+}
+
+/**
+ * One row of a list of headings: the TODO list, and the Match and Search views.
+ * @param {import('../src/agenda.js').AgendaItem} item
+ * @param {Date} today
+ * @param {'todo' | 'tags' | 'search'} view  picks the entry of org-agenda-prefix-format
+ * @param {{ highlight?: RegExp[], snippet?: string | null }} [extras]  Search view: patterns to mark in the title, and a line of text to show
+ */
+export function buildHeadingRow(item, today, view, extras = {}) {
+  const heading = /** @type {import('../src/types.js').Heading} */ (item.heading);
+  const row = document.createElement('div');
+  row.className = 'menu-list-item';
+  row.style.display = 'flex';
+  row.style.gap = '6px';
+  row.style.alignItems = 'baseline';
+  row.style.cursor = 'pointer';
+
+  if (item.todo || view !== 'todo') {
+    const badge = document.createElement('span');
+    badge.textContent = [item.todo, view !== 'todo' && item.heading && item.heading.priority ? `[#${item.heading.priority}]` : ''].filter(Boolean).join(' ');
+    badge.style.fontWeight = '700';
+    badge.style.fontSize = '12px';
+    badge.style.flexShrink = '0';
+    if (badge.textContent) row.appendChild(badge);
+  }
+
+  const text = document.createElement('div');
+  text.style.flex = '1 1 auto';
+  text.style.minWidth = '0';
+  text.style.overflowWrap = 'anywhere';
+  appendMarked(text, item.title, extras.highlight);
+  if (item.heading) appendTagChips(text, item.heading, 'todo');
+  const taskEffort = itemEffortText(item);
+  if (taskEffort) {
+    const effortBadge = document.createElement('span');
+    effortBadge.setAttribute('data-item-effort', '');
+    effortBadge.textContent = ` \u23f1 ${taskEffort}`;
+    effortBadge.style.opacity = '0.6';
+    effortBadge.style.fontSize = '12px';
+    effortBadge.style.whiteSpace = 'nowrap';
+    text.appendChild(effortBadge);
+  }
+  // The date line: the category, and the SCHEDULED/DEADLINE date in the Agenda's own words.
+  const dateInfo = taskDateInfo(heading, today);
+  const described = dateInfo ? describeTaskDate(dateInfo) : null;
+  const meta = document.createElement('div');
+  meta.setAttribute('data-task-meta', '');
+  meta.style.fontSize = '12px';
+  meta.style.opacity = '0.75';
+  const todoPrefix = rowPrefix(item, view);
+  meta.textContent = todoPrefix ? todoPrefix.text.trim() : [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
+  if (described && described.overdue) meta.style.color = '#c0392b';
+  if (meta.textContent) text.appendChild(meta);
+  if (extras.snippet) {
+    const line = document.createElement('div');
+    line.setAttribute('data-search-snippet', '');
+    line.style.cssText = 'font-size:12px;opacity:0.75;';
+    appendMarked(line, extras.snippet, extras.highlight);
+    text.appendChild(line);
+  }
+  row.appendChild(text);
+
+  if (S.showClockDisplay) {
+    const minutes = totalClockedMinutes(heading);
+    if (minutes > 0) {
+      const clockLabel = document.createElement('span');
+      clockLabel.style.fontSize = '12px';
+      clockLabel.style.opacity = '0.65';
+      clockLabel.style.flexShrink = '0';
+      clockLabel.textContent = formatClockDuration(minutes);
+      row.appendChild(clockLabel);
+    }
+  }
+
+  row.onclick = () => {
+    if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
+    if (item.documentId === 'diary-file') {
+      if (item.diaryAt) openDiaryRowActions(item);
+      return;
+    }
+    const outlinePath = outlinePathForHeadingInDocument(item.documentId, heading);
+    if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
+  };
+  return withRowActions(row, item);
 }
 
 export function renderTaskListView() {
@@ -1063,73 +1169,7 @@ export function renderTaskListView() {
     container.appendChild(none);
   }
 
-  for (const item of orderedTasks) {
-    const row = document.createElement('div');
-    row.className = 'menu-list-item';
-    row.style.display = 'flex';
-    row.style.gap = '6px';
-    row.style.alignItems = 'baseline';
-    row.style.cursor = 'pointer';
-
-    const badge = document.createElement('span');
-    badge.textContent = item.todo;
-    badge.style.fontWeight = '700';
-    badge.style.fontSize = '12px';
-    badge.style.flexShrink = '0';
-    row.appendChild(badge);
-
-    const text = document.createElement('div');
-    text.style.flex = '1 1 auto';
-    text.style.minWidth = '0';
-    text.style.overflowWrap = 'anywhere';
-    text.appendChild(document.createTextNode(item.title));
-    if (item.heading) appendTagChips(text, item.heading, 'todo');
-    const taskEffort = itemEffortText(item);
-    if (taskEffort) {
-      const effortBadge = document.createElement('span');
-      effortBadge.setAttribute('data-item-effort', '');
-      effortBadge.textContent = ` \u23f1 ${taskEffort}`;
-      effortBadge.style.opacity = '0.6';
-      effortBadge.style.fontSize = '12px';
-      effortBadge.style.whiteSpace = 'nowrap';
-      text.appendChild(effortBadge);
-    }
-    // The date line: the category, and the SCHEDULED/DEADLINE date in the Agenda's own words.
-    const dateInfo = taskDateInfo(item.heading, today);
-    const described = dateInfo ? describeTaskDate(dateInfo) : null;
-    const meta = document.createElement('div');
-    meta.setAttribute('data-task-meta', '');
-    meta.style.fontSize = '12px';
-    meta.style.opacity = '0.75';
-    const todoPrefix = rowPrefix(item, 'todo');
-    meta.textContent = todoPrefix ? todoPrefix.text.trim() : [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
-    if (described && described.overdue) meta.style.color = '#c0392b';
-    if (meta.textContent) text.appendChild(meta);
-    row.appendChild(text);
-
-    if (S.showClockDisplay) {
-      const minutes = totalClockedMinutes(item.heading);
-      if (minutes > 0) {
-        const clockLabel = document.createElement('span');
-        clockLabel.style.fontSize = '12px';
-        clockLabel.style.opacity = '0.65';
-        clockLabel.style.flexShrink = '0';
-        clockLabel.textContent = formatClockDuration(minutes);
-        row.appendChild(clockLabel);
-      }
-    }
-
-    row.onclick = () => {
-      if (clickIsGestureEnd(row)) return; // the end of a long press or a swipe, not a tap
-      if (item.documentId === 'diary-file') {
-        if (item.diaryAt) openDiaryRowActions(item);
-        return;
-      }
-      const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
-      if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
-    };
-    container.appendChild(withRowActions(row, item));
-  }
+  for (const item of orderedTasks) container.appendChild(buildHeadingRow(item, today, 'todo'));
 
   outlineEl.appendChild(container);
 }
