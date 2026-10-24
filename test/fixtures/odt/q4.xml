@@ -1,0 +1,19 @@
+<text:p text:style-name="OrgTitle">
+<text:title>T</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:p text:style-name="Text_20_body">Text <text:span text:style-name="OrgActiveTimestamp">&lt;2026-01-15 Thu&gt; </text:span> and <text:span text:style-name="OrgInactiveTimestamp">[2026-01-15 Thu 10:00] </text:span> and <text:span text:style-name="OrgCode">[50%]</text:span> and <text:span text:style-name="OrgCode">[1/2]</text:span> and a<text:span text:style-name="OrgSubscript">b</text:span> and <text:span text:style-name="Bold">bold <text:span text:style-name="Emphasis">italic</text:span>
+</text:span>
+<text:span text:style-name="Strikethrough">strike</text:span>
+<text:span text:style-name="Underline">under</text:span>
+<text:span text:style-name="OrgCode">code</text:span>.  Line one <text:line-break/>line two
+</text:p>
+<text:p>raw</text:p>
+<text:p>inline</text:p>
+<text:p text:style-name="Text_20_body">
+<text:span>x</text:span>
+</text:p>

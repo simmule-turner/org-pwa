@@ -1,0 +1,15 @@
+#+TITLE: Macros of the file
+#+OPTIONS: toc:nil
+First: {{{input-file}}} and {{{modification-time(%Y)}}} and [{{{property(TOP)}}}].
+* Head
+:PROPERTIES:
+:FOO: bar
+:END:
+Own {{{property(FOO)}}}, missing [{{{property(NOPE)}}}], found {{{property(FOO, Other)}}}.
+** Child
+Inherited? [{{{property(FOO)}}}]
+* Other
+:PROPERTIES:
+:FOO: other value
+:END:
+Here {{{property(FOO)}}}.

@@ -123,6 +123,29 @@ function keywordValues(doc, name) {
 
 /** The {{{n}}} counters, by name; they start over for each export. @type {Map<string, number>} */
 let counters = new Map();
+/** The heading whose text is being expanded (for {{{property}}}) and the file's name and modification time (for {{{input-file}}} and {{{modification-time}}}). @type {{ heading: Heading | null, file: { name?: string, mtime?: Date } | null }} */
+const here = { heading: null, file: null };
+
+/** @param {Doc} doc @returns {Heading[]} */
+function allHeadings(doc) {
+  /** @type {Heading[]} */ const out = [];
+  /** @param {Heading[]} list */
+  const walk = (list) => list.forEach((h) => (out.push(h), walk(h.children || [])));
+  walk(doc.children || []);
+  return out;
+}
+
+/** {{{property(NAME)}}}: the property in the heading holding the macro (its own drawer only, as Org reads it); a second argument names another heading (by its title, or #custom-id). @param {Doc} doc @param {string[]} args */
+function propertyValue(doc, args) {
+  /** @type {Heading | null | undefined} */ let heading = here.heading;
+  if (args[1]) {
+    const search = args[1].trim().replace(/^\*/, '');
+    const all = allHeadings(doc);
+    heading = search.startsWith('#') ? all.find((h) => h.properties?.CUSTOM_ID === search.slice(1)) : all.find((h) => h.title.trim().toLowerCase() === search.toLowerCase()) || all.find((h) => h.title.toLowerCase().includes(search.toLowerCase()));
+  }
+  const value = heading?.properties?.[(args[0] || '').trim()] ?? heading?.properties?.[(args[0] || '').trim().toUpperCase()];
+  return value === undefined ? '' : String(value);
+}
 
 /** Expands every {{{macro}}} reference in `text` against `macros`
  *  (see buildMacroTable) and `doc`'s own keywords, using `now` for
@@ -169,6 +192,9 @@ function expandMacrosInText(text, macros, doc, now, depth = 0) {
     }
     if (name === 'time') return formatTime(now, args[0] || '%Y-%m-%d');
     if (name === 'keyword') return keywordValues(doc, args[0] || '');
+    if (name === 'property' && !(name in macros)) return propertyValue(doc, args);
+    if (name === 'input-file' && here.file?.name !== undefined && !(name in macros)) return here.file.name;
+    if (name === 'modification-time' && here.file?.mtime && !(name in macros)) return formatTime(here.file.mtime, args[0] || '%Y-%m-%d');
     if (name in macros) {
       const template = macros[name];
       if (/^\(eval\b/.test(template.trim())) return whole; // real org's own escape into arbitrary Emacs Lisp -- can't safely execute this, same reason step (c) can't run a code block; left exactly as written
@@ -217,9 +243,12 @@ function expandBodyLines(lines, expand) {
  *  structurally, not just as raw strings nothing else sees. Returns a
  * @param {Doc} doc
  * @param {Date} now
+ * @param {{ name?: string, mtime?: Date } | null} [file]
  *  new doc; the input is never mutated. */
-function expandMacros(doc, now) {
+function expandMacros(doc, now, file = null) {
   counters = new Map();
+  here.heading = null;
+  here.file = file;
   const macros = buildMacroTable(doc);
   const expand = (/** @type {string} */ text) => expandMacrosInText(text, macros, doc, now);
   const newBodyLines = expandBodyLines(doc.bodyLines || [], expand);
@@ -227,6 +256,7 @@ function expandMacros(doc, now) {
   /** @param {Heading} heading
    *  @returns {any} */
   function walk(heading) {
+    here.heading = heading;
     const newTitle = expandMacrosInText(heading.title, macros, doc, now);
     const newLines = expandBodyLines(heading.bodyLines || [], expand);
     return {
@@ -249,14 +279,14 @@ function expandMacros(doc, now) {
 /**
  * The document with its {{{macros}}} expanded, for the exporters that read parsed text (ASCII, ODT), and the heading
  * to export in that copy. A document that uses no macro is returned as it is.
- * @param {Doc} doc @param {any} scope  the heading being exported, or null for the whole document @param {Date} now
+ * @param {Doc} doc @param {any} scope  the heading being exported, or null for the whole document @param {Date} now @param {{ name?: string, mtime?: Date } | null} [file]  the file's name and modification time, for {{{input-file}}} and {{{modification-time}}}
  * @returns {{ doc: Doc, scope: any }}
  */
-function expandMacrosForExport(doc, scope, now) {
+function expandMacrosForExport(doc, scope, now, file = null) {
   /** @param {Heading[]} headings @returns {boolean} */
   const uses = (headings) => headings.some((h) => h.title.includes('{{{') || (h.bodyLines || []).some((l) => l.includes('{{{')) || uses(h.children || []));
   if (!(doc.bodyLines || []).some((l) => l.includes('{{{')) && !uses(doc.children || [])) return { doc, scope };
-  const expanded = expandMacros(doc, now);
+  const expanded = expandMacros(doc, now, file);
   if (!scope) return { doc: expanded, scope };
   /** @param {any[]} from @param {any[]} to @returns {any} the heading in `to` at the place `scope` has in `from` */
   const counterpart = (from, to) => {

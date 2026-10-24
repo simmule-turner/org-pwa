@@ -1,0 +1,14 @@
+#+TITLE: Table mode
+#+OPTIONS: toc:nil
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+ATTR_LATEX: :mode math
+| x | y |
+|---+---|
+| 1 | 2 |
+
+#+ATTR_LATEX: :mode inline-math
+| x | y |
+| 1 | 2 |

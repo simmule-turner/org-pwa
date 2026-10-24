@@ -1,0 +1,8 @@
+#+TITLE: Table in footnote
+#+OPTIONS: toc:nil
+Text[fn:1] and again[fn:1].
+
+[fn:1] Note with table:
+
+| a | b |
+| 1 | 2 |

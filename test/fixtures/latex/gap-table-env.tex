@@ -1,0 +1,48 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Table environment}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Table environment},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{center}
+\begin{tabularx}{rr}
+a & b\\[0pt]
+\hline
+1 & 2\\[0pt]
+\end{tabularx}
+\end{center}
+
+\[
+\begin{tabularx}
+ x & y \\[0pt]
+ 1 & 2 \\[0pt]
+\end{tabularx}
+\]
+
+\begin{center}
+\begin{tabularx}{8cm}{rr}
+x & y\\[0pt]
+1 & 2\\[0pt]
+\end{tabularx}
+\end{center}
+\end{document}

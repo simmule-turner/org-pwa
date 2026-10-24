@@ -1,0 +1,12 @@
+#+OPTIONS: toc:nil
+Text[fn:1] and[fn:2].
+
+[fn:1] Note:
+
+| a | b |
+| 1 | 2 |
+
+after table.
+
+[fn:2] Second
+| c | d |

@@ -13,7 +13,7 @@ import { exportToLatex, exportToBeamer, latexImageTargets } from './export-latex
 /**
  * @param {Doc} doc
  * @param {Heading | null} scope
- * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string, sup?: string, header?: string }, beamer?: boolean }} options
+ * @param {{ baseName: string, readImage: (target: string) => Promise<Uint8Array | null>, defaults?: { cls?: string, compiler?: string, sup?: string, header?: string, file?: { name?: string, mtime?: Date } }, beamer?: boolean }} options
  * @returns {Promise<Uint8Array>}
  */
 export async function exportLatexZip(doc, scope, { baseName, readImage, defaults, beamer = false }) {

@@ -1,0 +1,28 @@
+#+TITLE: Table styles
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+* Tables
+#+ATTR_ODT: :style GriddedTable
+| a | b | c |
+|---+---+---|
+| 1 | 2 | 3 |
+| 4 | 5 | 6 |
+
+#+ATTR_ODT: :style Banded
+| a | b | c |
+| 1 | 2 | 3 |
+| 4 | 5 | 6 |
+| 7 | 8 | 9 |
+
+#+ATTR_ODT: :style BandedCols
+| a | b | c | d |
+| 1 | 2 | 3 | 4 |
+
+#+ATTR_ODT: :style Mine
+| a | b | c |
+| 1 | 2 | 3 |
+| 4 | 5 | 6 |
+
+#+ATTR_ODT: :style TableWithHeaderRowAndColumn
+| a | b | c |
+| 1 | 2 | 3 |

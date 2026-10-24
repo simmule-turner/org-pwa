@@ -5,9 +5,9 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COMPLEX_CASES as COMPLEX, VECTOR_CASES, OPERATOR_CASES, ZERO_DIVISION_CASES, FRACTION_CASES, DATE_CASES, ASCII_DRAW_CASES, SYMBOLIC_CASES, FLOAT_CASES, FLAG_CASES, PRECISION_CASES, DATE_FUNCTION_CASES } from '../test/calc-oracle-cases.mjs';
+import { COMPLEX_CASES as COMPLEX, VECTOR_CASES, OPERATOR_CASES, ZERO_DIVISION_CASES, FRACTION_CASES, DATE_CASES, ASCII_DRAW_CASES, SYMBOLIC_CASES, FLOAT_CASES, FLAG_CASES, PRECISION_CASES, DATE_FUNCTION_CASES, ALGEBRA_CASES } from '../test/calc-oracle-cases.mjs';
 
-const COMPLEX_CASES = [...COMPLEX, ...SYMBOLIC_CASES, ...VECTOR_CASES, ...OPERATOR_CASES, ...ZERO_DIVISION_CASES, ...FRACTION_CASES, ...DATE_CASES, ...ASCII_DRAW_CASES, ...FLOAT_CASES, ...FLAG_CASES, ...PRECISION_CASES, ...DATE_FUNCTION_CASES];
+const COMPLEX_CASES = [...COMPLEX, ...SYMBOLIC_CASES, ...VECTOR_CASES, ...OPERATOR_CASES, ...ZERO_DIVISION_CASES, ...FRACTION_CASES, ...DATE_CASES, ...ASCII_DRAW_CASES, ...FLOAT_CASES, ...FLAG_CASES, ...PRECISION_CASES, ...DATE_FUNCTION_CASES, ...ALGEBRA_CASES];
 const here = dirname(fileURLToPath(import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), 'calc-oracle-'));
 const lisp = `

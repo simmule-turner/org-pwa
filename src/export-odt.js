@@ -10,7 +10,7 @@ import { exportToOdtPort } from './ox-odt.js';
 /**
  * @param {Doc} doc
  * @param {Heading | null} [scope]
- * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, images?: Map<string, string> | null, highlight?: boolean, userFullName?: string }} [options]
+ * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, images?: Map<string, string> | null, highlight?: boolean, userFullName?: string, init?: string }} [options]
  * @returns {Uint8Array}
  */
 export function exportToOdt(doc, scope = null, options = {}) {

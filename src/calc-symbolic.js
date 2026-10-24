@@ -37,6 +37,12 @@ export class SymbolicDivisionByZero extends SymbolicReject {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 let workDigits = 12;
+/** True while `simplify` runs: Calc's math-simplifying, which loosens how like terms and factors are matched. */
+const mode = { simplifying: false };
+/** @param {boolean} on */
+export function setSimplifying(on) {
+  mode.simplifying = on;
+}
 /** @param {number} n */
 const pow10 = (n) => 10n ** BigInt(n);
 /** @param {bigint} m */
@@ -93,7 +99,7 @@ function gcd(a, b) {
   return a;
 }
 /** A fraction in lowest terms, or an integer when the denominator is 1. @param {bigint} n @param {bigint} d @returns {Form} */
-function frac(n, d) {
+export function frac(n, d) {
   if (d < 0n) {
     n = -n;
     d = -d;
@@ -107,11 +113,12 @@ function frac(n, d) {
 const isInt = (/** @type {Form} */ a) => a.t === 'int';
 const isFlt = (/** @type {Form} */ a) => a.t === 'flt';
 const isFrac = (/** @type {Form} */ a) => a.t === 'frac';
-const isNum = (/** @type {Form} */ a) => a.t === 'int' || a.t === 'flt' || a.t === 'frac';
+export const isNum = (/** @type {Form} */ a) => a.t === 'int' || a.t === 'flt' || a.t === 'frac';
 const isRat = (/** @type {Form} */ a) => a.t === 'int' || a.t === 'frac';
 const isVec = (/** @type {Form} */ a) => a.t === 'vec';
 const isObjVec = (/** @type {Form} */ a) => isNum(a) || isVec(a);
 const isOp = (/** @type {Form} */ a, /** @type {string} */ f) => a.t === 'op' && a.f === f;
+const isIntv = (/** @type {Form} */ a) => a.t === 'intv';
 
 /** @param {Form} a */
 export function toNumber(a) {
@@ -119,22 +126,22 @@ export function toNumber(a) {
   return a.t === 'int' ? Number(a.v) : a.t === 'frac' ? Number(a.n) / Number(a.d) : Number(`${a.m}e${a.e}`);
 }
 /** @param {Form} a */
-function zerop(a) {
+export function zerop(a) {
   return a.t === 'int' ? a.v === 0n : a.t === 'flt' ? a.m === 0n : false;
 }
 /** @param {Form} a */
-function negp(a) {
+export function negp(a) {
   return a.t === 'int' ? a.v < 0n : a.t === 'frac' ? a.n < 0n : a.t === 'flt' ? a.m < 0n : false;
 }
 /** @param {Form} a */
-function posp(a) {
+export function posp(a) {
   return a.t === 'int' ? a.v > 0n : a.t === 'frac' ? a.n > 0n : a.t === 'flt' ? a.m > 0n : false;
 }
 /** Calc's Math-equal-int: the integer n, or a float with that whole value. @param {Form} a @param {number} n */
-function eqInt(a, n) {
+export function eqInt(a, n) {
   return (a.t === 'int' && a.v === BigInt(n)) || (a.t === 'flt' && a.e === 0 && a.m === BigInt(n));
 }
-/** @param {Form} a @param {Form} b */
+/** @param {Form} a @param {Form} b @returns {boolean} */
 export function equal(a, b) {
   if (a.t !== b.t) return false;
   switch (a.t) {
@@ -148,12 +155,16 @@ export function equal(a, b) {
       return a.name === b.name;
     case 'vec':
       return a.items.length === b.items.length && a.items.every((/** @type {Form} */ x, /** @type {number} */ i) => equal(x, b.items[i]));
+    case 'intv':
+      return a.mask === b.mask && equal(a.lo, b.lo) && equal(a.hi, b.hi);
+    case 'cplx':
+      return equal(a.re, b.re) && equal(a.im, b.im);
     default:
       return a.f === b.f && a.a.length === b.a.length && a.a.every((/** @type {Form} */ x, /** @type {number} */ i) => equal(x, b.a[i]));
   }
 }
 /** @param {Form} a @returns {boolean} */
-function looksNeg(a) {
+export function looksNeg(a) {
   if (negp(a)) return true;
   if (a.t !== 'op') return false;
   if (a.f === 'neg') return true;
@@ -169,7 +180,7 @@ function looksNegShallow(a) {
 const okayNeg = (/** @type {Form} */ a) => looksNeg(a) || isOp(a, '-');
 const INFINITIES = new Set(['inf', 'uinf', 'nan']);
 /** @param {Form} a */
-function infinitep(a) {
+export function infinitep(a) {
   while (a.t === 'op' && (a.f === '*' || a.f === '/' || a.f === 'neg')) {
     a = a.f !== '*' || infinitep(a.a[0]) ? a.a[0] : a.a[1];
   }
@@ -262,6 +273,7 @@ function mapVec2(fn, a, b) {
 export function neg(a) {
   if (isNum(a)) return negNumber(a);
   if (isVec(a)) return VEC(a.items.map(neg));
+  if (isIntv(a)) return makeIntv(FLIP_MASK[a.mask], neg(a.hi), neg(a.lo));
   if (a.t === 'op') {
     const [x, y] = a.a;
     if (a.f === '+') return sub(neg(x), y);
@@ -283,7 +295,11 @@ export function add(a, b) {
   if (zerop(a)) return isFlt(a) && isRat(b) ? toFloatForm(b) : b;
   if (zerop(b)) return isFlt(b) && isRat(a) ? toFloatForm(a) : a;
   if (isNum(a) && isNum(b)) return numAdd(a, b);
-  if (isVec(a) || isVec(b)) return mapVec2(add, a, b);
+  if (isVec(a) || isVec(b)) {
+    if ((isVec(a) && isVec(b)) || knownScalar(isVec(a) ? b : a)) return mapVec2(add, a, b);
+    return addSymb(a, b); // a vector and something that may be one too: left as written
+  }
+  if ((isIntv(a) && (isNum(b) || isIntv(b))) || (isIntv(b) && isNum(a))) return intvAdd(a, b);
   return addSymb(a, b);
 }
 
@@ -329,7 +345,7 @@ function addSymb(a, b) {
 
 /** Like terms: x + x is 2 x, 2 x + 3 x is 5 x -- but only when the two forms are the same apart from a numeric multiplier.
  * @param {Form} a @param {Form} b @param {boolean} nega @param {boolean} negb @param {boolean} scalarOkay @returns {Form | null} */
-function combineSum(a, b, nega, negb, scalarOkay) {
+export function combineSum(a, b, nega, negb, scalarOkay) {
   if (scalarOkay && isObjVec(a) && isObjVec(b)) return addOrSub(a, b, nega, negb);
   let amult = I(1);
   let bmult = I(1);
@@ -357,7 +373,7 @@ function combineSum(a, b, nega, negb, scalarOkay) {
       b = b.a[0];
     }
   }
-  if (!equal(a, b)) return null;
+  if (mode.simplifying ? compare(a, b) !== 0 : !equal(a, b)) return null;
   if (nega) amult = neg(amult);
   if (negb) bmult = neg(bmult);
   return mul(add(amult, bmult), a);
@@ -383,8 +399,10 @@ export function mul(a, b) {
   if (isNum(a) && isNum(b)) return numMul(a, b);
   if (isVec(a) || isVec(b)) {
     if (isVec(a) && isVec(b)) throw new SymbolicUnsupported('matrix product');
+    if (!knownScalar(isVec(a) ? b : a)) return mulSymb(a, b);
     return mapVec2(mul, a, b);
   }
+  if ((isIntv(a) && (isNum(b) || isIntv(b))) || (isIntv(b) && isNum(a))) return intvMul(a, b);
   return mulSymb(a, b);
 }
 
@@ -440,8 +458,10 @@ export function div(a, b) {
   if (isNum(a) && isNum(b)) return numDiv(a, b);
   if (isVec(a) || isVec(b)) {
     if (isVec(b)) throw new SymbolicUnsupported('matrix division');
+    if (!knownScalar(b)) return divSymb(a, b);
     return mapVec2(div, a, b);
   }
+  if ((isIntv(a) && (isNum(b) || isIntv(b))) || (isIntv(b) && isNum(a))) return intvDiv(a, b);
   return divSymb(a, b);
 }
 
@@ -485,9 +505,37 @@ function divSymb(a, b) {
 
 const E_FORM = V('e');
 
+/** The terms of a sum, a subtracted one negated: math-commutative-collect. @param {Form} b @param {boolean} negate @param {Form[]} out */
+function collectTerms(b, negate, out) {
+  if (isOp(b, '+')) {
+    collectTerms(b.a[0], negate, out);
+    collectTerms(b.a[1], negate, out);
+  } else if (isOp(b, '-')) {
+    collectTerms(b.a[0], negate, out);
+    collectTerms(b.a[1], !negate, out);
+  } else out.unshift(negate ? neg(b) : b);
+}
+
+/** math-commutative-equal: equal, except that two sums are the same when they have the same terms in any order. @param {Form} a @param {Form} b @returns {boolean} */
+function commutativeEqual(a, b) {
+  if (!(isOp(a, '+') || isOp(a, '-'))) return equal(a, b);
+  if (!(isOp(b, '+') || isOp(b, '-'))) return false;
+  /** @type {Form[]} */ const bterms = [];
+  /** @type {Form[]} */ const aterms = [];
+  collectTerms(b, false, bterms);
+  collectTerms(a, false, aterms);
+  if (aterms.length !== bterms.length) return false;
+  for (const t of aterms) {
+    const at = bterms.findIndex((x) => equal(t, x));
+    if (at < 0) return false;
+    bterms.splice(at, 1);
+  }
+  return true;
+}
+
 /** Powers of like factors: x * x is x^2, x^2 * x^3 is x^5, sqrt(x) * sqrt(x) is x.
  * @param {Form} a @param {Form} b @param {boolean} inva @param {boolean} invb @param {boolean} scalarOkay @returns {Form | null} */
-function combineProd(a, b, inva, invb, scalarOkay) {
+export function combineProd(a, b, inva, invb, scalarOkay) {
   if ((inva && zerop(a)) || (invb && zerop(b))) return null;
   if (scalarOkay && isObjVec(a) && isObjVec(b)) {
     const r = inva ? (invb ? div(div(I(1), a), b) : div(b, a)) : invb ? div(a, b) : mul(a, b);
@@ -500,13 +548,13 @@ function combineProd(a, b, inva, invb, scalarOkay) {
   let aFromExp = false;
   let bFromExp = false;
   if (a.t === 'op' || isFlt(a) || isFrac(a)) {
-    if (isOp(a, '^') && isNum(a.a[1])) {
+    if (isOp(a, '^') && (mode.simplifying || isNum(a.a[1]))) {
       apow = a.a[1];
       a = a.a[0];
     } else if (isOp(a, 'sqrt')) {
       apow = frac(1n, 2n);
       a = a.a[0];
-    } else if (isOp(a, 'exp') && isNum(a.a[0])) {
+    } else if (isOp(a, 'exp') && (mode.simplifying || isNum(a.a[0]))) {
       apow = a.a[0];
       a = E_FORM;
       aFromExp = true;
@@ -517,13 +565,13 @@ function combineProd(a, b, inva, invb, scalarOkay) {
     apow = neg(apow);
   }
   if (b.t === 'op' || isFlt(b) || isFrac(b)) {
-    if (isOp(b, '^') && isNum(b.a[1])) {
+    if (isOp(b, '^') && (mode.simplifying || isNum(b.a[1]))) {
       bpow = b.a[1];
       b = b.a[0];
     } else if (isOp(b, 'sqrt')) {
       bpow = frac(1n, 2n);
       b = b.a[0];
-    } else if (isOp(b, 'exp') && isNum(b.a[0])) {
+    } else if (isOp(b, 'exp') && (mode.simplifying || isNum(b.a[0]))) {
       bpow = b.a[0];
       b = E_FORM;
       bFromExp = true;
@@ -535,7 +583,7 @@ function combineProd(a, b, inva, invb, scalarOkay) {
   }
   if (inva) apow = neg(apow);
   if (invb) bpow = neg(bpow);
-  if (equal(a, b)) {
+  if (mode.simplifying ? commutativeEqual(a, b) : equal(a, b)) {
     let sumpow = add(apow, bpow);
     if (!isInt(a) || zerop(sumpow) || isFrac(apow) === isFrac(bpow)) {
       if (looksNeg(sumpow) && isRat(a) && posp(a)) {
@@ -569,6 +617,8 @@ export function pow(a, b) {
   if (zerop(b)) return isFlt(a) || isFlt(b) ? F(1) : I(1);
   if (isInt(b) && isNum(a)) return ipow(a, b.v);
   if (isInt(b) && isVec(a)) return VEC(a.items.map((/** @type {Form} */ x) => pow(x, b)));
+  const viaInterval = intvPow(a, b);
+  if (viaInterval) return viaInterval;
   return powFancy(a, b);
 }
 
@@ -665,12 +715,33 @@ const COMPLEMENT = /** @type {Record<string, string>} */ ({ eq: 'neq', neq: 'eq'
 const MIRROR = /** @type {Record<string, string>} */ ({ eq: 'eq', neq: 'neq', lt: 'gt', gt: 'lt', leq: 'geq', geq: 'leq' });
 
 /** Calc's math-compare: -1, 0, 1, or 2 when it cannot tell. @param {Form} a @param {Form} b */
-function compare(a, b) {
+export function compare(a, b) {
   if (equal(a, b)) return (a.t === 'var' || (a.t === 'op' && (a.f === 'neg' || a.f === '*' || a.f === '/'))) && infinitep(a) ? 2 : 0;
   if (isNum(a) && isNum(b)) {
     if (isInt(a) && isInt(b)) return a.v < b.v ? -1 : 1;
     const d = numAdd(a, negNumber(b));
     return posp(d) ? 1 : negp(d) ? -1 : 0;
+  }
+  if (isIntv(a) && isNum(b)) {
+    let res = compare(a.lo, b);
+    if (res === 1 || (res === 0 && !(a.mask & 2))) return 1;
+    res = compare(a.hi, b);
+    if (res === -1 || (res === 0 && !(a.mask & 1))) return -1;
+    return 2;
+  }
+  if (isIntv(b) && isNum(a)) {
+    let res = compare(a, b.lo);
+    if (res === -1 || (res === 0 && !(b.mask & 2))) return -1;
+    res = compare(a, b.hi);
+    if (res === 1 || (res === 0 && !(b.mask & 1))) return 1;
+    return 2;
+  }
+  if (isIntv(a) && isIntv(b)) {
+    let res = compare(a.hi, b.lo);
+    if (res === -1 || (res === 0 && (!(a.mask & 1) || !(b.mask & 2)))) return -1;
+    res = compare(a.lo, b.hi);
+    if (res === 1 || (res === 0 && (!(a.mask & 2) || !(b.mask & 1)))) return 1;
+    return 2;
   }
   if (infinitep(a) || infinitep(b) || a.t === 'var') return 2;
   if (a.t === 'op' && b.t === 'op' && a.f === b.f && a.a.length === b.a.length && a.a.every((/** @type {Form} */ x, /** @type {number} */ i) => compare(x, b.a[i]) === 0)) return 0;
@@ -729,65 +800,177 @@ function isTrue(a) {
   return isNum(a) ? !zerop(a) : [1, 4, 5, 8, 9, 12, 13].includes(knownSigns(a));
 }
 
-/** Which signs a form may have: 1 negative, 2 zero, 4 positive, 8 not real (a reduced port of math-possible-signs). @param {Form} a @returns {number} */
-function knownSigns(a) {
-  if (isNum(a)) return posp(a) ? 4 : negp(a) ? 1 : 2;
-  if (a.t === 'var') return a.name === 'pi' || a.name === 'e' || a.name === 'inf' ? 4 : a.name === 'uinf' ? 13 : 15;
-  if (a.t !== 'op') return 15;
-  const [x, y] = a.a;
-  /** @type {(s: number) => number} */ const negSigns = (s) => (s >= 8 ? 8 + negSigns(s - 8) : (s & 1 ? 4 : 0) + (s & 2) + (s & 4 ? 1 : 0));
-  switch (a.f) {
-    case 'neg':
-      return negSigns(knownSigns(x));
-    case '+':
-    case '-': {
-      const s1 = knownSigns(x);
-      let s2 = knownSigns(y);
-      if (a.f === '-') s2 = negSigns(s2);
-      if (s1 === s2) return s1;
-      if (s1 === 2) return s2;
-      if (s2 === 2) return s1;
-      if (s1 >= 8 || s2 >= 8) return 15;
-      if ((s1 === 4 && s2 === 6) || (s2 === 4 && s1 === 6)) return 4;
-      if ((s1 === 1 && s2 === 3) || (s2 === 1 && s1 === 3)) return 1;
-      return 7;
-    }
-    case '*':
-    case '/': {
-      const s1 = knownSigns(x);
-      const s2 = knownSigns(y);
-      if (s1 >= 8 || s2 >= 8) return 15;
-      if (a.f === '/' && [2, 3, 6, 7].includes(s2)) return 15;
-      return ([4, 5, 6, 7].includes(s1) ? s2 : 0) | ([2, 3, 6, 7].includes(s1) ? 2 : 0) | ([1, 3, 5, 7].includes(s1) ? negSigns(s2) : 0);
-    }
-    case '^': {
-      const s1 = knownSigns(x);
-      const s2 = knownSigns(y);
-      if (s1 >= 8 || s2 >= 8) return 15;
-      if (s1 === 4) return 4;
-      if (s1 === 2) return s2 === 4 ? 2 : 15;
-      if (s2 === 2) return s1 === 1 || s1 === 5 ? 2 : 15;
-      if (isInt(y)) return evenp(y) ? ([3, 6, 7].includes(s1) ? 6 : 4) : s1;
-      if (s1 === 6) return s2 === 4 ? 6 : 15;
-      return 7;
-    }
-    case 'abs': {
-      const s1 = knownSigns(x);
-      return s1 === 2 ? 2 : [1, 4, 5].includes(s1) ? 4 : 6;
-    }
-    case 'exp':
-      return knownSigns(x) >= 8 ? 15 : 4;
-    case 'sqrt': {
-      const s1 = knownSigns(x);
-      return [2, 4, 6].includes(s1) ? s1 : 15;
-    }
-    default:
-      return 15;
-  }
+const NONSCALAR = new Set(['vec', 'idn', 'diag', 'cvec', 'index', 'trn', 'append', 'cons', 'rcons', 'tail', 'rhead']);
+const SCALAR_FUNCTIONS = new Set(['det', 'cnorm', 'rnorm', 'vlen', 'vcount', 'vsum', 'vprod', 'vmin', 'vmax']);
+const REAL_SCALAR = new Set(['%', 'idiv', 'abs', 'choose', 'perm', 'eq', 'neq', 'lt', 'gt', 'leq', 'geq', 'lnot', 'max', 'min']);
+const SCALAR_IF_ARGS = new Set(['+', '-', '*', '/', 'neg']);
+const CONSTANT_VARS = new Set(['pi', 'e', 'inf', 'uinf', 'nan']);
+
+/** math-check-known-matrixp. @param {Form} a @returns {boolean} */
+export function knownMatrix(a) {
+  if (a.t === 'vec') return true;
+  if (a.t !== 'op') return false;
+  if (NONSCALAR.has(a.f)) return true;
+  if (SCALAR_IF_ARGS.has(a.f)) return a.a.some(knownMatrix);
+  if (a.f === '^') return knownMatrix(a.a[0]);
+  return false;
 }
 
-/** @type {{ numericCall: ((name: string, args: Form[]) => Form | null) | null, strict: boolean }} */
-const hooks = { numericCall: null, strict: false };
+/** math-check-known-scalarp. @param {Form} a @returns {boolean} */
+export function knownScalar(a) {
+  if (isNum(a) || a.t === 'intv' || a.t === 'cplx') return true;
+  if (a.t === 'var') return CONSTANT_VARS.has(a.name);
+  if (a.t !== 'op') return false;
+  if (SCALAR_FUNCTIONS.has(a.f) || REAL_SCALAR.has(a.f)) return true;
+  if (SCALAR_IF_ARGS.has(a.f)) return a.a.every(knownScalar);
+  if (a.f === '^') return knownScalar(a.a[0]);
+  return false;
+}
+
+
+/** @type {(s: number) => number} math-neg-signs */
+const negSigns = (s) => (s >= 8 ? 8 + negSigns(s - 8) : (s & 1 ? 4 : 0) + (s & 2) + (s & 4 ? 1 : 0));
+
+/** Math-posp / Math-negp on any form: a number, an interval, or an infinity. @param {Form} a @returns {boolean} */
+function mathPosp(a) {
+  if (isNum(a)) return posp(a);
+  if (isIntv(a)) return mathPosp(a.lo) || (zerop(a.lo) && !(a.mask & 2));
+  return a.t === 'var' && a.name === 'inf';
+}
+/** @param {Form} a @returns {boolean} */
+function mathNegp(a) {
+  if (isNum(a)) return negp(a);
+  if (isIntv(a)) return mathNegp(a.hi) || (zerop(a.hi) && !(a.mask & 1));
+  return isOp(a, 'neg') && a.a[0].t === 'var' && a.a[0].name === 'inf';
+}
+
+const REAL_FUNCTIONS = new Set(['arg', 're', 'im', 'floor', 'ceil', 'trunc', 'round', 'rounde', 'roundu', 'ffloor', 'fceil', 'ftrunc', 'fround', 'frounde', 'froundu']);
+const REAL_SCALAR_FUNCTIONS = new Set(['%', 'idiv', 'abs', 'choose', 'perm', 'eq', 'neq', 'lt', 'gt', 'leq', 'geq', 'lnot', 'max', 'min']);
+const REAL_IF_ARG_FUNCTIONS = new Set(['sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'arctan', 'sinh', 'cosh', 'tanh', 'sech', 'csch', 'coth', 'exp', 'gamma', 'fact']);
+const NONNEGATIVE_FUNCTIONS = new Set(['cnorm', 'rnorm', 'vlen', 'vcount']);
+
+/**
+ * Which signs a form may have: the sum of 1 (may be negative), 2 (may be zero), 4 (may be positive) and 8 (may be nonreal).
+ * `origin` asks about the form minus that number instead. A port of math-possible-signs.
+ * @param {Form} a @param {Form} [origin] @returns {number}
+ */
+export function possibleSigns(a, origin) {
+  if (isNum(a) || isIntv(a) || a.t === 'cplx') {
+    if (origin) a = sub(a, origin);
+    if (a.t === 'cplx') return 8;
+    if (mathPosp(a)) return 4;
+    if (mathNegp(a)) return 1;
+    if (isNum(a) && zerop(a)) return 2;
+    if (isIntv(a)) return mathPosp(a.lo) ? 4 : mathNegp(a.hi) ? 1 : zerop(a.lo) ? 6 : zerop(a.hi) ? 3 : 7;
+    return 8;
+  }
+  if (a.t === 'op' && (a.f === '+' || a.f === '-')) {
+    const [x, y] = a.a;
+    if (isNum(x)) {
+      if (a.f === '-') return negSigns(possibleSigns(y, origin ? add(origin, x) : x));
+      return possibleSigns(y, origin ? sub(origin, x) : neg(x));
+    }
+    if (isNum(y)) {
+      const org = a.f === '-' ? y : neg(y);
+      return possibleSigns(x, origin ? add(origin, org) : org);
+    }
+    const s1 = possibleSigns(x, origin);
+    let s2 = possibleSigns(y);
+    if (a.f === '-') s2 = negSigns(s2);
+    if (s1 === s2) return s1;
+    if (s1 === 2) return s2;
+    if (s2 === 2) return s1;
+    if (s1 >= 8 || s2 >= 8) return 15;
+    if ((s1 === 4 && s2 === 6) || (s2 === 4 && s1 === 6)) return 4;
+    if ((s1 === 1 && s2 === 3) || (s2 === 1 && s1 === 3)) return 1;
+    return 7;
+  }
+  if (isOp(a, 'neg')) return negSigns(possibleSigns(a.a[0], origin ? neg(origin) : undefined));
+  if (origin && zerop(origin)) origin = undefined;
+  if (a.t === 'op' && (a.f === '*' || (a.f === '/' && origin)) && isNum(a.a[0])) {
+    let s;
+    if (a.f === '*') s = zerop(a.a[0]) ? possibleSigns(I(0), origin) : possibleSigns(a.a[1], div(origin || I(0), a.a[0]));
+    else s = negSigns(possibleSigns(a.a[1], div(a.a[0], origin)));
+    return negp(a.a[0]) ? negSigns(s) : s;
+  }
+  if (a.t === 'op' && (a.f === '*' || a.f === '/') && isNum(a.a[1])) {
+    const s = possibleSigns(a.a[0], a.f === '*' ? mul(origin || I(0), a.a[1]) : div(origin || I(0), a.a[1]));
+    return negp(a.a[1]) ? negSigns(s) : s;
+  }
+  if (a.t === 'vec') {
+    let signs = 0;
+    for (const item of a.items) {
+      if (signs >= 15) break;
+      signs |= possibleSigns(item, origin);
+    }
+    return signs;
+  }
+  /** @type {number | null} */ let sign = null;
+  if (a.t === 'op') {
+    const [x, y] = a.a;
+    const f = a.f;
+    if ((f === '*' || f === '/') && a.a.length === 2) {
+      const s1 = possibleSigns(x);
+      const s2 = possibleSigns(y);
+      if (s1 >= 8 || s2 >= 8) sign = 15;
+      else if (f === '/' && [2, 3, 6, 7].includes(s2)) sign = 15;
+      else sign = ([4, 5, 6, 7].includes(s1) ? s2 : 0) | ([2, 3, 6, 7].includes(s1) ? 2 : 0) | ([1, 3, 5, 7].includes(s1) ? negSigns(s2) : 0);
+    } else if (f === '^' && a.a.length === 2) {
+      const s1 = possibleSigns(x);
+      const s2 = possibleSigns(y);
+      if (s1 >= 8 || s2 >= 8) sign = 15;
+      else if (s1 === 4) sign = 4;
+      else if (s1 === 2) sign = s2 === 4 ? 2 : 15;
+      else if (s2 === 2) sign = s1 === 1 || s1 === 5 ? 2 : 15;
+      else if (isInt(y)) sign = evenp(y) ? ([3, 6, 7].includes(s1) ? 6 : 4) : s1;
+      else if (s1 === 6) sign = s2 === 4 ? 6 : 15;
+      else sign = 7;
+    } else if (f === '%' && a.a.length === 2) {
+      const s2 = possibleSigns(y);
+      sign = s2 >= 8 ? 7 : s2 === 2 ? 2 : s2 === 4 || s2 === 6 ? 6 : s2 === 1 || s2 === 3 ? 3 : 7;
+    } else if ((f === 'abs' || f === 'abssqr') && a.a.length === 1) {
+      const s1 = possibleSigns(x);
+      sign = s1 === 2 ? 2 : [1, 4, 5].includes(s1) ? 4 : 6;
+    } else if (f === 'exp' && a.a.length === 1) {
+      const s1 = possibleSigns(x);
+      if (s1 >= 8) sign = 15;
+      else if (!origin || mathNegp(origin)) sign = 4;
+      else {
+        origin = sub(origin, I(1));
+        if (zerop(origin)) origin = undefined;
+        sign = s1;
+      }
+    } else if (((f === 'ln' || f === 'log10') && a.a.length === 1) || (f === 'log' && a.a.length === 2 && possibleSigns(y) === 4)) {
+      sign = [2, 4, 6].includes(possibleSigns(x)) ? possibleSigns(x, I(1)) : 15;
+    } else if (f === 'sqrt' && a.a.length === 1) {
+      const s1 = possibleSigns(x);
+      sign = [2, 4, 6].includes(s1) ? s1 : 15;
+    } else if (NONNEGATIVE_FUNCTIONS.has(f)) sign = 6;
+    else if (REAL_FUNCTIONS.has(f) || REAL_SCALAR_FUNCTIONS.has(f)) sign = 7;
+    else if (REAL_IF_ARG_FUNCTIONS.has(f) && a.a.length === 1) sign = possibleSigns(x) < 8 ? 7 : 15;
+  }
+  if (sign !== null) {
+    if (origin) return (sign & 8) + (mathPosp(origin) ? ([1, 2, 3, 8, 9, 10, 11].includes(sign) ? 1 : 7) : [2, 4, 6, 8, 10, 12, 14].includes(sign) ? 4 : 7);
+    return sign;
+  }
+  if (a.t === 'var') {
+    if (a.name === 'pi' || a.name === 'e') return origin ? possibleSigns(F(a.name === 'pi' ? Math.PI : Math.E), origin) : 4;
+    if (a.name === 'inf') return 4;
+    if (a.name === 'uinf') return 13;
+    if (a.name === 'i') return 8;
+  }
+  return 15;
+}
+
+/** @param {Form} a @returns {number} */
+function knownSigns(a) {
+  return possibleSigns(a);
+}
+
+/** @type {{ numericCall: ((name: string, args: Form[]) => Form | null) | null, strict: boolean, simplifier: ((form: Form, dangerous: boolean) => Form) | null }} */
+const hooks = { numericCall: null, strict: false, simplifier: null };
+/** Functions other modules supply (solve, expand): name to implementation, which returns null to leave the call as written. @type {Map<string, (args: Form[]) => Form | null>} */
+const registered = new Map();
 
 /** In strict mode a function whose numbers the table engine cannot compute is not left as written; the caller falls back to that engine.
  * @param {boolean} on */
@@ -801,9 +984,20 @@ export function setNumericCall(fn) {
   hooks.numericCall = fn;
 }
 
+/** Hands `simplify` and `esimplify` to calc-simplify.js (which imports this module). @param {(form: Form, dangerous: boolean) => Form} fn */
+export function setSimplifier(fn) {
+  hooks.simplifier = fn;
+}
+
+/** Lets another module supply a Calc function. @param {string} name @param {(args: Form[]) => Form | null} fn */
+export function registerFunction(name, fn) {
+  registered.set(name, fn);
+}
+
 /** Evaluate a parsed expression the way Calc's normalizer does: bottom-up, arguments first. @param {Form} form @returns {Form} */
 export function normalize(form) {
   if (form.t === 'vec') return VEC(form.items.map(normalize));
+  if (form.t === 'intv') return makeIntv(form.mask, normalize(form.lo), normalize(form.hi));
   if (form.t === 'cplx') return { t: 'cplx', re: normalize(form.re), im: normalize(form.im) };
   if (form.t !== 'op') return form;
   const args = form.a.map(normalize);
@@ -900,9 +1094,11 @@ function sqrtSymbolic(a) {
 }
 
 /** @param {string} name @param {Form[]} args @returns {Form} */
-function callFunction(name, args) {
+export function callFunction(name, args) {
   const vec = args.length === 1 && isVec(args[0]) ? args[0].items : null;
   switch (name) {
+    case 'vec':
+      return VEC(args);
     case 'vsum':
       if (vec) return vec.length === 0 ? I(0) : vec.reduce((/** @type {Form} */ x, /** @type {Form} */ y) => add(x, y));
       break;
@@ -945,6 +1141,21 @@ function callFunction(name, args) {
     default:
       break;
   }
+  if ((name === 'simplify' || name === 'esimplify') && args.length === 1 && hooks.simplifier) return hooks.simplifier(args[0], name === 'esimplify');
+  const supplied = registered.get(name);
+  if (supplied) {
+    const result = supplied(args);
+    if (result) return result;
+  }
+  if (name === 'in' && args.length === 2) {
+    const r = isIn(args[0], args[1]);
+    if (r) return r;
+  }
+  if (args.length === 1 && isIntv(args[0]) && intvConst(args[0])) {
+    const x = args[0];
+    if (name === 'sqrt' && !negp(x.lo)) return makeIntv(x.mask, callFunction('sqrt', [x.lo]), callFunction('sqrt', [x.hi]));
+    if (name === 'abs') return intvAbs(x);
+  }
   if (args.length === 1) {
     const x = args[0];
     if (name === 'abs') return abs(x);
@@ -960,6 +1171,12 @@ function callFunction(name, args) {
     }
     if (name === 'exp' && isInt(x) && x.v === 0n) return I(1);
     if (name === 'sqrt' && isNum(x) && negp(x)) throw new SymbolicUnsupported('complex square root');
+    if (name === 'sqrt' && isFrac(x) && !negp(x)) {
+      const isqrt = (/** @type {bigint} */ v) => BigInt(Math.round(Math.sqrt(Number(v))));
+      const n = isqrt(x.n);
+      const d = isqrt(x.d);
+      if (n * n === x.n && d * d === x.d) return frac(n, d); // a perfect square fraction has an exact root
+    }
   }
   if (args.length > 0 && args.every(isNum) && hooks.numericCall) {
     const value = hooks.numericCall(name, args);
@@ -992,6 +1209,9 @@ function lex(text) {
     let m;
     if ((m = /^\s+/.exec(rest))) {
       i += m[0].length;
+    } else if (rest.startsWith('..')) {
+      out.push({ kind: 'op', text: '..' });
+      i += 2;
     } else if ((m = /^\d+:\d+/.exec(rest))) {
       out.push({ kind: 'frac', text: m[0] });
       i += m[0].length;
@@ -1079,6 +1299,14 @@ export function parseExpression(text) {
     }
     if (t.text === '(') {
       const inner = expr(0);
+      if (isOpTok('..')) {
+        pos++;
+        const hi = isOpTok(')') || isOpTok(']') ? V('inf') : expr(0);
+        if (!isOpTok(')') && !isOpTok(']')) throw new SymbolicSyntaxError('expected )');
+        const closed = isOpTok(']');
+        pos++;
+        return { t: 'intv', mask: closed ? 1 : 0, lo: inner, hi };
+      }
       if (isOpTok(',')) {
         pos++;
         const imag = expr(0);
@@ -1093,6 +1321,16 @@ export function parseExpression(text) {
       if (!isOpTok(']')) {
         for (;;) {
           items.push(expr(0));
+          if (isOpTok('..')) {
+            if (items.length > 1) throw new SymbolicUnsupported('interval after a list');
+            pos++;
+            const hi = isOpTok(')') || isOpTok(']') ? V('inf') : expr(0);
+            if (!isOpTok(')') && !isOpTok(']')) throw new SymbolicSyntaxError('expected ]');
+            const closed = isOpTok(']');
+            pos++;
+            if (isOpTok('..')) throw new SymbolicSyntaxError('Syntax error', true);
+            return { t: 'intv', mask: closed ? 3 : 2, lo: items[0], hi };
+          }
           if (isOpTok(',')) pos++;
           else break;
         }
@@ -1132,13 +1370,13 @@ export function parseExpression(text) {
           // a = b = c reads as one equation with three sides; other chains are Calc's interval syntax or an error
           if ((info.f === 'eq' || info.f === 'neq') && left.f === info.f) left = O(info.f, ...left.a, right);
           else if (info.f === 'eq' || info.f === 'neq') throw new SymbolicSyntaxError('Syntax error', true);
-          else if (['lt', 'leq'].includes(info.f) && ['lt', 'leq'].includes(left.f)) throw new SymbolicUnsupported('interval');
-          else if (['gt', 'geq'].includes(info.f) && ['gt', 'geq'].includes(left.f)) throw new SymbolicUnsupported('interval');
+          else if (['lt', 'leq'].includes(info.f) && ['lt', 'leq'].includes(left.f)) left = O('in', left.a[1], { t: 'intv', mask: (left.f === 'leq' ? 2 : 0) + (info.f === 'leq' ? 1 : 0), lo: left.a[0], hi: right }); // 1 < x < 5 is x in the interval (1 .. 5)
+          else if (['gt', 'geq'].includes(info.f) && ['gt', 'geq'].includes(left.f)) left = O('in', left.a[1], { t: 'intv', mask: (info.f === 'geq' ? 2 : 0) + (left.f === 'geq' ? 1 : 0), lo: right, hi: left.a[0] });
           else throw new SymbolicSyntaxError('Syntax error', true);
         } else {
           left = O(info.f, left, right);
         }
-        chain = COMPLEMENT[info.f] ? left : null;
+        chain = COMPLEMENT[info.f] && COMPLEMENT[left.f] ? left : null;
         continue;
       }
       if (startsOperand() && 196 >= minPrec) {
@@ -1165,6 +1403,7 @@ export function parseExpression(text) {
 export function assertNumericSymbols(form) {
   if (form.t === 'var' && form.name !== 'pi' && form.name !== 'e') throw new SymbolicUnsupported(form.name);
   if (form.t === 'vec') form.items.forEach(assertNumericSymbols);
+  if (form.t === 'intv') throw new SymbolicUnsupported('interval');
   if (form.t === 'op') form.a.forEach(assertNumericSymbols);
 }
 
@@ -1172,8 +1411,137 @@ export function assertNumericSymbols(form) {
 export function substitute(form, bound) {
   if (form.t === 'var') return bound.get(form.name) ?? form;
   if (form.t === 'vec') return VEC(form.items.map((/** @type {Form} */ x) => substitute(x, bound)));
+  if (form.t === 'intv') return { ...form, lo: substitute(form.lo, bound), hi: substitute(form.hi, bound) };
   if (form.t === 'op') return { ...form, a: form.a.map((/** @type {Form} */ x) => substitute(x, bound)) };
   return form;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Intervals (calc-forms.el, calc-arith.el). `mask` is Calc's: 0 is (a .. b), 1 is (a .. b], 2 is [a .. b), 3 is [a .. b].
+// Only intervals with finite number ends are computed with; anything else is left as written.
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** What swapping the two ends does to a mask. */
+const FLIP_MASK = [0, 2, 1, 3];
+
+/** math-make-intv: a closed interval of one point is that point, and a backwards one is empty. @param {number} mask @param {Form} lo @param {Form} hi @returns {Form} */
+function makeIntv(mask, lo, hi) {
+  if (isNum(lo) && isNum(hi)) {
+    const cmp = compare(lo, hi);
+    if (cmp === 0) return mask === 3 ? lo : { t: 'intv', mask, lo, hi };
+    if (cmp > 0) return { t: 'intv', mask: mask === 3 ? 2 : mask, lo, hi: lo };
+  }
+  return { t: 'intv', mask, lo, hi };
+}
+
+/** math-intv-constp: both ends are numbers. @param {Form} a */
+const intvConst = (a) => isNum(a.lo) && isNum(a.hi);
+
+/** math-sort-intv. @param {number} mask @param {Form} lo @param {Form} hi @returns {Form} */
+function sortIntv(mask, lo, hi) {
+  return compare(hi, lo) === -1 ? makeIntv(FLIP_MASK[mask], hi, lo) : makeIntv(mask, lo, hi);
+}
+
+/** math-combine-intervals: the interval from the smallest to the largest of four ends. @param {Form} a @param {boolean} am @param {Form} b @param {boolean} bm @param {Form} c @param {boolean} cm @param {Form} d @param {boolean} dm @returns {Form} */
+function combineIntervals(a, am, b, bm, c, cm, d, dm) {
+  let res = compare(a, c);
+  if (res === 1) {
+    a = c;
+    am = cm;
+  } else if (res === 0) am = am || cm;
+  res = compare(b, d);
+  if (res === -1) {
+    b = d;
+    bm = dm;
+  } else if (res === 0) bm = bm || dm;
+  return makeIntv((am ? 2 : 0) + (bm ? 1 : 0), a, b);
+}
+
+/** @param {Form} a @param {Form} b @returns {Form} */
+function intvAdd(a, b) {
+  if (isIntv(a) && isIntv(b)) return makeIntv(a.mask & b.mask, add(a.lo, b.lo), add(a.hi, b.hi));
+  if (isIntv(b)) [a, b] = [b, a];
+  return makeIntv(a.mask, add(a.lo, b), add(a.hi, b));
+}
+
+/** @param {Form} a @param {Form} b @returns {Form} */
+function intvMul(a, b) {
+  if (isIntv(b) && isNum(a)) [a, b] = [b, a];
+  if (isNum(b)) {
+    if (negp(b)) return neg(intvMul(a, neg(b)));
+    return makeIntv(a.mask, mul(a.lo, b), mul(a.hi, b));
+  }
+  if (!intvConst(a) || !intvConst(b)) return O('*', a, b);
+  let lo = mul(a, b.lo);
+  let hi = mul(a, b.hi);
+  if (!isIntv(lo)) lo = { t: 'intv', mask: b.mask & 2 ? 3 : 0, lo, hi: lo };
+  if (!isIntv(hi)) hi = { t: 'intv', mask: b.mask & 1 ? 3 : 0, lo: hi, hi };
+  return combineIntervals(lo.lo, !!(b.mask & 2) && !!(lo.mask & 2), lo.hi, !!(b.mask & 2) && !!(lo.mask & 1), hi.lo, !!(b.mask & 1) && !!(hi.mask & 2), hi.hi, !!(b.mask & 1) && !!(hi.mask & 1));
+}
+
+/** @param {Form} a @param {Form} b @returns {Form} */
+function intvDiv(a, b) {
+  if (isNum(b)) return negp(b) ? neg(intvDiv(a, neg(b))) : makeIntv(a.mask, div(a.lo, b), div(a.hi, b));
+  if (!intvConst(b)) return O('/', a, b);
+  const positive = posp(b.lo) || (zerop(b.lo) && !(b.mask & 2));
+  if (isNum(a)) {
+    if (positive) {
+      if (zerop(b.lo)) return O('/', a, b); // dividing by an interval that starts at zero reaches infinity
+      return negp(a) ? neg(intvDiv(neg(a), b)) : makeIntv(FLIP_MASK[b.mask], div(a, b.hi), div(a, b.lo));
+    }
+    if (negp(b.hi)) return neg(intvDiv(a, neg(b)));
+    throw new SymbolicReject('Division by zero'); // the interval holds zero
+  }
+  if (!intvConst(a)) return O('/', a, b);
+  if (positive && !zerop(b.lo)) {
+    let lo = div(a, b.lo);
+    let hi = div(a, b.hi);
+    if (!isIntv(lo)) lo = { t: 'intv', mask: b.mask & 2 ? 3 : 0, lo, hi: lo };
+    if (!isIntv(hi)) hi = { t: 'intv', mask: b.mask & 1 ? 3 : 0, lo: hi, hi };
+    return combineIntervals(lo.lo, !!(b.mask & 2) && !!(lo.mask & 2), lo.hi, !!(b.mask & 2) && !!(lo.mask & 1), hi.lo, !!(b.mask & 1) && !!(hi.mask & 2), hi.hi, !!(b.mask & 1) && !!(hi.mask & 1));
+  }
+  if (negp(b.hi)) return neg(intvDiv(a, neg(b)));
+  if (positive) return O('/', a, b);
+  throw new SymbolicReject('Division by zero');
+}
+
+/** An interval to a real power, or a positive number to an interval power; null when Calc has no rule. @param {Form} a @param {Form} b @returns {Form | null} */
+function intvPow(a, b) {
+  if (isIntv(a) && intvConst(a) && isNum(b)) {
+    const natural = isInt(b) && b.v >= 0n;
+    const ok = natural || posp(a.lo) || (zerop(a.lo) && posp(b)) || negp(a.hi) || (zerop(a.hi) && posp(b));
+    if (!ok) return null;
+    if (evenp(b)) a = intvAbs(a);
+    if (!isIntv(a)) return pow(a, b);
+    return sortIntv(a.mask, pow(a.lo, b), pow(a.hi, b));
+  }
+  if (isIntv(b) && intvConst(b) && isNum(a) && posp(a)) return sortIntv(b.mask, pow(a, b.lo), pow(a, b.hi));
+  return null;
+}
+
+/** math-abs of an interval with number ends. @param {Form} a @returns {Form} */
+function intvAbs(a) {
+  if (posp(a.lo) || (zerop(a.lo) && !(a.mask & 2))) return a;
+  const nlo = neg(a.lo);
+  const res = compare(nlo, a.hi);
+  if (res === 1) return makeIntv(a.mask & 2 ? 3 : 2, I(0), nlo);
+  if (res === 0) return makeIntv(a.mask === 0 ? 2 : 3, I(0), nlo);
+  return makeIntv(a.mask & 1 ? 3 : 2, I(0), a.hi);
+}
+
+/** calcFunc-in for an interval or a vector; null when it cannot be told. @param {Form} a @param {Form} b @returns {Form | null} */
+function isIn(a, b) {
+  if (isIntv(b) && isNum(a) && isNum(b.lo) && isNum(b.hi)) {
+    const res = compare(a, b.lo);
+    if (res === -1) return I(0);
+    if (res === 0 && (b.mask !== 2 || compare(b.lo, b.hi) === -1)) return I(b.mask & 2 ? 1 : 0);
+    const res2 = compare(a, b.hi);
+    if (res2 === 1) return I(0);
+    if (res2 === 0 && (b.mask !== 1 || compare(b.lo, b.hi) === -1)) return I(b.mask & 1 ? 1 : 0);
+    return res !== 1 || res2 !== -1 ? null : I(1);
+  }
+  if (b.t === 'vec' && isNum(a) && b.items.every(isNum)) return I(b.items.some((/** @type {Form} */ x) => compare(a, x) === 0) ? 1 : 0);
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -1242,6 +1610,8 @@ export function show(a, prec = 0, inDivisor = false) {
       return `(${show(a.re, 0)}, ${show(a.im, 0)})`;
     case 'vec':
       return `[${a.items.map((/** @type {Form} */ x) => show(x, 0)).join(', ')}]`;
+    case 'intv':
+      return `${a.mask & 2 ? '[' : '('}${show(a.lo, 0)} .. ${show(a.hi, 0)}${a.mask & 1 ? ']' : ')'}`;
     default:
       break;
   }

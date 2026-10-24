@@ -1,0 +1,62 @@
+<text:p text:style-name="OrgTitle">
+<text:title>T</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Heading with <text:span text:style-name="Bold">bold</text:span> and <text:span text:style-name="OrgCode">code</text:span>
+<text:tab/>
+<text:span text:style-name="OrgTags">[<text:span text:style-name="OrgTag">tag1</text:span> : <text:span text:style-name="OrgTag">tag2</text:span>]</text:span>
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">Text with a footnote<text:note text:id="fn1" text:note-class="footnote">
+<text:note-citation>1</text:note-citation>
+<text:note-body>
+<text:p text:style-name="Footnote">The note.
+</text:p>
+</text:note-body>
+</text:note> and a link <text:a xlink:type="simple" xlink:href="https://example.com">site</text:a>.
+</text:p>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ID-abc"/>
+<text:bookmark text:name="ID-abc"/>
+<text:bookmark-end text:name="OrgXref.ID-abc"/>
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>
+<text:span text:style-name="OrgTodo">TODO</text:span> Task with priority
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body">item one
+</text:p>
+<text:list text:style-name="OrgBulletedList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">nested
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[&#x2713;] </text:span>checked
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">
+<text:span text:style-name="OrgCode">[ ] </text:span>unchecked
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">first
+</text:p>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body">second
+</text:p>
+</text:list-item>
+</text:list>

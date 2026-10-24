@@ -1,0 +1,35 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Table in footnote}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Table in footnote},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+Text\footnote{Note with table:
+
+\begin{center}
+\begin{tabular}{rr}
+a & b\\[0pt]
+1 & 2\\[0pt]
+\end{tabular}
+\end{center}\label{orgdafe45c}} and again\textsuperscript{\ref{orgdafe45c}}.
+\end{document}

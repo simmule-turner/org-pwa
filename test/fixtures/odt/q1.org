@@ -1,0 +1,19 @@
+#+TITLE: T
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+* Heading with *bold* and =code= :tag1:tag2:
+SCHEDULED: <2026-01-15 Thu>
+Text with a footnote[fn:1] and a link [[https://example.com][site]].
+
+[fn:1] The note.
+** TODO [#A] Task with priority
+CLOSED: [2026-01-10 Sat 10:00]
+:PROPERTIES:
+:ID: abc
+:END:
+- item one
+  - nested
+- [X] checked
+- [ ] unchecked
+1. first
+2. second

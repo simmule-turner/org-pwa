@@ -1,0 +1,221 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Table styles</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Tables
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable1">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-header-rows>
+<table:table-row>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">b</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">c</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-header-rows>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">3</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">4</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">5</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomTableCell">
+<text:p text:style-name="CustomTableParagraph">6</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable2">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">b</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">c</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">3</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">4</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">5</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomOddRowTableCell">
+<text:p text:style-name="CustomOddRowTableParagraph">6</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">7</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">8</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenRowTableCell">
+<text:p text:style-name="CustomEvenRowTableParagraph">9</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable3">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="CustomOddColumnTableCell">
+<text:p text:style-name="CustomOddColumnTableParagraph">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenColumnTableCell">
+<text:p text:style-name="CustomEvenColumnTableParagraph">b</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomOddColumnTableCell">
+<text:p text:style-name="CustomOddColumnTableParagraph">c</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomEvenColumnTableCell">
+<text:p text:style-name="CustomEvenColumnTableParagraph">d</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="CustomLastRowTableCell">
+<text:p text:style-name="CustomLastRowTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomLastRowTableCell">
+<text:p text:style-name="CustomLastRowTableParagraph">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomLastRowTableCell">
+<text:p text:style-name="CustomLastRowTableParagraph">3</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="CustomLastRowTableCell">
+<text:p text:style-name="CustomLastRowTableParagraph">4</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable4">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="MyTemplateFirstRowTableCell">
+<text:p text:style-name="MyTemplateFirstRowTableParagraph">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateFirstRowTableCell">
+<text:p text:style-name="MyTemplateFirstRowTableParagraph">b</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateLastColumnTableCell">
+<text:p text:style-name="MyTemplateLastColumnTableParagraph">c</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="MyTemplateTableCell">
+<text:p text:style-name="MyTemplateTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateTableCell">
+<text:p text:style-name="MyTemplateTableParagraph">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateLastColumnTableCell">
+<text:p text:style-name="MyTemplateLastColumnTableParagraph">3</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="MyTemplateTableCell">
+<text:p text:style-name="MyTemplateTableParagraph">4</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateTableCell">
+<text:p text:style-name="MyTemplateTableParagraph">5</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="MyTemplateLastColumnTableCell">
+<text:p text:style-name="MyTemplateLastColumnTableParagraph">6</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable5">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OtherTableCell">
+<text:p text:style-name="OtherTableParagraph">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OtherTableCell">
+<text:p text:style-name="OtherTableParagraph">b</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OtherTableCell">
+<text:p text:style-name="OtherTableParagraph">c</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OtherLastRowTableCell">
+<text:p text:style-name="OtherLastRowTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OtherLastRowTableCell">
+<text:p text:style-name="OtherLastRowTableParagraph">2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OtherLastRowTableCell">
+<text:p text:style-name="OtherLastRowTableParagraph">3</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>

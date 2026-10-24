@@ -1,0 +1,11 @@
+#+TITLE: T
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+Text <2026-01-15 Thu> and [2026-01-15 Thu 10:00] and [50%] and [1/2] and a_b and *bold /italic/* +strike+ _under_ ~code~.
+Line one \\
+line two
+#+BEGIN_EXPORT odt
+<text:p>raw</text:p>
+#+END_EXPORT
+#+ODT: <text:p>inline</text:p>
+@@odt:<text:span>x</text:span>@@

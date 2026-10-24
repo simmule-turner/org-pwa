@@ -28,7 +28,9 @@ export function normalizedFixture(name) {
   const png = fs.readFileSync(path.join(FIXTURES, 'img.png')).toString('base64');
   const images = new Map([['file:img.png', 'data:image/png;base64,' + png]]);
   const rich = name === 'hl' || name === 'mx';
-  let s = odtContentXml(parseOrg(src), null, { images, highlight: rich });
+  const initFile = path.join(FIXTURES, name + '.el'); // Lisp init text (org-odt-table-styles ...) the fixture was exported under
+  const init = fs.existsSync(initFile) ? fs.readFileSync(initFile, 'utf8') : undefined;
+  let s = odtContentXml(parseOrg(src), null, { images, highlight: rich, init });
   s = s.slice(s.indexOf('<office:text')).replace(/<office:text[^>]*>/, '').replace(/<\/office:text>[\s\S]*/, '').replace(/<text:sequence-decls>[\s\S]*?<\/text:sequence-decls>/, '');
   s = s.replace(/text:name="Section\d+"/g, '').replace(/draw:name="[^"]*"/g, '').replace(/org[0-9a-f]{7}/g, 'ORG');
   return s.replace(/>\s*</g, '>\n<').replace(/\n\s*\n/g, '\n').trim() + '\n';

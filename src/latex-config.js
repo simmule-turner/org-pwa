@@ -165,7 +165,7 @@ function varsOf(vars) {
     tablesCentered: flag('org-latex-tables-centered', true),
     tablesBooktabs: flag('org-latex-tables-booktabs', false),
     tableEnvironment: text('org-latex-default-table-environment', 'tabular'),
-    tableMode: (mode && symbolName(mode)) || 'table',
+    tableMode: (mode && (str(mode) ?? symbolName(mode))) || 'table',
     captionAbove: new Set(/** @type {string[]} */ (symbols(vars.get('org-latex-caption-above'), ['table']))),
     imagesCentered: flag('org-latex-images-centered', true),
     figurePosition: text('org-latex-default-figure-position', 'htbp'),

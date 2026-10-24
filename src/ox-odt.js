@@ -23,6 +23,7 @@ import { resolveCodeRef, coderefText } from './code-lines.js';
 import { removeIndentation } from './babel-blocks.js';
 import { HARD } from './ascii-fill.js';
 import { highlightToHtml, knowsLanguage } from './syntax-highlight.js';
+import { runInit, listItems, stringValue, symbolName, isNil } from './lisp-read.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -188,6 +189,7 @@ function plainRun(text, I) {
  *   nextRef: number,
  *   counters: Record<string, number>,
  *   tableStyles: { name: string, relWidth: string }[],
+ *   tableStyleSpecs: Map<string, [string, Record<string, boolean>]>,
  *   seenNotes: Set<number>,
  *   inNote: number,
  *   prev: WeakMap<object, Item | null>,
@@ -883,12 +885,38 @@ const lastSibling = (h) => {
 
 // ---- tables -------------------------------------------------------------------------------------------
 
-const TABLE_STYLES = {
-  OrgEquation: ['OrgEquation', { 'use-first-column-styles': true, 'use-last-column-styles': true }],
-  TableWithHeaderRowAndColumn: ['Custom', { 'use-first-row-styles': true, 'use-first-column-styles': true }],
-  TableWithFirstRowandLastRow: ['Custom', { 'use-first-row-styles': true, 'use-last-row-styles': true }],
-  GriddedTable: ['Custom', {}],
-};
+/** `org-odt-table-styles` as Org ships it: a table style, the template it comes from and the cell selectors it turns on. */
+const DEFAULT_TABLE_STYLES = `(setq org-odt-table-styles
+  '(("OrgEquation" "OrgEquation" ((use-first-column-styles . t) (use-last-column-styles . t)))
+    ("TableWithHeaderRowAndColumn" "Custom" ((use-first-row-styles . t) (use-first-column-styles . t)))
+    ("TableWithFirstRowandLastRow" "Custom" ((use-first-row-styles . t) (use-last-row-styles . t)))
+    ("GriddedTable" "Custom" nil)))`;
+
+/**
+ * The table styles `:style` can name: Org's own, with what a Lisp init text sets `org-odt-table-styles` to on top (`assoc` takes the first
+ * entry of a name, so one added in front wins).
+ * @param {string | undefined} init
+ * @returns {Map<string, [string, Record<string, boolean>]>}
+ */
+export function tableStyleSpecs(init) {
+  const defaults = runInit(DEFAULT_TABLE_STYLES);
+  const vars = init && init.trim() ? runInit(init, defaults) : defaults;
+  /** @type {Map<string, [string, Record<string, boolean>]>} */
+  const out = new Map();
+  for (const entry of listItems(vars.get('org-odt-table-styles')) || []) {
+    const items = listItems(entry);
+    const name = items && stringValue(items[0]);
+    const template = items && stringValue(items[1]);
+    if (!name || template === null || template === undefined || out.has(name)) continue;
+    /** @type {Record<string, boolean>} */ const selectors = {};
+    for (const pair of listItems(items && items[2]) || []) {
+      const key = pair.k === 'list' ? symbolName(pair.items[0]) : null;
+      if (key && pair.k === 'list') selectors[key] = !isNil(pair.tail || pair.items[1]);
+    }
+    out.set(name, [template, selectors]);
+  }
+  return out;
+}
 
 /** `org-odt-table` / `org-odt--table`. @param {Node} table @param {Ctx} C */
 function tableXml(table, C) {
@@ -897,7 +925,7 @@ function tableXml(table, C) {
   const m = tableModel(rows.map((r) => ({ rule: r.rowType === 'rule', cells: (r.cells || []).map((c) => c.raw || '') })));
   const attrs = attr(table);
   /** @type {[string, Record<string, boolean>] | null} */
-  const styleSpec = attrs.style ? /** @type {any} */ (TABLE_STYLES)[attrs.style] || null : null;
+  const styleSpec = attrs.style ? C.tableStyleSpecs.get(attrs.style) || null : null;
   // Emacs looks the style up from the table's parent table, which a table does not have: only cells get the template
   const custom = null;
   // a table made from a list gets the style attribute but, in Emacs, its cells do not see it
@@ -986,7 +1014,7 @@ function tableXml(table, C) {
         if (template) {
           const sel = styleSpec ? styleSpec[1] : {};
           const dims = { rows: rows.filter((_, k) => !m.rows[k].rule && !m.specials[k]).length, cols: columns.length };
-          const type = sel['use-first-column-styles'] && c === 0 ? 'FirstColumn' : sel['use-last-column-styles'] && c + 1 === dims.cols ? 'LastColumn' : sel['use-first-row-styles'] && r === 0 ? 'FirstRow' : sel['use-last-row-styles'] && r + 1 === dims.rows ? 'LastRow' : '';
+          const type = sel['use-first-column-styles'] && c === 0 ? 'FirstColumn' : sel['use-last-column-styles'] && c + 1 === dims.cols ? 'LastColumn' : sel['use-first-row-styles'] && r === 0 ? 'FirstRow' : sel['use-last-row-styles'] && r + 1 === dims.rows ? 'LastRow' : sel['use-banding-rows-styles'] ? (r % 2 === 1 ? 'EvenRow' : 'OddRow') : sel['use-banding-columns-styles'] ? (c % 2 === 1 ? 'EvenColumn' : 'OddColumn') : '';
           paragraph = `${template}${type}TableParagraph`;
           cellStyle = `${template}${type}TableCell`;
         } else {
@@ -1342,7 +1370,7 @@ function preamble(C, t) {
  * Exports `doc` (or, with `scope`, one headline and what is under it) as an OpenDocument Text file: the bytes of the .odt.
  * @param {Doc} doc
  * @param {Heading | null} [scope]
- * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, images?: Map<string, string>, formula?: Ctx['formula'], highlight?: boolean, userFullName?: string }} [options]
+ * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, images?: Map<string, string>, formula?: Ctx['formula'], highlight?: boolean, userFullName?: string, init?: string }} [options]
  */
 export function exportToOdtPort(doc, scope = null, options = {}) {
   const { I, root } = buildExportTree(doc, scope, { sup: options.sup, brokenLinks: options.brokenLinks, odt: { plain: plainText, snippet: 'odt' } });
@@ -1355,6 +1383,7 @@ export function exportToOdtPort(doc, scope = null, options = {}) {
     nextRef: 0,
     counters: {},
     tableStyles: [],
+    tableStyleSpecs: tableStyleSpecs(options.init),
     seenNotes: new Set(),
     inNote: 0,
     prev: new WeakMap(),

@@ -1,0 +1,45 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{root}
+\date{\today}
+\title{Table mode}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Table mode},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\(\begin{tabular}{cc}
+ a & b \\[0pt]
+\hline 1 & 2 \\[0pt]
+\end{tabular}
+\)
+
+\[
+\begin{tabular}{cc}
+ x & y \\[0pt]
+\hline 1 & 2 \\[0pt]
+\end{tabular}
+\]
+
+\(\begin{tabular}{cc}
+ x & y \\[0pt]
+ 1 & 2 \\[0pt]
+\end{tabular}
+\)
+\end{document}

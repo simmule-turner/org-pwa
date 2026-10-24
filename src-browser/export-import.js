@@ -6,6 +6,7 @@ import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults, lispS
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
+import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { exportToLatex, exportToBeamer } from '../src/export-latex.js';
 import { exportLatexZip } from '../src/export-latex-zip.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
@@ -88,7 +89,8 @@ export async function performExport(format, scope) {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex' || format === 'beamer') {
       const beamer = format === 'beamer'; // a presentation: the same .tex and .zip, from the Beamer back end
-      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) };
+      const saved = S.state.documentId && !S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.state.documentId.split('/').pop() : undefined; // {{{input-file}}} and {{{modification-time}}} need a file
+      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables), file: { name: saved, mtime: new Date() } };
       const heading = scope && typeof scope === 'object' ? scope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);
@@ -99,7 +101,7 @@ export async function performExport(format, scope) {
         saveOut(baseName + '.tex', (beamer ? exportToBeamer : exportToLatex)(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
-      saveOut(baseName + '.odt', exportToOdt(doc, scope, { userFullName: lispStringValue(S.globalVariables['user-full-name']) || '', images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }).slice(), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, scope, { userFullName: lispStringValue(S.globalVariables['user-full-name']) || '', init: lispStringValue(S.globalVariables['org-xx-lisp-init']) || '', images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }).slice(), 'application/vnd.oasis.opendocument.text');
     }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err)); // e.g. "Unable to resolve link: ..." (org-export-with-broken-links)

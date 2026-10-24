@@ -27,7 +27,7 @@ export function latexTable(el, ctx) {
   const firstRow = model.firstIndex >= 0 ? model.rows[model.firstIndex] : null;
   const width = firstRow ? firstRow.cells.length - model.offset : 0;
   const vars = ctx.vars;
-  const mode = attrs.mode || '';
+  const mode = attrs.mode || (vars ? vars.tableMode : '') || ''; // :mode, else org-latex-default-table-mode
   const math = mode === 'math' || mode === 'inline-math';
   const env = attrs.environment || (vars ? vars.tableEnvironment : 'tabular');
   let spec = attrs.align || '';
@@ -49,11 +49,13 @@ export function latexTable(el, ctx) {
   /** @type {string[]} */
   const body = [];
   if (booktabs && kept[0] !== null) body.push('\\toprule');
-  kept.forEach((cells, i) => body.push(cells === null ? rule(i) : row(cells)));
+  // in a math table a rule and the row after it share a line
+  kept.forEach((cells, i) => (cells === null ? body.push(rule(i)) : kept[i - 1] === null && math && body.length ? (body[body.length - 1] += row(cells)) : body.push(row(cells))));
   if (booktabs && kept[kept.length - 1] !== null) body.push('\\bottomrule');
 
   const widthArg = WIDTH_ENVS.has(env) && attrs.width ? '{' + attrs.width + '}' : '';
-  const open = '\\begin{' + env + '}' + widthArg + (NO_SPEC_ENV_RE.test(env) ? '' : '{' + spec + '}');
+  // the column spec is left out for the matrix environments and, in a math table, for the ones that take a width
+  const open = '\\begin{' + env + '}' + (math && WIDTH_ENVS.has(env) ? '' : widthArg + (NO_SPEC_ENV_RE.test(env) ? '' : '{' + spec + '}'));
   const tabular = open + '\n' + body.join('\n') + '\n\\end{' + env + '}';
   if (math) return mode === 'math' ? '\\[\n' + tabular + '\n\\]\n' : '\\(' + tabular + '\n\\)\n';
 

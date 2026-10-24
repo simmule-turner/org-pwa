@@ -1,0 +1,13 @@
+#+TITLE: Table environment
+#+OPTIONS: toc:nil
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+ATTR_LATEX: :mode math
+| x | y |
+| 1 | 2 |
+
+#+ATTR_LATEX: :width 8cm
+| x | y |
+| 1 | 2 |

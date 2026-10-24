@@ -45,7 +45,7 @@ for (const name of covered) {
     const flat = (/** @type {string} */ tex) => (babel ? tex.replace(/\n{2,}/g, '\n') : tex);
     // NAME.el holds the ox-latex settings Emacs ran with; the app takes the same text as its LaTeX init
     const init = fs.existsSync(new URL(`${name}.el`, dir)) ? read(`${name}.el`) : undefined;
-    const got = flat(normalize(exportToLatex(babel ? prepareBabelExport(doc) : doc, null, { defaults: { init } }))).split('\n');
+    const got = flat(normalize(exportToLatex(babel ? prepareBabelExport(doc) : doc, null, { defaults: { init, file: { name: `${name}.org`, mtime: new Date(2026, 5, 15) } } }))).split('\n');
     const want = flat(normalize(read(`${name}.tex`))).split('\n');
     const at = got.findIndex((line, i) => line !== want[i]);
     assert.equal(at < 0 && got.length === want.length ? '' : `line ${at < 0 ? got.length : at + 1}: got ${JSON.stringify(got[at])} want ${JSON.stringify(want[at])}`, '');

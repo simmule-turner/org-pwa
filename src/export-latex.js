@@ -1311,8 +1311,8 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  */
-export function exportToLatex(doc, scope = null, { beamer = false, images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, header?: string, init?: string }} */ ({}) } = {}) {
-  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date())); // {{{macros}}} are expanded before anything is read
+export function exportToLatex(doc, scope = null, { beamer = false, images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, header?: string, init?: string, file?: { name?: string, mtime?: Date } }} */ ({}) } = {}) {
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date(), defaults.file || null)); // {{{macros}}} are expanded before anything is read
   ({ doc, scope } = foldInlineTasks(doc, scope));
   if (beamer) ({ doc, scope } = withoutFinalNewline(doc, scope));
   S = newState();

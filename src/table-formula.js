@@ -84,6 +84,8 @@ import {
   cSin, cCos, cTan, cAsin, cAcos, cAtan, cEquals, cAggregate,
 } from './calc-complex.js';
 import * as Sym from './calc-symbolic.js';
+import './calc-simplify.js'; // registers simplify and esimplify with the symbolic engine
+import './calc-solve.js'; // registers solve and fsolve with the symbolic engine
 import { formatTimeString } from './format-time.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
@@ -274,13 +276,20 @@ const HYPHENATED_FUNCTION_RE = /^(date-to-time|format-time-string|orgtbl-ascii-d
  *  it -- a malformed formula should surface as an error, not quietly
  * @param {string} expr
  *  evaluate to something the person never actually wrote. */
-function tokenize(expr) {
+/** @param {string} expr @param {boolean} [fractions] read Calc's `1:2` as one token (only the symbolic engine knows what to do with it) */
+function tokenize(expr, fractions = false) {
   const tokens = [];
   let pos = 0;
   TOKEN_RE.lastIndex = 0;
   while (pos < expr.length) {
     const leadingWs = (/^\s*/.exec(expr.slice(pos)) || [''])[0];
     const afterWs = pos + leadingWs.length;
+    const fraction = fractions ? /^\d+:\d+/.exec(expr.slice(afterWs)) : null;
+    if (fraction) {
+      tokens.push(fraction[0]);
+      pos = afterWs + fraction[0].length;
+      continue;
+    }
     const hyphenated = HYPHENATED_FUNCTION_RE.exec(expr.slice(afterWs));
     if (hyphenated) {
       tokens.push(hyphenated[1]);
@@ -742,8 +751,12 @@ function parseExpression(tokens) {
   }
   function parseComparison() {
     /** @type {any} */ let node = parseAdditive();
+    let seen = '';
     while (peek() === '==' || peek() === '=' || peek() === '!=' || peek() === '<' || peek() === '>' || peek() === '<=' || peek() === '>=') {
       const op = next();
+      // 1 < x < 5 is Calc's interval test, which the symbolic engine reads; a = b = c stays an equation of three sides here
+      if (seen && /[<>]/.test(seen + op)) throw new Error('A chain of comparisons is read as Calc algebra');
+      seen = op;
       node = { type: 'binop', op: op === '=' ? '==' : op, left: node, right: parseAdditive() };
     }
     return node;
@@ -2100,7 +2113,7 @@ function symbolicCell(ctx, row, col) {
  *  variable that is swapped for the cell's parsed form once the rest of the formula has been read, so the precedence is Calc's own.
  * @param {string} source @param {FormulaNode} ctx @returns {FormulaNode} */
 function symbolicForm(source, ctx) {
-  const tokens = tokenize(source);
+  const tokens = tokenize(source, true);
   /** @type {Map<string, FormulaNode>} */ const bound = new Map();
   /** @type {string[]} */ const out = [];
   const isRef = (/** @type {string} */ t) => /^@|^\$(?:[<>]|\d+)$/.test(t);
@@ -2125,7 +2138,9 @@ function symbolicForm(source, ctx) {
       const value = (ctx.constants || {})[tok.slice(1)];
       if (typeof value !== 'number') throw new Sym.SymbolicUnsupported(tok);
       hold(Number.isInteger(value) ? Sym.I(value) : Sym.F(value));
-    } else if (tok.startsWith('"') || tok === '..') {
+    } else if (tok === '..') {
+      out.push(tok); // inside an interval, [1 .. 5]
+    } else if (tok.startsWith('"')) {
       throw new Sym.SymbolicUnsupported(tok);
     } else {
       out.push(tok);
@@ -2498,8 +2513,26 @@ function parseFormulaStatement(statement) {
   }
 
   const isLisp = rhs.startsWith("'(") && rhs.endsWith(')');
-  const expr = isLisp ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
+  /** @type {FormulaNode} */ let expr;
+  try {
+    if (!isLisp && /\d:\d/.test(rhs) && readsAsAlgebra(rhs)) throw new Error('Calc fraction'); // 1:2 is Calc's; only the symbolic engine reads it
+    expr = isLisp ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
+  } catch (err) {
+    // Calc algebra the numeric parser has no word for (an interval, a bare name): the symbolic engine reads it when the cells are known
+    if (isLisp || !(rhs.includes('..') || /\d:\d/.test(rhs) || /chain of comparisons|^Expected "\("/.test(/** @type {Error} */ (err).message)) || !readsAsAlgebra(rhs)) throw err;
+    expr = { type: 'algebra' };
+  }
   return { target, expr, mode, source: isLisp ? null : rhs };
+}
+
+/** Does Calc's own reader take this formula, cell references standing for numbers? @param {string} rhs @returns {boolean} */
+function readsAsAlgebra(rhs) {
+  try {
+    Sym.parseExpression(tokenize(rhs, true).map((t) => (/^@|^\$(?:[<>]|\d+)$/.test(t) ? '1' : t)).join(' '));
+    return true;
+  } catch (err) {
+    return err instanceof Sym.SymbolicSyntaxError && err.definite; // Calc rejects it outright: the cell shows #ERROR
+  }
 }
 
 /** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
@@ -2771,6 +2804,10 @@ export function recalculateTable(table, options = {}) {
         return true;
       };
       try {
+        if (expr.type === 'algebra') {
+          if (!storeSymbolic(symbolicOutcome(source, cellCtx))) store('#ERROR');
+          return;
+        }
         if (mode.forceNumeric && isPlain && usesSymbolicConstant(expr)) return void store('#ERROR'); // N wants a number, and Calc keeps pi and e as symbols
         if (primarySymbolic && storeSymbolic(symbolicOutcome(source, cellCtx, true))) return;
         if (symbolicOnly) {

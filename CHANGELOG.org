@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v631 — Calc algebra, ODT table styles, closer LaTeX
+Table formulas understand more of Calc's algebra: =simplify=, =esimplify=, =expand=, =solve= and =fsolve= (linear and quadratic equations, powers, roots, inverse functions, inequalities and systems), intervals such as =[1 .. 5]=, chained comparisons like =1 <= x < 7=, and =1:2= fractions. ODT export reads =org-odt-table-styles= from the Lisp init and styles banded rows and columns. LaTeX export writes the =property=, =input-file= and =modification-time= macros, reads =org-latex-default-table-mode=, and handles table environments and footnote tables as Emacs does.
+Verified: 392 algebra expressions, 5 ODT files and 5 LaTeX files compared with Emacs 29.3.
+
 * v630 — Find in place on the Agenda screens
 On the Agenda, TODO, Match and Keyword search screens, Find now works as =C-s= does in an Emacs agenda buffer: the matches in the rows on screen are highlighted, one is current, and Enter or ▼ (=C-s=) and Shift+Enter or ▲ (=C-r=) step between them. A lower-case query ignores case, a capital makes it exact, and Regex is in ⋯. Closing the search clears the marks. Org and Text keep listing and jumping.
 

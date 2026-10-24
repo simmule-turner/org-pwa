@@ -39,7 +39,12 @@ A subtree moved on one side and edited on the other is an ordinary clash today.
 ** [#C] A field's name as a formula target, and the =%= default format parameter
 Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
 ** [#C] Symbolic algebra from Emacs Calc: the rest
-The display of what Calc cannot reduce is done (v614). Not yet: symbolic simplification beyond Calc's default rules (=simplify=, =solve=), and ranges of the =<= / =<= interval kind.
+Display (v614), intervals, chained comparisons, =simplify=, =esimplify=, =expand=, =solve= and =fsolve= are done and checked against Emacs 29.3 (about 390 cases in =test/calc-oracle-cases.mjs=). What is left:
+- =solve= and =fsolve=: cubic and quartic polynomials (they stop with an error), a polynomial in an expression other than the variable (=(x+1)^2+1=5= is solved as a quadratic in x, so the written form can differ), =fsolve= of =sin=, =cos= and =tan=, complex roots in =fsolve=, a float exponent (=x^(1/3)=2= gives =8.= where Calc gives =8.0000000=, because Calc works in 12-digit decimals), =roots=.
+- Other algebra: =factor=, =apart=, =collect=, =poly=, =nrat= and the calculus functions (=deriv=, =integ=, =sum=, =taylor=).
+- =simplify=: the rules for =sec=, =csc=, =cot=, the hyperbolic and inverse trig functions, =%=, and angles that are whole multiples of 30 or 45 (=sin(x + 30)=).
+- Intervals: =ln=, =exp=, =sin= and =max= of an interval, =[a, b .. c]= forms.
+- Effort: M for the cubic and quartic solvers, S for each of the others. Impact: S.
 
 * Babel and attachments
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
@@ -59,17 +64,16 @@ The display of what Calc cannot reduce is done (v614). Not yet: symbolic simplif
 
 ** [#C] ODT export: what is left after the port
 =src/ox-odt.js= follows ox-odt on the files checked with Emacs 29.3 (headings, lists, tables, blocks, links, footnotes, timestamps, table of contents, captions, planning, options). What is left:
-- =org-odt-table-styles= from the Lisp init is not read.
 - =#+TOC: tables= and =listings= are ignored, as in Emacs. =org-odt-preferred-output-format= (docx, pdf conversion) has no counterpart: the file is always =.odt=.
 - Source coloring is the app's own highlighter, for the languages it knows; Emacs colors through =htmlfontify= and the major mode, so the faces can differ.
-- Tests: more Emacs-made fixtures (=test/fixtures/odt/=, =tools/gen-odt-fixtures.mjs=). Effort: S. Impact: S.
+- Impact: S.
 ** [#B] LaTeX export: where it differs from Emacs
 Found by about 375 small probes run through Emacs 29.3 and the app and compared line by line; the wrong or lost output and the =#+OPTIONS:=, property and figure differences are fixed and kept as fixtures. What is left:
 - Links: =~/= paths are not expanded to the home directory and =docview:= links are not written as Emacs writes them (both depend on the machine Emacs ran on).
-- Text: the macros =input-file=, =modification-time=, =property= and =(eval ..)= (they need the file name, the heading in view or the Lisp interpreter).
-- Variables not read: =org-latex-default-table-mode= (Emacs writes such a table in a way no attribute produces), =org-latex-format-headline-function= (a Lisp function, so it waits for the interpreter), =org-latex-default-table-environment= =tabularx= on a math table.
-- Small: =creator:t= writes "Org Mode PWA", not Emacs's version string; a table inside a footnote definition is not repeated as Emacs does by accident.
-- Tests: each item gets a fixture from Emacs 29.3 (=tools/gen-latex-oracle.mjs=). Effort: M. Impact: S to M.
+- Text: the macro =(eval ..)= (it needs the Lisp interpreter). =input-file= and =modification-time= are written in LaTeX export only.
+- Variables not read: =org-latex-format-headline-function= (a Lisp function, so it waits for the interpreter).
+- Small: =creator:t= writes "Org Mode PWA", not Emacs's version string.
+- Impact: S.
 
 * Order for the next release
 Impact = how often the gap meets everyday use. Effort: S under a day, M a day or two, L several days. Ranked by impact against effort, best first. Designs are in each item.

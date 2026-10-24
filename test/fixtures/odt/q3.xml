@@ -1,0 +1,93 @@
+<text:p text:style-name="OrgTitle">
+<text:title>T</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:p text:style-name="OrgSubtitle">
+<text:initial-creator>Me</text:initial-creator>
+</text:p>
+<text:p text:style-name="OrgSubtitle"/>
+<text:list text:style-name="OrgDescriptionList" text:continue-numbering="false">
+<text:list-item>
+<text:p text:style-name="Text_20_body_20_bold">term</text:p>
+<text:list text:style-name="OrgDescriptionList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">definition
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+<text:list-item>
+<text:p text:style-name="Text_20_body_20_bold">another</text:p>
+<text:list text:style-name="OrgDescriptionList" text:continue-numbering="true">
+<text:list-item>
+<text:p text:style-name="Text_20_body">more
+</text:p>
+</text:list-item>
+</text:list>
+</text:list-item>
+</text:list>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable1">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgEquationFirstColumnTableCell">
+<text:p text:style-name="OrgEquationFirstColumnTableParagraph">x</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgEquationLastColumnTableCell">
+<text:p text:style-name="OrgEquationLastColumnTableParagraph">y</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgEquationFirstColumnTableCell">
+<text:p text:style-name="OrgEquationFirstColumnTableParagraph">1</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgEquationLastColumnTableCell">
+<text:p text:style-name="OrgEquationLastColumnTableParagraph">2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable2">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsLeft">a</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsLeft">b</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<table:table table:style-name="OrgTable3">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableHeadingLeft">h</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellT">
+<text:p text:style-name="OrgTableContentsLeft">v</text:p>
+</table:table-cell>
+</table:table-row>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableHeadingLeft">h2</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellB">
+<text:p text:style-name="OrgTableContentsLeft">v2</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>

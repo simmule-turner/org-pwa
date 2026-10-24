@@ -1,0 +1,17 @@
+#+TITLE: T
+#+AUTHOR: Me
+#+OPTIONS: toc:nil
+- term :: definition
+- another :: more
+
+#+ATTR_ODT: :style OrgEquation
+| x | y |
+| 1 | 2 |
+
+#+ATTR_ODT: :rel-width 50
+| a |
+| b |
+
+#+ATTR_ODT: :header-columns 1
+| h | v |
+| h2 | v2 |
