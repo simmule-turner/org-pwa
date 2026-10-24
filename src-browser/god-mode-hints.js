@@ -13,6 +13,7 @@ import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, labelForChord } from './god
  *  chord is bound without a name here or in the palette, and if an entry here is stale. */
 export const UNNAMED_CHORD_LABELS = {
   'C-c a t': 'Global TODO list',
+  'C-r': 'Search backward',
   '<up>': 'Previous line',
   '<down>': 'Next line',
   '<left>': 'Collapse heading',

@@ -771,6 +771,47 @@ check('TODO view: org-agenda-sorting-strategy priority-down orders the list, ove
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
+check('Find on the TODO list and the Agenda marks the rows in place, steps with Enter and C-s / C-r, and clears when closed', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const body = ['#+TODO: TODO NEXT | DONE', '* TODO Draft budget for Q4', '* NEXT Send Budget to finance', '* TODO Renew passport', '* TODO Final budget sign-off', ''].join('\n');
+  await newDocument(page, body);
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'budget');
+  await page.waitForTimeout(300);
+  expect((await page.locator('mark.find-hit').count()) === 3, 'a lower-case query is not case sensitive: three marks');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('1 of 3'), 'the counter starts at 1 of 3');
+  expect((await page.locator('#search-results').count()) === 0 || !(await page.locator('#searchPanel').isVisible()), 'no list of headings: the rows are marked in place');
+  await page.press('#search-query-input', 'Enter');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('2 of 3'), 'Enter is the next match');
+  await page.press('#search-query-input', 'Shift+Enter');
+  await page.press('#search-query-input', 'Shift+Enter');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('3 of 3'), 'Shift+Enter goes back, wrapping round');
+  await page.press('#search-query-input', 'Control+s');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('1 of 3'), 'C-s steps forward and wraps');
+  await page.fill('#search-query-input', 'Budget');
+  await page.waitForTimeout(300);
+  expect((await page.locator('mark.find-hit').count()) === 1, 'a capital letter makes it case sensitive: one mark');
+  await page.locator('#search-options-btn').click();
+  const options = await page.locator('#search-options-row').innerText();
+  expect(options.includes('Regex') && !options.includes('Replace') && !options.includes('Match'), `options on a row screen: ${options}`);
+  await page.locator('[aria-label="Next match"]').click();
+  await page.evaluate(() => document.getElementById('searchBtn').click()); // closes the search
+  await page.waitForTimeout(250);
+  expect((await page.locator('mark.find-hit').count()) === 0, 'closing the search clears the marks');
+  await viewMenu(page, 'Agenda');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#find-row-count');
+  await page.fill('#search-query-input', 'day');
+  await page.waitForTimeout(300);
+  expect((await page.locator('mark.find-hit').count()) >= 1, 'the Agenda marks its day headings');
+  expect(errors.length === 0, `page errors: ${errors}`);
+  await context.close();
+});
+
 check('Search button: a tap opens the search used last, a tap while one shows or a long press opens the chooser, View lists no searches, and the back button is an arrow', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '#+TODO: TODO | DONE\n* TODO Ship notes :urgent:\nWrite the budget.\n* Meeting\n');

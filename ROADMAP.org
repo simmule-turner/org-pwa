@@ -14,6 +14,8 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
+** [#C] Row actions on the current Find match
+Find on the Agenda, TODO, Match and Keyword search screens marks the current match, but keys such as =t= (change state) and =RET= (go to the heading) do not act on it, as they do on the row under point in an Emacs agenda buffer. Needs a keyboard-focused row on those screens. Effort: M. Impact: S.
 ** [#C] Match and Keyword search views: possible updates
 Where the two views and agenda commands differ from Emacs, or stop short of it:
 - Rows show the matching words marked and one matching line of text; Emacs shows the heading line only.

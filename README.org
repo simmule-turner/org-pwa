@@ -410,6 +410,8 @@ renders three right-aligned equations, lined up at the ~&~ marks and automatical
 
 Tap the *Search* button in the top bar (see [[#search-button][The Search button]]), or open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
 
+On the Agenda, TODO, Match and Keyword search screens Find works in place, as ~C-s~ does in an agenda buffer: every match in the rows on screen is highlighted and the current one is marked more strongly. Enter or ▼ (~C-s~) goes to the next, Shift+Enter or ▲ (~C-r~) to the previous, wrapping round. A lower-case query ignores case and a capital letter makes it exact; ⋯ has Regex. Closing the search clears the marks.
+
 Results appear at once from what is loaded and fill in as each agenda file finishes (a file that fails to fetch is left out). The query box and its options live in the minibuffer (see [[#modeline][Modeline and minibuffer]]). Results update as you type, grouped under their heading with the match highlighted; a result from another file shows its name.
 
 Search covers the whole document whatever the fold state. Tapping a result expands what is needed to reveal it, scrolls to it with a brief highlight and switches to its file first if needed.
@@ -2348,7 +2350,8 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~c SPC a s~ | ~C-c a s~ | Open the Keyword search view |
 | ~c SPC c~ | ~C-c c~ | Open Capture, which exits god-mode (see below) |
 | ~h SPC m~ | ~C-h m~ | Open Help (~describe-mode~) without exiting god-mode |
-| ~s~ | ~C-s~ | Open search |
+| ~s~ | ~C-s~ | Open search; on the Agenda, TODO, Match and Keyword search screens, the next match |
+| ~r~ | ~C-r~ | The previous match on those screens |
 | ~x q~ | ~C-x C-q~ | Toggle ~buffer-read-only~ (see [[#local-variables][Local Variables]]) |
 | ~x s~ | ~C-x C-s~ | Save (~save-buffer~) |
 | ~x SPC s~ | ~C-x s~ | Offer to save every modified tab that has a file, one key each (~save-some-buffers~) |

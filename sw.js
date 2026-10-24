@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v629';
+const CACHE_NAME = 'org-pwa-shell-v630';
 
 const SHELL_FILES = [
   './',
@@ -224,6 +224,7 @@ const SHELL_FILES = [
   './src-browser/agenda-view.js',
   './src-browser/agenda-query-view.js',
   './src-browser/search-chooser.js',
+  './src-browser/find-in-view.js',
   './src-browser/diary-file-load.js',
   './src-browser/lisp-init-load.js',
   './src-browser/diary-flow.js',

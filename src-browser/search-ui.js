@@ -13,6 +13,7 @@ import { buildQueryReplacePattern } from './doc-helpers.js';
 import { openRemotePath } from './documents-io.js';
 import { minibufferSearchEl, searchPanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { isRowFindView, refreshRowFind, stepRowFind, stopRowFind, updateRowFindCount } from './find-in-view.js';
 import { narrowToSparseMatches } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
 import { render } from './render.js';
@@ -62,6 +63,14 @@ export function renderMinibufferSearch() {
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
+    if (isRowFindView()) {
+      // Emacs's incremental search keys: Enter or C-s next, Shift+Enter or C-r previous
+      if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'r'))) {
+        e.preventDefault();
+        stepRowFind(e.key === 'r' || e.shiftKey ? -1 : 1);
+        return;
+      }
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -73,6 +82,19 @@ export function renderMinibufferSearch() {
   });
   topRow.appendChild(input);
 
+  if (isRowFindView()) {
+    for (const [label, aria, delta] of /** @type {[string, string, number][]} */ ([['\u25b2', 'Previous match', -1], ['\u25bc', 'Next match', 1]])) {
+      const step = document.createElement('button');
+      step.textContent = label;
+      step.setAttribute('aria-label', aria);
+      step.style.cssText = 'flex-shrink:0;min-width:40px;min-height:40px;padding:0 8px;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
+      step.onclick = () => {
+        stepRowFind(delta);
+        input.focus({ preventScroll: true });
+      };
+      topRow.appendChild(step);
+    }
+  }
   const optionsBtn = document.createElement('button');
   optionsBtn.id = 'search-options-btn';
   optionsBtn.textContent = '\u22ef'; // horizontal ellipsis -- distinct from the More button's own vertical \u22ee, so the two don't read as the same control
@@ -104,6 +126,13 @@ export function renderMinibufferSearch() {
   };
   topRow.appendChild(optionsBtn);
 
+  if (isRowFindView()) {
+    const count = document.createElement('div');
+    count.id = 'find-row-count';
+    count.style.cssText = 'font-size:12px;opacity:0.75;line-height:1.35;';
+    minibufferSearchEl.appendChild(count);
+    queueMicrotask(updateRowFindCount);
+  }
   const optionsRow = document.createElement('div');
   optionsRow.id = 'search-options-row';
   minibufferSearchEl.appendChild(optionsRow);
@@ -173,7 +202,7 @@ export function renderSearchOptionsMenu() {
       renderSearchResults();
     })
   );
-  if (S.currentView !== 'text') {
+  if (S.currentView !== 'text' && !isRowFindView()) {
     optionsRow.appendChild(
       optionButton('Match', S.searchUseMatch, false, () => {
         S.searchUseMatch = !S.searchUseMatch;
@@ -203,7 +232,7 @@ export function renderSearchOptionsMenu() {
       })
     );
   }
-  optionsRow.appendChild(
+  if (!isRowFindView()) optionsRow.appendChild(
     optionButton('Replace', false, S.searchQuery.trim() === '' || S.searchUseMatch, () => {
       S.searchOptionsMenuOpen = false;
       renderSearchOptionsMenu();
@@ -408,6 +437,7 @@ export function renderSearchPanel() {
   renderMinibuffer();
   searchPanel.innerHTML = '';
   if (!S.searchOpen) {
+    stopRowFind();
     searchPanel.style.display = 'none';
     if (S.activeQueryReplace) finishQueryReplace();
     if (S.searchOptionsMenuOpen) {
@@ -562,6 +592,12 @@ export function renderTextModeSearchResults() {
 export function renderSearchResults() {
   if (S.currentView === 'text') {
     renderTextModeSearchResults();
+    return;
+  }
+  if (isRowFindView()) {
+    // the rows on screen are marked in place instead of listing headings from every file (see find-in-view.js)
+    searchPanel.style.display = 'none';
+    refreshRowFind({ reset: true });
     return;
   }
 

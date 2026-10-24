@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v630 — Find in place on the Agenda screens
+On the Agenda, TODO, Match and Keyword search screens, Find now works as =C-s= does in an Emacs agenda buffer: the matches in the rows on screen are highlighted, one is current, and Enter or ▼ (=C-s=) and Shift+Enter or ▲ (=C-r=) step between them. A lower-case query ignores case, a capital makes it exact, and Regex is in ⋯. Closing the search clears the marks. Org and Text keep listing and jumping.
+
 * v629 — Match, Keyword search and TODO list, tidied
 Match, Keyword search and the TODO list each have a title. In Match and Keyword search the query sits on its own full-width line with the cursor in it, Commands and Save… are ordinary buttons, TODO only is a checkbox, and the Search and Top headings chips are gone. A Match row names its category as the TODO view does. In the TODO list, Sort is a pop-up menu like Category, with Document selected by default.
 
