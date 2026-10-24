@@ -71,3 +71,14 @@ test('saved commands: read, add and replace by key', () => {
   assert.equal(parseCustomCommands('(("z" "Stuck" stuck "") ("a" "Agenda" agenda ""))').map((c) => c.key).join(), 'a');
   assert.deepEqual(parseCustomCommands(''), []);
 });
+
+test('a Match row and a Search row name the same category: the CATEGORY property, else the file\u2019s own as the Agenda names it', () => {
+  const doc = parseOrg('* TODO One :a:\n* TODO Two :a:\n:PROPERTIES:\n:CATEGORY: Chores\n:END:\n');
+  const list = [{ documentId: '\u0000unsaved-new-document', doc }];
+  const match = matchViewItems(list, 'a').map((i) => i.category);
+  const search = searchViewItems(list, 'Two').map((i) => i.category);
+  assert.equal(match[1], 'Chores');
+  assert.equal(search[0], 'Chores');
+  assert.equal(match[0], searchViewItems(list, 'One')[0].category);
+  assert.ok(!String(match[0]).includes('unsaved-new-document'), String(match[0]));
+});

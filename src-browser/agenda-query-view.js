@@ -22,7 +22,7 @@ import { textInputStyle } from './ui-widgets.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { switchToView } from './views.js';
 
-/** @typedef {{ kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string }} QueryViewState */
+/** @typedef {{ kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string, focusInput?: boolean }} QueryViewState */
 
 const VARIABLE = 'org-agenda-custom-commands';
 const GRAMMAR = 'Words: a phrase, or +word -word "a phrase" {regexp}. Start with * for headlines only, ! for TODO entries, : for whole words.';
@@ -32,7 +32,7 @@ const MATCH_HELP = 'Tags, properties and TODO state: work+urgent|blocked, Effort
 function state() {
   const existing = /** @type {QueryViewState | undefined} */ (S.queryView);
   if (existing) return existing;
-  const fresh = { kind: /** @type {'tags'} */ ('tags'), query: '', todoOnly: false, sortingStrategy: null, title: '' };
+  const fresh = { kind: /** @type {'tags'} */ ('tags'), query: '', todoOnly: false, sortingStrategy: null, title: '', focusInput: true };
   S.queryView = fresh;
   return fresh;
 }
@@ -43,7 +43,7 @@ function state() {
  * @param {{ query?: string, todoOnly?: boolean, sortingStrategy?: string | null, title?: string }} [options]
  */
 export function openQueryView(kind, options = {}) {
-  S.queryView = { kind, query: options.query ?? '', todoOnly: !!options.todoOnly, sortingStrategy: options.sortingStrategy ?? null, title: options.title ?? '' };
+  S.queryView = { kind, query: options.query ?? '', todoOnly: !!options.todoOnly, sortingStrategy: options.sortingStrategy ?? null, title: options.title ?? '', focusInput: true };
   const view = kind === 'tags' ? 'match' : 'searchview';
   if (S.currentView === view) render();
   else switchToView(view);
@@ -87,7 +87,7 @@ export function renderQueryView() {
   const wanted = S.currentView === 'searchview' ? 'search' : 'tags';
   if (q.kind !== wanted) {
     // arrived from the View menu rather than from openQueryView: start a fresh query of this kind
-    q = { kind: wanted, query: '', todoOnly: false, sortingStrategy: null, title: '' };
+    q = { kind: wanted, query: '', todoOnly: false, sortingStrategy: null, title: '', focusInput: true };
     S.queryView = q;
   }
   if (q.kind === 'search') ensureSearchExtraFilesLoaded();
@@ -96,8 +96,13 @@ export function renderQueryView() {
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
 
-  const top = document.createElement('div');
-  top.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;';
+  const title = document.createElement('h2');
+  title.textContent = isMatch ? 'Match tags and state' : 'Keyword search';
+  title.setAttribute('data-query-title', '');
+  title.style.cssText = 'margin:4px 0 10px;font-size:20px;font-weight:700;';
+  container.appendChild(title);
+
+  // the query on a line of its own, full width; Commands and Save… under it, with TODO only (Match) at the right
   const input = document.createElement('input');
   input.type = 'text';
   input.value = q.query;
@@ -109,30 +114,41 @@ export function renderQueryView() {
   input.spellcheck = false;
   textInputStyle(input);
   input.style.fontFamily = 'ui-monospace, Menlo, monospace';
-  input.style.flex = '1 1 200px';
-  input.style.width = 'auto';
-  top.appendChild(input);
+  input.style.display = 'block';
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+  input.style.marginBottom = '8px';
+  container.appendChild(input);
 
-  /** @param {string} label @param {string} aria @param {() => void} onClick @param {boolean} [on] */
-  const chip = (label, aria, onClick, on = false) => {
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  /** @param {string} label @param {string} aria @param {() => void} onClick */
+  const chip = (label, aria, onClick) => {
     const b = document.createElement('button');
     b.textContent = label;
     b.setAttribute('aria-label', aria);
-    b.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (on ? 'border-color:var(--accent);font-weight:700;' : '');
+    b.style.cssText = 'min-height:44px;padding:0 16px;font-size:15px;white-space:nowrap;';
     b.onclick = onClick;
     return b;
   };
+  actions.appendChild(chip('Commands', 'Agenda commands', () => openAgendaCommands()));
+  actions.appendChild(chip('Save…', 'Save this query as an agenda command', () => saveQueryAsCommand(q.kind, q.query, q.todoOnly)));
   if (isMatch) {
-    top.appendChild(
-      chip('TODO only', 'List only the unfinished TODO entries', () => {
-        q.todoOnly = !q.todoOnly;
-        render();
-      }, q.todoOnly)
-    );
+    const label = document.createElement('label');
+    label.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;white-space:nowrap;';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = q.todoOnly;
+    box.style.cssText = 'width:22px;height:22px;margin:0;';
+    box.setAttribute('aria-label', 'List only the unfinished TODO entries');
+    box.onchange = () => {
+      q.todoOnly = box.checked;
+      render();
+    };
+    label.append(box, document.createTextNode('TODO only'));
+    actions.appendChild(label);
   }
-  top.appendChild(chip('Commands', 'Agenda commands', () => openAgendaCommands()));
-  top.appendChild(chip('Save…', 'Save this query as an agenda command', () => saveQueryAsCommand(q.kind, q.query, q.todoOnly)));
-  container.appendChild(top);
+  container.appendChild(actions);
 
   const heading = document.createElement('div');
   heading.style.cssText = 'font-size:12px;opacity:0.7;margin-bottom:8px;line-height:1.4;';
@@ -173,8 +189,8 @@ export function renderQueryView() {
         patterns = [];
       }
     }
-    results.appendChild(buildViewFilterRow(items, fill, [buildTodoEffortChip()], isMatch ? 'todo' : 'search'));
-    const shown = filterItemsForView(items, isMatch ? 'todo' : 'search');
+    results.appendChild(buildViewFilterRow(items, fill, [buildTodoEffortChip()], isMatch ? 'todo' : 'search', true));
+    const shown = filterItemsForView(items, isMatch ? 'todo' : 'search', true);
     const rows = S.agendaEffortFilter ? applyAgendaEffortView(shown, { filter: S.agendaEffortFilter }) : shown;
     const count = document.createElement('div');
     count.setAttribute('data-query-count', '');
@@ -203,6 +219,10 @@ export function renderQueryView() {
     }
   };
   fill();
+  if (q.focusInput) {
+    q.focusInput = false;
+    if (!q.query) input.focus();
+  }
 }
 
 /** The sheet of agenda commands: the built-in views and the ones in org-agenda-custom-commands. */

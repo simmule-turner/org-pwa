@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v629 — Match, Keyword search and TODO list, tidied
+Match, Keyword search and the TODO list each have a title. In Match and Keyword search the query sits on its own full-width line with the cursor in it, Commands and Save… are ordinary buttons, TODO only is a checkbox, and the Search and Top headings chips are gone. A Match row names its category as the TODO view does. In the TODO list, Sort is a pop-up menu like Category, with Document selected by default.
+
 * v628 — A Search button in the top bar
 The top bar has a Search button. A tap opens the search you used last (Find the first time); tap it again, or hold it, to choose Find, Match, Keyword search or a saved query. Match and Keyword search are no longer in the View menu. =C-c a= now waits for a second key, as in Emacs: =a= Agenda, =t= TODO list, =m= Match, =s= Keyword search. The back arrow is bolder.
 

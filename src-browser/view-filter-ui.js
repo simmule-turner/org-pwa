@@ -37,9 +37,10 @@ const MODE_LABELS = /** @type {Record<string, string>} */ ({
  * @param {() => void} onChange
  * @param {HTMLElement[]} [extraChips]  more chips for the end of the row
  * @param {import('../src/tag-inheritance.js').AgendaViewType} [view]
+ * @param {boolean} [compact]  only the Tag, State, Category and extra chips: no Search and Top headings (the Match and Keyword search views)
  * @returns {HTMLElement}
  */
-export function buildViewFilterRow(items, onChange, extraChips = [], view = 'agenda') {
+export function buildViewFilterRow(items, onChange, extraChips = [], view = 'agenda', compact = false) {
   const row = document.createElement('div');
   row.setAttribute('data-view-filter', '');
   row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;';
@@ -123,90 +124,94 @@ export function buildViewFilterRow(items, onChange, extraChips = [], view = 'age
   row.appendChild(chip('categories', 'Category', 'Categories', 'Categories', choices.categories));
   for (const extra of extraChips) row.appendChild(extra);
 
-  // Search: a regular expression the row's text (keyword, title, tags) must match, or must not (Emacs's = filter)
-  const regexps = filter.regexps || (filter.regexps = []);
-  const notRegexps = filter.notRegexps || (filter.notRegexps = []);
-  const searchText = regexps.length + notRegexps.length === 0 ? 'Search ▾' : regexps.length + notRegexps.length > 1 ? `Search: ${regexps.length + notRegexps.length}` : `Search: ${regexps[0] || 'not ' + notRegexps[0]}`;
-  row.appendChild(
-    shell(
-      searchText,
-      'text',
-      regexps.length + notRegexps.length > 0,
-      () => {
-        /** @type {HTMLInputElement} */ let input;
-        /** @type {HTMLInputElement} */ let hide;
-        openFormSheet({
-          title: 'Search the rows',
-          subtitle: 'A regular expression, not case sensitive, matched against the keyword, title and tags.',
-          submitLabel: 'Apply',
-          build: (panel) => {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.setAttribute('autocapitalize', 'off');
-            input.setAttribute('aria-label', 'Regular expression');
-            input.value = regexps[0] ?? notRegexps[0] ?? '';
-            input.style.cssText = 'width:100%;min-height:var(--target);font-size:var(--text-body);box-sizing:border-box;';
-            const label = document.createElement('label');
-            label.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);';
-            hide = document.createElement('input');
-            hide.type = 'checkbox';
-            hide.checked = regexps.length === 0 && notRegexps.length > 0;
-            hide.style.cssText = 'width:22px;height:22px;';
-            label.append(hide, document.createTextNode('Hide the rows that match instead'));
-            panel.append(input, label);
-            input.focus();
-          },
-          onSubmit: () => {
-            const text = input.value.trim();
-            if (text !== '' && filterRegexp(text) === null) {
-              setStatus('Not a valid Emacs regular expression \u2014 filter not changed.');
-              return false;
-            }
-            filter.regexps = text && !hide.checked ? [text] : [];
-            filter.notRegexps = text && hide.checked ? [text] : [];
-            onChange();
-          },
-        });
-      },
-      () => {
-        filter.regexps = [];
-        filter.notRegexps = [];
-      }
-    )
-  );
+  if (!compact) {
+    // Search: a regular expression the row's text (keyword, title, tags) must match, or must not (Emacs's = filter)
+    const regexps = filter.regexps || (filter.regexps = []);
+    const notRegexps = filter.notRegexps || (filter.notRegexps = []);
+    const searchText = regexps.length + notRegexps.length === 0 ? 'Search ▾' : regexps.length + notRegexps.length > 1 ? `Search: ${regexps.length + notRegexps.length}` : `Search: ${regexps[0] || 'not ' + notRegexps[0]}`;
+    row.appendChild(
+      shell(
+        searchText,
+        'text',
+        regexps.length + notRegexps.length > 0,
+        () => {
+          /** @type {HTMLInputElement} */ let input;
+          /** @type {HTMLInputElement} */ let hide;
+          openFormSheet({
+            title: 'Search the rows',
+            subtitle: 'A regular expression, not case sensitive, matched against the keyword, title and tags.',
+            submitLabel: 'Apply',
+            build: (panel) => {
+              input = document.createElement('input');
+              input.type = 'text';
+              input.setAttribute('autocapitalize', 'off');
+              input.setAttribute('aria-label', 'Regular expression');
+              input.value = regexps[0] ?? notRegexps[0] ?? '';
+              input.style.cssText = 'width:100%;min-height:var(--target);font-size:var(--text-body);box-sizing:border-box;';
+              const label = document.createElement('label');
+              label.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);';
+              hide = document.createElement('input');
+              hide.type = 'checkbox';
+              hide.checked = regexps.length === 0 && notRegexps.length > 0;
+              hide.style.cssText = 'width:22px;height:22px;';
+              label.append(hide, document.createTextNode('Hide the rows that match instead'));
+              panel.append(input, label);
+              input.focus();
+            },
+            onSubmit: () => {
+              const text = input.value.trim();
+              if (text !== '' && filterRegexp(text) === null) {
+                setStatus('Not a valid Emacs regular expression \u2014 filter not changed.');
+                return false;
+              }
+              filter.regexps = text && !hide.checked ? [text] : [];
+              filter.notRegexps = text && hide.checked ? [text] : [];
+              onChange();
+            },
+          });
+        },
+        () => {
+          filter.regexps = [];
+          filter.notRegexps = [];
+        }
+      )
+    );
 
-  // Top heading: only the items under the chosen top-level headings (Emacs's ^ filter)
-  const tops = filter.tops || (filter.tops = []);
-  row.appendChild(
-    shell(
-      chipText(tops, 'Top heading', 'Top headings'),
-      'top-level heading',
-      tops.length > 0,
-      () => {
-        const known = new Set(choices.tops.map(([v]) => v));
-        const all = [...choices.tops, .../** @type {[string, number][]} */ (tops.filter((v) => !known.has(v)).map((v) => [v, 0]))];
-        openChoiceSheet({
-          title: 'Top-level headings',
-          choices: all,
-          selected: tops,
-          onApply: (values) => {
-            filter.tops = values;
-            onChange();
-          },
-        });
-      },
-      () => {
-        filter.tops = [];
-      }
-    )
-  );
+    // Top heading: only the items under the chosen top-level headings (Emacs's ^ filter)
+    const tops = filter.tops || (filter.tops = []);
+    row.appendChild(
+      shell(
+        chipText(tops, 'Top heading', 'Top headings'),
+        'top-level heading',
+        tops.length > 0,
+        () => {
+          const known = new Set(choices.tops.map(([v]) => v));
+          const all = [...choices.tops, .../** @type {[string, number][]} */ (tops.filter((v) => !known.has(v)).map((v) => [v, 0]))];
+          openChoiceSheet({
+            title: 'Top-level headings',
+            choices: all,
+            selected: tops,
+            onApply: (values) => {
+              filter.tops = values;
+              onChange();
+            },
+          });
+        },
+        () => {
+          filter.tops = [];
+        }
+      )
+    );
+  }
   return row;
 }
 
 /** The items that pass the chosen filter. */
-export function filterItemsForView(/** @type {any[]} */ items, /** @type {import('../src/tag-inheritance.js').AgendaViewType} */ view = 'agenda') {
+export function filterItemsForView(/** @type {any[]} */ items, /** @type {import('../src/tag-inheritance.js').AgendaViewType} */ view = 'agenda', compact = false) {
   addFilterTags(items, view);
-  return applyViewFilter(items, S.viewFilter);
+  // a compact row has no Search or Top headings chip, so a text or heading filter set in another view must not hide rows here
+  const filter = compact && S.viewFilter ? { ...S.viewFilter, regexps: [], notRegexps: [], tops: [] } : S.viewFilter;
+  return applyViewFilter(items, filter);
 }
 
 export { viewFilterActive };

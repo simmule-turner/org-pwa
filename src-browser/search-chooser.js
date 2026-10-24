@@ -95,7 +95,7 @@ export function openSearchChooser() {
       chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:0 4px;';
       for (const c of commands) {
         const chip = document.createElement('button');
-        chip.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;display:flex;align-items:center;gap:8px;';
+        chip.style.cssText = 'min-height:44px;padding:0 14px;display:flex;align-items:center;gap:8px;';
         const key = document.createElement('b');
         key.textContent = c.key;
         key.style.fontFamily = 'ui-monospace,Menlo,monospace';

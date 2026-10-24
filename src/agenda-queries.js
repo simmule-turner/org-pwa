@@ -72,7 +72,9 @@ export function matchViewItems(docs, query, options = {}) {
     if (options.todoOnly && !(hit.heading.todo && !done.has(hit.heading.todo))) return false;
     return ![hit.heading, ...(hit.ancestors || [])].some((h) => skipped(h, options));
   });
-  return order(kept.map((hit) => itemFor(hit, false)), 'tags', options);
+  // the category the Agenda and TODO views show: a CATEGORY property, else the file's own (the matcher's file name is not that)
+  const docOf = new Map(docs.map((d) => [d.documentId, d.doc]));
+  return order(kept.map((hit) => itemFor({ ...hit, doc: /** @type {Doc} */ (docOf.get(hit.documentId)), category: effectivePropertyValue(hit.heading, hit.ancestors || [], 'CATEGORY', true) }, false)), 'tags', options);
 }
 
 /**

@@ -1102,6 +1102,11 @@ export function renderTaskListView() {
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
 
+  const title = document.createElement('h2');
+  title.textContent = 'TODO list';
+  title.style.cssText = 'margin:4px 0 6px;font-size:20px;font-weight:700;';
+  container.appendChild(title);
+
   const headingRow = document.createElement('div');
   headingRow.style.display = 'flex';
   headingRow.style.justifyContent = 'space-between';
@@ -1145,15 +1150,42 @@ export function renderTaskListView() {
   const SORT_NAMES = { document: 'Document', date: 'Date', 'effort-up': 'Least effort', 'effort-down': 'Most effort' };
   const sortNow = /** @type {keyof typeof SORT_NAMES} */ (/** @type {readonly string[]} */ (SORTS).includes(String(S.taskSort)) ? S.taskSort : 'document');
   const sortChip = document.createElement('button');
-  sortChip.textContent = `Sort: ${SORT_NAMES[sortNow]}`;
+  sortChip.textContent = sortNow === 'document' ? 'Sort \u25be' : `Sort: ${SORT_NAMES[sortNow]}`;
   sortChip.setAttribute('aria-label', `Change the order of the list (currently ${SORT_NAMES[sortNow].toLowerCase()})`);
   sortChip.style.cssText = 'min-height:44px;padding:0 14px;border-radius:22px;font-size:14px;white-space:nowrap;' + (sortNow !== 'document' ? 'border-color:var(--accent);font-weight:700;' : '');
   sortChip.onclick = () => {
-    S.taskSort = SORTS[(SORTS.indexOf(sortNow) + 1) % SORTS.length];
-    render();
+    /** @type {string} */ let chosen = sortNow;
+    openFormSheet({
+      title: 'Sort',
+      submitLabel: 'Apply',
+      build: (panel) => {
+        const group = document.createElement('div');
+        group.setAttribute('role', 'radiogroup');
+        group.style.cssText = 'display:flex;flex-direction:column;';
+        for (const key of SORTS) {
+          const row = document.createElement('label');
+          row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:var(--target);font-size:var(--text-body);cursor:pointer;';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'todo-sort';
+          radio.checked = key === sortNow;
+          radio.style.cssText = 'width:22px;height:22px;flex-shrink:0;';
+          radio.onchange = () => {
+            chosen = key;
+          };
+          row.append(radio, document.createTextNode(SORT_NAMES[key]));
+          group.appendChild(row);
+        }
+        panel.appendChild(group);
+      },
+      onSubmit: () => {
+        S.taskSort = chosen;
+        render();
+      },
+    });
   };
   const effortChip = buildTodoEffortChip();
-  container.appendChild(buildViewFilterRow(items, render, [sortChip, effortChip], 'todo'));
+  container.appendChild(buildViewFilterRow(items, render, [effortChip, sortChip], 'todo'));
 
   const today = new Date();
   const shownTasks = filterItemsForView(items, 'todo');
