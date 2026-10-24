@@ -2,7 +2,7 @@
 // Inherited tags on screen: the ones a heading gets from its ancestors (org-use-tag-inheritance and
 // org-tags-exclude-from-inheritance), shown dimmed after its own, and counted by the Agenda and TODO tag filters.
 import { getShowInheritedTagsAgenda, getShowInheritedTagsOutline, getUseTagInheritance, getAgendaUseTagInheritance } from '../src/local-variables.js';
-import { buildAncestorIndex, inheritedOnly, showsInheritedTags, knowsInheritedTags } from '../src/tag-inheritance.js';
+import { buildAncestorIndex, buildFileTagsIndex, inheritedOnly, showsInheritedTags, knowsInheritedTags } from '../src/tag-inheritance.js';
 import { S } from './app-state.js';
 import { aggregateAgendaDocs } from './agenda-files.js';
 
@@ -13,6 +13,13 @@ function ancestorIndex() {
     S.ancestorIndexCache = buildAncestorIndex(docs);
   }
   return S.ancestorIndexCache;
+}
+
+/** The `#+FILETAGS:` tags of the heading's file, which it inherits. @param {import('../src/types.js').Heading} heading @returns {string[]} */
+function fileTagsOf(heading) {
+  if (!S.fileTagsIndexCache) S.fileTagsIndexCache = buildFileTagsIndex([S.state.doc, ...aggregateAgendaDocs().map((d) => d.doc)]);
+  const ancestors = ancestorIndex().get(heading);
+  return S.fileTagsIndexCache.get((ancestors && ancestors[0]) || heading) || [];
 }
 
 /** The titles of the heading's ancestors, outermost first (for %b in org-agenda-prefix-format).
@@ -27,7 +34,7 @@ export function ancestorTitles(heading) {
  * @returns {string[]} */
 export function inheritedTagsOf(heading) {
   const ancestors = ancestorIndex().get(heading);
-  return ancestors ? inheritedOnly(heading, ancestors, getUseTagInheritance(S.state.localVariables)) : [];
+  return ancestors ? inheritedOnly(heading, ancestors, getUseTagInheritance(S.state.localVariables), fileTagsOf(heading)) : [];
 }
 
 /** Its own tags followed by the inherited ones: what a tag filter sees.

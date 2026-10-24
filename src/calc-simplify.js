@@ -51,7 +51,7 @@ function gcd(a, b) {
 }
 
 /** math-to-simple-fraction: a float that is a whole number or a short decimal, as the fraction it is. @param {Form} f @returns {Form} */
-function toSimpleFraction(f) {
+export function toSimpleFraction(f) {
   if (isFlt(f)) {
     if (f.e >= 0) return I(f.m * 10n ** BigInt(f.e));
     if (f.m > -1000n && f.m < 1000n) return frac(f.m, 10n ** BigInt(-f.e));

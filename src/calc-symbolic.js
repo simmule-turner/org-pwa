@@ -967,8 +967,8 @@ function knownSigns(a) {
   return possibleSigns(a);
 }
 
-/** @type {{ numericCall: ((name: string, args: Form[]) => Form | null) | null, strict: boolean, simplifier: ((form: Form, dangerous: boolean) => Form) | null }} */
-const hooks = { numericCall: null, strict: false, simplifier: null };
+/** @type {{ numericCall: ((name: string, args: Form[]) => Form | null) | null, strict: boolean, simplifier: ((form: Form, dangerous: boolean) => Form) | null, degrees: boolean }} */
+const hooks = { numericCall: null, strict: false, simplifier: null, degrees: false };
 /** Functions other modules supply (solve, expand): name to implementation, which returns null to leave the call as written. @type {Map<string, (args: Form[]) => Form | null>} */
 const registered = new Map();
 
@@ -987,6 +987,16 @@ export function setNumericCall(fn) {
 /** Hands `simplify` and `esimplify` to calc-simplify.js (which imports this module). @param {(form: Form, dangerous: boolean) => Form} fn */
 export function setSimplifier(fn) {
   hooks.simplifier = fn;
+}
+
+/** Calc's angle mode for the symbolic rules (derivatives of sin, arctan, ...). @param {boolean} on */
+export function setAngleDegrees(on) {
+  hooks.degrees = on;
+}
+
+/** @returns {boolean} whether angles are in degrees */
+export function angleIsDegrees() {
+  return hooks.degrees;
 }
 
 /** Lets another module supply a Calc function. @param {string} name @param {(args: Form[]) => Form | null} fn */

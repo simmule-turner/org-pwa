@@ -812,6 +812,81 @@ check('Find on the TODO list and the Agenda marks the rows in place, steps with 
   await context.close();
 });
 
+check('Find row actions: the match\u2019s row is the focused row, n and p move it, t changes its state, Space opens its actions and RET goes to its heading', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const body = ['#+TODO: TODO NEXT | DONE', '* TODO Draft budget for Q4', '* NEXT Send Budget to finance', '* TODO Renew passport', '* TODO Final budget sign-off', ''].join('\n');
+  await newDocument(page, body);
+  await viewMenu(page, 'TODO');
+  await page.waitForSelector('[data-view-filter]');
+  const focused = () => page.evaluate(() => [...document.querySelectorAll('.agenda-row-focused')].map((r) => r.innerText.replace(/\s+/g, ' ').trim()));
+  expect((await focused()).length === 0, 'no row is focused before a search');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'budget');
+  await page.waitForTimeout(300);
+  let now = await focused();
+  expect(now.length === 1 && now[0].includes('Draft budget'), `the first match\u2019s row is focused: ${now}`);
+  await page.press('#search-query-input', 'Enter');
+  now = await focused();
+  expect(now.length === 1 && now[0].includes('Send Budget'), `stepping moves the focused row: ${now}`);
+  await page.evaluate(() => document.getElementById('searchBtn').click()); // closes the search
+  await page.waitForTimeout(250);
+  now = await focused();
+  expect(now.length === 1 && now[0].includes('Send Budget'), `the row stays focused when the search closes: ${now}`);
+  await page.keyboard.press('n');
+  now = await focused();
+  expect(now.length === 1 && now[0].includes('Renew passport'), `n moves down: ${now}`);
+  await page.keyboard.press('p');
+  await page.keyboard.press('p');
+  now = await focused();
+  expect(now.length === 1 && now[0].includes('Draft budget'), `p moves up: ${now}`);
+  await page.keyboard.press('Space');
+  await page.waitForSelector('[data-bottom-sheet]');
+  expect((await page.locator('[data-bottom-sheet]').innerText()).includes('Mark done'), 'Space opens the row\u2019s actions');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('t');
+  await page.waitForTimeout(250);
+  const panel = await page.locator('body').innerText();
+  expect(/NEXT/.test(panel) && /DONE/.test(panel), 't opens the state choices for the focused row');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  if ((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'tasklist') {
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+  }
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.currentView)) === 'org', 'RET goes to the focused row\u2019s heading');
+  expect(errors.length === 0, `page errors: ${errors}`);
+  await context.close();
+});
+
+check('a todo agenda command lists the TODO entries of the keywords it names and the list forgets them when the screen is left', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, ['#+TODO: TODO NEXT | DONE', '* TODO Draft budget', '* NEXT Send invoice', '* DONE Pay rent', ''].join('\n'));
+  await page.evaluate(async () => {
+    const { runCommand } = await import('/src-browser/agenda-query-view.js');
+    runCommand({ key: 'x', description: 'Next', type: 'todo', query: 'NEXT', sortingStrategy: null });
+  });
+  await page.waitForTimeout(300);
+  let text = await page.locator('#outline').innerText();
+  expect(text.includes('Send invoice') && !text.includes('Draft budget') && !text.includes('Pay rent'), `only NEXT: ${text}`);
+  await page.evaluate(async () => {
+    const { runCommand } = await import('/src-browser/agenda-query-view.js');
+    runCommand({ key: 'x', description: 'All', type: 'todo', query: '*', sortingStrategy: null });
+  });
+  await page.waitForTimeout(300);
+  text = await page.locator('#outline').innerText();
+  expect(text.includes('Pay rent') && text.includes('Draft budget'), `* lists every state: ${text}`);
+  await viewMenu(page, 'Agenda');
+  await viewMenu(page, 'TODO');
+  text = await page.locator('#outline').innerText();
+  expect(text.includes('Draft budget') && text.includes('Send invoice') && !text.includes('Pay rent'), `the TODO list is back to the unfinished entries: ${text}`);
+  expect(errors.length === 0, `page errors: ${errors}`);
+  await context.close();
+});
+
 check('Search button: a tap opens the search used last, a tap while one shows or a long press opens the chooser, View lists no searches, and the back button is an arrow', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '#+TODO: TODO | DONE\n* TODO Ship notes :urgent:\nWrite the budget.\n* Meeting\n');

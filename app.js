@@ -59,6 +59,7 @@ import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
 import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
+import { handleAgendaRowKey } from './src-browser/agenda-row-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
 import { render, updateSaveButtonState } from './src-browser/render.js';
@@ -473,6 +474,8 @@ document.addEventListener('keydown', (e) => {
     if (input) input.focus();
     return;
   }
+
+  if (handleAgendaRowKey(e)) return; // the Agenda, TODO, Match and Keyword search screens: move among rows, act on one
 
   if (S.currentView !== 'org' || !S.state.doc) return; // everything below acts on the outline specifically
 

@@ -11,7 +11,7 @@
  */
 
 import { I, O, V, VEC, F, frac, add, sub, mul, div, neg, pow, equal, normalize, callFunction, possibleSigns, isNum, zerop, eqInt, negp, looksNeg, registerFunction, SymbolicUnsupported } from './calc-symbolic.js';
-import { simplify } from './calc-simplify.js';
+import { simplify, toSimpleFraction } from './calc-simplify.js';
 
 /** @typedef {import('./calc-symbolic.js').Form} Form */
 
@@ -38,7 +38,7 @@ function contains(expr, target) {
 }
 
 /** math-expr-subst: the replacement is not simplified. @param {Form} expr @param {Form} old @param {Form} repl @returns {Form} */
-function subst(expr, old, repl) {
+export function subst(expr, old, repl) {
   if (equal(expr, old)) return repl;
   if (expr.t === 'vec') return VEC(expr.items.map((/** @type {Form} */ x) => subst(x, old, repl)));
   if (expr.t === 'op') return { ...expr, a: expr.a.map((/** @type {Form} */ x) => subst(x, old, repl)) };
@@ -89,10 +89,42 @@ function sqrtOf(x) {
   return normalize(O('sqrt', x));
 }
 
+/** @param {Form} x @returns {number} */
+function numberOf(x) {
+  if (x.t === 'int') return Number(x.v);
+  if (x.t === 'frac') return Number(x.n) / Number(x.d);
+  if (x.t === 'flt') return Number(x.m) * 10 ** x.e;
+  throw new SymbolicUnsupported('not a real number');
+}
+
+/** The whole integer root of a non-negative integer, or null. @param {bigint} v @param {bigint} k @returns {bigint | null} */
+function intRoot(v, k) {
+  if (v < 2n) return v;
+  const guess = BigInt(Math.round(Math.pow(Number(v), 1 / Number(k))));
+  for (const g of [guess - 1n, guess, guess + 1n]) if (g >= 0n && g ** k === v) return g;
+  return null;
+}
+
+/** x^(1/n) for a rational x and a rational n when every step is exact (the polynomial route of Calc), or null. @param {Form} x @param {Form} n @returns {Form | null} */
+function exactPower(x, n) {
+  const [xn, xd] = x.t === 'int' ? [x.v, 1n] : x.t === 'frac' ? [x.n, x.d] : [0n, 1n];
+  const [nn, nd] = n.t === 'int' ? [n.v, 1n] : n.t === 'frac' ? [n.n, n.d] : [0n, 1n];
+  if (nn <= 0n || xn <= 0n) return null; // exponent is 1 / (nn/nd) = nd/nn
+  const a = intRoot(xn, nn);
+  const b = intRoot(xd, nn);
+  if (a === null || b === null) return null;
+  return frac(a ** nd, b ** nd);
+}
+
 /** math-nth-root for the cases a solution needs. @param {Form} x @param {Form} n @returns {Form} */
 function nroot(x, n) {
   if (isNum(x) && isNum(n)) {
     if (negp(x)) throw new SymbolicUnsupported('root of a negative number');
+    if (n.t === 'flt' && x.t !== 'cplx') return F(Math.pow(numberOf(x), 1 / numberOf(n))); // the reciprocal keeps more than twelve digits here, as in Calc's solver
+    if ((isInt(x) || x.t === 'frac') && (isInt(n) || n.t === 'frac') && !negp(n)) {
+      const exact = exactPower(x, n);
+      if (exact) return exact;
+    }
     if (isInt(x) && isInt(n) && n.v > 0n) {
       const guess = BigInt(Math.round(Math.pow(Number(x.v), 1 / Number(n.v))));
       for (const g of [guess - 1n, guess, guess + 1n]) if (g >= 0n && g ** n.v === x.v) return I(g); // a whole root is exact
@@ -266,7 +298,8 @@ function tryProd(lhs, rhs, sign) {
     return tryFor(sub(a, mul(b, rhs)), I(0));
   }
   if (isOp(lhs, '^')) {
-    const [base, e] = lhs.a;
+    const [base, e0] = lhs.a;
+    const e = hasVar(e0) ? e0 : toSimpleFraction(e0); // a short decimal power is the fraction it is
     if (!hasVar(base)) {
       const logged = normalize(O('log', rhs, base));
       const around = div(mul(I(2), mul(V('pi'), getInt(V('i')))), normalize(O('ln', base)));
@@ -280,6 +313,7 @@ function tryProd(lhs, rhs, sign) {
         return tryFor(base, hasComplex(t2) ? t2 : normalize(t2));
       }
       if (looksNeg(e)) return tryFor(O('^', base, neg(e)), div(I(1), rhs));
+      if (e.t === 'frac' && !state.full) return tryFor(base, (isNum(rhs) && exactPower(rhs, e)) || normalize(O('^', rhs, frac(e.d, e.n)))); // a polynomial in a fractional power of the variable
       const turn = normalize(O('exp', div(mul(V('pi'), getInt(V('i'))), div(e, I(2)))));
       return tryFor(base, mul(turn, nroot(rhs, e)), isOdd(e) ? solveSign(sign, e) : null);
     }
@@ -458,6 +492,11 @@ function tryFor(lhs, rhs, sign = null, noPoly = false) {
       return solveProd(r, tryFor(d.factor, I(0), null, true));
     }
   }
+  if ((lhs.f === '+' || lhs.f === '-') && !state.full) {
+    const [a, b] = lhs.a;
+    const fracPower = (/** @type {Form} */ t) => isOp(t, '^') && equal(t.a[0], state.v) && t.a[1].t === 'frac' && t.a[1].n > 0n;
+    if (fracPower(a) && !hasVar(b)) return tryFor(a, lhs.f === '+' ? sub(rhs, b) : add(rhs, b), sign);
+  }
   const root = findRootTerm(lhs, false);
   if (root && countOf(lhs, root.term) === 1) {
     const stripped = normalize(subst(lhs, root.term, I(0)));
@@ -628,3 +667,13 @@ function solveCall(name, args) {
 registerFunction('solve', (args) => (args.length === 2 ? solveCall('solve', args) : null));
 registerFunction('fsolve', (args) => (args.length === 2 ? solveCall('fsolve', args) : null));
 registerFunction('expand', (args) => (args.length === 1 ? expand(args[0]) : null));
+registerFunction('nroot', (args) => {
+  if (args.length !== 2) return null;
+  const [x, n] = args;
+  if ((x.t === 'int' || x.t === 'frac') && (n.t === 'int' || n.t === 'frac')) {
+    if (negp(x)) throw new SymbolicUnsupported('root of a negative number');
+    const exact = exactPower(x, n.t === 'int' ? n : div(I(1), n)); // x^(1/n) is x^(1/(1/n')) for a fraction
+    if (exact && n.t === 'int') return exact;
+  }
+  return normalize(O('^', x, n.t === 'int' ? frac(1n, n.v) : div(I(1), n)));
+});

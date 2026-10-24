@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v632 — Derivatives, row actions on Find matches, todo commands
+Table formulas gain =deriv=, =tderiv=, =nroot= and =prfac=, and =solve= reads decimal powers as fractions. On the Agenda, TODO, Match and Keyword search screens the row of the current Find match is focused: n and p move it, t changes its state, Enter opens its heading. =todo= commands in =org-agenda-custom-commands= open the TODO list for chosen keywords, =org-agenda-search-view-max-outline-level= limits Keyword search, and =#+FILETAGS:= tags count as inherited in the tag filters. The TODO list no longer shows entries under an archived heading.
+Verified: 150 more table expressions and 12 more Match and Keyword search cases compared with Emacs 29.3.
+
 * v631 — Calc algebra, ODT table styles, closer LaTeX
 Table formulas understand more of Calc's algebra: =simplify=, =esimplify=, =expand=, =solve= and =fsolve= (linear and quadratic equations, powers, roots, inverse functions, inequalities and systems), intervals such as =[1 .. 5]=, chained comparisons like =1 <= x < 7=, and =1:2= fractions. ODT export reads =org-odt-table-styles= from the Lisp init and styles banded rows and columns. LaTeX export writes the =property=, =input-file= and =modification-time= macros, reads =org-latex-default-table-mode=, and handles table environments and footnote tables as Emacs does.
 Verified: 392 algebra expressions, 5 ODT files and 5 LaTeX files compared with Emacs 29.3.

@@ -14,7 +14,7 @@
  *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarLocationName?: string | null, calendarDateStyle?: string, diaryHebrewSabbathCandlesMinutes?: number, calendarTimeDisplayForm?: string,
  *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
  *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
- *   diary?: import('./agenda-diary.js').DiarySource | null,
+ *   diary?: import('./agenda-diary.js').DiarySource | null, keywords?: string | null,
  * }} AgendaOptions
  */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -1362,16 +1362,20 @@ function monthView(items, date = new Date()) {
  * @param {{ documentId: string, doc: Doc }[]} docs
  */
 function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
-  const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null } = opts;
+  const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null, keywords = null } = opts;
+  // a keyword list (`WAITING|NEXT`, or `*` for every state) as org-todo-list takes it; without one, the states that are not done
+  const wanted = keywords && /\S/.test(keywords) && keywords.trim() !== '*' ? new Set(keywords.split('|').map((/** @type {string} */ k) => k.trim()).filter(Boolean)) : null;
+  const every = !!keywords && keywords.trim() === '*';
   /** @type {any[]} */ const items = [];
 
   for (const { documentId, doc } of docs) {
-    walkHeadings(doc, (/** @type {any} */ heading) => {
-      if (!includeArchived && isArchived(heading)) return;
-      if (!includeCommented && isCommentedHeading(heading)) return;
+    walkHeadings(doc, (/** @type {any} */ heading, /** @type {Doc['children']} */ ancestors) => {
+      // a whole archived or commented tree is skipped, not only its top heading
+      if (!includeArchived && [...ancestors, heading].some(isArchived)) return;
+      if (!includeCommented && [...ancestors, heading].some(isCommentedHeading)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
       if (!heading.todo) return; // no TODO state at all -- not a task
-      if (isDone && isDone(heading.todo)) return;
+      if (wanted ? !wanted.has(heading.todo) : !every && isDone && isDone(heading.todo)) return;
       items.push({
         documentId,
         heading,

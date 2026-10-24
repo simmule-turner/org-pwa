@@ -1117,7 +1117,7 @@ export function renderTaskListView() {
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
   heading.style.opacity = '0.65';
-  heading.textContent = 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
+  heading.textContent = S.taskKeywords ? `Global list of TODO items of type: ${S.taskKeywords === '*' ? 'every state' : S.taskKeywords}` : 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
   headingRow.appendChild(heading);
 
   container.appendChild(headingRow);
@@ -1132,6 +1132,7 @@ export function renderTaskListView() {
     isDone: (/** @type {any} */ todo) => todoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
+    keywords: S.taskKeywords || null,
   });
 
   if (items.length === 0) {

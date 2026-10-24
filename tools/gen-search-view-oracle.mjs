@@ -37,6 +37,7 @@ const el = `
          (org-agenda-search-view-always-boolean (and (kget 'vars c) (assq (quote org-agenda-search-view-always-boolean) (kget 'vars c)) t))
          (org-agenda-search-view-force-full-words (and (kget 'vars c) (assq (quote org-agenda-search-view-force-full-words) (kget 'vars c)) t))
          (org-use-tag-inheritance (if (and (kget 'vars c) (assq (quote org-use-tag-inheritance) (kget 'vars c))) nil t))
+         (org-agenda-search-view-max-outline-level (let ((v (and (kget 'vars c) (assq (quote org-agenda-search-view-max-outline-level) (kget 'vars c))))) (if v (string-to-number (cdr v)) 0)))
          (todo (eq (kget 'todoOnly c) t))
          (inhibit-message t) (inhibit-read-only t))
     (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*"))

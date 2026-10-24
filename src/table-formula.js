@@ -85,7 +85,9 @@ import {
 } from './calc-complex.js';
 import * as Sym from './calc-symbolic.js';
 import './calc-simplify.js'; // registers simplify and esimplify with the symbolic engine
-import './calc-solve.js'; // registers solve and fsolve with the symbolic engine
+import './calc-solve.js'; // registers solve, fsolve and expand with the symbolic engine
+import './calc-deriv.js'; // registers deriv and tderiv
+import './calc-prfac.js'; // registers prfac
 import { formatTimeString } from './format-time.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
@@ -2212,6 +2214,7 @@ function symbolicOutcome(source, ctx, strict = false) {
   if (source === null) return null;
   symbolicCtx = { ...ctx, symbolicStrict: strict };
   Sym.setStrictFunctions(strict);
+  Sym.setAngleDegrees(ctx.angleMode === 'degrees');
   try {
     const form = Sym.normalize(symbolicForm(source, symbolicCtx));
     if (form.t === 'int') return { kind: 'num', value: form.v > BigInt(Number.MAX_SAFE_INTEGER) || form.v < -BigInt(Number.MAX_SAFE_INTEGER) ? form.v : Number(form.v), isFloat: false };

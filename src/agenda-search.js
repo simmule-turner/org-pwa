@@ -114,7 +114,9 @@ export function entrySearchText(heading) {
  * The headings of `docs` that satisfy the plan, in file order.
  * @param {{ documentId: string, doc: Doc }[]} docs
  * @param {SearchPlan} plan
- * @param {{ skip?: (heading: Heading, ancestors: Heading[], doc: Doc) => boolean, isNotDone?: (todo: string) => boolean }} [options]
+ * `maxLevel` is org-agenda-search-view-max-outline-level: a deeper heading is not an entry of its own, and a heading of that level
+ * takes in the text of everything below it.
+ * @param {{ skip?: (heading: Heading, ancestors: Heading[], doc: Doc) => boolean, isNotDone?: (todo: string) => boolean, maxLevel?: number }} [options]
  * @returns {{ documentId: string, doc: Doc, heading: Heading, ancestors: Heading[] }[]}
  */
 export function searchEntries(docs, plan, options = {}) {
@@ -125,7 +127,9 @@ export function searchEntries(docs, plan, options = {}) {
       for (const node of nodes) {
         if (node.type !== 'heading') continue;
         const skipHere = skipped || (options.skip ? options.skip(node, ancestors, doc) : false);
-        if (!skipHere && matches(node, plan, options)) found.push({ documentId, doc, heading: node, ancestors });
+        const max = options.maxLevel || 0;
+        const entry = !max || node.level <= max;
+        if (entry && !skipHere && matches(node, plan, options, max && node.level === max ? regionText(node) : null)) found.push({ documentId, doc, heading: node, ancestors });
         walk(node.children || [], [...ancestors, node], skipHere);
       }
     };
@@ -134,10 +138,25 @@ export function searchEntries(docs, plan, options = {}) {
   return found;
 }
 
-/** @param {Heading} heading @param {SearchPlan} plan @param {{ isNotDone?: (todo: string) => boolean }} options */
-function matches(heading, plan, options) {
+/** The entry's text with the text of every heading below it. @param {Heading} heading @returns {string} */
+function regionText(heading) {
+  /** @type {string[]} */ const parts = [entrySearchText(heading)];
+  /** @param {Heading[]} nodes */
+  const walk = (nodes) => {
+    for (const n of nodes) {
+      if (n.type !== 'heading') continue;
+      parts.push(entrySearchText(n));
+      walk(n.children || []);
+    }
+  };
+  walk(heading.children || []);
+  return parts.join('\n');
+}
+
+/** @param {Heading} heading @param {SearchPlan} plan @param {{ isNotDone?: (todo: string) => boolean }} options @param {string | null} [region] */
+function matches(heading, plan, options, region = null) {
   if (plan.todoOnly && !(heading.todo && (options.isNotDone ? options.isNotDone(heading.todo) : true))) return false;
-  const text = plan.headlineOnly ? /** @type {string} */ (headingPreambleLines(heading)[0]) : entrySearchText(heading);
+  const text = plan.headlineOnly ? /** @type {string} */ (headingPreambleLines(heading)[0]) : region ?? entrySearchText(heading);
   if (plan.negatives.some((re) => re.test(text))) return false;
   return plan.positives.every((re) => re.test(text));
 }

@@ -3,6 +3,7 @@
 // screen is highlighted, one is current, and C-s / C-r (or the arrows) move between them; nothing is hidden and nothing leaves the screen.
 import { emacsRegexToJs, EmacsRegexError } from '../src/emacs-regex.js';
 import { S } from './app-state.js';
+import { focusRowOfMark } from './agenda-row-focus.js';
 import { outlineEl } from './dom.js';
 
 const ROW_VIEWS = ['agenda', 'tasklist', 'match', 'searchview'];
@@ -49,6 +50,7 @@ function paintCurrent() {
     const on = i === find.current;
     m.style.cssText = 'color:inherit;border-radius:2px;padding:0 1px;' + (on ? 'background:#ffb74d;outline:2px solid var(--accent);' : 'background:#ffe38a;');
   });
+  if (find.marks.length) focusRowOfMark(find.marks[find.current]); // the row of the current match is the focused row
 }
 
 function updateCount() {

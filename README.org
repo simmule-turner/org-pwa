@@ -171,7 +171,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 :CUSTOM_ID: table-formulas
 :END:
 
-~#+TBLFM:~ formulas use a subset of org's formula language. Org hands anything beyond simple arithmetic to Emacs Calc, which is not reproduced here.
+~#+TBLFM:~ formulas use org's formula language, with the Calc functions listed below.
 
 | Name | What it does |
 |---+---|
@@ -288,7 +288,15 @@ An unrecognized flag is ignored. Examples:
 
 *Vectors and matrices*: ~[1, 2, 3]~ and ~[[1, 2], [3, 4]]~ in a cell or formula; a cell range such as ~$1..$3~ is a vector of its non-blank cells. ~+ -~ and ~* /~ by a number work elementwise; ~*~ is a dot product for two vectors, a matrix product for matrices, and ~^~ takes a matrix to an integer power. Functions: ~det~, ~inv~, ~trn~, ~tr~, ~cross~, ~vlen~, ~abs~ (the length), and the ~v~ aggregates, which flatten.
 
-*Algebra*: letters are variables, and what cannot be reduced to a number is written as Calc writes it, so ~x + x~ is ~2 x~. ~simplify~ and ~esimplify~ apply Calc's rules for sums, products, powers, roots, logarithms and the trig functions; ~expand~ multiplies out sums. ~solve(a*x+b=c, x)~ is ~x = (c - b) / a~: ~solve~ and ~fsolve~ take linear and quadratic equations, powers, roots, exponentials, logarithms and the trig functions, inequalities such as ~x > 3~ and systems of equations such as ~solve([x+y=3, x-y=1], [x, y])~. ~solve~ takes the positive root where there are two; ~fsolve~ writes ~s1~ for the choice and ~n1~ for the whole number in a periodic solution. Intervals (~[1 .. 5]~, ~(1 .. 5]~) add, multiply, divide and take powers, and ~1 <= x < 7~ is the test ~x in [1 .. 7)~.
+*Algebra*: letters are variables, and what cannot be reduced to a number is written as Calc writes it, so ~x + x~ is ~2 x~. ~simplify~ and ~esimplify~ apply Calc's rules for sums, products, powers, roots, logarithms and the trig functions; ~expand~ multiplies out sums. ~deriv(sin(x)*x, x)~ differentiates, as does ~tderiv~ when other variables may depend on x. ~prfac(360)~ is the vector of prime factors, ~[2, 2, 2, 3, 3, 5]~. ~solve(a*x+b=c, x)~ is ~x = (c - b) / a~: ~solve~ and ~fsolve~ take linear and quadratic equations, powers, roots, exponentials, logarithms and the trig functions, inequalities such as ~x > 3~ and systems of equations such as ~solve([x+y=3, x-y=1], [x, y])~. ~solve~ takes the positive root where there are two; ~fsolve~ writes ~s1~ for the choice and ~n1~ for the whole number in a periodic solution. Intervals (~[1 .. 5]~, ~(1 .. 5]~) add, multiply, divide and take powers, and ~1 <= x < 7~ is the test ~x in [1 .. 7)~.
+
+#+begin_example
+| Equation    | Solved for x    |
+|-------------+-----------------|
+| a*x+b=c     | x = (c - b) / a |
+| x^2-5*x+6=0 | x = 3           |
+#+TBLFM: $2=solve($1,x)
+#+end_example
 
 Out of scope: the rest of Calc's vector and matrix library, and recalculation on every keystroke.
 
@@ -412,7 +420,7 @@ renders three right-aligned equations, lined up at the ~&~ marks and automatical
 
 Tap the *Search* button in the top bar (see [[#search-button][The Search button]]), or open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
 
-On the Agenda, TODO, Match and Keyword search screens Find works in place, as ~C-s~ does in an agenda buffer: every match in the rows on screen is highlighted and the current one is marked more strongly. Enter or ▼ (~C-s~) goes to the next, Shift+Enter or ▲ (~C-r~) to the previous, wrapping round. A lower-case query ignores case and a capital letter makes it exact; ⋯ has Regex. Closing the search clears the marks.
+On the Agenda, TODO, Match and Keyword search screens Find works in place, as ~C-s~ does in an agenda buffer: every match in the rows on screen is highlighted and the current one is marked more strongly. Enter or ▼ (~C-s~) goes to the next, Shift+Enter or ▲ (~C-r~) to the previous, wrapping round. A lower-case query ignores case and a capital letter makes it exact; ⋯ has Regex. Closing the search clears the marks and leaves the row of the current match focused. On these screens ~n~ and ~p~ (or ~j~, ~k~ and the arrow keys) move the focus, ~t~ changes the row's state, a comma sets its priority, Enter goes to its heading and Space opens its actions.
 
 Results appear at once from what is loaded and fill in as each agenda file finishes (a file that fails to fetch is left out). The query box and its options live in the minibuffer (see [[#modeline][Modeline and minibuffer]]). Results update as you type, grouped under their heading with the match highlighted; a result from another file shows its name.
 
@@ -503,7 +511,7 @@ Two Agenda views list a query's results as rows, with the Agenda's prefix format
 
 *Keyword search* is Emacs's ~s~. Without a leading ~+~, ~-~ or ~{~ the whole text is one phrase, and each space matches any run of whitespace. With one, the words are a Boolean list: ~+budget -draft~ needs "budget" and excludes "draft"; ~"Q4 plan"~ keeps its space; ~{regexp}~ is an Emacs regular expression. A leading ~*~ searches headlines only, then ~!~ limits to TODO entries, then ~:~ matches whole words. An entry is a heading with its own text, not its sub-headings. Rows follow the ~search~ strategy, and the matching words are marked.
 
-*Agenda commands* (the button in either view, or the palette) lists the built-in keys ~a~, ~t~, ~m~ and ~s~ and the queries in ~org-agenda-custom-commands~. *Save…* in either view, or *Save as agenda command…* in the search options, adds the current query under a key you choose.
+*Agenda commands* (the button in either view, or the palette) lists the built-in keys ~a~, ~t~, ~m~ and ~s~ and the commands in ~org-agenda-custom-commands~, which include ~todo~ commands: ~("n" "Next" todo "NEXT|WAITING")~ opens the TODO list for those keywords (~*~ is every state). *Save…* in either view, or *Save as agenda command…* in the search options, adds the current query under a key you choose.
 
 Example: ~+budget -draft~ in Keyword search, saved as ~b~.
 
@@ -669,7 +677,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
-| ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~agenda~ and ~alltodo~; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
+| ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
@@ -679,6 +687,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
 | ~org-agenda-search-view-always-boolean~ | ~nil~ | ~t~ reads every Keyword search as a Boolean list of words, without needing a leading ~+~ or ~-~ |
 | ~org-agenda-search-view-force-full-words~ | ~nil~ | ~t~ makes the words of a Keyword search match whole words |
+| ~org-agenda-search-view-max-outline-level~ | ~0~ | A number above 0 limits Keyword search to headings down to that level; a heading at that level takes in the text below it |
 | ~org-agenda-show-all-dates~ | ~t~ | Whether days with nothing on them show in the Agenda; the *g* button toggles it for the session (see [[#agenda][Agenda]]); also Settings → Quick Settings → *Agenda* |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |

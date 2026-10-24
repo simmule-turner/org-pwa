@@ -38,6 +38,16 @@ function state() {
 }
 
 /**
+ * Shows the TODO list, for some keywords (`WAITING|NEXT`, or `*` for every state) or, with null, for every unfinished entry.
+ * @param {string | null} keywords
+ */
+export function openTodoList(keywords) {
+  S.taskKeywords = keywords && /\S/.test(keywords) ? keywords.trim() : null;
+  if (S.currentView === 'tasklist') render();
+  else switchToView('tasklist');
+}
+
+/**
  * Shows the Match (`tags`) or Search (`search`) view with this query.
  * @param {'tags' | 'search'} kind
  * @param {{ query?: string, todoOnly?: boolean, sortingStrategy?: string | null, title?: string }} [options]
@@ -66,6 +76,7 @@ function queryOptions() {
     documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
     alwaysBoolean: truthy(vars['org-agenda-search-view-always-boolean']),
     forceFullWords: truthy(vars['org-agenda-search-view-force-full-words']),
+    maxLevel: Math.max(0, parseInt(vars['org-agenda-search-view-max-outline-level'] || '0', 10) || 0),
   };
 }
 
@@ -263,7 +274,7 @@ export function openAgendaCommands() {
       };
       group('Built in');
       row('a', 'Agenda', '', () => switchToView('agenda'));
-      row('t', 'Global TODO list', '', () => switchToView('tasklist'));
+      row('t', 'Global TODO list', '', () => openTodoList(null));
       row('m', 'Match a tags, property or TODO query', '', () => openQueryView('tags'));
       row('s', 'Search for keywords', '', () => openQueryView('search'));
       group(`Yours · ${VARIABLE}`);
@@ -281,7 +292,8 @@ export function openAgendaCommands() {
 /** @param {import('../src/agenda-commands.js').CustomCommand} c */
 export function runCommand(c) {
   if (c.type === 'agenda') return switchToView('agenda');
-  if (c.type === 'alltodo') return switchToView('tasklist');
+  if (c.type === 'alltodo') return openTodoList(null);
+  if (c.type === 'todo') return openTodoList(c.query);
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });
 }
 

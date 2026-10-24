@@ -29,11 +29,14 @@ for (const c of cases) {
       alwaysBoolean: 'org-agenda-search-view-always-boolean' in vars,
       forceFullWords: 'org-agenda-search-view-force-full-words' in vars,
       tagInheritance: 'org-use-tag-inheritance' in vars ? false : true,
+      maxLevel: Number(vars['org-agenda-search-view-max-outline-level'] || 0),
     };
     const command = c.kind === 'command' ? parseCustomCommands(c.commands).find((x) => x.key === c.key) : null;
     const items = command ? commandItems(command, list, list, options) : c.kind === 'search' ? searchViewItems(list, c.query, options) : matchViewItems(list, c.query, options);
     const got = items.map((i) => [i.documentId, findHeadingLineNumber(/** @type {any} */ (docs.get(i.documentId)), /** @type {any} */ (i.heading)) + 1]);
-    assert.deepEqual(got, want.rows);
+    // the TODO list orders its rows by its own Sort control, so a todo command is compared as a set
+    if (command?.type === 'todo') assert.deepEqual(got.sort(), [...want.rows].sort());
+    else assert.deepEqual(got, want.rows);
   });
 }
 

@@ -14,14 +14,10 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] Row actions on the current Find match
-Find on the Agenda, TODO, Match and Keyword search screens marks the current match, but keys such as =t= (change state) and =RET= (go to the heading) do not act on it, as they do on the row under point in an Emacs agenda buffer. Needs a keyboard-focused row on those screens. Effort: M. Impact: S.
 ** [#C] Match and Keyword search views: possible updates
 Where the two views and agenda commands differ from Emacs, or stop short of it:
-- Rows show the matching words marked and one matching line of text; Emacs shows the heading line only.
-- The Keyword search box does not read the Search panel's =tag:=, =todo:= and =key:value= tokens; the panel does not read the Emacs grammar. They are two grammars.
-- Custom commands: only =tags=, =tags-todo=, =search=, =agenda= and =alltodo=, with the setting =org-agenda-sorting-strategy=. Missing: =todo= and =stuck= commands, composite blocks, other per-command settings (=org-agenda-files=, filter presets), and Lisp functions as commands.
-- =org-agenda-search-view-max-outline-level= is not read; the Search panel's =tag:= filter and Agenda tag chips do not yet count =#+FILETAGS:= tags as inherited (the Match view does).
+- Rows show the matching words marked and one matching line of text; Emacs shows the heading line only. Effort: S, once it is decided whether the matching line stays as a setting.
+- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets). Lisp functions as commands wait for the interpreter (see [[#appendix-lisp][Appendix: a Lisp interpreter]]).
 - Effort: M. Impact: S.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
@@ -38,13 +34,6 @@ A subtree moved on one side and edited on the other is an ordinary clash today.
 * Tables and clocking
 ** [#C] A field's name as a formula target, and the =%= default format parameter
 Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
-** [#C] Symbolic algebra from Emacs Calc: the rest
-Display (v614), intervals, chained comparisons, =simplify=, =esimplify=, =expand=, =solve= and =fsolve= are done and checked against Emacs 29.3 (about 390 cases in =test/calc-oracle-cases.mjs=). What is left:
-- =solve= and =fsolve=: cubic and quartic polynomials (they stop with an error), a polynomial in an expression other than the variable (=(x+1)^2+1=5= is solved as a quadratic in x, so the written form can differ), =fsolve= of =sin=, =cos= and =tan=, complex roots in =fsolve=, a float exponent (=x^(1/3)=2= gives =8.= where Calc gives =8.0000000=, because Calc works in 12-digit decimals), =roots=.
-- Other algebra: =factor=, =apart=, =collect=, =poly=, =nrat= and the calculus functions (=deriv=, =integ=, =sum=, =taylor=).
-- =simplify=: the rules for =sec=, =csc=, =cot=, the hyperbolic and inverse trig functions, =%=, and angles that are whole multiples of 30 or 45 (=sin(x + 30)=).
-- Intervals: =ln=, =exp=, =sin= and =max= of an interval, =[a, b .. c]= forms.
-- Effort: M for the cubic and quartic solvers, S for each of the others. Impact: S.
 
 * Babel and attachments
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
@@ -64,15 +53,7 @@ Display (v614), intervals, chained comparisons, =simplify=, =esimplify=, =expand
 
 ** [#C] ODT export: what is left after the port
 =src/ox-odt.js= follows ox-odt on the files checked with Emacs 29.3 (headings, lists, tables, blocks, links, footnotes, timestamps, table of contents, captions, planning, options). What is left:
-- =#+TOC: tables= and =listings= are ignored, as in Emacs. =org-odt-preferred-output-format= (docx, pdf conversion) has no counterpart: the file is always =.odt=.
 - Source coloring is the app's own highlighter, for the languages it knows; Emacs colors through =htmlfontify= and the major mode, so the faces can differ.
-- Impact: S.
-** [#B] LaTeX export: where it differs from Emacs
-Found by about 375 small probes run through Emacs 29.3 and the app and compared line by line; the wrong or lost output and the =#+OPTIONS:=, property and figure differences are fixed and kept as fixtures. What is left:
-- Links: =~/= paths are not expanded to the home directory and =docview:= links are not written as Emacs writes them (both depend on the machine Emacs ran on).
-- Text: the macro =(eval ..)= (it needs the Lisp interpreter). =input-file= and =modification-time= are written in LaTeX export only.
-- Variables not read: =org-latex-format-headline-function= (a Lisp function, so it waits for the interpreter).
-- Small: =creator:t= writes "Org Mode PWA", not Emacs's version string.
 - Impact: S.
 
 * Order for the next release
@@ -122,7 +103,11 @@ Each of these is complete in the app except for the function it calls, and needs
 | =user-defined-up= and =-down= in =org-agenda-sorting-strategy= | =org-agenda-cmp-user-defined=, a function of two agenda lines that returns =-1=, =1= or =nil= | The keys are read and have no opinion, as in Emacs when the function is =nil= |
 | =%(function)= in =org-agenda-prefix-format= | A function called for each agenda line, its result put in the prefix | The other =%= forms work; this one adds nothing |
 | =org-priority-get-priority-function= | A function of no arguments that returns a heading's priority number | The priority comes from the cookie and the default |
+| A Lisp function as an agenda custom command, in =org-agenda-custom-commands= | The full evaluator, to run the function and show what it builds | Commands of that kind are left out of the list |
 | A =holiday-sexp= expression beyond the subset in the table above | The full evaluator, with =date= bound | The app's own Lisp subset |
+
+** Later: LaTeX export
+Two LaTeX export gaps wait for the interpreter: the macro =(eval ..)= and the setting =org-latex-format-headline-function= (a Lisp function called for each heading). The other differences from Emacs that remain are small or depend on the machine (=~/= and =docview:= links, =creator:t= naming the version).
 
 ** Later: Emacs and Org specific
 These need Emacs's own libraries and are not part of "small standalone programs":
@@ -146,3 +131,14 @@ A section in Extensions for Lisp that runs once per session and defines function
 What stays in JavaScript: the calendar grid and its layout (UI, redrawn often), and the agenda's per-day effort total and =+N?= count (computed while drawing, with no Org equivalent). A hook the interpreter can call may be added to the latter later.
 
 Emacs's own =calendar.el=, =holidays.el= and =solar.el= are not run: they need macros, =cl-lib=, =defcustom=, =require= and buffer functions. The library is written for this interpreter, under Emacs's function names.
+
+* Appendix: Calc algebra we are not porting
+:PROPERTIES:
+:CUSTOM_ID: appendix-calc
+:END:
+
+Done and checked against Emacs 29.3 (about 500 cases in =test/calc-oracle-cases.mjs=): display, intervals and chained comparisons, =simplify=, =esimplify=, =expand=, =solve=, =fsolve=, =deriv= and =tderiv=, =nroot=. The rest of Calc's symbolic algebra is not planned, for these reasons:
+- Cubic and quartic =solve=: Calc's answer is a long nest of roots that nobody reads off a table cell, and the solver stops with an error instead of guessing.
+- =factor= (of polynomials; =prfac= does prime factors), =apart=, =collect=, =poly=, =nrat=, =integ=, =sum=, =taylor=: a computer algebra system, far from what a table formula is used for. Each is a large port (=factor= alone is Calc's polynomial factoring and its rule tables) and an answer in a different shape from Calc's is worse than an error.
+- Corners of =solve= and =simplify=: a polynomial in an expression other than the variable, =fsolve= of =sin=, =cos= and =tan=, complex roots in =fsolve=, =roots=, the trig rules for =sec=, =csc=, =cot= and multiples of 30 or 45 degrees, interval =ln=, =exp=, =sin= and =max=, and =[a, b .. c]= forms. Each is rare in a table.
+Anything of these that is needed again comes back as its own item, with the case that needed it.

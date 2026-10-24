@@ -13,7 +13,7 @@ import { effectivePropertyValue, searchDocumentsByMatchQuery } from './search.js
 /** @typedef {{ skipArchived?: boolean, skipCommented?: boolean, doneKeywords?: string[], todoKeywords?: string[], todoOnly?: boolean,
  *   tagInheritance?: import('./tag-inheritance.js').TagInheritance, propertyInheritance?: boolean, tagGroups?: Map<string, string[]>, now?: Date,
  *   sortingStrategy?: string | null, localVariables?: Record<string, string>, documentOrder?: string[],
- *   alwaysBoolean?: boolean, forceFullWords?: boolean }} QueryOptions */
+ *   alwaysBoolean?: boolean, forceFullWords?: boolean, maxLevel?: number }} QueryOptions */
 
 /** @param {Heading} heading @param {QueryOptions} options */
 const skipped = (heading, options) => (options.skipArchived !== false && isArchived(heading)) || (options.skipCommented !== false && isCommentedHeading(heading));
@@ -87,7 +87,7 @@ export function searchViewItems(docs, query, options = {}) {
   if (!/\S/.test(query)) return [];
   const done = new Set(options.doneKeywords || ['DONE']);
   const plan = planSearch(query, { todoOnly: options.todoOnly, alwaysBoolean: options.alwaysBoolean, forceFullWords: options.forceFullWords });
-  const hits = searchEntries(docs, plan, { skip: (heading) => skipped(heading, options), isNotDone: (todo) => !done.has(todo) });
+  const hits = searchEntries(docs, plan, { skip: (heading) => skipped(heading, options), isNotDone: (todo) => !done.has(todo), maxLevel: options.maxLevel });
   return order(
     hits.map((hit) => itemFor({ ...hit, category: effectivePropertyValue(hit.heading, hit.ancestors, 'CATEGORY', true) }, true)),
     'search',

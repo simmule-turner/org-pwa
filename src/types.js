@@ -171,11 +171,11 @@ export {};
  *   searchQuery: string, searchUseRegex: boolean, searchUseMatch: boolean, searchOptionsMenuOpen: boolean, activeQueryReplace: any,
  *   agendaViewType: string, agendaAnchorDate: Date, agendaLogMode: boolean, agendaHabitsHidden: boolean, agendaEffortPanelOpen: boolean,
  *   agendaEffortSort: string | null, agendaEffortFilter: { op: string, minutes: number | null, text: string } | null, agendaEffortMax: { minutes: number | null, text: string } | null,
- *   viewFilter: import('./agenda-filter.js').ViewFilter, agendaSeedSignature?: string, undoToastTimer: number, taskSort: string, queryView?: { kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string, focusInput?: boolean },
+ *   viewFilter: import('./agenda-filter.js').ViewFilter, agendaSeedSignature?: string, undoToastTimer: number, taskSort: string, taskKeywords?: string | null, queryView?: { kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string, focusInput?: boolean },
  *   agendaShowAllDatesOverride: boolean | null, showClockDisplay: boolean, showClocktable: boolean,
  *   clocktableStart: string, clocktableEnd: string, clocktableMaxlevel: number,
  *   weatherData: Record<string, any> | null, weatherLastRefreshed: string | null,
  *   expandedThemeColorSection: string | null, customThemeColors: Record<string, Record<string, string>>,
- *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null, ancestorIndexCache: WeakMap<Heading, Heading[]> | null,
+ *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null, ancestorIndexCache: WeakMap<Heading, Heading[]> | null, fileTagsIndexCache?: WeakMap<Heading, string[]> | null,
  *   swRegistration: ServiceWorkerRegistration | null, updateCheckStatus: string | null, currentAppVersion: string | null, appVersionCheckState: string
  * }} AppState */

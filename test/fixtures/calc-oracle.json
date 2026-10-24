@@ -11952,5 +11952,1213 @@
   ],
   "formula": "@1$3=fsolve(ln(x)=2,x)",
   "expect": "| x | 7 | x = 7.3890561 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,x)",
+  "expect": "| x | 7 | 2 x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^3+2*x,x)",
+  "expect": "| x | 7 | 3 x^2 + 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(3,x)",
+  "expect": "| x | 7 | 0 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x,x)",
+  "expect": "| x | 7 | 1 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(y,x)",
+  "expect": "| x | 7 | 0 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(a*x^2+b*x+c,x)",
+  "expect": "| x | 7 | 2 a x + b |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x*y,x)",
+  "expect": "| x | 7 | y |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2*y^3,y)",
+  "expect": "| x | 7 | 3 x^2 y^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(1/x,x)",
+  "expect": "| x | 7 | -x^-2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(1/(x+1),x)",
+  "expect": "| x | 7 | -(x + 1)^-2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x/(x+1),x)",
+  "expect": "| x | 7 | 1 / (x + 1) - x / (x + 1)^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sqrt(x),x)",
+  "expect": "| x | 7 | 0.5 / sqrt(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sqrt(x^2+1),x)",
+  "expect": "| x | 7 | x / sqrt(x^2 + 1) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(ln(x),x)",
+  "expect": "| x | 7 | 1 / x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(ln(2*x),x)",
+  "expect": "| x | 7 | 1. / x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(exp(x),x)",
+  "expect": "| x | 7 | exp(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(exp(2*x),x)",
+  "expect": "| x | 7 | 2 exp(2 x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(e^x,x)",
+  "expect": "| x | 7 | e^x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(2^x,x)",
+  "expect": "| x | 7 | 0.69314718 2^x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^x,x)",
+  "expect": "| x | 7 | x x^(x - 1) + ln(x) x^x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^n,x)",
+  "expect": "| x | 7 | n x^(n - 1) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(x),x)",
+  "expect": "| x | 7 | cos(x) pi / 180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(cos(x),x)",
+  "expect": "| x | 7 | sin(x) pi / -180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(tan(x),x)",
+  "expect": "| x | 7 | sec(x)^2 pi / 180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(x)^2,x)",
+  "expect": "| x | 7 | 0.011111111 sin(x) cos(x) pi |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(2*x),x)",
+  "expect": "| x | 7 | 0.011111111 cos(2 x) pi |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(arcsin(x),x)",
+  "expect": "| x | 7 | 180 / (sqrt(1 - x^2) pi) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(arctan(x),x)",
+  "expect": "| x | 7 | 180 / ((1 + x^2) pi) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(log10(x),x)",
+  "expect": "| x | 7 | 0.43429448 / x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(log(x,2),x)",
+  "expect": "| x | 7 | 1.4426950 / x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(f(x),x)",
+  "expect": "| x | 7 | f'(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(f(x^2),x)",
+  "expect": "| x | 7 | 2 x f'(x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(abs(x),x)",
+  "expect": "| x | 7 | abs'(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sinh(x),x)",
+  "expect": "| x | 7 | cosh(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,x,3)",
+  "expect": "| x | 7 | 2 3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2+y,x,2)",
+  "expect": "| x | 7 | 2 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(-x^2,x)",
+  "expect": "| x | 7 | -2 x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv((x+1)^2,x)",
+  "expect": "| x | 7 | 2 x + 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv((x+1)^3*(x-1),x)",
+  "expect": "| x | 7 | 3 (x - 1) (x + 1)^2 + (x + 1)^3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,y)",
+  "expect": "| x | 7 | 0 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(pi*x,x)",
+  "expect": "| x | 7 | pi |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^0.5,x)",
+  "expect": "| x | 7 | 0.5 / x^0.5 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^(1/2),x)",
+  "expect": "| x | 7 | 0.5 / x^0.5 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^-1,x)",
+  "expect": "| x | 7 | -x^-2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^-2,x)",
+  "expect": "| x | 7 | -2 / x^3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(deriv(x^3,x),x)",
+  "expect": "| x | 7 | 6 x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x*sin(x),x)",
+  "expect": "| x | 7 | sin(x) + x cos(x) pi / 180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x*exp(x),x)",
+  "expect": "| x | 7 | exp(x) + x exp(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(ln(sin(x)),x)",
+  "expect": "| x | 7 | cos(x) pi / (180 sin(x)) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2+2*x+1,x)",
+  "expect": "| x | 7 | 2 x + 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(4*x^3,x)",
+  "expect": "| x | 7 | 12 x^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2/2,x)",
+  "expect": "| x | 7 | x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(exp(-x^2),x)",
+  "expect": "| x | 7 | -2 x exp(-x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(cos(x)^2,x)",
+  "expect": "| x | 7 | -0.011111111 cos(x) sin(x) pi |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sec(x),x)",
+  "expect": "| x | 7 | sec(x) tan(x) pi / 180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,x,x)",
+  "expect": "| x | 7 | 2 x |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv([x^2,x],x)",
+  "expect": "| x | 7 | [2 x, 1] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2=3*x,x)",
+  "expect": "| x | 7 | 2 x = 3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=tderiv(x*y,x)",
+  "expect": "| x | 7 | y + x tderiv(y, x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(x),x);R",
+  "expect": "| x | 7 | cos(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(arctan(x),x);R",
+  "expect": "| x | 7 | 1 / (1 + x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(tan(2*x),x);R",
+  "expect": "| x | 7 | 2 sec(2 x)^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(x),x);D",
+  "expect": "| x | 7 | cos(x) pi / 180 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(cos(x^2),x);R",
+  "expect": "| x | 7 | -2 x sin(x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^3,x,2)",
+  "expect": "| x | 7 | 3 2^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sin(x),x,0);R",
+  "expect": "| x | 7 | cos(0) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(cosh(x)*tanh(x),x)",
+  "expect": "| x | 7 | tanh(x) sinh(x) + cosh(x) sech(x)^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(log(x,y),x)",
+  "expect": "| x | 7 | 1 / (ln(y) x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(log(2,x),x)",
+  "expect": "| x | 7 | -(log(2, x) / (ln(x) x)) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(g(x,y),x)",
+  "expect": "| x | 7 | g'(x, y) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(g(x,x^2),x)",
+  "expect": "| x | 7 | g'(x, x^2) + 2 x g'2(x, x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,2*x)",
+  "expect": "| x | 7 | 0 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(arcsinh(x)+arccosh(x)+arctanh(x),x)",
+  "expect": "| x | 7 | 1 / sqrt(x^2 + 1) + 1 / sqrt(x^2 - 1) + 1 / (1 - x^2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,x)+deriv(x^3,x)",
+  "expect": "| x | 7 | 2 x + 3 x^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=tderiv(f(x)*y,x)",
+  "expect": "| x | 7 | y f'(x) + f(x) tderiv(y, x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(csc(x)+cot(x),x);R",
+  "expect": "| x | 7 | -(csc(x) cot(x)) - csc(x)^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(sqrt(x),x);R",
+  "expect": "| x | 7 | 0.5 / sqrt(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^2,x,y)",
+  "expect": "| x | 7 | 2 y |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=deriv(x^3,x,2)*2",
+  "expect": "| x | 7 | 6 2^2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1/3)=2,x)",
+  "expect": "| x | 7 | x = 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1/3)=2,x);p20",
+  "expect": "| x | 7 | x = 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1/5)=2,x)",
+  "expect": "| x | 7 | x = 32 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(0.5)=3,x)",
+  "expect": "| x | 7 | x = 9 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(2/3)=4,x)",
+  "expect": "| x | 7 | x = 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=2^(1/(1/3))",
+  "expect": "| x | 7 | 8. |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=1/(1/3)",
+  "expect": "| x | 7 | 3. |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=2^(3.00000000000)",
+  "expect": "| x | 7 | 8. |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=2^(3.00000000001)",
+  "expect": "| x | 7 | 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=2^(2.99999999999)",
+  "expect": "| x | 7 | 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=2^2.9999999999",
+  "expect": "| x | 7 | 8.0000000 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(2,1:3)",
+  "expect": "| x | 7 | 8 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(2,1:5)",
+  "expect": "| x | 7 | 32 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(8,1:3)",
+  "expect": "| x | 7 | 512 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:3)=2,x)",
+  "expect": "| x | 7 | x = 8 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:5)=2,x)",
+  "expect": "| x | 7 | x = 32 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:7)=2,x)",
+  "expect": "| x | 7 | x = 128 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:3)=3,x)",
+  "expect": "| x | 7 | x = 27 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:3)=1,x)",
+  "expect": "| x | 7 | x = 1 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:3)=4,x)",
+  "expect": "| x | 7 | x = 64 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:4)=2,x)",
+  "expect": "| x | 7 | x = 16 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(2:3)=4,x)",
+  "expect": "| x | 7 | x = 8 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(3:2)=8,x)",
+  "expect": "| x | 7 | x = 4 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:3)=y,x)",
+  "expect": "| x | 7 | x = y^3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=fsolve(x^(1:3)=2,x)",
+  "expect": "| x | 7 | x = 8 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(1:2)=3,x)",
+  "expect": "| x | 7 | x = 9 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^3=64,x)",
+  "expect": "| x | 7 | x = 4. |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(5:2)=32,x)",
+  "expect": "| x | 7 | x = 4 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(x^(3:2)=y,x)",
+  "expect": "| x | 7 | x = y^2:3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=solve(sqrt(x)=2,x)",
+  "expect": "| x | 7 | x = 4 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(8,3)",
+  "expect": "| x | 7 | 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(2,2)",
+  "expect": "| x | 7 | 1.4142136 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(16,4)",
+  "expect": "| x | 7 | 2 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(y,3)",
+  "expect": "| x | 7 | y^1:3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(27,3)",
+  "expect": "| x | 7 | 3 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(10,3)",
+  "expect": "| x | 7 | 2.1544347 |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=nroot(2,0.5)",
+  "expect": "| x | 7 | 4. |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(360)",
+  "expect": "| x | 7 | [2, 2, 2, 3, 3, 5] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(97)",
+  "expect": "| x | 7 | [97] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1)",
+  "expect": "| x | 7 | [1] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(2)",
+  "expect": "| x | 7 | [2] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(0)",
+  "expect": "| x | 7 | [0] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(-12)",
+  "expect": "| x | 7 | [-1, 2, 2, 3] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(12.5)",
+  "expect": "| x | 7 | prfac(12.5) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(12.)",
+  "expect": "| x | 7 | [2, 2, 3] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1:2)",
+  "expect": "| x | 7 | prfac(1:2) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(x)",
+  "expect": "| x | 7 | prfac(x) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1000003*1000033)",
+  "expect": "| x | 7 | [1000036000099] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(600851475143)",
+  "expect": "| x | 7 | [71, 839, 1471, 6857] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(2^40)",
+  "expect": "| x | 7 | [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(9999999967)",
+  "expect": "| x | 7 | [9999999967] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac([6,10])",
+  "expect": "| x | 7 | prfac([6, 10]) |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(100000000000000000000)",
+  "expect": "| x | 7 | [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(2^61-1)",
+  "expect": "| x | 7 | [2305843009213693951] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(121)",
+  "expect": "| x | 7 | [11, 11] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1000003)",
+  "expect": "| x | 7 | [1000003] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1000003*1000033*3)",
+  "expect": "| x | 7 | [3, 1000036000099] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(5003*5009)",
+  "expect": "| x | 7 | [5003, 5009] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(4999*5003*7)",
+  "expect": "| x | 7 | [7, 4999, 5003] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(5009*5011*2)",
+  "expect": "| x | 7 | [2, 25100099] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(5003*5003)",
+  "expect": "| x | 7 | [5003, 5003] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(4999*4999)",
+  "expect": "| x | 7 | [4999, 4999] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(-1)",
+  "expect": "| x | 7 | [-1] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(1e15)",
+  "expect": "| x | 7 | [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(123456789)",
+  "expect": "| x | 7 | [3, 3, 3607, 3803] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac($2)",
+  "expect": "| x | 7 | [7] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(5009*5003*5003)",
+  "expect": "| x | 7 | [5003, 5003, 5009] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(25)",
+  "expect": "| x | 7 | [5, 5] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(49)",
+  "expect": "| x | 7 | [7, 7] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(3*3*3*5)",
+  "expect": "| x | 7 | [3, 3, 3, 5] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(4)",
+  "expect": "| x | 7 | [2, 2] |"
+ },
+ {
+  "cells": [
+   "x",
+   "7"
+  ],
+  "formula": "@1$3=prfac(6)",
+  "expect": "| x | 7 | [2, 3] |"
  }
 ]

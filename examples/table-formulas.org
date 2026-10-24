@@ -127,6 +127,69 @@ Formulas run left to right, and each sees the earlier results.
 | (1, 2) | (3, 4) | (-5, 10) |
 #+TBLFM: $3=$1*$2
 
+* Solving equations
+Letters are variables. =solve(equation, variable)= solves for one of them, taking the positive root where there are two; an inequality keeps its direction, and turns around when the divisor is negative. A root of a negative number is complex.
+
+| Equation    | Solved for x    |
+|-------------+-----------------|
+| a*x+b=c     | x = (c - b) / a |
+| x^2-5*x+6=0 | x = 3           |
+| sqrt(x)=3   | x = 9           |
+| 2^x=8       | x = 3.          |
+| -2*x>6      | -3 > x          |
+| x^2=-4      | x = (0, 2)      |
+#+TBLFM: $2=solve($1,x)
+
+=fsolve= writes the choice between roots as =s1=. A list of equations and a list of unknowns give a system.
+
+| Equation | Both roots     |
+|----------+----------------|
+| x^2=a    | x = s1 sqrt(a) |
+| x^2=4    | x = 2 s1       |
+#+TBLFM: $2=fsolve($1,x)
+
+| Equations      | Unknowns | Solution                               |
+|----------------+----------+----------------------------------------|
+| [x+y=3, x-y=1] | [x, y]   | [x = 2, y = 1]                         |
+| [x+y=a, x-y=b] | [x, y]   | [x = a + (b - a) / 2, y = (a - b) / 2] |
+#+TBLFM: $3=solve($1,$2)
+
+* Simplify and expand
+=simplify= applies Calc's rules for sums, products, powers, roots, logarithms and trig functions; =expand= multiplies out sums.
+
+| Expression  | simplify        | expand        |
+|-------------+-----------------+---------------|
+| x+y+x       | y + 2 x         | x + y + x     |
+| (x+1)^2     | (x + 1)^2       | x^2 + 2 x + 1 |
+| (x+1)*(x-1) | (x + 1) (x - 1) | x^2 - 1       |
+#+TBLFM: $2=simplify($1)::$3=expand($1)
+
+* Derivatives
+=deriv(expr, x)= differentiates with Calc's rules, and a third argument puts a value in for x. A function Calc has no rule for comes back as =f'(x)=.
+
+| Expression  | deriv(x)           |
+|-------------+--------------------|
+| x^3+2*x     | 3 x^2 + 2          |
+| x*exp(x)    | exp(x) + x exp(x)  |
+| ln(x)/x     | x^-2 - ln(x) / x^2 |
+| sqrt(x^2+1) | x / sqrt(x^2 + 1)  |
+#+TBLFM: $2=deriv($1,x)
+
+* Intervals and chained comparisons
+An interval has a bracket or parenthesis at each end for closed or open. It adds, multiplies and takes powers as a whole, and =in(x, interval)= tests membership. =1 <= x < 7= is the test =x in [1 .. 7)=.
+
+| Interval | Times 2   | Squared   | Contains 3? |
+|----------+-----------+-----------+-------------|
+| [1 .. 5] | [2 .. 10] | [1 .. 25] |           1 |
+| (0 .. 4] | (0 .. 8]  | (0 .. 16] |           1 |
+#+TBLFM: $2=$1*2::$3=$1^2::$4=in(3,$1)
+
+| x | 1 <= x < 7 |
+|---+------------|
+| 3 |          1 |
+| 7 |          0 |
+#+TBLFM: $2=1 <= $1 < 7
+
 * Bars in cells
 =orgtbl-ascii-draw= draws a bar for a value between a minimum and a maximum.
 

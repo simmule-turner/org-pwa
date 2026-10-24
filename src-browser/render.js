@@ -36,6 +36,7 @@ export function render() {
   scheduleBibliography();
   S.radioTargetsCache = null;
   S.ancestorIndexCache = null;
+  S.fileTagsIndexCache = null;
   updateSaveButtonState();
   renderTabBar();
   syncSidePanel();

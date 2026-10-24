@@ -54,4 +54,16 @@
 {"name":"command-tags-sorted","rows":[["work.org",6],["work.org",9],["work.org",16],["work.org",21],["work.org",34],["work.org",37],["work.org",14],["work.org",27],["work.org",25],["work.org",39],["work.org",18],["work.org",35]]},
 {"name":"command-tags-todo","rows":[["work.org",6],["work.org",9],["work.org",14],["work.org",25],["work.org",27],["home.org",9],["home.org",10]]},
 {"name":"command-search","rows":[["work.org",6],["work.org",9],["work.org",18],["work.org",37],["work.org",39],["home.org",4],["home.org",9],["home.org",12]]},
-{"name":"command-search-sorted","rows":[["home.org",4],["work.org",6],["work.org",9],["work.org",21],["work.org",37],["work.org",27],["work.org",39],["work.org",18],["home.org",12],["home.org",9]]}]}
+{"name":"command-search-sorted","rows":[["home.org",4],["work.org",6],["work.org",9],["work.org",21],["work.org",37],["work.org",27],["work.org",39],["work.org",18],["home.org",12],["home.org",9]]},
+{"name":"max-level-1-budget","rows":[["work.org",6],["work.org",9],["work.org",18],["work.org",27],["work.org",37],["work.org",39],["home.org",4],["home.org",9],["home.org",12]]},
+{"name":"max-level-2-plan","rows":[["work.org",6],["work.org",18],["work.org",21],["work.org",35],["home.org",9],["home.org",12],["home.org",14]]},
+{"name":"max-level-1-memo","rows":[["work.org",18]]},
+{"name":"max-level-1-refund","rows":[["work.org",9]]},
+{"name":"max-level-1-boolean","rows":[["work.org",6],["work.org",9],["work.org",37],["work.org",39],["home.org",4],["home.org",9],["home.org",12]]},
+{"name":"max-level-0","rows":[["work.org",14]]},
+{"name":"command-todo-waiting","rows":[["work.org",14]]},
+{"name":"command-todo-two","rows":[["work.org",6],["home.org",4],["work.org",9],["work.org",25],["work.org",27],["home.org",9],["home.org",10]]},
+{"name":"command-todo-star","rows":[["work.org",6],["home.org",4],["work.org",9],["work.org",14],["work.org",25],["work.org",27],["work.org",34],["home.org",9],["home.org",11],["work.org",16],["home.org",10]]},
+{"name":"command-todo-blank","rows":[["work.org",6],["home.org",4],["work.org",9],["work.org",14],["work.org",25],["work.org",27],["home.org",9],["home.org",10]]},
+{"name":"command-todo-done","rows":[["home.org",11],["work.org",16]]},
+{"name":"command-todo-bare","rows":[["work.org",6],["home.org",4],["work.org",9],["work.org",14],["work.org",25],["work.org",27],["home.org",9],["home.org",10]]}]}

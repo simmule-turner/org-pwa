@@ -70,6 +70,7 @@ export function switchToView(view) {
     renderSearchPanel();
   }
 
+  if (view !== 'tasklist') S.taskKeywords = null; // a TODO list for some keywords lasts until the screen is left
   S.currentView = view;
   S.viewMenuOpen = false;
   renderViewMenu();

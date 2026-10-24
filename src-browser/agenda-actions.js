@@ -22,6 +22,7 @@ import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navi
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { render } from './render.js';
 import { applyTodoTransition, renderTodoWorkflowPanel } from './todo-workflow.js';
+import { registerAgendaRow } from './agenda-row-focus.js';
 import { attachLongPress } from './ui-widgets.js';
 
 /** The kinds of agenda row that stand for a heading you can act on; the others (sunrise, anniversaries, log lines) do not. */
@@ -120,7 +121,7 @@ export function markItemDone(/** @type {any} */ item) {
 }
 
 /** Opens the state picker (all states of all the file's sequences) for the row's heading. */
-function chooseState(/** @type {any} */ item) {
+export function chooseState(/** @type {any} */ item) {
   S.pendingTodoWorkflowChoice = { heading: item.heading, viaGodMode: false };
   render();
   renderTodoWorkflowPanel();
@@ -141,7 +142,7 @@ async function rescheduleItem(/** @type {any} */ item) {
   commitAndRender(`${field === 'deadline' ? 'Deadline' : 'Scheduled'} moved: ${plainTitle(heading)}`);
 }
 
-function choosePriority(/** @type {any} */ item) {
+export function choosePriority(/** @type {any} */ item) {
   const heading = item.heading;
   openActionSheet({
     title: 'Priority',
@@ -217,6 +218,7 @@ export function openRowActions(/** @type {any} */ item) {
  * @returns {HTMLElement}
  */
 export function withRowActions(row, item) {
+  registerAgendaRow(row, item);
   if (!item.heading || !ACTIONABLE_KINDS.has(item.kind)) return row;
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:relative;overflow:hidden;';

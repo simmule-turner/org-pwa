@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v631';
+const CACHE_NAME = 'org-pwa-shell-v632';
 
 const SHELL_FILES = [
   './',
@@ -212,6 +212,8 @@ const SHELL_FILES = [
   './src/calc-symbolic.js',
   './src/calc-simplify.js',
   './src/calc-solve.js',
+  './src/calc-deriv.js',
+  './src/calc-prfac.js',
   './src/calc-vector.js',
   './src-browser/contacts-sync.js',
   './src-browser/mirror-sync.js',
@@ -221,6 +223,7 @@ const SHELL_FILES = [
   './src-browser/adapters.js',
   './src-browser/agenda-files.js',
   './src-browser/agenda-actions.js',
+  './src-browser/agenda-row-focus.js',
   './src-browser/bottom-sheet.js',
   './src-browser/view-filter-ui.js',
   './src-browser/agenda-view.js',

@@ -87,18 +87,33 @@ export function buildAncestorIndex(docs) {
   return index;
 }
 
-/** The tags a heading gets from its ancestors, not counting ones it carries itself, each once.
+/** The `#+FILETAGS:` tags of each document, keyed by its top-level headings (which every heading below has in its ancestors).
+ * @param {(import('./types.js').Doc | null | undefined)[]} docs
+ * @returns {WeakMap<Heading, string[]>} */
+export function buildFileTagsIndex(docs) {
+  /** @type {WeakMap<Heading, string[]>} */ const index = new WeakMap();
+  for (const doc of docs) {
+    if (!doc) continue;
+    const tags = (doc.keywords || []).filter((k) => String(k.key).toUpperCase() === 'FILETAGS').flatMap((k) => String(k.value).split(/[:\s]+/).filter(Boolean));
+    if (tags.length) for (const node of doc.children || []) if (node.type === 'heading') index.set(node, tags);
+  }
+  return index;
+}
+
+/** The tags a heading gets from its ancestors and from the file's `#+FILETAGS:`, not counting ones it carries itself, each once.
  * @param {Heading} heading
  * @param {Heading[]} ancestors
  * @param {TagInheritance} policy
+ * @param {string[]} [fileTags]
  * @returns {string[]} */
-export function inheritedOnly(heading, ancestors, policy) {
+export function inheritedOnly(heading, ancestors, policy, fileTags = []) {
   if (policy === false) return [];
   const own = new Set(heading.tags || []);
   /** @type {string[]} */ const out = [];
   for (const ancestor of ancestors) {
     for (const tag of ancestor.tags || []) if (tagInherits(policy, tag) && !own.has(tag) && !out.includes(tag)) out.push(tag);
   }
+  for (const tag of fileTags) if (tagInherits(policy, tag) && !own.has(tag) && !out.includes(tag)) out.push(tag);
   return out;
 }
 

@@ -324,12 +324,14 @@ function effectivePropertyValue(heading, ancestors, key, useInheritance) {
  * @param {TagInheritance} useTagInheritance
  * @param {boolean} usePropertyInheritance
  * @param {Map<string, Matcher>} keywordMatchers
+ * @param {string[]} [fileTags]  the file's #+FILETAGS:, which every heading in it inherits
  */
-function headingPassesFilters(heading, filters, ancestors, useTagInheritance, usePropertyInheritance, keywordMatchers) {
+function headingPassesFilters(heading, filters, ancestors, useTagInheritance, usePropertyInheritance, keywordMatchers, fileTags = []) {
   for (const filter of filters) {
     let matched;
     if (filter.type === 'tag') {
       const tags = effectiveTags(heading, ancestors, useTagInheritance);
+      for (const tag of fileTags) if (!tags.includes(tag) && tagInherits(useTagInheritance || false, tag)) tags.push(tag); // #+FILETAGS: is inherited by every heading
       matched = filter.values.some((v) => tags.some((t) => t.toLowerCase() === v.toLowerCase()));
     } else if (filter.type === 'todo') {
       matched = !!heading.todo && filter.values.some((v) => /** @type {string} */ (heading.todo).toLowerCase() === v.toLowerCase());
@@ -533,6 +535,7 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
  *  the document. */
 function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance) {
   /** @type {any[]} */ const results = [];
+  const fileTags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
   const includeKeywords = filters.filter(/** @param {SearchFilter} f @returns {f is { type: 'keyword', mode: string, value: string }} */ (f) => f.type === 'keyword' && f.mode === 'include');
 
   /**
@@ -543,7 +546,7 @@ function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheri
     for (const node of nodes) {
       if (node.type !== 'heading') continue;
 
-      if (headingPassesFilters(node, filters, ancestors, useTagInheritance, usePropertyInheritance, keywordMatchers)) {
+      if (headingPassesFilters(node, filters, ancestors, useTagInheritance, usePropertyInheritance, keywordMatchers, fileTags)) {
         if (includeKeywords.length > 0) {
           // One pass per required keyword -- see searchTextWithinHeading's
           // own doc comment for why this isn't collapsed into a single
