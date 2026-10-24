@@ -12,6 +12,7 @@ import { GOD_MODE_ACTIONS, dispatchGodModeKeystroke, labelForChord } from './god
  *  are bound but not available yet), so the card never shows a bare chord. test/god-mode-hints.test.js fails if a
  *  chord is bound without a name here or in the palette, and if an entry here is stale. */
 export const UNNAMED_CHORD_LABELS = {
+  'C-c a t': 'Global TODO list',
   '<up>': 'Previous line',
   '<down>': 'Next line',
   '<left>': 'Collapse heading',

@@ -29,7 +29,7 @@ import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
-import { captureBtn, moreBtn, searchBtn, viewMenuBtn } from './dom.js';
+import { captureBtn, moreBtn, searchBtn, searchMenuBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
 import { activeDiskAdapter, conflictResolverFor, diskAdapterFor, hideExternalChangeBanner, reloadCurrentDocumentFromDisk } from './external-sync.js';
 import { closeFileMenu } from './file-menu.js';
@@ -109,6 +109,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   S.agendaAnchorDate = new Date();
   /** @type {HTMLButtonElement} */ (viewMenuBtn).disabled = false;
   /** @type {HTMLButtonElement} */ (searchBtn).disabled = false;
+  /** @type {HTMLButtonElement} */ (searchMenuBtn).disabled = false;
   /** @type {HTMLButtonElement} */ (captureBtn).disabled = false;
   /** @type {HTMLButtonElement} */ (moreBtn).disabled = false;
   S.searchOpen = false;

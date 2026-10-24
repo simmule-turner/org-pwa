@@ -289,8 +289,18 @@ export const GOD_MODE_ACTIONS = {
   },
   'C-c C-l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
   'C-c C-o': () => godModeNotSupported('links are tappable directly -- there\u2019s no keyboard-cursor concept to open one from'),
-  'C-c a': () => {
+  // C-c a waits for a second key, as in Emacs: the agenda dispatcher
+  'C-c a a': () => {
     if (S.state.doc) switchToView('agenda');
+  },
+  'C-c a t': () => {
+    if (S.state.doc) switchToView('tasklist');
+  },
+  'C-c a m': () => {
+    if (S.state.doc) openQueryView('tags');
+  },
+  'C-c a s': () => {
+    if (S.state.doc) openQueryView('search');
   },
   'C-c c': () => {
     S.godModeActive = false;
@@ -572,14 +582,14 @@ export function paletteCommandList() {
     { id: 'capture', label: 'Capture', orgName: 'org-capture', keys: 'C-c c', group: 'Document', run: chord('C-c c') },
 
     // -- View
-    { id: 'agenda', label: 'Agenda', orgName: 'org-agenda', keys: 'C-c a', group: 'View', needs: ['doc'], run: chord('C-c a') },
+    { id: 'agenda', label: 'Agenda', orgName: 'org-agenda', keys: 'C-c a a', group: 'View', needs: ['doc'], run: chord('C-c a a') },
     { id: 'calendar-sync', label: 'Sync agenda to calendar', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'events'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true }) },
     { id: 'contacts-sync', label: 'Sync contacts to the address book', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true }) },
     { id: 'contacts-rebuild', label: 'Rebuild contacts from the contacts files', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'reset', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true, rebuild: true }) },
     { id: 'calendar-rebuild', label: 'Rebuild calendar from the agenda', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'reset'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true, rebuild: true }) },
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
-    { id: 'tags-view', label: 'Match tags, properties and TODO state', orgName: 'org-tags-view', group: 'View', keywords: ['tags', 'match', 'find', 'query'], needs: ['doc'], run: () => openQueryView('tags') },
-    { id: 'search-view', label: 'Search for keywords in the agenda files', orgName: 'org-search-view', group: 'View', keywords: ['find', 'words', 'phrase'], needs: ['doc'], run: () => openQueryView('search') },
+    { id: 'tags-view', label: 'Match tags, properties and TODO state', orgName: 'org-tags-view', keys: 'C-c a m', group: 'View', keywords: ['tags', 'match', 'find', 'query'], needs: ['doc'], run: chord('C-c a m') },
+    { id: 'search-view', label: 'Search for keywords in the agenda files', orgName: 'org-search-view', keys: 'C-c a s', group: 'View', keywords: ['find', 'words', 'phrase'], needs: ['doc'], run: chord('C-c a s') },
     { id: 'agenda-commands', label: 'Agenda commands', orgName: 'org-agenda-custom-commands', group: 'View', keywords: ['saved', 'queries', 'dispatcher'], needs: ['doc'], run: () => openAgendaCommands() },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },

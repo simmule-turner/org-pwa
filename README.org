@@ -408,7 +408,7 @@ renders three right-aligned equations, lined up at the ~&~ marks and automatical
 :CUSTOM_ID: searching
 :END:
 
-Open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
+Tap the *Search* button in the top bar (see [[#search-button][The Search button]]), or open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
 
 Results appear at once from what is loaded and fill in as each agenda file finishes (a file that fails to fetch is left out). The query box and its options live in the minibuffer (see [[#modeline][Modeline and minibuffer]]). Results update as you type, grouped under their heading with the match highlighted; a result from another file shows its name.
 
@@ -482,12 +482,18 @@ When at least one match is in the open document, the results show *Narrow* with 
 
 Org's search is several tools (sparse trees, a match grammar, ~org-search-view~). The Search box finds as you type; *Narrow* is its sparse tree; Match mode takes the tag grammar; and the Agenda views below list the results as rows.
 
+*** The Search button
+:PROPERTIES:
+:CUSTOM_ID: search-button
+:END:
+The magnifier in the top bar is the one place for every way to search. A tap opens the search you used last (Find the first time). Tap it again while a search is showing, or press and hold, for the chooser: *Find* (~C-s~), *Match tags and state* (~C-c a m~), *Keyword search* (~C-c a s~), and your saved queries as one-tap chips.
+
 *** Match and Keyword search views
 :PROPERTIES:
 :CUSTOM_ID: agenda-commands
 :END:
 
-Two Agenda views list a query's results as rows, with the Agenda's prefix format, filters, Effort chip, tap menu and ~org-agenda-sorting-strategy~. Open them from *View → Match* and *View → Keyword search*, the command palette (~org-tags-view~, ~org-search-view~), or the search options (~⋯~ → *Open as Agenda view*).
+Two Agenda views list a query's results as rows, with the Agenda's prefix format, filters, Effort chip, tap menu and ~org-agenda-sorting-strategy~. Open them from the Search button in the top bar (see below), the command palette (~org-tags-view~, ~org-search-view~), ~C-c a m~ and ~C-c a s~ in god-mode, or the search options (~⋯~ → *Open as Agenda view*).
 
 *Match* is Emacs's ~m~: tags, properties and TODO state, such as ~work+urgent|blocked~ or ~/NEXT~. *TODO only* is ~M~, the unfinished TODO entries. Rows follow the ~tags~ sorting strategy.
 
@@ -534,9 +540,9 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 - *Bare URLs* link too, typed in a sentence or wrapped as ~<https://example.com>~. The schemes are Org's link types (~http~, ~https~, ~ftp~, ~mailto~, ~news~, ~file~, ~id~, ~doi~, ~shell~, ~elisp~, ~info~, ~help~, ~irc~ and the rest of ~org-link-types~) and ~github~, ~webdav~ and ~local~, so ~10:30~ or ~3:4~ is never a link. A URL ends at its last letter, digit, slash or closing parenthesis (~see https://example.com/page.~ links the URL without the period, and ~https://example.com/a_(b)~ keeps its parentheses); wrap the URL in ~<...>~ or ~[[...]]~ if it must end in anything else. ~doi:10.1145/1327452.1327492~ opens ~https://doi.org/...~.
 - *Internal links* go to a heading by title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~, case ignored) or by bare text (~[[some words]]~), expanding the ancestors and scrolling to the target. Bare text finds, in this order, a ~<<some words>>~ target (case and spacing ignored), a ~#+NAME: some words~ line, then a heading whose words are ~some words~. Headings compare word by word, case counting, ignoring extra spaces, a ~COMMENT~ keyword and cookies like ~[1/3]~. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
 - *Link abbreviations*: ~#+LINK: gh https://github.com/%s~ lets ~[[gh:org/repo]]~ stand for the full address. The first ~%s~ in the value becomes the text after the colon, else the first ~%h~ becomes that text percent-encoded, else the text is added to the end.
-- *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property wherever it now lives. Tapping one looks in the open file, the other open tabs, your [[#agenda-files][Agenda Files]], then files you have opened or saved here before (a remembered table, like ~org-id-locations~); the ⏎ button comes back. If nothing has the ID the status line says so, and if several headings share it the first is used. *Copy link to heading* (~org-store-link~, ~C-c l~) puts ~[[id:…][Title]]~ on the clipboard, adding an ~:ID:~ first if needed; *Add ID to heading* (~org-id-get-create~) only adds it; *Find links to this heading* searches this file and your Agenda Files.
+- *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property wherever it now lives. Tapping one looks in the open file, the other open tabs, your [[#agenda-files][Agenda Files]], then files you have opened or saved here before (a remembered table, like ~org-id-locations~); the back arrow comes back. If nothing has the ID the status line says so, and if several headings share it the first is used. *Copy link to heading* (~org-store-link~, ~C-c l~) puts ~[[id:…][Title]]~ on the clipboard, adding an ~:ID:~ first if needed; *Add ID to heading* (~org-id-get-create~) only adds it; *Find links to this heading* searches this file and your Agenda Files.
 - *Targets*: ~<<name>>~ is a spot a link can go to. The same words in triple angle brackets, ~<<<name>>>~, make a *radio target*: every plain use of those words in the file (any case, whole words) becomes a link to it. Code blocks are not read. HTML and LaTeX export turn targets into anchors and links.
-- *The ⏎ button*: after you follow a link, a floating ⏎ at bottom-left goes back, one hop at a time, so a document with a table of contents is navigable on a touch device without a browser Back. It disappears when there is nowhere left to go.
+- *The back arrow*: after you follow a link, a floating arrow at bottom-left goes back, one hop at a time, so a document with a table of contents is navigable on a touch device without a browser Back. It disappears when there is nowhere left to go.
 - *Image links*: ~http://~ and ~https://~ image links render inline when ~#+STARTUP: inlineimages~ is set (off by default).
 - *Local and relative image paths* on GitHub and WebDAV render too (~[[photo.png]]~, ~[[images/photo.png]]~, ~[[file:photo.png]]~, ~[[github:images/photo.png]]~), relative to the document's path, under the same ~#+STARTUP: inlineimages~ switch. Local files (File System Access) and iOS imports show an ~[image: path]~ placeholder, because reading a sibling file needs browser permission that can't be granted mid-render.
 - *~file:~, ~github:~, ~webdav:~ and ~local:~ links* use org's ~::~ convention: an absolute path (~file:/home/user/notes.org~), a relative one (~file:projects/todo.org~), a headline (=file:~/notes.org::*Project Alpha=), a custom ID (=::#my-id=), a line number (=::120=, the heading that holds it) or a target, name or heading (=file:~/notes.org::exact phrase=), found as for internal links. Tapping one opens the document, as File → Open does, and jumps to the match. A path with no scheme uses the backend the current document came from; an explicit scheme always uses that backend (~local:~ is a file on this device: see [[#android-app][Android app]]).
@@ -2336,7 +2342,10 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~c .~, ~c !~, ~c d~, ~c s~ | ~C-c .~, ~C-c !~, ~C-c C-d~, ~C-c C-s~ | Open the details editor (SCHEDULED, DEADLINE, timestamps) |
 | ~c w~ | ~C-c C-w~ | Refile the focused heading (~org-refile~, see [[#refile][Refile]]) |
 | ~c a~ | ~C-c C-a~ | Open the attachment choices (~org-attach~, see [[#attachments][Attachments]]) |
-| ~c SPC a~ | ~C-c a~ | Open the Agenda view |
+| ~c SPC a a~ | ~C-c a a~ | Open the Agenda view (~C-c a~ waits for a second key: ~t~ TODO list, ~m~ Match, ~s~ Keyword search) |
+| ~c SPC a t~ | ~C-c a t~ | Open the TODO view |
+| ~c SPC a m~ | ~C-c a m~ | Open the Match view |
+| ~c SPC a s~ | ~C-c a s~ | Open the Keyword search view |
 | ~c SPC c~ | ~C-c c~ | Open Capture, which exits god-mode (see below) |
 | ~h SPC m~ | ~C-h m~ | Open Help (~describe-mode~) without exiting god-mode |
 | ~s~ | ~C-s~ | Open search |

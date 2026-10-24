@@ -97,8 +97,6 @@ export function renderViewMenuContent() {
     ['org', 'Org'],
     ['text', 'Text'],
     ['tasklist', 'TODO'],
-    ['match', 'Match'],
-    ['searchview', 'Keyword search'],
   ]) {
     const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === S.currentView) btn.style.fontWeight = '700';
@@ -110,8 +108,6 @@ export function renderViewMenuContent() {
     { label: 'Org', btn: viewSwitchButtons['Org'] },
     { label: 'Text', btn: viewSwitchButtons['Text'] },
     { label: 'TODO', btn: viewSwitchButtons['TODO'] },
-    { label: 'Match', btn: viewSwitchButtons['Match'] },
-    { label: 'Keyword search', btn: viewSwitchButtons['Keyword search'] },
   ]);
   // The read-only toggle ("%%RO" / "**RW") used to be a separate item here.
   // It's reached through the command palette now (Toggle read-only) or

@@ -259,7 +259,7 @@ export function openAgendaCommands() {
 }
 
 /** @param {import('../src/agenda-commands.js').CustomCommand} c */
-function runCommand(c) {
+export function runCommand(c) {
   if (c.type === 'agenda') return switchToView('agenda');
   if (c.type === 'alltodo') return switchToView('tasklist');
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });

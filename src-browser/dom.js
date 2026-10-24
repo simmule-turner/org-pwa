@@ -63,6 +63,7 @@ export const extraMenuBtn = byId('extraMenuBtn');
 export const extraMenuPanel = byId('extraMenuPanel');
 
 export const viewMenuBtn = byId('viewMenuBtn');
+export const searchMenuBtn = byId('searchMenuBtn');
 
 export const godModeBtn = byId('godModeBtn');
 

@@ -7,6 +7,9 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v628 — A Search button in the top bar
+The top bar has a Search button. A tap opens the search you used last (Find the first time); tap it again, or hold it, to choose Find, Match, Keyword search or a saved query. Match and Keyword search are no longer in the View menu. =C-c a= now waits for a second key, as in Emacs: =a= Agenda, =t= TODO list, =m= Match, =s= Keyword search. The back arrow is bolder.
+
 * v627 — Match and Keyword search views, closer exports
 New Agenda views: Match (=m=, =M=) and Keyword search (=s=) list results as rows, ordered by the =tags= and =search= sorting strategies, and a query can be saved in =org-agenda-custom-commands=. ODT table width cookies, =doi:= links, paragraph links and footnote definitions follow Emacs. iCalendar export agrees with Emacs on daylight-saving times, =#+EXCLUDE_TAGS:= and =#+CATEGORY:=. The diary reads =diary-sunrise-sunset= for any latitude, with daylight-saving times.
 Verified: 56 Match, Search and command queries, 6 ODT cases, 128 iCalendar cases, 7,886 holidays for 2000–2060 and 8 diary files compared with Emacs 29.3.

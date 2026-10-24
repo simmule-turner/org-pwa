@@ -279,6 +279,13 @@ async function viewMenu(page, label) {
   await pick(page, '#viewMenuPanel', label);
   await page.waitForTimeout(250);
 }
+/** The top bar's Search button held down opens the chooser; `name` is the choice on its sheet. */
+async function chooseSearch(page, name) {
+  await page.locator('#searchMenuBtn').click({ delay: 700 });
+  await page.waitForSelector('[data-bottom-sheet]');
+  await page.locator('[data-bottom-sheet] button', { hasText: name }).first().click();
+  await page.waitForTimeout(250);
+}
 async function waitForStatus(page, text, timeout = 8000) {
   await page.waitForFunction((t) => document.getElementById('status').innerText.includes(t), text, { timeout });
 }
@@ -764,13 +771,41 @@ check('TODO view: org-agenda-sorting-strategy priority-down orders the list, ove
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
+check('Search button: a tap opens the search used last, a tap while one shows or a long press opens the chooser, View lists no searches, and the back button is an arrow', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+TODO: TODO | DONE\n* TODO Ship notes :urgent:\nWrite the budget.\n* Meeting\n');
+  await page.click('#viewMenuBtn');
+  const viewItems = await page.locator('#viewMenuPanel').innerText();
+  expect(!viewItems.includes('Match') && !viewItems.includes('Keyword search') && viewItems.includes('TODO'), `View menu: ${viewItems}`);
+  await page.click('#viewMenuBtn');
+  await page.locator('#searchMenuBtn').click();
+  await page.waitForSelector('#search-query-input');
+  await page.locator('#searchMenuBtn').click(); // one is showing: the chooser
+  await page.waitForSelector('[data-bottom-sheet]');
+  const sheet = await page.locator('[data-bottom-sheet]').innerText();
+  expect(['Find', 'Match tags and state', 'Keyword search', 'C-s', 'C-c a m', 'C-c a s'].every((s) => sheet.includes(s)), `the chooser: ${sheet}`);
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Keyword search' }).first().click();
+  await page.waitForSelector('[data-query-input]');
+  await chooseSearch(page, 'Find');
+  await page.waitForSelector('#search-query-input');
+  await page.evaluate(() => document.getElementById('searchBtn').click()); // close the panel
+  await viewMenu(page, 'Org');
+  await page.evaluate(() => document.getElementById('searchMenuBtn').click());
+  await page.waitForSelector('#search-query-input');
+  expect(await page.evaluate(() => localStorage.getItem('org-pwa-last-search')) === 'find', 'the last search used is kept');
+  const svg = await page.evaluate(() => document.querySelector('#navBackBtn svg')?.getAttribute('stroke-width'));
+  expect(svg === '3', 'the back button is an arrow drawn with a thick line');
+  await context.close();
+  expect(errors.length === 0, `page errors: ${errors}`);
+});
+
 check('Match and Search views: Match lists tag matches and TODO only, Keyword search takes +word -word and "phrase", the sorting strategy orders both, the Search panel opens its query here, and a query is saved as an agenda command', async () => {
   const { context, page, errors } = await freshPage();
   const body = ['#+TODO: TODO | DONE', '* TODO [#B] Ship notes :urgent:', 'Write the Q4 plan and the budget.', '* DONE Pay invoice :urgent:', '* TODO [#A] Draft budget :urgent:', 'Draft only.', '* Meeting :other:', 'Q4 plan review', ''];
   await newDocument(page, [...body, '# Local Variables:', '# org-agenda-sorting-strategy: ((tags priority-down) (search alpha-up))', '# End:', ''].join('\n'));
   const rows = async () => (await page.locator('[data-query-results]').innerText());
   const at = (text, words) => words.map((w) => text.indexOf(w));
-  await viewMenu(page, 'Match');
+  await chooseSearch(page, 'Match tags and state');
   await page.waitForSelector('[data-query-input]');
   await page.fill('[data-query-input]', 'urgent');
   await page.waitForTimeout(400);
@@ -782,7 +817,7 @@ check('Match and Search views: Match lists tag matches and TODO only, Keyword se
   t = await rows();
   expect(t.includes('2 entries') && !t.includes('Pay invoice'), `TODO only drops the DONE entry: ${t}`);
 
-  await viewMenu(page, 'Keyword search');
+  await chooseSearch(page, 'Keyword search');
   await page.waitForSelector('[data-query-input]');
   await page.fill('[data-query-input]', '+budget -draft');
   await page.waitForTimeout(400);

@@ -41,7 +41,7 @@ import { loadProtection } from './src-browser/connection-protection.js';
 import { bufferNames, loadPaletteRecent } from './src-browser/sync-helpers.js';
 import { WIDE_LAYOUT_QUERY, isWideLayout, positionPopupNearButton } from './src-browser/ui-widgets.js';
 import { S } from './src-browser/app-state.js';
-import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, modelineBarEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
+import { godModeBtn, godModeKeyboardInput, captureBtn, externalChangeDismissBtn, externalChangeMergeBtn, externalChangeReloadBtn, extraMenuBtn, extraMenuPanel, fileMenuBtn, fileMenuPanel, modelineBarEl, moreBtn, morePanel, nativeCreateElement, navBackBtn, outlineEl, saveBtnEl, searchBtn, searchMenuBtn, settingsBtn, statusEl, topBarEl, viewMenuBtn, viewMenuPanel } from './src-browser/dom.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './src-browser/agenda-files.js';
 import { renderCapturePanel } from './src-browser/capture-ui.js';
 import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContentOffset } from './src-browser/chrome.js';
@@ -63,6 +63,7 @@ import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
 import { render, updateSaveButtonState } from './src-browser/render.js';
 import { setupSidePanelResize } from './src-browser/row-render.js';
+import { wireSearchMenuButton } from './src-browser/search-chooser.js';
 import { advanceToNextFileOrFinish, finishQueryReplace, renderSearchPanel } from './src-browser/search-ui.js';
 import { applySidePanelWidth, applyTheme, renderSettingsView } from './src-browser/settings-view.js';
 import { switchToTab } from './src-browser/tabs.js';
@@ -1051,6 +1052,8 @@ searchBtn.addEventListener('click', () => {
   render();
   renderSearchPanel();
 });
+
+wireSearchMenuButton(searchMenuBtn);
 
 // ---- Capture ---------------------------------------------------------
 
