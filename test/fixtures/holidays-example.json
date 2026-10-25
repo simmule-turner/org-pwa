@@ -1,0 +1,202 @@
+[
+ {
+  "id": "default",
+  "init": "",
+  "from": 2026,
+  "to": 2026,
+  "mode": "full",
+  "expected": "Thursday, January 1, 2026: New Year's Day\nMonday, January 19, 2026: Martin Luther King Day\nMonday, February 2, 2026: Groundhog Day\nSaturday, February 14, 2026: Valentine's Day\nMonday, February 16, 2026: President's Day\nTuesday, February 17, 2026: Chinese New Year (Bing-Wu)\nWednesday, February 18, 2026: Ramadan Begins\nWednesday, February 18, 2026: Ash Wednesday\nSunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)\nTuesday, March 17, 2026: St. Patrick's Day\nFriday, March 20, 2026: Vernal Equinox 10:44am (EDT)\nSaturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183\nWednesday, April 1, 2026: April Fools' Day\nThursday, April 2, 2026: Passover\nFriday, April 3, 2026: Good Friday\nSunday, April 5, 2026: Easter Sunday\nTuesday, April 21, 2026: First Day of Ridvan\nWednesday, April 29, 2026: Ninth Day of Ridvan\nSaturday, May 2, 2026: Twelfth Day of Ridvan\nSunday, May 10, 2026: Mother's Day\nFriday, May 22, 2026: Shavuot\nSaturday, May 23, 2026: Declaration of the Báb\nMonday, May 25, 2026: Memorial Day\nFriday, May 29, 2026: Ascension of Bahá’u’lláh\nSunday, June 14, 2026: Flag Day\nWednesday, June 17, 2026: Islamic New Year 1448\nSunday, June 21, 2026: Summer Solstice 4:24am (EDT)\nSunday, June 21, 2026: Father's Day\nSaturday, July 4, 2026: Independence Day\nThursday, July 9, 2026: Martyrdom of the Báb\nMonday, September 7, 2026: Labor Day\nSaturday, September 12, 2026: Rosh HaShanah 5787\nMonday, September 21, 2026: Yom Kippur\nTuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)\nSaturday, September 26, 2026: Sukkot\nSaturday, October 3, 2026: Shemini Atzeret\nSunday, October 4, 2026: Simchat Torah\nMonday, October 12, 2026: Columbus Day\nTuesday, October 20, 2026: Birth of the Báb\nSaturday, October 31, 2026: Halloween\nSunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)\nWednesday, November 11, 2026: Veteran's Day\nThursday, November 12, 2026: Birth of Bahá’u’lláh\nThursday, November 26, 2026: Thanksgiving\nSaturday, December 5, 2026: Hanukkah\nMonday, December 21, 2026: Winter Solstice 3:49pm (EST)\nFriday, December 25, 2026: Christmas\n"
+ },
+ {
+  "id": "all",
+  "init": "(setq calendar-christian-all-holidays-flag t\n      calendar-hebrew-all-holidays-flag t\n      calendar-islamic-all-holidays-flag t\n      calendar-bahai-all-holidays-flag t\n      calendar-chinese-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "full",
+  "expected": "Thursday, January 1, 2026: New Year's Day\nTuesday, January 6, 2026: Epiphany\nWednesday, January 7, 2026: Christmas (Julian calendar)\nThursday, January 15, 2026: Shab-e-Mi'raj\nMonday, January 19, 2026: Martin Luther King Day\nSaturday, January 31, 2026: Shabbat Shirah\nSunday, February 1, 2026: Septuagesima Sunday\nMonday, February 2, 2026: Tu B'Shevat\nMonday, February 2, 2026: Groundhog Day\nTuesday, February 3, 2026: Shab-e-Bara't\nSunday, February 8, 2026: Sexagesima Sunday\nSaturday, February 14, 2026: Shabbat Shekalim\nSaturday, February 14, 2026: Valentine's Day\nSunday, February 15, 2026: Shrove Sunday\nMonday, February 16, 2026: Shrove Monday\nMonday, February 16, 2026: President's Day\nTuesday, February 17, 2026: Chinese New Year (Bing-Wu)\nTuesday, February 17, 2026: Shrove Tuesday\nWednesday, February 18, 2026: Ramadan Begins\nWednesday, February 18, 2026: Ash Wednesday\nSaturday, February 28, 2026: Shabbat Zachor\nMonday, March 2, 2026: Fast of Esther\nMonday, March 2, 2026: Erev Purim\nTuesday, March 3, 2026: Lantern Festival\nTuesday, March 3, 2026: Purim\nWednesday, March 4, 2026: Shushan Purim\nSaturday, March 7, 2026: Shabbat Parah\nSunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)\nSaturday, March 14, 2026: Shabbat HaHodesh\nMonday, March 16, 2026: Shab-e Qadr\nTuesday, March 17, 2026: St. Patrick's Day\nFriday, March 20, 2026: Vernal Equinox 10:44am (EDT)\nFriday, March 20, 2026: Id-al-Fitr\nSaturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183\nSunday, March 22, 2026: Passion Sunday\nSaturday, March 28, 2026: Shabbat HaGadol\nSunday, March 29, 2026: Palm Sunday\nWednesday, April 1, 2026: Erev Passover\nWednesday, April 1, 2026: April Fools' Day\nThursday, April 2, 2026: Passover\nThursday, April 2, 2026: Maundy Thursday\nFriday, April 3, 2026: Passover (second day)\nFriday, April 3, 2026: Good Friday\nSaturday, April 4, 2026: Qingming Festival\nSaturday, April 4, 2026: Hol Hamoed Passover (first day)\nSunday, April 5, 2026: Hol Hamoed Passover (second day)\nSunday, April 5, 2026: Easter Sunday\nMonday, April 6, 2026: Hol Hamoed Passover (third day)\nTuesday, April 7, 2026: Hol Hamoed Passover (fourth day)\nWednesday, April 8, 2026: Passover (seventh day)\nThursday, April 9, 2026: Passover (eighth day)\nSunday, April 12, 2026: Pascha (Greek Orthodox Easter)\nTuesday, April 14, 2026: Yom HaShoah\nTuesday, April 21, 2026: First Day of Ridvan\nWednesday, April 22, 2026: Second Day of Ridvan\nWednesday, April 22, 2026: Yom HaAtzma'ut\nThursday, April 23, 2026: Third Day of Ridvan\nFriday, April 24, 2026: Fourth Day of Ridvan\nSaturday, April 25, 2026: Fifth Day of Ridvan\nSunday, April 26, 2026: Sixth Day of Ridvan\nMonday, April 27, 2026: Seventh Day of Ridvan\nTuesday, April 28, 2026: Eighth Day of Ridvan\nWednesday, April 29, 2026: Ninth Day of Ridvan\nThursday, April 30, 2026: Tenth Day of Ridvan\nFriday, May 1, 2026: Eleventh Day of Ridvan\nSaturday, May 2, 2026: Twelfth Day of Ridvan\nTuesday, May 5, 2026: Lag BaOmer\nSunday, May 10, 2026: Rogation Sunday\nSunday, May 10, 2026: Mother's Day\nThursday, May 14, 2026: Ascension Day\nFriday, May 15, 2026: Yom Yerushalaim\nThursday, May 21, 2026: Erev Shavuot\nFriday, May 22, 2026: Shavuot\nSaturday, May 23, 2026: Declaration of the Báb\nSaturday, May 23, 2026: Shavuot (second day)\nSunday, May 24, 2026: Pentecost (Whitsunday)\nMonday, May 25, 2026: Whitmonday\nMonday, May 25, 2026: Memorial Day\nWednesday, May 27, 2026: Id-al-Adha\nFriday, May 29, 2026: Ascension of Bahá’u’lláh\nSunday, May 31, 2026: Trinity Sunday\nThursday, June 4, 2026: Corpus Christi\nSunday, June 14, 2026: Flag Day\nWednesday, June 17, 2026: Islamic New Year 1448\nFriday, June 19, 2026: Dragon Boat Festival\nSunday, June 21, 2026: Summer Solstice 4:24am (EDT)\nSunday, June 21, 2026: Father's Day\nFriday, June 26, 2026: Ashura\nThursday, July 2, 2026: Tzom Tammuz\nSaturday, July 4, 2026: Independence Day\nThursday, July 9, 2026: Martyrdom of the Báb\nSaturday, July 18, 2026: Shabbat Hazon\nThursday, July 23, 2026: Tisha B'Av\nSaturday, July 25, 2026: Shabbat Nahamu\nSaturday, August 15, 2026: Assumption\nWednesday, August 19, 2026: Double Seventh Festival\nWednesday, August 26, 2026: Mulad-al-Nabi\nSaturday, September 5, 2026: Selichot (night)\nMonday, September 7, 2026: Labor Day\nFriday, September 11, 2026: Erev Rosh HaShanah\nSaturday, September 12, 2026: Rosh HaShanah 5787\nSunday, September 13, 2026: Rosh HaShanah (second day)\nMonday, September 14, 2026: Tzom Gedaliah\nSaturday, September 19, 2026: Shabbat Shuvah\nSunday, September 20, 2026: Erev Yom Kippur\nMonday, September 21, 2026: Yom Kippur\nTuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)\nFriday, September 25, 2026: Mid-Autumn Festival\nFriday, September 25, 2026: Erev Sukkot\nSaturday, September 26, 2026: Sukkot\nSunday, September 27, 2026: Sukkot (second day)\nMonday, September 28, 2026: Hol Hamoed Sukkot (first day)\nTuesday, September 29, 2026: Hol Hamoed Sukkot (second day)\nWednesday, September 30, 2026: Hol Hamoed Sukkot (third day)\nThursday, October 1, 2026: Hol Hamoed Sukkot (fourth day)\nFriday, October 2, 2026: Hoshanah Rabbah\nSaturday, October 3, 2026: Shemini Atzeret\nSunday, October 4, 2026: Simchat Torah\nMonday, October 12, 2026: Columbus Day\nSunday, October 18, 2026: Double Ninth Festival\nTuesday, October 20, 2026: Birth of the Báb\nSaturday, October 31, 2026: Halloween\nSunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)\nWednesday, November 11, 2026: Veteran's Day\nThursday, November 12, 2026: Birth of Bahá’u’lláh\nThursday, November 26, 2026: Day of the Covenant\nThursday, November 26, 2026: Thanksgiving\nSaturday, November 28, 2026: Ascension of `Abdu’l-Bahá\nSunday, November 29, 2026: Advent\nFriday, December 4, 2026: \"Tal Umatar\" (evening)\nFriday, December 4, 2026: Erev Hanukkah\nSaturday, December 5, 2026: Hanukkah (first day)\nSunday, December 6, 2026: Hanukkah (second day)\nMonday, December 7, 2026: Hanukkah (third day)\nTuesday, December 8, 2026: Hanukkah (fourth day)\nWednesday, December 9, 2026: Hanukkah (fifth day)\nThursday, December 10, 2026: Hanukkah (sixth day)\nFriday, December 11, 2026: Hanukkah (seventh day)\nSaturday, December 12, 2026: Hanukkah (eighth day)\nSunday, December 20, 2026: Tzom Teveth\nMonday, December 21, 2026: Winter Solstice 3:49pm (EST)\nTuesday, December 22, 2026: Winter Solstice Festival\nFriday, December 25, 2026: Christmas\n"
+ },
+ {
+  "id": "off-group",
+  "init": "(setq holiday-solar-holidays nil)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "- Sunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)\n- Friday, March 20, 2026: Vernal Equinox 10:44am (EDT)\n- Sunday, June 21, 2026: Summer Solstice 4:24am (EDT)\n- Tuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)\n- Sunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)\n- Monday, December 21, 2026: Winter Solstice 3:49pm (EST)\n"
+ },
+ {
+  "id": "off-groups",
+  "init": "(setq holiday-islamic-holidays nil\n      holiday-bahai-holidays nil\n      holiday-oriental-holidays nil)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "- Tuesday, February 17, 2026: Chinese New Year (Bing-Wu)\n- Wednesday, February 18, 2026: Ramadan Begins\n- Saturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183\n- Tuesday, April 21, 2026: First Day of Ridvan\n- Wednesday, April 29, 2026: Ninth Day of Ridvan\n- Saturday, May 2, 2026: Twelfth Day of Ridvan\n- Saturday, May 23, 2026: Declaration of the Báb\n- Friday, May 29, 2026: Ascension of Bahá’u’lláh\n- Wednesday, June 17, 2026: Islamic New Year 1448\n- Thursday, July 9, 2026: Martyrdom of the Báb\n- Tuesday, October 20, 2026: Birth of the Báb\n- Thursday, November 12, 2026: Birth of Bahá’u’lláh\n"
+ },
+ {
+  "id": "off-entry",
+  "init": "(setq holiday-general-holidays\n      (remove '(holiday-fixed 2 2 \"Groundhog Day\") holiday-general-holidays))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "- Monday, February 2, 2026: Groundhog Day\n"
+ },
+ {
+  "id": "off-entries",
+  "init": "(setq holiday-general-holidays\n      (remove '(holiday-fixed 2 2 \"Groundhog Day\")\n              (remove '(holiday-fixed 4 1 \"April Fools' Day\")\n                      (remove '(holiday-float 10 1 2 \"Columbus Day\")\n                              holiday-general-holidays))))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "- Monday, February 2, 2026: Groundhog Day\n- Wednesday, April 1, 2026: April Fools' Day\n- Monday, October 12, 2026: Columbus Day\n"
+ },
+ {
+  "id": "replace-group",
+  "init": "(setq holiday-general-holidays\n      '((holiday-fixed 1 1 \"New Year's Day\")\n        (holiday-fixed 5 1 \"Labour Day\")\n        (holiday-fixed 5 8 \"Victory in Europe Day\")\n        (holiday-fixed 7 14 \"Bastille Day\")\n        (holiday-fixed 11 11 \"Armistice Day\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "full",
+  "expected": "Thursday, January 1, 2026: New Year's Day\nTuesday, February 17, 2026: Chinese New Year (Bing-Wu)\nWednesday, February 18, 2026: Ramadan Begins\nWednesday, February 18, 2026: Ash Wednesday\nSunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)\nFriday, March 20, 2026: Vernal Equinox 10:44am (EDT)\nSaturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183\nThursday, April 2, 2026: Passover\nFriday, April 3, 2026: Good Friday\nSunday, April 5, 2026: Easter Sunday\nTuesday, April 21, 2026: First Day of Ridvan\nWednesday, April 29, 2026: Ninth Day of Ridvan\nFriday, May 1, 2026: Labour Day\nSaturday, May 2, 2026: Twelfth Day of Ridvan\nFriday, May 8, 2026: Victory in Europe Day\nFriday, May 22, 2026: Shavuot\nSaturday, May 23, 2026: Declaration of the Báb\nFriday, May 29, 2026: Ascension of Bahá’u’lláh\nWednesday, June 17, 2026: Islamic New Year 1448\nSunday, June 21, 2026: Summer Solstice 4:24am (EDT)\nThursday, July 9, 2026: Martyrdom of the Báb\nTuesday, July 14, 2026: Bastille Day\nSaturday, September 12, 2026: Rosh HaShanah 5787\nMonday, September 21, 2026: Yom Kippur\nTuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)\nSaturday, September 26, 2026: Sukkot\nSaturday, October 3, 2026: Shemini Atzeret\nSunday, October 4, 2026: Simchat Torah\nTuesday, October 20, 2026: Birth of the Báb\nSunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)\nWednesday, November 11, 2026: Armistice Day\nThursday, November 12, 2026: Birth of Bahá’u’lláh\nSaturday, December 5, 2026: Hanukkah\nMonday, December 21, 2026: Winter Solstice 3:49pm (EST)\nFriday, December 25, 2026: Christmas\n"
+ },
+ {
+  "id": "only-mine",
+  "init": "(setq holiday-general-holidays nil\n      holiday-christian-holidays nil\n      holiday-hebrew-holidays nil\n      holiday-islamic-holidays nil\n      holiday-bahai-holidays nil\n      holiday-oriental-holidays nil\n      holiday-solar-holidays nil)\n(setq holiday-local-holidays\n      '((holiday-fixed 3 14 \"Pi Day\")\n        (holiday-easter-etc 1 \"Easter Monday\")))\n(setq holiday-other-holidays\n      '((holiday-fixed 12 26 \"Boxing Day\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "full",
+  "expected": "Saturday, March 14, 2026: Pi Day\nMonday, April 6, 2026: Easter Monday\nSaturday, December 26, 2026: Boxing Day\n"
+ },
+ {
+  "id": "calendar-holidays",
+  "init": "(require 'holidays)\n(setq calendar-holidays\n      (append holiday-christian-holidays\n              holiday-islamic-holidays))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "full",
+  "expected": "Wednesday, February 18, 2026: Ramadan Begins\nWednesday, February 18, 2026: Ash Wednesday\nFriday, April 3, 2026: Good Friday\nSunday, April 5, 2026: Easter Sunday\nWednesday, June 17, 2026: Islamic New Year 1448\nFriday, December 25, 2026: Christmas\n"
+ },
+ {
+  "id": "flag-christian",
+  "init": "(setq calendar-christian-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Tuesday, January 6, 2026: Epiphany\n+ Wednesday, January 7, 2026: Christmas (Julian calendar)\n+ Sunday, February 1, 2026: Septuagesima Sunday\n+ Sunday, February 8, 2026: Sexagesima Sunday\n+ Sunday, February 15, 2026: Shrove Sunday\n+ Monday, February 16, 2026: Shrove Monday\n+ Tuesday, February 17, 2026: Shrove Tuesday\n+ Sunday, March 22, 2026: Passion Sunday\n+ Sunday, March 29, 2026: Palm Sunday\n+ Thursday, April 2, 2026: Maundy Thursday\n+ Sunday, April 12, 2026: Pascha (Greek Orthodox Easter)\n+ Sunday, May 10, 2026: Rogation Sunday\n+ Thursday, May 14, 2026: Ascension Day\n+ Sunday, May 24, 2026: Pentecost (Whitsunday)\n+ Monday, May 25, 2026: Whitmonday\n+ Sunday, May 31, 2026: Trinity Sunday\n+ Thursday, June 4, 2026: Corpus Christi\n+ Saturday, August 15, 2026: Assumption\n+ Sunday, November 29, 2026: Advent\n"
+ },
+ {
+  "id": "flag-hebrew",
+  "init": "(setq calendar-hebrew-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Saturday, January 31, 2026: Shabbat Shirah\n+ Monday, February 2, 2026: Tu B'Shevat\n+ Saturday, February 14, 2026: Shabbat Shekalim\n+ Saturday, February 28, 2026: Shabbat Zachor\n+ Monday, March 2, 2026: Fast of Esther\n+ Monday, March 2, 2026: Erev Purim\n+ Tuesday, March 3, 2026: Purim\n+ Wednesday, March 4, 2026: Shushan Purim\n+ Saturday, March 7, 2026: Shabbat Parah\n+ Saturday, March 14, 2026: Shabbat HaHodesh\n+ Saturday, March 28, 2026: Shabbat HaGadol\n+ Wednesday, April 1, 2026: Erev Passover\n+ Friday, April 3, 2026: Passover (second day)\n+ Saturday, April 4, 2026: Hol Hamoed Passover (first day)\n+ Sunday, April 5, 2026: Hol Hamoed Passover (second day)\n+ Monday, April 6, 2026: Hol Hamoed Passover (third day)\n+ Tuesday, April 7, 2026: Hol Hamoed Passover (fourth day)\n+ Wednesday, April 8, 2026: Passover (seventh day)\n+ Thursday, April 9, 2026: Passover (eighth day)\n+ Tuesday, April 14, 2026: Yom HaShoah\n+ Wednesday, April 22, 2026: Yom HaAtzma'ut\n+ Tuesday, May 5, 2026: Lag BaOmer\n+ Friday, May 15, 2026: Yom Yerushalaim\n+ Thursday, May 21, 2026: Erev Shavuot\n+ Saturday, May 23, 2026: Shavuot (second day)\n+ Thursday, July 2, 2026: Tzom Tammuz\n+ Saturday, July 18, 2026: Shabbat Hazon\n+ Thursday, July 23, 2026: Tisha B'Av\n+ Saturday, July 25, 2026: Shabbat Nahamu\n+ Saturday, September 5, 2026: Selichot (night)\n+ Friday, September 11, 2026: Erev Rosh HaShanah\n+ Sunday, September 13, 2026: Rosh HaShanah (second day)\n+ Monday, September 14, 2026: Tzom Gedaliah\n+ Saturday, September 19, 2026: Shabbat Shuvah\n+ Sunday, September 20, 2026: Erev Yom Kippur\n+ Friday, September 25, 2026: Erev Sukkot\n+ Sunday, September 27, 2026: Sukkot (second day)\n+ Monday, September 28, 2026: Hol Hamoed Sukkot (first day)\n+ Tuesday, September 29, 2026: Hol Hamoed Sukkot (second day)\n+ Wednesday, September 30, 2026: Hol Hamoed Sukkot (third day)\n+ Thursday, October 1, 2026: Hol Hamoed Sukkot (fourth day)\n+ Friday, October 2, 2026: Hoshanah Rabbah\n+ Friday, December 4, 2026: \"Tal Umatar\" (evening)\n+ Friday, December 4, 2026: Erev Hanukkah\n- Saturday, December 5, 2026: Hanukkah\n+ Saturday, December 5, 2026: Hanukkah (first day)\n+ Sunday, December 6, 2026: Hanukkah (second day)\n+ Monday, December 7, 2026: Hanukkah (third day)\n+ Tuesday, December 8, 2026: Hanukkah (fourth day)\n+ Wednesday, December 9, 2026: Hanukkah (fifth day)\n+ Thursday, December 10, 2026: Hanukkah (sixth day)\n+ Friday, December 11, 2026: Hanukkah (seventh day)\n+ Saturday, December 12, 2026: Hanukkah (eighth day)\n+ Sunday, December 20, 2026: Tzom Teveth\n"
+ },
+ {
+  "id": "flag-islamic",
+  "init": "(setq calendar-islamic-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Thursday, January 15, 2026: Shab-e-Mi'raj\n+ Tuesday, February 3, 2026: Shab-e-Bara't\n+ Monday, March 16, 2026: Shab-e Qadr\n+ Friday, March 20, 2026: Id-al-Fitr\n+ Wednesday, May 27, 2026: Id-al-Adha\n+ Friday, June 26, 2026: Ashura\n+ Wednesday, August 26, 2026: Mulad-al-Nabi\n"
+ },
+ {
+  "id": "flag-bahai",
+  "init": "(setq calendar-bahai-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Wednesday, April 22, 2026: Second Day of Ridvan\n+ Thursday, April 23, 2026: Third Day of Ridvan\n+ Friday, April 24, 2026: Fourth Day of Ridvan\n+ Saturday, April 25, 2026: Fifth Day of Ridvan\n+ Sunday, April 26, 2026: Sixth Day of Ridvan\n+ Monday, April 27, 2026: Seventh Day of Ridvan\n+ Tuesday, April 28, 2026: Eighth Day of Ridvan\n+ Thursday, April 30, 2026: Tenth Day of Ridvan\n+ Friday, May 1, 2026: Eleventh Day of Ridvan\n+ Thursday, November 26, 2026: Day of the Covenant\n+ Saturday, November 28, 2026: Ascension of `Abdu’l-Bahá\n"
+ },
+ {
+  "id": "flag-chinese",
+  "init": "(setq calendar-chinese-all-holidays-flag t)",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Tuesday, March 3, 2026: Lantern Festival\n+ Saturday, April 4, 2026: Qingming Festival\n+ Friday, June 19, 2026: Dragon Boat Festival\n+ Wednesday, August 19, 2026: Double Seventh Festival\n+ Friday, September 25, 2026: Mid-Autumn Festival\n+ Sunday, October 18, 2026: Double Ninth Festival\n+ Tuesday, December 22, 2026: Winter Solstice Festival\n"
+ },
+ {
+  "id": "add-fixed",
+  "init": "(setq holiday-local-holidays\n      '((holiday-fixed 3 14 \"Pi Day\")\n        (holiday-fixed 6 19 \"Juneteenth\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Saturday, March 14, 2026: Pi Day\n+ Friday, June 19, 2026: Juneteenth\n"
+ },
+ {
+  "id": "add-float",
+  "init": "(setq holiday-local-holidays\n      '((holiday-float 11 2 1 \"Election Day\" 2)\n        (holiday-float 4 5 -1 \"Arbor Day\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Friday, April 24, 2026: Arbor Day\n+ Tuesday, November 3, 2026: Election Day\n"
+ },
+ {
+  "id": "add-easter",
+  "init": "(setq holiday-local-holidays\n      '((holiday-easter-etc 1 \"Easter Monday\")\n        (holiday-easter-etc 7 \"Low Sunday\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Monday, April 6, 2026: Easter Monday\n+ Sunday, April 12, 2026: Low Sunday\n"
+ },
+ {
+  "id": "add-orthodox",
+  "init": "(setq holiday-local-holidays\n      '((holiday-greek-orthodox-easter 1 \"Orthodox Easter Monday\")\n        (holiday-advent 7 \"Second Sunday of Advent\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Monday, April 13, 2026: Orthodox Easter Monday\n+ Sunday, December 6, 2026: Second Sunday of Advent\n"
+ },
+ {
+  "id": "add-julian",
+  "init": "(setq holiday-local-holidays\n      '((holiday-julian 12 24 \"Orthodox Christmas Eve\")\n        (holiday-julian 1 1 \"Old New Year\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Tuesday, January 6, 2026: Orthodox Christmas Eve\n+ Wednesday, January 14, 2026: Old New Year\n"
+ },
+ {
+  "id": "add-hebrew",
+  "init": "(setq holiday-local-holidays\n      '((holiday-hebrew 2 14 \"Pesach Sheni\")\n        (holiday-hebrew 5 15 \"Tu B'Av\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Friday, May 1, 2026: Pesach Sheni\n+ Wednesday, July 29, 2026: Tu B'Av\n"
+ },
+ {
+  "id": "add-islamic",
+  "init": "(setq holiday-local-holidays\n      '((holiday-islamic 12 9 \"Day of Arafah\")\n        (holiday-islamic 9 17 \"Battle of Badr\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Friday, March 6, 2026: Battle of Badr\n+ Tuesday, May 26, 2026: Day of Arafah\n"
+ },
+ {
+  "id": "add-bahai",
+  "init": "(setq holiday-local-holidays\n      '((holiday-bahai 2 1 \"Feast of Jalál\")\n        (holiday-bahai 5 1 \"Feast of Núr\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Thursday, April 9, 2026: Feast of Jalál\n+ Friday, June 5, 2026: Feast of Núr\n"
+ },
+ {
+  "id": "add-chinese",
+  "init": "(setq holiday-local-holidays\n      '((holiday-chinese 12 8 \"Laba Festival\")\n        (holiday-chinese 12 23 \"Little New Year\")\n        (holiday-chinese 7 15 \"Ghost Festival\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Monday, January 26, 2026: Laba Festival\n+ Tuesday, February 10, 2026: Little New Year\n+ Thursday, August 27, 2026: Ghost Festival\n"
+ },
+ {
+  "id": "add-sexp",
+  "init": "(setq holiday-local-holidays\n      '((holiday-sexp '(if (zerop (% year 4)) (list 2 29 year)) \"Leap Day\")\n        (holiday-sexp '(calendar-nth-named-day 2 6 3 year) \"Second Saturday of March\")))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Saturday, March 14, 2026: Second Saturday of March\n"
+ },
+ {
+  "id": "single-functions",
+  "init": "(setq holiday-local-holidays\n      '((holiday-hebrew-tisha-b-av)\n        (holiday-hebrew-misc)\n        (holiday-chinese-qingming)\n        (holiday-chinese-winter-solstice)))",
+  "from": 2026,
+  "to": 2026,
+  "mode": "diff",
+  "expected": "+ Saturday, January 31, 2026: Shabbat Shirah\n+ Monday, February 2, 2026: Tu B'Shevat\n+ Saturday, April 4, 2026: Qingming Festival\n+ Thursday, July 2, 2026: Tzom Tammuz\n+ Saturday, July 18, 2026: Shabbat Hazon\n+ Thursday, July 23, 2026: Tisha B'Av\n+ Saturday, July 25, 2026: Shabbat Nahamu\n+ Friday, December 4, 2026: \"Tal Umatar\" (evening)\n+ Sunday, December 20, 2026: Tzom Teveth\n+ Tuesday, December 22, 2026: Winter Solstice Festival\n"
+ }
+]

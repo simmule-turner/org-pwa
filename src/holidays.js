@@ -116,3 +116,27 @@ export function holidaysOn(date) {
   const d = date.getDate();
   return monthHolidays(date.getFullYear(), date.getMonth() + 1).filter((x) => x.startsWith(d + '\t')).map((x) => x.slice(x.indexOf('\t') + 1));
 }
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * list-holidays: a line for each holiday from the first year to the last, as `Saturday, July 4, 2026: Independence Day`, in date order.
+ * @param {number} startYear
+ * @param {number} endYear
+ * @returns {string}
+ */
+export function listHolidays(startYear, endYear) {
+  /** @type {string[]} */ const lines = [];
+  for (let year = startYear; year <= endYear; year++) {
+    for (let month = 0; month < 12; month++) {
+      for (let day = 1; ; day++) {
+        const date = new Date(2000, month, day);
+        date.setFullYear(year);
+        if (date.getMonth() !== month) break;
+        for (const name of holidaysOn(date)) lines.push(`${WEEKDAYS[date.getDay()]}, ${MONTHS[month]} ${day}, ${year}: ${name}`);
+      }
+    }
+  }
+  return lines.length ? lines.join('\n') + '\n' : '';
+}

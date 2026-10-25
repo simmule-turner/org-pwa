@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v633 — Chinese holidays, List holidays, holiday examples
+The Chinese calendar is here, worked out from the new moons and the sun's position as Emacs does: =holiday-oriental-holidays= (Chinese New Year, and with =calendar-chinese-all-holidays-flag= the Lantern, Qingming, Dragon Boat, Double Seventh, Mid-Autumn, Double Ninth and Winter Solstice festivals), =holiday-chinese= and =%%(diary-chinese-date)=. *List holidays…* lists every holiday between two years in a new buffer. =remove= and =delete= take an entry out of a holiday group. =examples/holidays.org= shows what is on by default, every flag, switching groups and entries off, adding each kind of entry, and a description link for all 120 rows.
+Verified: 301 Chinese years, 1,759 Chinese dates, Chinese holidays for 1700–2200, 12 list-holidays ranges and 25 holiday examples compared with Emacs 29.3.
+
 * v632 — Derivatives, row actions on Find matches, todo commands
 Table formulas gain =deriv=, =tderiv=, =nroot= and =prfac=, and =solve= reads decimal powers as fractions. On the Agenda, TODO, Match and Keyword search screens the row of the current Find match is focused: n and p move it, t changes its state, Enter opens its heading. =todo= commands in =org-agenda-custom-commands= open the TODO list for chosen keywords, =org-agenda-search-view-max-outline-level= limits Keyword search, and =#+FILETAGS:= tags count as inherited in the tag filters. The TODO list no longer shows entries under an archived heading.
 Verified: 150 more table expressions and 12 more Match and Keyword search cases compared with Emacs 29.3.

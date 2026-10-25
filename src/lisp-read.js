@@ -161,15 +161,24 @@ export function datum(f) {
   return null;
 }
 
-/** `(append A B ...)` of variables and quoted lists, or another variable, the computed values an init text commonly sets (`calendar-holidays`).
+/** `(append A B ...)` of variables and quoted lists, `(delete X LIST)` and `(remove X LIST)` (also `delq`, `remq`), or another variable: the computed values
+ * an init text commonly sets (`calendar-holidays`, a holiday group without one entry).
  * @param {Lisp} f @param {Map<string, Lisp>} vars @param {(name: string) => string} real @returns {Lisp | null} */
 function appended(f, vars, real) {
   if (f.k === 'sym' && f.v !== 't' && f.v !== 'nil') return vars.get(real(f.v)) || null; // another variable's value
-  if (f.k !== 'list' || symbolName(f.items[0]) !== 'append') return null;
+  if (f.k !== 'list') return null;
+  const head = symbolName(f.items[0]);
+  if ((head === 'delete' || head === 'remove' || head === 'delq' || head === 'remq') && f.items.length === 3) {
+    const unwanted = datum(f.items[1]);
+    const source = datum(f.items[2]) || appended(f.items[2], vars, real);
+    const l = unwanted && source ? listItems(source) : null;
+    return l && unwanted ? { k: 'list', items: l.filter((x) => !same(x, unwanted)) } : null;
+  }
+  if (head !== 'append') return null;
   /** @type {Lisp[]} */
   const items = [];
   for (const a of f.items.slice(1)) {
-    const v = a.k === 'sym' && a.v !== 't' && a.v !== 'nil' ? vars.get(real(a.v)) : datum(a) || undefined;
+    const v = datum(a) || appended(a, vars, real) || undefined;
     const l = v === undefined ? null : listItems(v);
     if (!l) return null;
     items.push(...l);

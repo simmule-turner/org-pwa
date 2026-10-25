@@ -887,6 +887,39 @@ check('a todo agenda command lists the TODO entries of the keywords it names and
   await context.close();
 });
 
+check('list-holidays asks for two years and lists the holidays between them in *Holidays*, where Find marks one', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  await page.evaluate(async () => {
+    const { listHolidaysCommand } = await import('/src-browser/holiday-list.js');
+    listHolidaysCommand();
+  });
+  await page.waitForSelector('#minibufferPrompt input');
+  expect((await page.locator('#minibufferPrompt').innerText()).includes('Start year'), 'the first question is the start year');
+  await page.fill('#minibufferPrompt input', 'abc');
+  await page.press('#minibufferPrompt input', 'Enter');
+  await page.waitForTimeout(150);
+  expect((await page.locator('#minibufferPrompt').innerText()).includes('Start year'), 'an answer that is not a year asks again');
+  await page.fill('#minibufferPrompt input', '2026');
+  await page.press('#minibufferPrompt input', 'Enter');
+  await page.waitForFunction(() => document.getElementById('minibufferPrompt')?.innerText.includes('End year'));
+  await page.fill('#minibufferPrompt input', '2026');
+  await page.press('#minibufferPrompt input', 'Enter');
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('*Holidays*'), null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  const text = await page.locator('#outline').innerText();
+  expect(text.includes('Monday, October 12, 2026: Columbus Day') && text.includes('Saturday, July 4, 2026: Independence Day'), `the list: ${text.slice(0, 300)}`);
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'columbus');
+  await page.waitForTimeout(400);
+  const found = await page.evaluate(() => document.getElementById('searchPanel')?.innerText || document.body.innerText.slice(0, 400));
+  expect(/1 match in this text/.test(found), `Find finds Columbus Day in the list: ${found.slice(0, 300)}`);
+  expect(errors.length === 0, `page errors: ${errors}`);
+  await context.close();
+});
+
 check('Search button: a tap opens the search used last, a tap while one shows or a long press opens the chooser, View lists no searches, and the back button is an arrow', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '#+TODO: TODO | DONE\n* TODO Ship notes :urgent:\nWrite the budget.\n* Meeting\n');

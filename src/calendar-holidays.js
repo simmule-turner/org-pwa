@@ -10,6 +10,7 @@ import {
   hebrewToAbsolute, hebrewFromAbsolute, islamicToAbsolute, islamicFromAbsolute, bahaiToAbsolute, bahaiFromAbsolute, julianToAbsolute, julianFromAbsolute,
 } from './calendar-conv.js';
 import { symbolName, stringValue, listItems, isNil } from './lisp-read.js';
+import { holidayChineseNewYear, holidayChineseQingming, holidayChineseWinterSolstice, holidayChinese } from './calendar-chinese.js';
 import { NORTH_SEASONS, SOUTH_SEASONS, seasonLocal } from './solar-holidays.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
@@ -262,6 +263,10 @@ export function holidayList(forms, w) {
       case 'holiday-hebrew': return n(0) !== null && n(1) !== null ? holidayHebrew(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
       case 'holiday-islamic': return n(0) !== null && n(1) !== null ? holidayIslamic(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
       case 'holiday-bahai': return n(0) !== null && n(1) !== null ? holidayBahai(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
+      case 'holiday-chinese-new-year': return holidayChineseNewYear(w);
+      case 'holiday-chinese-qingming': return holidayChineseQingming(w);
+      case 'holiday-chinese-winter-solstice': return holidayChineseWinterSolstice(w);
+      case 'holiday-chinese': return n(0) !== null && n(1) !== null ? holidayChinese(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
       case 'holiday-hebrew-passover': return hebrewPassover(w, flag('calendar-hebrew-all-holidays-flag'));
       case 'holiday-hebrew-rosh-hashanah': return hebrewRoshHashanah(w, flag('calendar-hebrew-all-holidays-flag'));
       case 'holiday-hebrew-hanukkah': return hebrewHanukkah(w, flag('calendar-hebrew-all-holidays-flag'));
@@ -361,6 +366,17 @@ export const DEFAULT_LISTS = `
         (append
          (holiday-fixed 11 26 "Day of the Covenant")
          (holiday-fixed 11 28 "Ascension of \`Abdu’l-Bahá")))))
+(setq holiday-oriental-holidays
+  '((holiday-chinese-new-year)
+    (if calendar-chinese-all-holidays-flag
+        (append
+         (holiday-chinese 1 15 "Lantern Festival")
+         (holiday-chinese-qingming)
+         (holiday-chinese 5  5 "Dragon Boat Festival")
+         (holiday-chinese 7  7 "Double Seventh Festival")
+         (holiday-chinese 8 15 "Mid-Autumn Festival")
+         (holiday-chinese 9  9 "Double Ninth Festival")
+         (holiday-chinese-winter-solstice)))))
 (setq holiday-solar-holidays
   '((solar-equinoxes-solstices)
     (holiday-sexp calendar-daylight-savings-starts

@@ -53,6 +53,7 @@ import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templat
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
 import { renameBuffer } from './buffer-rename.js';
+import { listHolidaysCommand } from './holiday-list.js';
 import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
@@ -603,6 +604,7 @@ export function paletteCommandList() {
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },
+    { id: 'list-holidays', label: 'List holidays\u2026', orgName: 'list-holidays', group: 'View', keywords: ['holiday', 'calendar', 'columbus', 'year'], run: () => listHolidaysCommand() },
     { id: 'calendar', label: 'Calendar', orgName: 'calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
     { id: 'search', label: 'Search', orgName: 'isearch-forward', keys: 'C-s', group: 'View', keywords: ['find', 'replace'], run: () => searchBtn.click() },
 

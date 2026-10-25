@@ -1,0 +1,929 @@
+#+TITLE: Holidays
+#+STARTUP: content
+
+The holidays the Agenda, the diary and *List holidays…* show are Emacs's =calendar-holidays=, put together from groups. This file shows which are on, how to turn every one on, how to switch some off, and how to add your own; the results are what Emacs 29.3 listed for 2026 (time zone America/New_York), and a test checks the app lists the same.
+
+* How to try an example
+Copy the Lisp into Settings → Advanced → *Lisp init*, then open the palette and run *List holidays…* with 2026 as both years. The same text works in an Emacs init file: put it where it runs before the calendar loads, because Emacs builds =calendar-holidays= from the group variables once, when it loads. (Setting =calendar-holidays= itself works at any time.)
+
+Holidays reach the Agenda through the diary: with =org-agenda-include-diary= on they are the "Diary:" rows. =diary-show-holidays-flag= set to =nil= leaves them out.
+
+* What is on, and what is not
+Seven groups come with Emacs, and two more are yours. All are on, except the extra entries each of five groups holds back behind a flag:
+
+| Variable                      | Holds                                              | Flag for the extra entries                  |
+|-------------------------------+----------------------------------------------------+---------------------------------------------|
+| =holiday-general-holidays=    | United States public days and observances          |                                             |
+| =holiday-christian-holidays=  | Ash Wednesday, Good Friday, Easter, Christmas      | =calendar-christian-all-holidays-flag=      |
+| =holiday-hebrew-holidays=     | the festivals and Hanukkah                         | =calendar-hebrew-all-holidays-flag=         |
+| =holiday-islamic-holidays=    | Islamic New Year, the start of Ramadan             | =calendar-islamic-all-holidays-flag=        |
+| =holiday-bahai-holidays=      | the Bahá’í festivals and three days of Ridvan      | =calendar-bahai-all-holidays-flag=          |
+| =holiday-oriental-holidays=   | Chinese New Year                                   | =calendar-chinese-all-holidays-flag=        |
+| =holiday-solar-holidays=      | equinoxes, solstices, daylight saving time changes |                                             |
+| =holiday-local-holidays=      | yours, for where you live (empty)                  |                                             |
+| =holiday-other-holidays=      | yours, any others (empty)                          |                                             |
+
+Every flag is =nil= until you set it. The general group is American; "Replace a group" below changes it.
+
+** What is on by default
+With no Lisp init at all, Emacs lists these (2026, time zone America/New_York). Every ~calendar-*-all-holidays-flag~ is off.
+
+The holidays of 2026:
+
+#+begin_example
+Thursday, January 1, 2026: New Year's Day
+Monday, January 19, 2026: Martin Luther King Day
+Monday, February 2, 2026: Groundhog Day
+Saturday, February 14, 2026: Valentine's Day
+Monday, February 16, 2026: President's Day
+Tuesday, February 17, 2026: Chinese New Year (Bing-Wu)
+Wednesday, February 18, 2026: Ramadan Begins
+Wednesday, February 18, 2026: Ash Wednesday
+Sunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)
+Tuesday, March 17, 2026: St. Patrick's Day
+Friday, March 20, 2026: Vernal Equinox 10:44am (EDT)
+Saturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183
+Wednesday, April 1, 2026: April Fools' Day
+Thursday, April 2, 2026: Passover
+Friday, April 3, 2026: Good Friday
+Sunday, April 5, 2026: Easter Sunday
+Tuesday, April 21, 2026: First Day of Ridvan
+Wednesday, April 29, 2026: Ninth Day of Ridvan
+Saturday, May 2, 2026: Twelfth Day of Ridvan
+Sunday, May 10, 2026: Mother's Day
+Friday, May 22, 2026: Shavuot
+Saturday, May 23, 2026: Declaration of the Báb
+Monday, May 25, 2026: Memorial Day
+Friday, May 29, 2026: Ascension of Bahá’u’lláh
+Sunday, June 14, 2026: Flag Day
+Wednesday, June 17, 2026: Islamic New Year 1448
+Sunday, June 21, 2026: Summer Solstice 4:24am (EDT)
+Sunday, June 21, 2026: Father's Day
+Saturday, July 4, 2026: Independence Day
+Thursday, July 9, 2026: Martyrdom of the Báb
+Monday, September 7, 2026: Labor Day
+Saturday, September 12, 2026: Rosh HaShanah 5787
+Monday, September 21, 2026: Yom Kippur
+Tuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)
+Saturday, September 26, 2026: Sukkot
+Saturday, October 3, 2026: Shemini Atzeret
+Sunday, October 4, 2026: Simchat Torah
+Monday, October 12, 2026: Columbus Day
+Tuesday, October 20, 2026: Birth of the Báb
+Saturday, October 31, 2026: Halloween
+Sunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)
+Wednesday, November 11, 2026: Veteran's Day
+Thursday, November 12, 2026: Birth of Bahá’u’lláh
+Thursday, November 26, 2026: Thanksgiving
+Saturday, December 5, 2026: Hanukkah
+Monday, December 21, 2026: Winter Solstice 3:49pm (EST)
+Friday, December 25, 2026: Christmas
+#+end_example
+
+** Everything on
+Turn all five flags on and every holiday of every group appears: the whole of the table in [[#every-entry][Every entry]], 143 lines in 2026.
+
+#+begin_src emacs-lisp
+(setq calendar-christian-all-holidays-flag t
+      calendar-hebrew-all-holidays-flag t
+      calendar-islamic-all-holidays-flag t
+      calendar-bahai-all-holidays-flag t
+      calendar-chinese-all-holidays-flag t)
+#+end_src
+
+The holidays of 2026:
+
+#+begin_example
+Thursday, January 1, 2026: New Year's Day
+Tuesday, January 6, 2026: Epiphany
+Wednesday, January 7, 2026: Christmas (Julian calendar)
+Thursday, January 15, 2026: Shab-e-Mi'raj
+Monday, January 19, 2026: Martin Luther King Day
+Saturday, January 31, 2026: Shabbat Shirah
+Sunday, February 1, 2026: Septuagesima Sunday
+Monday, February 2, 2026: Tu B'Shevat
+Monday, February 2, 2026: Groundhog Day
+Tuesday, February 3, 2026: Shab-e-Bara't
+Sunday, February 8, 2026: Sexagesima Sunday
+Saturday, February 14, 2026: Shabbat Shekalim
+Saturday, February 14, 2026: Valentine's Day
+Sunday, February 15, 2026: Shrove Sunday
+Monday, February 16, 2026: Shrove Monday
+Monday, February 16, 2026: President's Day
+Tuesday, February 17, 2026: Chinese New Year (Bing-Wu)
+Tuesday, February 17, 2026: Shrove Tuesday
+Wednesday, February 18, 2026: Ramadan Begins
+Wednesday, February 18, 2026: Ash Wednesday
+Saturday, February 28, 2026: Shabbat Zachor
+Monday, March 2, 2026: Fast of Esther
+Monday, March 2, 2026: Erev Purim
+Tuesday, March 3, 2026: Lantern Festival
+Tuesday, March 3, 2026: Purim
+Wednesday, March 4, 2026: Shushan Purim
+Saturday, March 7, 2026: Shabbat Parah
+Sunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)
+Saturday, March 14, 2026: Shabbat HaHodesh
+Monday, March 16, 2026: Shab-e Qadr
+Tuesday, March 17, 2026: St. Patrick's Day
+Friday, March 20, 2026: Vernal Equinox 10:44am (EDT)
+Friday, March 20, 2026: Id-al-Fitr
+Saturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183
+Sunday, March 22, 2026: Passion Sunday
+Saturday, March 28, 2026: Shabbat HaGadol
+Sunday, March 29, 2026: Palm Sunday
+Wednesday, April 1, 2026: Erev Passover
+Wednesday, April 1, 2026: April Fools' Day
+Thursday, April 2, 2026: Passover
+Thursday, April 2, 2026: Maundy Thursday
+Friday, April 3, 2026: Passover (second day)
+Friday, April 3, 2026: Good Friday
+Saturday, April 4, 2026: Qingming Festival
+Saturday, April 4, 2026: Hol Hamoed Passover (first day)
+Sunday, April 5, 2026: Hol Hamoed Passover (second day)
+Sunday, April 5, 2026: Easter Sunday
+Monday, April 6, 2026: Hol Hamoed Passover (third day)
+Tuesday, April 7, 2026: Hol Hamoed Passover (fourth day)
+Wednesday, April 8, 2026: Passover (seventh day)
+Thursday, April 9, 2026: Passover (eighth day)
+Sunday, April 12, 2026: Pascha (Greek Orthodox Easter)
+Tuesday, April 14, 2026: Yom HaShoah
+Tuesday, April 21, 2026: First Day of Ridvan
+Wednesday, April 22, 2026: Second Day of Ridvan
+Wednesday, April 22, 2026: Yom HaAtzma'ut
+Thursday, April 23, 2026: Third Day of Ridvan
+Friday, April 24, 2026: Fourth Day of Ridvan
+Saturday, April 25, 2026: Fifth Day of Ridvan
+Sunday, April 26, 2026: Sixth Day of Ridvan
+Monday, April 27, 2026: Seventh Day of Ridvan
+Tuesday, April 28, 2026: Eighth Day of Ridvan
+Wednesday, April 29, 2026: Ninth Day of Ridvan
+Thursday, April 30, 2026: Tenth Day of Ridvan
+Friday, May 1, 2026: Eleventh Day of Ridvan
+Saturday, May 2, 2026: Twelfth Day of Ridvan
+Tuesday, May 5, 2026: Lag BaOmer
+Sunday, May 10, 2026: Rogation Sunday
+Sunday, May 10, 2026: Mother's Day
+Thursday, May 14, 2026: Ascension Day
+Friday, May 15, 2026: Yom Yerushalaim
+Thursday, May 21, 2026: Erev Shavuot
+Friday, May 22, 2026: Shavuot
+Saturday, May 23, 2026: Declaration of the Báb
+Saturday, May 23, 2026: Shavuot (second day)
+Sunday, May 24, 2026: Pentecost (Whitsunday)
+Monday, May 25, 2026: Whitmonday
+Monday, May 25, 2026: Memorial Day
+Wednesday, May 27, 2026: Id-al-Adha
+Friday, May 29, 2026: Ascension of Bahá’u’lláh
+Sunday, May 31, 2026: Trinity Sunday
+Thursday, June 4, 2026: Corpus Christi
+Sunday, June 14, 2026: Flag Day
+Wednesday, June 17, 2026: Islamic New Year 1448
+Friday, June 19, 2026: Dragon Boat Festival
+Sunday, June 21, 2026: Summer Solstice 4:24am (EDT)
+Sunday, June 21, 2026: Father's Day
+Friday, June 26, 2026: Ashura
+Thursday, July 2, 2026: Tzom Tammuz
+Saturday, July 4, 2026: Independence Day
+Thursday, July 9, 2026: Martyrdom of the Báb
+Saturday, July 18, 2026: Shabbat Hazon
+Thursday, July 23, 2026: Tisha B'Av
+Saturday, July 25, 2026: Shabbat Nahamu
+Saturday, August 15, 2026: Assumption
+Wednesday, August 19, 2026: Double Seventh Festival
+Wednesday, August 26, 2026: Mulad-al-Nabi
+Saturday, September 5, 2026: Selichot (night)
+Monday, September 7, 2026: Labor Day
+Friday, September 11, 2026: Erev Rosh HaShanah
+Saturday, September 12, 2026: Rosh HaShanah 5787
+Sunday, September 13, 2026: Rosh HaShanah (second day)
+Monday, September 14, 2026: Tzom Gedaliah
+Saturday, September 19, 2026: Shabbat Shuvah
+Sunday, September 20, 2026: Erev Yom Kippur
+Monday, September 21, 2026: Yom Kippur
+Tuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)
+Friday, September 25, 2026: Mid-Autumn Festival
+Friday, September 25, 2026: Erev Sukkot
+Saturday, September 26, 2026: Sukkot
+Sunday, September 27, 2026: Sukkot (second day)
+Monday, September 28, 2026: Hol Hamoed Sukkot (first day)
+Tuesday, September 29, 2026: Hol Hamoed Sukkot (second day)
+Wednesday, September 30, 2026: Hol Hamoed Sukkot (third day)
+Thursday, October 1, 2026: Hol Hamoed Sukkot (fourth day)
+Friday, October 2, 2026: Hoshanah Rabbah
+Saturday, October 3, 2026: Shemini Atzeret
+Sunday, October 4, 2026: Simchat Torah
+Monday, October 12, 2026: Columbus Day
+Sunday, October 18, 2026: Double Ninth Festival
+Tuesday, October 20, 2026: Birth of the Báb
+Saturday, October 31, 2026: Halloween
+Sunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)
+Wednesday, November 11, 2026: Veteran's Day
+Thursday, November 12, 2026: Birth of Bahá’u’lláh
+Thursday, November 26, 2026: Day of the Covenant
+Thursday, November 26, 2026: Thanksgiving
+Saturday, November 28, 2026: Ascension of `Abdu’l-Bahá
+Sunday, November 29, 2026: Advent
+Friday, December 4, 2026: "Tal Umatar" (evening)
+Friday, December 4, 2026: Erev Hanukkah
+Saturday, December 5, 2026: Hanukkah (first day)
+Sunday, December 6, 2026: Hanukkah (second day)
+Monday, December 7, 2026: Hanukkah (third day)
+Tuesday, December 8, 2026: Hanukkah (fourth day)
+Wednesday, December 9, 2026: Hanukkah (fifth day)
+Thursday, December 10, 2026: Hanukkah (sixth day)
+Friday, December 11, 2026: Hanukkah (seventh day)
+Saturday, December 12, 2026: Hanukkah (eighth day)
+Sunday, December 20, 2026: Tzom Teveth
+Monday, December 21, 2026: Winter Solstice 3:49pm (EST)
+Tuesday, December 22, 2026: Winter Solstice Festival
+Friday, December 25, 2026: Christmas
+#+end_example
+
+* Switch things off
+** Switch one group off
+Set its variable to ~nil~. The sun-related group holds the equinoxes, solstices and the days daylight saving time starts and ends.
+
+#+begin_src emacs-lisp
+(setq holiday-solar-holidays nil)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
+- Sunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)
+- Friday, March 20, 2026: Vernal Equinox 10:44am (EDT)
+- Sunday, June 21, 2026: Summer Solstice 4:24am (EDT)
+- Tuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)
+- Sunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)
+- Monday, December 21, 2026: Winter Solstice 3:49pm (EST)
+#+end_example
+
+** Switch several groups off
+One ~setq~ may set any number of variables. Each group has its own variable: ~holiday-general-holidays~, ~holiday-christian-holidays~, ~holiday-hebrew-holidays~, ~holiday-islamic-holidays~, ~holiday-bahai-holidays~, ~holiday-oriental-holidays~, ~holiday-solar-holidays~.
+
+#+begin_src emacs-lisp
+(setq holiday-islamic-holidays nil
+      holiday-bahai-holidays nil
+      holiday-oriental-holidays nil)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
+- Tuesday, February 17, 2026: Chinese New Year (Bing-Wu)
+- Wednesday, February 18, 2026: Ramadan Begins
+- Saturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183
+- Tuesday, April 21, 2026: First Day of Ridvan
+- Wednesday, April 29, 2026: Ninth Day of Ridvan
+- Saturday, May 2, 2026: Twelfth Day of Ridvan
+- Saturday, May 23, 2026: Declaration of the Báb
+- Friday, May 29, 2026: Ascension of Bahá’u’lláh
+- Wednesday, June 17, 2026: Islamic New Year 1448
+- Thursday, July 9, 2026: Martyrdom of the Báb
+- Tuesday, October 20, 2026: Birth of the Báb
+- Thursday, November 12, 2026: Birth of Bahá’u’lláh
+#+end_example
+
+** Remove one entry from a group
+~remove~ takes the entry, written as it stands in the group, and the group.
+
+#+begin_src emacs-lisp
+(setq holiday-general-holidays
+      (remove '(holiday-fixed 2 2 "Groundhog Day") holiday-general-holidays))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
+- Monday, February 2, 2026: Groundhog Day
+#+end_example
+
+** Remove several entries
+~remove~ calls nest. An entry is matched as written, quotes and spaces aside, so copy it from the group (the lists are in [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/holidays.el][holidays.el]]).
+
+#+begin_src emacs-lisp
+(setq holiday-general-holidays
+      (remove '(holiday-fixed 2 2 "Groundhog Day")
+              (remove '(holiday-fixed 4 1 "April Fools' Day")
+                      (remove '(holiday-float 10 1 2 "Columbus Day")
+                              holiday-general-holidays))))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
+- Monday, February 2, 2026: Groundhog Day
+- Wednesday, April 1, 2026: April Fools' Day
+- Monday, October 12, 2026: Columbus Day
+#+end_example
+
+** Replace a group
+A group is only a list. Set it to your own entries to change it to another country's; this one is France.
+
+#+begin_src emacs-lisp
+(setq holiday-general-holidays
+      '((holiday-fixed 1 1 "New Year's Day")
+        (holiday-fixed 5 1 "Labour Day")
+        (holiday-fixed 5 8 "Victory in Europe Day")
+        (holiday-fixed 7 14 "Bastille Day")
+        (holiday-fixed 11 11 "Armistice Day")))
+#+end_src
+
+The holidays of 2026:
+
+#+begin_example
+Thursday, January 1, 2026: New Year's Day
+Tuesday, February 17, 2026: Chinese New Year (Bing-Wu)
+Wednesday, February 18, 2026: Ramadan Begins
+Wednesday, February 18, 2026: Ash Wednesday
+Sunday, March 8, 2026: Daylight Saving Time Begins 2:00am (EST)
+Friday, March 20, 2026: Vernal Equinox 10:44am (EDT)
+Saturday, March 21, 2026: Bahá’í New Year (Naw-Ruz) 183
+Thursday, April 2, 2026: Passover
+Friday, April 3, 2026: Good Friday
+Sunday, April 5, 2026: Easter Sunday
+Tuesday, April 21, 2026: First Day of Ridvan
+Wednesday, April 29, 2026: Ninth Day of Ridvan
+Friday, May 1, 2026: Labour Day
+Saturday, May 2, 2026: Twelfth Day of Ridvan
+Friday, May 8, 2026: Victory in Europe Day
+Friday, May 22, 2026: Shavuot
+Saturday, May 23, 2026: Declaration of the Báb
+Friday, May 29, 2026: Ascension of Bahá’u’lláh
+Wednesday, June 17, 2026: Islamic New Year 1448
+Sunday, June 21, 2026: Summer Solstice 4:24am (EDT)
+Thursday, July 9, 2026: Martyrdom of the Báb
+Tuesday, July 14, 2026: Bastille Day
+Saturday, September 12, 2026: Rosh HaShanah 5787
+Monday, September 21, 2026: Yom Kippur
+Tuesday, September 22, 2026: Autumnal Equinox 8:04pm (EDT)
+Saturday, September 26, 2026: Sukkot
+Saturday, October 3, 2026: Shemini Atzeret
+Sunday, October 4, 2026: Simchat Torah
+Tuesday, October 20, 2026: Birth of the Báb
+Sunday, November 1, 2026: Daylight Saving Time Ends 2:00am (EDT)
+Wednesday, November 11, 2026: Armistice Day
+Thursday, November 12, 2026: Birth of Bahá’u’lláh
+Saturday, December 5, 2026: Hanukkah
+Monday, December 21, 2026: Winter Solstice 3:49pm (EST)
+Friday, December 25, 2026: Christmas
+#+end_example
+
+** Keep only your own
+Every group off, and the list is yours. ~holiday-local-holidays~ is for holidays of where you live, ~holiday-other-holidays~ for any others; both are always part of the list.
+
+#+begin_src emacs-lisp
+(setq holiday-general-holidays nil
+      holiday-christian-holidays nil
+      holiday-hebrew-holidays nil
+      holiday-islamic-holidays nil
+      holiday-bahai-holidays nil
+      holiday-oriental-holidays nil
+      holiday-solar-holidays nil)
+(setq holiday-local-holidays
+      '((holiday-fixed 3 14 "Pi Day")
+        (holiday-easter-etc 1 "Easter Monday")))
+(setq holiday-other-holidays
+      '((holiday-fixed 12 26 "Boxing Day")))
+#+end_src
+
+The holidays of 2026:
+
+#+begin_example
+Saturday, March 14, 2026: Pi Day
+Monday, April 6, 2026: Easter Monday
+Saturday, December 26, 2026: Boxing Day
+#+end_example
+
+** Name the list yourself
+~calendar-holidays~ is what Emacs uses; the groups are only how it is first put together. Setting it directly (after ~(require 'holidays)~, so the group variables exist) picks the groups you want. Here, the Christian and Islamic groups and nothing else:
+
+#+begin_src emacs-lisp
+(require 'holidays)
+(setq calendar-holidays
+      (append holiday-christian-holidays
+              holiday-islamic-holidays))
+#+end_src
+
+The holidays of 2026:
+
+#+begin_example
+Wednesday, February 18, 2026: Ramadan Begins
+Wednesday, February 18, 2026: Ash Wednesday
+Friday, April 3, 2026: Good Friday
+Sunday, April 5, 2026: Easter Sunday
+Wednesday, June 17, 2026: Islamic New Year 1448
+Friday, December 25, 2026: Christmas
+#+end_example
+
+* Turn the longer lists on
+Each flag adds entries to one group. The ones you may not know are all here: every line below is one entry of [[#every-entry][Every entry]].
+
+** The longer Christian list
+The flag adds the days around Lent, Easter and Pentecost, Epiphany, Assumption, Advent, and the Julian Christmas and Greek Orthodox Easter.
+
+#+begin_src emacs-lisp
+(setq calendar-christian-all-holidays-flag t)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Tuesday, January 6, 2026: Epiphany
++ Wednesday, January 7, 2026: Christmas (Julian calendar)
++ Sunday, February 1, 2026: Septuagesima Sunday
++ Sunday, February 8, 2026: Sexagesima Sunday
++ Sunday, February 15, 2026: Shrove Sunday
++ Monday, February 16, 2026: Shrove Monday
++ Tuesday, February 17, 2026: Shrove Tuesday
++ Sunday, March 22, 2026: Passion Sunday
++ Sunday, March 29, 2026: Palm Sunday
++ Thursday, April 2, 2026: Maundy Thursday
++ Sunday, April 12, 2026: Pascha (Greek Orthodox Easter)
++ Sunday, May 10, 2026: Rogation Sunday
++ Thursday, May 14, 2026: Ascension Day
++ Sunday, May 24, 2026: Pentecost (Whitsunday)
++ Monday, May 25, 2026: Whitmonday
++ Sunday, May 31, 2026: Trinity Sunday
++ Thursday, June 4, 2026: Corpus Christi
++ Saturday, August 15, 2026: Assumption
++ Sunday, November 29, 2026: Advent
+#+end_example
+
+** The longer Hebrew list
+The flag adds the eves of the festivals, their second and middle days, the special Sabbaths, the fasts, Purim and the days of modern Israel.
+
+#+begin_src emacs-lisp
+(setq calendar-hebrew-all-holidays-flag t)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Saturday, January 31, 2026: Shabbat Shirah
++ Monday, February 2, 2026: Tu B'Shevat
++ Saturday, February 14, 2026: Shabbat Shekalim
++ Saturday, February 28, 2026: Shabbat Zachor
++ Monday, March 2, 2026: Fast of Esther
++ Monday, March 2, 2026: Erev Purim
++ Tuesday, March 3, 2026: Purim
++ Wednesday, March 4, 2026: Shushan Purim
++ Saturday, March 7, 2026: Shabbat Parah
++ Saturday, March 14, 2026: Shabbat HaHodesh
++ Saturday, March 28, 2026: Shabbat HaGadol
++ Wednesday, April 1, 2026: Erev Passover
++ Friday, April 3, 2026: Passover (second day)
++ Saturday, April 4, 2026: Hol Hamoed Passover (first day)
++ Sunday, April 5, 2026: Hol Hamoed Passover (second day)
++ Monday, April 6, 2026: Hol Hamoed Passover (third day)
++ Tuesday, April 7, 2026: Hol Hamoed Passover (fourth day)
++ Wednesday, April 8, 2026: Passover (seventh day)
++ Thursday, April 9, 2026: Passover (eighth day)
++ Tuesday, April 14, 2026: Yom HaShoah
++ Wednesday, April 22, 2026: Yom HaAtzma'ut
++ Tuesday, May 5, 2026: Lag BaOmer
++ Friday, May 15, 2026: Yom Yerushalaim
++ Thursday, May 21, 2026: Erev Shavuot
++ Saturday, May 23, 2026: Shavuot (second day)
++ Thursday, July 2, 2026: Tzom Tammuz
++ Saturday, July 18, 2026: Shabbat Hazon
++ Thursday, July 23, 2026: Tisha B'Av
++ Saturday, July 25, 2026: Shabbat Nahamu
++ Saturday, September 5, 2026: Selichot (night)
++ Friday, September 11, 2026: Erev Rosh HaShanah
++ Sunday, September 13, 2026: Rosh HaShanah (second day)
++ Monday, September 14, 2026: Tzom Gedaliah
++ Saturday, September 19, 2026: Shabbat Shuvah
++ Sunday, September 20, 2026: Erev Yom Kippur
++ Friday, September 25, 2026: Erev Sukkot
++ Sunday, September 27, 2026: Sukkot (second day)
++ Monday, September 28, 2026: Hol Hamoed Sukkot (first day)
++ Tuesday, September 29, 2026: Hol Hamoed Sukkot (second day)
++ Wednesday, September 30, 2026: Hol Hamoed Sukkot (third day)
++ Thursday, October 1, 2026: Hol Hamoed Sukkot (fourth day)
++ Friday, October 2, 2026: Hoshanah Rabbah
++ Friday, December 4, 2026: "Tal Umatar" (evening)
++ Friday, December 4, 2026: Erev Hanukkah
+- Saturday, December 5, 2026: Hanukkah
++ Saturday, December 5, 2026: Hanukkah (first day)
++ Sunday, December 6, 2026: Hanukkah (second day)
++ Monday, December 7, 2026: Hanukkah (third day)
++ Tuesday, December 8, 2026: Hanukkah (fourth day)
++ Wednesday, December 9, 2026: Hanukkah (fifth day)
++ Thursday, December 10, 2026: Hanukkah (sixth day)
++ Friday, December 11, 2026: Hanukkah (seventh day)
++ Saturday, December 12, 2026: Hanukkah (eighth day)
++ Sunday, December 20, 2026: Tzom Teveth
+#+end_example
+
+** The longer Islamic list
+The flag adds Ashura, the Prophet's birthday, the nights of Isra and Mi'raj, Bara'at and Qadr, and both Eids.
+
+#+begin_src emacs-lisp
+(setq calendar-islamic-all-holidays-flag t)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Thursday, January 15, 2026: Shab-e-Mi'raj
++ Tuesday, February 3, 2026: Shab-e-Bara't
++ Monday, March 16, 2026: Shab-e Qadr
++ Friday, March 20, 2026: Id-al-Fitr
++ Wednesday, May 27, 2026: Id-al-Adha
++ Friday, June 26, 2026: Ashura
++ Wednesday, August 26, 2026: Mulad-al-Nabi
+#+end_example
+
+** The longer Bahá’í list
+The flag adds the other nine days of Ridvan, the Day of the Covenant and the Ascension of ‘Abdu’l-Bahá.
+
+#+begin_src emacs-lisp
+(setq calendar-bahai-all-holidays-flag t)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Wednesday, April 22, 2026: Second Day of Ridvan
++ Thursday, April 23, 2026: Third Day of Ridvan
++ Friday, April 24, 2026: Fourth Day of Ridvan
++ Saturday, April 25, 2026: Fifth Day of Ridvan
++ Sunday, April 26, 2026: Sixth Day of Ridvan
++ Monday, April 27, 2026: Seventh Day of Ridvan
++ Tuesday, April 28, 2026: Eighth Day of Ridvan
++ Thursday, April 30, 2026: Tenth Day of Ridvan
++ Friday, May 1, 2026: Eleventh Day of Ridvan
++ Thursday, November 26, 2026: Day of the Covenant
++ Saturday, November 28, 2026: Ascension of `Abdu’l-Bahá
+#+end_example
+
+** The longer Chinese list
+The flag adds the festivals that follow the Chinese calendar. Chinese New Year is always on; the Chinese months are worked out from the new moons and the sun's position, as Emacs does.
+
+#+begin_src emacs-lisp
+(setq calendar-chinese-all-holidays-flag t)
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Tuesday, March 3, 2026: Lantern Festival
++ Saturday, April 4, 2026: Qingming Festival
++ Friday, June 19, 2026: Dragon Boat Festival
++ Wednesday, August 19, 2026: Double Seventh Festival
++ Friday, September 25, 2026: Mid-Autumn Festival
++ Sunday, October 18, 2026: Double Ninth Festival
++ Tuesday, December 22, 2026: Winter Solstice Festival
+#+end_example
+
+* Add your own
+The forms Emacs gives you, each in ~holiday-local-holidays~ (or ~holiday-other-holidays~). The manual describes them in [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Holidays.html][Holidays]] and [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Advanced-Calendar_002fDiary-Usage.html][Advanced Calendar/Diary Usage]]; the source is [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/holidays.el][holidays.el]].
+
+** Add a fixed date: holiday-fixed
+~(holiday-fixed MONTH DAY "NAME")~: the same date every year.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-fixed 3 14 "Pi Day")
+        (holiday-fixed 6 19 "Juneteenth")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Saturday, March 14, 2026: Pi Day
++ Friday, June 19, 2026: Juneteenth
+#+end_example
+
+** Add "the Nth weekday": holiday-float
+~(holiday-float MONTH DAYNAME N "NAME" [DAY])~. DAYNAME is 0 for Sunday to 6 for Saturday; N counts from the start of the month, or from its end when negative. A DAY makes it the Nth weekday on or after that day: the Tuesday after the first Monday of November is the first Tuesday on or after November 2.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-float 11 2 1 "Election Day" 2)
+        (holiday-float 4 5 -1 "Arbor Day")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Friday, April 24, 2026: Arbor Day
++ Tuesday, November 3, 2026: Election Day
+#+end_example
+
+** Add a day counted from Easter: holiday-easter-etc
+~(holiday-easter-etc DAYS "NAME")~: days after Easter, or before it when negative.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-easter-etc 1 "Easter Monday")
+        (holiday-easter-etc 7 "Low Sunday")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Monday, April 6, 2026: Easter Monday
++ Sunday, April 12, 2026: Low Sunday
+#+end_example
+
+** Add a day counted from Orthodox Easter or Advent
+~holiday-greek-orthodox-easter~ and ~holiday-advent~ take the same days-and-name arguments.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-greek-orthodox-easter 1 "Orthodox Easter Monday")
+        (holiday-advent 7 "Second Sunday of Advent")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Monday, April 13, 2026: Orthodox Easter Monday
++ Sunday, December 6, 2026: Second Sunday of Advent
+#+end_example
+
+** Add a Julian-calendar date: holiday-julian
+~(holiday-julian MONTH DAY "NAME")~: a date on the Julian calendar, which the Orthodox churches that keep it use.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-julian 12 24 "Orthodox Christmas Eve")
+        (holiday-julian 1 1 "Old New Year")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Tuesday, January 6, 2026: Orthodox Christmas Eve
++ Wednesday, January 14, 2026: Old New Year
+#+end_example
+
+** Add a Hebrew-calendar date: holiday-hebrew
+~(holiday-hebrew MONTH DAY "NAME")~. Months are numbered from Nisan as 1; Adar is 12 (Adar I in a leap year) and Adar II is 13.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-hebrew 2 14 "Pesach Sheni")
+        (holiday-hebrew 5 15 "Tu B'Av")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Friday, May 1, 2026: Pesach Sheni
++ Wednesday, July 29, 2026: Tu B'Av
+#+end_example
+
+** Add an Islamic-calendar date: holiday-islamic
+~(holiday-islamic MONTH DAY "NAME")~. Months are numbered from Muharram as 1.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-islamic 12 9 "Day of Arafah")
+        (holiday-islamic 9 17 "Battle of Badr")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Friday, March 6, 2026: Battle of Badr
++ Tuesday, May 26, 2026: Day of Arafah
+#+end_example
+
+** Add a Bahá’í-calendar date: holiday-bahai
+~(holiday-bahai MONTH DAY "NAME")~. Months are numbered from Bahá as 1, and the first day of each month is its Feast.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-bahai 2 1 "Feast of Jalál")
+        (holiday-bahai 5 1 "Feast of Núr")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Thursday, April 9, 2026: Feast of Jalál
++ Friday, June 5, 2026: Feast of Núr
+#+end_example
+
+** Add a Chinese-calendar date: holiday-chinese
+~(holiday-chinese MONTH DAY "NAME")~. Months are numbered from the first month of the Chinese year.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-chinese 12 8 "Laba Festival")
+        (holiday-chinese 12 23 "Little New Year")
+        (holiday-chinese 7 15 "Ghost Festival")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Monday, January 26, 2026: Laba Festival
++ Tuesday, February 10, 2026: Little New Year
++ Thursday, August 27, 2026: Ghost Festival
+#+end_example
+
+** Add a computed date: holiday-sexp
+~(holiday-sexp EXPR "NAME")~: EXPR gives the date in the variable ~year~ as ~(MONTH DAY YEAR)~, or ~nil~ when there is no holiday that year.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-sexp '(if (zerop (% year 4)) (list 2 29 year)) "Leap Day")
+        (holiday-sexp '(calendar-nth-named-day 2 6 3 year) "Second Saturday of March")))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Saturday, March 14, 2026: Second Saturday of March
+#+end_example
+
+* The obscure ones
+** Obscure entries one at a time
+The groups are built from functions you may also call yourself, without a flag: the fasts and Sabbaths around Tisha B'Av, the miscellaneous Hebrew days, the Qingming Festival and the Chinese winter solstice.
+
+#+begin_src emacs-lisp
+(setq holiday-local-holidays
+      '((holiday-hebrew-tisha-b-av)
+        (holiday-hebrew-misc)
+        (holiday-chinese-qingming)
+        (holiday-chinese-winter-solstice)))
+#+end_src
+
+Compared with the default list for 2026 (~+~ is added, ~-~ is gone):
+
+#+begin_example
++ Saturday, January 31, 2026: Shabbat Shirah
++ Monday, February 2, 2026: Tu B'Shevat
++ Saturday, April 4, 2026: Qingming Festival
++ Thursday, July 2, 2026: Tzom Tammuz
++ Saturday, July 18, 2026: Shabbat Hazon
++ Thursday, July 23, 2026: Tisha B'Av
++ Saturday, July 25, 2026: Shabbat Nahamu
++ Friday, December 4, 2026: "Tal Umatar" (evening)
++ Sunday, December 20, 2026: Tzom Teveth
++ Tuesday, December 22, 2026: Winter Solstice Festival
+#+end_example
+
+The Hebrew and Islamic holidays move against the Gregorian calendar, so a holiday you add on those calendars lands on a different day each year. The Chinese holidays do too, and Emacs works out the months itself, so Chinese New Year and the rest need no table.
+
+* Every entry
+:PROPERTIES:
+:CUSTOM_ID: every-entry
+:END:
+Every holiday Emacs can list, by group. "on" means the entry is in the default list; "needs" names the flag that adds it. Each row links to a description of the holiday.
+
+** General (United States): ~holiday-general-holidays~
+| Entry | Date | Default | Description |
+|-
+| New Year's Day | January 1 | on | [[https://en.wikipedia.org/wiki/New_Year's_Day][New Year's Day]] |
+| Martin Luther King Day | third Monday of January | on | [[https://en.wikipedia.org/wiki/Martin_Luther_King_Jr._Day][Martin Luther King Jr. Day]] |
+| Groundhog Day | February 2 | on | [[https://en.wikipedia.org/wiki/Groundhog_Day][Groundhog Day]] |
+| Valentine's Day | February 14 | on | [[https://en.wikipedia.org/wiki/Valentine's_Day][Valentine's Day]] |
+| President's Day | third Monday of February | on | [[https://en.wikipedia.org/wiki/Presidents'_Day][Presidents' Day]] |
+| St. Patrick's Day | March 17 | on | [[https://en.wikipedia.org/wiki/Saint_Patrick's_Day][Saint Patrick's Day]] |
+| April Fools' Day | April 1 | on | [[https://en.wikipedia.org/wiki/April_Fools'_Day][April Fools' Day]] |
+| Mother's Day | second Sunday of May | on | [[https://en.wikipedia.org/wiki/Mother's_Day][Mother's Day]] |
+| Memorial Day | last Monday of May | on | [[https://en.wikipedia.org/wiki/Memorial_Day][Memorial Day]] |
+| Flag Day | June 14 | on | [[https://en.wikipedia.org/wiki/Flag_Day_(United_States)][Flag Day (United States)]] |
+| Father's Day | third Sunday of June | on | [[https://en.wikipedia.org/wiki/Father's_Day][Father's Day]] |
+| Independence Day | July 4 | on | [[https://en.wikipedia.org/wiki/Independence_Day_(United_States)][Independence Day (United States)]] |
+| Labor Day | first Monday of September | on | [[https://en.wikipedia.org/wiki/Labor_Day][Labor Day]] |
+| Columbus Day | second Monday of October | on | [[https://en.wikipedia.org/wiki/Columbus_Day][Columbus Day]] |
+| Halloween | October 31 | on | [[https://en.wikipedia.org/wiki/Halloween][Halloween]] |
+| Veteran's Day | November 11 | on | [[https://en.wikipedia.org/wiki/Veterans_Day][Veterans Day]] |
+| Thanksgiving | fourth Thursday of November | on | [[https://en.wikipedia.org/wiki/Thanksgiving_(United_States)][Thanksgiving (United States)]] |
+
+** Christian: ~holiday-christian-holidays~
+| Entry | Date | Default | Description |
+|-
+| Ash Wednesday | 46 days before Easter | on | [[https://en.wikipedia.org/wiki/Ash_Wednesday][Ash Wednesday]] |
+| Good Friday | 2 days before Easter | on | [[https://en.wikipedia.org/wiki/Good_Friday][Good Friday]] |
+| Easter Sunday | by the Nicaean rule, as the Western churches | on | [[https://en.wikipedia.org/wiki/Easter][Easter]] |
+| Christmas | December 25 | on | [[https://en.wikipedia.org/wiki/Christmas][Christmas]] |
+| Septuagesima Sunday | 63 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Septuagesima][Septuagesima]] |
+| Sexagesima Sunday | 56 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Sexagesima][Sexagesima]] |
+| Shrove Sunday | 49 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Quinquagesima][Quinquagesima]] |
+| Shrove Monday | 48 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Shrove_Monday][Shrove Monday]] |
+| Shrove Tuesday | 47 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Shrove_Tuesday][Shrove Tuesday]] |
+| Passion Sunday | 14 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Passiontide][Passiontide]] |
+| Palm Sunday | 7 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Palm_Sunday][Palm Sunday]] |
+| Maundy Thursday | 3 days before Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Maundy_Thursday][Maundy Thursday]] |
+| Rogation Sunday | 35 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Rogation_days][Rogation days]] |
+| Ascension Day | 39 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Feast_of_the_Ascension][Feast of the Ascension]] |
+| Pentecost (Whitsunday) | 49 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Pentecost][Pentecost]] |
+| Whitmonday | 50 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Whit_Monday][Whit Monday]] |
+| Trinity Sunday | 56 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Trinity_Sunday][Trinity Sunday]] |
+| Corpus Christi | 60 days after Easter | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Corpus_Christi_(feast)][Corpus Christi (feast)]] |
+| Epiphany | January 6 | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Epiphany_(holiday)][Epiphany (holiday)]] |
+| Christmas (Julian calendar) | December 25 on the Julian calendar | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Observance_of_Christmas_by_country][Observance of Christmas by country]] |
+| Pascha (Greek Orthodox Easter) | Easter by the Julian calendar | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Pascha][Pascha]] |
+| Assumption | August 15 | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Assumption_of_Mary][Assumption of Mary]] |
+| Advent | the Sunday on or before December 3 | needs ~calendar-christian-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Advent][Advent]] |
+
+** Hebrew: ~holiday-hebrew-holidays~
+| Entry | Date | Default | Description |
+|-
+| Rosh HaShanah | 1 Tishri | on | [[https://en.wikipedia.org/wiki/Rosh_Hashanah][Rosh Hashanah]] |
+| Yom Kippur | 10 Tishri | on | [[https://en.wikipedia.org/wiki/Yom_Kippur][Yom Kippur]] |
+| Sukkot | 15 Tishri | on | [[https://en.wikipedia.org/wiki/Sukkot][Sukkot]] |
+| Shemini Atzeret | 22 Tishri | on | [[https://en.wikipedia.org/wiki/Shemini_Atzeret][Shemini Atzeret]] |
+| Simchat Torah | 23 Tishri | on | [[https://en.wikipedia.org/wiki/Simchat_Torah][Simchat Torah]] |
+| Passover | 15 Nisan | on | [[https://en.wikipedia.org/wiki/Passover][Passover]] |
+| Shavuot | 6 Sivan | on | [[https://en.wikipedia.org/wiki/Shavuot][Shavuot]] |
+| Hanukkah | 25 Kislev | on | [[https://en.wikipedia.org/wiki/Hanukkah][Hanukkah]] |
+| Selichot (night) | the Saturday on or before 4 days before Rosh HaShanah | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Selichot][Selichot]] |
+| Erev Rosh HaShanah | 29 Elul | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Jewish_holidays][Jewish holidays]] |
+| Rosh HaShanah (second day) | 2 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Rosh_Hashanah][Rosh Hashanah]] |
+| Tzom Gedaliah | 3 Tishri (4 Tishri when that is Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Fast_of_Gedaliah][Fast of Gedaliah]] |
+| Shabbat Shuvah | the Saturday on or before 7 days after Rosh HaShanah | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Erev Yom Kippur | 9 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Yom_Kippur][Yom Kippur]] |
+| Erev Sukkot | 14 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Sukkot][Sukkot]] |
+| Sukkot (second day) | 16 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Sukkot][Sukkot]] |
+| Hol Hamoed Sukkot (four days) | 17 to 20 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Chol_HaMoed][Chol HaMoed]] |
+| Hoshanah Rabbah | 21 Tishri | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Hoshana_Rabbah][Hoshana Rabbah]] |
+| Shabbat Shekalim | the Saturday on or before 43 days before Passover | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Shabbat Zachor | the Saturday on or before 30 days before Passover | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Fast of Esther | 13 Adar (moved back two days when that is Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Fast_of_Esther][Fast of Esther]] |
+| Erev Purim | 13 Adar | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Purim][Purim]] |
+| Purim | 14 Adar (Adar II in a leap year) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Purim][Purim]] |
+| Shushan Purim | 15 Adar | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Purim][Purim]] |
+| Shabbat Parah | the Saturday a week before Shabbat HaHodesh | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Shabbat HaHodesh | the Saturday on or before 14 days before Passover | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Shabbat HaGadol | the Saturday on or before the day before Passover | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Erev Passover | 14 Nisan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Passover][Passover]] |
+| Passover (second day) | 16 Nisan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Passover][Passover]] |
+| Hol Hamoed Passover (four days) | 17 to 20 Nisan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Chol_HaMoed][Chol HaMoed]] |
+| Passover (seventh and eighth day) | 21 and 22 Nisan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Passover][Passover]] |
+| Yom HaShoah | 27 Nisan (moved when it meets Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Yom_HaShoah][Yom HaShoah]] |
+| Yom HaAtzma'ut | 5 Iyar (moved when it meets Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Yom_Ha'atzmaut][Yom Ha'atzmaut]] |
+| Lag BaOmer | 18 Iyar | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Lag_BaOmer][Lag BaOmer]] |
+| Yom Yerushalaim | 28 Iyar | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Jerusalem_Day][Jerusalem Day]] |
+| Erev Shavuot | 5 Sivan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Shavuot][Shavuot]] |
+| Shavuot (second day) | 7 Sivan | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Shavuot][Shavuot]] |
+| Erev Hanukkah and the eight days | 24 Kislev, then 25 Kislev for eight days (replaces the single Hanukkah) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Hanukkah][Hanukkah]] |
+| Tzom Tammuz | 17 Tammuz (18 Tammuz when that is Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Seventeenth_of_Tammuz][Seventeenth of Tammuz]] |
+| Shabbat Hazon | the Saturday on or before 9 Av | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Tisha B'Av | 9 Av (10 Av when that is Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Tisha_B'Av][Tisha B'Av]] |
+| Shabbat Nahamu | the Saturday on or before 7 days after 9 Av | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| "Tal Umatar" (evening) | November 21 or 22 on the Julian calendar | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Rain_prayer][Rain prayer]] |
+| Tzom Teveth | 10 Tevet (11 Tevet when that is Shabbat) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Tenth_of_Tevet][Tenth of Tevet]] |
+| Tu B'Shevat | 15 Shevat | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Tu_BiShvat][Tu BiShvat]] |
+| Shabbat Shirah | the Saturday on or before 16 or 17 Shevat | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Special_Shabbat][Special Shabbat]] |
+| Kiddush HaHamah | March 26 on the Julian calendar, every 28 years (2037 is the next) | needs ~calendar-hebrew-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Birkat_Hachama][Birkat Hachama]] |
+
+** Islamic: ~holiday-islamic-holidays~
+| Entry | Date | Default | Description |
+|-
+| Islamic New Year | 1 Muharram | on | [[https://en.wikipedia.org/wiki/Islamic_New_Year][Islamic New Year]] |
+| Ramadan Begins | 1 Ramadan | on | [[https://en.wikipedia.org/wiki/Ramadan][Ramadan]] |
+| Ashura | 10 Muharram | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Ashura][Ashura]] |
+| Mulad-al-Nabi | 12 Rabi I | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Mawlid][Mawlid]] |
+| Shab-e-Mi'raj | 26 Rajab | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Isra_and_Mi'raj][Isra and Mi'raj]] |
+| Shab-e-Bara't | 15 Sha'ban | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Mid-Sha'ban][Mid-Sha'ban]] |
+| Shab-e Qadr | 27 Ramadan | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Laylat_al-Qadr][Laylat al-Qadr]] |
+| Id-al-Fitr | 1 Shawwal | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Eid_al-Fitr][Eid al-Fitr]] |
+| Id-al-Adha | 10 Dhu al-Hijjah | needs ~calendar-islamic-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Eid_al-Adha][Eid al-Adha]] |
+
+** Bahá’í: ~holiday-bahai-holidays~
+| Entry | Date | Default | Description |
+|-
+| Bahá’í New Year (Naw-Ruz) | March 21 | on | [[https://en.wikipedia.org/wiki/Naw-R%C3%BAz][Naw-Rúz]] |
+| First, Ninth and Twelfth Day of Ridvan | April 21, April 29 and May 2 | on | [[https://en.wikipedia.org/wiki/Festival_of_Ridv%C3%A1n][Festival of Ridván]] |
+| Declaration of the Báb | May 23 | on | [[https://en.wikipedia.org/wiki/Bah%C3%A1%CA%BC%C3%AD_Holy_Days][Bahá’í Holy Days]] |
+| Ascension of Bahá’u’lláh | May 29 | on | [[https://en.wikipedia.org/wiki/Bah%C3%A1%CA%BC%C3%AD_Holy_Days][Bahá’í Holy Days]] |
+| Martyrdom of the Báb | July 9 | on | [[https://en.wikipedia.org/wiki/Execution_of_the_B%C3%A1b][Execution of the Báb]] |
+| Birth of the Báb | October 20 | on | [[https://en.wikipedia.org/wiki/Twin_Holy_Birthdays][Twin Holy Birthdays]] |
+| Birth of Bahá’u’lláh | November 12 | on | [[https://en.wikipedia.org/wiki/Twin_Holy_Birthdays][Twin Holy Birthdays]] |
+| The other nine Days of Ridvan | April 22 to 28, April 30 and May 1 | needs ~calendar-bahai-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Festival_of_Ridv%C3%A1n][Festival of Ridván]] |
+| Day of the Covenant | November 26 | needs ~calendar-bahai-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Day_of_the_Covenant_(Bah%C3%A1%CA%BC%C3%AD)][Day of the Covenant (Bahá’í)]] |
+| Ascension of `Abdu’l-Bahá | November 28 | needs ~calendar-bahai-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Bah%C3%A1%CA%BC%C3%AD_Holy_Days][Bahá’í Holy Days]] |
+
+** Chinese: ~holiday-oriental-holidays~
+| Entry | Date | Default | Description |
+|-
+| Chinese New Year | first day of the first Chinese month | on | [[https://en.wikipedia.org/wiki/Chinese_New_Year][Chinese New Year]] |
+| Lantern Festival | first month, day 15 | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Lantern_Festival][Lantern Festival]] |
+| Qingming Festival | 15 days after the vernal equinox | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Qingming_Festival][Qingming Festival]] |
+| Dragon Boat Festival | fifth month, day 5 | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Dragon_Boat_Festival][Dragon Boat Festival]] |
+| Double Seventh Festival | seventh month, day 7 | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Qixi_Festival][Qixi Festival]] |
+| Mid-Autumn Festival | eighth month, day 15 | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Mid-Autumn_Festival][Mid-Autumn Festival]] |
+| Double Ninth Festival | ninth month, day 9 | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Double_Ninth_Festival][Double Ninth Festival]] |
+| Winter Solstice Festival | the winter solstice | needs ~calendar-chinese-all-holidays-flag~ | [[https://en.wikipedia.org/wiki/Dongzhi_Festival][Dongzhi Festival]] |
+
+** Sun-related: ~holiday-solar-holidays~
+| Entry | Date | Default | Description |
+|-
+| Vernal Equinox | the March equinox, with its local time | on | [[https://en.wikipedia.org/wiki/March_equinox][March equinox]] |
+| Summer Solstice | the June solstice, with its local time | on | [[https://en.wikipedia.org/wiki/June_solstice][June solstice]] |
+| Autumnal Equinox | the September equinox, with its local time | on | [[https://en.wikipedia.org/wiki/September_equinox][September equinox]] |
+| Winter Solstice | the December solstice, with its local time | on | [[https://en.wikipedia.org/wiki/December_solstice][December solstice]] |
+| Daylight Saving Time Begins | when the time zone changes to daylight time | on | [[https://en.wikipedia.org/wiki/Daylight_saving_time_in_the_United_States][Daylight saving time in the United States]] |
+| Daylight Saving Time Ends | when the time zone changes back | on | [[https://en.wikipedia.org/wiki/Daylight_saving_time_in_the_United_States][Daylight saving time in the United States]] |
+
+* Sources
+- [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Holidays.html][Holidays]] in the Emacs manual
+- [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/holidays.el][holidays.el]], [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/cal-china.el][cal-china.el]], [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/cal-hebrew.el][cal-hebrew.el]], [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/cal-islam.el][cal-islam.el]] and [[https://git.savannah.gnu.org/cgit/emacs.git/tree/lisp/calendar/cal-bahai.el][cal-bahai.el]]: the rules for each calendar

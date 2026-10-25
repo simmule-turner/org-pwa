@@ -34,7 +34,7 @@ test('calendar conversions match Emacs', () => {
 /** @param {string} flags */
 function allHolidays(flags) {
   const vars = runInit(DEFAULT_LISTS + flags, new Map(), {});
-  const forms = ['general', 'christian', 'hebrew', 'islamic', 'bahai'].flatMap((g) => listItems(vars.get(`holiday-${g}-holidays`)) || []);
+  const forms = ['general', 'christian', 'hebrew', 'islamic', 'bahai', 'oriental'].flatMap((g) => listItems(vars.get(`holiday-${g}-holidays`)) || []);
   const out = new Set();
   for (const year of [2024, 2025, 2026, 2027]) {
     for (let month = 1; month <= 12; month++) {
@@ -47,7 +47,7 @@ function allHolidays(flags) {
 test('holidays match calendar-holiday-list, with the all-holidays flags off and on', () => {
   assert.equal(allHolidays(''), read('holidays-default.txt').trim().split('\n').sort().join('\n'));
   assert.equal(
-    allHolidays('(setq calendar-christian-all-holidays-flag t calendar-hebrew-all-holidays-flag t calendar-islamic-all-holidays-flag t calendar-bahai-all-holidays-flag t)'),
+    allHolidays('(setq calendar-christian-all-holidays-flag t calendar-hebrew-all-holidays-flag t calendar-islamic-all-holidays-flag t calendar-bahai-all-holidays-flag t calendar-chinese-all-holidays-flag t)'),
     read('holidays-all.txt').trim().split('\n').sort().join('\n'),
   );
 });
@@ -144,7 +144,7 @@ test('holidays match calendar-holiday-list for every month of 2000-2060, with th
   /** @param {string} flags */
   const wide = (flags) => {
     const vars = runInit(DEFAULT_LISTS + flags, new Map(), {});
-    const forms = ['general', 'christian', 'hebrew', 'islamic', 'bahai'].flatMap((g) => listItems(vars.get(`holiday-${g}-holidays`)) || []);
+    const forms = ['general', 'christian', 'hebrew', 'islamic', 'bahai', 'oriental'].flatMap((g) => listItems(vars.get(`holiday-${g}-holidays`)) || []);
     const out = new Set();
     for (let year = 2000; year <= 2060; year++) {
       for (let month = 1; month <= 12; month++) {
@@ -157,6 +157,6 @@ test('holidays match calendar-holiday-list for every month of 2000-2060, with th
   };
   const sorted = (/** @type {string} */ t) => t.trim().split('\n').sort().join('\n');
   assert.equal(wide(''), sorted(read('holidays-2000-2060.txt')));
-  const flags = '(setq calendar-christian-all-holidays-flag t calendar-hebrew-all-holidays-flag t calendar-islamic-all-holidays-flag t calendar-bahai-all-holidays-flag t)';
+  const flags = '(setq calendar-christian-all-holidays-flag t calendar-hebrew-all-holidays-flag t calendar-islamic-all-holidays-flag t calendar-bahai-all-holidays-flag t calendar-chinese-all-holidays-flag t)';
   assert.equal(wide(flags), sorted(gunzipSync(fs.readFileSync(new URL('holidays-all-2000-2060.txt.gz', dir))).toString()));
 });

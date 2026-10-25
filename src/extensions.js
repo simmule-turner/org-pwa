@@ -11,7 +11,7 @@
  *  the standard forms must mean the same here as in Emacs. */
 export const BUILTIN_SEXP_NAMES = new Set([
   'diary-offset', 'diary-ordinal-suffix', 'calendar-nth-named-day',
-  'when', 'today-p', 'and', 'or', 'not', 'org-block', 'org-date', 'org-class', 'org-cyclic', 'org-anniversary', 'diary-anniversary', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-lunar-phases', 'diary-sunrise-sunset', 'diary-entry-time', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles', 'calendar-check-holidays', 'float', 'diary-cyclic', 'diary-block', 'diary-date',
+  'when', 'today-p', 'and', 'or', 'not', 'org-block', 'org-date', 'org-class', 'org-cyclic', 'org-anniversary', 'diary-anniversary', 'diary-day-of-year', 'diary-iso-date', 'diary-julian-date', 'diary-astro-day-number', 'diary-hebrew-date', 'diary-islamic-date', 'diary-bahai-date', 'diary-chinese-date', 'diary-lunar-phases', 'diary-sunrise-sunset', 'diary-entry-time', 'diary-hebrew-birthday', 'diary-hebrew-yahrzeit', 'diary-hebrew-omer', 'diary-hebrew-rosh-hodesh', 'diary-hebrew-parasha', 'diary-hebrew-sabbath-candles', 'calendar-check-holidays', 'float', 'diary-cyclic', 'diary-block', 'diary-date',
   'diary-float', 'solar-sunrise-sunset', 'solar-time-string', 'apply', 'org-weather',
   'format', 'diary-anniversary', 'diary-date', 'diary-cyclic', 'diary-block', 'diary-remind', 'diary-phases-of-moon',
   'let', 'let*', 'progn', 'if', 'unless', 'cond', '+', '-', '*', '/', '%', 'mod', '1+', '1-', '=', '/=', '<', '>', '<=', '>=', 'zerop',

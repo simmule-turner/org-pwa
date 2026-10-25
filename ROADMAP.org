@@ -16,15 +16,13 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
 ** [#C] Match and Keyword search views: possible updates
 Where the two views and agenda commands differ from Emacs, or stop short of it:
-- Rows show the matching words marked and one matching line of text; Emacs shows the heading line only. Effort: S, once it is decided whether the matching line stays as a setting.
+- Decided: Match and Keyword search rows show the heading line only, as Emacs does. Today they also show one matching line of text, with the matching words marked in the row. Change: drop that line in =src-browser/agenda-query-view.js= (=snippetFor=); the marked words stay in the heading. Effort: S.
 - Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets). Lisp functions as commands wait for the interpreter (see [[#appendix-lisp][Appendix: a Lisp interpreter]]).
 - Effort: M. Impact: S.
 ** [#C] =setq= and =defun= in the sexp evaluator
 Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
 ** [#C] More calendars in the diary
-=diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date=, =diary-french-date= and =diary-chinese-date= need equinox and new-moon calculation (L). Hebrew, Islamic, Bahá'í, Julian, ISO and astronomical day numbers are done.
-** [#C] Chinese holidays
-=holiday-oriental-holidays= and =diary-chinese-date= need the Chinese calendar's new-moon and solar-term calculation, which the solar holidays' equinox and solstice code does not cover. Effort: L. Impact: S.
+=diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
 * Editing and structure
 ** [#C] An undo tree
@@ -62,7 +60,6 @@ Impact = how often the gap meets everyday use. Effort: S under a day, M a day or
 | # | Item | Impact | Effort | Why this place |
 |---+------+--------+--------+----------------|
 | 1 | Slides as HTML | S | M | Reuses the Beamer walk; overlays decide the size |
-| 2 | Chinese holidays | S | L | Needs a new astronomical calculation for little everyday use |
 
 Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
 
