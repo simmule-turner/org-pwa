@@ -201,7 +201,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 
 *Named constants*: a ~#+CONSTANTS:~ line anywhere in the file defines constants, used as ~$name~: ~#+CONSTANTS: c=299792458 g=9.81~. Names are space-separated, several lines combine, and a later value wins. An undefined ~$name~ gives ~#ERROR~. There is no built-in physical-constants library (org's optional ~constants.el~); only ~pi~ and ~inf~ are built in.
 
-*Names in the table*: the first cell of a row can mark it, as in Org. A row marked ~!~ names the columns: each cell below ~!~ names its own column, so with ~| ! | Item | Price | Qty | Tot |~ the formula ~$5=$Price*$Qty~ works (the marker column counts as column 1). A row marked ~$~ gives parameters as ~name=value~ cells, used as ~$name~. A row marked ~_~ or ~^~ names the field below or above each of its cells, and ~$name~ is that field's value. Names start with a letter and use letters, digits and ~_~; a column name wins over a parameter, and a parameter over a ~#+CONSTANTS:~ constant.
+*Names in the table*: the first cell of a row can mark it, as in Org. A row marked ~!~ names the columns: each cell below ~!~ names its own column, so with ~| ! | Item | Price | Qty | Tot |~ the formula ~$5=$Price*$Qty~ works (the marker column counts as column 1). A row marked ~$~ gives parameters as ~name=value~ cells, used as ~$name~. A row marked ~_~ or ~^~ names the field below or above each of its cells, and ~$name~ is that field's value; on the left of a formula, ~$name=~ sets that one field (~$total=vsum(@2..@4)~). A ~$~ row's ~%~ parameter is the default format: ~%=%.2f~ is added to every formula that has no format of its own. Names start with a letter and use letters, digits and ~_~; a column name wins over a parameter, and a parameter over a ~#+CONSTANTS:~ constant.
 
 A row marked ~#~ or ~*~ is recalculated when the table has any marked row (a row marked ~!~ ~$~ ~_~ or ~^~ counts), and then no other row is: put ~#~ in the first cell of each row to calculate. Rows marked ~!~ ~$~ ~_~ ~^~ or ~/~ are never calculated. A table with no marked row recalculates every row below its header.
 
@@ -229,7 +229,7 @@ For example, after *Recalculate* the ~Tot~ column below holds price × quantity 
 
 ~@I~, ~@II~, ~@III~ refer to horizontal rules by repeated "I" characters, not Roman numerals (~@IIII~ is the fourth). An offset such as ~@III+2~ is the data row that many rows after (or, with ~-~, before) the rule. A range between two rules, ~vsum(@I..@II)~, covers the data rows strictly between them. A count past the last rule clamps to the end of the table.
 
-*Targets*: a formula's target is one cell (~@N$M=~), a range (~@N$M..@N$M=~, applied to each cell; each end needs an explicit row) or a whole column (~$M=~). Several formulas in one ~#+TBLFM:~ line are separated by ~::~ and run in order, each seeing the earlier results. Only the first ~#+TBLFM:~ line directly below a table counts.
+*Targets*: a formula's target is one cell (~@N$M=~), a range (~@N$M..@N$M=~, applied to each cell; each end needs an explicit row) or a whole column (~$M=~). Several formulas in one ~#+TBLFM:~ line are separated by ~::~. As in Org they run sorted by their targets, column formulas row by row and then field formulas, so a formula can read the results of the ones before it in that order, not in the order written. Only the first ~#+TBLFM:~ line directly below a table counts.
 
 *Recalculating* is explicit. A *🔢 Calc* button below a table with a ~#+TBLFM:~ line recalculates that table. *Recalculate all tables* in the command palette (~org-table-recalculate-buffer-tables~, also usable in an Extras entry) recalculates every table as one undo step. A malformed formula is reported, and only its own table is skipped.
 
@@ -677,12 +677,13 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
-| ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
+| ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
+| ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~, or a Lisp function (a name or a ~lambda~), as in ~("x" "Mine" my-fn "match")~: it is called with the match and what it writes (~princ~, ~insert~) or returns (a string, or a list of strings) is shown in an *Org Agenda* text buffer; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
 | ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
-| ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each; ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
+| ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each, ~%(form)~ the text a Lisp form gives (it sees ~category~, ~time~, ~extra~, ~level~, ~effort~, ~tag~ and ~breadcrumbs~, and ~org-entry-get~ and the like work on the row's heading; an error shows as ~%![Error: ...]~); ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
 | ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
 | ~org-agenda-search-view-always-boolean~ | ~nil~ | ~t~ reads every Keyword search as a Boolean list of words, without needing a leading ~+~ or ~-~ |
@@ -692,7 +693,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
-| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined~ keys have no opinion (~org-agenda-cmp-user-defined~ is ~nil~) |
+| ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined-up~ and ~-down~ ask ~org-agenda-cmp-user-defined~ (no opinion while it is ~nil~) |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
@@ -741,6 +742,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-modules~ | unset | Add ~org-inlinetask~ to read long headlines as inline tasks in exports. A Lisp init does the same with ~(add-to-list 'org-modules 'org-inlinetask)~ or ~(require 'org-inlinetask)~ |
 | ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
 | ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
+| ~org-priority-get-priority-function~ | unset | A function of the headline text (~"TODO [#A] Title :tag:"~) that returns the heading's priority number for ~priority-up~ and ~-down~, with the heading as the place ~org-entry-get~ reads; anything but a number keeps the cookie's rank |
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
 | ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
 | ~org-priority-start-cycle-with-default~ | ~t~ | ~t~: the first step from no priority is the default; ~nil~: one step below it |
@@ -791,7 +793,7 @@ Settings → Advanced → *Lisp init* takes Emacs Lisp, run as Emacs runs an ini
 (add-to-list 'org-modules 'org-habit)
 #+END_SRC
 
-All of Lisp is there to compute a value: ~let~, ~defun~, loops, ~append~, ~format~. A setting the init sets is shown in Settings with its value, marked *Set by the Lisp init*, and cannot be edited there; it wins over the saved value, as ~init.el~ wins over customized values, and the saved value comes back when the line is removed. ~org-xx-extensions~, the switch that lets scripts run, is always your own choice in Settings.
+All of Lisp is there to compute a value: ~let~, ~defun~, loops, ~append~, ~format~. The functions and variables the init defines are there for diary entries and holiday lists too: ~(defun my-plus (x) (+ x 1))~ in the init lets an entry write ~%%(= (my-plus 1) 2)~. A setting the init sets is shown in Settings with its value, marked *Set by the Lisp init*, and cannot be edited there; it wins over the saved value, as ~init.el~ wins over customized values, and the saved value comes back when the line is removed. ~org-xx-extensions~, the switch that lets scripts run, is always your own choice in Settings.
 
 A form that fails shows Emacs's message in the status line (~Symbol’s function definition is void: foo~) and the forms after it still run. A program that never ends stops with a message. ~(load "github:file.el")~ reads another file as part of the init, and the Agenda's *Refresh* reads it again.
 
@@ -995,7 +997,15 @@ You are asked before the first use. A block lists what it needs: ~#+BEGIN_SRC js
 :CUSTOM_ID: source-blocks
 :END:
 
-~js~ blocks run in place, as in Org Babel. They are off until you set *Run JavaScript source blocks* to ~On~ in Settings → Quick Settings → *Editing*. The setting comes from your Global Variables, never from a file, so a document cannot turn it on for itself.
+~emacs-lisp~ (or ~elisp~) blocks run in place by default, as in Org Babel, on the app's own Lisp interpreter: no files, buffers or network, and a loop that never ends stops with a message. ~:var~, ~:results~, ~:wrap~, ~:cache~ and ~:noweb~ work as for ~js~, ~:lexical yes~ turns on lexical binding, and ~(emacs-lisp . t)~ left out of ~org-babel-load-languages~ switches them off. Like Emacs, the app asks before running a document's code.
+
+#+BEGIN_SRC org
+,#+BEGIN_SRC emacs-lisp :var n=3
+(mapcar (lambda (x) (* x n)) '(1 2 3))
+,#+END_SRC
+#+END_SRC
+
+~js~ blocks run in place too. They are off until you set *Run JavaScript source blocks* to ~On~ in Settings → Quick Settings → *Editing*. The setting comes from your Global Variables, never from a file, so a document cannot turn it on for itself.
 
 Each ~js~ block then has a *Run* button; ~C-c C-c~ or the palette's *Run source block* runs the block under the cursor. The result is written under it as ~#+RESULTS:~ and replaced on the next run; one Undo removes it.
 
@@ -1836,7 +1846,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 |----------+--------|
 | ~file~ | ~Export~, ~New~, ~Open~, ~Save~, ~Save As~, ~Save Some Buffers~ |
 | ~more~ | ~Commands~, ~Export~, ~Import~, ~Settings~ |
-| ~export~ | ~ASCII~, ~Beamer~, ~HTML~, ~LaTeX~ |
+| ~export~ | ~ASCII~, ~Beamer~, ~HTML~, ~LaTeX~, ~Slides (HTML)~ |
 | ~import~ | ~Contacts (.vcf)~, ~iCalendar (.ics)~ |
 | ~view~ | ~Agenda~, ~Org~, ~Text~, ~TODO~ |
 
@@ -1899,7 +1909,7 @@ The open tabs persist across restarts, each restored as left.
 :CUSTOM_ID: export
 :END:
 
-*More → Export* lists ASCII, As-org, Beamer, HTML and LaTeX. The other formats are palette commands (*Commands*): ODT (~org-odt-export-to-odt~), Calendar (.ics) (~org-icalendar-export-to-ics~) and Contacts (.vcf) (~org-vcard-export~); the last two open their own scope choice, and C-c C-e opens the menu. File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
+*More → Export* lists ASCII, As-org, Beamer, HTML, LaTeX and Slides (HTML). The other formats are palette commands (*Commands*): ODT (~org-odt-export-to-odt~), Calendar (.ics) (~org-icalendar-export-to-ics~) and Contacts (.vcf) (~org-vcard-export~); the last two open their own scope choice, and C-c C-e opens the menu. File keywords such as ~#+TITLE~ and ~#+OPTIONS:~ match case-insensitively, as in org.
 
 *Scope*: *Choose a heading…* exports just that heading and its descendants, and every heading is listed, even folded ones. The chosen heading becomes the top level of the output. *This file* exports everything. Calendar and Contacts also offer *This file + Agenda Files* or *This file + Contacts Files* once those are configured, fetched fresh at export time. In Tree style, Contacts lists only contacts (headings with ~:KIND:~).
 
@@ -1997,7 +2007,7 @@ HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lin
 
 A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out the way Emacs's ~org-latex-export-to-latex~ lays it out: sections, lists, tables (with ~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. When the document links pictures this app can read (GitHub, WebDAV, attachments), the export is a ~.zip~ with the pictures in ~images/~ beside the ~.tex~; otherwise it is the ~.tex~ alone. The palette command is ~org-latex-export-to-latex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep section numbers such as 1.11.1 from running into their titles in the PDF's table of contents.
 
-~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Source block line numbers and references are included (see [[#export-line-numbers][Line numbers and references in source blocks]]). Not included: the ~engraved~ backend. The export reads ~#+OPTIONS:~ as Emacs does (~num:N~, ~todo~, ~pri~, ~tags~, ~stat~, ~tasks~, ~p~, ~d~, ~prop~, ~arch~, ~\n~, ~*~, ~e~, ~f~, ~tex~, ~title~, ~email~ and ~creator~), plus ~#+SELECT_TAGS:~, ~#+EXCLUDE_TAGS:~ and the ~UNNUMBERED~ property. Pictures follow ~#+ATTR_LATEX:~ (~:width~, ~:height~, ~:scale~, ~:options~, ~:float~, ~:placement~, ~:center~): pdf (with ~::page~), eps, svg and tikz files are written as Emacs writes them. Links to named blocks, equations, quotes and paragraphs get labels, footnotes in tables use ~\footnotemark~, and ~:booktabs t~ tables, table special rows and columns (~#~, ~*~, ~!~, ~_~, ~^~, ~$~, ~/ < >~) and inline ~src_lang{..}~ follow Emacs. ~#+LINK:~ abbreviations (~%s~ and ~%h~) expand in LaTeX and HTML export, and ~news:~, ~help:~, ~irc:~, ~file+sys:~ and ~file+emacs:~ links are written as Emacs writes them. The Lisp init box also reads ~org-latex-tables-centered~, ~org-latex-tables-booktabs~, ~org-latex-default-table-environment~, ~org-latex-default-table-mode~, ~org-latex-caption-above~, ~org-latex-images-centered~, ~org-latex-default-figure-position~, ~org-latex-title-command~, ~org-latex-toc-command~, ~org-latex-active-timestamp-format~, ~org-latex-inactive-timestamp-format~, ~org-latex-prefer-user-labels~ and ~org-latex-text-markup-alist~. Smart quotes (~#+OPTIONS: ':t~) follow Org's rules and the quotes of each ~#+LANGUAGE:~. Also as in Org: sub- and superscripts such as ~a_(b)~, ~a_b.c~ and ~x_\alpha~, several ~#+CAPTION:~ lines (and ~#+TITLE:~, ~#+AUTHOR:~, ~#+DATE:~ lines) joined by a blank, ~#+INDEX:~ as ~\index{}~, letter item counters (~[@c]~), macros that use other macros, the ~{{{n}}}~ counter, special block names that keep their case, and ~:environment~ on a quote block. Presentations are under Beamer below.
+~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file. Settings → Export → LaTeX sets the class and compiler for files that do not. Its *Classes, packages and source blocks* box takes Emacs Lisp as in an init file: ~(add-to-list 'org-latex-classes '("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …))~ defines a class, with ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~ in its header and a heading level written as a pair or as 2 or 4 strings; ~org-latex-packages-alist~ adds packages; and ~(setq org-latex-src-block-backend 'listings)~ (or ~'minted~; the older ~org-latex-listings~ works too) writes source blocks as ~lstlisting~ or ~minted~, using ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~. As in Emacs, add the ~listings~ or ~minted~ package to ~org-latex-packages-alist~ yourself. Other forms are ignored, and nothing in the box is run. Source block line numbers and references are included (see [[#export-line-numbers][Line numbers and references in source blocks]]). Not included: the ~engraved~ backend. The export reads ~#+OPTIONS:~ as Emacs does (~num:N~, ~todo~, ~pri~, ~tags~, ~stat~, ~tasks~, ~p~, ~d~, ~prop~, ~arch~, ~\n~, ~*~, ~e~, ~f~, ~tex~, ~title~, ~email~ and ~creator~), plus ~#+SELECT_TAGS:~, ~#+EXCLUDE_TAGS:~ and the ~UNNUMBERED~ property. Pictures follow ~#+ATTR_LATEX:~ (~:width~, ~:height~, ~:scale~, ~:options~, ~:float~, ~:placement~, ~:center~): pdf (with ~::page~), eps, svg and tikz files are written as Emacs writes them. Links to named blocks, equations, quotes and paragraphs get labels, footnotes in tables use ~\footnotemark~, and ~:booktabs t~ tables, table special rows and columns (~#~, ~*~, ~!~, ~_~, ~^~, ~$~, ~/ < >~) and inline ~src_lang{..}~ follow Emacs. ~#+LINK:~ abbreviations (~%s~ and ~%h~) expand in LaTeX and HTML export, and ~news:~, ~help:~, ~irc:~, ~file+sys:~ and ~file+emacs:~ links are written as Emacs writes them. The Lisp init box also reads ~org-latex-tables-centered~, ~org-latex-tables-booktabs~, ~org-latex-default-table-environment~, ~org-latex-default-table-mode~, ~org-latex-caption-above~, ~org-latex-images-centered~, ~org-latex-default-figure-position~, ~org-latex-title-command~, ~org-latex-toc-command~, ~org-latex-active-timestamp-format~, ~org-latex-inactive-timestamp-format~, ~org-latex-prefer-user-labels~ and ~org-latex-text-markup-alist~. Smart quotes (~#+OPTIONS: ':t~) follow Org's rules and the quotes of each ~#+LANGUAGE:~. Also as in Org: sub- and superscripts such as ~a_(b)~, ~a_b.c~ and ~x_\alpha~, several ~#+CAPTION:~ lines (and ~#+TITLE:~, ~#+AUTHOR:~, ~#+DATE:~ lines) joined by a blank, ~#+INDEX:~ as ~\index{}~, letter item counters (~[@c]~), macros that use other macros, the ~{{{n}}}~ counter, special block names that keep their case, and ~:environment~ on a quote block. ~org-latex-format-headline-function~ in the Lisp init box formats every section title and low-level list headline; it gets the keyword, its type (~todo~ or ~done~), the priority as a character code, the title, the tags and ~nil~ in place of the export info. ~(eval ..)~ macros run too. Presentations are under Beamer below.
 
 *** Beamer
 
@@ -2013,6 +2023,26 @@ More → Export → Beamer writes a presentation the way Emacs's ~org-beamer-exp
 
 The Lisp init of Settings → Export → LaTeX reads ~org-beamer-frame-level~, ~org-beamer-theme~, ~org-beamer-frame-default-options~, ~org-beamer-outline-frame-title~, ~org-beamer-outline-frame-options~, ~org-beamer-subtitle-format~ and ~org-beamer-environments-extra~ (with the ~%a~, ~%A~, ~%o~, ~%O~, ~%h~, ~%r~, ~%H~ and ~%R~ escapes). A heading whose ~BEAMER_env~ names an environment that does not exist is written as a block, where Emacs stops with an error.
 
+*** Slides (HTML)
+
+More → Export → Slides (HTML) writes the same presentation as a web page of 16:9 slides. Open it in a browser, or print it to PDF (Print → Save as PDF, on a phone too): each slide is one page. Emacs has no such export of its own (~ox-beamer~ writes LaTeX), so this is a separate entry; Beamer stays what Emacs's Beamer is.
+
+The file is read as for Beamer: ~H:~ sets the frame level, headings above it are sections, headings below it are blocks, ~BEAMER_env~ names the block (~block~, ~alertblock~, ~exampleblock~, ~theorem~, ~definition~, ~proof~, ~quote~ and the rest of the Beamer list), ~BEAMER_col~ puts neighbors side by side, ~fullframe~ drops the title, ~note~ stays out of the slides and ~againframe~ shows a frame again. ~toc:t~ adds an outline slide and ~#+TITLE:~ a title slide. Text, tables, code, links and math look as in the HTML export, and ~*bold*~ is colored as ~\alert~ is.
+
+*Overlays*: a slide is made for each step. ~BEAMER_act~ on a block or column (~<2->~, ~<1,3>~, ~<-2>~) shows it on those steps; ~#+ATTR_BEAMER: :overlay <+->~ shows a list one item at a time; ~- @@beamer:<2>@@ item~ puts one item on step 2. An item not yet shown keeps its place; a block not yet shown takes none.
+
+#+begin_src org
+,#+TITLE: Talk
+,#+OPTIONS: toc:t H:2
+,* Part
+,** Frame
+,#+ATTR_BEAMER: :overlay <+->
+,- first
+,- second
+#+end_src
+
+Themes: ~#+BEAMER_THEME:~ names such as Madrid or Warsaw give a colored title bar, any other a plain page. The color, font, inner and outer themes, ~#+BEAMER_HEADER:~, ~\setbeamertemplate~ and other LaTeX are not read, ~\pause~ is not a step, and a frame too tall for its page is cut at the page edge instead of being split.
+
 *** As-org
 
 Org's ~org-org-export-as-org~: a fully processed copy of the document in a new unsaved buffer named ~*Org ORG Export*~, leaving the original untouched. Whole document only. It:
@@ -2024,7 +2054,7 @@ Org's ~org-org-export-as-org~: a fully processed copy of the document in a new u
 - follows ~#+OPTIONS:~ as Emacs does: planning lines (~p:~), property drawers (~prop:~), drawers (~d:~; LOGBOOK is left out by default), priority cookies (~pri:~), TODO keywords (~todo:~), tags (~tags:~), footnotes (~f:~), and the title, date, author and email lines;
 - shifts the top level to 1.
 
-Not implemented: running source blocks, and macros whose text starts with ~(eval~. In an Extras entry it is ~'org-org-export-as-org~.
+A macro whose text starts with ~(eval ~ runs as Lisp, with ~$1~, ~$2~ ... as its arguments (~nil~ when not given); an error in it stops the export, as in Emacs. Not implemented: running source blocks. In an Extras entry it is ~'org-org-export-as-org~.
 
 *** Calendar (.ics)
 
@@ -2458,7 +2488,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips the days in your holiday lists. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open.
 
-*Babel*: ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
+*Babel*: ~emacs-lisp~ and ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
 
 *Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use.
 

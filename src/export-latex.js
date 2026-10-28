@@ -34,6 +34,8 @@ import { quoteStatuses, smartQuotes } from './smart-quotes.js';
 import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
 import { preambleBody, parseHtmlOptions, buildFilter } from './export-html.js';
 import { resolveTodoSequence } from './todo-cycle.js';
+import { NIL, intern, list as lispList, print } from './elisp-data.js';
+import { callFunction } from './agenda-lisp.js';
 import { expandMacrosForExport } from './export-org.js';
 import { LATEX_ENTITIES } from './entities-latex.js';
 import { latexTable } from './latex-table.js';
@@ -77,6 +79,7 @@ import * as bm from './export-beamer.js';
  *   snippets: { backend: string, value: string, lead: boolean }[],
  *   abbreviations: Map<string, string>,
  *   inHeadline: boolean,
+ *   done: Set<string>,
  *   language: string,
  *   enumDepth: number,
  *   fnCount: number, fnDepth: number, inTable: number, delayed: string[],
@@ -103,7 +106,7 @@ let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', broken: 'nil', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined), beamer: false, withToc: undefined, snippets: [], enumDepth: 0, fnCount: 0, fnDepth: 0, inTable: 0, delayed: [], opts: parseHtmlOptions(/** @type {import('./types.js').Doc} */ (/** @type {unknown} */ ({ keywords: [], children: [] }))), raw: {}, unnumbered: new Set(), abbreviations: new Map(), inHeadline: false, language: 'en' };
+  return { sup: 't', broken: 'nil', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined), beamer: false, withToc: undefined, snippets: [], enumDepth: 0, fnCount: 0, fnDepth: 0, inTable: 0, delayed: [], opts: parseHtmlOptions(/** @type {import('./types.js').Doc} */ (/** @type {unknown} */ ({ keywords: [], children: [] }))), raw: {}, unnumbered: new Set(), abbreviations: new Map(), inHeadline: false, done: new Set(), language: 'en' };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -902,13 +905,30 @@ function exclusion(doc, footnoteSection = true) {
 
 /** @param {Heading} h */
 function headingTitle(h) {
+  S.inHeadline = true; // underlined text in a headline is \underline, which a section title can hold
+  const title = inline(S.opts.stat ? h.title : h.title.replace(/\[(?:\d*%|\d*\/\d*)\]/g, '')); // stat:nil drops the [1/3] cookie
+  S.inHeadline = false;
+  const fn = S.cfg.headlineFunction;
+  if (fn) return userHeadline(fn, h, title);
   const todo = h.todo && S.opts.todo ? '{\\bfseries\\sffamily ' + protect(h.todo) + '} ' : '';
   const priority = S.opts.pri && h.priority ? '\\framebox{\\#' + protect(h.priority) + '} ' : '';
   const tags = h.tags.length && S.opts.tags !== false ? '\\hfill{}\\textsc{' + h.tags.map(protect).join(':') + '}' : '';
-  S.inHeadline = true; // underlined text in a headline is \underline, which a section title can hold
-  const title = inline(S.opts.stat ? h.title : h.title.replace(/\[(?:\d*%|\d*\/\d*)\]/g, ''));
-  S.inHeadline = false;
-  return todo + priority + title + tags; // stat:nil drops the [1/3] cookie
+  return todo + priority + title + tags;
+}
+
+/**
+ * The headline `org-latex-format-headline-function` makes, called as Org calls it with (todo todo-type priority text tags info);
+ * `info` is nil here. An error in the function stops the export, as in Emacs.
+ * @param {import('./elisp-data.js').LObj} fn @param {Heading} h @param {string} title
+ */
+function userHeadline(fn, h, title) {
+  const todo = h.todo && S.opts.todo ? h.todo : null;
+  const type = todo ? (S.done.has(todo) ? 'done' : 'todo') : null;
+  const priority = S.opts.pri && h.priority ? h.priority.charCodeAt(0) : null;
+  const tags = h.tags.length && S.opts.tags !== false ? lispList(h.tags) : NIL;
+  const result = callFunction(fn, [todo ?? NIL, type ? intern(type) : NIL, priority ?? NIL, title, tags, NIL]);
+  if (!result.ok) throw new Error(result.message);
+  return typeof result.value === 'string' ? result.value : print(result.value, false);
 }
 
 /**
@@ -1333,6 +1353,7 @@ export function exportToLatex(doc, scope = null, { beamer = false, images = /** 
   const first = (/** @type {string} */ key) => keywordList(doc, key)[0];
 
   S.cfg = latexConfig(defaults.init);
+  S.done = new Set(resolveTodoSequence(doc).doneKeywords);
   const declared = (first('LATEX_CLASS') || (beamer ? 'beamer' : defaults.cls) || 'article').trim();
   const article = /** @type {import('./latex-config.js').LatexClass} */ (S.cfg.classes.find((c) => c.name === 'article'));
   // a class that is not defined is written as the document class of that name, with the article's sections

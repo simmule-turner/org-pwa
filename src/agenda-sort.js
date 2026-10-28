@@ -72,7 +72,7 @@ export function strategyFor(raw, view) {
 /**
  * A comparator for the keys. `context` carries what some keys need: the priority range, and the TODO keywords with the done ones.
  * @param {string[]} keys
- * @param {{ localVariables?: Record<string, string>, todoKeywords?: string[], doneKeywords?: string[] }} [context]
+ * @param {{ localVariables?: Record<string, string>, todoKeywords?: string[], doneKeywords?: string[], lisp?: import('./agenda-lisp.js').AgendaLisp | null }} [context]  `lisp` has the settings that name a function
  * @returns {(a: AgendaItem, b: AgendaItem) => number}
  */
 export function agendaComparator(keys, context = {}) {
@@ -95,7 +95,8 @@ export function agendaComparator(keys, context = {}) {
         if ((!i.heading && !i.priority) || i.samePriority) return 0; // a Search row has the same priority whatever its cookie says
         const days = i.daysOverdue || 0;
         const bonus = i.kind === 'scheduled' ? 99 + Math.max(0, days) : i.kind === 'deadline' ? days : 0;
-        return priorityRank(i.priority, range) + bonus;
+        const own = context.lisp?.priorityOf ? context.lisp.priorityOf(i) : null;
+        return (own ?? priorityRank(i.priority, range)) + bonus;
       };
       up = three(rank(a), rank(b));
     } else if (name === 'effort') {
@@ -130,7 +131,9 @@ export function agendaComparator(keys, context = {}) {
       const da = timestampDay(a, type) ?? lateDay;
       const db = timestampDay(b, type) ?? lateDay;
       up = three(da, db);
-    } else return null; // user-defined: org-agenda-cmp-user-defined is nil, so no opinion
+    } else if (name === 'user-defined') {
+      up = context.lisp?.userCompare ? context.lisp.userCompare(a, b) : null; // org-agenda-cmp-user-defined nil: no opinion
+    } else return null;
     if (up === null) return null;
     return direction === 'down' ? /** @type {-1 | 1} */ (-up) : up;
   };

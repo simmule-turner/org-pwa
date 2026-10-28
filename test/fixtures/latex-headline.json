@@ -1,0 +1,110 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* TODO [#A] Title :a:b:\n",
+   "emacs": "\\section{<TODO|todo|nil|Title|(\"a\" \"b\")>}\n\\label{sec:org9e5ca1e}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* DONE Finished\n",
+   "emacs": "\\section{<DONE|done|nil|Finished|nil>}\n\\label{sec:orgbd4e4f8}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* Plain\n",
+   "emacs": "\\section{<nil|nil|nil|Plain|nil>}\n\\label{sec:orga27025b}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* TODO Plain todo\n",
+   "emacs": "\\section{<TODO|todo|nil|Plain todo|nil>}\n\\label{sec:org64de8ee}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* [#B] Only priority\n",
+   "emacs": "\\section{<nil|nil|nil|Only priority|nil>}\n\\label{sec:orgc91ae53}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* Tagged :work:\n",
+   "emacs": "\\section{<nil|nil|nil|Tagged|(\"work\")>}\n\\label{sec:org56cceae}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* A *bold* title and _under_\n",
+   "emacs": "\\section{<nil|nil|nil|A \\textbf{bold} title and \\underline{under}|nil>}\n\\label{sec:orge58cfe0}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* One\n** Two\n*** Three\n**** Four :x:\n***** Five\n",
+   "emacs": "\\section{<nil|nil|nil|One|nil>}\n\\label{sec:org897dbb8}\n\\subsection{<nil|nil|nil|Two|nil>}\n\\label{sec:orgaeb4111}\n\\subsubsection{<nil|nil|nil|Three|nil>}\n\\label{sec:org4e2e23c}\n\\begin{enumerate}\n\\item <nil|nil|nil|Four|(\"x\")>\n\\label{sec:org73c2f4c}\n\\begin{enumerate}\n\\item <nil|nil|nil|Five|nil>\n\\label{sec:orgc7088cb}\n\\end{enumerate}\n\\end{enumerate}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "#+TODO: NEXT WAIT | FINISHED\n* NEXT first\n* WAIT second\n* FINISHED third\n",
+   "emacs": "\\section{<NEXT|todo|nil|first|nil>}\n\\label{sec:orgb76c551}\n\\section{<WAIT|todo|nil|second|nil>}\n\\label{sec:orgd8bb45d}\n\\section{<FINISHED|done|nil|third|nil>}\n\\label{sec:org042fdea}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "#+OPTIONS: todo:nil pri:t tags:nil\n* TODO [#A] Title :a:\n",
+   "emacs": "\\section{<nil|nil|65|Title|nil>}\n\\label{sec:org1a11121}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "#+OPTIONS: todo:t pri:nil tags:t\n* TODO [#A] Title :a:\n",
+   "emacs": "\\section{<TODO|todo|nil|Title|(\"a\")>}\n\\label{sec:org40af48d}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"<%s|%s|%s|%s|%S>\" todo todo-type priority text tags)))",
+   "org": "* TODO [#a] lower\n",
+   "emacs": "\\section{<TODO|todo|nil|lower|nil>}\n\\label{sec:org8402be4}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (concat (upcase text) \"!\")))",
+   "org": "* hello\n** world\n",
+   "emacs": "\\section{HELLO!}\n\\label{sec:orgb250484}\n\\subsection{WORLD!}\n\\label{sec:orgfa57752}\n"
+  },
+  {
+   "init": "(defun my-fmt (todo todo-type priority text tags info) (if todo (format \"[%s] %s\" todo text) text))\n(setq org-latex-format-headline-function #'my-fmt)",
+   "org": "* TODO a\n* b\n",
+   "emacs": "\\section{[TODO] a}\n\\label{sec:org234be3a}\n\\section{b}\n\\label{sec:org7a2307b}\n"
+  },
+  {
+   "init": "(defun my-fmt (todo todo-type priority text tags info) (format \"%s%s\" text (if tags (concat \" #\" (mapconcat #'identity tags \",\")) \"\")))\n(setq org-latex-format-headline-function (quote my-fmt))",
+   "org": "* a :x:y:\n* b\n",
+   "emacs": "\\section{a #x,y}\n\\label{sec:orge903ba7}\n\\section{b}\n\\label{sec:org946a697}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (&rest args) \"FIXED\"))",
+   "org": "* one\n* two\n",
+   "emacs": "\\section{FIXED}\n\\label{sec:orge5dc264}\n\\section{FIXED}\n\\label{sec:orgeadc95f}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (if (eq todo-type (quote done)) (concat \"\\\\sout{\" text \"}\") text)))",
+   "org": "* TODO open\n* DONE closed\n",
+   "emacs": "\\section{open}\n\\label{sec:org6c0e9f5}\n\\section{\\sout{closed}}\n\\label{sec:org5933080}\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (format \"%c\" priority)))",
+   "org": "* [#C] x\n",
+   "emacs": "ERROR Format specifier doesn't match argument type"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) (car 1)))",
+   "org": "* boom\n",
+   "emacs": "ERROR Wrong type argument: listp, 1"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (lambda (todo todo-type priority text tags info) text))",
+   "org": "* One\n* Two\n- a list\n\ntext\n",
+   "emacs": "\\section{One}\n\\label{sec:org2a4d145}\n\\section{Two}\n\\label{sec:org533932a}\n\\begin{itemize}\n\\item a list\n\\end{itemize}\n\ntext\n"
+  },
+  {
+   "init": "(setq org-latex-format-headline-function (quote org-latex-format-headline-default-function))",
+   "org": "* TODO [#A] Default :t:\n",
+   "emacs": "\\section{{\\bfseries\\sffamily TODO} Default\\hfill{}\\textsc{t}}\n\\label{sec:org7d8db04}\n"
+  }
+ ]
+}

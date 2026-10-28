@@ -16,8 +16,7 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
 ** [#C] Match and Keyword search views: possible updates
 Where the two views and agenda commands differ from Emacs, or stop short of it:
-- Decided: Match and Keyword search rows show the heading line only, as Emacs does. Today they also show one matching line of text, with the matching words marked in the row. Change: drop that line in =src-browser/agenda-query-view.js= (=snippetFor=); the marked words stay in the heading. Effort: S.
-- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets). Lisp functions as commands wait for the settings step in [[#appendix-lisp][Appendix: a Lisp interpreter]].
+- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets).
 - Effort: M. Impact: S.
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
@@ -27,79 +26,29 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 ** [#C] Structure-aware merge
 A subtree moved on one side and edited on the other is an ordinary clash today.
 
-* Tables and clocking
-** [#C] A field's name as a formula target, and the =%= default format parameter
-Org's =_= and =^= rows name fields for use on the right of a formula; naming one on the left, and a =%= parameter for the default format, are not read yet.
-
 * Babel and attachments
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
 
 * Export
-** [#C] Slides as HTML, printable to PDF
-- Why: there is no TeX in the app, so Beamer stops at a =.tex= file. An HTML slide export turns into a PDF with the browser's Print → Save as PDF, on a phone too.
-- Not in Emacs: =ox-beamer= writes LaTeX only; HTML slides come from outside packages (=org-re-reveal=). So this is a separate entry, *Slides (HTML)*, in the Export menu. *Beamer* keeps meaning what Emacs's Beamer means.
-- Change: a second back end over the Beamer walk in =src/export-latex.js= (the frame, section, block and column decisions are reused as they are). A frame is one page, a block a box, columns are side by side by =BEAMER_col=. =@page= sets the page size (16:9) and a page break follows each frame. Title slide, outline frame, =note= (left out of the page), =againframe=, =appendix= and =ignoreheading= follow the Beamer rules. Contents come from the HTML exporter, so links, tables, code and math look as they do in HTML export.
-- Differences from Beamer to state in the README:
-  - Themes: =\usetheme= names cannot be reproduced. A few names map to built-in looks and the rest use a plain one.
-  - Overlays (=<+->=, =<2->=, =BEAMER_act=): a choice to make. Beamer's PDF has one page per step. Either match that (one printed page per step) or flatten (everything on one page). Matching is the larger part of the work.
-  - =\setbeamertemplate=, =#+BEAMER_HEADER:= and other raw LaTeX are not used.
-  - Page breaks inside a frame that is too long are the browser's, not =allowframebreaks=.
-- Effort: M for the flattened version, L with a page per overlay step. Impact: S to M for those who give talks from a phone.
-
 ** [#C] ODT export: what is left after the port
 =src/ox-odt.js= follows ox-odt on the files checked with Emacs 29.3 (headings, lists, tables, blocks, links, footnotes, timestamps, table of contents, captions, planning, options). What is left:
 - Source coloring is the app's own highlighter, for the languages it knows; Emacs colors through =htmlfontify= and the major mode, so the faces can differ.
 - Impact: S.
 
 * Order for the next release
-Impact = how often the gap meets everyday use. Effort: S under a day, M a day or two, L several days. Ranked by impact against effort, best first. Designs are in each item.
-
-| # | Item | Impact | Effort | Why this place |
-|---+------+--------+--------+----------------|
-| 1 | Slides as HTML | S | M | Reuses the Beamer walk; overlays decide the size |
-
-Refile and Replace into =local:= files from the web and other backends are [#C]: they wait for demand.
+Nothing is planned: the items above are [#C] and wait for demand. Refile and Replace into =local:= files from the web and other backends are [#C] too.
 
 * Appendix: a Lisp interpreter
 :PROPERTIES:
 :CUSTOM_ID: appendix-lisp
 :END:
 
-The interpreter (=src/elisp.js=) and the diary on top of it are done. What follows is what still builds on it: the =calendar-*= and holiday functions, =emacs-lisp= Babel blocks, shared definitions, and the settings that call a function.
-
-** Babel
-| Feature | Kind | Notes |
-|---+---+---|
-| =emacs-lisp= source blocks run, result is the last value | Emacs | Printed with =prin1= rules, as Emacs prints it |
-| =:var name=value= bound as variables | Org | Same as the =js= blocks |
-| =:results=, =:wrap=, =:cache=, =:noweb= | Org | Shared with the =js= runner |
-| Runs when =(emacs-lisp . t)= is in =org-babel-load-languages= | Org | That is already the default, so a stricter switch may be wanted |
-| Worker sandbox, timeout, no I/O | App | Same sandbox as =js= blocks |
-
-** Settings that call a function
-Each of these is complete in the app except for the function it calls, and needs the shared definitions below.
-| Setting | What it needs | Today |
-|---+---+---|
-| =user-defined-up= and =-down= in =org-agenda-sorting-strategy= | =org-agenda-cmp-user-defined=, a function of two agenda lines that returns =-1=, =1= or =nil= | The keys are read and have no opinion, as in Emacs when the function is =nil= |
-| =%(function)= in =org-agenda-prefix-format= | A function called for each agenda line, its result put in the prefix | The other =%= forms work; this one adds nothing |
-| =org-priority-get-priority-function= | A function of no arguments that returns a heading's priority number | The priority comes from the cookie and the default |
-| A Lisp function as an agenda custom command, in =org-agenda-custom-commands= | The full evaluator, to run the function and show what it builds | Commands of that kind are left out of the list |
-
-** Later: LaTeX export
-Two LaTeX export gaps wait for the interpreter: the macro =(eval ..)= and the setting =org-latex-format-headline-function= (a Lisp function called for each heading). The other differences from Emacs that remain are small or depend on the machine (=~/= and =docview:= links, =creator:t= naming the version).
+The interpreter (=src/elisp.js=), the diary, holiday lists, source blocks and the settings that call a function are done. What follows waits for more of Emacs.
 
 ** Later: Emacs and Org specific
 These need Emacs's own libraries and are not part of "small standalone programs":
-- Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-entry-get=, =org-todo=.
+- Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-todo=; only the read-only =org-entry-get= family is there.
 - =format-time-string=, =decode-time=, =encode-time= and other time functions.
 - =cl-loop= and the rest of =cl-lib= beyond the basics, and =re-search-forward= on buffers.
 - Files and network (=insert-file-contents=, =url-retrieve=): left out on purpose.
-
-** Shared definitions for the diary
-The Lisp init (Settings → Advanced) already runs on the interpreter and sets settings. What is left is keeping the =defun= forms written there, so diary entries can call them.
-
-** Order of work
-1. =emacs-lisp= source blocks in Babel.
-2. Keep the Lisp init's functions for diary entries.
-3. Settings that call a function.

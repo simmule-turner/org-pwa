@@ -2,6 +2,7 @@
 // The rows of the Agenda's Match view (org-tags-view, `m` and `M`) and Search view (org-search-view, `s`): the entries a query finds in
 // the agenda files, as agenda items ordered by the `tags` or `search` entry of org-agenda-sorting-strategy.
 import { getCategoryForDocument } from './agenda.js';
+import { agendaLisp } from './agenda-lisp.js';
 import { sortAgendaItems, strategyFor } from './agenda-sort.js';
 import { planSearch, searchEntries } from './agenda-search.js';
 import { isArchived } from './archive-model.js';
@@ -41,8 +42,9 @@ function itemFor(hit, ofSearch) {
 /**
  * @param {import('./agenda.js').AgendaItem[]} items
  * @param {'tags' | 'search'} view
- * @param {QueryOptions} options */
-function order(items, view, options) {
+ * @param {QueryOptions} options
+ * @param {{ documentId: string, doc: Doc }[]} docs */
+function order(items, view, options, docs) {
   const keys = strategyFor(options.sortingStrategy, view);
   if (!keys || !keys.length) return items;
   return sortAgendaItems(items, keys, {
@@ -50,6 +52,7 @@ function order(items, view, options) {
     todoKeywords: [...(options.todoKeywords || []), ...(options.doneKeywords || [])],
     doneKeywords: options.doneKeywords || [],
     documentOrder: options.documentOrder,
+    lisp: agendaLisp(options.localVariables, docs, { todoKeywords: options.todoKeywords, doneKeywords: options.doneKeywords }),
   });
 }
 
@@ -74,7 +77,7 @@ export function matchViewItems(docs, query, options = {}) {
   });
   // the category the Agenda and TODO views show: a CATEGORY property, else the file's own (the matcher's file name is not that)
   const docOf = new Map(docs.map((d) => [d.documentId, d.doc]));
-  return order(kept.map((hit) => itemFor({ ...hit, doc: /** @type {Doc} */ (docOf.get(hit.documentId)), category: effectivePropertyValue(hit.heading, hit.ancestors || [], 'CATEGORY', true) }, false)), 'tags', options);
+  return order(kept.map((hit) => itemFor({ ...hit, doc: /** @type {Doc} */ (docOf.get(hit.documentId)), category: effectivePropertyValue(hit.heading, hit.ancestors || [], 'CATEGORY', true) }, false)), 'tags', options, docs);
 }
 
 /**
@@ -92,5 +95,6 @@ export function searchViewItems(docs, query, options = {}) {
     hits.map((hit) => itemFor({ ...hit, category: effectivePropertyValue(hit.heading, hit.ancestors, 'CATEGORY', true) }, true)),
     'search',
     options,
+    docs,
   );
 }

@@ -255,7 +255,7 @@ export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
 // ---- results ----------------------------------------------------------------
 
 /** The text of a table cell. @param {string} text */
-const cellText = (text) => text.replace(/\r?\n/g, ' ').replace(/\|/g, '\\vert{}').trim();
+export const cellText = (text) => text.replace(/\r?\n/g, ' ').replace(/\|/g, '\\vert{}').trim();
 
 /** Emacs prints a Lisp number or symbol; -0 reads back as 0. @param {unknown} v */
 function atomText(v) {
@@ -273,7 +273,7 @@ function item(v) {
 /** @typedef {string | Item[]} Item */
 
 /** An element printed the way `princ` prints it: lists in parentheses. @param {Item} it @returns {string} */
-function princ(it) {
+export function princ(it) {
   return typeof it === 'string' ? it : it.length === 0 ? 'nil' : '(' + it.map(princ).join(' ') + ')';
 }
 
@@ -312,7 +312,7 @@ function examplify(lines) {
 /** The lines of `:results list`: an element that is itself a list is one item with a line for each of its parts. @param {Item[]} list */
 function listLines(list) {
   return list.flatMap((e) => {
-    const parts = (typeof e === 'string' ? [e] : e.map(princ)).map((x) => x.trim());
+    const parts = (e === null ? ['hline'] : typeof e === 'string' ? [e] : e.map(princ)).map((x) => x.trim());
     return parts.length === 0 ? ['- '] : parts.map((x, i) => (i === 0 ? '- ' : '  ') + x);
   });
 }
@@ -326,7 +326,17 @@ function listLines(list) {
  * @param {{ wrap?: string | null, lang?: string }} [options]
  */
 export function formatResult(value, spec = parseResultsSpec(''), { wrap = null, lang = 'js' } = {}) {
-  const result = resultOf(value, spec);
+  return layoutResult(resultOf(value, spec), spec, { wrap, lang });
+}
+
+/**
+ * `formatResult` for a result already read as text or a list of items (a rule row is null): what a language other than JavaScript hands over.
+ * `cells` turns an item's text into the cells it makes.
+ * @param {{ text: string } | { list: (Item | null)[] }} result
+ * @param {ReturnType<typeof parseResultsSpec>} spec
+ * @param {{ wrap?: string | null, lang?: string, cells?: (text: string) => string[] }} [options]
+ */
+export function layoutResult(result, spec, { wrap = null, lang = 'js', cells = (/** @type {string} */ text) => [cellText(text)] } = {}) {
   const w = spec.words;
   const isList = 'list' in result;
 
@@ -334,11 +344,11 @@ export function formatResult(value, spec = parseResultsSpec(''), { wrap = null, 
   if (isList && result.list.length === 0) {
     lines = []; // an empty list (nil) inserts nothing, though a wrapper still goes round it
   } else if (w.has('list')) {
-    lines = isList ? listLines(result.list) : result.text.split('\n').filter((l) => l !== '').map((l) => '- ' + l);
+    lines = isList ? listLines(/** @type {Item[]} */ (result.list)) : result.text.split('\n').filter((l) => l !== '').map((l) => '- ' + l);
     if (lines.length === 0) lines = [''];
   } else if (isList) {
-    const rows = result.list.every(Array.isArray) ? /** @type {Item[][]} */ (result.list) : [result.list];
-    lines = layoutTable(rows.map((r) => r.map((c) => cellText(princ(c)))));
+    const rows = result.list.every((r) => r === null || Array.isArray(r)) ? /** @type {(Item[] | null)[]} */ (result.list) : [/** @type {Item[]} */ (result.list)];
+    lines = layoutTable(rows.map((r) => (r === null ? null : r.flatMap((c) => cells(princ(c))))));
   } else {
     lines = result.text === '' ? [] : result.text.replace(/\n$/, '').split('\n');
   }

@@ -8,6 +8,7 @@ import { prefetchBibliography } from './bibliography.js';
 import { exportToHtml } from '../src/export-html.js';
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { exportToLatex, exportToBeamer } from '../src/export-latex.js';
+import { exportToSlides } from '../src/export-slides.js';
 import { exportLatexZip } from '../src/export-latex-zip.js';
 import { exportToIcalendar } from '../src/export-icalendar.js';
 import { prepareBabelExport } from '../src/babel-export.js';
@@ -79,7 +80,7 @@ function dataUrlBytes(url) {
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
-  if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer') {
+  if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
     try {
@@ -87,6 +88,9 @@ export async function performExport(format, scope) {
       saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
     } else if (format === 'html') {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
+    } else if (format === 'slides') {
+      const heading = scope && typeof scope === 'object' ? scope : null;
+      saveOut(baseName + '.html', exportToSlides(doc, heading, { images: await collectExportImages(doc, heading), defaults: { ...htmlExportDefaults(S.globalVariables), init: latexExportDefaults(S.globalVariables).init, sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex' || format === 'beamer') {
       const beamer = format === 'beamer'; // a presentation: the same .tex and .zip, from the Beamer back end
       const saved = S.state.documentId && !S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.state.documentId.split('/').pop() : undefined; // {{{input-file}}} and {{{modification-time}}} need a file
@@ -183,7 +187,7 @@ export async function performExport(format, scope) {
   S.exportFormat = null;
   S.exportPickingHeading = false;
   setStatus(
-    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'beamer' ? 'Beamer' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
+    `Exported to ${format === 'ascii' ? 'ASCII' : format === 'html' ? 'HTML' : format === 'odt' ? 'ODT' : format === 'latex' ? 'LaTeX' : format === 'beamer' ? 'Beamer' : format === 'slides' ? 'Slides (HTML)' : format === 'vcard' ? 'Contacts (.vcf)' : 'Calendar (.ics)'}.`
   );
   renderMoreMenu();
   render();
@@ -251,12 +255,17 @@ export function renderExportFlow() {
       S.exportFormat = 'beamer';
       renderMoreMenu();
     });
+    const slidesBtn = aliasedMenuDivItem(exportMenuAliases, 'Slides (HTML)', () => {
+      S.exportFormat = 'slides';
+      renderMoreMenu();
+    });
     appendMenuButtonsInOrder(morePanel, exportMenuAliases, [
       { label: 'ASCII', btn: asciiBtn },
       { label: 'As-org', btn: orgBtn },
       { label: 'Beamer', btn: beamerBtn },
       { label: 'HTML', btn: htmlBtn },
       { label: 'LaTeX', btn: latexBtn },
+      { label: 'Slides (HTML)', btn: slidesBtn },
     ]);
     const backRow = document.createElement('div');
     backRow.className = 'panel-row';
@@ -474,7 +483,7 @@ export function renderExportFlow() {
   label.style.fontSize = '12px';
   label.style.opacity = '0.7';
   label.style.marginBottom = '4px';
-  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : S.exportFormat === 'beamer' ? 'Beamer' : 'Calendar (.ics)'} for:`;
+  label.textContent = `Export ${S.exportFormat === 'ascii' ? 'ASCII' : S.exportFormat === 'html' ? 'HTML' : S.exportFormat === 'odt' ? 'ODT' : S.exportFormat === 'latex' ? 'LaTeX' : S.exportFormat === 'beamer' ? 'Beamer' : S.exportFormat === 'slides' ? 'Slides (HTML)' : 'Calendar (.ics)'} for:`;
   morePanel.appendChild(label);
 
   morePanel.appendChild(

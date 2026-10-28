@@ -60,13 +60,15 @@ function pushedNames(text) {
  * @param {string} text
  * @param {Map<string, Lisp>} [initial]
  * @param {Record<string, string>} [aliases]
- * @returns {Map<string, Lisp> & { errors: string[] }}
+ * @returns {Map<string, Lisp> & { errors: string[], raw: Map<string, LObj> }}  `raw` holds the values as Lisp objects, functions included
  */
 export function runInit(text, initial, aliases = {}) {
   const before = new Map(allSymbols().map((s) => [s, s.value]));
   /** @type {string[]} */
   const errors = [];
-  const out = Object.assign(new Map(initial || []), { errors });
+  /** @type {Map<string, LObj>} */
+  const raw = new Map();
+  const out = Object.assign(new Map(initial || []), { errors, raw });
   if (!text.trim()) return out;
   for (const [name, value] of initial || []) {
     const s = intern(name);
@@ -96,12 +98,32 @@ export function runInit(text, initial, aliases = {}) {
       if (s.value === undefined || s.constant || before.get(s) === s.value) continue;
       const value = fromObject(s.value);
       out.set(s.name, value);
+      raw.set(s.name, s.value);
       const real = aliases[s.name];
       if (real) out.set(real, value);
     }
   } finally {
     for (const s of allSymbols()) if (before.has(s) ? s.value !== before.get(s) : s.value !== undefined) s.value = before.get(s);
   }
+  return out;
+}
+
+/** The functions the last `keepInitFunctions` left defined, with what each held before. @type {Map<Sym, LObj | undefined>} */
+const keptFunctions = new Map();
+
+/**
+ * `runInit` for the init text the app is using, keeping the functions it defines (`defun`, `defmacro`, `defalias`) so Lisp that runs
+ * later, such as a diary entry, can call them; the functions the previous text defined are removed first, so editing the init edits them.
+ * @param {string} text
+ * @param {Map<string, Lisp>} [initial]
+ * @param {Record<string, string>} [aliases]
+ */
+export function keepInitFunctions(text, initial, aliases) {
+  for (const [s, fn] of keptFunctions) s.fn = fn;
+  keptFunctions.clear();
+  const before = new Map(allSymbols().map((s) => [s, s.fn]));
+  const out = runInit(text, initial, aliases);
+  for (const s of allSymbols()) if (s.fn !== before.get(s)) keptFunctions.set(s, before.get(s));
   return out;
 }
 

@@ -35,6 +35,8 @@ import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tas
 import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
 import { parseInline, extractLatexFragments } from './inline-markup.js';
 import { parseElements, parseAttributes } from './org-elements.js';
+import { leadingOverlay } from './export-beamer.js';
+import { evalMacro, isEvalTemplate } from './macro-eval.js';
 import { tableModel } from './table-model.js';
 import { citeExportFor, dropSilentCitations } from './cite.js';
 import { ENTITIES } from './entities.js';
@@ -329,7 +331,10 @@ function expandMacrosIn(state, text) {
   return text.replace(/\{\{\{(\w[\w-]*)(?:\(([\s\S]*?)\))?\}\}\}/g, (whole, /** @type {string} */ name, argText) => {
     const args = argText === undefined ? [] : argText.split(/(?<!\\),/).map((/** @type {any} */ a) => a.replace(/\\,/g, ',').trim());
     const key = name.toLowerCase();
-    if (state.macros.has(name)) return (state.macros.get(name) || '').replace(/\$(\d)/g, (w, n) => args[Number(n) - 1] ?? '');
+    if (state.macros.has(name)) {
+      const template = state.macros.get(name) || '';
+      return isEvalTemplate(template) ? evalMacro(name, template, args) : template.replace(/\$(\d)/g, (w, n) => args[Number(n) - 1] ?? '');
+    }
     /** @param {string} k */
     const kw = (k) => keywordValue(state.doc, k) || '';
     if (key === 'title') return kw('TITLE');
@@ -1748,3 +1753,65 @@ export function preambleBody(doc) {
   return lines;
 }
 
+
+/**
+ * What the slide exporter (export-slides.js) takes from this one: a heading's own text and a line of inline text as HTML, set up once
+ * for the whole document so links, footnotes and numbering agree across slides.
+ * @param {Doc} doc
+ * @param {{ images?: Map<string, string> | null, defaults?: import('./export-defaults.js').HtmlExportDefaults }} [extra]
+ */
+export function createSlideRenderer(doc, extra = {}) {
+  const prepared = prepareHtmlExport(doc, null, extra);
+  const { state } = prepared;
+  /** @type {Map<Heading, OutlineNode>} */
+  const nodes = new Map();
+  /** @param {OutlineNode[]} list */
+  const walk = (list) => list.forEach((n) => (nodes.set(n.heading, n), walk(n.children)));
+  walk(state.outline);
+  return {
+    doc: prepared.doc,
+    options: state.options,
+    /** Is the heading part of the export (not commented, archived or excluded)? @param {Heading} h */
+    included: (h) => nodes.has(h),
+    /** The text of a heading, without what is below it. @param {Heading} h */
+    body: (h) => {
+      const node = nodes.get(h);
+      return node && node.archived ? '' : bodyHtml(state, h, node || null);
+    },
+    /**
+     * A heading's text one element at a time, so a list can be shown a step at a time: each list says its `:overlay` and each item's own `<spec>`.
+     * @param {Heading} h
+     * @returns {{ html: string, list: { overlay: string, items: (string | null)[], tag: string } | null }[]}
+     */
+    parts: (h) => {
+      const node = nodes.get(h);
+      if (!node || node.archived) return [];
+      state.currentNode = node;
+      const elements = state.parsed.get(h) || parseElements((h.bodyLines || []).slice());
+      return elements.map((el) => ({
+        html: elementsHtml(state, [el]),
+        list:
+          el.type === 'list'
+            ? {
+                overlay: parseAttributes(el.aff && el.aff.attr.beamer).overlay || '',
+                tag: el.listType === 'ordered' ? 'ol' : el.listType === 'descriptive' ? 'dl' : 'ul',
+                items: el.items.map((item) => {
+                  const first = item.children[0];
+                  const lead = first && first.type === 'paragraph' ? leadingOverlay(first.lines[0].trimStart()) : null;
+                  return lead ? lead.overlay : null;
+                }),
+              }
+            : null,
+      }));
+    },
+    /** The text before the first heading. */
+    lead: () => elementsHtml(state, prepared.preElements),
+    /** @param {string} text */
+    inline: (text) => renderInline(state, text),
+    footnotes: () => footnotesHtml(state),
+    /** The style for math, when a slide has any. */
+    mathCss: () => (state.math ? KATEX_EXPORT_CSS : ''),
+    /** The script for code references, when a slide has any. */
+    script: () => (state.usesCoderef ? CODE_HIGHLIGHT_SCRIPT : ''),
+  };
+}

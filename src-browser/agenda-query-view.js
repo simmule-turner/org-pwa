@@ -3,8 +3,9 @@
 // saved queries of org-agenda-custom-commands. The rows come from src/agenda-queries.js; here are the query box, the chips and the
 // sheets. The Search panel stays the quick finder and can open its query here.
 import { applyAgendaEffortView } from '../src/agenda.js';
+import { runFunctionCommand } from '../src/agenda-lisp.js';
 import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
-import { entrySearchText, planSearch } from '../src/agenda-search.js';
+import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
@@ -14,6 +15,7 @@ import { seedAgendaDefaults } from './agenda-seed.js';
 import { S } from './app-state.js';
 import { openContentSheet, openFormSheet } from './bottom-sheet.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
+import { createNewUnsavedDocument } from './documents-io.js';
 import { outlineEl } from './dom.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
@@ -78,17 +80,6 @@ function queryOptions() {
     forceFullWords: truthy(vars['org-agenda-search-view-force-full-words']),
     maxLevel: Math.max(0, parseInt(vars['org-agenda-search-view-max-outline-level'] || '0', 10) || 0),
   };
-}
-
-/** A line of the entry's text that holds a match, for a row whose title has none.
- * @param {import('../src/types.js').Heading} heading @param {RegExp[]} patterns */
-function snippetFor(heading, patterns) {
-  if (!patterns.length || patterns.every((re) => re.test(heading.title))) return null;
-  for (const line of entrySearchText(heading).split('\n').slice(1)) {
-    const text = line.trim();
-    if (text && !/^:[A-Za-z_]+:/.test(text) && patterns.some((re) => re.test(text))) return text.length > 90 ? text.slice(0, 89) + '…' : text;
-  }
-  return null;
 }
 
 export function renderQueryView() {
@@ -211,8 +202,7 @@ export function renderQueryView() {
     if (rows.length === 0) return note('Nothing matches.');
     const today = new Date();
     for (const item of rows) {
-      const heading = /** @type {import('../src/types.js').Heading} */ (item.heading);
-      results.appendChild(buildHeadingRow(item, today, isMatch ? 'tags' : 'search', isMatch ? {} : { highlight: patterns, snippet: snippetFor(heading, patterns) }));
+      results.appendChild(buildHeadingRow(item, today, isMatch ? 'tags' : 'search', isMatch ? {} : { highlight: patterns }));
     }
   }
 
@@ -291,10 +281,19 @@ export function openAgendaCommands() {
 
 /** @param {import('../src/agenda-commands.js').CustomCommand} c */
 export function runCommand(c) {
+  if (c.type === 'function') return void runFunctionCommandView(c);
   if (c.type === 'agenda') return switchToView('agenda');
   if (c.type === 'alltodo') return openTodoList(null);
   if (c.type === 'todo') return openTodoList(c.query);
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });
+}
+
+/** A command that is a Lisp function: it is called with the match, and what it writes is shown in an *Org Agenda* buffer. @param {import('../src/agenda-commands.js').CustomCommand} c */
+async function runFunctionCommandView(c) {
+  const result = runFunctionCommand(c.fn || '', c.query);
+  if (!result.ok) return setStatus(result.message);
+  await createNewUnsavedDocument(result.text, c.description || c.key, '*Org Agenda*');
+  switchToView('text');
 }
 
 /**

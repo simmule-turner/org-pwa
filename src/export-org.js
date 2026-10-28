@@ -25,10 +25,8 @@
  *       actual macro syntax (#+MACRO: definitions, $1/$2 argument
  *       substitution, and the built-in title/author/email/date/time/
  *       keyword macros) before writing this, not derived from memory
- *       alone. A replacement template starting with "(eval" is real
- *       org's own escape hatch into evaluating arbitrary Emacs Lisp --
- *       the same thing step (c) can't safely do, so it's left exactly
- *       as written rather than attempted, for the identical reason.
+ *       alone. A replacement template starting with "(eval" runs on the
+ *       Lisp interpreter (macro-eval.js), as Org runs it.
  *   e. Filter :noexport:/comments -- genuinely new (see
  *       filterNoexportAndComments below): a heading tagged :noexport:
  *       is dropped along with its entire subtree; a raw "# " comment
@@ -55,6 +53,7 @@ import { rawExportOptions } from './export-options.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { interpretOrg } from './org-interpret.js';
 import { citeExportFor } from './cite.js';
+import { evalMacro, isEvalTemplate } from './macro-eval.js';
 import { parseInline } from './inline-markup.js';
 
 const MACRO_USE_RE = /\{\{\{([a-zA-Z][-a-zA-Z0-9_]*)(\(([^)]*)\))?\}\}\}/g;
@@ -197,7 +196,7 @@ function expandMacrosInText(text, macros, doc, now, depth = 0) {
     if (name === 'modification-time' && here.file?.mtime && !(name in macros)) return formatTime(here.file.mtime, args[0] || '%Y-%m-%d');
     if (name in macros) {
       const template = macros[name];
-      if (/^\(eval\b/.test(template.trim())) return whole; // real org's own escape into arbitrary Emacs Lisp -- can't safely execute this, same reason step (c) can't run a code block; left exactly as written
+      if (isEvalTemplate(template)) return evalMacro(name, template, args); // a template that starts with (eval ...) runs as Lisp
       const filled = template.replace(/\$(\d+)/g, (/** @type {any} */ _, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
       return depth < 20 ? expandMacrosInText(filled, macros, doc, now, depth + 1) : filled; // a macro may use others
     }

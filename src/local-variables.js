@@ -631,6 +631,14 @@ export function getBabelJs(vars) {
   return typeof languages === 'string' && /\(\s*js\s+\.\s+t\s*\)/i.test(languages);
 }
 
+/** Whether `emacs-lisp` source blocks may run: Org's own default list is `((emacs-lisp . t))`, so they run unless the list is set and leaves `emacs-lisp` out.
+ *  Callers pass the app's GLOBAL variables only, as for `getBabelJs`. @param {LocalVars} vars */
+export function getBabelLisp(vars) {
+  const languages = (vars || {})['org-babel-load-languages'];
+  if (typeof languages !== 'string' || !languages.trim()) return true;
+  return /\(\s*(emacs-lisp|elisp)\s+\.\s+t\s*\)/i.test(languages);
+}
+
 /** org-contacts-birthday-property: which property key holds a
  *  heading's birthday/anniversary date+description (see agenda.js's
  *  org-contacts-anniversaries support). Default "BIRTHDAY", matching

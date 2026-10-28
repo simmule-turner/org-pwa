@@ -7,6 +7,7 @@
 
 import { readLisp, listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
 import { runInit } from './lisp-init.js';
+import { NIL, Sym } from './elisp-data.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
 /**
@@ -16,7 +17,7 @@ import { runInit } from './lisp-init.js';
  * @typedef {{ options: string, name: string, compilers: string[] | null }} LatexPackage
  * @typedef {{ frameLevel: number, theme: string, frameOptions: string, outlineTitle: string, outlineOptions: string, subtitleFormat: string, environments: { name: string, begin: string, end: string }[] }} BeamerConfig
  * @typedef {{ tablesCentered: boolean, tablesBooktabs: boolean, tableEnvironment: string, tableMode: string, captionAbove: Set<string>, imagesCentered: boolean, figurePosition: string, titleCommand: string, tocCommand: string, activeTimestamp: string, inactiveTimestamp: string, preferUserLabels: boolean, textMarkup: Map<string, string> }} LatexVars
- * @typedef {{ vars: LatexVars, beamer: BeamerConfig, classes: LatexClass[], packages: (string | LatexPackage)[], backend: 'verbatim' | 'listings' | 'minted' | 'engraved', listingsOptions: [string, string | null][], listingsLangs: Map<string, string>, mintedOptions: [string, string | null][], mintedLangs: Map<string, string> }} LatexConfig
+ * @typedef {{ vars: LatexVars, beamer: BeamerConfig, classes: LatexClass[], packages: (string | LatexPackage)[], backend: 'verbatim' | 'listings' | 'minted' | 'engraved', listingsOptions: [string, string | null][], listingsLangs: Map<string, string>, mintedOptions: [string, string | null][], mintedLangs: Map<string, string>, headlineFunction: import('./elisp-data.js').LObj | null }} LatexConfig
  */
 
 const DEFAULT_INIT = `
@@ -206,6 +207,12 @@ function beamerOf(vars) {
   };
 }
 
+/** `org-latex-format-headline-function`: the function to call, or null for Org's own formatting. @param {import('./elisp-data.js').LObj | undefined} value */
+function headlineFunctionOf(value) {
+  if (value === undefined || value === NIL) return null;
+  return value instanceof Sym && value.name === 'org-latex-format-headline-default-function' ? null : value;
+}
+
 /** @type {Map<string, Lisp> | null} */
 let defaults = null;
 
@@ -230,6 +237,7 @@ export function latexConfig(init) {
     listingsLangs: langsOf(vars.get('org-latex-listings-langs')),
     mintedOptions: optionsOf(vars.get('org-latex-minted-options')),
     mintedLangs: langsOf(vars.get('org-latex-minted-langs')),
+    headlineFunction: headlineFunctionOf(/** @type {{ raw?: Map<string, import('./elisp-data.js').LObj> }} */ (vars).raw?.get('org-latex-format-headline-function')),
   };
 }
 

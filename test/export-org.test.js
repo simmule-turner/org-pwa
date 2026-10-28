@@ -75,10 +75,10 @@ test('the time macro uses the supplied `now`, not the real current moment -- det
   assert.equal(result.body[0].lines[0], '2026-09-23');
 });
 
-test('THE FEATURE: a replacement template starting with "(eval" -- real org\u2019s own escape hatch into arbitrary Emacs Lisp -- is left exactly as written, not attempted, the same reason code-block execution isn\u2019t implemented either', () => {
+test('a replacement template starting with "(eval" runs as Emacs Lisp, with $1 as a string', () => {
   const doc = parseOrg('#+MACRO: gnustamp (eval (concat "GNU/" (capitalize $1)))\n{{{gnustamp(linux)}}}\n');
   const result = expandMacros(doc, new Date());
-  assert.equal(result.body[0].lines[0], '{{{gnustamp(linux)}}}');
+  assert.equal(result.body[0].lines[0], 'GNU/Linux');
 });
 
 test('an unrecognized macro name is left exactly as written, never an error, matching this app\u2019s own tolerant-of-the-unexpected approach elsewhere', () => {

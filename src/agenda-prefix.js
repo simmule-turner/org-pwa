@@ -4,30 +4,58 @@
  *   %b the parents' titles with "->" after each   (%i, the category icon, is empty)
  * `%-12c` pads on the right to 12 characters, `%12c` on the left, `%.5c` cuts to 5 (4 for a category, as Emacs does). A character from
  * ` .;,:!?=|/<>` right after the width ("%-12:c", "% s") is added after the text when there is any.
- * `%?` ("%?-12t") leaves the whole part out when the text is empty. A `%(function)` form prints nothing.
+ * `%?` ("%?-12t") leaves the whole part out when the text is empty. A `%(form)` is evaluated as Lisp (`(my-function)`, `(concat ...)`), and shows the text it gives; a failing one shows `%![Error: ...]`.
  */
+
+import { Reader } from './elisp-read.js';
 
 /** @typedef {{ category?: string, time?: string, scheduling?: string, effort?: string, level?: string, breadcrumbs?: string }} PrefixFields */
 
-const PART_RE = /%(\??)([-+]?[0-9]*(?:\.[0-9]+)?)([ .;,:!?=|/<>]?)([cltseib]|\(.+?\))/g;
+const HEAD_RE = /%(\??)([-+]?[0-9]*(?:\.[0-9]+)?)([ .;,:!?=|/<>]?)(?:([cltseib])|(?=\())/y;
 
 /**
  * @param {string} format
  * @param {PrefixFields} fields
+ * @param {(form: string) => string} [evaluate]  gives the text of a `%(form)`; without it the form prints nothing
  * @returns {string}
  */
-export function formatAgendaPrefix(format, fields) {
+export function formatAgendaPrefix(format, fields, evaluate) {
   /** @type {Record<string, string>} */
   const values = { c: fields.category || '', t: fields.time || '', s: fields.scheduling || '', e: fields.effort || '', l: fields.level || '', b: fields.breadcrumbs || '' };
-  return format.replace(PART_RE, (_all, optional, width, sep, letter) => {
-    let text = values[letter] ?? '';
-    if (optional && !text) return '';
+  let out = '';
+  let i = 0;
+  while (i < format.length) {
+    HEAD_RE.lastIndex = i;
+    const m = format[i] === '%' ? HEAD_RE.exec(format) : null;
+    if (!m) {
+      out += format[i++];
+      continue;
+    }
+    const [head, optional, width, sep, letter] = m;
+    /** @type {string} */
+    let text;
+    let next = i + head.length;
+    if (letter) text = values[letter] ?? '';
+    else {
+      const reader = new Reader(format, next);
+      try {
+        reader.read();
+      } catch {
+        out += format[i++];
+        continue;
+      }
+      text = evaluate ? evaluate(format.slice(next, reader.pos)) : '';
+      next = reader.pos;
+    }
+    i = next;
+    if (optional && !text) continue;
     const precision = /\.(\d+)$/.exec(width);
     if (precision) text = text.slice(0, Math.max(0, Number(precision[1]) - (letter === 'c' ? 1 : 0))); // Emacs keeps one character fewer for a category
     if (text && sep) text += sep;
     const size = Math.abs(parseInt(width, 10) || 0);
-    return width.startsWith('-') ? text.padEnd(size) : text.padStart(size);
-  });
+    out += width.startsWith('-') ? text.padEnd(size) : text.padStart(size);
+  }
+  return out;
 }
 
 /**

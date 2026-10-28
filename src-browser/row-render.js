@@ -16,6 +16,7 @@ import { updateCheckboxCookie } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
 import { isJsBlock } from '../src/babel.js';
+import { isElispBlock } from '../src/babel-elisp.js';
 import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
 import { allLogLines, parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
@@ -32,7 +33,7 @@ import { attachSlideLeftToFold, attachSlideRightToComplete, confirmListItemDelet
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
 import { currentInlineOpts, renderInlineNodes } from './inline-render.js';
 import { appendTagChips } from './tag-display.js';
-import { babelEnabled, executeSourceBlock } from './babel-flow.js';
+import { babelEnabled, babelLispEnabled, executeSourceBlock } from './babel-flow.js';
 import { applyKeyboardFocusHighlight, resyncKeyboardFocusToBodyRow, rowMatchesKeyboardFocus, setKeyboardFocusToRow } from './keyboard-focus.js';
 import { toggleActionMenu } from './navigation.js';
 import { getOrRenderPlotSvg } from './render-helpers.js';
@@ -1307,8 +1308,8 @@ export function renderBlockRow(row) {
     row.heading.drawersHidden = true;
     render();
   };
-  if (isJsBlock(row.node) && babelEnabled()) {
-    // Only for js blocks and only when Settings turns JavaScript on, so nothing moves for anyone else.
+  if ((isJsBlock(row.node) && babelEnabled()) || (isElispBlock(row.node) && babelLispEnabled())) {
+    // Only for js and emacs-lisp blocks that may run, so nothing moves for anyone else.
     const headRow = document.createElement('div');
     headRow.style.display = 'flex';
     headRow.style.alignItems = 'center';

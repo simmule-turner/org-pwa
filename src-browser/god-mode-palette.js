@@ -624,6 +624,7 @@ export function paletteCommandList() {
     { id: 'export-icalendar', label: 'Export Calendar (.ics)', orgName: 'org-icalendar-export-to-ics', group: 'Export', keywords: ['ics', 'ical', 'calendar', 'events', 'agenda'], needs: ['doc'], run: () => openExport('icalendar') },
     { id: 'export-vcard', label: 'Export Contacts (.vcf)', orgName: 'org-vcard-export', group: 'Export', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openExport('vcard') },
     { id: 'export-beamer', label: 'Export this file as a Beamer presentation (LaTeX)', orgName: 'org-beamer-export-to-latex', group: 'Export', keywords: ['tex', 'slides', 'presentation'], needs: ['doc'], run: exportAs('beamer') },
+    { id: 'export-slides', label: 'Export this file as HTML slides', group: 'Export', keywords: ['slides', 'presentation', 'pdf', 'beamer'], needs: ['doc'], run: exportAs('slides') },
     { id: 'export-latex', label: 'Export this file as LaTeX', orgName: 'org-latex-export-to-latex', group: 'Export', keywords: ['tex', 'pdf'], needs: ['doc'], run: exportAs('latex') },
     // Two commands that used to exist only as Extras-menu functions; now ordinary palette commands, so every
     // quoted function an Extras entry can name is a palette command (see runExtraMenuEntry)

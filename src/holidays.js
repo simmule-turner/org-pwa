@@ -11,7 +11,7 @@ import { evalHolidayList } from './calendar-lisp.js';
 import { withContext } from './diary-lisp.js';
 import { NIL, intern, list } from './elisp-data.js';
 import { listItems } from './lisp-read.js';
-import { runInit, toObject } from './lisp-init.js';
+import { runInit, keepInitFunctions, toObject } from './lisp-init.js';
 import { lispStringValue } from './export-defaults.js';
 import { solarTimeString } from './sexp-eval.js';
 import { daylightSaving } from './solar-holidays.js';
@@ -27,6 +27,8 @@ let vars = null;
 let forms = null;
 /** @type {[import('./elisp-data.js').Sym, import('./elisp-data.js').LObj][]} */
 let bindings = [];
+/** The variables the user's init sets, for Lisp that runs outside the holiday lists (diary entries). @type {[import('./elisp-data.js').Sym, import('./elisp-data.js').LObj][]} */
+let userBindings = [];
 /** @type {Map<string, string[]>} */
 let cache = new Map();
 /** The time zone of the sun-related holidays (an IANA name): the device's, unless a test or a setting picks one. @type {string | null} */
@@ -47,13 +49,21 @@ const zone = () => zoneOverride || Intl.DateTimeFormat().resolvedOptions().timeZ
  * @param {string | undefined} init */
 export function setHolidayConfig(init) {
   if (!defaults) defaults = runInit(DEFAULT_LISTS);
-  vars = init && init.trim() ? runInit(init, defaults) : defaults;
+  vars = keepInitFunctions(init && init.trim() ? init : '', defaults);
+  const base = defaults;
+  userBindings = [...vars].filter(([name, value]) => base.get(name) !== value).map(([name, value]) => [intern(name), toObject(value)]);
   const explicit = vars.get('calendar-holidays');
   const groups = explicit ? [explicit] : HOLIDAY_GROUPS.map((g) => /** @type {Lisp} */ (vars && vars.get(g))).filter(Boolean);
   forms = groups.flatMap((g) => listItems(g) || []).map(toObject);
   bindings = [...vars].map(([name, value]) => [intern(name), toObject(value)]);
   cache = new Map();
 }
+
+/** A variable the Lisp init set, as the Lisp object it holds (a function included); undefined when it set none. @param {string} name */
+export const initValue = (name) => /** @type {{ raw?: Map<string, import('./elisp-data.js').LObj> } | null} */ (vars)?.raw?.get(name);
+
+/** The variables the Lisp init sets, as dynamic bindings. */
+export const initBindings = () => userBindings;
 
 /** Follows the Lisp init text kept in `org-xx-lisp-init` (Settings → Advanced). @param {Record<string, string> | null | undefined} vars */
 export function applyHolidayVariables(vars) {

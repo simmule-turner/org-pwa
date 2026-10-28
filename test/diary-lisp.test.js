@@ -73,3 +73,19 @@ test('a body line that fails shows its error', () => {
 test('values come back as plain values', () => {
   assert.equal(evaluateSexprValue(parseSexpr('(list 1 2.5 "x")'), ctx()).join(), '1,2.5,x');
 });
+
+test('functions and variables from the Lisp init are there for diary entries, and go when the init changes', async () => {
+  const { setHolidayConfig } = await import('../src/holidays.js');
+  try {
+    setHolidayConfig('(setq my-offset 5)\n(defun my-plus (x) (+ x my-offset))');
+    assert.equal(run('(my-plus 1)').value, 6);
+    assert.equal(run('(progn (defun my-twice (x) (my-plus (* 2 x))) (my-twice 3))').value, 11);
+    setHolidayConfig('(defun my-plus (x) (+ x 100))');
+    assert.equal(run('(my-plus 1)').value, 101);
+    assert.match(run('my-offset').error, /void/);
+    setHolidayConfig('');
+    assert.match(run('(my-plus 1)').error, /function definition is void: my-plus/);
+  } finally {
+    setHolidayConfig('');
+  }
+});

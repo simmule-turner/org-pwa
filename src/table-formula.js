@@ -2669,11 +2669,13 @@ const RECALC_ROW_RE = /^[#*]$/;
  *  names the columns (each cell names its own column, the marker column being column 1); a row marked `$` gives parameters as
  *  `name=value` cells; a row marked `_` or `^` names the fields in the row below or above it, each name standing for that field's text.
  * @param {{ type: string, cells?: string[] }[]} rows
- * @returns {{ columns: Map<string, number>, params: Map<string, string> }} */
+ * @returns {{ columns: Map<string, number>, params: Map<string, string>, fields: Map<string, { row: number, col: number }>, defaultFormat: string }} */
 function tableNames(rows) {
   const data = rows.filter((r) => r.type === 'row').map((r) => ({ cells: r.cells || [] }));
   const columns = new Map();
   const params = new Map();
+  const fields = new Map(); // a named field's place: its row among all the rows (as `@N` counts them) and its column
+  let defaultFormat = ''; // the `%` parameter: Org puts it in front of the format of every formula that has a `;`
   const marker = (/** @type {{ cells: string[] }} */ row) => String(row.cells[0] ?? '').trim();
   const named = data.find((r) => marker(r) === '!');
   if (named) {
@@ -2686,8 +2688,9 @@ function tableNames(rows) {
     const mark = marker(row);
     if (mark === '$') {
       row.cells.forEach((/** @type {string} */ cell, /** @type {number} */ i) => {
-        const m = i > 0 ? /^([a-zA-Z][_a-zA-Z0-9]*)\s*=\s*(.*)$/.exec(String(cell).trim()) : null;
-        if (m) params.set(m[1], m[2]);
+        const m = i > 0 ? /^([a-zA-Z][_a-zA-Z0-9]*|%)\s*=\s*(.*)$/.exec(String(cell).trim()) : null;
+        if (m && m[1] === '%') defaultFormat = m[2];
+        else if (m) params.set(m[1], m[2]);
       });
     } else if (mark === '_' || mark === '^') {
       const target = data[index + (mark === '_' ? 1 : -1)];
@@ -2696,10 +2699,11 @@ function tableNames(rows) {
         const name = String(cell).trim();
         if (i === 0 || !NAME_RE.test(name) || i >= target.cells.length) return;
         params.set(name, String(target.cells[i]).trim());
+        fields.set(name, { row: index + (mark === '_' ? 2 : 0), col: i + 1 });
       });
     }
   });
-  return { columns, params };
+  return { columns, params, fields, defaultFormat };
 }
 
 /** Rewrites a #+TBLFM: line so the table's own names mean what Org makes them mean: `$Price` becomes the column's `$3`, and a parameter or a
@@ -2707,13 +2711,35 @@ function tableNames(rows) {
  * @param {string} tblfm
  * @param {ReturnType<typeof tableNames>} names */
 function substituteTableNames(tblfm, names) {
+  /** @type {Set<string>} */
+  const defined = new Set();
+  /** @type {Map<string, boolean>} */
+  const cells = new Map(); // a cell a statement sets, and whether a field name led to it
   return tblfm
     .split('::')
     .map((statement) => {
       const eq = statement.indexOf('=');
       if (eq === -1) return statement;
-      const lhs = statement.slice(0, eq);
-      const rhs = statement.slice(eq + 1);
+      let lhs = statement.slice(0, eq);
+      const key = lhs.trim().replace(/^\$(?=[a-zA-Z])/, '');
+      if (key !== '' && defined.has(key)) throw new Error("Double definition `" + key + "=' in TBLFM line, please fix by hand");
+      defined.add(key);
+      const bare = /^\s*([a-zA-Z][_a-zA-Z0-9]*)\s*$/.exec(lhs);
+      if (bare) return ''; // Org reads a bare name as nothing it can set
+      const named = /^\s*\$([a-zA-Z][_a-zA-Z0-9]*)\s*$/.exec(lhs);
+      let byName = false;
+      if (named) {
+        const place = names.fields.get(named[1]);
+        if (!place) throw new Error('Unknown field: ' + named[1]);
+        lhs = `@${place.row}$${place.col}`;
+        byName = true;
+      }
+      const cell = /^\s*(@\d+\$\d+)\s*$/.exec(lhs);
+      if (cell) {
+        if (cells.has(cell[1]) && (byName || cells.get(cell[1]))) throw new Error('Several field/range formulas try to set ' + cell[1]);
+        cells.set(cell[1], byName);
+      }
+      let rhs = statement.slice(eq + 1);
       const plain = rhs.trimStart().startsWith("'"); // a Lisp formula takes the text as it is
       const replaced = rhs.replace(/"(?:[^"\\]|\\.)*"|\$([a-zA-Z][_a-zA-Z0-9]*)/g, (match, name) => {
         if (name === undefined) return match;
@@ -2723,8 +2749,32 @@ function substituteTableNames(tblfm, names) {
         if (value !== undefined) return plain ? value : '(' + value + ')';
         return match;
       });
-      return lhs + '=' + replaced;
+      rhs = replaced;
+      const semi = rhs.lastIndexOf(';');
+      if (semi !== -1 && names.defaultFormat) {
+        rhs = rhs.slice(0, semi + 1) + names.defaultFormat + rhs.slice(semi + 1); // the `%` parameter comes before the formula's own format
+        if ((rhs.slice(semi + 1).match(/%[^a-zA-Z%]*[a-zA-Z]/g) || []).length > 1) throw new Error('Not enough arguments for format string'); // Org formats with both strings at once
+      }
+      return lhs + '=' + rhs;
     })
+    .filter((statement) => statement.trim() !== '')
+    .join('::');
+}
+
+/** The statements of a #+TBLFM: line in the order Org applies them: sorted by the text of their targets (`$10` before `$2`, as Org's
+ *  `string<` has it), a field name standing for itself. @param {string} tblfm */
+function inOrgOrder(tblfm) {
+  const key = (/** @type {string} */ statement) => {
+    const eq = statement.indexOf('=');
+    return (eq === -1 ? statement : statement.slice(0, eq)).trim().replace(/^\$(?=[a-zA-Z])/, '');
+  };
+  return tblfm
+    .split('::')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((statement, index) => ({ statement, index }))
+    .sort((a, b) => (key(a.statement) < key(b.statement) ? -1 : key(a.statement) > key(b.statement) ? 1 : a.index - b.index))
+    .map((x) => x.statement)
     .join('::');
 }
 
@@ -2733,8 +2783,9 @@ export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
   const hourZeroPad = /** @type {any} */ (options).hourZeroPad !== undefined ? /** @type {any} */ (options).hourZeroPad : true;
   const names = tableNames(table.rows);
-  const hasNames = names.columns.size + names.params.size > 0;
-  const statements = parseTblfm(hasNames ? substituteTableNames(table.tblfm, names) : table.tblfm);
+  const hasNames = names.columns.size + names.params.size + names.fields.size > 0 || names.defaultFormat !== '';
+  const ordered = inOrgOrder(table.tblfm);
+  const statements = parseTblfm(hasNames ? substituteTableNames(ordered, names) : ordered);
 
   // A working copy: same row objects' own shape, but with a fresh
   // `cells` array per row so evaluating one formula can't accidentally
@@ -2766,7 +2817,11 @@ export function recalculateTable(table, options = {}) {
   const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
-  for (const { target, expr, mode, source } of statements) {
+  // Org keeps its formulas sorted by the text of their targets, and applies the column formulas row by row, then the field formulas.
+  // A cell a field formula sets is left alone by the column formulas, wherever in the line that formula stands.
+  /** @typedef {{ target: ReturnType<typeof parseFormulaStatement>['target'], evalCell: (row: number, col: number) => void }} Prepared */
+  /** @type {Prepared[]} */
+  const prepared = statements.map((/** @type {ReturnType<typeof parseFormulaStatement>} */ { target, expr, mode, source }) => {
     const numericMode = mode.fraction
       ? { kind: 'fraction', instance: mathjsDefault }
       : mode.precision !== null
@@ -2827,47 +2882,54 @@ export function recalculateTable(table, options = {}) {
         store(shown ?? '#ERROR');
       }
     }
+    return { target, evalCell };
+  });
+
+  /** The cells the field formulas set: a column formula does not touch them. @type {Set<string>} */
+  const untouchable = new Set();
+  /** @param {Prepared['target']} given @returns {[number, number, number, number] | null} */
+  const fieldBounds = (given) => {
+    const target = /** @type {{ type: string, row: RowRef, col: ColRef | null, from: { row: RowRef | null, col: ColRef | null }, to: { row: RowRef | null, col: ColRef | null } }} */ (/** @type {unknown} */ (given));
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
-      evalCell(row, col);
-    } else if (target.type === 'range') {
-      if (target.from.row === null || target.to.row === null) {
-        throw new Error('A formula target range needs an explicit row on both endpoints');
-      }
-      const fromRow = resolveRowRef(target.from.row, 1, dataRowCount, hlinePositions, false);
-      const toRow = resolveRowRef(target.to.row, 1, dataRowCount, hlinePositions, false);
-      const fromCol = resolveColRef(target.from.col, colCount);
-      const toCol = resolveColRef(target.to.col, colCount);
-      if (fromRow === null || toRow === null || fromCol === null || toCol === null) {
-        throw new Error('Formula target is out of range for this table');
-      }
-      const rowStart = Math.min(fromRow, toRow);
-      const rowEnd = Math.max(fromRow, toRow);
-      const colStart = Math.min(fromCol, toCol);
-      const colEnd = Math.max(fromCol, toCol);
-      for (let r = rowStart; r <= rowEnd; r++) {
-        for (let c = colStart; c <= colEnd; c++) {
-          evalCell(r, c);
-        }
-      }
-    } else {
-      // Column-formula shorthand: apply to every data row AFTER the
-      // header (see headerRowCount above), each computing $M from ITS
-      // OWN row.
-      const col = resolveColRef(target.col, colCount);
-      if (col === null) throw new Error('Formula target column is out of range for this table');
-      // In Org a table with any marked row (`!` `$` `^` `_` `#` `*` in its first cell) recalculates only the rows marked `#` or `*`; one with
-      // none recalculates every row after the header. Rows marked `_` `^` `!` `$` `/` are never data.
-      const firstCell = (/** @type {number} */ r) => String(dataRows[r - 1].cells[0] ?? '').trim();
-      const marked = dataRows.some((_, i) => MARKED_ROW_RE.test(firstCell(i + 1)));
-      for (let r = marked ? 1 : headerRowCount + 1; r <= dataRowCount; r++) {
-        if (MARKER_ROW_RE.test(firstCell(r))) continue;
-        if (marked && !RECALC_ROW_RE.test(firstCell(r))) continue;
-        evalCell(r, col);
-      }
+      return [row, row, col, col];
     }
+    if (target.from.row === null || target.to.row === null) {
+      throw new Error('A formula target range needs an explicit row on both endpoints');
+    }
+    const fromRow = resolveRowRef(target.from.row, 1, dataRowCount, hlinePositions, false);
+    const toRow = resolveRowRef(target.to.row, 1, dataRowCount, hlinePositions, false);
+    const fromCol = resolveColRef(target.from.col, colCount);
+    const toCol = resolveColRef(target.to.col, colCount);
+    if (fromRow === null || toRow === null || fromCol === null || toCol === null) {
+      throw new Error('Formula target is out of range for this table');
+    }
+    return [Math.min(fromRow, toRow), Math.max(fromRow, toRow), Math.min(fromCol, toCol), Math.max(fromCol, toCol)];
+  };
+  const fieldFormulas = prepared.filter((/** @type {Prepared} */ p) => p.target.type !== 'column');
+  for (const { target } of fieldFormulas) {
+    const [r0, r1, c0, c1] = /** @type {[number, number, number, number]} */ (fieldBounds(target));
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) untouchable.add(r + ',' + c);
+  }
+
+  // Column formulas: in a table with any marked row (`!` `$` `^` `_` `#` `*` in its first cell) only the rows marked `#` or `*` are
+  // recalculated; with none, every row after the header. Rows marked `_` `^` `!` `$` `/` are never data. Each row gets every column formula.
+  const columnFormulas = prepared.filter((/** @type {Prepared} */ p) => p.target.type === 'column').map((/** @type {Prepared} */ p) => ({ col: resolveColRef(/** @type {{ col: Parameters<typeof resolveColRef>[0] }} */ (/** @type {unknown} */ (p.target)).col, colCount), evalCell: p.evalCell }));
+  if (columnFormulas.some((/** @type {{ col: number | null }} */ f) => f.col === null)) throw new Error('Formula target column is out of range for this table');
+  const firstCell = (/** @type {number} */ r) => String(dataRows[r - 1].cells[0] ?? '').trim();
+  const marked = dataRows.some((_, i) => MARKED_ROW_RE.test(firstCell(i + 1)));
+  for (let r = marked ? 1 : headerRowCount + 1; r <= dataRowCount; r++) {
+    if (MARKER_ROW_RE.test(firstCell(r))) continue;
+    if (marked && !RECALC_ROW_RE.test(firstCell(r))) continue;
+    for (const { col, evalCell } of columnFormulas) if (!untouchable.has(r + ',' + col)) evalCell(r, /** @type {number} */ (col));
+  }
+
+  // Field formulas, after the column ones
+  for (const { target, evalCell } of fieldFormulas) {
+    const [r0, r1, c0, c1] = /** @type {[number, number, number, number]} */ (fieldBounds(target));
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) evalCell(r, c);
   }
 
   return workingRows;

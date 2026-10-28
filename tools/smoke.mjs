@@ -984,7 +984,7 @@ check('Match and Search views: Match lists tag matches and TODO only, Keyword se
   t = await rows();
   a = at(t, ['Ship notes', 'Meeting']); // alpha-up reads the whole row, so Ship's "[#B]" sorts before Meeting, as in Emacs
   expect(t.includes('2 entries') && a[0] > 0 && a[0] < a[1], `a quoted phrase, alpha-up: ${t}`);
-  expect((await page.locator('[data-query-results] mark').count()) >= 1, 'the match is marked');
+  expect((await page.locator('[data-query-results] mark').count()) === 0 && !t.includes('Q4 plan'), `a body-only match shows the heading alone, as in Emacs: ${t}`);
   await page.fill('[data-query-input]', '{bad(');
   await page.waitForTimeout(400);
 
@@ -5161,7 +5161,7 @@ check('LaTeX export: the Export menu lists ASCII, As-org, Beamer, HTML and LaTeX
     await page.click('#moreBtn');
     await pick(page, '#morePanel', 'Export');
     const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
-    expect(items.join(',') === 'ASCII,As-org,Beamer,HTML,LaTeX', `the Export menu lists five formats: ${items.join(',')}`);
+    expect(items.join(',') === 'ASCII,As-org,Beamer,HTML,LaTeX,Slides (HTML)', `the Export menu lists five formats: ${items.join(',')}`);
     await pick(page, '#morePanel', 'LaTeX');
     await pick(page, '#morePanel', 'This file');
     for (let n = 0; n < 40 && !(await page.evaluate(() => window.__saved.length)); n++) await page.waitForTimeout(250);
@@ -5266,7 +5266,7 @@ check('Export menu: ASCII, As-org, Beamer, HTML and LaTeX only; Calendar (.ics),
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Export');
   const items = (await page.locator('#morePanel [role=menuitem]').allInnerTexts()).map((t) => t.trim());
-  expect(items.join(',') === 'ASCII,As-org,Beamer,HTML,LaTeX', `menu: ${items.join(',')}`);
+  expect(items.join(',') === 'ASCII,As-org,Beamer,HTML,LaTeX,Slides (HTML)', `menu: ${items.join(',')}`);
   await page.click('#moreBtn');
   await openPalette(page);
   await page.keyboard.type('Export');
@@ -5788,6 +5788,31 @@ check('JavaScript blocks: values, tables, :var from a named table, output, error
   await runBlock(page, 0);
   await waitForStatus(page, 'Ran in');
   expect(((await documentText(page)).match(/#\+RESULTS:/g) || []).length === 5, 'a rerun replaces instead of adding');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs Lisp blocks run by default: values, tables, :var from a named table, output, errors, a loop that never ends', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(
+    page,
+    babelDoc(
+      '#+BEGIN_SRC emacs-lisp', '(* 6 7)', '#+END_SRC', '',
+      '#+BEGIN_SRC emacs-lisp :var data=sales', "(mapcar (lambda (r) (list (car r) (* 2 (cadr r)))) data)", '#+END_SRC', '',
+      '#+BEGIN_SRC emacs-lisp :results output', '(princ "one") (princ "two")', '#+END_SRC', '',
+      '#+BEGIN_SRC emacs-lisp', '(car 5)', '#+END_SRC', '',
+      '#+BEGIN_SRC emacs-lisp', '(while t)', '#+END_SRC'
+    )
+  );
+  for (let n = 0; n < 5; n++) {
+    await runBlock(page, n);
+    await waitForStatus(page, n === 3 ? 'Source block failed' : n === 4 ? 'Source block failed' : 'Ran in');
+  }
+  const text = await documentText(page);
+  for (const want of [': 42', '| Q1 | 20 |', '| Q2 | 40 |', ': onetwo', ': Error: Wrong type argument: listp, 5', 'too many steps']) {
+    expect(text.includes(want), `result ${want} in:\n${text}`);
+  }
+  expect((text.match(/#\+RESULTS:/g) || []).length === 5, `five RESULTS lines: ${text}`);
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -7943,6 +7968,41 @@ check('lisp init: (setq org-agenda-files ...) fills the Agenda files setting, sh
   expect(vars['org-agenda-files'] === 'github:home.org;github:journal.org;github:calendar.org' && vars['org-deadline-warning-days'] === '14', `the settings hold the init's values: ${JSON.stringify(vars)}`);
   const saved = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariablesText);
   expect(!/^org-agenda-files:/m.test(saved) && !/^org-deadline-warning-days:/m.test(saved), 'the init values are not written into the saved settings');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('lisp agenda settings: a function custom command shows its output, %(form) fills the prefix', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    const { encodeLispString } = await import('/src/export-defaults.js');
+    await commitGlobalVariableChange('org-xx-lisp-init', encodeLispString('(defun my-report (m) (princ (concat "Report for " m)) (insert "!"))'));
+    await commitGlobalVariableChange('org-agenda-custom-commands', "'((\"x\" \"Mine\" my-report \"work\"))");
+  });
+  await page.evaluate(async () => {
+    const { parseCustomCommands } = await import('/src/agenda-commands.js');
+    const { runCommand } = await import('/src-browser/agenda-query-view.js');
+    const { S } = await import('/src-browser/app-state.js');
+    runCommand(parseCustomCommands(S.globalVariables['org-agenda-custom-commands'])[0]);
+  });
+  await page.waitForFunction(() => document.body.innerText.includes('Report for work!'), null, { timeout: 8000 });
+  const prefix = await page.evaluate(async () => (await import('/src/agenda-prefix.js')).formatAgendaPrefix('%-6c%(concat "<" category ">")', { category: 'Home' }, () => '<Home>'));
+  expect(prefix === 'Home  <Home>', `the prefix form fills in: ${prefix}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Slides (HTML): the palette exports a page per frame and overlay step, and the Export menu lists it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+TITLE: Talk\n* Frame\nMath $x^2$ here.\n#+ATTR_BEAMER: :overlay <+->\n- a\n- b\n');
+  await openPalette(page);
+  await page.keyboard.type('Export this file as HTML slides');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
+  expect(download.suggestedFilename().endsWith('.html'), `file: ${download.suggestedFilename()}`);
+  const text = fs.readFileSync(await download.path(), 'utf8');
+  expect((text.match(/<section class="slide /g) || []).length === 3 && text.includes('class="cover"'), `pages and hidden items: ${text.slice(0, 300)}`);
+  expect(text.includes('katex'), 'math is set as in the HTML export');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

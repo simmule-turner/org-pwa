@@ -1,0 +1,200 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "template": "(eval (upcase $1))",
+   "use": "{{{m(abc)}}}",
+   "emacs": "#+MACRO: m (eval (upcase $1))\n\nbefore ABC after\n"
+  },
+  {
+   "template": "(eval (+ (string-to-number $1) (string-to-number $2)))",
+   "use": "{{{m(1,2)}}}",
+   "emacs": "#+MACRO: m (eval (+ (string-to-number $1) (string-to-number $2)))\n\nbefore 3 after\n"
+  },
+  {
+   "template": "(eval (+ (string-to-number $1) (string-to-number $2)))",
+   "use": "{{{m(1.5,2)}}}",
+   "emacs": "#+MACRO: m (eval (+ (string-to-number $1) (string-to-number $2)))\n\nbefore 3.5 after\n"
+  },
+  {
+   "template": "(eval (format \"%s-%s\" $1 $2))",
+   "use": "{{{m(a,b)}}}",
+   "emacs": "#+MACRO: m (eval (format \"%s-%s\" $1 $2))\n\nbefore a-b after\n"
+  },
+  {
+   "template": "(eval (format \"%s-%s\" $1 $2))",
+   "use": "{{{m(a)}}}",
+   "emacs": "#+MACRO: m (eval (format \"%s-%s\" $1 $2))\n\nbefore a-nil after\n"
+  },
+  {
+   "template": "(eval (list $1 $2))",
+   "use": "{{{m(a,b)}}}",
+   "emacs": "#+MACRO: m (eval (list $1 $2))\n\nbefore (a b) after\n"
+  },
+  {
+   "template": "(eval (list $1 $2))",
+   "use": "{{{m(a)}}}",
+   "emacs": "#+MACRO: m (eval (list $1 $2))\n\nbefore (a nil) after\n"
+  },
+  {
+   "template": "(eval nil)",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval nil)\n\nbefore  after\n"
+  },
+  {
+   "template": "(eval t)",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval t)\n\nbefore t after\n"
+  },
+  {
+   "template": "(eval (/ 1.0 3))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (/ 1.0 3))\n\nbefore 0.3333333333333333 after\n"
+  },
+  {
+   "template": "(eval (/ 7 2))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (/ 7 2))\n\nbefore 3 after\n"
+  },
+  {
+   "template": "(eval (car 1))",
+   "use": "{{{m}}}",
+   "emacs": "ERROR Wrong type argument: listp, 1"
+  },
+  {
+   "template": "(eval (error \"bad %s\" $1))",
+   "use": "{{{m(x)}}}",
+   "emacs": "ERROR bad x"
+  },
+  {
+   "template": "(eval (concat $1 $1))",
+   "use": "{{{m(a\\,b)}}}",
+   "emacs": "#+MACRO: m (eval (concat $1 $1))\n\nbefore a,ba,b after\n"
+  },
+  {
+   "template": "(eval (+ 1 2))",
+   "use": "{{{m()}}}",
+   "emacs": "#+MACRO: m (eval (+ 1 2))\n\nbefore 3 after\n"
+  },
+  {
+   "template": "(eval (number-to-string (* 2 3)))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (number-to-string (* 2 3)))\n\nbefore 6 after\n"
+  },
+  {
+   "template": "(eval $1)",
+   "use": "{{{m(text)}}}",
+   "emacs": "#+MACRO: m (eval $1)\n\nbefore text after\n"
+  },
+  {
+   "template": "(eval (let ((x 2)) (* x (string-to-number $1))))",
+   "use": "{{{m(21)}}}",
+   "emacs": "#+MACRO: m (eval (let ((x 2)) (* x (string-to-number $1))))\n\nbefore 42 after\n"
+  },
+  {
+   "template": "(eval (mapconcat #'identity (list $1 $2) \"+\"))",
+   "use": "{{{m(a,b)}}}",
+   "emacs": "#+MACRO: m (eval (mapconcat #'identity (list $1 $2) \"+\"))\n\nbefore a+b after\n"
+  },
+  {
+   "template": "(eval (if (string= $1 \"a\") \"yes\" \"no\"))",
+   "use": "{{{m(a)}}} {{{m(b)}}}",
+   "emacs": "#+MACRO: m (eval (if (string= $1 \"a\") \"yes\" \"no\"))\n\nbefore yes no after\n"
+  },
+  {
+   "template": "(eval (funcall (lambda (n) (* n 2)) 4))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (funcall (lambda (n) (* n 2)) 4))\n\nbefore 8 after\n"
+  },
+  {
+   "template": "(eval (length $1))",
+   "use": "{{{m(hello)}}}",
+   "emacs": "#+MACRO: m (eval (length $1))\n\nbefore 5 after\n"
+  },
+  {
+   "template": "(eval (substring $1 0 2))",
+   "use": "{{{m(hello)}}}",
+   "emacs": "#+MACRO: m (eval (substring $1 0 2))\n\nbefore he after\n"
+  },
+  {
+   "template": "(eval (symbol-name (quote foo)))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (symbol-name (quote foo)))\n\nbefore foo after\n"
+  },
+  {
+   "template": "(eval (quote foo))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (quote foo))\n\nbefore foo after\n"
+  },
+  {
+   "template": "(eval 'foo)",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval 'foo)\n\nbefore foo after\n"
+  },
+  {
+   "template": "(eval 42)",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval 42)\n\nbefore 42 after\n"
+  },
+  {
+   "template": "(eval \"text\")",
+   "use": "a {{{m}}} b",
+   "emacs": "#+MACRO: m (eval \"text\")\n\nbefore a text b after\n"
+  },
+  {
+   "template": "(eval (format \"%d items\" (length (list $1 $2 $3))))",
+   "use": "{{{m(a,b,c)}}}",
+   "emacs": "#+MACRO: m (eval (format \"%d items\" (length (list $1 $2 $3))))\n\nbefore 3 items after\n"
+  },
+  {
+   "template": "(eval (format \"%s\" $3))",
+   "use": "{{{m(a,b)}}}",
+   "emacs": "#+MACRO: m (eval (format \"%s\" $3))\n\nbefore nil after\n"
+  },
+  {
+   "template": "(eval (upcase $1)) trailing",
+   "use": "{{{m(abc)}}}",
+   "emacs": "#+MACRO: m (eval (upcase $1)) trailing\n\nbefore ABC after\n"
+  },
+  {
+   "template": "(eval",
+   "use": "{{{m}}}",
+   "emacs": "ERROR Invalid definition for macro \"m\""
+  },
+  {
+   "template": "(eval (upcase $1",
+   "use": "{{{m(a)}}}",
+   "emacs": "ERROR Invalid definition for macro \"m\""
+  },
+  {
+   "template": "(evalx (upcase $1))",
+   "use": "{{{m(a)}}}",
+   "emacs": "#+MACRO: m (evalx (upcase $1))\n\nbefore (evalx (upcase a)) after\n"
+  },
+  {
+   "template": "(eval (string-to-number $1))",
+   "use": "{{{m(12abc)}}}",
+   "emacs": "#+MACRO: m (eval (string-to-number $1))\n\nbefore 12 after\n"
+  },
+  {
+   "template": "(eval (mapconcat (lambda (c) (format \"<%c>\" c)) $1 \"\"))",
+   "use": "{{{m(xyz)}}}",
+   "emacs": "#+MACRO: m (eval (mapconcat (lambda (c) (format \"<%c>\" c)) $1 \"\"))\n\nbefore <x><y><z> after\n"
+  },
+  {
+   "template": "(eval (let ((s 0)) (dotimes (i 5) (setq s (+ s i))) s))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (let ((s 0)) (dotimes (i 5) (setq s (+ s i))) s))\n\nbefore 10 after\n"
+  },
+  {
+   "template": "(eval (cons $1 $2))",
+   "use": "{{{m(a,b)}}}",
+   "emacs": "#+MACRO: m (eval (cons $1 $2))\n\nbefore (a . b) after\n"
+  },
+  {
+   "template": "(eval (vector 1 2))",
+   "use": "{{{m}}}",
+   "emacs": "#+MACRO: m (eval (vector 1 2))\n\nbefore [1 2] after\n"
+  }
+ ]
+}

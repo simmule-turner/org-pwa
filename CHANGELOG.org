@@ -7,6 +7,26 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v641 — Table field names, LaTeX Lisp hooks, plain search rows
+A ~$name=~ formula sets a field named by a ~_~ or ~^~ row, and a ~%~ parameter gives the default format; table formulas now run in Org's order (sorted by target, column formulas row by row, then fields). LaTeX export runs ~(eval ..)~ macros and ~org-latex-format-headline-function~ (HTML, ASCII, ODT and Org export run the macros too). Keyword search and Match rows show the heading only, as Emacs does.
+Verified: three new Emacs 29.3 comparisons (41 table, 39 macro, 21 headline cases), and the table, search and export menu checks.
+
+* v640 — Slides as HTML
+More → Export → Slides (HTML) writes a Beamer-style presentation as a page of 16:9 slides that prints to PDF from any browser, phones included, so a talk no longer needs TeX. Frames, sections, blocks, columns, notes and ~againframe~ follow Beamer's rules, and each overlay step is its own page.
+Verified: the new tests, the Beamer demo file (12 pages, as Beamer's frames and steps count), and the Export menu checks.
+
+* v639 — Settings that call a function
+~user-defined-up~ and ~-down~ sort keys (via ~org-agenda-cmp-user-defined~), ~org-priority-get-priority-function~, ~%(form)~ in ~org-agenda-prefix-format~ and a Lisp function as an agenda custom command now run on the interpreter, with the Org functions they use (~org-entry-get~, ~org-get-heading~, ~org-get-tags~, ~org-get-todo-state~ and others) compared with Emacs on 256 cases. A function command shows its output in an *Org Agenda* buffer. Differences: comparator lines have no text properties.
+Verified: the new tests, the Org function oracle, and the existing agenda sort and prefix tests unchanged.
+
+* v638 — Init functions reach the diary
+Functions and variables written in the Lisp init are now available to diary entries and holiday lists, as in Emacs, where =init.el= definitions are global. Edit or remove one in the init and entries follow.
+Verified: the existing diary, holiday and init tests unchanged.
+
+* v637 — Emacs Lisp source blocks run
+=emacs-lisp= (and =elisp=) blocks now run in place, on by default as in Emacs, with a *Run* button and =C-c C-c=. They use the app's own Lisp interpreter, so there is no file, buffer or network access and a runaway loop stops with a message. Results are laid out as Org lays them out (tables, lists, =:results output=, =code=, =pp=, =:wrap=), and =:var= takes numbers, lists and named tables.
+Verified: 2,934 block runs compared with Emacs 29.3's Org.
+
 * v636 — Holiday lists are Lisp
 Holiday lists now run on the Lisp interpreter, so =if=, =let=, =mapcar= and your own =defun= work in =calendar-holidays=, and an entry that fails is skipped and reported as Emacs does. The =holiday-*= functions and =calendar-*= date functions (month and day names, Hebrew, Islamic and Julian conversions, =calendar-nth-named-absday=) are built in, under Emacs's names, and diary sexps can call them.
 Verified: 370 calendar and holiday expressions and lists compared with Emacs 29.3, and the existing holiday tests unchanged.

@@ -12,6 +12,7 @@ import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
+import { agendaLisp, prefixEvaluator } from '../src/agenda-lisp.js';
 import { agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
 import { strategyFor, sortAgendaItems } from '../src/agenda-sort.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
@@ -68,6 +69,7 @@ function applySortingStrategy(items, view) {
     todoKeywords: [...sequence.todoKeywords, ...sequence.doneKeywords],
     doneKeywords: sequence.doneKeywords,
     documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
+    lisp: agendaLisp(S.state.localVariables, aggregateAgendaDocs(), { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }),
   });
 }
 
@@ -237,6 +239,11 @@ export function buildAgendaEffortPanel() {
   return panel;
 }
 
+function todoDone() {
+  const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
+  return { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords };
+}
+
 /**
  * The row prefix from `org-agenda-prefix-format` (null when the variable is unset for this view).
  * @param {import('../src/agenda.js').AgendaItem} item
@@ -254,7 +261,7 @@ function rowPrefix(item, view) {
   const level = item.heading ? ' '.repeat(parents.length + 1) : '';
   const breadcrumbs = parents.length ? parents.join('->') + '->' : '';
   const uses = (/** @type {string} */ letter) => new RegExp('%\\??[-+]?\\d*(\\.\\d+)?[ .;,:!?=|/<>]?' + letter).test(format);
-  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
+  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }, /%\??[-+]?\d*(\.\d+)?[ .;,:!?=|/<>]?\(/.test(format) ? prefixEvaluator(item, aggregateAgendaDocs(), { category: item.category || '', time, extra: scheduling, level, effort, tag: (item.tags || []).join(':'), breadcrumbs, 'category-icon': '' }, todoDone()) : undefined), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
 }
 
 export function renderAgendaView() {
@@ -1015,7 +1022,7 @@ function appendMarked(parent, text, patterns) {
  * @param {import('../src/agenda.js').AgendaItem} item
  * @param {Date} today
  * @param {'todo' | 'tags' | 'search'} view  picks the entry of org-agenda-prefix-format
- * @param {{ highlight?: RegExp[], snippet?: string | null }} [extras]  Search view: patterns to mark in the title, and a line of text to show
+ * @param {{ highlight?: RegExp[] }} [extras]  Search view: patterns to mark in the title
  */
 export function buildHeadingRow(item, today, view, extras = {}) {
   const heading = /** @type {import('../src/types.js').Heading} */ (item.heading);
@@ -1062,13 +1069,6 @@ export function buildHeadingRow(item, today, view, extras = {}) {
   meta.textContent = todoPrefix ? todoPrefix.text.trim() : [item.category, described ? described.text : ''].filter(Boolean).join(' \u00b7 ');
   if (described && described.overdue) meta.style.color = '#c0392b';
   if (meta.textContent) text.appendChild(meta);
-  if (extras.snippet) {
-    const line = document.createElement('div');
-    line.setAttribute('data-search-snippet', '');
-    line.style.cssText = 'font-size:12px;opacity:0.75;';
-    appendMarked(line, extras.snippet, extras.highlight);
-    text.appendChild(line);
-  }
   row.appendChild(text);
 
   if (S.showClockDisplay) {

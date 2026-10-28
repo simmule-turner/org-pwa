@@ -10,7 +10,7 @@ import { defSpecial, defun, evalForm, funcall, resetRun, state, withDynamic } fr
 import { describeFailure } from './elisp.js';
 import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { startOfDay } from './agenda.js';
-import { holidaysOn } from './holidays.js';
+import { holidaysOn, initBindings } from './holidays.js';
 import { nthNamedDay } from './calendar-conv.js';
 import { nonGregorianDateLine } from './diary-nongregorian.js';
 import { hebrewBirthday, hebrewYahrzeit, hebrewOmer, hebrewRoshHodesh, hebrewParasha, isFriday } from './diary-hebrew.js';
@@ -164,7 +164,7 @@ export function withContext(context, fn) {
   }
   current = full;
   /** @type {[import('./elisp.js').Sym, LObj][]} */
-  const pairs = [[DATE, dateList(full.candidateDate)], [ENTRY, typeof context.entryText === 'string' ? context.entryText : NIL]];
+  const pairs = [...initBindings().filter(([s]) => s !== DATE && s !== ENTRY), [DATE, dateList(full.candidateDate)], [ENTRY, typeof context.entryText === 'string' ? context.entryText : NIL]];
   for (const [name, value] of Object.entries(context.env || {})) pairs.push([intern(name), fromJs(value)]);
   try {
     return withDynamic(pairs, fn);

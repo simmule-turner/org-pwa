@@ -9,7 +9,8 @@ import { cacheHash } from '../src/babel-cache.js';
 import { headerText, existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
-import { getBabelJs } from '../src/local-variables.js';
+import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
+import { formatElispResult, isElispBlock, runElisp } from '../src/babel-elisp.js';
 import { S } from './app-state.js';
 import { runJavaScript } from './babel-run.js';
 import { confirmDialog } from './dialogs.js';
@@ -29,6 +30,11 @@ export function babelEnabled() {
   return getBabelJs(S.globalVariables);
 }
 
+/** Whether Emacs Lisp blocks may run: on unless `org-babel-load-languages` leaves `emacs-lisp` out (Org's default list has it). Global variables only. */
+export function babelLispEnabled() {
+  return getBabelLisp(S.globalVariables);
+}
+
 function trustedDocuments() {
   try {
     const list = JSON.parse(localStorage.getItem(TRUSTED_DOCUMENTS_KEY) || '[]');
@@ -40,12 +46,14 @@ function trustedDocuments() {
 
 /** Asks once per document on this device, as Emacs's org-confirm-babel-evaluate does. An
  *  unsaved document is asked every time. */
-async function confirmDocumentTrust() {
+async function confirmDocumentTrust(lisp = false) {
   const id = S.state.documentId || '';
   const savedId = id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? id : '';
   if (savedId && trustedDocuments().includes(savedId)) return true;
   const ok = await confirmDialog(
-    'Run JavaScript from this document? It runs in a sandbox with no access to your files or accounts, and reaches the network or your position only if its header asks and you allow it. Run only code you trust.',
+    lisp
+      ? 'Run Emacs Lisp from this document? It runs in the app\'s own interpreter, with no access to your files, accounts or the network. Run only code you trust.'
+      : 'Run JavaScript from this document? It runs in a sandbox with no access to your files or accounts, and reaches the network or your position only if its header asks and you allow it. Run only code you trust.',
     { confirmLabel: 'Run', danger: false },
   );
   if (ok && savedId) {
@@ -98,12 +106,17 @@ function writeResults(heading, block, lines, label, hash = /** @type {string | n
  * @param {any} [block]
  */
 export async function executeSourceBlock(heading, block) {
-  if (!babelEnabled()) {
-    setStatus('JavaScript blocks are off. Turn on "Run JavaScript source blocks" in Settings.');
+  const lisp = isElispBlock(block);
+  if (!lisp && !isJsBlock(block)) {
+    setStatus('Only emacs-lisp and JavaScript (js) blocks can run here.');
     return;
   }
-  if (!isJsBlock(block)) {
-    setStatus('Only JavaScript (js) blocks can run here.');
+  if (lisp && !babelLispEnabled()) {
+    setStatus('Emacs Lisp blocks are off: (emacs-lisp . t) is not in org-babel-load-languages.');
+    return;
+  }
+  if (!lisp && !babelEnabled()) {
+    setStatus('JavaScript blocks are off. Turn on "Run JavaScript source blocks" in Settings.');
     return;
   }
   if (S.isBufferReadOnly) {
@@ -123,7 +136,7 @@ export async function executeSourceBlock(heading, block) {
     setStatus('Unsupported header argument :post (it calls another block with the result).');
     return;
   }
-  if (!(await confirmDocumentTrust())) return;
+  if (!(await confirmDocumentTrust(lisp))) return;
 
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
@@ -146,12 +159,12 @@ export async function executeSourceBlock(heading, block) {
 
   // :prologue and :epilogue go around the body, as org-babel-expand-body:generic puts them; an error's line stays the body's
   let lineOffset = 0;
-  if (args.prologue !== undefined) {
+  if (!lisp && args.prologue !== undefined) {
     const prologue = headerText(args.prologue);
     code = prologue + '\n' + code;
     lineOffset = prologue.split('\n').length;
   }
-  if (args.epilogue !== undefined) code += '\n' + headerText(args.epilogue);
+  if (!lisp && args.epilogue !== undefined) code += '\n' + headerText(args.epilogue);
 
   /** @type {string | null} */
   let hash = null;
@@ -163,35 +176,54 @@ export async function executeSourceBlock(heading, block) {
     }
   }
 
-  let declared;
-  try {
-    declared = { hosts: parseNetHeader(args.net), location: parseLocationHeader(args.location) };
-  } catch (err) {
-    writeResults(heading, block, formatError(err.message), 'Source block failed');
-    return;
-  }
-  const owner = documentOwner(S.state.documentId);
-  if ((declared.hosts.length || declared.location) && !(await authorizeBlock(owner, declared))) {
-    setStatus('Not allowed; the block was not run.');
-    return;
-  }
-
-  setStatus('Running…');
+  /** @type {{ ok: boolean, message?: string, line?: number | null, value?: unknown, hasValue?: boolean, output?: string }} */
+  let outcome;
   const started = Date.now();
-  const outcome = await runJavaScript({
-    code,
-    vars,
-    variables: visibleVariables(),
-    timeoutMs: timeoutMs(args),
-    onRpc: createServices({ owner, declared }),
-  });
+  const owner = documentOwner(S.state.documentId);
+  if (lisp) {
+    // the interpreter has no network or position to declare; a step budget stops a loop that never ends
+    setStatus('Running…');
+    outcome = runElisp({ code, vars, spec, lexical: args.lexical });
+  } else {
+    let declared;
+    try {
+      declared = { hosts: parseNetHeader(args.net), location: parseLocationHeader(args.location) };
+    } catch (err) {
+      writeResults(heading, block, formatError(err.message), 'Source block failed');
+      return;
+    }
+    if ((declared.hosts.length || declared.location) && !(await authorizeBlock(owner, declared))) {
+      setStatus('Not allowed; the block was not run.');
+      return;
+    }
+    setStatus('Running…');
+    outcome = await runJavaScript({
+      code,
+      vars,
+      variables: visibleVariables(),
+      timeoutMs: timeoutMs(args),
+      onRpc: createServices({ owner, declared }),
+    });
+  }
 
   // The block is found again by its position and first line: the document may have changed while it ran.
   if (heading.bodyLines[block.lineIndex] !== beginLine) {
     setStatus('The document changed while the block ran; the result was not written.');
     return;
   }
-  const lines = outcome.ok ? formatResult(spec.collect === 'output' ? outcome.output : outcome.hasValue ? outcome.value : undefined, spec, { wrap: args.wrap === undefined ? null : args.wrap, lang: info ? info.lang : 'js' }) : formatError(outcome.message, outcome.line && outcome.line > lineOffset ? outcome.line - lineOffset : null);
+  const wrap = args.wrap === undefined ? null : args.wrap;
+  /** @type {string[]} */
+  let lines;
+  if (outcome.ok && lisp) {
+    try {
+      lines = formatElispResult(/** @type {import('../src/elisp-data.js').LObj} */ (outcome.value), spec, { wrap });
+    } catch (err) {
+      outcome = { ok: false, message: err.message };
+      lines = formatError(String(outcome.message));
+    }
+  } else {
+    lines = outcome.ok ? formatResult(spec.collect === 'output' ? outcome.output : outcome.hasValue ? outcome.value : undefined, spec, { wrap, lang: info ? info.lang : 'js' }) : formatError(String(outcome.message), outcome.line && outcome.line > lineOffset ? outcome.line - lineOffset : null);
+  }
   if (outcome.ok && spec.silent) {
     setStatus(`Ran in ${Date.now() - started} ms (results: silent).`);
     return;
@@ -203,10 +235,6 @@ export async function executeSourceBlock(heading, block) {
 /** C-c C-c on the keyboard-focused block. */
 export function executeFocusedBlock() {
   const row = S.keyboardFocusedBodyRow;
-  if (!babelEnabled()) {
-    setStatus('JavaScript blocks are off. Turn on "Run JavaScript source blocks" in Settings.');
-    return;
-  }
   if (!row || row.rowType !== 'block') {
     setStatus('Move the cursor onto a source block first, or tap Run on it.');
     return;

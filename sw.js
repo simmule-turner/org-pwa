@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v636';
+const CACHE_NAME = 'org-pwa-shell-v641';
 
 const SHELL_FILES = [
   './',
@@ -42,7 +42,10 @@ const SHELL_FILES = [
   './src/solar-emacs.js',
   './src/sexp-eval.js',
   './src/diary-lisp.js',
+  './src/org-lisp.js',
+  './src/agenda-lisp.js',
   './src/calendar-lisp.js',
+  './src/babel-elisp.js',
   './src/lisp-init.js',
   './src/elisp.js',
   './src/elisp-data.js',
@@ -191,6 +194,8 @@ const SHELL_FILES = [
   './src/export-html.js',
   './src/export-beamer.js',
   './src/export-latex.js',
+  './src/export-slides.js',
+  './src/macro-eval.js',
   './src/export-latex-zip.js',
   './src/latex-cite.js',
   './src/latex-table.js',
