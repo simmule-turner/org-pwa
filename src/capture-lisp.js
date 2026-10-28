@@ -6,7 +6,8 @@
  * and (add-to-list 'org-capture-templates '(...)). Each entry becomes the template object the JSON form uses.
  * What cannot be carried over is reported, not guessed at.
  */
-import { isNil, listItems, runInit, stringValue, symbolName } from './lisp-read.js';
+import { isNil, listItems, stringValue, symbolName } from './lisp-read.js';
+import { runInit } from './lisp-init.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
 /** @typedef {import('./types.js').CaptureTemplate} CaptureTemplate */

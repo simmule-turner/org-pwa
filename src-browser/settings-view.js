@@ -31,7 +31,7 @@ import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
 import { formatPendingChangeTimestamp } from './sync-helpers.js';
-import { labeledInput, menuButton, pickTextFile } from './ui-widgets.js';
+import { labeledInput, menuButton, pickTextFile, settingsTextBox } from './ui-widgets.js';
 import { openDocsAtHeading } from './views.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
@@ -399,8 +399,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     await setGlobalVariables(kv, normalizedText);
     S.globalVariablesText = normalizedText;
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
-    applyDurationVariables(S.globalVariables);
     applyLispInit(S.globalVariables);
+    applyDurationVariables(S.globalVariables);
     // Re-merge immediately so the currently open document (if any)
     // reflects the change right away -- no reload needed, matching
     // how the theme/font settings already apply on save.
@@ -416,14 +416,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const globalVarsTextarea = document.createElement('textarea');
   globalVarsTextarea.value = S.globalVariablesText;
-  globalVarsTextarea.rows = 2;
-  globalVarsTextarea.style.fontFamily = 'monospace';
-  globalVarsTextarea.style.fontSize = '12px';
-  globalVarsTextarea.style.width = '100%';
-  globalVarsTextarea.style.maxWidth = '100%';
-  globalVarsTextarea.style.boxSizing = 'border-box';
-  globalVarsTextarea.style.resize = 'vertical';
-  globalVarsTextarea.readOnly = true;
+  settingsTextBox(globalVarsTextarea);
   globalVarsTextarea.onfocus = () => {
     globalVarsTextarea.blur();
     openTextFieldPopup({
@@ -477,14 +470,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
 
   const extensionTextarea = document.createElement('textarea');
   extensionTextarea.value = ext.script;
-  extensionTextarea.rows = 4;
-  extensionTextarea.style.fontFamily = 'monospace';
-  extensionTextarea.style.fontSize = '12px';
-  extensionTextarea.style.width = '100%';
-  extensionTextarea.style.maxWidth = '100%';
-  extensionTextarea.style.boxSizing = 'border-box';
-  extensionTextarea.style.resize = 'vertical';
-  extensionTextarea.readOnly = true;
+  settingsTextBox(extensionTextarea);
   extensionTextarea.setAttribute('aria-label', 'Extension script');
   extensionTextarea.onfocus = () => {
     extensionTextarea.blur();
@@ -611,14 +597,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const defaultTemplatesText = JSON.stringify(DEFAULT_CAPTURE_TEMPLATES, null, 2);
   const captureTextarea = document.createElement('textarea');
   captureTextarea.value = currentTemplatesText;
-  captureTextarea.rows = 2;
-  captureTextarea.style.fontFamily = 'monospace';
-  captureTextarea.style.fontSize = '12px';
-  captureTextarea.style.width = '100%';
-  captureTextarea.style.maxWidth = '100%';
-  captureTextarea.style.boxSizing = 'border-box';
-  captureTextarea.style.resize = 'vertical';
-  captureTextarea.readOnly = true;
+  settingsTextBox(captureTextarea);
   captureTextarea.onfocus = () => {
     captureTextarea.blur();
     openTextFieldPopup({

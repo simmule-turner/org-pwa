@@ -17,10 +17,8 @@ The Android app writes into =local:= agenda files while a local file is open. In
 ** [#C] Match and Keyword search views: possible updates
 Where the two views and agenda commands differ from Emacs, or stop short of it:
 - Decided: Match and Keyword search rows show the heading line only, as Emacs does. Today they also show one matching line of text, with the matching words marked in the row. Change: drop that line in =src-browser/agenda-query-view.js= (=snippetFor=); the marked words stay in the heading. Effort: S.
-- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets). Lisp functions as commands wait for the interpreter (see [[#appendix-lisp][Appendix: a Lisp interpreter]]).
+- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets). Lisp functions as commands wait for the settings step in [[#appendix-lisp][Appendix: a Lisp interpreter]].
 - Effort: M. Impact: S.
-** [#C] =setq= and =defun= in the sexp evaluator
-Alone they add little: each diary entry is evaluated by itself, so a =defun= vanishes after it, and without loops =setq= is =let*= by another name. They matter together with the interpreter in [[#appendix-lisp][Appendix: a Lisp interpreter]], which also settles where shared definitions live.
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
@@ -68,23 +66,9 @@ Refile and Replace into =local:= files from the web and other backends are [#C]:
 :CUSTOM_ID: appendix-lisp
 :END:
 
-What it would take for small standalone programs to run, in the diary and in =emacs-lisp= Babel blocks. The diary evaluator stays as it is; the interpreter is a separate module (=src/elisp.js=), so nothing in the diary can regress. Each feature is marked *Lisp* (any Lisp has it) or *Emacs* (specific to Emacs Lisp, and what makes a program read as Emacs's).
+The interpreter (=src/elisp.js=) and the diary on top of it are done. What follows is what still builds on it: the =calendar-*= and holiday functions, =emacs-lisp= Babel blocks, shared definitions, and the settings that call a function.
 
-** Stage 1: the language
-| Feature | Kind | Why it is needed |
-|---+---+---|
-| Reader: symbols, ='x=, backquote and =,=, comments, floats, strings with escapes | Lisp (backquote and =?c= characters are Emacs-flavored) | Programs are text; today's reader handles numbers, strings and parentheses only |
-| Lexical environments, =lambda=, =funcall=, =apply=, closures | Lisp | Functions as values |
-| =defun=, =defvar=, =defconst=, =setq= | Lisp (=defvar= and =defconst= semantics are Emacs) | Named helpers and state |
-| =while=, =dolist=, =dotimes= | =while= is Lisp; =dolist= and =dotimes= are Emacs (cl-style macros) | Loops; with =defun= they replace recursion |
-| =cons=, =append=, =reverse=, =mapcar=, =push=, =nreverse=, =assoc=, =assq=, =delq=, =sort= | Lisp, except =push=, =assq= and =sort='s argument order, which are Emacs | Building and searching lists |
-| =concat=, =substring=, =string=, =upcase=, =downcase=, =split-string=, =mapconcat=, =string-to-number=, =number-to-string= | Emacs (strings are an Emacs-Lisp data type with these names) | Text handling |
-| =null=, =listp=, =stringp=, =numberp=, =symbolp=, =functionp= | Lisp | Type tests |
-| =condition-case=, =error=, =signal=, =user-error= | Emacs (Common Lisp has a different system) | Errors that can be caught and read |
-| =message=, =print=, =princ=, =prin1= | Emacs | Output, captured for a Babel block |
-| =max-lisp-eval-depth= limit and a step budget | Emacs (the variable); the budget is this app's | Stops runaway programs with a message |
-
-** Stage 2: Babel
+** Babel
 | Feature | Kind | Notes |
 |---+---+---|
 | =emacs-lisp= source blocks run, result is the last value | Emacs | Printed with =prin1= rules, as Emacs prints it |
@@ -93,15 +77,14 @@ What it would take for small standalone programs to run, in the diary and in =em
 | Runs when =(emacs-lisp . t)= is in =org-babel-load-languages= | Org | That is already the default, so a stricter switch may be wanted |
 | Worker sandbox, timeout, no I/O | App | Same sandbox as =js= blocks |
 
-** Stage 3: settings that call a function
-Each of these is complete in the app except for the function it calls, and needs stage 1 plus the shared definitions below.
+** Settings that call a function
+Each of these is complete in the app except for the function it calls, and needs the shared definitions below.
 | Setting | What it needs | Today |
 |---+---+---|
 | =user-defined-up= and =-down= in =org-agenda-sorting-strategy= | =org-agenda-cmp-user-defined=, a function of two agenda lines that returns =-1=, =1= or =nil= | The keys are read and have no opinion, as in Emacs when the function is =nil= |
 | =%(function)= in =org-agenda-prefix-format= | A function called for each agenda line, its result put in the prefix | The other =%= forms work; this one adds nothing |
 | =org-priority-get-priority-function= | A function of no arguments that returns a heading's priority number | The priority comes from the cookie and the default |
 | A Lisp function as an agenda custom command, in =org-agenda-custom-commands= | The full evaluator, to run the function and show what it builds | Commands of that kind are left out of the list |
-| A =holiday-sexp= expression beyond the subset in the table above | The full evaluator, with =date= bound | The app's own Lisp subset |
 
 ** Later: LaTeX export
 Two LaTeX export gaps wait for the interpreter: the macro =(eval ..)= and the setting =org-latex-format-headline-function= (a Lisp function called for each heading). The other differences from Emacs that remain are small or depend on the machine (=~/= and =docview:= links, =creator:t= naming the version).
@@ -110,32 +93,13 @@ Two LaTeX export gaps wait for the interpreter: the macro =(eval ..)= and the se
 These need Emacs's own libraries and are not part of "small standalone programs":
 - Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-entry-get=, =org-todo=.
 - =format-time-string=, =decode-time=, =encode-time= and other time functions.
-- =cl-lib= (=cl-loop=, =cl-defun=), =seq-*= and =string-*= libraries.
-- Regular expressions the Emacs way (=string-match=, =re-search-forward=, match data).
+- =cl-loop= and the rest of =cl-lib= beyond the basics, and =re-search-forward= on buffers.
 - Files and network (=insert-file-contents=, =url-retrieve=): left out on purpose.
 
 ** Shared definitions for the diary
-A section in Extensions for Lisp that runs once per session and defines functions that diary entries can call. This is what makes =defun= worth having in the diary.
+The Lisp init (Settings → Advanced) already runs on the interpreter and sets settings. What is left is keeping the =defun= forms written there, so diary entries can call them.
 
 ** Order of work
-1. The interpreter core (stage 1), as its own module, with tests against Emacs 29.3.
-2. Move the diary evaluator (=src/sexp-eval.js=) onto it. The diary layer keeps the =date= binding, the diary and calendar functions as native builtins, and a tolerant mode in which a failing entry shows nothing, as today. The Emacs-checked sexp tests and the existing suite must pass unchanged. This replaces the hard-coded list of line forms with one reader, and gives diary entries real errors, =defun=, =setq= and loops.
-3. The =calendar-*=, =holiday-fixed=, =holiday-float= and =holiday-easter-etc= functions as builtins, under Emacs's names.
-4. =emacs-lisp= source blocks in Babel (stage 2).
-5. Shared definitions for the diary.
-6. The settings that call a function (stage 3).
-
-What stays in JavaScript: the calendar grid and its layout (UI, redrawn often), and the agenda's per-day effort total and =+N?= count (computed while drawing, with no Org equivalent). A hook the interpreter can call may be added to the latter later.
-
-Emacs's own =calendar.el=, =holidays.el= and =solar.el= are not run: they need macros, =cl-lib=, =defcustom=, =require= and buffer functions. The library is written for this interpreter, under Emacs's function names.
-
-* Appendix: Calc algebra we are not porting
-:PROPERTIES:
-:CUSTOM_ID: appendix-calc
-:END:
-
-Done and checked against Emacs 29.3 (about 500 cases in =test/calc-oracle-cases.mjs=): display, intervals and chained comparisons, =simplify=, =esimplify=, =expand=, =solve=, =fsolve=, =deriv= and =tderiv=, =nroot=. The rest of Calc's symbolic algebra is not planned, for these reasons:
-- Cubic and quartic =solve=: Calc's answer is a long nest of roots that nobody reads off a table cell, and the solver stops with an error instead of guessing.
-- =factor= (of polynomials; =prfac= does prime factors), =apart=, =collect=, =poly=, =nrat=, =integ=, =sum=, =taylor=: a computer algebra system, far from what a table formula is used for. Each is a large port (=factor= alone is Calc's polynomial factoring and its rule tables) and an answer in a different shape from Calc's is worse than an error.
-- Corners of =solve= and =simplify=: a polynomial in an expression other than the variable, =fsolve= of =sin=, =cos= and =tan=, complex roots in =fsolve=, =roots=, the trig rules for =sec=, =csc=, =cot= and multiples of 30 or 45 degrees, interval =ln=, =exp=, =sin= and =max=, and =[a, b .. c]= forms. Each is rare in a table.
-Anything of these that is needed again comes back as its own item, with the case that needed it.
+1. =emacs-lisp= source blocks in Babel.
+2. Keep the Lisp init's functions for diary entries.
+3. Settings that call a function.

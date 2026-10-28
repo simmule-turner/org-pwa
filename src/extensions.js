@@ -7,6 +7,14 @@
  * fingerprint an approval is tied to.
  */
 
+import { Special, intern } from './elisp-data.js';
+
+/** True when the Lisp interpreter already has a function of this name (one a script registered does not count). @param {string} name */
+function definedByInterpreter(name) {
+  const fn = intern(name).fn;
+  return fn !== undefined && fn !== null && !(fn instanceof Special && fn.user);
+}
+
 /** Every function the app already evaluates itself. A script cannot register one of these:
  *  the standard forms must mean the same here as in Emacs. */
 export const BUILTIN_SEXP_NAMES = new Set([
@@ -32,7 +40,7 @@ const NAME_RE = /^[A-Za-z][A-Za-z0-9-]*$/;
  * @param {string} name
  */
 export function usableSexpName(name) {
-  return typeof name === 'string' && NAME_RE.test(name) && !BUILTIN_SEXP_NAMES.has(name);
+  return typeof name === 'string' && NAME_RE.test(name) && !BUILTIN_SEXP_NAMES.has(name) && !definedByInterpreter(name);
 }
 
 /** One parsed sexp argument as a plain value: numbers and strings as they are, `t` as true, `nil` as

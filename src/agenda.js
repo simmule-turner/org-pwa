@@ -41,7 +41,7 @@ import { isCommentedHeading } from './comment-model.js';
 import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
 import { allLogLines, parseLogbookEntries } from './logbook.js';
 import { habitSpec, buildHabitGraph, dayNumber } from './habit.js';
-import { canonicalDiaryLine, findSexpTimestamps, evaluateSexpTimestamp, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
+import { canonicalDiaryLine, findSexpTimestamps, evaluateSexpWithError, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
   expandOrgAnniversaryOccurrences,
@@ -1027,8 +1027,10 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       if (!hasPlanning && rangeStart && rangeEnd) {
         for (const sexpTs of findSexpTimestamps(heading.title)) {
           const cleanTitle = heading.title.replace(sexpTs.raw, '').trim();
+          /** @type {Map<string, Date>} */
+          const failures = new Map(); // each distinct error once, on the first day it happened
           for (const day of enumerateDays(rangeStart, rangeEnd)) {
-            const result = evaluateSexpTimestamp(sexpTs.expr, {
+            const { result, error } = evaluateSexpWithError(sexpTs.expr, {
               candidateDate: day,
               entryText: cleanTitle,
               today,
@@ -1043,6 +1045,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
               orgWeatherTemperatureUnit,
               orgWeatherSpeedUnit,
             });
+            if (error !== undefined && !failures.has(error)) failures.set(error, day);
             if (!isTruthy(result)) continue;
             const displayTitle =
               typeof result === 'string' ? (cleanTitle ? `${cleanTitle}: ${result}` : result) : cleanTitle || '(untitled)';
@@ -1059,6 +1062,22 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
               title: displayTitle,
               date: day,
               daysOverdue: 0,
+            });
+          }
+          for (const [message, day] of failures) {
+            items.push({
+              documentId,
+              heading,
+              kind: 'sexp-timestamp',
+              hasTime: false,
+              repeater: null,
+              todo: heading.todo,
+              priority: heading.priority,
+              tags: heading.tags,
+              title: `${cleanTitle ? cleanTitle + ': ' : ''}${message}`,
+              date: day,
+              daysOverdue: 0,
+              error: message,
             });
           }
         }
@@ -1084,8 +1103,9 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
           /**
            * @param {any} occurrenceDate
            * @param {string} title
+           * @param {string} [error]  the message, for a program that failed
            */
-          const pushDiarySexpItem = (occurrenceDate, title) => {
+          const pushDiarySexpItem = (occurrenceDate, title, error) => {
             items.push({
               documentId,
               heading,
@@ -1098,6 +1118,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
               title,
               date: occurrenceDate,
               daysOverdue: 0,
+              ...(error === undefined ? {} : { error }),
             });
           };
 
@@ -1106,8 +1127,10 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
           // same evaluator as a <%%(...)> timestamp, once per day.
           const general = parseGeneralBodyLine(trimmed);
           if (general) {
+            /** @type {Map<string, Date>} */
+            const failures = new Map();
             for (const day of enumerateDays(rangeStart, rangeEnd)) {
-              const result = evaluateSexpTimestamp(general.expr, {
+              const { result, error } = evaluateSexpWithError(general.expr, {
                 candidateDate: day,
                 entryText: general.text || heading.title || '',
                 today,
@@ -1122,9 +1145,11 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
                 orgWeatherTemperatureUnit,
                 orgWeatherSpeedUnit,
               });
+              if (error !== undefined && !failures.has(error)) failures.set(error, day);
               if (!isTruthy(result)) continue;
               pushDiarySexpItem(day, typeof result === 'string' ? result : general.text || heading.title || '(untitled)');
             }
+            for (const [message, day] of failures) pushDiarySexpItem(day, `${general.text ? general.text + ': ' : ''}${message}`, message);
             continue;
           }
 

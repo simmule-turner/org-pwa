@@ -67,8 +67,8 @@ export async function reapplySettings(names) {
   if (names.includes('globalVariables')) {
     S.globalVariablesText = await getGlobalVariables(kv);
     S.globalVariables = parseGlobalVariables(S.globalVariablesText);
-    applyDurationVariables(S.globalVariables);
     applyLispInit(S.globalVariables);
+    applyDurationVariables(S.globalVariables);
     if (S.state.doc) {
       S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
     }

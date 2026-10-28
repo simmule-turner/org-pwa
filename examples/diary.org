@@ -1,0 +1,105 @@
+#+TITLE: Diary
+#+STARTUP: showall
+
+The diary is a plain text file of dated lines. Each line says "on this day, show this", and the Agenda lists the lines that fall on each day, with that day's holidays. It is Emacs's own diary, so a diary file written for Emacs works here as it is.
+
+* Turn it on
+Set two things in Settings → Quick Settings → *Diary*: tick *Include the diary file in the Agenda* (=org-agenda-include-diary=) and give the file in =diary-file= (=github:diary=, =webdav:diary= or =local:diary=). Or put both in the Lisp init (Settings → Advanced):
+
+#+begin_example
+(setq org-agenda-include-diary t
+      diary-file "github:diary")
+#+end_example
+
+Settings the Lisp init sets are shown in Settings marked "Set by the Lisp init". *Refresh* in the Agenda reads the diary again after you edit it.
+
+* The example diary
+=examples/diary= holds the file below. Copy it into your own diary file and open the Agenda to see it.
+
+#+begin_example
+# Lines that start with "#" are not entries, so they can be used for notes.
+# A line is an entry when it starts with a date; indented lines continue it.
+
+# One day
+Nov 12, 2026  9:30am Dentist, 123 Main St
+   Bring the insurance card
+10/30/2026  4:00pm Call Alex
+1/15/2027  Passport renewal due
+
+# Every year
+4/20  Tax preparation starts
+&12/24  Wrap the presents
+%%(diary-anniversary 5 14 1990) Maria's birthday (%d)
+
+# Every week
+Monday  7:30am Gym
+Fri  Back up the laptop
+
+# Every month
+*/1  Rent due
+*/15  Payday
+%%(= (calendar-extract-day date) (calendar-last-day-of-month (calendar-extract-month date) (calendar-extract-year date))) Last day of the month: send the timesheet
+
+# Patterns Lisp makes easy
+%%(diary-float t 1 1) Planning meeting (first Monday)
+%%(diary-float 11 4 4) Family dinner (fourth Thursday of November)
+%%(diary-block 12 21 2026 1 3 2027) Office closed
+%%(diary-cyclic 14 10 26 2026) Trash day (every 14 days)
+%%(and (= (calendar-extract-day date) 13) (= (calendar-day-of-week date) 5)) Friday the 13th
+%%(diary-remind '(diary-date 6 1 2027) 3) Anniversary dinner
+#+end_example
+
+** How the lines are read
+- A line that starts with a date is an entry. Indented lines after it belong to it (=Nov 12, 2026= above has a second line).
+- Dates are written in the order of =calendar-date-style= (American by default: month, day, year). =*= means any: =*/15= is the 15th of every month. A weekday name (=Monday=, =Fri=) is every week.
+- A time at the start of an entry (=9:30am=, =14:30=) puts it in the day's timeline.
+- A =&= before the date is a non-marking entry: it shows in the Agenda but would not mark the day in Emacs's calendar window.
+- A line that starts =%%(= is a Lisp expression, evaluated once for each day. When it gives a value other than =nil= the entry is listed that day, and if the value is a string, the string is the text. The variable =date= is the day, as =(month day year)=.
+- Lines that start with =#=, or anything else that does not begin like a date, are ignored.
+
+** What the Agenda shows
+These are what Emacs 29.3 lists for the example file, and what the app lists. A line without a time joins the row before it.
+
+| Day | Rows |
+|---+---|
+| Fri Oct 30, 2026 | =4:00pm Call Alex; Back up the laptop= |
+| Thu Nov 12, 2026 | the day's holiday, then =9:30am Dentist, 123 Main St; Bring the insurance card= |
+| Mon Nov 2, 2026 | =Planning meeting (first Monday)=, =7:30am Gym= |
+| Mon Oct 26 and Nov 9, 2026 | =Trash day (every 14 days)=, =7:30am Gym= |
+| Thu Nov 26, 2026 | =Thanksgiving=, =Family dinner (fourth Thursday of November)= |
+| Fri Nov 13, 2026 | =Friday the 13th; Back up the laptop= |
+| Mon Nov 30, 2026 | =Last day of the month: send the timesheet=, =7:30am Gym= |
+| Fri May 14, 2027 | =Maria's birthday (37); Back up the laptop= |
+| Sat May 29, 2027 | =Reminder: Only 3 days until Anniversary dinner= |
+| Tue Jun 1, 2027 | =Anniversary dinner; Rent due= |
+
+* Lisp in the diary
+Each =%%(...)= line is Emacs Lisp. Besides the diary's own functions (=diary-float=, =diary-block=, =diary-cyclic=, =diary-anniversary=, =diary-remind=, =diary-date=) you can use =let=, =if=, =cond=, =and=, =or=, =setq=, =defun=, loops, lists and =format=:
+
+#+begin_example
+%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))
+%%(and (= (calendar-day-of-week date) 5) (= (% (calendar-extract-day date) 2) 0) "Even-dated Friday")
+#+end_example
+
+A line that fails shows Emacs's message in the Agenda instead of the entry, for example =Symbol’s function definition is void: no-such-function=, and a line that loops forever stops with a message too.
+
+* Diary or calendar?
+Three places can hold a date. They are good at different things:
+
+| | Diary file | Org headings with timestamps | A calendar app |
+|---+---+---+---|
+| An entry is | one line of text | a heading with a state, notes and a clock | an event with a time, place and guests |
+| Best for | rules: every third Thursday, 14 days from the 26th, the last day of the month, anniversaries with an age | things you do: a task with =SCHEDULED:= or =DEADLINE:=, a project, a meeting with notes | things other people share: invitations, shared calendars, alerts on your phone |
+| Repeats | by any rule Lisp can state | =+1w=, =++1m=, =.+1d= from the date | the app's own repeat rules |
+| Done / not done | no | yes (=TODO= and =DONE=) | no |
+| Alerts | no | no | yes |
+| Other people | no | no | yes |
+
+Some guidance:
+- Use the *diary* for the dates that are facts about the calendar: birthdays and anniversaries, holidays of your own, pay days, "first Monday", "every 14 days". One line, no heading, and a rule that Lisp can compute (=diary-float=, =diary-cyclic=).
+- Use *Org timestamps* for work you track: anything you mark done, clock, or write notes under. A repeating task whose next date moves when you finish it (=+1w=) belongs here, not in the diary.
+- Use a *calendar app* for events that involve other people or need an alert on your phone. The Agenda can be exported as an =.ics= file for one (see =icalendar.org=), so your own dates can show there as well.
+- The three mix: a diary line for the trash day, a TODO with a deadline for the report, and a calendar invitation for the dinner all appear together in the Agenda.
+
+* Where the app differs from Emacs
+The Coptic, Ethiopic, Persian, French and Mayan date functions are not available. The dates and rows above, and the whole example file, are checked against Emacs 29.3 for 2026 and 2027.

@@ -1,0 +1,61 @@
+#+TITLE: Inline LaTeX
+#+STARTUP: showall
+
+Math written between LaTeX delimiters is typeset where you read it: in the outline, in Docs and in HTML export. The file's text is not changed, and editing a line shows the source. LaTeX export writes the math as it is, and ODT export turns each fragment into an embedded formula.
+
+* The delimiters
+| Write | Kind | Notes |
+|---+---+---|
+| =\(...\)= | inline | Org's recommended form; no restrictions |
+| =\[...\]= | display | may span lines |
+| =$$...$$= | display | may span lines |
+| =$...$= | inline | one character is enough (=$x$=); no space just inside the dollar signs |
+| =\begin{env}...\end{env}= | display | =\begin= starts a line |
+
+* Inline
+The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).
+
+Euler's identity, $e^{i\pi} + 1 = 0$, ties five constants together. A sum such as \(\sum_{k=1}^{n} k = \frac{n(n+1)}{2}\) stays on the line it is written in.
+
+Greek letters and symbols: \(\alpha + \beta \le \gamma\), \(A \cup B \subseteq C\), \(\forall x \in \mathbb{R}\), \(\infty\).
+
+* Money stays money
+A dollar sign next to a number is not math: it costs $5 and $10 total. This is Org's own rule: the opening =$= cannot be followed by a space, comma, period or semicolon, and the closing =$= must be followed by a space, the end of the line or punctuation. So =$a$b= and =$x$-y= stay text.
+
+* Display
+\[
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+\]
+
+$$
+\mathbf{F} = m\mathbf{a}
+$$
+
+** Several equations lined up
+\begin{align}
+E &= mc^2 \\
+F &= ma \\
+a^2 + b^2 &= c^2
+\end{align}
+The three equations line up at the =&= marks and are numbered (1) to (3), as KaTeX does for =align=. The =\\= here ends an equation; it is not Org's hard line break.
+
+** A matrix
+\begin{equation}
+A = \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}
+\end{equation}
+
+* In headings, lists and tables
+** The slope \(m = \frac{y_2 - y_1}{x_2 - x_1}\) in a heading
+- A list item with \(a^2 + b^2 = c^2\)
+- Another with $\pi r^2$
+
+| Shape  | Area                |
+|--------+---------------------|
+| Circle | \(\pi r^2\)         |
+| Square | \(s^2\)             |
+
+* When a fragment will not render
+KaTeX covers a large part of LaTeX, not all of it. A fragment it cannot read shows its source in a dashed box: \(\notacommand{x}\). KaTeX does not treat =%= as a comment.
+
+* Where the app differs from Emacs
+Emacs draws fragments as images made by LaTeX when you toggle previews. Here KaTeX draws them as you read, so spacing can differ slightly.

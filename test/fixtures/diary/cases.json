@@ -136,5 +136,10 @@
     "latitude": 21.31,
     "longitude": -157.86,
     "showHolidays": false
+  },
+  {
+    "name": "example-diary",
+    "file": "example.diary",
+    "style": "american"
   }
 ]

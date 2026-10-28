@@ -6,10 +6,14 @@
  */
 
 import { setInlineTaskLevel, readInlineTaskLevel } from './inline-tasks.js';
-import { holidayList, DEFAULT_LISTS, HOLIDAY_GROUPS } from './calendar-holidays.js';
-import { runInit, listItems } from './lisp-read.js';
+import { DEFAULT_LISTS, HOLIDAY_GROUPS } from './calendar-holidays.js';
+import { evalHolidayList } from './calendar-lisp.js';
+import { withContext } from './diary-lisp.js';
+import { NIL, intern, list } from './elisp-data.js';
+import { listItems } from './lisp-read.js';
+import { runInit, toObject } from './lisp-init.js';
 import { lispStringValue } from './export-defaults.js';
-import { evaluateSexprValue, parseSexpr, solarTimeString } from './sexp-eval.js';
+import { solarTimeString } from './sexp-eval.js';
 import { daylightSaving } from './solar-holidays.js';
 import { getCalendarLatitude, getTimeDisplayForm } from './local-variables.js';
 
@@ -19,8 +23,10 @@ import { getCalendarLatitude, getTimeDisplayForm } from './local-variables.js';
 let defaults = null;
 /** @type {Map<string, Lisp> | null} */
 let vars = null;
-/** @type {Lisp[] | null} */
+/** The entries of `calendar-holidays` and the init's variables, as the interpreter's objects. @type {import('./elisp-data.js').LObj[] | null} */
 let forms = null;
+/** @type {[import('./elisp-data.js').Sym, import('./elisp-data.js').LObj][]} */
+let bindings = [];
 /** @type {Map<string, string[]>} */
 let cache = new Map();
 /** The time zone of the sun-related holidays (an IANA name): the device's, unless a test or a setting picks one. @type {string | null} */
@@ -44,7 +50,8 @@ export function setHolidayConfig(init) {
   vars = init && init.trim() ? runInit(init, defaults) : defaults;
   const explicit = vars.get('calendar-holidays');
   const groups = explicit ? [explicit] : HOLIDAY_GROUPS.map((g) => /** @type {Lisp} */ (vars && vars.get(g))).filter(Boolean);
-  forms = groups.flatMap((g) => listItems(g) || []);
+  forms = groups.flatMap((g) => listItems(g) || []).map(toObject);
+  bindings = [...vars].map(([name, value]) => [intern(name), toObject(value)]);
   cache = new Map();
 }
 
@@ -63,48 +70,26 @@ function monthHolidays(year, month) {
   let hit = cache.get(key);
   if (hit) return hit;
   if (!forms || !vars) setHolidayConfig('');
-  const list = holidayList(forms || [], { month, year, vars: vars || new Map(), sexp: holidaySexp, solar: { zone: zone(), latitude, timeString: (hours, name) => solarTimeString(hours, name, { calendarTimeDisplayForm: timeDisplayForm }) } });
+  const solar = { zone: zone(), latitude, timeString: (/** @type {number} */ hours, /** @type {string} */ name) => solarTimeString(hours, name, { calendarTimeDisplayForm: timeDisplayForm }) };
+  const { holidays: list, errors } = withContext({ calendarTimeDisplayForm: timeDisplayForm }, () => evalHolidayList(forms || [], bindings, month, year, { solar, dst: dstVariables }));
+  for (const message of errors) list.push({ date: [month, 1, year], name: `Holiday list error: ${message}` });
   hit = list.filter((h) => h.date[0] === month && h.date[2] === year).map((h) => `${h.date[1]}\t${h.name}`);
   cache.set(key, hit);
   return hit;
 }
 
-/** The variables daylight saving time sets in Emacs (cal-dst.el), for `year`, as the sexp evaluator sees them.
- * @param {number} year */
+/** The variables daylight saving time sets in Emacs (cal-dst.el), for `year`, as the interpreter sees them.
+ * @param {number} year @returns {Record<string, import('./elisp-data.js').LObj>} */
 function dstVariables(year) {
   const d = daylightSaving(zone(), year);
   return {
-    'calendar-daylight-savings-starts': d.starts || false,
-    'calendar-daylight-savings-ends': d.ends || false,
+    'calendar-daylight-savings-starts': d.starts ? list([...d.starts]) : NIL,
+    'calendar-daylight-savings-ends': d.ends ? list([...d.ends]) : NIL,
     'calendar-daylight-savings-starts-time': d.startsTime,
     'calendar-daylight-savings-ends-time': d.endsTime,
     'calendar-standard-time-zone-name': d.standardName,
     'calendar-daylight-time-zone-name': d.daylightName,
   };
-}
-
-/** `holiday-sexp`: the expression with `year` bound gives a date, (month day year), or nil; the name is a string or an expression with `date` bound.
- * @param {Lisp} expr @param {Lisp} nameForm @param {number} year @returns {{ date: [number, number, number], name: string } | null} */
-function holidaySexp(expr, nameForm, year) {
-  const env = { ...dstVariables(year), year };
-  const timeForm = { calendarTimeDisplayForm: timeDisplayForm };
-  try {
-    const value = evaluateSexprValue(parseSexpr(printLisp(expr)), { env, candidateDate: new Date(year, 0, 1), today: new Date(), ...timeForm });
-    if (!Array.isArray(value) || value.length !== 3 || !value.every((n) => typeof n === 'number')) return null;
-    const date = /** @type {[number, number, number]} */ (value);
-    if (nameForm.k === 'str') return { date, name: nameForm.v };
-    const name = evaluateSexprValue(parseSexpr(printLisp(nameForm)), { env, candidateDate: new Date(date[2], date[0] - 1, date[1]), today: new Date(), ...timeForm });
-    return typeof name === 'string' ? { date, name } : null;
-  } catch {
-    return null; // an expression the evaluator cannot read gives no holiday
-  }
-}
-
-/** A Lisp datum as source text. @param {Lisp} f @returns {string} */
-function printLisp(f) {
-  if (f.k === 'str') return JSON.stringify(f.v);
-  if (f.k === 'num' || f.k === 'sym') return String(f.v);
-  return `(${f.items.map(printLisp).join(' ')}${f.tail ? ' . ' + printLisp(f.tail) : ''})`;
 }
 
 /**

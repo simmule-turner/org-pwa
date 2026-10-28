@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v636 — Holiday lists are Lisp
+Holiday lists now run on the Lisp interpreter, so =if=, =let=, =mapcar= and your own =defun= work in =calendar-holidays=, and an entry that fails is skipped and reported as Emacs does. The =holiday-*= functions and =calendar-*= date functions (month and day names, Hebrew, Islamic and Julian conversions, =calendar-nth-named-absday=) are built in, under Emacs's names, and diary sexps can call them.
+Verified: 370 calendar and holiday expressions and lists compared with Emacs 29.3, and the existing holiday tests unchanged.
+
+* v635 — Lisp init runs as Lisp
+The Lisp init is now evaluated as Emacs Lisp, so =setq=, =let=, =defun=, loops, =append= and =format= work in it, and a line that fails shows Emacs's message while the rest still run. It sets any setting: =(setq org-agenda-files '("github:home.org" ...))= fills Agenda files, and the setting shows as set by the init. Every multi-line box in Settings now looks and drags the same, two lines high. New examples: inline LaTeX, god-mode and the diary, with a guide to diary versus calendar.
+Verified: the diary example file compared with Emacs 29.3 for 2026 and 2027.
+
+* v634 — Lisp in the diary
+Diary sexps are now Emacs Lisp. =setq=, =defun=, =lambda=, loops, lists, strings, regexps, =condition-case= and =format= work as in Emacs, alongside every diary and calendar function and the =date= and =entry= variables. A sexp that fails shows Emacs's own message in the agenda, once per sexp, instead of silently showing nothing; a program that loops forever or nests too deeply stops with a message.
+Verified: 2,338 Lisp expressions compared with Emacs 29.3, and the existing diary tests unchanged.
+
 * v633 — Chinese holidays, List holidays, holiday examples
 The Chinese calendar is here, worked out from the new moons and the sun's position as Emacs does: =holiday-oriental-holidays= (Chinese New Year, and with =calendar-chinese-all-holidays-flag= the Lantern, Qingming, Dragon Boat, Double Seventh, Mid-Autumn, Double Ninth and Winter Solstice festivals), =holiday-chinese= and =%%(diary-chinese-date)=. *List holidays…* lists every holiday between two years in a new buffer. =remove= and =delete= take an entry out of a holiday group. =examples/holidays.org= shows what is on by default, every flag, switching groups and entries off, adding each kind of entry, and a description link for all 120 rows.
 Verified: 301 Chinese years, 1,759 Chinese dates, Chinese holidays for 1700–2200, 12 list-holidays ranges and 25 holiday examples compared with Emacs 29.3.

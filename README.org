@@ -765,7 +765,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
 | ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX and Beamer exports: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export), and the ~org-beamer-*~ variables (see Beamer); Settings → Export → LaTeX sets it |
-| ~org-xx-lisp-init~ | unset | (own) A quoted string of Emacs Lisp: the ~holiday-*~ lists, ~calendar-holidays~ and the ~calendar-*-all-holidays-flag~ variables, and ~(load "github:file.el")~ to read them from a file (see [[#holidays][Holidays]]); Settings → Advanced sets it |
+| ~org-xx-lisp-init~ | unset | (own) Emacs Lisp run like an init file: ~setq~ of any setting in this table, the ~holiday-*~ lists, capture templates, LaTeX and ODT styles, ~(load "github:file.el")~ to read more from a file (see [[#lisp-init][Lisp init]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
@@ -774,6 +774,26 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-text-wrap~ | ~nil~ | (own) ~t~ wraps long lines in the Text view; ~nil~ scrolls them sideways |
 
 Any other ~# key: value~ line is parsed and ignored, so new variables can be added later without changing the format.
+
+*** Lisp init
+:PROPERTIES:
+:CUSTOM_ID: lisp-init
+:END:
+
+Settings → Advanced → *Lisp init* takes Emacs Lisp, run as Emacs runs an init file. ~setq~ gives any setting in this table a value, with the value written as in Emacs:
+
+#+BEGIN_SRC
+(setq org-agenda-files '("github:home.org"
+                         "github:journal.org"
+                         "github:calendar.org")
+      org-deadline-warning-days (* 2 7)
+      org-log-done 'time)
+(add-to-list 'org-modules 'org-habit)
+#+END_SRC
+
+All of Lisp is there to compute a value: ~let~, ~defun~, loops, ~append~, ~format~. A setting the init sets is shown in Settings with its value, marked *Set by the Lisp init*, and cannot be edited there; it wins over the saved value, as ~init.el~ wins over customized values, and the saved value comes back when the line is removed. ~org-xx-extensions~, the switch that lets scripts run, is always your own choice in Settings.
+
+A form that fails shows Emacs's message in the status line (~Symbol’s function definition is void: foo~) and the forms after it still run. A program that never ends stops with a message. ~(load "github:file.el")~ reads another file as part of the init, and the Agenda's *Refresh* reads it again.
 
 -----
 
@@ -1443,7 +1463,7 @@ Change them in Settings → Advanced → *Lisp init*, written as in an init file
 
 *Sharing*: ~(load "github:org/holidays.el")~ in the box reads that file and uses its text in place of the line, so one file in a repository can serve every device. The name is written like an agenda file (~github:~, ~webdav:~ or ~local:~); a file can load others. The last copy read is kept on the device, and the Agenda's refresh button reads the files again.
 
-The forms are ~holiday-fixed~, ~holiday-float~, ~holiday-easter-etc~, ~holiday-greek-orthodox-easter~, ~holiday-advent~, ~holiday-julian~, ~holiday-hebrew~, ~holiday-islamic~, ~holiday-bahai~, ~holiday-sexp~ (a quoted expression of ~year~ that gives ~(month day year)~, and a string or an expression of ~date~ for the name), the named ~holiday-hebrew-passover~ family, ~holiday-islamic-new-year~, ~holiday-bahai-new-year~ and ~solar-equinoxes-solstices~, with ~if~, ~append~ and ~progn~. ~(setq calendar-holidays (append holiday-general-holidays holiday-islamic-holidays))~ picks the groups. The solar holidays use this device's time zone and ~calendar-latitude~; the zone's abbreviation is the browser's (EST, CET, or GMT+9 where it has none).
+Each entry of ~calendar-holidays~ is Lisp, evaluated for the month shown as Emacs does, so ~if~, ~let~, ~mapcar~ and your own ~defun~ work in a list. The functions are Emacs's: ~holiday-fixed~, ~holiday-float~, ~holiday-easter-etc~, ~holiday-greek-orthodox-easter~, ~holiday-advent~, ~holiday-julian~, ~holiday-hebrew~, ~holiday-islamic~, ~holiday-bahai~, ~holiday-chinese~, ~holiday-sexp~ (its first argument evaluates to an expression of ~year~ that gives ~(month day year)~, its second to a name, a string or an expression of ~date~), the named ~holiday-hebrew-passover~ family, ~holiday-islamic-new-year~, ~holiday-bahai-new-year~ and ~solar-equinoxes-solstices~; they and the ~calendar-*~ date functions (~calendar-dayname-on-or-before~, ~calendar-nth-named-absday~, ~calendar-month-name~, the Hebrew, Islamic and Julian conversions) also work in diary sexps. An entry that fails is skipped, as in Emacs, and shows as /Holiday list error: ../ on the first of the month. ~(setq calendar-holidays (append holiday-general-holidays holiday-islamic-holidays))~ picks the groups. The solar holidays use this device's time zone and ~calendar-latitude~; the zone's abbreviation is the browser's (EST, CET, or GMT+9 where it has none).
 
 *** General ~<%%(sexp)>~ timestamps
 :PROPERTIES:
@@ -1459,11 +1479,11 @@ A ~<%%(expression)>~ goes where a plain timestamp would, in a heading's title. T
 ,* Company Anniversary <%%(org-anniversary 2018 5 14)>
 #+END_SRC
 
-The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is evaluated on its own, with ~date~ set to that day:
+The expression is Emacs Lisp: ~setq~, ~defun~, ~lambda~, ~let~, loops (~while~, ~dolist~, ~dotimes~), lists, strings, regexps, ~condition-case~ and ~format~ all work as in Emacs. Each day is evaluated on its own, with ~date~ set to that day and ~entry~ the text of the line, so a ~defun~ lasts for that day's entry:
 
 - ~(when CONDITION EXPR)~: the result of EXPR if CONDITION is non-nil, otherwise no match.
 - ~(and EXPR...)~, ~(or EXPR...)~, ~(not EXPR)~: as in Lisp. ~and~ yields its last value, so a string survives; ~or~ yields the first that matches. ~t~ and ~nil~ work as values, and list arguments may be quoted (~'(10 11 12)~). ~<%%(and (org-block 2026 9 1 2026 12 18) (diary-float t 1 1))>~ is the first Monday of each month, within that range.
-- ~date~, ~let~, ~let*~, ~if~, ~unless~, ~cond~, ~progn~: ~date~ is the day being checked, as ~(month day year)~, so ~(car date)~ is the month, ~(cadr date)~ the day and ~(nth 2 date)~ the year. Arithmetic (~+ - * / mod % 1+ 1-~), comparison (~= /= < > <= >=~), ~zerop~, ~equal~, ~list~, ~car~, ~cdr~, ~cadr~, ~nth~, ~length~, ~memq~ and ~member~ work as in Emacs. An error (a wrong argument type, division by zero, a runaway expression) is simply no match.
+- ~date~, ~let~, ~let*~, ~if~, ~unless~, ~cond~, ~progn~: ~date~ is the day being checked, as ~(month day year)~, so ~(car date)~ is the month, ~(cadr date)~ the day and ~(nth 2 date)~ the year. Arithmetic (~+ - * / mod % 1+ 1-~), comparison (~= /= < > <= >=~), ~zerop~, ~equal~, ~list~, ~car~, ~cdr~, ~cadr~, ~nth~, ~length~, ~memq~ and ~member~ work as in Emacs.
 - ~calendar-day-of-week~ (0 is Sunday), ~calendar-last-day-of-month~, ~calendar-leap-year-p~, ~calendar-extract-month~, ~-day~, ~-year~ and ~calendar-current-date~: ~<%%(and (= (cadr date) (calendar-last-day-of-month (car date) (nth 2 date))) (memq (calendar-day-of-week date) '(1 2 3 4 5)))>~ is the last day of each month when it is a weekday.
 - ~calendar-absolute-from-gregorian~ and ~calendar-gregorian-from-absolute~ turn a date into a day count and back (day 1 is 1 January, year 1), plus ~min~, ~max~ and ~abs~. A count makes "every other week" and "N days until" rules easy: ~<%%(let ((n (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date)))) (and (>= n 0) (<= n 30) (format "%d days until Christmas" n)))>~ counts down for the 30 days before.
 - ~(diary-remind SEXP DAYS)~: shows the entry on the day SEXP matches, and "Reminder: Only 3 days until ..." on the DAYS before it. ~DAYS~ is a number, a list (~'(1 3 7)~), or a negative number for every day up to it. ~%%(diary-remind '(diary-float 11 4 4) 7) Thanksgiving~ starts a week ahead. The variable ~entry~ is the text of the line, so ~(and (org-block 2026 12 20 2026 12 25) entry)~ also works.
@@ -1475,9 +1495,7 @@ The evaluator is a small, safe Lisp subset, not Emacs's interpreter. Each day is
 - The ~diary-hebrew-*~ functions are in [[#hebrew-diary][Hebrew diary functions]].
 - ~(org-cyclic ...)~, ~(org-anniversary ...)~ and ~(diary-float ...)~, as above, work as sub-expressions. So do ~(solar-sunrise-sunset)~, ~(solar-time-string)~ and ~(apply)~ (see [[#solar-times][Sun times]]) and ~(org-weather)~, which return a formatted string; a string result becomes the displayed text ("Weekly Sync: Weekly sync"). ~org-contacts-anniversaries~ isn't recognized inside a sexp timestamp.
 - ~(format FORMAT-STRING ARG...)~ combines strings and numbers into one line: ~<%%(when (today-p) (format "%d days until Christmas" (- (calendar-absolute-from-gregorian '(12 25 2026)) (calendar-absolute-from-gregorian date))))>~. Placeholders are ~%s~ (any value), ~%d~ (a number) and ~%%~, with an optional width such as ~%02d~, ~%5s~ or ~%-5s~; each evaluates its argument, including a nested ~format~. Extra arguments are ignored; too few give no match. A title that is only the timestamp shows the result exactly as built, with no title prefix.
-- Anything else (an unknown function, a malformed expression, a bare value) is no match, never an error.
-
-*Not included*: the Coptic, Ethiopic, Persian, French and Mayan date functions, assignment (~setq~), ~lambda~ and ~defun~, and anything with side effects, so the Emacs manual's "pay check" example (which uses ~setq~) needs a ~let*~ rewrite.
+- A program that fails shows Emacs's message in the agenda in place of the entry, once for the sexp: ~Symbol’s function definition is void: no-such-function~ or ~Wrong type argument: listp, 5~. A program that loops forever, or nests too deeply (~max-lisp-eval-depth~), stops with a message too; ~condition-case~ cannot catch that stop. A bare value, such as a number, is a match.
 
 *** Other agenda behavior
 :PROPERTIES:

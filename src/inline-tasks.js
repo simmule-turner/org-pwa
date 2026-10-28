@@ -9,7 +9,8 @@
 // whose parameter is the task's todo keyword, priority, title and tags, and whose lines are the task's contents.
 import { headingPreambleLines } from './org-parser.js';
 import { parseBody } from './body-parser.js';
-import { runInit, listItems, symbolName, datum } from './lisp-read.js';
+import { listItems, symbolName, datum } from './lisp-read.js';
+import { runInit } from './lisp-init.js';
 import { lispStringValue } from './export-defaults.js';
 
 /** @typedef {import('./types.js').Doc} Doc */

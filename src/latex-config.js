@@ -5,7 +5,8 @@
  * Their defaults are Org 9.6's. See lisp-read.js for the forms an init text may use.
  */
 
-import { runInit, readLisp, listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
+import { readLisp, listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
+import { runInit } from './lisp-init.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
 /**

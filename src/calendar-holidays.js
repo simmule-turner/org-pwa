@@ -237,7 +237,54 @@ function solarEquinoxesSolstices(w) {
   return [{ date: local.date, name: `${names[k]} ${w.solar.timeString(local.hours, local.name)}` }];
 }
 
-/** The holidays of the three months around `window`, in the order Emacs's `calendar-holiday-list` returns them.
+/** The names of the holiday functions the app implements itself (`holiday-fixed`, `holiday-float`, ... `solar-equinoxes-solstices`). */
+export const HOLIDAY_FUNCTIONS = ['holiday-fixed', 'holiday-float', 'holiday-easter-etc', 'holiday-greek-orthodox-easter', 'holiday-advent', 'holiday-julian', 'holiday-hebrew', 'holiday-islamic', 'holiday-bahai', 'holiday-chinese-new-year', 'holiday-chinese-qingming', 'holiday-chinese-winter-solstice', 'holiday-chinese', 'holiday-hebrew-passover', 'holiday-hebrew-rosh-hashanah', 'holiday-hebrew-hanukkah', 'holiday-hebrew-tisha-b-av', 'holiday-hebrew-misc', 'holiday-islamic-new-year', 'holiday-bahai-new-year', 'holiday-bahai-ridvan', 'solar-equinoxes-solstices'];
+
+/**
+ * One holiday function applied to its (already evaluated) arguments for the window `w`; null when `head` is not one of HOLIDAY_FUNCTIONS.
+ * @param {string} head @param {Lisp[]} a @param {Window} w @returns {Holiday[] | null}
+ */
+export function holidayCall(head, a, w) {
+  const flag = (/** @type {string} */ name) => {
+    const v = w.vars.get(name);
+    return !!v && !isNil(v);
+  };
+  const n = (/** @type {number} */ i) => num(a[i]);
+  const s = (/** @type {number} */ i) => stringValue(a[i]) ?? '';
+  const nn = (/** @type {number} */ i) => /** @type {number} */ (n(i));
+  const two = n(0) !== null && n(1) !== null;
+  switch (head) {
+    case 'holiday-fixed': return two ? holidayFixed(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-float': return two && n(2) !== null ? holidayFloat(w, nn(0), nn(1), nn(2), s(3), n(4) ?? undefined) : [];
+    case 'holiday-easter-etc': return holidayEasterEtc(w, n(0), a[1] ? s(1) : null, flag('calendar-christian-all-holidays-flag'));
+    case 'holiday-greek-orthodox-easter': return holidayGreekOrthodoxEaster(w, n(0), a[1] ? s(1) : null);
+    case 'holiday-advent': return holidayAdvent(w, n(0), a[1] ? s(1) : null);
+    case 'holiday-julian': return two ? holidayJulian(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-hebrew': return two ? holidayHebrew(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-islamic': return two ? holidayIslamic(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-bahai': return two ? holidayBahai(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-chinese-new-year': return holidayChineseNewYear(w);
+    case 'holiday-chinese-qingming': return holidayChineseQingming(w);
+    case 'holiday-chinese-winter-solstice': return holidayChineseWinterSolstice(w);
+    case 'holiday-chinese': return two ? holidayChinese(w, nn(0), nn(1), s(2)) : [];
+    case 'holiday-hebrew-passover': return hebrewPassover(w, flag('calendar-hebrew-all-holidays-flag'));
+    case 'holiday-hebrew-rosh-hashanah': return hebrewRoshHashanah(w, flag('calendar-hebrew-all-holidays-flag'));
+    case 'holiday-hebrew-hanukkah': return hebrewHanukkah(w, flag('calendar-hebrew-all-holidays-flag'));
+    case 'holiday-hebrew-tisha-b-av': return hebrewTishaBAv(w);
+    case 'holiday-hebrew-misc': return hebrewMisc(w);
+    case 'holiday-islamic-new-year': return islamicNewYear(w);
+    case 'holiday-bahai-new-year': return bahaiNewYear(w);
+    case 'holiday-bahai-ridvan': return bahaiRidvan(w, flag('calendar-bahai-all-holidays-flag'));
+    case 'solar-equinoxes-solstices': return solarEquinoxesSolstices(w);
+    default: return null;
+  }
+}
+
+/** `holiday-filter-visible-calendar`. @param {Holiday[]} list @param {Window} w */
+export const filterVisible = (list, w) => visible(list, w);
+
+/** The holidays of the three months around `window`, in the order Emacs's `calendar-holiday-list` returns them, for a list written as data
+ * (the walk the app made before the interpreter ran holiday lists; the tests of the Emacs-checked results still use it).
  * @param {Lisp[]} forms  the entries of `calendar-holidays`
  * @param {Window} w */
 export function holidayList(forms, w) {
@@ -251,31 +298,7 @@ export function holidayList(forms, w) {
     if (!items || !items.length) return [];
     const head = symbolName(items[0]) || '';
     const a = items.slice(1);
-    const n = (/** @type {number} */ i) => num(a[i]);
-    const s = (/** @type {number} */ i) => stringValue(a[i]) ?? '';
     switch (head) {
-      case 'holiday-fixed': return n(0) !== null && n(1) !== null ? holidayFixed(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-float': return n(0) !== null && n(1) !== null && n(2) !== null ? holidayFloat(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), /** @type {number} */ (n(2)), s(3), n(4) ?? undefined) : [];
-      case 'holiday-easter-etc': return holidayEasterEtc(w, n(0), a[1] ? s(1) : null, flag('calendar-christian-all-holidays-flag'));
-      case 'holiday-greek-orthodox-easter': return holidayGreekOrthodoxEaster(w, n(0), a[1] ? s(1) : null);
-      case 'holiday-advent': return holidayAdvent(w, n(0), a[1] ? s(1) : null);
-      case 'holiday-julian': return n(0) !== null && n(1) !== null ? holidayJulian(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-hebrew': return n(0) !== null && n(1) !== null ? holidayHebrew(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-islamic': return n(0) !== null && n(1) !== null ? holidayIslamic(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-bahai': return n(0) !== null && n(1) !== null ? holidayBahai(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-chinese-new-year': return holidayChineseNewYear(w);
-      case 'holiday-chinese-qingming': return holidayChineseQingming(w);
-      case 'holiday-chinese-winter-solstice': return holidayChineseWinterSolstice(w);
-      case 'holiday-chinese': return n(0) !== null && n(1) !== null ? holidayChinese(w, /** @type {number} */ (n(0)), /** @type {number} */ (n(1)), s(2)) : [];
-      case 'holiday-hebrew-passover': return hebrewPassover(w, flag('calendar-hebrew-all-holidays-flag'));
-      case 'holiday-hebrew-rosh-hashanah': return hebrewRoshHashanah(w, flag('calendar-hebrew-all-holidays-flag'));
-      case 'holiday-hebrew-hanukkah': return hebrewHanukkah(w, flag('calendar-hebrew-all-holidays-flag'));
-      case 'holiday-hebrew-tisha-b-av': return hebrewTishaBAv(w);
-      case 'holiday-hebrew-misc': return hebrewMisc(w);
-      case 'holiday-islamic-new-year': return islamicNewYear(w);
-      case 'holiday-bahai-new-year': return bahaiNewYear(w);
-      case 'holiday-bahai-ridvan': return bahaiRidvan(w, flag('calendar-bahai-all-holidays-flag'));
-      case 'solar-equinoxes-solstices': return solarEquinoxesSolstices(w);
       case 'holiday-sexp': {
         const expr = a[0] ? (a[0].k === 'list' && symbolName(a[0].items[0]) === 'quote' ? a[0].items[1] : a[0]) : null;
         if (!expr || !a[1] || !w.sexp) return [];
@@ -294,7 +317,7 @@ export function holidayList(forms, w) {
       case 'append': return a.flatMap(run);
       case 'progn': return a.flatMap(run);
       default:
-        return []; // a function the app does not have gives no holiday
+        return holidayCall(head, a, w) || []; // a function the app does not have gives no holiday
     }
   };
   /** @type {Holiday[]} */

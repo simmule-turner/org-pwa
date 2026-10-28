@@ -110,6 +110,22 @@ export function attachLongPress(el, callback, duration = 600) {
 }
 
 /**
+ * The one look of every multi-line settings box: monospace, full width, two lines high, and a drag handle to make it taller. Tapping it
+ * opens the large editor, so the box itself is read-only.
+ * @param {HTMLTextAreaElement} el
+ */
+export function settingsTextBox(el) {
+  el.rows = 2;
+  el.readOnly = true;
+  el.style.fontFamily = 'monospace';
+  el.style.fontSize = '12px';
+  el.style.width = '100%';
+  el.style.maxWidth = '100%';
+  el.style.boxSizing = 'border-box';
+  el.style.resize = 'vertical';
+}
+
+/**
  * @param {HTMLElement} el
  * @param {boolean | undefined} [compact]
  */

@@ -1,9 +1,7 @@
 // @ts-check
 /**
- * A small reader for Emacs Lisp data, and an interpreter for the few forms people put in an init file to configure an exporter:
- * `(setq VAR VALUE ...)`, `(add-to-list 'VAR VALUE [APPEND])`, `(push VALUE VAR)`, and `progn` / `with-eval-after-load` around them.
- * A value is data (a quoted list, a string, a number, `t`, `nil`); anything that would need Emacs to evaluate it is left out.
- * The settings page keeps such an init text for the LaTeX export (see latex-config.js); nothing here runs code.
+ * A small reader for Emacs Lisp data, in the shape the features that read the Lisp init expect (see lisp-init.js, which runs the init
+ * itself). A value is data: a string, a number, a symbol or a list.
  */
 
 /**
@@ -125,13 +123,6 @@ export function listItems(f) {
 /** Is `f` the symbol `nil` or the empty list? @param {Lisp | undefined} f */
 export const isNil = (f) => !f || (f.k === 'sym' && f.v === 'nil') || (f.k === 'list' && f.items.length === 0 && !f.tail);
 
-/** @param {Lisp} a @param {Lisp} b @returns {boolean} */
-function same(a, b) {
-  if (a.k !== b.k) return false;
-  if (a.k === 'list' && b.k === 'list') return a.items.length === b.items.length && a.items.every((x, i) => same(x, b.items[i])) && (a.tail && b.tail ? same(a.tail, b.tail) : !a.tail && !b.tail);
-  return /** @type {{ v: unknown }} */ (a).v === /** @type {{ v: unknown }} */ (b).v;
-}
-
 /**
  * The value a form stands for when it is data: a quoted thing as itself, a string or number as itself, `t` and `nil`; `list` of such
  * values. Anything else (a function call, a variable) is null.
@@ -161,66 +152,5 @@ export function datum(f) {
   return null;
 }
 
-/** `(append A B ...)` of variables and quoted lists, `(delete X LIST)` and `(remove X LIST)` (also `delq`, `remq`), or another variable: the computed values
- * an init text commonly sets (`calendar-holidays`, a holiday group without one entry).
- * @param {Lisp} f @param {Map<string, Lisp>} vars @param {(name: string) => string} real @returns {Lisp | null} */
-function appended(f, vars, real) {
-  if (f.k === 'sym' && f.v !== 't' && f.v !== 'nil') return vars.get(real(f.v)) || null; // another variable's value
-  if (f.k !== 'list') return null;
-  const head = symbolName(f.items[0]);
-  if ((head === 'delete' || head === 'remove' || head === 'delq' || head === 'remq') && f.items.length === 3) {
-    const unwanted = datum(f.items[1]);
-    const source = datum(f.items[2]) || appended(f.items[2], vars, real);
-    const l = unwanted && source ? listItems(source) : null;
-    return l && unwanted ? { k: 'list', items: l.filter((x) => !same(x, unwanted)) } : null;
-  }
-  if (head !== 'append') return null;
-  /** @type {Lisp[]} */
-  const items = [];
-  for (const a of f.items.slice(1)) {
-    const v = datum(a) || appended(a, vars, real) || undefined;
-    const l = v === undefined ? null : listItems(v);
-    if (!l) return null;
-    items.push(...l);
-  }
-  return { k: 'list', items };
-}
-
-/**
- * Plays the configuration forms of an init text on top of `vars` (variable name to value) and returns the result.
- * `setq` replaces a value, `add-to-list` puts a new item first (last with a third argument) unless it is already there, `push` puts it first.
- * @param {string} text
- * @param {Map<string, Lisp>} [initial]
- * @param {Record<string, string>} [aliases]  variables that are another variable under an old name
- * @returns {Map<string, Lisp>}
- */
-export function runInit(text, initial, aliases = {}) {
-  const vars = new Map(initial || []);
-  const real = (/** @type {string} */ name) => aliases[name] || name;
-  /** @param {Lisp} f */
-  const run = (f) => {
-    if (f.k !== 'list' || f.items.length === 0) return;
-    const head = symbolName(f.items[0]);
-    const args = f.items.slice(1);
-    if (head === 'setq') {
-      for (let i = 0; i + 1 < args.length; i += 2) {
-        const name = symbolName(args[i]);
-        const value = datum(args[i + 1]) || appended(args[i + 1], vars, real);
-        if (name && value) vars.set(real(name), value);
-      }
-    } else if (head === 'add-to-list' || head === 'push' || head === 'cl-pushnew') {
-      const [varForm, valueForm, append] = head === 'add-to-list' ? [args[0], args[1], args[2]] : [args[1], args[0], undefined];
-      const nameForm = head === 'add-to-list' ? datum(varForm || NIL) : varForm;
-      const name = real(symbolName(nameForm || undefined) || '');
-      const value = valueForm ? datum(valueForm) : null;
-      if (name === '' || !value) return;
-      const current = listItems(vars.get(name)) || [];
-      if (head !== 'push' && current.some((x) => same(x, value))) return;
-      vars.set(name, { k: 'list', items: append && !isNil(datum(append) || undefined) ? [...current, value] : [value, ...current] });
-    } else if (head === 'progn' || head === 'with-eval-after-load' || head === 'eval-after-load' || head === 'when' || head === 'unless') {
-      for (const inner of args.slice(head === 'progn' ? 0 : 1)) run(inner);
-    }
-  };
-  for (const f of readLisp(text)) run(f);
-  return vars;
-}
+/** Plays an init text; see lisp-init.js. */
+export { runInit } from './lisp-init.js';

@@ -5,7 +5,7 @@ import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeLispString,
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
-import { menuButton } from './ui-widgets.js';
+import { menuButton, settingsTextBox } from './ui-widgets.js';
 import { openTextFieldPopup } from './dialogs.js';
 import { latexClassNames } from '../src/latex-config.js';
 
@@ -52,14 +52,12 @@ function codesHelp() {
 
 /** A small read-only box that opens the large editor when tapped, as the other long text settings do: OK calls `onSave` with the new
  *  text, Cancel changes nothing, and Reset (shown only while the text differs from `defaultValue`) calls `onReset`.
- * @param {{ name: string, value: () => string, defaultValue: string, multiline: boolean, onSave: (text: string) => Promise<void>, onReset: () => Promise<void> }} o */
+ * @param {{ name: string, value: () => string, defaultValue: string, onSave: (text: string) => Promise<void>, onReset: () => Promise<void> }} o */
 function editorBox(o) {
   const field = document.createElement('textarea');
-  field.rows = o.multiline ? 4 : 2;
-  field.readOnly = true;
+  settingsTextBox(field);
   field.value = o.value();
   field.setAttribute('aria-label', o.name + ' text');
-  field.style.cssText = 'width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--fg); font-family: monospace; font-size: 12px; resize: vertical';
   field.onfocus = () => {
     field.blur();
     openTextFieldPopup({
@@ -80,8 +78,8 @@ function editorBox(o) {
 }
 
 /** One item: a tick box with its name, then the text, which is edited in the large editor.
- * @param {ExportItem} item @param {string} name @param {string} variable @param {boolean} multiline */
-function itemRow(item, name, variable, multiline) {
+ * @param {ExportItem} item @param {string} name @param {string} variable */
+function itemRow(item, name, variable) {
   const state = exportItemState(S.globalVariables, item);
   let text = state.text;
   const row = document.createElement('div');
@@ -105,7 +103,6 @@ function itemRow(item, name, variable, multiline) {
   row.appendChild(
     editorBox({
       name,
-      multiline,
       value: () => text,
       defaultValue: item.text,
       onReset: async () => {
@@ -157,9 +154,9 @@ function cardShell(title, sub, intro) {
 export function buildExportCards(rerender) {
   const html = cardShell('HTML', 'Web page export', 'A ticked item sets the Org variable of that name, for every HTML export whose file does not set its own. Unticking removes it.');
   html.setAttribute('data-export-card', 'html');
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'org-html-preamble', false));
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'org-html-postamble', false));
-  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'org-html-head', true));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[0], 'Preamble', 'org-html-preamble'));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[1], 'Postamble', 'org-html-postamble'));
+  html.appendChild(itemRow(EXPORT_DEFAULT_ITEMS[2], 'Head', 'org-html-head'));
   html.appendChild(pagedTocRow(rerender));
   html.appendChild(line('The head goes inside <head>. Lines the file gives with #+HTML_HEAD: come after it, so they can override it.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
   html.appendChild(codesHelp());
@@ -193,7 +190,6 @@ function latexInitRow(rerender, text) {
   let current = text;
   const field = editorBox({
     name: 'Classes, packages and source blocks',
-    multiline: true,
     value: () => current,
     defaultValue: '',
     onReset: async () => {
@@ -209,7 +205,6 @@ function latexInitRow(rerender, text) {
       rerender();
     },
   });
-  field.rows = 8;
   row.appendChild(field);
   return row;
 }

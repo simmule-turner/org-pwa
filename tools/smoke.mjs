@@ -7900,6 +7900,71 @@ check('display-line-numbers-mode: every file line in a row is numbered, hidden l
   await context.close();
 });
 
+check('settings: every multi-line box looks the same, two lines high, with a drag handle, on Export and Advanced', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  const look = () => page.evaluate(() => [...document.querySelectorAll('textarea')].filter((t) => t.offsetParent).map((t) => {
+    const c = getComputedStyle(t);
+    return JSON.stringify([c.fontFamily.includes('monospace'), c.fontSize, c.paddingTop, c.borderTopLeftRadius, c.resize, t.rows, Math.round(t.getBoundingClientRect().height)]);
+  }));
+  const seen = new Set();
+  for (const id of ['export', 'advanced']) {
+    await settingsCategory(page, id);
+    await page.waitForTimeout(500);
+    const boxes = await look();
+    expect(boxes.length > 0, `there are multi-line boxes on ${id}`);
+    for (const b of boxes) seen.add(b);
+  }
+  expect(seen.size === 1, `all multi-line boxes share one look: ${[...seen].join(' | ')}`);
+  expect(JSON.parse([...seen][0])[4] === 'vertical' && JSON.parse([...seen][0])[5] === 2, 'they are two lines high and draggable');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('lisp init: (setq org-agenda-files ...) fills the Agenda files setting, shown as set by the init', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    const { encodeLispString } = await import('/src/export-defaults.js');
+    await commitGlobalVariableChange('org-xx-lisp-init', encodeLispString('(setq org-agenda-files \'("github:home.org"\n  "github:journal.org"\n  "github:calendar.org"))\n(setq org-deadline-warning-days (* 2 7))'));
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await settingsCategory(page, 'advanced');
+  await page.waitForFunction(() => document.body.textContent.includes('Agenda files'), null, { timeout: 8000 });
+  const files = await page.evaluate(() => {
+    const label = [...document.querySelectorAll('label')].find((l) => l.textContent.includes('Agenda files'));
+    return label ? { text: label.querySelector('textarea')?.value, note: label.parentElement.parentElement.textContent.includes('Set by the Lisp init') } : null;
+  });
+  expect(files && files.text === 'github:home.org;github:journal.org;github:calendar.org', `the box shows the list: ${JSON.stringify(files)}`);
+  expect(files && files.note, 'and says the Lisp init set it');
+  const vars = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
+  expect(vars['org-agenda-files'] === 'github:home.org;github:journal.org;github:calendar.org' && vars['org-deadline-warning-days'] === '14', `the settings hold the init's values: ${JSON.stringify(vars)}`);
+  const saved = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariablesText);
+  expect(!/^org-agenda-files:/m.test(saved) && !/^org-deadline-warning-days:/m.test(saved), 'the init values are not written into the saved settings');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('examples: inline-latex.org renders its math, god-mode.org and diary.org open', async () => {
+  const { context, page, errors } = await freshPage();
+  const text = (name) => page.evaluate(async (n) => (await fetch('/examples/' + n)).text(), name);
+  await newDocument(page, await text('inline-latex.org'));
+  await page.waitForTimeout(1500);
+  const math = await page.evaluate(() => ({ rendered: document.querySelectorAll('.katex').length, failed: document.querySelectorAll('.katex-error').length, text: document.body.innerText }));
+  expect(math.rendered >= 15, `the math renders (${math.rendered} fragments)`);
+  expect(math.failed <= 1, `only the deliberately broken fragment fails (${math.failed})`);
+  expect(math.text.includes('it costs $5 and $10 total'), 'money stays text');
+  for (const name of ['god-mode.org', 'diary.org']) {
+    await newDocument(page, await text(name));
+    await page.waitForTimeout(500);
+    expect((await page.locator('body').innerText()).includes(name === 'diary.org' ? 'Diary or calendar?' : 'Start and stop'), `${name} opens`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
 // SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long

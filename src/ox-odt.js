@@ -23,7 +23,8 @@ import { resolveCodeRef, coderefText } from './code-lines.js';
 import { removeIndentation } from './babel-blocks.js';
 import { HARD } from './ascii-fill.js';
 import { highlightToHtml, knowsLanguage } from './syntax-highlight.js';
-import { runInit, listItems, stringValue, symbolName, isNil } from './lisp-read.js';
+import { listItems, stringValue, symbolName, isNil } from './lisp-read.js';
+import { runInit } from './lisp-init.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */

@@ -17,10 +17,12 @@ test('an init text adds to a list at the front, or at the end with a third argum
   assert.deepEqual(vars.get('x').items.map((i) => i.v), [0, 3, 1, 2, 4]);
 });
 
-test('forms that need Emacs to run are ignored', () => {
-  const vars = runInit(`(setq a (concat "x" "y"))\n(setq b "ok")\n(defun f () 1)`);
-  assert.equal(vars.has('a'), false);
+test('forms are evaluated, and one that fails is reported without stopping the rest', () => {
+  const vars = runInit(`(setq a (concat "x" "y"))\n(setq c (no-such-function))\n(setq b "ok")\n(defun f () 1)`);
+  assert.equal(vars.get('a').v, 'xy');
+  assert.equal(vars.has('c'), false);
   assert.equal(vars.get('b').v, 'ok');
+  assert.deepEqual(vars.errors, ['Symbol’s function definition is void: no-such-function']);
 });
 
 test('the defaults are Org’s: its classes (and beamer), verbatim source blocks, no extra packages', () => {

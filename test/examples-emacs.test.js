@@ -134,3 +134,7 @@ test('every before/after pair in editing.org is what the app writes', async () =
     assert.equal(result.trimEnd(), afters[i].trimEnd(), c.title);
   });
 });
+
+test('examples/diary is the file the diary oracle checks against Emacs', () => {
+  assert.equal(read('diary'), readFileSync(new URL('./fixtures/diary/example.diary', import.meta.url), 'utf8'));
+});

@@ -1204,8 +1204,8 @@ async function bootstrap() {
   await loadCachedWeatherData();
   S.globalVariablesText = await getGlobalVariables(kv);
   S.globalVariables = parseGlobalVariables(S.globalVariablesText);
-  applyDurationVariables(S.globalVariables);
   applyLispInit(S.globalVariables);
+  applyDurationVariables(S.globalVariables);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   loadExtensions().catch((err) => console.error('extensions:', err));

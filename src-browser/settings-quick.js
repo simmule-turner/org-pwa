@@ -2,7 +2,7 @@
 // The Quick Settings section of Settings: reading a setting's value, saving a change, and drawing each field.
 import { applyDurationVariables } from '../src/org-duration.js';
 import { encodeLispString, lispStringValue } from '../src/export-defaults.js';
-import { applyLispInit } from './lisp-init-load.js';
+import { applyLispInit, lispSettings, onLispSettingsChange } from './lisp-init-load.js';
 import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
 import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
@@ -17,7 +17,7 @@ import { render } from './render.js';
 import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
 import { setGlobalVariables } from './settings.js';
 import { kv } from './singletons.js';
-import { entryFieldButtonStyle, menuButton, populateSelectOptions, textInputStyle } from './ui-widgets.js';
+import { entryFieldButtonStyle, menuButton, populateSelectOptions, settingsTextBox, textInputStyle } from './ui-widgets.js';
 import { openDocsAtHeading } from './views.js';
 import { refreshLocationFromDevice, refreshWeather, whereOrgWeatherIsUsed } from './weather-flow.js';
 import { renderSettingsView } from './settings-view.js';
@@ -105,8 +105,8 @@ export async function commitGlobalVariableChange(key, rawValue) {
   }
   S.globalVariablesText = serializeGlobalVariables(vars);
   S.globalVariables = vars;
-  applyDurationVariables(vars);
   applyLispInit(vars);
+  applyDurationVariables(vars);
   await setGlobalVariables(kv, S.globalVariablesText);
   if (S.state.doc) {
     S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
@@ -114,6 +114,17 @@ export async function commitGlobalVariableChange(key, rawValue) {
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
 }
+
+// A file the Lisp init loads has been read and it set different settings: redo what depends on them
+onLispSettingsChange(() => {
+  applyDurationVariables(S.globalVariables);
+  if (S.state.doc) {
+    S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, parseLocalVariables(serializeOrg(S.state.doc)));
+  }
+  syncAgendaFilesConfig();
+  syncContactsFilesConfig();
+  render();
+});
 
 /**
  * Builds one Quick Settings field's own label + control row.
@@ -256,14 +267,7 @@ export function renderQuickSettingField(field) {
       return field.entryTokenizer ? multiEntryValueToDisplayText(raw, field.entryTokenizer) : raw;
     };
     const textarea = document.createElement('textarea');
-    textarea.rows = field.entryTokenizer ? 4 : 2; // multi-line entries need more visible room than a single flat line did
-    textarea.style.fontFamily = 'monospace';
-    textarea.style.fontSize = '12px';
-    textarea.style.width = '100%';
-    textarea.style.maxWidth = '100%';
-    textarea.style.boxSizing = 'border-box';
-    textarea.style.resize = 'vertical';
-    textarea.readOnly = true;
+    settingsTextBox(textarea);
     textarea.value = displayValue(rawValue);
     textarea.onfocus = () => {
       textarea.blur();
@@ -390,6 +394,19 @@ export function renderQuickSettingField(field) {
     headerRow.appendChild(helpLink);
   }
   row.appendChild(headerRow);
+  if (lispSettings.keys.has(field.key)) {
+    // set by the Lisp init: shown, not editable here (edit the init to change it)
+    for (const control of row.querySelectorAll('input, select, textarea')) {
+      const el = /** @type {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} */ (control);
+      el.onchange = null;
+      el.onfocus = () => el.blur();
+      if (el instanceof HTMLSelectElement || (el instanceof HTMLInputElement && el.type === 'checkbox')) el.disabled = true;
+    }
+    const note = document.createElement('div');
+    note.textContent = 'Set by the Lisp init (Advanced → Lisp init).';
+    note.style.cssText = 'font-size: 11px; opacity: 0.65; margin-top: 2px';
+    row.appendChild(note);
+  }
   return row;
 }
 

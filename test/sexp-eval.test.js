@@ -240,9 +240,9 @@ test('a boolean sub-expression (today-p) in a %s slot prints as real elisp\u2019
   assert.equal(evaluateSexpr(falseExpr, ctx(new Date(2026, 7, 13))), 'today? nil');
 });
 
-test('THE FIX: the first argument must be a literal string -- a non-string first argument evaluates to false rather than throwing', () => {
+test('format takes any string-valued first argument, and ignores arguments its string does not use, as in Emacs', () => {
   const expr = parseSexpr('(format (solar-time-string 6.5) "x")');
-  assert.equal(evaluateSexpr(expr, ctx(TODAY)), false);
+  assert.equal(evaluateSexpr(expr, ctx(TODAY)), '6:30am');
 });
 
 test('format combines three functions at once, from solar-time-string', () => {

@@ -7,10 +7,9 @@ import { evaluateSexpr, parseGeneralBodyLine, parseSexpr, setUserSexps } from '.
 afterEach(() => setUserSexps());
 
 test('every function the evaluator handles is protected from being redefined', () => {
-  const source = readFileSync(new URL('../src/sexp-eval.js', import.meta.url), 'utf8');
-  const start = source.indexOf('function ev(');
-  const names = [...source.slice(start).matchAll(/case '([a-z-]+)'/g)].map((m) => m[1]);
-  assert.ok(names.length > 15);
+  const source = readFileSync(new URL('../src/diary-lisp.js', import.meta.url), 'utf8');
+  const names = [...source.matchAll(/(?:defun|defSpecial)\('([a-z-]+)'/g)].map((m) => m[1]);
+  assert.ok(names.length > 20);
   for (const name of names) assert.ok(BUILTIN_SEXP_NAMES.has(name), `${name} is in BUILTIN_SEXP_NAMES`);
 });
 

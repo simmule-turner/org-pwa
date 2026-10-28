@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v633';
+const CACHE_NAME = 'org-pwa-shell-v636';
 
 const SHELL_FILES = [
   './',
@@ -41,6 +41,15 @@ const SHELL_FILES = [
   './src/diary-hebrew.js',
   './src/solar-emacs.js',
   './src/sexp-eval.js',
+  './src/diary-lisp.js',
+  './src/calendar-lisp.js',
+  './src/lisp-init.js',
+  './src/elisp.js',
+  './src/elisp-data.js',
+  './src/elisp-read.js',
+  './src/elisp-core.js',
+  './src/elisp-lib.js',
+  './src/elisp-regex.js',
   './src/repeater-shift.js',
   './src/list-edit.js',
   './src/log-settings.js',
@@ -234,6 +243,7 @@ const SHELL_FILES = [
   './src-browser/find-in-view.js',
   './src-browser/diary-file-load.js',
   './src-browser/lisp-init-load.js',
+  './src-browser/lisp-settings.js',
   './src-browser/diary-flow.js',
   './src-browser/diary-sheets.js',
   './src-browser/text-view.js',

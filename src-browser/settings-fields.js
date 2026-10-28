@@ -591,7 +591,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-text-line-numbers', label: 'Text view: show line numbers', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-wrap', label: 'Text view: wrap long lines', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
-  { key: 'org-xx-lisp-init', label: 'Lisp init (holiday-* lists, calendar-holidays)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
+  { key: 'org-xx-lisp-init', label: 'Lisp init (settings, holiday-* lists, capture templates)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
   { key: 'org-agenda-sorting-strategy', label: 'Agenda row order, per view (default: ((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep)))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
   { key: 'org-agenda-custom-commands', label: 'Agenda commands (saved queries: (("w" "Urgent work" tags "work+urgent")))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-commands' },
   { key: 'org-modules', label: 'Modules (add org-inlinetask for inline tasks in exports)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },

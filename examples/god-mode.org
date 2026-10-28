@@ -1,0 +1,73 @@
+#+TITLE: God-mode
+#+STARTUP: showall
+#+TODO: TODO NEXT | DONE
+
+God-mode reaches Org's full key set (=C-c C-t=, =M-RET= and the rest) without a held Ctrl or Alt key. Every key you press is read as part of a sequence, and a card under the top bar lists the keys that can come next, as Emacs's which-key does. Tap a key on the card to send it, so a whole chord can be done with no keyboard at all.
+
+* Start and stop
+| To | Do |
+|---+---|
+| Turn it on | Press =Escape=, or on a phone tap the floating *[g]* button (it also shows a keyboard of its own) |
+| Turn it off | =Escape= again |
+| Cancel a half-typed sequence | =Escape= (the card goes away) |
+
+The minibuffer at the bottom echoes what you type and, when a sequence is done, names what ran: =God-mode · C-c C-x C-j → Go to clocked task=. Opening a panel (Settings, Search, a menu) turns god-mode off.
+
+* The rules
+- A plain key means Control: =t= is =C-t=.
+- =g= puts Meta on the next key: =g↑= is =M-↑=. (So a bare =C-g= cannot be typed.) =G= (Shift+g) is Control and Meta: =Gn= is =C-M-n=.
+- =SPC= switches literal mode on and off: following keys have no modifier. =c SPC g= is =C-c g=, not =C-c C-g=.
+- =c= first gives =C-c= and starts an Org chain: =c t= is =C-c C-t=, =c c= is =C-c C-c=. Punctuation stays as typed (=c .= is =C-c .=).
+- Arrows, =Tab= and =Return= typed alone are never controlled, so moving around still works.
+
+* Try it
+Each exercise starts with god-mode on and the cursor on the heading named. Use the outline below.
+
+| Press | Emacs chord | What happens |
+|---+---+---|
+| =↓= or =↑= | =<down>=, =<up>= | next or previous visible line (in a table, the next or previous row) |
+| =Tab= | =Tab= | cycle the focused heading's fold state |
+| =S-Tab= | =S-Tab= | cycle the whole document: overview, then everything shown |
+| =c t= | =C-c C-t= | cycle TODO, NEXT, DONE, none |
+| =c ,= | =C-c ,= | cycle priority: none, A, B, C |
+| =g↑= or =g↓= | =M-↑=, =M-↓= | move the heading up or down among its siblings |
+| =g←= or =g→= | =M-←=, =M-→= | promote or demote the heading with its subtree |
+| =g RET= | =M-RET= | new heading after this one, at the same level |
+| =c n= and =c p= | =C-c C-n=, =C-c C-p= | next and previous heading, any level |
+| =c f= and =c b= | =C-c C-f=, =C-c C-b= | next and previous heading at the same level |
+| =c u= | =C-c C-u= | the parent heading |
+| =c s= or =c d= | =C-c C-s=, =C-c C-d= | open the details editor to set SCHEDULED or DEADLINE |
+| =c w= | =C-c C-w= | refile the heading |
+| =c x i= and =c x o= | =C-c C-x C-i=, =C-c C-x C-o= | clock in and out |
+| =c x j= | =C-c C-x C-j= | jump to the clocked-in heading |
+| =c SPC a a=, =c SPC a t=, =c SPC a m=, =c SPC a s= | =C-c a a=, =C-c a t=, =C-c a m=, =C-c a s= | Agenda, TODO list, tag match, keyword search |
+| =x s= | =C-x C-s= | save |
+| =x SPC n s= and =x SPC n w= | =C-x n s=, =C-x n w= | narrow to the heading, and widen |
+| =s= and =r= | =C-s=, =C-r= | search; on the Agenda, next and previous match |
+| =/= | =C-/= | undo |
+| =f= then =/= | =C-f= then =C-/= | redo (=f= arms the next =/=) |
+| =g x= | =M-x= | the command palette |
+| =h SPC m= | =C-h m= | Help, without leaving god-mode |
+
+** i, a and e
+These three are not chords; they are modeled loosely on vim. =i= edits the current line with the cursor at its start. Press =a= first and it starts at the start of the line, or =e= and it starts at the end. They act only as the first key of a sequence: =g i= is still =M-i=.
+
+* An outline to practice on
+** TODO Write the report
+SCHEDULED: <2026-11-02 Mon>
+*** NEXT Outline the sections
+*** Collect the figures
+** TODO Plan the trip
+*** Book the flights
+*** Reserve a hotel
+** Budget
+| Item    | Cost |
+|---------+------|
+| Flights |  420 |
+| Hotel   |  310 |
+
+* Where the app differs from Emacs
+- God-mode here is not the Emacs package itself, but its translation rules are followed, plus the =c= rule above, which is this app's own.
+- =i=, =a=, =e= and =f= are this app's own keys. =f= stands in for the =C-f= god-mode users press to redo, since Emacs has no redo command.
+- Some valid sequences say that they do nothing yet, rather than failing silently: =c c= (toggling a checkbox or running a block needs finer focus than a heading), =c |= and the table row and column inserts (use the +row and +col controls under a table), and =c l= and =c o=.
+- Opening Capture or a picker (=c SPC c=, or =c t= on a heading with no state and several workflows) leaves god-mode and shows tappable buttons, each with a one-letter hotkey you can type.

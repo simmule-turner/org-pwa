@@ -4,6 +4,9 @@
 // button reads the files again.
 import { expandLoads, findLoads } from '../src/lisp-load.js';
 import { applyHolidayVariables } from '../src/holidays.js';
+import { parseGlobalVariables } from '../src/global-variables.js';
+import { settingsFromInit } from './lisp-settings.js';
+import { S } from './app-state.js';
 import { lispStringValue } from '../src/export-defaults.js';
 import { readSpec } from './diary-file-load.js';
 import { setStatus } from './editing.js';
@@ -12,6 +15,35 @@ import { kv } from './singletons.js';
 
 const CACHE_PREFIX = 'org-xx-lisp-load:';
 const latest = { generation: 0 };
+
+/** The settings the Lisp init sets right now (their boxes are read-only), and the errors its forms gave. */
+export const lispSettings = { keys: /** @type {Set<string>} */ (new Set()), errors: /** @type {string[]} */ ([]) };
+
+const hooks = { afterSettingsChange: /** @type {(() => void) | null} */ (null) };
+/** Registers what to redo when the init's settings change after a file it loads has been read. @param {() => void} fn */
+export function onLispSettingsChange(fn) {
+  hooks.afterSettingsChange = fn;
+}
+
+/**
+ * Puts the settings the init sets over `vars` (the saved settings) and remembers which they are. Returns true when that changed anything.
+ * @param {Record<string, string> | null | undefined} vars @param {string} text  the init text
+ */
+function layerSettings(vars, text) {
+  if (!vars) return false;
+  const saved = parseGlobalVariables(S.globalVariablesText || '');
+  const { values, errors } = settingsFromInit(text, saved);
+  const keys = new Set(Object.keys(values));
+  const same = keys.size === lispSettings.keys.size && [...keys].every((k) => lispSettings.keys.has(k)) && Object.entries(values).every(([k, v]) => vars[k] === v);
+  for (const k of lispSettings.keys) if (!keys.has(k)) {
+    if (saved[k] === undefined) delete vars[k];
+    else vars[k] = saved[k];
+  }
+  Object.assign(vars, values);
+  lispSettings.keys = keys;
+  lispSettings.errors = errors;
+  return !same;
+}
 
 /** @param {string} key */
 async function cached(key) {
@@ -35,7 +67,9 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
   const loads = findLoads(text);
   const mine = ++latest.generation;
   if (!loads.length) {
+    layerSettings(vars, text);
     applyHolidayVariables(vars);
+    if (say && lispSettings.errors.length) setStatus(lispSettings.errors[0]);
     return;
   }
   // at once: the files as they were last read on this device, if any; then the files as they are now
@@ -44,7 +78,10 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
     if (old === null) throw new Error('not read yet');
     return old;
   }).then(({ text: first }) => {
-    if (mine === latest.generation) applyHolidayVariables({ ...vars, 'org-xx-lisp-init': first });
+    if (mine !== latest.generation) return;
+    const changed = layerSettings(vars, first);
+    applyHolidayVariables({ ...vars, 'org-xx-lisp-init': first });
+    if (changed && hooks.afterSettingsChange) hooks.afterSettingsChange();
   });
   expandLoads(text, async (spec) => {
     try {
@@ -58,8 +95,10 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
     }
   }).then(({ text: full, errors, specs }) => {
     if (mine !== latest.generation) return;
+    const changed = layerSettings(vars, full);
     applyHolidayVariables({ ...vars, 'org-xx-lisp-init': full });
-    if (errors.length) setStatus(errors.join(' '));
+    if (changed && hooks.afterSettingsChange) hooks.afterSettingsChange();
+    if (errors.length || lispSettings.errors.length) setStatus([...errors, ...lispSettings.errors].join(' '));
     else if (say) setStatus(`Loaded ${specs.join(', ')}.`);
     render();
   });
