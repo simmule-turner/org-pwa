@@ -1,0 +1,74 @@
+#+TITLE: Plots
+#+STARTUP: showall
+
+A =#+PLOT:= line directly above a table graphs it. In the app, *📊 Plot* below the table shows the graph inline; tap again to hide it. The app reads org-plot's own options, so a line copied from Emacs works. Under each table is what Emacs 29.3 (Org 9.6.15) hands to gnuplot, and the app draws the same series. The drawing itself is the app's own; Emacs needs gnuplot to draw.
+
+* Lines
+A =#+PLOT:= line directly above a table graphs it. =ind= is the column for the x position and =deps= the columns to draw, each as its own line, named by the header row. Tap *📊 Plot* below the table to see the graph.
+
+#+PLOT: title:"Sales" ind:1 deps:(2 3) with:lines
+| Month | Pens | Books |
+|-------+------+-------|
+| 1     |   40 |    12 |
+| 2     |   55 |    18 |
+| 3     |   48 |    25 |
+
+Series:
+- Pens: column 2 against column 1
+- Books: column 3 against column 1
+
+* Points on a numeric axis
+When the x column holds numbers, the points are placed by value. =with:= is =lines=, =points=, =boxes=, =histograms= or =impulses=.
+
+#+PLOT: ind:2 deps:(3) with:points
+| Run | Distance | Time |
+|-----+----------+------|
+| a   |        1 |  6.1 |
+| b   |        2 | 12.5 |
+| c   |        5 | 31.0 |
+
+Series:
+- Time: column 3 against column 2
+
+* Boxes
+=with:boxes= draws a bar per row.
+
+#+PLOT: ind:1 deps:(2) with:boxes
+| Day | Steps |
+|-----+-------|
+| 1   |  8000 |
+| 2   |  9500 |
+| 3   |  4300 |
+
+Series:
+- Steps: column 2 against column 1
+
+* Rows as series
+=transpose:yes= swaps rows and columns first, so each row of the table becomes a line.
+
+#+PLOT: ind:1 transpose:yes
+| Year  | 2024 | 2025 | 2026 |
+|-------+------+------+------|
+| Pens  |   40 |   55 |   48 |
+| Books |   12 |   18 |   25 |
+
+Series:
+- Pens: column 2 against column 1
+- Books: column 3 against column 1
+
+* A radar chart
+=type:radar= draws one axis per row, after =transpose:yes= turns the columns into axes. =min= and =max= set the range.
+
+#+PLOT: transpose:yes type:radar min:0 max:4
+| Format | Tools | Speed | Portability |
+|--------+-------+-------+-------------|
+| Org    |     4 |     3 |           4 |
+| Word   |     3 |     2 |           2 |
+
+Axes, one per row after the swap: Tools, Speed, Portability.
+
+* Where the app differs from Emacs
+- Options that only script gnuplot (=set=, =line=, =script=, =file=, =map=, =timefmt=) are read and ignored.
+- Not drawn: =type:3d= and =type:grid=.
+
+App only: the graph is inline SVG, no gnuplot needed.

@@ -116,10 +116,10 @@ test('walks across headings, paragraphs, list items, and table cells in one pass
 
 // ---- capture groups ------------------------------------------------------
 
-test('THE FEATURE: $1-$9 in the replacement text refer to capture groups, matching real Emacs/JS convention', () => {
+test('THE FEATURE: \\1-\\9 in the replacement text refer to capture groups, as in Emacs', () => {
   const d = doc(['* A', 'call Bob at 555-1234']);
   const re = emacsRegexToJs('\\(555\\)-\\([0-9]+\\)', 'g');
-  const qr = createQueryReplace(d, re, '$2-$1');
+  const qr = createQueryReplace(d, re, '\\2-\\1');
   qr.replaceAll();
   const target = collectReplaceTargets(d).find((t) => t.type === 'paragraph');
   assert.equal(target.getText(), 'call Bob at 1234-555');
@@ -277,9 +277,9 @@ test('createTextQueryReplace.quit() stops the walk, leaving everything after the
   assert.equal(qr.getText(), 'X a a');
 });
 
-test('createTextQueryReplace with a $1 capture group substitutes correctly, the same convention createQueryReplace already uses', () => {
+test('createTextQueryReplace with a \\1 capture group substitutes correctly, the same convention createQueryReplace uses', () => {
   const re = emacsRegexToJs('\\(foo\\)-bar', 'gi');
-  const qr = createTextQueryReplace('foo-bar', re, 'baz-$1');
+  const qr = createTextQueryReplace('foo-bar', re, 'baz-\\1');
   qr.replaceAll();
   assert.equal(qr.getText(), 'baz-foo');
 });

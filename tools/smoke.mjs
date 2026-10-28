@@ -585,14 +585,14 @@ check('agenda: rows show their effort, and each day totals what is planned (coun
   await context.close();
 });
 
-check('agenda: a habit (STYLE habit, a repeater with /max) shows its 29-day strip with today marked, and the panel can hide habits', async () => {
+check('agenda: a habit (STYLE habit, a repeater with /max) shows its 28-day strip with today marked, and the panel can hide habits', async () => {
   const { context, page, errors } = await freshPage();
   const today = orgToday();
   await newDocument(page, ['* TODO Shave', `SCHEDULED: ${today.replace('>', ' .+2d/4d>')}`, ':PROPERTIES:', ':STYLE: habit', ':END:', '* TODO Plain task', `SCHEDULED: ${today}`, ''].join('\n'));
   await viewMenu(page, 'Agenda');
   await page.waitForSelector('[data-habit-strip]');
   expect((await page.locator('[data-habit-strip]').count()) === 1, 'only the habit carries a strip');
-  expect((await page.locator('[data-habit-cell]').count()) === 29, 'the strip has 21 days before, today and 7 after');
+  expect((await page.locator('[data-habit-cell]').count()) === 28, 'the strip has 21 days before, today and 6 after');
   expect((await page.locator('[data-habit-cell$="!"]').count()) === 1, 'today is marked');
   await page.locator('[aria-label="Sort, filter and limit the agenda by effort"]').click();
   await page.waitForSelector('[data-show-habits]');
@@ -3016,7 +3016,7 @@ check('Archive & Refile panel: two parts that scroll alone, three one-line butto
   expect(!(await page.locator('#archiveRefilePanel').isVisible()), 'Cancel closes it');
   expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.doc.children[0].title)) === 'Move me', 'and nothing moved');
 
-  // Archive within the file: the heading gets the tag and goes under the archive location
+  // Archive within the file: the heading goes under the archive location and is stamped, with no ARCHIVE tag, as in Emacs
   await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
     S.state.doc.children[0].properties.ARCHIVE = '::* Archived';
@@ -3027,7 +3027,7 @@ check('Archive & Refile panel: two parts that scroll alone, three one-line butto
   await page.locator('#archiveRefilePanelBox [data-act="archive"]').click();
   await page.waitForTimeout(500);
   const text = await page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
-  expect(/\* Archived\n\*\* Move me.*:ARCHIVE:/s.test(text) || text.includes(':ARCHIVE:'), `archived: ${text.slice(-300)}`);
+  expect(/\* Archived\n\n\*\* Move me\b/.test(text) && text.includes(':ARCHIVE_TIME:') && !/^\*+ .*:ARCHIVE:/m.test(text), `archived: ${text.slice(-300)}`);
 
   // an archived heading offers Restore in the same place
   await page.locator('.heading-title', { hasText: 'Move me' }).first().click();

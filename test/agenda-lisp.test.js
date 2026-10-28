@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { agendaLisp, evalPrefixForm, runFunctionCommand } from '../src/agenda-lisp.js';
+import { PrefixFormError, agendaLisp, evalPrefixForm, runFunctionCommand } from '../src/agenda-lisp.js';
 import { sortAgendaItems } from '../src/agenda-sort.js';
 import { formatAgendaPrefix } from '../src/agenda-prefix.js';
 import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
@@ -37,10 +37,11 @@ test('%(form) in the prefix format is evaluated, with the row\'s variables', () 
   const ev = (form) => evalPrefixForm(form, { category: 'Home', level: '  ' }, null);
   assert.equal(ev('(concat "<" category ">")'), '<Home>');
   assert.equal(ev('(length level)'), '2');
-  // Emacs 29.3: (format "%%![Error: %s]" error)
-  assert.equal(ev('(error "boom %d" 3)'), '%![Error: (error boom 3)]');
-  assert.equal(ev('(car 5)'), '%![Error: (wrong-type-argument listp 5)]');
-  assert.equal(ev('(foo)'), '%![Error: (void-function foo)]');
+  // Emacs 29.3 stops the Agenda with the error (error-message-string), tools/gen-agenda-settings-example.mjs
+  const fails = (form) => { try { ev(form); } catch (e) { assert.ok(e instanceof PrefixFormError); return e.message; } return null; };
+  assert.equal(fails('(error "boom %d" 3)'), 'boom 3');
+  assert.equal(fails('(car 5)'), 'Wrong type argument: listp, 5');
+  assert.equal(fails('(foo)'), 'Symbol’s function definition is void: foo');
   assert.equal(formatAgendaPrefix('x%-8(upcase category)|%?(identity "")|', {}, (f) => ev(f.replace('category', '"ab"'))), 'xAB      ||');
   assert.equal(formatAgendaPrefix('%(foo (bar "(")) %c', { category: 'c' }, (f) => `[${f}]`), '[(foo (bar "("))] c');
   assert.equal(formatAgendaPrefix('%(x) %c', { category: 'c' }), ' c');
@@ -53,6 +54,6 @@ test('a Lisp function as a custom command is read, kept, and run with the match'
   assert.equal(cmds[0].fn, 'my-fn');
   assert.match(withCustomCommand(text, { key: 'q', description: 'd', type: 'tags', query: 'b', sortingStrategy: null }), /\("x" "Mine" my-fn "work"\)/);
   assert.deepEqual(runFunctionCommand('(lambda (m) (princ (concat "got " m)) (insert "!"))', 'work'), { ok: true, text: 'got work!' });
-  assert.deepEqual(runFunctionCommand("(lambda (m) (list \"a\" \"b\"))", ''), { ok: true, text: 'a\nb' });
+  assert.deepEqual(runFunctionCommand("(lambda (m) (list \"a\" \"b\"))", ''), { ok: true, text: '' }); // what the function returns is not shown, as in Emacs
   assert.equal(runFunctionCommand('(lambda (m) (error "no"))', '').ok, false);
 });

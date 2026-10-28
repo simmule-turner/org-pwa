@@ -45,12 +45,19 @@ export function fromObject(x) {
   return { k: 'sym', v: 'nil' };
 }
 
-/** Variables a program changes with `add-to-list`, `push` or `cl-pushnew` that nothing has set yet start as the empty list, as the app has always read them. @param {string} text */
+/** The list variables the app reads from the init or keeps a default for; Emacs has them all bound, so a program may add to them. */
+const KNOWN_LISTS = new Set([
+  'org-modules', 'org-capture-templates', 'org-refile-targets', 'org-agenda-files', 'org-agenda-custom-commands', 'org-todo-keywords',
+  'org-tag-alist', 'org-latex-classes', 'org-latex-packages-alist', 'org-latex-default-packages-alist', 'org-latex-text-markup-alist',
+  'org-latex-listings-langs', 'org-latex-minted-langs', 'org-latex-minted-options', 'org-latex-listings-options',
+  'org-beamer-environments-extra', 'org-odt-table-styles', 'org-structure-template-alist', 'org-link-abbrev-alist',
+  'org-babel-load-languages', 'org-publish-project-alist', 'calendar-holidays', 'load-path',
+]);
+
+/** The known list variables the program names; a program adds to them with `add-to-list`, `push` or `cl-pushnew`, and Emacs has them bound. Any other variable is void until the program sets it. @param {string} text */
 function pushedNames(text) {
-  const names = new Set();
-  for (const m of text.matchAll(/\(add-to-list\s+'([^\s()]+)/g)) names.add(m[1]);
-  for (const m of text.matchAll(/\((?:push|cl-pushnew)\s+(?:'[^\s()]+|"[^"]*"|\([^()]*\)|[^\s()]+)\s+([^\s()']+)\)/g)) names.add(m[1]);
-  return names;
+  const names = new Set([...KNOWN_LISTS, ...(text.match(/holiday-[a-z]+-holidays/g) || [])]);
+  return [...names].filter((n) => text.includes(n));
 }
 
 /**

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v642 — Examples for every feature, and closer to Emacs
+Ten new files in =examples/= cover agenda settings, habits, LaTeX export and citations, the Lisp init, plots, archive and refile, logging, search and attachments, each checked against Emacs 29.3. Running them exposed differences, now fixed: habit strips are 28 days, archiving adds no tag, a failing =%(form)= stops the Agenda, replace uses =\1=, plots without =ind= use the row number, and citations print as in Emacs. The README is shorter: one example per command, the rest in the files.
+Verified: the new example tests against Emacs, and the related agenda, habit, attachment, search and refile checks.
+
 * v641 — Table field names, LaTeX Lisp hooks, plain search rows
 A ~$name=~ formula sets a field named by a ~_~ or ~^~ row, and a ~%~ parameter gives the default format; table formulas now run in Org's order (sorted by target, column formulas row by row, then fields). LaTeX export runs ~(eval ..)~ macros and ~org-latex-format-headline-function~ (HTML, ASCII, ODT and Org export run the macros too). Keyword search and Match rows show the heading only, as Emacs does.
 Verified: three new Emacs 29.3 comparisons (41 table, 39 macro, 21 headline cases), and the table, search and export menu checks.

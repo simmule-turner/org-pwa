@@ -1,0 +1,148 @@
+#+TITLE: Citations
+#+STARTUP: showall
+
+A cookbook for citations. Point =#+BIBLIOGRAPHY:= at a file (=refs.bib= beside these examples) and write =[cite:@key]=. The LaTeX that Emacs 29.3 (Org 9.6.15) writes for each text is shown, the part between =\begin{document}= and =\end{document}=, and the app writes the same. The =basic= processor, which is the default, writes the citation as text and the reference list as paragraphs; =natbib= and =biblatex= write commands for LaTeX to resolve. The last section says where the app differs from Emacs.
+
+* A citation and its list
+The default style is author and year. =#+PRINT_BIBLIOGRAPHY:= marks where the reference list goes.
+
+#+begin_src org
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+See [cite:@knuth84] and [cite:@knuth84;@lamport94].
+
+,* References
+,#+PRINT_BIBLIOGRAPHY:
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+See (Donald E. Knuth, 1984) and (Donald E. Knuth, 1984, Leslie Lamport and Donald E. Knuth, 1994).
+
+\section{References}
+\label{sec:org0000002}
+\noindent
+Donald E. Knuth (1984). \emph{The {TeX}book}, Addison-Wesley.
+
+\noindent
+Leslie Lamport and Donald E. Knuth (1994). \emph{LaTeX: A Document Preparation System}, Journal of Typesetting.
+#+end_src
+
+* Styles
+=/t= is the text style, =/na= leaves the author out, =/b= is the bare form, and =/n= prints nothing.
+
+#+begin_src org
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+[cite/t:@knuth84], [cite/na:@knuth84], [cite/b:@knuth84], [cite/n:@three].
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+Donald E. Knuth (1984), (1984), (Donald E. Knuth, 1984),.
+#+end_src
+
+* Prefix, suffix and page numbers
+Text before a key is its prefix, and text after it is its suffix.
+
+#+begin_src org
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+Details in [cite:see @knuth84, p. 5] and [cite/t:@lamport94, chapter 2].
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+Details in (see Donald E. Knuth, 1984, p. 5) and Leslie Lamport and Donald E. Knuth (1994, chapter 2).
+#+end_src
+
+* Several authors
+The basic processor shortens a long author list.
+
+#+begin_src org
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+Prior work: [cite:@three].
+
+,#+PRINT_BIBLIOGRAPHY:
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+Prior work: (Ann Alpha and Bob Beta and Cy Gamma, 2001).
+
+\noindent
+Ann Alpha and Bob Beta and Cy Gamma (2001). \emph{Three authors}.
+#+end_src
+
+* natbib
+=#+CITE_EXPORT: natbib= leaves the work to LaTeX: =\citep{}=, =\citet{}= and a =\bibliography{}= line. The style after the processor name becomes =\bibliographystyle{}=.
+
+#+begin_src org
+,#+CITE_EXPORT: natbib plain
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+See [cite:@knuth84], [cite/t:@lamport94] and [cite/a:@knuth84].
+
+,#+PRINT_BIBLIOGRAPHY:
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+See \citep{knuth84}, \citet{lamport94} and \citeauthor{knuth84}.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+#+end_src
+
+* biblatex
+=#+CITE_EXPORT: biblatex= writes =\autocite{}=, =\textcite{}= and =\printbibliography=.
+
+#+begin_src org
+,#+CITE_EXPORT: biblatex
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+See [cite:@knuth84], [cite/t:@lamport94] and [cite/a:@knuth84].
+
+,#+PRINT_BIBLIOGRAPHY:
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+See \autocite{knuth84}, \textcite{lamport94} and \citeauthor*{knuth84}.
+
+\printbibliography
+#+end_src
+
+* The author alone
+=/a= (the author alone) prints the author in HTML and plain text, but Org 9.6.15's LaTeX export stops with an error; the app stops with the same one.
+
+#+begin_src org
+,#+BIBLIOGRAPHY: refs.bib
+,* Notes
+By [cite/a:@knuth84].
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+ERROR Wrong type argument: characterp, raw
+#+end_src

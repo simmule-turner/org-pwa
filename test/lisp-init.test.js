@@ -17,11 +17,15 @@ test('the init is Lisp: functions, let, loops and computed values', () => {
   assert.deepEqual(vars.errors, []);
 });
 
-test('add-to-list, push and add-hook start from nothing, as the init always has', () => {
-  const vars = runInit(`(add-to-list 'my-list 'a)\n(add-to-list 'my-list 'b t)\n(push "z" my-other)\n(add-hook 'diary-list-entries-hook 'diary-sort-entries)`);
-  assert.deepEqual(vars.get('my-list').items.map((x) => x.v), ['a', 'b']);
-  assert.deepEqual(vars.get('my-other').items.map((x) => x.v), ['z']);
+test('add-to-list and push on a variable never set signal void-variable as Emacs does; the variables the app knows, and add-hook, start empty', () => {
+  const vars = runInit(`(add-to-list 'my-list 'a)\n(push "z" my-other)\n(add-to-list 'org-modules 'org-habit)\n(push '("x") org-capture-templates)\n(add-hook 'diary-list-entries-hook 'diary-sort-entries)`);
+  assert.deepEqual(vars.errors, ['Symbol’s value as variable is void: my-list', 'Symbol’s value as variable is void: my-other']);
+  assert.equal(vars.get('my-list'), undefined);
+  assert.deepEqual(vars.get('org-modules').items.map((x) => x.v), ['org-habit']);
+  assert.equal(vars.get('org-capture-templates').items.length, 1);
   assert.deepEqual(vars.get('diary-list-entries-hook').items.map((x) => x.v), ['diary-sort-entries']);
+  const set = runInit(`(setq my-list nil)\n(add-to-list 'my-list 'a)\n(add-to-list 'my-list 'b t)`);
+  assert.deepEqual(set.get('my-list').items.map((x) => x.v), ['a', 'b']);
 });
 
 test('a failing form is reported and the forms after it still run', () => {

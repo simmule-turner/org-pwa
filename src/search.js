@@ -81,7 +81,22 @@ function buildMatcher(query, useRegex) {
   } catch (err) {
     throw new Error('Invalid regex: ' + err.message);
   }
-  return (/** @type {string} */ text) => re.test(text);
+  const matcher = (/** @type {string} */ text) => re.test(text);
+  return Object.assign(matcher, { sees: 'heading-line' }); // a regexp also sees the heading line as written, stars included, as in Emacs
+}
+
+/** The heading line as it is written in the file.
+ * @param {Heading} h */
+function headingLine(h) {
+  const tags = (h.tags || []).length ? ' :' + (h.tags || []).join(':') + ':' : '';
+  return '*'.repeat(h.level || 1) + ' ' + (h.todo ? h.todo + ' ' : '') + (h.priority ? `[#${h.priority}] ` : '') + h.title + tags;
+}
+
+/** Whether a regexp matcher matches the heading line as written.
+ * @param {Heading} h
+ * @param {Matcher} matches */
+function lineMatches(h, matches) {
+  return 'sees' in matches && matches.sees === 'heading-line' && matches(headingLine(h));
 }
 
 /** Same idea as buildMatcher, but returns the position of the match (for
@@ -402,7 +417,7 @@ function bodyContainsKeyword(bodyNodes, matches) {
  * @param {Matcher} matches
  *  searchTextWithinHeading's own walk need updating together. */
 function headingContainsKeyword(heading, matches) {
-  if (matches(heading.title)) return true;
+  if (matches(heading.title) || lineMatches(heading, matches)) return true;
   if ((heading.tags || []).some((t) => matches(t))) return true;
   if (heading.todo && matches(heading.todo)) return true;
   if (heading.priority && matches(heading.priority)) return true;
@@ -484,7 +499,7 @@ function walkBodyForMatches(results, heading, bodyNodes, query, matches, useRege
  * @param {boolean} useRegex
  *  than a single row that can only highlight one of them. */
 function searchTextWithinHeading(results, node, q, matches, useRegex) {
-  const titleMatch = matches(node.title);
+  const titleMatch = matches(node.title) || lineMatches(node, matches);
   const tagMatch = (node.tags || []).some((t) => matches(t));
   const todoMatch = !!node.todo && matches(node.todo);
   const priorityMatch = !!node.priority && matches(node.priority);

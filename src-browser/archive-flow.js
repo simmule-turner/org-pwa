@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: archive flow.
-import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
+import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
 import { displayName } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
@@ -34,9 +34,9 @@ export async function archiveHeadingToLocation(heading) {
     // Same file: build the stamped copy, remove the original, insert
     // the copy at the target location, save -- one atomic in-memory
     // edit, no cross-file I/O risk to worry about.
-    const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId);
+    const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId, { infile: true });
     removeHeading(S.state.doc, heading);
-    insertAtArchiveLocation(S.state.doc, clone, headlinePart);
+    insertAtArchiveLocation(S.state.doc, clone, headlinePart, { sourceFileId: S.state.documentId });
     commitAndRender('Archived heading');
     setStatus('--- Archive complete.');
     return;
@@ -48,8 +48,8 @@ export async function archiveHeadingToLocation(heading) {
     label: 'archive',
     historyLabel: 'Archived heading (from another file)',
     allowMissing: true,
-    mutate: (doc) => {
-      insertAtArchiveLocation(doc, clone, headlinePart);
+    mutate: (doc, info) => {
+      insertAtArchiveLocation(doc, clone, headlinePart, { sourceFileId: S.state.documentId, targetFileId, created: info?.created });
       return true;
     },
   });
@@ -95,9 +95,11 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
     removeHeading(S.state.doc, heading);
     if (olpSegments.length > 0) {
       const target = resolveOlpTarget(S.state.doc, olpSegments);
+      shiftLevels(clone, target.level + 1);
       target.children.push(clone);
       target.collapsed = false; // otherwise the just-restored item vanishes from view immediately
     } else {
+      shiftLevels(clone, 1);
       S.state.doc.children.push(clone);
     }
     commitAndRender('Restored (unarchived) heading');
@@ -114,9 +116,11 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
     mutate: (doc) => {
       if (olpSegments.length > 0) {
         const target = resolveOlpTarget(doc, olpSegments);
+        shiftLevels(clone, target.level + 1);
         target.children.push(clone);
         target.collapsed = false;
       } else {
+        shiftLevels(clone, 1);
         doc.children.push(clone);
       }
       return true;

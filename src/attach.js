@@ -211,7 +211,7 @@ function formatAttachmentLink(filename) {
  *  name), rather than producing an empty path segment. */
 function sanitizeAttachmentFilename(name) {
   const cleaned = String(name || '')
-    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/[/\0]/g, '_')
     .trim();
   return cleaned || 'attachment';
 }

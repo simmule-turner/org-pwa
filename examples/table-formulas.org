@@ -113,13 +113,29 @@ Flags =T=, =U= and =t= read =H:MM= cells as durations and show =H:MM:SS=, =H:MM=
 #+TBLFM: $2=$1*$g;%.2f
 
 * Several formulas, in order
-Formulas run left to right, and each sees the earlier results.
+Formulas do not run in the order written. Org sorts them by their target, and runs column formulas row by row before field formulas, so a formula sees the results of the ones that sort before it. Here =$3= is written first but runs after =$2=.
 
 | Base | Doubled | Plus ten |
 |------+---------+----------|
 |    3 |       6 |       16 |
 |    8 |      16 |       26 |
-#+TBLFM: $2=$1*2::$3=$2+10
+#+TBLFM: $3=$2+10::$2=$1*2
+
+* Named fields
+A row marked =_= names the field below each of its cells; a row marked =^= names the field above. A name can then stand for that field on the right of a formula, or be the target on the left: =$tax== writes that one field.
+
+|   | Price | Tax   | Total  |
+| _ | price | tax   | total  |
+| # | 100   | 20.00 | 120.00 |
+#+TBLFM: $tax=$price*0.2;%.2f::$total=$price*1.2;%.2f
+
+* A default format
+A =$= row can hold =%== and a format. It is added to a formula that has flags such as =N= but no format of its own, so one line sets the decimals for the table. A formula with no flags at all does not get it.
+
+| $ | %=%.2f |   |      |
+| # |      1 | 3 | 0.33 |
+| # |      2 | 7 | 0.29 |
+#+TBLFM: $4=$2/$3;N
 
 * Complex numbers
 | z1     | z2     | Product  |

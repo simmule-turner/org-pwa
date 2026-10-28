@@ -266,18 +266,20 @@ export async function startQueryReplace() {
   }
   const replacementText = await promptText(`Query replace "${S.searchQuery}" with:`, '', { okLabel: 'Replace' });
   if (replacementText === null) return; // cancelled
+  // a plain-text search puts the replacement in as typed; a regexp search reads \1, \& and \\ in it, as in Emacs
+  const walkText = S.searchUseRegex ? replacementText : replacementText.replace(/\\/g, '\\\\');
 
   if (inTextMode) {
     const textarea = document.getElementById('document-text-edit-input');
-    const controller = createTextQueryReplace(textarea ? /** @type {any} */ (textarea).value : '', pattern, replacementText);
-    S.activeQueryReplace = { controller, replacementText, findPattern: S.searchQuery, pattern, inTextMode };
+    const controller = createTextQueryReplace(textarea ? /** @type {any} */ (textarea).value : '', pattern, walkText);
+    S.activeQueryReplace = { controller, replacementText, walkText, findPattern: S.searchQuery, pattern, inTextMode };
     renderSearchPanel();
     return;
   }
 
   ensureAgendaFilesLoaded();
   const matchingIds = aggregateAgendaDocs({ writable: true }) // a local agenda file is read-only, so a replace never walks into one
-    .filter(({ doc }) => createQueryReplace(doc, pattern, replacementText).current() !== null)
+    .filter(({ doc }) => createQueryReplace(doc, pattern, walkText).current() !== null)
     .map(({ documentId }) => documentId);
   if (matchingIds.length === 0) {
     setStatus('No matches to replace.');
@@ -294,8 +296,9 @@ export async function startQueryReplace() {
   }
 
   S.activeQueryReplace = {
-    controller: createQueryReplace(S.state.doc, pattern, replacementText),
+    controller: createQueryReplace(S.state.doc, pattern, walkText),
     replacementText,
+    walkText,
     findPattern: S.searchQuery,
     pattern,
     inTextMode: false,
@@ -388,7 +391,7 @@ export async function advanceToNextFileOrFinish() {
     await advanceToNextFileOrFinish();
     return;
   }
-  aq.controller = createQueryReplace(S.state.doc, aq.pattern, aq.replacementText);
+  aq.controller = createQueryReplace(S.state.doc, aq.pattern, aq.walkText);
   S.activeQueryReplace = aq;
   S.searchOpen = true;
   renderSearchPanel();

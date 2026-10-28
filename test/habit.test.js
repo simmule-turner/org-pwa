@@ -41,7 +41,7 @@ test('graph colours follow org-habit', () => {
   const g = buildHabitGraph(first(doc(HABIT)), isDone, new Date(2026, 9, 13), { precedingDays: 6, followingDays: 4 });
   const faces = g.cells.map((c) => c.face + c.mark).join(' ');
   // Oct 7..17. Oct 8 done; due again Oct 10 (green), last chance Oct 12 (yellow on 12? 8+2=10..deadline 12); Oct 11 done; next due 13 (green), last chance 15.
-  assert.equal(g.cells.length, 11);
+  assert.equal(g.cells.length, 10);
   assert.equal(g.cells[g.todayIndex].mark, '!');
   assert.match(faces, /g\*/);
   assert.equal(g.cells[4].face, 'g'); // Oct 11 done
@@ -59,7 +59,7 @@ test('agenda shows one habit entry on today, with its graph, and hides it when t
   const on = buildAgendaItems([{ documentId: 'a.org', doc: d }], { ...common, habits: { enabled: true, onlyForToday: true, showAllToday: false, precedingDays: 21, followingDays: 7 } });
   const habit = on.filter((i) => i.habit);
   assert.equal(habit.length, 1);
-  assert.equal(habit[0].habit.cells.length, 29);
+  assert.equal(habit[0].habit.cells.length, 28);
   const off = buildAgendaItems([{ documentId: 'a.org', doc: d }], { ...common, habits: { enabled: false } });
   assert.equal(off.filter((i) => i.title === 'Shave').length, 0);
 });

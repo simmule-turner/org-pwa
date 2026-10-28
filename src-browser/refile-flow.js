@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: refile flow.
-import { shiftLevels } from '../src/archive-model.js';
+import { appendRefiled } from '../src/archive-model.js';
 import { createHeading, removeHeading } from '../src/heading-edit.js';
 import { parseOrg } from '../src/org-parser.js';
 import { findHeadingByOutlinePath, resolveEntryFileIds } from '../src/refile.js';
@@ -87,17 +87,15 @@ export async function loadRefileTargetDocs(targetsSpec) {
 export async function performRefile(heading, targetDocumentId, targetOutlinePath, newTitle = '') {
   // With a new heading named, the subtree goes under a child of the chosen target with that title: an existing child of that name if
   // there is one, else a new last child (Emacs's org-refile-allow-creating-parent-nodes).
-  /** @param {Heading} target */
-  const refileUnder = (target) => {
+  const refileUnder = (/** @type {Doc} */ doc, /** @type {Heading} */ target) => {
     let destination = target;
     if (newTitle) {
       destination = target.children.find((child) => child.title === newTitle) || createHeading({ level: target.level + 1, title: newTitle });
       if (!target.children.includes(destination)) target.children.push(destination);
       target.collapsed = false;
     }
-    destination.children.push(heading);
+    appendRefiled(doc, destination, heading);
     destination.collapsed = false;
-    shiftLevels(heading, destination.level + 1);
     return destination.title;
   };
   const rememberedPath = newTitle ? [...(targetOutlinePath || []), newTitle] : targetOutlinePath;
@@ -108,7 +106,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
       return;
     }
     removeHeading(S.state.doc, heading);
-    const destinationTitle = refileUnder(target);
+    const destinationTitle = refileUnder(S.state.doc, target);
     commitAndRender('Refiled heading');
     setStatus(`Refiled to "${destinationTitle}".`);
     rememberRefileTarget(targetDocumentId, rememberedPath);
@@ -128,7 +126,7 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
         );
         return null;
       }
-      return refileUnder(target);
+      return refileUnder(doc, target);
     },
   });
   if (!ok) return;

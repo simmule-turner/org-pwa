@@ -80,15 +80,17 @@ test('THE FEATURE: extractPlotData reads the manual\u2019s own documented histog
   ]);
 });
 
-test('ind and deps both default correctly when omitted: ind defaults to column 1, deps defaults to every other column', () => {
+test('ind and deps default as in Emacs when omitted: x is the row number and every column, the first included, is a series', () => {
   const table = mkTable([
     ['Sede', 'Max cites', 'H-index'],
     null,
     ['Chile', '257.72', '21.39'],
   ]);
   const data = extractPlotData(table, {});
-  assert.equal(data.indLabel, 'Sede');
-  assert.deepEqual(data.series.map((s) => s.label), ['Max cites', 'H-index']);
+  assert.deepEqual(data.series.map((s) => s.label), ['Sede', 'Max cites', 'H-index']);
+  assert.deepEqual(data.rows.map((r) => r.ind), ['1']);
+  // with ind given, deps defaults to every other column
+  assert.deepEqual(extractPlotData(table, { ind: 2 }).series.map((s) => s.label), ['Sede', 'H-index']);
 });
 
 test('labels overrides the default column-header labels, matching real org-plot\u2019s own documented behavior exactly ("Defaults to the column headers if they exist")', () => {
@@ -97,8 +99,11 @@ test('labels overrides the default column-header labels, matching real org-plot\
     null,
     ['1', '10', '20'],
   ]);
-  const data = extractPlotData(table, { labels: ['Alpha', 'Beta'] });
-  assert.deepEqual(data.series.map((s) => s.label), ['Alpha', 'Beta']);
+  const data = extractPlotData(table, { labels: ['Alpha', 'Beta', 'Gamma'] });
+  assert.deepEqual(data.series.map((s) => s.label), ['Alpha', 'Beta', 'Gamma']);
+  // labels are indexed by column number, as in Emacs; a column it does not name is titled by its number
+  assert.deepEqual(extractPlotData(table, { deps: [3], labels: ['Alpha', 'Beta', 'Gamma'] }).series.map((s) => s.label), ['Gamma']);
+  assert.deepEqual(extractPlotData(table, { deps: [3], labels: ['Mine'] }).series.map((s) => s.label), ['3']);
 });
 
 test('THE FEATURE (the exact real-world radar example from the manual, re-read closely): transpose swaps rows and columns before ind/deps are computed, turning criteria into axes and formats into series', () => {
@@ -108,7 +113,7 @@ test('THE FEATURE (the exact real-world radar example from the manual, re-read c
     ['Word', '2', '4'],
     ['LaTeX', '4', '1'],
   ]);
-  const data = extractPlotData(table, { transpose: 'yes' });
+  const data = extractPlotData(table, { transpose: 'yes', ind: 1 });
   assert.equal(data.indLabel, 'Format');
   assert.deepEqual(
     data.rows.map((r) => r.ind),
@@ -127,7 +132,7 @@ test('a non-numeric or missing cell in a deps column becomes null in its own val
     ['a', 'not a number'],
     ['b', '5'],
   ]);
-  const data = extractPlotData(table, {});
+  const data = extractPlotData(table, { ind: 1 });
   assert.deepEqual(
     data.rows.map((r) => r.values[0]),
     [null, 5]
@@ -165,7 +170,7 @@ test('THE FIX (the exact reported bug): a table with no real header at all (no h
 
 test('a single data row with no header at all is valid on its own -- previously impossible to express correctly, since it was always misread as "just a header, no data" before this fix', () => {
   const table = mkTable([['a', '1']]);
-  const data = extractPlotData(table, {});
+  const data = extractPlotData(table, { ind: 1 });
   assert.deepEqual(data.rows, [{ ind: 'a', values: [1] }]);
 });
 

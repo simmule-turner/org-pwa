@@ -440,8 +440,9 @@ test('resolveAttachmentTarget resolves against the heading\u2019s own :ID: when 
 test('resolveAttachmentTarget inherits from the nearest ANCESTOR\u2019s :ID: when the heading itself has none, matching real org-attach\u2019s own inheritance behavior', () => {
   const doc = parseOrg('* Parent\n:PROPERTIES:\n:ID: xyz789-qqq\n:END:\n** Child\nNo ID here.\n');
   const child = doc.children[0].children[0];
-  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf');
+  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf', undefined, true);
   assert.equal(result, 'data/xy/z789-qqq/notes.pdf');
+  assert.equal(resolveAttachmentTarget(doc, child, 'attachment:notes.pdf'), null); // org-use-property-inheritance nil, Emacs's default
 });
 
 test('resolveAttachmentTarget prefers the heading\u2019s OWN :ID: over an ancestor\u2019s, when both exist', () => {
@@ -462,7 +463,7 @@ test('resolveAttachmentTarget returns null when no heading in the whole ancestor
 test('resolveAttachmentTarget walks multiple levels up correctly, not just the immediate parent', () => {
   const doc = parseOrg('* Grandparent\n:PROPERTIES:\n:ID: gp000\n:END:\n** Parent\n*** Child\n');
   const child = doc.children[0].children[0].children[0];
-  const result = resolveAttachmentTarget(doc, child, 'attachment:deep.jpg');
+  const result = resolveAttachmentTarget(doc, child, 'attachment:deep.jpg', undefined, true);
   assert.equal(result, 'data/gp/000/deep.jpg');
 });
 
@@ -508,7 +509,7 @@ test('resolveAttachmentTarget without a documentId at all (backward compatible) 
 test('resolveAttachmentTarget document-relative resolution still correctly inherits from an ancestor\u2019s :ID:', () => {
   const doc = parseOrg('* Parent\n:PROPERTIES:\n:ID: xyz789\n:END:\n** Child\nNo ID here.\n');
   const child = doc.children[0].children[0];
-  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf', 'journal/2026.org');
+  const result = resolveAttachmentTarget(doc, child, 'attachment:notes.pdf', 'journal/2026.org', true);
   assert.equal(result, 'journal/data/xy/z789/notes.pdf');
 });
 
@@ -532,7 +533,8 @@ test('resolveAttachmentDirectory: the heading’s own :ID: folder, else the near
   const [parent, other] = doc.children;
   const child = parent.children[0];
   assert.equal(resolveAttachmentDirectory(doc, parent, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
-  assert.equal(resolveAttachmentDirectory(doc, child, 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-123');
+  assert.equal(resolveAttachmentDirectory(doc, child, 'org-pwa/foo.org', true), 'org-pwa/data/ab/cdef-123');
+  assert.equal(resolveAttachmentDirectory(doc, child, 'org-pwa/foo.org'), null);
   assert.equal(resolveAttachmentDirectory(doc, other, 'org-pwa/foo.org'), null);
 });
 

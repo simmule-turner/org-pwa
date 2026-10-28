@@ -20,6 +20,16 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | holidays.org              | holiday groups and flags, switching entries on and off, adding your own, every entry with a description link | list-holidays                  |
 | calendar.org              | a month, holidays and events built from =js= blocks  | app only                       |
 | sunrise-sunset.org        | Noweb and tangling into an init script               | app only                       |
+| agenda-settings.org       | custom commands, prefix formats with =%(form)=, sort keys, Lisp functions as settings | org-agenda, org-agenda-format-item |
+| habits.org                | the habit strip: colors, ranges, repeaters           | org-habit                      |
+| export-latex.org          | macros including =(eval ..)=, headline function, classes, =#+ATTR_LATEX= | org-export-as 'latex           |
+| citations.org             | citations and the reference list                     | org-cite                       |
+| lisp-init.org             | what the Lisp init reads and how it evaluates        | Emacs Lisp                     |
+| plots.org                 | =#+PLOT:= options and the data they draw             | org-plot                       |
+| archive-refile.org        | archive locations, properties left behind, refile    | org-archive-subtree, org-refile |
+| logging.org               | per-keyword logging, =:LOGBOOK:=, repeats            | org-todo, org-log-*            |
+| search-filter.org         | filter tokens, regex and Match search, replace       | org-search-view, query-replace |
+| attachments.org           | attachment folders, =ATTACH_DIR=, =attachment:= links | org-attach                     |
 | capture-templates.org     | capture templates written in Lisp: targets, blank lines, table rows | org-capture                    |
 | capture-vcard.org         | a capture template that files a contact              | app only                       |
 | contacts-vcard.org        | contacts exported as vCards (flat)                   | app only                       |

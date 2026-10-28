@@ -12,8 +12,8 @@ import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
-import { agendaLisp, prefixEvaluator } from '../src/agenda-lisp.js';
-import { agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
+import { PrefixFormError, agendaLisp, prefixEvaluator } from '../src/agenda-lisp.js';
+import { agendaClockText, agendaPrefixFormat, formatAgendaPrefix } from '../src/agenda-prefix.js';
 import { strategyFor, sortAgendaItems } from '../src/agenda-sort.js';
 import { agendaItemKindLabel, agendaStepAnchor, buildDayHeaderRow, formatAgendaItemTimeText, formatAgendaRangeLabel } from './agenda-format.js';
 import { S } from './app-state.js';
@@ -253,8 +253,7 @@ function todoDone() {
 function rowPrefix(item, view) {
   const format = agendaPrefixFormat(S.state.localVariables['org-agenda-prefix-format'], view);
   if (!format) return null;
-  const clock = (/** @type {Date} */ d) => d.toTimeString().slice(0, 5);
-  const time = item.hasTime ? (item.endDate ? clock(item.date) + '-' + clock(item.endDate) : clock(item.date) + '......') : '';
+  const time = item.hasTime ? agendaClockText(item.date, item.endDate || null) : '';
   const scheduling = item.kind === 'scheduled' ? 'Scheduled:' : item.kind === 'deadline' ? 'Deadline:' : '';
   const effort = item.heading ? itemEffortText(item) || '' : '';
   const parents = item.heading ? ancestorTitles(item.heading) : [];
@@ -262,6 +261,31 @@ function rowPrefix(item, view) {
   const breadcrumbs = parents.length ? parents.join('->') + '->' : '';
   const uses = (/** @type {string} */ letter) => new RegExp('%\\??[-+]?\\d*(\\.\\d+)?[ .;,:!?=|/<>]?' + letter).test(format);
   return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }, /%\??[-+]?\d*(\.\d+)?[ .;,:!?=|/<>]?\(/.test(format) ? prefixEvaluator(item, aggregateAgendaDocs(), { category: item.category || '', time, extra: scheduling, level, effort, tag: (item.tags || []).join(':'), breadcrumbs, 'category-icon': '' }, todoDone()) : undefined), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
+}
+
+/**
+ * The error Emacs stops the Agenda with: the text of the first `%(form)` of the prefix format that fails for these rows, else null.
+ * @param {import('../src/agenda.js').AgendaItem[]} items
+ * @param {'agenda' | 'todo' | 'tags' | 'search'} view
+ * @returns {string | null}
+ */
+export function prefixFailure(items, view) {
+  try {
+    for (const item of items) rowPrefix(item, view);
+    return null;
+  } catch (raw) {
+    if (raw instanceof PrefixFormError) return raw.message;
+    throw raw;
+  }
+}
+
+/** The error text in place of the rows. @param {string} message */
+export function prefixFailureNote(message) {
+  const note = document.createElement('div');
+  note.setAttribute('data-prefix-error', '');
+  note.style.cssText = 'padding:20px 0;font-size:14px;color:#c0392b;white-space:pre-wrap;';
+  note.textContent = message;
+  return note;
 }
 
 export function renderAgendaView() {
@@ -516,6 +540,16 @@ export function renderAgendaView() {
   const ordered = groupedByDay.map((day) => ({ ...day, items: applySortingStrategy(day.items, 'agenda') }));
   const grouped = effortView ? ordered.map((day) => ({ ...day, items: applyAgendaEffortView(day.items, effortView) })) : ordered;
   const visibleDays = effectiveShowAllDates ? grouped : grouped.filter((day) => day.items.length > 0);
+
+  const failure = prefixFailure(
+    visibleDays.flatMap((day) => day.items),
+    'agenda'
+  );
+  if (failure) {
+    container.appendChild(prefixFailureNote(failure));
+    outlineEl.appendChild(container);
+    return;
+  }
 
   if (visibleDays.length === 0) {
     const empty = document.createElement('div');
@@ -1202,7 +1236,9 @@ export function renderTaskListView() {
     container.appendChild(none);
   }
 
-  for (const item of orderedTasks) container.appendChild(buildHeadingRow(item, today, 'todo'));
+  const failure = prefixFailure(orderedTasks, 'todo');
+  if (failure) container.appendChild(prefixFailureNote(failure));
+  else for (const item of orderedTasks) container.appendChild(buildHeadingRow(item, today, 'todo'));
 
   outlineEl.appendChild(container);
 }

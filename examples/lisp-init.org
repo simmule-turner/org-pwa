@@ -1,0 +1,190 @@
+#+TITLE: Lisp init
+#+STARTUP: showall
+
+Settings → Advanced → *Lisp init* takes Emacs Lisp, run as Emacs runs an init file. Each section below shows the Lisp to type and, under it, what Emacs 29.3 (Org 9.6.15) gives for the expressions listed after it; the app gives the same. A form that fails does not stop the ones after it.
+
+* Settings
+=setq= gives a setting a value, written as in Emacs. Numbers can be computed.
+
+#+begin_src emacs-lisp
+(setq org-agenda-files '("github:home.org" "github:journal.org")
+      org-deadline-warning-days (* 2 7)
+      org-log-done 'time)
+#+end_src
+
+Values:
+#+begin_example
+org-agenda-files
+  => ("github:home.org" "github:journal.org")
+org-deadline-warning-days
+  => 14
+org-log-done
+  => time
+#+end_example
+
+* Lists
+=add-to-list= and =push= add to a list you have set. A third argument of =t= adds at the end.
+
+#+begin_src emacs-lisp
+(setq my-list nil my-other nil)
+(add-to-list 'my-list 'a)
+(add-to-list 'my-list 'b t)
+(add-to-list 'my-list 'a)
+(push "z" my-other)
+#+end_src
+
+Values:
+#+begin_example
+my-list
+  => (a b)
+my-other
+  => ("z")
+#+end_example
+
+* A variable that was never set
+=add-to-list= and =push= need a variable that has a value. On one that was never set, Emacs reports that it is void, and the form after it still runs. The variables the app knows, such as =org-modules= and =org-capture-templates=, always have one.
+
+#+begin_src emacs-lisp
+(add-to-list 'never-set 'a)
+(push 1 never-set-either)
+(add-to-list 'org-modules 'org-habit)
+#+end_src
+
+Values:
+#+begin_example
+(boundp 'never-set)
+  => nil
+(car org-modules)
+  => org-habit
+#+end_example
+
+Messages:
+#+begin_example
+Symbol's value as variable is void: never-set
+Symbol's value as variable is void: never-set-either
+#+end_example
+
+* Functions and computed values
+All of Lisp is there to compute a value: =defun=, =let=, loops, =format=. What the init defines is there for diary entries and holiday lists too.
+
+#+begin_src emacs-lisp
+(defun double (n) (* 2 n))
+(setq doubled (let ((acc nil))
+                (dolist (x '(1 2 3)) (push (double x) acc))
+                (nreverse acc)))
+(setq label (mapconcat #'identity '("x" "y") "-"))
+#+end_src
+
+Values:
+#+begin_example
+doubled
+  => (2 4 6)
+label
+  => "x-y"
+(format "%s has %d items, %.1f%%" label (length doubled) 12.5)
+  => "x-y has 3 items, 12.5%"
+#+end_example
+
+* Holidays
+The holiday lists are variables. This switches the general holidays off and adds a day of your own. See =holidays.org= for every entry and flag.
+
+#+begin_src emacs-lisp
+(setq holiday-general-holidays nil)
+(setq holiday-other-holidays
+      '((holiday-fixed 3 14 "Pi Day")
+        (holiday-float 11 4 4 "Thanksgiving")))
+#+end_src
+
+Values:
+#+begin_example
+holiday-general-holidays
+  => nil
+holiday-other-holidays
+  => ((holiday-fixed 3 14 "Pi Day") (holiday-float 11 4 4 "Thanksgiving"))
+#+end_example
+
+* A capture template
+Templates are read as Emacs reads them and appear beside the JSON ones. See =capture-templates.org=.
+
+#+begin_src emacs-lisp
+(setq org-capture-templates
+      '(("t" "Todo" entry (file+headline "gtd.org" "Tasks")
+         "* TODO %?\n  %i")))
+#+end_src
+
+Values:
+#+begin_example
+org-capture-templates
+  => (("t" "Todo" entry (file+headline "gtd.org" "Tasks") "* TODO %?
+  %i"))
+(car (car org-capture-templates))
+  => "t"
+#+end_example
+
+* LaTeX settings
+The LaTeX export reads the ox-latex variables, among them the source block backend and the table options.
+
+#+begin_src emacs-lisp
+(setq org-latex-src-block-backend 'minted
+      org-latex-tables-booktabs t
+      org-latex-default-figure-position "htbp")
+#+end_src
+
+Values:
+#+begin_example
+org-latex-src-block-backend
+  => minted
+org-latex-tables-booktabs
+  => t
+org-latex-default-figure-position
+  => "htbp"
+#+end_example
+
+* A function as a setting
+Some settings name a function. =org-latex-format-headline-function= formats every section title; the Agenda settings such as =org-agenda-cmp-user-defined= work the same way. The expressions below call the function directly.
+
+#+begin_src emacs-lisp
+(setq org-latex-format-headline-function
+      (lambda (todo todo-type priority text tags info)
+        (concat (if todo (format "[%s] " todo) "") (upcase text))))
+#+end_src
+
+Values:
+#+begin_example
+(funcall org-latex-format-headline-function "TODO" (quote todo) nil "Write" nil nil)
+  => "[TODO] WRITE"
+(funcall org-latex-format-headline-function nil nil nil "Plan" nil nil)
+  => "PLAN"
+#+end_example
+
+* When a form fails
+A form that fails shows Emacs's message in the status line, and the forms after it still run.
+
+#+begin_src emacs-lisp
+(setq before 1)
+(car 5)
+(no-such-function 1)
+(setq after 2)
+#+end_src
+
+Values:
+#+begin_example
+before
+  => 1
+after
+  => 2
+#+end_example
+
+Messages:
+#+begin_example
+Wrong type argument: listp, 5
+Symbol's function definition is void: no-such-function
+#+end_example
+
+* Reading more from a file
+=(load "github:file.el")= reads another file as part of the init, and the Agenda's *Refresh* reads it again. Emacs loads a file of your disk instead.
+
+* Where the app differs from Emacs
+The init runs on the app's own interpreter, which has the common functions and the Org read-only functions, not all of Emacs. A function it lacks fails with Emacs's message for a void function. A program that never ends stops with a message.
+
+App only: =(load "github:file.el")= and the settings the app adds (`org-xx-…`).

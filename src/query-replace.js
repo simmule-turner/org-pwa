@@ -116,15 +116,61 @@ function countBlockOnlyMatches(doc, re) {
   return count;
 }
 
+/** Emacs's case rule for `replace-match` when the search ignored case: a match in all capitals
+ *  gives an upcased replacement, one whose every word starts with a capital gives a replacement
+ *  with initial capitals, anything else leaves it as typed.
+ * @param {string} matched
+ * @param {string} text */
+function matchCase(matched, text) {
+  let someLower = false;
+  let someUpper = false;
+  let someMultiletterWord = false;
+  let someNonUpperInitial = false;
+  let prevWord = false;
+  const isWord = (/** @type {string} */ c) => /[\p{L}\p{N}]/u.test(c);
+  for (const c of matched) {
+    if (c !== c.toUpperCase()) {
+      someLower = true;
+      if (!prevWord) someNonUpperInitial = true;
+      else someMultiletterWord = true;
+    } else if (c !== c.toLowerCase()) {
+      someUpper = true;
+      if (prevWord) someMultiletterWord = true;
+    } else if (!prevWord) someNonUpperInitial = true;
+    prevWord = isWord(c);
+  }
+  if (!someLower && someMultiletterWord) return text.toUpperCase();
+  if (!someNonUpperInitial && someMultiletterWord) return text.replace(/(^|[^\p{L}\p{N}])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+  if (!someNonUpperInitial && someUpper) return text.toUpperCase();
+  return text;
+}
+
+/** The text Emacs's query-replace-regexp puts in place of `match`: `\N` is a group, `\&` the whole
+ *  match, `\#` the number of replacements made so far and `\\` a backslash (any other backslash stays).
+ *  When `re` ignores case (a search text without capitals), the case of the match carries over.
+ * @param {string} replacement
+ * @param {RegExpExecArray} match
+ * @param {RegExp} re
+ * @param {number} count */
+function expandReplacement(replacement, match, re, count) {
+  const out = replacement.replace(/\\(.)/gs, (all, c) => {
+    if (c === '&') return match[0];
+    if (c === '#') return String(count);
+    if (c === '\\') return '\\';
+    if (c >= '0' && c <= '9') return match[Number(c)] ?? '';
+    return all;
+  });
+  return re.flags.includes('i') ? matchCase(match[0], out) : out;
+}
+
 /**
  * Drives an Emacs-style interactive query-replace over `doc`: finds
  * every occurrence of `re` (a global-flagged RegExp) across every
  * replace target in document order, offering one at a time via
  * `current()`, and advancing via `replace()` / `skip()` / `replaceAll()`
  * / `quit()` -- the same y/n/!/q vocabulary real Emacs's own
- * query-replace-regexp uses. `replacement` is the literal replacement
- * text; `$1`-`$9` within it refer to the match's own capture groups,
- * the same convention both Emacs and JS already share.
+ * query-replace-regexp uses. `replacement` is read as Emacs reads it:
+ * `\1`-`\9` are the match's capture groups, `\&` the whole match, `\\` a backslash.
  *
  * State is NOT re-queried from the document on every step -- each
  * target's own getText()/setText() pair is called fresh every time,
@@ -180,7 +226,7 @@ function createQueryReplace(doc, re, replacement) {
    */
   function applyReplacement(target, match) {
     const text = target.getText();
-    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
+    const replaced = expandReplacement(replacement, match, globalRe, replacedCount);
     const newText = text.slice(0, match.index) + replaced + text.slice(match.index + match[0].length);
     target.setText(newText);
     replacedCount++;
@@ -276,7 +322,7 @@ function createTextQueryReplace(text, re, replacement) {
 
   /** @param {RegExpExecArray} match */
   function applyReplacement(match) {
-    const replaced = replacement.replace(/\$(\d)/g, (_, n) => match[n] ?? '');
+    const replaced = expandReplacement(replacement, match, globalRe, replacedCount);
     currentText = currentText.slice(0, match.index) + replaced + currentText.slice(match.index + match[0].length);
     replacedCount++;
     searchFrom = match.index + replaced.length;

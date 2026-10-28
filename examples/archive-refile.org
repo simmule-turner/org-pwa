@@ -1,0 +1,417 @@
+#+TITLE: Archiving and refiling
+#+STARTUP: showall
+
+A cookbook for moving subtrees. Each section shows the files before, and after the operation named under its title; the files live in =/home/me/org= and the clock reads 2026-10-11 16:30. The "after" texts are what Emacs 29.3 (Org 9.6.15) left, and the app gives the same except where the last section says otherwise. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+
+* Archive to the default file
+With no setting, the subtree goes to a file named like this one with =_archive= added, at the top level. The first line records where it came from; each of the six properties says where the subtree was.
+
+Archive the heading =File taxes=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org_archive:
+#+BEGIN_SRC org
+#    -*- mode: org -*-
+
+
+Archived entries from file /home/me/org/notes.org
+
+
+,* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+,** Gather receipts
+#+END_SRC
+
+* Archive under a heading of the same file
+=#+ARCHIVE: ::* Archived Tasks= keeps the subtree in this file, under a heading that is created at the end if it is not there yet.
+
+Archive the heading =File taxes=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: ::* Archived Tasks
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: ::* Archived Tasks
+,* Projects :work:
+,** Plan the year
+,* Home
+,** Chores
+
+,* Archived Tasks
+
+,** TODO [#A] File taxes                                            :work:tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+,*** Gather receipts
+#+END_SRC
+
+* Archive to one file, under a heading named after this one
+=%s= in the location is the name of the file; the heading is created in the archive file.
+
+Archive the heading =File taxes=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: archive.org::* From %s
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: archive.org::* From %s
+,* Projects :work:
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, archive.org:
+#+BEGIN_SRC org
+
+Archived entries from file /home/me/org/notes.org
+
+
+,* From notes.org
+
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+,*** Gather receipts
+#+END_SRC
+
+* A heading with its own location
+The =ARCHIVE= property of a heading beats the file's =#+ARCHIVE:= line.
+
+Archive the heading =File taxes=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: archive.org::
+,* Projects :work:
+,** TODO File taxes :tax:
+:PROPERTIES:
+:ARCHIVE: ::* Tax papers
+:END:
+,** Plan the year
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: archive.org::
+,* Projects :work:
+,** Plan the year
+
+,* Tax papers
+
+,** TODO File taxes                                                 :work:tax:
+:PROPERTIES:
+:ARCHIVE: ::* Tax papers
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+#+END_SRC
+
+* Archive a heading with no parent
+A top-level heading has no outline path, so =ARCHIVE_OLPATH= and =ARCHIVE_ITAGS= are left out; a property with nothing to say is not written. A heading that is not a TODO has no =ARCHIVE_TODO= either.
+
+Archive the heading =Home=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+#+END_SRC
+
+After, notes.org_archive:
+#+BEGIN_SRC org
+#    -*- mode: org -*-
+
+
+Archived entries from file /home/me/org/notes.org
+
+
+,* Home
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_CATEGORY: notes
+:END:
+,** Chores
+#+END_SRC
+
+* Tags and category of the subtree
+=ARCHIVE_CATEGORY= is the category the subtree had: its =CATEGORY= property or its parent's, else =#+CATEGORY:=, else the file name. =ARCHIVE_ITAGS= lists the tags it inherited (=#+FILETAGS:= first, then each level from the outermost down; a tag it has itself does not count) separated by spaces. Archived within its own file, the subtree takes those tags on, since it loses its parents.
+
+Archive the heading =Pay=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,#+CATEGORY: finance
+,#+FILETAGS: :office:
+,#+ARCHIVE: ::* Done
+,* Projects :work:
+,** Q4 :money:work:
+,*** TODO Pay :tax:money:
+,* Done
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,#+CATEGORY: finance
+,#+FILETAGS: :office:
+,#+ARCHIVE: ::* Done
+,* Projects :work:
+,** Q4 :money:work:
+,* Done
+
+,** TODO Pay                                           :office:work:tax:money:
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects/Q4
+:ARCHIVE_CATEGORY: finance
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: office work
+:END:
+#+END_SRC
+
+* Archive into a heading that has entries
+The new entry goes last under the heading, one blank line after what is there.
+
+Archive the heading =Sweep=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: ::* Archived Tasks
+,* Home
+,** TODO Sweep
+,* Archived Tasks
+,** DONE Old chore
+body
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,#+ARCHIVE: ::* Archived Tasks
+,* Home
+,* Archived Tasks
+,** DONE Old chore
+body
+
+,** TODO Sweep
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Home
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:END:
+#+END_SRC
+
+* Archive in place
+=C-c C-x a= only adds the =ARCHIVE= tag; the subtree stays where it is, folded, and the agenda leaves it out.
+
+Toggle the archive tag on the heading =Old plan=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO Old plan
+body
+,** Plan the year
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO Old plan                                                    :ARCHIVE:
+body
+,** Plan the year
+#+END_SRC
+
+* Refile a subtree
+The subtree becomes the last child of the target, one level deeper than it, with its own children moved along. Nothing is stamped.
+
+Refile the heading =File taxes= to the heading =Home=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** Plan the year
+,* Home
+,** Chores
+,** TODO [#A] File taxes                                                 :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+#+END_SRC
+
+* Refile to another file
+The same, to a heading of a second file; the first file loses the subtree.
+
+Refile the heading =File taxes= to the heading =Inbox= in =inbox.org=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+Before, inbox.org:
+#+BEGIN_SRC org
+,* Inbox
+,** Call Pat
+,* Later
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, inbox.org:
+#+BEGIN_SRC org
+,* Inbox
+,** Call Pat
+,** TODO [#A] File taxes                                                 :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,* Later
+#+END_SRC
+
+* Restore an archived subtree (the app only)
+Org has no command that undoes an archive. *Unarchive* reads the stamps back: the subtree returns to the file and heading named by =ARCHIVE_FILE= and =ARCHIVE_OLPATH=, with its TODO state from =ARCHIVE_TODO= and the stamps removed.
+
+Restore the heading =File taxes= from the archive file.
+
+Before, notes.org_archive:
+#+BEGIN_SRC org
+,* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+,** Gather receipts
+#+END_SRC
+
+After, restored:
+#+BEGIN_SRC org
+,* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,** Gather receipts
+#+END_SRC
+
+* Where the app differs from Emacs
+- *Tag column*: Emacs aligns the tags of a heading it writes to column 77; the app writes one space before them.
+- *Restoring* is the app's own command; Org 9.6 has no =org-unarchive-subtree=. It puts the subtree back under the heading named by =ARCHIVE_OLPATH=, at the level that gives, without the stamps and without the tags it took on from its parents.

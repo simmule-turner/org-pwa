@@ -145,19 +145,22 @@ export function resolveImagePath(target, currentDocumentId) {
  * @param {Heading | null} heading
  * @param {string} attachmentTarget
  * @param {string} documentId
+ * @param {boolean} [inherit]  org-use-property-inheritance
  */
-export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId) {
+export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId, inherit = false) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
-  const dir = resolveAttachmentDirectory(doc, heading, documentId);
+  const dir = resolveAttachmentDirectory(doc, heading, documentId, inherit);
   return dir ? `${dir}/${filename}` : null;
 }
 
-/** The attachment folder for `heading`: the one its own DIR or :ID: names, else the nearest ancestor's; null with neither in that
+/** The attachment folder for `heading`: the one its own DIR or :ID: names. As in Emacs, a parent's folder is used only when
+ *  org-use-property-inheritance is on (`inherit`); null when there is none.
  * @param {Doc} doc
  * @param {Heading | null} heading
  * @param {string} documentId
- *  chain. */
-export function resolveAttachmentDirectory(doc, heading, documentId) {
+ * @param {boolean} [inherit] */
+export function resolveAttachmentDirectory(doc, heading, documentId, inherit = false) {
+  if (!inherit) return ownAttachmentDirectory(/** @type {Heading} */ (heading), documentId);
   const ancestors = findAncestorPath(doc, /** @type {Heading} */ (heading)) || [];
   const chain = [/** @type {Heading} */ (heading), ...ancestors.slice().reverse()];
   for (const candidate of chain) {

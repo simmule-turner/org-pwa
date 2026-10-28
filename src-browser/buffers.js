@@ -60,7 +60,7 @@ function findBackgroundSession(fileId) {
  * Returns `{ ok: true, result }` once the buffer holds the change, or `{ ok: false }` after already calling setStatus with a
  * clear, label-specific error -- callers just check `.ok` and bail out if false.
  * @param {string} fileId
- * @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc) => unknown }} options
+ * @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc, info?: { created: boolean }) => unknown }} options
  * @returns {Promise<{ ok: boolean, result?: unknown }>}
  */
 export async function writeToOtherFile(fileId, options) {
@@ -76,7 +76,7 @@ function readOnlyRefusal(fileId, label) {
   return { ok: false };
 }
 
-/** @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc) => unknown }} options */
+/** @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc, info?: { created: boolean }) => unknown }} options */
 function editActiveBuffer(fileId, { label, historyLabel, mutate }) {
   if (S.isBufferReadOnly) return readOnlyRefusal(fileId, label);
   // In Text view the typing is in the text box, not yet in the document: take it in first, so the change lands on top of it
@@ -90,7 +90,7 @@ function editActiveBuffer(fileId, { label, historyLabel, mutate }) {
   return { ok: true, result };
 }
 
-/** @param {TabSession} session @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc) => unknown }} options */
+/** @param {TabSession} session @param {string} fileId @param {{ label: string, historyLabel?: string, mutate: (doc: Doc, info?: { created: boolean }) => unknown }} options */
 async function editOpenBuffer(session, fileId, { label, historyLabel, mutate }) {
   if (session.isBufferReadOnly) return readOnlyRefusal(fileId, label);
   const doc = session.state.doc;
@@ -110,7 +110,7 @@ async function editOpenBuffer(session, fileId, { label, historyLabel, mutate }) 
   return { ok: true, result };
 }
 
-/** @param {string} fileId @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc) => unknown }} options
+/** @param {string} fileId @param {{ label: string, historyLabel?: string, allowMissing?: boolean, mutate: (doc: Doc, info?: { created: boolean }) => unknown }} options
  * @returns {Promise<{ ok: boolean, result?: unknown }>} */
 async function editNewBuffer(fileId, options) {
   const { label, historyLabel, allowMissing, mutate } = options;
@@ -163,7 +163,7 @@ async function editNewBuffer(fileId, options) {
   applyStartupVisibility(doc, startupConfig, getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived');
   const openedText = serializeOrg(doc);
 
-  const result = mutate(doc);
+  const result = mutate(doc, { created: !existing });
   if (result === undefined || result === null) return { ok: false };
 
   const history = pushSnapshot(createHistory(openedText, 'Opened'), serializeOrg(doc), historyLabel || label);

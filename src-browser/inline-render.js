@@ -4,6 +4,7 @@
 // Extracted from app.js: inline render.
 import { isAudioFilename } from '../src/attach.js';
 import { customLink, links as customLinks } from './extension-links.js';
+import { getUsePropertyInheritance } from '../src/local-variables.js';
 import { findFootnoteDefinition, guessAudioMimeType, guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath, resolveLinkTarget } from '../src/link-resolve.js';
 import { getUseSubSuperscripts } from '../src/local-variables.js';
 import { findTargetHeading, radioTargetRegExp } from '../src/targets.js';
@@ -22,6 +23,9 @@ import { navigateToHeading } from './navigation.js';
 import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
 import { render } from './render.js';
 import { imageDataUrlCache } from './singletons.js';
+
+/** org-use-property-inheritance: whether a heading may use a parent's attachment folder. */
+const inherit = () => getUsePropertyInheritance(S.state.localVariables);
 
 /** @param {any} [node]
  * @param {Heading | null} [heading]
@@ -55,7 +59,7 @@ export function renderImageNode(node, heading = null) {
   // (A local document in a native shell can read its ATTACHMENTS, from the folder chosen for them, but not an arbitrary path.)
   const canReadArbitraryPaths = S.state.storageKind === 'github' || S.state.storageKind === 'webdav' || (isAttachment && attachmentsAvailable());
   if (inlineImagesOn && canReadArbitraryPaths && (isAttachment || !isExternalUrl(node.target))) {
-    const resolvedPath = isAttachment ? resolveAttachmentTarget(S.state.doc, heading, node.target, S.state.documentId) : resolveImagePath(node.target, S.state.documentId);
+    const resolvedPath = isAttachment ? resolveAttachmentTarget(S.state.doc, heading, node.target, S.state.documentId, inherit()) : resolveImagePath(node.target, S.state.documentId);
     if (!resolvedPath) {
       // An attachment: link with no owning heading in its own
       // ancestor chain carrying an :ID: at all -- nothing to resolve
@@ -256,7 +260,7 @@ export function renderAudioAttachmentLink(target, filename, heading) {
       render();
       return;
     }
-    const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, target, S.state.documentId);
+    const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, target, S.state.documentId, inherit());
     if (!resolvedPath) {
       setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
       render();

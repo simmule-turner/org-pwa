@@ -4,7 +4,7 @@
  *   %b the parents' titles with "->" after each   (%i, the category icon, is empty)
  * `%-12c` pads on the right to 12 characters, `%12c` on the left, `%.5c` cuts to 5 (4 for a category, as Emacs does). A character from
  * ` .;,:!?=|/<>` right after the width ("%-12:c", "% s") is added after the text when there is any.
- * `%?` ("%?-12t") leaves the whole part out when the text is empty. A `%(form)` is evaluated as Lisp (`(my-function)`, `(concat ...)`), and shows the text it gives; a failing one shows `%![Error: ...]`.
+ * `%?` ("%?-12t") leaves the whole part out when the text is empty. A `%(form)` is evaluated as Lisp (`(my-function)`, `(concat ...)`), and shows the text it gives; a failing one stops the Agenda with Emacs's error text (`PrefixFormError`).
  */
 
 import { Reader } from './elisp-read.js';
@@ -12,6 +12,12 @@ import { Reader } from './elisp-read.js';
 /** @typedef {{ category?: string, time?: string, scheduling?: string, effort?: string, level?: string, breadcrumbs?: string }} PrefixFields */
 
 const HEAD_RE = /%(\??)([-+]?[0-9]*(?:\.[0-9]+)?)([ .;,:!?=|/<>]?)(?:([cltseib])|(?=\())/y;
+
+/** The text `%t` shows for a time of day: Emacs pads a one-digit hour of the start with a space (" 9:00......", " 9:00-10:30"). @param {Date} start @param {Date | null} [end] */
+export function agendaClockText(start, end = null) {
+  const clock = (/** @type {Date} */ d) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return end ? clock(start).padStart(5) + '-' + clock(end) : clock(start).padStart(5) + '......';
+}
 
 /**
  * @param {string} format
@@ -68,7 +74,19 @@ export function formatAgendaPrefix(format, fields, evaluate) {
 export function agendaPrefixFormat(raw, view) {
   const text = String(raw ?? '').trim();
   if (!text) return null;
-  if (!text.startsWith('(')) return text.replace(/^"([\s\S]*)"$/, '$1');
-  const m = new RegExp('\\(\\s*' + view + '\\s*\\.\\s*"((?:[^"\\\\]|\\\\.)*)"\\s*\\)').exec(text);
-  return m ? m[1].replace(/\\(.)/g, '$1') : null;
+  if (!text.startsWith('(')) return lispString(text) ?? text;
+  const m = new RegExp('\\(\\s*' + view + '\\s*\\.\\s*("(?:[^"\\\\]|\\\\.)*")\\s*\\)').exec(text);
+  return m ? lispString(m[1]) : null;
+}
+
+/** The string a Lisp string literal reads as (`\"`, `\\`, `\n` and the rest unescaped); null when the text is not one. @param {string} source @returns {string | null} */
+function lispString(source) {
+  if (!source.startsWith('"')) return null;
+  try {
+    const reader = new Reader(source);
+    const value = reader.read();
+    return typeof value === 'string' ? value : null;
+  } catch {
+    return null;
+  }
 }

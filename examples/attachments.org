@@ -1,0 +1,105 @@
+#+TITLE: Attachments
+#+STARTUP: showall
+
+Where a heading keeps its files, and what attaching one writes. The results are what Emacs 29.3 (Org 9.6.15) gave for the outline below, kept in =/home/me/org/notes.org=; the app gives the same where the last section does not say otherwise. Choosing files, the camera and recording are the app's own and are not here.
+
+The outline:
+#+BEGIN_SRC org
+,* Taxes :work:
+:PROPERTIES:
+:ID: 7a3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+:END:
+,** Form 1040
+,** Receipts
+:PROPERTIES:
+:ID: 11223344-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+:END:
+,* Trips
+:PROPERTIES:
+:DIR: files/trips
+:END:
+,** Packing list
+,* Ideas
+#+END_SRC
+
+* Where the files go
+A heading with an =ID= keeps its files in =data/= with the first two characters of the ID as a folder, and the rest as a folder under it. A =DIR= property names a folder of your choosing, relative to the file. A heading with neither has no folder, and a sub-heading does not use its parent's.
+
+- =Taxes= :: data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+- =Form 1040= :: (none)
+- =Receipts= :: data/11/223344-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+- =Trips= :: files/trips
+- =Packing list= :: (none)
+- =Ideas= :: (none)
+
+* Attaching
+Attaching a file copies it into the folder and puts the =ATTACH= tag on the heading. The files are listed with their folder; the outline is shown after the last file is attached.
+
+Attach =w2.pdf= to =Taxes=:
+#+BEGIN_SRC org
+,* Taxes                                                         :work:ATTACH:
+,** Form 1040
+,** Receipts
+,* Trips
+,** Packing list
+,* Ideas
+#+END_SRC
+Files:
+- data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d/w2.pdf
+
+Attach =w2.pdf= and =notes.txt= to =Taxes=:
+#+BEGIN_SRC org
+,* Taxes                                                         :work:ATTACH:
+,** Form 1040
+,** Receipts
+,* Trips
+,** Packing list
+,* Ideas
+#+END_SRC
+Files:
+- data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d/notes.txt
+- data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d/w2.pdf
+
+Attach =ticket.pdf= to =Trips=:
+#+BEGIN_SRC org
+,* Taxes :work:
+,** Form 1040
+,** Receipts
+,* Trips                                                              :ATTACH:
+,** Packing list
+,* Ideas
+#+END_SRC
+Files:
+- files/trips/ticket.pdf
+
+Attach =my report (final).pdf= and =a?b.txt= to =Taxes=:
+#+BEGIN_SRC org
+,* Taxes                                                         :work:ATTACH:
+,** Form 1040
+,** Receipts
+,* Trips
+,** Packing list
+,* Ideas
+#+END_SRC
+Files:
+- data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d/a?b.txt
+- data/7a/3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d/my report (final).pdf
+
+Attaching a name that is already in the folder stops with "File already exists" and the path, in Emacs and in the app; neither renames or overwrites.
+
+* Deleting
+Deleting all the attachments removes the folder and the =ATTACH= tag.
+
+Attach =w2.pdf= and =notes.txt= to =Taxes=, then delete all:
+#+BEGIN_SRC org
+,* Taxes                                                                :work:
+,** Form 1040
+,** Receipts
+,* Trips
+,** Packing list
+,* Ideas
+#+END_SRC
+Files left: (none)
+
+* Where the app differs from Emacs
+- *Link text*: attaching can add an =[[attachment:name]]= link to the text (Settings → Attachments); Emacs only adds the tag.

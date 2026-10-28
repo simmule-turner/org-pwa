@@ -1,0 +1,117 @@
+#+TITLE: Search and replace
+#+STARTUP: showall
+
+One outline, searched in four ways. The tables list what Emacs 29.3 (Org 9.6.15) finds in it, in file order, and the app finds the same. Try each in *Search*. For queries by tag, state and property, see =match-queries.org=.
+
+The outline:
+#+BEGIN_SRC org
+,#+TODO: TODO WAITING | DONE
+,#+CATEGORY: sample
+,* TODO [#A] Buy a computer :shopping:work:
+:PROPERTIES:
+:assignee: Bob
+:END:
+Needs wifi, no ethernet port. Budget 800.
+,* WAITING Fix the wifi router :home:urgent:
+:PROPERTIES:
+:assignee: Alice
+:END:
+The vendor's colour chart is wrong. Call on Tuesday.
+,* DONE Buy a colour printer :shopping:
+Bought with ethernet and wifi.
+,* Plan the quarter :work:
+,** TODO [#B] Fix the budget :urgent:
+:PROPERTIES:
+:assignee: Bob
+:END:
+Review the Q4 plan.
+,** Colour palette for slides
+Colors are checked.
+,* Notes (a) :home:
+Version 2.1 (draft) {final} aa
+#+END_SRC
+
+* Keyword search
+=org-search-view= (*Search → Keyword search*) takes words, ="phrases"=, =+word= and =-word=, and a regular expression in braces. A word looks at the heading, its tags, properties and text, but not at its sub-headings. A string that starts with a word is one phrase; one that starts with =+= or =-= is a list of words that must (or must not) be there. A leading =*= limits it to headings, =!= to TODO headings, and =:= to whole words.
+
+- =wifi= :: Buy a computer; Fix the wifi router; Buy a colour printer
+- =+wifi -ethernet= :: Fix the wifi router
+- =+wifi +ethernet= :: Buy a computer; Buy a colour printer
+- =+"colour chart"= :: Fix the wifi router
+- =colour chart= :: Fix the wifi router
+- =+budget -{Q4}= :: Buy a computer
+- =*+fix= :: Fix the wifi router; Fix the budget
+- =!fix= :: Fix the wifi router; Fix the budget
+- =:+color +colors= :: (none)
+- ={wi.?fi}= :: Buy a computer; Fix the wifi router; Buy a colour printer
+
+* Regular expressions
+In regex mode a pattern is in Emacs's syntax and is matched against each entry (its heading line, planning, drawers and text, as =string-match= would see it): =\(= =\)= group, =\|= chooses, =\{n,m\}= repeats, and a bare =(=, =)=, ={= or =}= is itself. Case is ignored.
+
+- =^\*+ \(TODO\|DONE\)= :: Buy a computer; Buy a colour printer; Fix the budget
+- =^colou?r= :: Colour palette for slides
+- =\(Buy\|Fix\)= :: Buy a computer; Fix the wifi router; Buy a colour printer; Fix the budget
+- =\<ca= :: Fix the wifi router
+- =\(a\)\1= :: Notes (a)
+- =[[:digit:]]+= :: Buy a computer; Fix the budget; Notes (a)
+- =(draft)= :: Notes (a)
+- ={final}= :: Notes (a)
+- =a\{2\}= :: Notes (a)
+- =a\{3,\}= :: (none)
+- =\bwi= :: Buy a computer; Fix the wifi router; Buy a colour printer
+- =ETHERNET= :: Buy a computer; Buy a colour printer
+- =\_<port\_>= :: Buy a computer
+
+* Filters
+A query of =tag:=, =todo:=, =priority:= and =key:value= filters stands for a Match query (the text after "as"), and finds the same headings. Tags are inherited, properties are not. A =key:value= matches when the value contains the text.
+
+- =tag:urgent= as =urgent= :: Fix the wifi router; Fix the budget
+- =-tag:work= as =-work= :: Fix the wifi router; Buy a colour printer; Notes (a)
+- =tag:work todo:TODO= as =work/TODO= :: Buy a computer; Fix the budget
+- =todo:WAITING= as =/WAITING= :: Fix the wifi router
+- =todo:TODO|WAITING= as =/TODO|WAITING= :: Buy a computer; Fix the wifi router; Fix the budget
+- =-todo:DONE= as =/-DONE= :: Buy a computer; Fix the wifi router; Plan the quarter; Fix the budget; Colour palette for slides; Notes (a)
+- =priority:A= as =PRIORITY="A"= :: Buy a computer
+- =assignee:Bob= as =assignee={Bob}= :: Buy a computer; Fix the budget
+- =assignee:Bob|Alice= as =assignee={Bob\|Alice}= :: Buy a computer; Fix the wifi router; Fix the budget
+- =-assignee:Bob= as =assignee<>"Bob"= :: Fix the wifi router; Buy a colour printer; Plan the quarter; Colour palette for slides; Notes (a)
+
+* Replace
+*Replace* in the options popover starts a query-replace of the search text. In the lines below, a minus is the line before and a plus the line after replacing every match; the other lines of the outline stay as they are. A regexp replacement refers to a group as =\1= in Emacs.
+
+Replace the text =wifi= with =Wi-Fi=:
+#+BEGIN_SRC org
+- Needs wifi, no ethernet port. Budget 800.
++ Needs Wi-Fi, no ethernet port. Budget 800.
+- * WAITING Fix the wifi router :home:urgent:
++ * WAITING Fix the Wi-Fi router :home:urgent:
+- Bought with ethernet and wifi.
++ Bought with ethernet and Wi-Fi.
+#+END_SRC
+
+Replace the regexp =Fix the \(.*\)$= with =Repair the \1=:
+#+BEGIN_SRC org
+- * WAITING Fix the wifi router :home:urgent:
++ * WAITING Repair the wifi router :home:urgent:
+- ** TODO [#B] Fix the budget :urgent:
++ ** TODO [#B] Repair the budget :urgent:
+#+END_SRC
+
+Replace the regexp =\([0-9]+\)\.\([0-9]+\)= with =\2.\1=:
+#+BEGIN_SRC org
+- Version 2.1 (draft) {final} aa
++ Version 1.2 (draft) {final} aa
+#+END_SRC
+
+Replace the text =colour= with =color=:
+#+BEGIN_SRC org
+- The vendor's colour chart is wrong. Call on Tuesday.
++ The vendor's color chart is wrong. Call on Tuesday.
+- * DONE Buy a colour printer :shopping:
++ * DONE Buy a color printer :shopping:
+- ** Colour palette for slides
++ ** Color palette for slides
+#+END_SRC
+
+* Where the app differs from Emacs
+- *Where it replaces*: Emacs changes any text; the app leaves tags, TODO states, priorities, properties, planning and blocks alone (see the README).

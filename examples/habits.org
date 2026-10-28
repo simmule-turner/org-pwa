@@ -1,0 +1,83 @@
+#+TITLE: Habits
+#+STARTUP: showall
+
+A habit is an open TODO with =:STYLE: habit= and a repeating =SCHEDULED:= date. In the Agenda, its row gets a strip of days: 21 before today, today and 7 after. This file holds four habits. Open it as an Agenda File and compare the strips with the ones under each habit, drawn for Tuesday 13 October 2026. The strips are what Emacs 29.3 (Org 9.6.15) drew with =org-habit-build-graph=, and a test in this project checks that the app draws the same.
+
+Each strip has two lines, one character for each day, the first being 22 September. The first line marks the days: =*= is a day the habit was done, =!= is today. The second line gives the color: =b= blue (not due yet), =g= green (can be done), =y= yellow (last chance) and =r= red (overdue). The third line is the shade: =p= plain, =l= the lighter shade Emacs uses for a day that is not done, not today and not a past overdue day. A habit is done when its =:LOGBOOK:= has a =State "DONE"= line for the day.
+
+* TODO Shave
+SCHEDULED: <2026-10-13 Tue .+2d/4d>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 20:14]
+- State "DONE"       from "TODO"       [2026-10-08 Thu 08:00]
+:END:
+
+** Every two days, no later than every four
+=.+2d/4d= means every 2 days, and no later than every 4. The habit was done on 8 and 11 October. After each, it turns green when it can be done again and yellow on the last day to do it.
+
+#+NAME: shave
+#+begin_example
+................*..*.!......
+bbbbbbbbbbbbbbbbgbggbggyrrrr
+llllllllllllllllpllplpllllll
+#+end_example
+
+* TODO Water the plants
+SCHEDULED: <2026-10-04 Sun .+3d/5d>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-10-01 Thu 09:00]
+:END:
+
+** Overdue
+The plants were last watered on 1 October and are watered every 3 to 5 days. The strip turns red after the last day.
+
+#+NAME: water
+#+begin_example
+.........*...........!......
+bbbbbbbbbbbbggyrrrrrrrrrrrrr
+lllllllllplllllpppppppllllll
+#+end_example
+
+* TODO Call home
+SCHEDULED: <2026-10-22 Thu .+2w>
+:PROPERTIES:
+:STYLE: habit
+:END:
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-10-08 Thu 18:00]
+:END:
+
+** Weeks, and a habit that is not due yet
+A repeater can count weeks. This habit is done every 2 weeks and was done on 8 October, so today is still blue.
+
+#+NAME: weekly
+#+begin_example
+................*....!......
+bbbbbbbbbbbbbbbbgbbbbbbbbbbb
+llllllllllllllllpllllpllllll
+#+end_example
+
+* TODO Stretch
+SCHEDULED: <2026-10-10 Sat .+1d/3d>
+:PROPERTIES:
+:STYLE: habit
+:END:
+
+** A habit with no history yet
+Until the first completion there is nothing to count from. The days before the scheduled date are blue, it is green from that date, yellow on the last day (3 days after the repeat starts counting) and red after.
+
+#+NAME: new
+#+begin_example
+.....................!......
+bbbbbbbbbbbbbbbbbbggyrrrrrrr
+lllllllllllllllllllllpllllll
+#+end_example
+
+* Where the app differs from Emacs
+- Colors: the app uses its own palette. It chooses the same color and the same plain or lighter shade for every day, but draws them in its own shades.

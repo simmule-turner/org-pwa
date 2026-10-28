@@ -36,8 +36,8 @@ function setClosed(heading, stamp) {
  * @param {Heading} heading @param {string[]} lines @param {boolean} intoDrawer */
 export function insertLogLines(heading, lines, intoDrawer) {
   if (intoDrawer) {
-    // Emacs, creating the drawer on an entry with nothing after it but a sub-heading, leaves a blank line before that heading
-    if (heading.logbookLines.length === 0 && heading.children?.length && heading.bodyLines.every((l) => l.trim() === '') && !heading.bodyLines.length) heading.bodyLines.push('');
+    // Emacs, creating the drawer on an entry with nothing after it but the next heading, leaves a blank line before that heading
+    if (heading.logbookLines.length === 0 && heading.bodyLines.length === 0) heading.bodyLines.push('');
     heading.logbookLines.splice(0, 0, ...lines);
   } else if (heading.logbookLines.length > 0) {
     heading.preLogLines = [...lines, ...(heading.preLogLines || [])];

@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').PaletteCommand} PaletteCommand */
 // Extracted from app.js: god mode palette.
 import { redoSettings, undoSettings } from './settings-history.js';
-import { findAncestorPath, isArchivedInPlace } from '../src/archive-model.js';
+import { findAncestorPath, isRestorable } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
 import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-palette.js';
@@ -435,8 +435,8 @@ export const PALETTE_NEEDS = {
   captureShortcuts: () => (platform.captureShortcuts.supported() ? null : 'only in the Android app'),
   localFilePicker: () => (platform.localFiles.supported() ? null : 'this browser cannot keep access to a file (not on iOS)'),
   orgPwaFolder: () => (platform.attachments.supported() ? null : 'only in the Android app'),
-  archived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? null : 'this heading isn\u2019t archived'),
-  notArchived: (/** @type {any} */ target) => (target && isArchivedInPlace(target) ? 'it is already archived \u2014 use Unarchive' : null),
+  archived: (/** @type {any} */ target) => (target && isRestorable(target) ? null : 'this heading isn\u2019t archived'),
+  notArchived: (/** @type {any} */ target) => (target && isRestorable(target) ? 'it is already archived \u2014 use Unarchive' : null),
 };
 
 /**

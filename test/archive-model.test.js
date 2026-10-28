@@ -23,6 +23,7 @@ import {
   getProperty,
   setProperty,
   deleteProperty,
+  isRestorable,
 } from '../src/archive-model.js';
 
 const FIXED_DATE = new Date('2026-07-20T14:32:00');
@@ -38,7 +39,7 @@ function docWithProject() {
   return parseOrg(text);
 }
 
-test('archiveInPlace tags the heading and stamps ARCHIVE_TIME', () => {
+test('archiveInPlace only adds the ARCHIVE tag, as org-toggle-archive-tag does', () => {
   const doc = docWithProject();
   const target = doc.children[0].children[0].children[1]; // "DONE Set up test suite"
 
@@ -47,27 +48,25 @@ test('archiveInPlace tags the heading and stamps ARCHIVE_TIME', () => {
 
   assert.equal(isArchivedInPlace(target), true);
   assert.ok(target.tags.includes('ARCHIVE'));
-  assert.equal(target.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
+  assert.equal('ARCHIVE_TIME' in target.properties, false);
 });
 
 test('THE FIX: ARCHIVE_TIME is written as a BARE date/day-name/time string, deliberately NOT wrapped in [] or <> -- confirmed against real, observed org-archive output (independent real-world examples both showed a bare, unbracketed value) and against the actual org-archive.el mechanism, which explicitly strips the enclosing angle brackets before writing this specific property', () => {
   const doc = docWithProject();
   const target = doc.children[0].children[0].children[1];
-  archiveInPlace(target, { now: FIXED_DATE });
-  const value = target.properties.ARCHIVE_TIME;
+  const value = buildArchivedClone(doc, target, 'nrp.org', { now: FIXED_DATE }).properties.ARCHIVE_TIME;
   assert.ok(!value.startsWith('['), 'must not be wrapped in square brackets (an inactive timestamp)');
   assert.ok(!value.startsWith('<'), 'must not be wrapped in angle brackets (an active timestamp) either');
   assert.equal(value, '2026-07-20 Mon 14:32');
 });
 
-test('unarchiveInPlace removes the tag but keeps ARCHIVE_TIME as history', () => {
+test('unarchiveInPlace removes the tag', () => {
   const doc = docWithProject();
   const target = doc.children[0].children[0].children[1];
   archiveInPlace(target, { now: FIXED_DATE });
   unarchiveInPlace(target);
 
   assert.equal(isArchivedInPlace(target), false);
-  assert.equal(target.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
 });
 
 test('findAncestorPath returns the correct outline path', () => {
@@ -98,7 +97,7 @@ test('archiveToSiblingFile removes from source, stamps metadata, and lands in ar
   assert.equal(extracted.properties.ARCHIVE_TIME, '2026-07-20 Mon 14:32');
   assert.equal(extracted.properties.ARCHIVE_FILE, 'nrp.org');
   assert.equal(extracted.properties.ARCHIVE_OLPATH, 'Projects/NRP');
-  assert.equal(extracted.properties.ARCHIVE_CATEGORY, 'Projects');
+  assert.equal(extracted.properties.ARCHIVE_CATEGORY, 'nrp'); // the file's category: its name without the extension
   assert.equal(extracted.todo, 'DONE'); // preserved as-is since markDone defaults to false
   assert.equal(extracted.properties.ARCHIVE_TODO, 'DONE'); // THE FIX: recorded regardless of markDone -- real org's own default context-info always records the pre-archive state
 
@@ -108,14 +107,14 @@ test('archiveToSiblingFile removes from source, stamps metadata, and lands in ar
   assert.match(serialized, /:ARCHIVE_OLPATH: Projects\/NRP/);
 });
 
-test('THE FIX: ARCHIVE_ITAGS records tags inherited from ancestors, colon-delimited, matching real org\u2019s own tag-storage convention', () => {
+test('THE FIX: ARCHIVE_ITAGS records tags inherited from ancestors, separated by spaces as org-archive-subtree writes them', () => {
   const text = ['* Projects :work:', '** NRP :urgent:', '*** TODO Ship v0.1.0'].join('\n');
   const sourceDoc = parseOrg(text);
   const archiveDoc = { type: 'document', keywords: [], children: [] };
   const target = sourceDoc.children[0].children[0].children[0]; // "TODO Ship v0.1.0"
 
   const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
-  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:urgent:');
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, 'work urgent');
 });
 
 test('ARCHIVE_ITAGS is omitted entirely when there are no ancestor tags to inherit -- not stamped with an empty value', () => {
@@ -134,7 +133,7 @@ test('ARCHIVE_ITAGS only includes ANCESTOR tags, not the archived heading\u2019s
   const target = sourceDoc.children[0].children[0];
 
   const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
-  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:');
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, 'work');
   assert.ok(extracted.tags.includes('personal')); // the archived heading's own tag is preserved as-is, unrelated to ARCHIVE_ITAGS
 });
 
@@ -145,7 +144,7 @@ test('a duplicate tag appearing on more than one ancestor is only listed once in
   const target = sourceDoc.children[0].children[0].children[0];
 
   const extracted = archiveToSiblingFile(sourceDoc, archiveDoc, target, 'nrp.org', { now: FIXED_DATE });
-  assert.equal(extracted.properties.ARCHIVE_ITAGS, ':work:');
+  assert.equal(extracted.properties.ARCHIVE_ITAGS, 'work');
 });
 
 test('restoring strips ARCHIVE_ITAGS along with every other ARCHIVE_* property', () => {
@@ -535,16 +534,24 @@ test('buildArchivedClone produces the same stamped result as extractForArchive w
   assert.equal(clone.title, 'Target heading');
   assert.equal(clone.properties.ARCHIVE_FILE, 'src.org');
   assert.equal(clone.properties.ARCHIVE_OLPATH, 'Parent');
-  assert.equal(clone.properties.ARCHIVE_CATEGORY, 'Parent');
-  assert.ok(clone.tags.includes('ARCHIVE'), 'the archived clone must be tagged :ARCHIVE: -- this was a real bug (properties were stamped but the tag itself was never added)');
+  assert.equal(clone.properties.ARCHIVE_CATEGORY, 'src');
+  assert.deepEqual(clone.tags, [], 'org-archive-subtree adds no tag');
 });
 
-test('buildArchivedClone tags the clone :ARCHIVE:, matching real org-archive-subtree and what isArchivedInPlace/the Unarchive-button detection both rely on', () => {
+test('buildArchivedClone adds no ARCHIVE tag, as org-archive-subtree does; the Unarchive button finds the clone by its stamps', () => {
   const sourceDoc = parseOrg('* A heading');
   const heading = sourceDoc.children[0];
   const clone = buildArchivedClone(sourceDoc, heading, 'src.org');
-  assert.deepEqual(clone.tags, ['ARCHIVE']);
-  assert.equal(isArchivedInPlace(clone), true);
+  assert.deepEqual(clone.tags, []);
+  assert.equal(isArchivedInPlace(clone), false);
+  assert.equal(isRestorable(clone), true);
+});
+
+test('buildArchivedClone: inside its own file the subtree takes its inherited tags, as org-archive-subtree-add-inherited-tags (infile) says', () => {
+  const sourceDoc = parseOrg('* P :a:b:\n** Q :c:\n*** TODO T :c:d:');
+  const heading = sourceDoc.children[0].children[0].children[0];
+  assert.deepEqual(buildArchivedClone(sourceDoc, heading, 'src.org', { infile: true }).tags, ['a', 'b', 'c', 'd']);
+  assert.deepEqual(buildArchivedClone(sourceDoc, heading, 'src.org').tags, ['c', 'd']);
 });
 
 test('buildArchivedClone does not duplicate the ARCHIVE tag if the original heading already had it', () => {

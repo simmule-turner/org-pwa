@@ -33,8 +33,8 @@
  * for how each one is actually shown.
  */
 
-const STATE_LINE_RE = /^-\s+State\s+"([^"]*)"(?:\s+from(?:\s+"([^"]*)")?)?\s+(\[[^\]]+\])(\s+\\)?\s*$/;
-const NOTE_LINE_RE = /^-\s+Note taken on\s+(\[[^\]]+\])(\s+\\)?\s*$/;
+const STATE_LINE_RE = /^-\s+State\s+"([^"]*)"(?:\s+from(?:\s+"([^"]*)")?)?\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
+const NOTE_LINE_RE = /^-\s+Note taken on\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
 const CLOCK_LINE_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)(?:--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+:\d+))?\s*$/;
 const CONTINUATION_INDENT_RE = /^\s+\S/; // a note-continuation line: indented, not blank
 
@@ -144,7 +144,7 @@ function formatStateLogLine(newState, oldState, timestamp, note = /** @type {str
   const head = `- State ${newPart} from ${oldPart} ${timestamp}`;
   if (!note) return [head];
   const noteLines = note.split('\n');
-  return [`${head} \\`, ...noteLines.map((l) => `  ${l}`)];
+  return [`${head} \\\\`, ...noteLines.map((l) => `  ${l}`)];
 }
 
 /**
@@ -154,7 +154,7 @@ function formatStateLogLine(newState, oldState, timestamp, note = /** @type {str
  */
 function formatNoteLine(heading, note = null) {
   if (!note) return [`- ${heading}`];
-  return [`- ${heading} \\`, ...note.split('\n').map((l) => (l ? `  ${l}` : l))];
+  return [`- ${heading} \\\\`, ...note.split('\n').map((l) => (l ? `  ${l}` : l))];
 }
 
 /** Every log item of a heading: those above its :LOGBOOK: drawer (Emacs's default placement), then the drawer's own.

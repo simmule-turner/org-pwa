@@ -10,7 +10,7 @@
 // Extracted from app.js: row render.
 import { readPriorityFaces } from '../src/priorities.js';
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
-import { getPropertiesText, getProperty, isArchivedInPlace } from '../src/archive-model.js';
+import { getPropertiesText, getProperty, isRestorable } from '../src/archive-model.js';
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
 import { updateCheckboxCookie } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
@@ -317,8 +317,8 @@ export function renderRow(row, todoSequence) {
               },
             },
             {
-              icon: isArchivedInPlace(row.node) ? '\ud83d\udce4' : '\ud83d\uddc4\ufe0f',
-              label: isArchivedInPlace(row.node) ? 'Unarchive (restore)' : 'Archive',
+              icon: isRestorable(row.node) ? '\ud83d\udce4' : '\ud83d\uddc4\ufe0f',
+              label: isRestorable(row.node) ? 'Unarchive (restore)' : 'Archive',
               onClick: async () => {
                 S.actionMenuFor = null;
                 render();

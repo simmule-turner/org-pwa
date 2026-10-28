@@ -138,12 +138,11 @@ export function parsePlotOptions(text) {
  *  already uses, after any `transpose` is applied; it's the same
  *  extraction, rendered differently, not a separate data shape.
  *
- *  `ind` (1-based column, default 1) supplies the independent-axis
+ *  `ind` (1-based column; default: the row number) supplies the independent-axis
  *  value for each data row -- an x-position for 2D, an axis label for
- *  radar. `deps` (1-based columns, default: every column except
- *  `ind`) supplies one series per column. `labels` (default: the
- *  table's own header row, matching real org-plot's own documented
- *  default exactly) names each series. `transpose` swaps rows and
+ *  radar. `deps` (1-based columns, default: every column
+ *  except `ind`; with no `ind`, every column, as in Emacs) supplies one series per column. `labels` (default: the
+ *  table's own header row) names each series, indexed by column number. `transpose` swaps rows and
  *  columns before any of the above is computed, exactly as real
  *  org-plot does.
  *
@@ -181,9 +180,10 @@ export function extractPlotData(table, options) {
   const dataRows = hasHeader ? rows.slice(1) : rows;
   const colCount = (header || rows[0]).length;
 
-  const indCol = Number.isFinite(options.ind) ? options.ind : 1;
-  const indIdx = indCol - 1;
-  if (indIdx < 0 || indIdx >= colCount) throw new Error(`ind:${indCol} is out of range for a table with ${colCount} columns.`);
+  // Like Emacs's org-plot: without `ind` the x position is the row number and column 1 is a series too.
+  const hasInd = Number.isFinite(options.ind);
+  const indIdx = hasInd ? Number(options.ind) - 1 : -1;
+  if (hasInd && (indIdx < 0 || indIdx >= colCount)) throw new Error(`ind:${options.ind} is out of range for a table with ${colCount} columns.`);
 
   const depsOption = Array.isArray(options.deps) ? options.deps : options.deps !== undefined ? [options.deps] : null;
   const depIdxs = depsOption ? depsOption.map((n) => Number(n) - 1) : Array.from({ length: colCount }, (_, i) => i).filter((i) => i !== indIdx);
@@ -194,18 +194,19 @@ export function extractPlotData(table, options) {
   const labelsOption = Array.isArray(options.labels) ? options.labels : null;
   const series = depIdxs.map((/** @type {number} */ idx, /** @type {number} */ i) => ({
     index: idx,
-    label: labelsOption && labelsOption[i] !== undefined ? String(labelsOption[i]) : header ? String(header[idx] ?? `Column ${idx + 1}`) : `Column ${idx + 1}`,
+    // `labels` is indexed by column number, as in Emacs; a column it does not name is titled by its number
+    label: labelsOption ? String(labelsOption[idx] ?? idx + 1) : header ? String(header[idx] ?? `Column ${idx + 1}`) : `Column ${idx + 1}`,
   }));
 
-  const plotRows = dataRows.map((cells) => ({
-    ind: cells[indIdx],
+  const plotRows = dataRows.map((cells, rowNo) => ({
+    ind: hasInd ? cells[indIdx] : String(rowNo + 1),
     values: depIdxs.map((/** @type {number} */ idx) => {
       const n = Number(cells[idx]);
       return cells[idx] !== undefined && cells[idx] !== '' && !Number.isNaN(n) ? n : null;
     }),
   }));
 
-  return { indLabel: header ? String(header[indIdx] ?? '') : '', rows: plotRows, series };
+  return { indLabel: header && hasInd ? String(header[indIdx] ?? '') : '', rows: plotRows, series };
 }
 
 const SERIES_COLORS = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#EECA3B', '#B279A2', '#FF9DA6', '#9D755D', '#BAB0AC'];
@@ -460,6 +461,7 @@ export function renderPlotSvg(table, options) {
   if (!SUPPORTED_PLOT_TYPES.has(type)) {
     throw new Error(`This app doesn't support type:${type} plots -- only type:2d and type:radar are implemented (real org-plot's own 3d/grid types require an external gnuplot process this app can't run).`);
   }
-  const data = extractPlotData(table, options);
-  return type === 'radar' ? renderRadarSvg(data, options) : render2dSvg(data, options);
+  if (type !== 'radar') return render2dSvg(extractPlotData(table, options), options);
+  // A radar chart has no row-number axis: its spokes are named by `ind`, column 1 unless given.
+  return renderRadarSvg(extractPlotData(table, Number.isFinite(options.ind) ? options : { ...options, ind: 1 }), options);
 }

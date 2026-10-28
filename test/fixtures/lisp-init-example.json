@@ -1,0 +1,162 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "heading": "Settings",
+   "prose": "=setq= gives a setting a value, written as in Emacs. Numbers can be computed.",
+   "init": "(setq org-agenda-files '(\"github:home.org\" \"github:journal.org\")\n      org-deadline-warning-days (* 2 7)\n      org-log-done 'time)",
+   "show": [
+    "org-agenda-files",
+    "org-deadline-warning-days",
+    "org-log-done"
+   ],
+   "emacs": {
+    "shown": [
+     "(\"github:home.org\" \"github:journal.org\")",
+     "14",
+     "time"
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "Lists",
+   "prose": "=add-to-list= and =push= add to a list you have set. A third argument of =t= adds at the end.",
+   "init": "(setq my-list nil my-other nil)\n(add-to-list 'my-list 'a)\n(add-to-list 'my-list 'b t)\n(add-to-list 'my-list 'a)\n(push \"z\" my-other)",
+   "show": [
+    "my-list",
+    "my-other"
+   ],
+   "emacs": {
+    "shown": [
+     "(a b)",
+     "(\"z\")"
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "A variable that was never set",
+   "prose": "=add-to-list= and =push= need a variable that has a value. On one that was never set, Emacs reports that it is void, and the form after it still runs. The variables the app knows, such as =org-modules= and =org-capture-templates=, always have one.",
+   "init": "(add-to-list 'never-set 'a)\n(push 1 never-set-either)\n(add-to-list 'org-modules 'org-habit)",
+   "show": [
+    "(boundp 'never-set)",
+    "(car org-modules)"
+   ],
+   "emacs": {
+    "shown": [
+     "nil",
+     "org-habit"
+    ],
+    "errors": [
+     "Symbol's value as variable is void: never-set",
+     "Symbol's value as variable is void: never-set-either"
+    ]
+   }
+  },
+  {
+   "heading": "Functions and computed values",
+   "prose": "All of Lisp is there to compute a value: =defun=, =let=, loops, =format=. What the init defines is there for diary entries and holiday lists too.",
+   "init": "(defun double (n) (* 2 n))\n(setq doubled (let ((acc nil))\n                (dolist (x '(1 2 3)) (push (double x) acc))\n                (nreverse acc)))\n(setq label (mapconcat #'identity '(\"x\" \"y\") \"-\"))",
+   "show": [
+    "doubled",
+    "label",
+    "(format \"%s has %d items, %.1f%%\" label (length doubled) 12.5)"
+   ],
+   "emacs": {
+    "shown": [
+     "(2 4 6)",
+     "\"x-y\"",
+     "\"x-y has 3 items, 12.5%\""
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "Holidays",
+   "prose": "The holiday lists are variables. This switches the general holidays off and adds a day of your own. See =holidays.org= for every entry and flag.",
+   "init": "(setq holiday-general-holidays nil)\n(setq holiday-other-holidays\n      '((holiday-fixed 3 14 \"Pi Day\")\n        (holiday-float 11 4 4 \"Thanksgiving\")))",
+   "show": [
+    "holiday-general-holidays",
+    "holiday-other-holidays"
+   ],
+   "emacs": {
+    "shown": [
+     "nil",
+     "((holiday-fixed 3 14 \"Pi Day\") (holiday-float 11 4 4 \"Thanksgiving\"))"
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "A capture template",
+   "prose": "Templates are read as Emacs reads them and appear beside the JSON ones. See =capture-templates.org=.",
+   "init": "(setq org-capture-templates\n      '((\"t\" \"Todo\" entry (file+headline \"gtd.org\" \"Tasks\")\n         \"* TODO %?\\n  %i\")))",
+   "show": [
+    "org-capture-templates",
+    "(car (car org-capture-templates))"
+   ],
+   "emacs": {
+    "shown": [
+     "((\"t\" \"Todo\" entry (file+headline \"gtd.org\" \"Tasks\") \"* TODO %?\n  %i\"))",
+     "\"t\""
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "LaTeX settings",
+   "prose": "The LaTeX export reads the ox-latex variables, among them the source block backend and the table options.",
+   "init": "(setq org-latex-src-block-backend 'minted\n      org-latex-tables-booktabs t\n      org-latex-default-figure-position \"htbp\")",
+   "show": [
+    "org-latex-src-block-backend",
+    "org-latex-tables-booktabs",
+    "org-latex-default-figure-position"
+   ],
+   "emacs": {
+    "shown": [
+     "minted",
+     "t",
+     "\"htbp\""
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "A function as a setting",
+   "prose": "Some settings name a function. =org-latex-format-headline-function= formats every section title; the Agenda settings such as =org-agenda-cmp-user-defined= work the same way. The expressions below call the function directly.",
+   "init": "(setq org-latex-format-headline-function\n      (lambda (todo todo-type priority text tags info)\n        (concat (if todo (format \"[%s] \" todo) \"\") (upcase text))))",
+   "show": [
+    "(funcall org-latex-format-headline-function \"TODO\" (quote todo) nil \"Write\" nil nil)",
+    "(funcall org-latex-format-headline-function nil nil nil \"Plan\" nil nil)"
+   ],
+   "emacs": {
+    "shown": [
+     "\"[TODO] WRITE\"",
+     "\"PLAN\""
+    ],
+    "errors": []
+   }
+  },
+  {
+   "heading": "When a form fails",
+   "prose": "A form that fails shows Emacs's message in the status line, and the forms after it still run.",
+   "init": "(setq before 1)\n(car 5)\n(no-such-function 1)\n(setq after 2)",
+   "show": [
+    "before",
+    "after"
+   ],
+   "errors": true,
+   "emacs": {
+    "shown": [
+     "1",
+     "2"
+    ],
+    "errors": [
+     "Wrong type argument: listp, 5",
+     "Symbol's function definition is void: no-such-function"
+    ]
+   }
+  }
+ ]
+}

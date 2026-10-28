@@ -1,0 +1,212 @@
+#+TITLE: Logging
+#+STARTUP: showall
+
+A cookbook for the notes and log items that go with a change of TODO state. What a plain change writes is in =todo-states.org=; this file adds the keyword settings with =@=, =!= and =/=, notes, and the =LOGGING= and =LOG_INTO_DRAWER= properties. Each section shows a heading before, and after the state in the title is set, with the note typed when one is asked for; the clock reads 2026-10-11 16:30. The "after" texts are what Emacs 29.3 (Org 9.6.15) left. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+
+A keyword's setting is written in the =#+TODO:= line in parentheses: its fast key, then =@= (ask for a note) or =!= (write a time stamp) for entering the state, and after a =/= the same for leaving it.
+
+* A note when a state is entered
+An =@= on a keyword asks for a note each time the heading enters it. The item and the note go together.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* TODO Call the bank
+SCHEDULED: <2026-10-12 Mon>
+The number is on the card.
+#+END_SRC
+
+After setting NEXT and typing the note "Waiting for the card":
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* NEXT Call the bank
+SCHEDULED: <2026-10-12 Mon>
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Waiting for the card
+The number is on the card.
+#+END_SRC
+
+* A note of several lines
+Every line after the first is indented under the item.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* TODO Call the bank
+#+END_SRC
+
+After setting NEXT and typing the note "Waiting for the card. / Pat said Tuesday.":
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* NEXT Call the bank
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Waiting for the card.
+  Pat said Tuesday.
+#+END_SRC
+
+* A note left empty
+Leaving the note empty keeps the item without text.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* TODO Call the bank
+#+END_SRC
+
+After setting NEXT and leaving the note empty:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@) | DONE(d!)
+,* NEXT Call the bank
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* A time stamp when a state is left
+=NEXT(n/!)= does not log on the way in, but logs a time stamp on the way out, whatever the next state's own setting.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n/!) | DONE(d)
+,* NEXT Call the bank
+#+END_SRC
+
+After setting DONE:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n/!) | DONE(d)
+,* DONE Call the bank
+- State "DONE"       from "NEXT"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* Entering with a note, leaving with a time stamp
+=NEXT(n@/!)= asks for a note on the way in; on the way out it writes only the item.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@/!) | DONE(d)
+,* NEXT Call the bank
+#+END_SRC
+
+After setting TODO:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n@/!) | DONE(d)
+,* TODO Call the bank
+- State "TODO"       from "NEXT"       [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* A note when a task is closed
+=#+STARTUP: lognotedone= asks for a note on the way to a done state and writes =CLOSED:=. The note item is "CLOSING NOTE".
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: lognotedone
+,* TODO Send the form
+SCHEDULED: <2026-10-12 Mon>
+#+END_SRC
+
+After setting DONE and typing the note "Mailed it with the receipt.":
+#+BEGIN_SRC org
+,#+STARTUP: lognotedone
+,* DONE Send the form
+CLOSED: [2026-10-11 Sun 16:30] SCHEDULED: <2026-10-12 Mon>
+- CLOSING NOTE [2026-10-11 Sun 16:30] \\
+  Mailed it with the receipt.
+#+END_SRC
+
+* A note for a repeating task
+=#+STARTUP: lognoterepeat= asks for a note each time a repeating task is marked done.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: lognoterepeat
+,* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+#+END_SRC
+
+After setting DONE and typing the note "Gave the ferns extra.":
+#+BEGIN_SRC org
+,#+STARTUP: lognoterepeat
+,* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Gave the ferns extra.
+#+END_SRC
+
+* One subtree logs; the rest does not
+The =LOGGING= property takes the same words as =#+STARTUP:= and is inherited, so everything below this heading gets =CLOSED:= when it is done.
+
+Before:
+#+BEGIN_SRC org
+,* Taxes
+:PROPERTIES:
+:LOGGING: logdone
+:END:
+,** TODO File the form
+#+END_SRC
+
+After setting DONE on =File the form=:
+#+BEGIN_SRC org
+,* Taxes
+:PROPERTIES:
+:LOGGING: logdone
+:END:
+,** DONE File the form
+CLOSED: [2026-10-11 Sun 16:30]
+#+END_SRC
+
+* One subtree logs into a drawer
+=LOG_INTO_DRAWER: t= puts the log items of this subtree in =:LOGBOOK:=.
+
+Before:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* Taxes
+:PROPERTIES:
+:LOG_INTO_DRAWER: t
+:END:
+,** TODO File the form
+,* TODO Call Pat
+#+END_SRC
+
+After setting NEXT on =File the form=:
+#+BEGIN_SRC org
+,#+TODO: TODO NEXT(n!) | DONE(d!)
+,* Taxes
+:PROPERTIES:
+:LOG_INTO_DRAWER: t
+:END:
+,** NEXT File the form
+:LOGBOOK:
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+:END:
+
+,* TODO Call Pat
+#+END_SRC
+
+* Logging switched off for a subtree
+=LOGGING: nil= turns off =CLOSED:= and repeat logging for the subtree, even when the file asks for them.
+
+Before:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* Taxes
+:PROPERTIES:
+:LOGGING: nil
+:END:
+,** TODO File the form
+#+END_SRC
+
+After setting DONE on =File the form=:
+#+BEGIN_SRC org
+,#+STARTUP: logdone
+,* Taxes
+:PROPERTIES:
+:LOGGING: nil
+:END:
+,** DONE File the form
+#+END_SRC
+
+* Where the app differs from Emacs
+- When the app starts a =:LOGBOOK:= on the last heading of a file, and nothing follows the heading, it leaves no blank line after =:END:=; Emacs leaves one.
+- The differences listed in =todo-states.org= apply here too: the note is asked for after the state changes, and a skipped note writes no item.

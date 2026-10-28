@@ -10,7 +10,7 @@ import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
-import { buildHeadingRow, buildTodoEffortChip } from './agenda-view.js';
+import { buildHeadingRow, buildTodoEffortChip, prefixFailure, prefixFailureNote } from './agenda-view.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { S } from './app-state.js';
 import { openContentSheet, openFormSheet } from './bottom-sheet.js';
@@ -201,6 +201,8 @@ export function renderQueryView() {
     results.appendChild(count);
     if (rows.length === 0) return note('Nothing matches.');
     const today = new Date();
+    const failure = prefixFailure(rows, isMatch ? 'tags' : 'search');
+    if (failure) return void results.appendChild(prefixFailureNote(failure));
     for (const item of rows) {
       results.appendChild(buildHeadingRow(item, today, isMatch ? 'tags' : 'search', isMatch ? {} : { highlight: patterns }));
     }

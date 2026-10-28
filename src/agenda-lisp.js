@@ -79,38 +79,28 @@ export function priorityFunction(text) {
   };
 }
 
+/** A `%(form)` of the prefix format failed: Emacs stops the Agenda with this error text. */
+export class PrefixFormError extends Error {}
+
 /**
- * The text a `%(form)` of `org-agenda-prefix-format` gives: the form's value as `%s` prints it, or Emacs's error text. The form sees
- * `category`, `time`, `level`, `extra`, `effort`, `tag` and `breadcrumbs`, and the heading as the cursor's place.
+ * The text a `%(form)` of `org-agenda-prefix-format` gives: the form's value as `%s` prints it. The form sees `category`, `time`,
+ * `level`, `extra`, `effort`, `tag` and `breadcrumbs`, and the heading as the cursor's place. A form that fails throws a
+ * `PrefixFormError` with Emacs's error text, as Emacs stops the Agenda with the error.
  * @param {string} formText  the form as written, `(my-function)`
  * @param {Record<string, string>} fields
  * @param {HeadingContext | null} heading
  * @returns {string}
  */
 export function evalPrefixForm(formText, fields, heading) {
-  /** @type {LObj} */
-  let form;
   try {
-    form = new Reader(formText).read();
-  } catch (raw) {
-    return `%![Error: ${describeFailure(raw).message}]`;
-  }
-  const variables = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v]));
-  try {
-    const pairs = Object.entries(variables).map(([name, value]) => /** @type {[Sym, LObj]} */ ([intern(name), value]));
+    const form = new Reader(formText).read();
+    const pairs = Object.entries(fields).map(([name, value]) => /** @type {[Sym, LObj]} */ ([intern(name), value]));
     for (const [s] of pairs) s.special = true;
     const value = withContext({}, () => withDynamic(pairs, () => (heading ? withHeading(heading, () => evalForm(form, null)) : evalForm(form, null))));
     return print(value, false);
   } catch (raw) {
-    const { message, kind } = describeFailure(raw);
-    return kind === 'budget' ? `%![Error: ${message}]` : `%![Error: ${errorObjectText(raw, message)}]`;
+    throw new PrefixFormError(describeFailure(raw).message);
   }
-}
-
-/** Emacs formats the error object in `%![Error: ...]` as `(error "text")`; the object prints as the error message here. @param {unknown} raw @param {string} message */
-function errorObjectText(raw, message) {
-  const e = /** @type {{ symbol?: Sym, data?: LObj }} */ (raw);
-  return e && e.symbol ? print(new Cons(e.symbol, e.data ?? NIL), false) : message;
 }
 
 // `insert` writes where `princ` does, so a function command can build its text either way.
@@ -120,8 +110,8 @@ defun('insert', 0, -1, (args) => {
 });
 
 /**
- * Runs a function command: the function is called with the match string, and what it writes (`princ`, `insert`, `print`) and returns
- * (a string, or a list of strings, one to a line) becomes the text of the agenda buffer.
+ * Runs a function command: the function is called with the match string, and what it writes (`princ`, `insert`, `print`) becomes the
+ * text of the agenda buffer. What it returns is not shown, as in Emacs.
  * @param {string} functionText  the command's type as written: a name or a lambda form
  * @param {string} match
  * @returns {{ ok: true, text: string } | { ok: false, message: string }}
@@ -131,20 +121,7 @@ export function runFunctionCommand(functionText, match) {
   if (!fn) return { ok: false, message: 'Not a function: ' + functionText };
   const r = callFunction(fn, [match]);
   if (!r.ok) return r;
-  const written = state.outputs[0].join('');
-  const returned = typeof r.value === 'string' ? r.value : r.value instanceof Cons ? flattenStrings(r.value).join('\n') : '';
-  return { ok: true, text: [written, returned].filter(Boolean).join(written && returned && !written.endsWith('\n') ? '\n' : '') };
-}
-
-/** @param {LObj} x @returns {string[]} */
-function flattenStrings(x) {
-  /** @type {string[]} */
-  const out = [];
-  for (let p = x; p instanceof Cons; p = p.cdr) {
-    if (typeof p.car === 'string') out.push(p.car);
-    else if (p.car instanceof Cons) out.push(...flattenStrings(p.car));
-  }
-  return out;
+  return { ok: true, text: state.outputs[0].join('') };
 }
 
 /** @typedef {import('./agenda.js').AgendaItem} AgendaItem */

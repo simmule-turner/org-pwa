@@ -5,7 +5,7 @@
 // archived heading, Restore) will do; Part 2 lists the places Refile can put it, with a search and the details of the chosen one.
 // Archive/Restore, Refile and Cancel stay at the bottom, one line each, never resized by the text above them. The state lives in
 // S.pendingRefile so Escape and the other panels' dismissal reach it like any panel.
-import { findAncestorPath, getArchiveLocation, isArchivedInPlace, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
+import { findAncestorPath, getArchiveLocation, isRestorable, parseArchiveLocation, resolveArchiveFileId } from '../src/archive-model.js';
 import { archiveStamps, describeSubtree, displayName, filterTargets, refileDetails, restoreDestination } from '../src/archive-refile-details.js';
 import { getRefileAllowCreatingParentNodes, getRefileTargets } from '../src/local-variables.js';
 import { getRefileCandidates, parseRefileTargetsWithErrors, recentRefileCandidates } from '../src/refile.js';
@@ -45,7 +45,7 @@ function detailGrid(rows) {
  * @param {Heading} heading */
 export async function openArchiveRefilePanel(heading) {
   const { entries: targetsSpec, errors } = parseRefileTargetsWithErrors(getRefileTargets(S.state.localVariables));
-  const mode = isArchivedInPlace(heading) ? 'restore' : 'archive';
+  const mode = isRestorable(heading) ? 'restore' : 'archive';
   S.pendingRefile = { heading, mode, loading: true, candidates: [], errors, recent: [], selected: null, query: '' };
   renderArchiveRefilePanel();
   if (targetsSpec.some((entry) => entry.fileSpec === 'agenda-files')) await ensureAgendaFilesLoadedAndWait();

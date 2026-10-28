@@ -288,8 +288,12 @@ function nodes(list) {
     return status && (written.match(/['"]/g) || []).length === status.length ? smartQuotes(written, status, S.language) : written;
   });
   // a fragment left out (tex:nil) takes the blanks after it with it
-  return out.map((t, i) => (i > 0 && out[i - 1] === LATEX_DROPPED ? t.replace(/^[ \t]+/, '') : t)).join('').split(LATEX_DROPPED).join('');
+  // a citation that prints nothing (the `n` style) takes the blanks before it with it
+  return out.map((t, i) => (i > 0 && out[i - 1] === LATEX_DROPPED ? t.replace(/^[ \t]+/, '') : i + 1 < out.length && list[i + 1].type === 'citation' && out[i + 1] === '' ? t.replace(/[ \t]+$/, '') : t)).join('').split(LATEX_DROPPED).join('');
 }
+
+/** The link types Org knows (`org-link-parameters` in a batch Emacs) that this exporter writes as addresses. */
+const ORG_LINK_TYPES = /^(https?|ftp|mailto|doi|info|man|eww|rmail|mhe|gnus|bbdb|docview|w3m|irc|news|shell|elisp|help|file(\+sys|\+emacs)?|id|attachment):/i;
 
 /** @param {string} url */
 const isExternal = (url) => /^[A-Za-z][A-Za-z0-9+.-]*:/.test(url) && !/^(file|id|help|elisp|shell|attachment|news|irc|file\+sys|file\+emacs):/i.test(url);
@@ -432,6 +436,9 @@ function link(n) {
     const rest = target.replace(/^[a-z+]+:/i, '');
     return description === null ? '\\url{' + protectUrl(rest) + '}' : '\\href{' + protectUrl(rest) + '}{' + description + '}';
   }
+  // a name with a colon is a link to what it names when its start is not a link type (`[[fig:cat]]` is fuzzy in Org)
+  const named = isExternal(target) && !ORG_LINK_TYPES.test(target) ? resolveInternal(target) : null;
+  if (named) return reference(named.label, description, lead || '');
   if (isExternal(target)) return description === null ? '\\url{' + protectUrl(target) + '}' : '\\href{' + protectUrl(target) + '}{' + description + '}';
   const ref = resolveInternal(target);
   if (ref) return reference(ref.label, description, lead || '');
@@ -526,13 +533,14 @@ function citation(n) {
   const affix = (/** @type {string} */ text) => inline(text).trim();
   if (S.processor === 'natbib') return natbibCitation(n, affix) + blanks;
   if (S.processor === 'biblatex') return biblatexCitation(n, affix) + blanks;
+  if (/^(author|a)(\/|$)/.test(n.style || '')) throw new Error('Wrong type argument: characterp, raw'); // oc-basic's author style, which Org 9.6.15 cannot print as LaTeX
   const segments = S.cite ? S.cite.formatCitation(n) : null;
   return (segments ? citeSegments(segments).trim() : '') + blanks;
 }
 
-/** A citation processor's text as LaTeX: plain text escaped, affixes as Org text, emphasis as \emph. @param {import('./cite.js').Segment[]} segments @returns {string} */
-function citeSegments(segments) {
-  return segments.map((x) => (typeof x === 'string' ? plain(x) : 'org' in x ? inline(x.org) : '\\emph{' + citeSegments(x.italic) + '}')).join('');
+/** A citation processor's text as LaTeX: plain text escaped (not with `verbatim`), affixes as Org text, emphasis as \emph. @param {import('./cite.js').Segment[]} segments @param {boolean} [verbatim] @returns {string} */
+function citeSegments(segments, verbatim = false) {
+  return segments.map((x) => (typeof x === 'string' ? (verbatim ? x : plain(x)) : 'org' in x ? inline(x.org) : '\\emph{' + citeSegments(x.italic, verbatim) + '}')).join('');
 }
 
 /**
@@ -890,7 +898,8 @@ function bibliography() {
   if (S.processor === 'natbib') return (setting.bibStyle ? '\\bibliographystyle{' + setting.bibStyle + '}\n' : '') + '\\bibliography{' + files.map((f) => f.replace(/\.[^./]*$/, '')).join(',') + '}\n';
   if (S.processor === 'biblatex') return '\\printbibliography\n';
   if (!S.cite) return '';
-  return S.cite.bibliography().map((/** @type {import('./cite.js').Segment[]} */ e) => citeSegments(e) + '\n').join('\n');
+  // oc-basic hands the entries over as they are in the .bib file (no escaping), each after a \noindent line
+  return S.cite.bibliography().map((/** @type {import('./cite.js').Segment[]} */ e) => '\\noindent\n' + citeSegments(e, true) + '\n').join('\n');
 }
 
 // ---- headings -------------------------------------------------------------

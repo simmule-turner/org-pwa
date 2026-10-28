@@ -1,0 +1,239 @@
+#+TITLE: LaTeX export
+#+STARTUP: showall
+
+A cookbook for the LaTeX export (=C-c C-e l l= in Emacs, More → Export → LaTeX in the app). Each section shows an Org text, the settings it needs, and the body of the =.tex= file Emacs 29.3 (Org 9.6.15) wrote for it, the part between =\begin{document}= and =\end{document}=. The app writes the same text. Label hashes (=sec:org…=) are numbered by first use, as they differ on every run. Settings go in Settings → Export → LaTeX, in the Lisp box. The last section says where the app differs from Emacs.
+
+* A macro with a template
+A =#+MACRO:= is replaced by its text; =$1=, =$2= are the arguments.
+
+#+begin_src org
+,#+MACRO: version 1.2
+,#+MACRO: greet Hello, $1!
+,* Notes
+Release {{{version}}}. {{{greet(world)}}}
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+Release 1.2. Hello, world!
+#+end_src
+
+* A macro that runs Lisp
+A template that starts with =(eval= is evaluated. The arguments are strings, and what the form returns is written as text. An error stops the export.
+
+#+begin_src org
+,#+MACRO: gnustamp (eval (concat "GNU/" (capitalize $1)))
+,#+MACRO: plural (eval (if (equal $1 "1") (concat $1 " file") (concat $1 " files")))
+,* Notes
+Running {{{gnustamp(linux)}}} on {{{plural(1)}}}, then {{{plural(3)}}}.
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Notes}
+\label{sec:org0000001}
+Running GNU/Linux on 1 file, then 3 files.
+#+end_src
+
+* Headlines
+A TODO keyword and tags are written as =ox-latex= writes them, the tags at the right of the title. A priority shows only with =pri:t=.
+
+#+begin_src org
+,#+OPTIONS: pri:t
+,* TODO [#A] Write the report :work:urgent:
+,** DONE Outline
+,* Plain heading
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{{\bfseries\sffamily TODO} \framebox{\#A} Write the report\hfill{}\textsc{work:urgent}}
+\label{sec:org0000001}
+\subsection{{\bfseries\sffamily DONE} Outline}
+\label{sec:org0000002}
+\section{Plain heading}
+\label{sec:org0000003}
+#+end_src
+
+* Leaving the keyword, priority and tags out
+=todo:nil=, =pri:t= and =tags:nil= in =#+OPTIONS:= choose what a headline shows.
+
+#+begin_src org
+,#+OPTIONS: todo:nil pri:t tags:nil
+,* TODO [#B] Write the report :work:
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{\framebox{\#B} Write the report}
+\label{sec:org0000001}
+#+end_src
+
+* Your own headline format
+=org-latex-format-headline-function= is called for every section title and low-level list headline with the keyword, its type (=todo= or =done=), the priority as a character code, the title, the tags and the export info. Whatever it returns is the headline.
+
+#+begin_src org
+,* TODO Write the report :work:
+,* Read the notes
+#+end_src
+
+Settings:
+
+#+begin_src emacs-lisp
+(setq org-latex-format-headline-function
+      (lambda (todo todo-type priority text tags info)
+        (concat (if todo (format "[%s] " todo) "")
+                text
+                (if tags (concat " #" (mapconcat #'identity tags ",")) ""))))
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{[TODO] Write the report #work}
+\label{sec:org0000001}
+\section{Read the notes}
+\label{sec:org0000002}
+#+end_src
+
+* A named headline function
+A function you define can be given by name.
+
+#+begin_src org
+,* TODO Open task
+,* DONE Finished task
+#+end_src
+
+Settings:
+
+#+begin_src emacs-lisp
+(defun my-headline (todo todo-type priority text tags info)
+  (if (eq todo-type (quote done))
+      (concat "\\sout{" text "}")
+    text))
+(setq org-latex-format-headline-function #'my-headline)
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{Open task}
+\label{sec:org0000001}
+\section{\sout{Finished task}}
+\label{sec:org0000002}
+#+end_src
+
+* A different class
+=org-latex-classes= defines a class and its sectioning commands. =#+LATEX_CLASS:= picks it for one file.
+
+#+begin_src org
+,#+LATEX_CLASS: memo
+,* To the team
+,** Schedule
+We meet on Friday.
+#+end_src
+
+Settings:
+
+#+begin_src emacs-lisp
+(add-to-list 'org-latex-classes
+  '("memo" "\\documentclass{article}"
+    ("\\section*{%s}" . "\\section*{%s}")
+    ("\\subsection*{%s}" . "\\subsection*{%s}")))
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section*{To the team}
+\label{sec:org0000001}
+\subsection*{Schedule}
+\label{sec:org0000002}
+We meet on Friday.
+#+end_src
+
+* A table with attributes
+=#+ATTR_LATEX:= sets the column alignment, the table environment and booktabs rules.
+
+#+begin_src org
+,#+CAPTION: Prices
+,#+ATTR_LATEX: :align lrr :booktabs t
+| Item | Price | Qty |
+|------+-------+-----|
+| Pen  |  1.50 |   4 |
+| Book | 12.00 |   2 |
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\begin{table}[htbp]
+\caption{Prices}
+\centering
+\begin{tabular}{lrr}
+\toprule
+Item & Price & Qty\\[0pt]
+\midrule
+Pen & 1.50 & 4\\[0pt]
+Book & 12.00 & 2\\[0pt]
+\bottomrule
+\end{tabular}
+\end{table}
+#+end_src
+
+* A figure
+A link to an image with a caption becomes a =figure=. =:width= and =:placement= go in =#+ATTR_LATEX:=.
+
+#+begin_src org
+,#+CAPTION: A cat
+,#+NAME: fig-cat
+,#+ATTR_LATEX: :width 0.5\textwidth :placement [h]
+[[file:cat.png]]
+
+See [[fig-cat]].
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{cat.png}
+\caption{\label{fig:org0000001}A cat}
+\end{figure}
+
+See \ref{fig:org0000001}.
+#+end_src
+
+* A link to a figure by name
+A link whose target is the =#+NAME:= of a figure, even a name with a colon, is a reference to it.
+
+#+begin_src org
+,#+CAPTION: A cat
+,#+NAME: fig:cat
+[[file:cat.png]]
+
+See [[fig:cat]].
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.9\linewidth]{cat.png}
+\caption{\label{fig:org0000001}A cat}
+\end{figure}
+
+See \ref{fig:org0000001}.
+#+end_src
+
+* Where the app differs from Emacs
+- =org-latex-format-headline-function= is called with =nil= in place of the export info, so a function that reads it sees nothing.
+- A macro =(eval ..)= runs on the app's own Lisp interpreter (see the Lisp init), not on Emacs, so a function the interpreter does not have gives an error.

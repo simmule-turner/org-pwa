@@ -1,0 +1,184 @@
+#+TITLE: Agenda settings
+#+STARTUP: showall
+#+CATEGORY: work
+#+TODO: TODO NEXT | DONE
+
+Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, and a Lisp function as a command. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
+
+* TODO [#A] Alpha deploy :ops:
+SCHEDULED: <2027-03-15 Mon 09:00>
+:PROPERTIES:
+:Effort: 2:00
+:WEIGHT: 3
+:END:
+* TODO Bravo review
+SCHEDULED: <2027-03-15 Mon>
+:PROPERTIES:
+:WEIGHT: 1
+:END:
+The budget figures are in the spreadsheet.
+* NEXT [#C] Charlie cleanup :home:
+DEADLINE: <2027-03-15 Mon>
+:PROPERTIES:
+:WEIGHT: 2
+:END:
+* TODO [#B] Delta call <2027-03-15 Mon 11:00>
+
+* The default rows
+With nothing set, a row is the category, the time, whether it is scheduled or due, then the heading. Rows go by time of day, then priority, then the order in the file.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "  %-12:c%?-12t% s")))
+#+end_src
+
+#+NAME: default
+#+begin_example
+  work:        9:00...... Scheduled:  TODO [#A] Alpha deploy :ops:
+  work:       11:00...... TODO [#B] Delta call
+  work:       Scheduled:  TODO Bravo review
+  work:       Deadline:   NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* What comes before each heading
+=org-agenda-prefix-format= is a format string per view. =%c= is the category (=%-8:c= pads it to 8 and adds the colon), =%t= the time, =%s= the scheduling word, =%e= the effort. A =?= makes the part disappear when it is empty.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "%-8:c %?-12t %e ")))
+#+end_src
+
+#+NAME: prefix-short
+#+begin_example
+work:     9:00......  2:00 TODO [#A] Alpha deploy :ops:
+work:    11:00......   TODO [#B] Delta call
+work:      TODO Bravo review
+work:      NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* A Lisp form in the prefix
+=%(form)= is evaluated for each row, with =category=, =time=, =level=, =effort= and =tag= set to that row's values; what it returns takes the place of the form.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "%(upcase category) %(concat \"<\" (substring category 0 1) \">\") ")))
+#+end_src
+
+#+NAME: prefix-lisp
+#+begin_example
+WORK <w> TODO [#A] Alpha deploy :ops:
+WORK <w> TODO [#B] Delta call
+WORK <w> TODO Bravo review
+WORK <w> NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* A format that is a plain string
+The value may also be one string, used for every view. Emacs reads it as a Lisp string, so =\"= is a quote mark and =\\= a backslash. The time is =%t=: a one-digit hour has a space before it.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format "%-6c \"%t\"%s ")
+#+end_src
+
+#+NAME: prefix-string
+#+begin_example
+work   " 9:00......"Scheduled:  TODO [#A] Alpha deploy :ops:
+work   "11:00......" TODO [#B] Delta call
+work   ""Scheduled:  TODO Bravo review
+work   ""Deadline:   NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* A form that fails
+When a =%(form)= fails, the Agenda stops and shows the error in place of the rows.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "%(no-such-function category) %c")))
+#+end_src
+
+#+NAME: prefix-error
+#+begin_example
+Symbol's function definition is void: no-such-function
+#+end_example
+
+* The order of the rows
+=org-agenda-sorting-strategy= lists the keys to sort by, per view. Here the highest priority comes first and the rest keep their order in the file.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "  %-12:c%?-12t% s")))
+(setq org-agenda-sorting-strategy '((agenda priority-down category-keep)))
+#+end_src
+
+#+NAME: sort-priority
+#+begin_example
+  work:        9:00...... Scheduled:  TODO [#A] Alpha deploy :ops:
+  work:       Scheduled:  TODO Bravo review
+  work:       11:00...... TODO [#B] Delta call
+  work:       Deadline:   NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* Sorting by your own rule
+=user-defined-up= and =user-defined-down= sort by =org-agenda-cmp-user-defined=, a function of two agenda lines. It returns =-1= to put the first line first, =1= to put it second, or =nil= for no opinion. This one puts the rows tagged =ops= first.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "  %-12:c%?-12t% s")))
+(setq org-agenda-sorting-strategy '((agenda user-defined-up)))
+(setq org-agenda-cmp-user-defined (lambda (a b) (cond ((string-match-p ":ops:" a) -1) ((string-match-p ":ops:" b) 1))))
+#+end_src
+
+#+NAME: sort-user
+#+begin_example
+  work:        9:00...... Scheduled:  TODO [#A] Alpha deploy :ops:
+  work:       Deadline:   NEXT [#C] Charlie cleanup :home:
+  work:       Scheduled:  TODO Bravo review
+  work:       11:00...... TODO [#B] Delta call
+#+end_example
+
+* A priority of your own
+=org-priority-get-priority-function= gives the priority number of a heading, from its text, instead of the letter. It runs with the cursor on the heading, so it can read a property. Here the =WEIGHT= property is the number. A scheduled or due entry still adds its own part to the number, as it does to a letter's.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "  %-12:c%?-12t% s")))
+(setq org-agenda-sorting-strategy '((agenda priority-down)))
+(setq org-priority-get-priority-function (lambda (headline) (string-to-number (or (org-entry-get nil "WEIGHT") "0"))))
+#+end_src
+
+#+NAME: priority-function
+#+begin_example
+  work:        9:00...... Scheduled:  TODO [#A] Alpha deploy :ops:
+  work:       Scheduled:  TODO Bravo review
+  work:       Deadline:   NEXT [#C] Charlie cleanup :home:
+  work:       11:00...... TODO [#B] Delta call
+#+end_example
+
+* Keyword search shows the heading only
+A Keyword search finds an entry by its text, not only its heading. The query below is the word in the text of Bravo, written as a regular expression in braces. It finds Bravo, and the row shows the heading alone.
+
+The query is ={bud[g]et}=.
+
+#+NAME: search
+#+begin_example
+  work:       TODO Bravo review
+#+end_example
+
+* Match shows the heading only
+The Match query =ops|home= lists the entries with either tag.
+
+The query is =ops|home=.
+
+#+NAME: match
+#+begin_example
+  work:       TODO [#A] Alpha deploy :ops:
+  work:       NEXT [#C] Charlie cleanup :home:
+#+end_example
+
+* A function as a command
+In =org-agenda-custom-commands=, a command whose type is a function calls it with the command's match string. What the function prints is the result; what it returns is not shown.
+
+#+begin_src emacs-lisp
+(setq org-agenda-custom-commands '(("x" "Mine" (lambda (match) (princ (format "Report for %s\n" match)) (princ "second line\n") "a result that is not shown") "ops")))
+#+end_src
+
+#+NAME: function-command
+#+begin_example
+Report for ops
+second line
+#+end_example
+
+* Where the app differs from Emacs
+Nothing in the examples above differs.

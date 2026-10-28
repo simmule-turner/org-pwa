@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, disambiguateAttachmentFilename, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -28,6 +28,10 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
+import { getUsePropertyInheritance } from '../src/local-variables.js';
+
+/** org-use-property-inheritance: whether a heading may use a parent's attachment folder. */
+const inherit = () => getUsePropertyInheritance(S.state.localVariables);
 
 /** Whether attachments can be written for the open document, asking for the org-pwa folder first when that is all that is missing.
  *  Says why, and returns false, when they cannot. */
@@ -189,7 +193,7 @@ export async function attachmentFiles(heading) {
     render();
     return null;
   }
-  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId, inherit());
   if (!dir) return []; // no :ID: anywhere above: nothing has been attached
   const names = await listFolder(dir);
   if (!names) {
@@ -231,8 +235,13 @@ export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
   }
 
   const existingNames = (await listFolder(dir)) || [];
-  const filename = disambiguateAttachmentFilename(sanitizeAttachmentFilename(picked.name), existingNames);
+  const filename = sanitizeAttachmentFilename(picked.name);
   const path = `${dir}/${filename}`;
+  if (existingNames.includes(filename)) {
+    setStatus(`File already exists: ${path}`); // as in Emacs, an attachment never overwrites or renames a file
+    render();
+    return null;
+  }
 
   try {
     const adapter = activeDiskAdapter();
@@ -294,7 +303,7 @@ export async function resolveAndReadAttachment(target, heading) {
     render();
     return null;
   }
-  const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, target, S.state.documentId);
+  const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, target, S.state.documentId, inherit());
   if (!resolvedPath) {
     setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
     render();
@@ -392,7 +401,7 @@ export async function deleteAttachment(heading, filename) {
     render();
     return;
   }
-  const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, `attachment:${filename}`, S.state.documentId);
+  const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, `attachment:${filename}`, S.state.documentId, inherit());
   if (!resolvedPath) {
     setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
     render();
@@ -410,7 +419,7 @@ export async function deleteAttachment(heading, filename) {
   }
   removeAttachmentLink(heading, filename);
   heading.body = parseBody(heading.bodyLines);
-  const remaining = await listFolder(resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId));
+  const remaining = await listFolder(resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId, inherit()));
   if (remaining && remaining.length === 0) removeAttachTag(heading);
   setStatus(`Deleted "${filename}".`);
   commitAndRender(`Deleted "${filename}"`);
@@ -431,7 +440,7 @@ export async function deleteAllAttachments(heading) {
   if (!(await confirmDialog(`Delete ${label}? This removes the actual files, not just the links to them.`))) return;
   setStatus('Deleting attachments\u2026');
   render();
-  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId, inherit());
   const adapter = activeDiskAdapter();
   let deleted = 0;
   /** @type {Error | null} */
@@ -473,7 +482,7 @@ function viewableMimeFor(path, bytes) {
  * @param {Heading} heading
  *  number of files, or null if the folder could not be read or the heading has none. */
 async function syncAttachTag(heading) {
-  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId, inherit());
   if (!dir) {
     removeAttachTag(heading);
     return 0;
@@ -623,7 +632,7 @@ export async function revealAttachmentFolder(heading) {
     render();
     return;
   }
-  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId);
+  const dir = resolveAttachmentDirectory(S.state.doc, heading, S.state.documentId, inherit());
   if (!dir) {
     setStatus('No attachments on this heading yet.');
     render();

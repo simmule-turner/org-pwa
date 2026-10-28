@@ -247,9 +247,12 @@ export function allHeadingsInOrder(doc) {
  * @param {boolean} [useRegex]
  */
 export function buildQueryReplacePattern(query, useRegex) {
-  if (useRegex) return emacsRegexToJs(query, 'gi');
+  // as in Emacs, case is ignored only when the search text has no capital letter (a backslash-escaped letter in a regexp does not count)
+  const typed = useRegex ? query.replace(/\\./gs, '') : query;
+  const flags = typed === typed.toLowerCase() ? 'gi' : 'g';
+  if (useRegex) return emacsRegexToJs(query, flags);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(escaped, 'gi');
+  return new RegExp(escaped, flags);
 }
 
 /** Returns a human-readable problem description, or null if `parsed` is

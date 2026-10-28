@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { parseOrg } from './org-parser.js';
 
 /**
  * Archive data model & operations.
@@ -238,24 +239,29 @@ function isArchivedInPlace(heading) {
   return heading.tags.includes(ARCHIVE_TAG);
 }
 
-/** True for anything that's been archived, either in-place or by having
- * @param {Heading} heading
- *  landed in an archive file (identified by ARCHIVE_* properties). */
+/** True for a heading Org counts as archived: the ARCHIVE tag, which is all the Agenda and folding look at.
+ * @param {Heading} heading */
 function isArchived(heading) {
+  return isArchivedInPlace(heading);
+}
+
+/** True where the app's Unarchive applies: a tagged heading, or one that landed in an archive file (it carries ARCHIVE_* stamps).
+ * @param {Heading} heading */
+function isRestorable(heading) {
   return isArchivedInPlace(heading) || 'ARCHIVE_TIME' in heading.properties;
 }
 
 /**
- * Archive-in-place: tag the heading :ARCHIVE: and stamp ARCHIVE_TIME.
+ * Archive-in-place: tag the heading :ARCHIVE: (org-toggle-archive-tag adds the tag and nothing else).
  * The subtree stays where it is; view layer is responsible for hiding
  * archived subtrees from agenda/TODO views by default (see requirements §7/§10).
  * @param {Heading} heading
+ * @param {{ now?: Date }} [_options]
  */
-function archiveInPlace(heading, { now = new Date() } = {}) {
+function archiveInPlace(heading, _options = {}) {
   if (!isArchivedInPlace(heading)) {
     heading.tags = [...heading.tags, ARCHIVE_TAG];
   }
-  setProperty(heading, 'ARCHIVE_TIME', formatOrgTimestamp(now));
   return heading;
 }
 
@@ -282,53 +288,57 @@ function unarchiveInPlace(heading) {
  * @param {any} [sourceFilePath]
  */
 function buildArchivedClone(sourceDoc, heading, sourceFilePath, opts = /** @type {any} */ ({})) {
-  const { now = new Date(), markDone = false, doneKeyword = 'DONE' } = opts;
+  const { now = new Date(), markDone = false, doneKeyword = 'DONE', infile = false } = opts;
 
   const ancestors = findAncestorPath(sourceDoc, heading);
   if (ancestors === null) {
     throw new Error('buildArchivedClone: heading not found in sourceDoc');
   }
   const olpath = ancestors.map((h) => h.title).join('/');
-  const category = ancestors.length > 0 ? ancestors[0].title : heading.title || null;
+  const category = archiveCategory(sourceDoc, [...ancestors, heading], sourceFilePath);
+  // the tags the subtree inherits, as Emacs lists them: #+FILETAGS: first, then each level from the outermost down, a tag
+  // the subtree has itself left out, and a tag given at several levels kept at the last of them
+  const fileTags = (/** @type {Doc} */ (sourceDoc).keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
+  const above = [...fileTags, ...ancestors.flatMap((h) => h.tags || [])].filter((t) => !heading.tags.includes(t));
+  const inheritedTags = above.filter((t, i) => above.lastIndexOf(t) === i);
 
   const clone = cloneHeading(heading);
 
-  if (!clone.tags.includes(ARCHIVE_TAG)) {
-    clone.tags = [...clone.tags, ARCHIVE_TAG];
+  // Like org-archive-subtree, with org-archive-save-context-info at its default (time file olpath category todo itags):
+  // a value that is empty is not written, and the subtree gets no ARCHIVE tag.
+  if (infile && inheritedTags.length > 0) {
+    clone.tags = [...inheritedTags, ...clone.tags];
   }
   setProperty(clone, 'ARCHIVE_TIME', formatOrgTimestamp(now));
   setProperty(clone, 'ARCHIVE_FILE', sourceFilePath);
-  setProperty(clone, 'ARCHIVE_OLPATH', olpath);
-  setProperty(clone, 'ARCHIVE_CATEGORY', /** @type {string} */ (category));
-
-  // Real org's own default org-archive-save-context-info is
-  // '(time file olpath category todo itags) -- ARCHIVE_TODO records
-  // the PRE-ARCHIVE state whenever the heading actually has one,
-  // independent of markDone (a separate, additional org-archive-
-  // mark-done concern: whether archiving ALSO forces the heading to
-  // DONE). The two were previously conflated into a single
-  // condition, meaning ARCHIVE_TODO never got recorded at all
-  // wherever markDone wasn't explicitly requested.
+  if (olpath) setProperty(clone, 'ARCHIVE_OLPATH', olpath);
+  if (category) setProperty(clone, 'ARCHIVE_CATEGORY', category);
+  // ARCHIVE_TODO records the state before archiving whenever the heading has one (org-archive-mark-done is a separate setting)
   if (clone.todo) {
     setProperty(clone, 'ARCHIVE_TODO', clone.todo);
   }
   if (markDone && clone.todo) {
     clone.todo = doneKeyword;
   }
-
-  // ARCHIVE_ITAGS: the tags the subtree INHERITS from further up the
-  // hierarchy -- ancestors' own tags, not the heading's own local
-  // ones (those are already preserved as-is on the clone itself, tags
-  // aren't stripped when archiving). Colon-delimited, matching real
-  // org's own tag-storage convention everywhere else (":tag1:tag2:").
-  // Omitted entirely when there's nothing to record, rather than
-  // stamping an empty, meaningless value.
-  const inheritedTags = [...new Set(ancestors.flatMap((h) => h.tags || []))];
+  // ARCHIVE_ITAGS: the inherited tags, separated by spaces
   if (inheritedTags.length > 0) {
-    setProperty(clone, 'ARCHIVE_ITAGS', ':' + inheritedTags.join(':') + ':');
+    setProperty(clone, 'ARCHIVE_ITAGS', inheritedTags.join(' '));
   }
 
   return clone;
+}
+
+/** What org-get-category gives: the nearest CATEGORY property, else the file's #+CATEGORY:, else the file name without its extension.
+ * @param {Doc} doc @param {Heading[]} chain the headings from the outermost down to the one archived @param {string} [fileId] */
+function archiveCategory(doc, chain, fileId) {
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const v = getProperty(chain[i], 'CATEGORY');
+    if (v) return v;
+  }
+  const kws = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'CATEGORY' && k.value.trim());
+  if (kws.length > 0) return kws[kws.length - 1].value.trim();
+  const base = String(fileId || '').split('/').pop() || '';
+  return base.replace(/\.[^.]*$/, '') || base;
 }
 
 /**
@@ -419,6 +429,9 @@ function buildRestoredClone(heading) {
   if (archiveTodo !== undefined) {
     clone.todo = archiveTodo;
   }
+  // a subtree archived inside its file took its inherited tags along (and :tag: was how older versions wrote the list)
+  const inherited = new Set((getProperty(clone, 'ARCHIVE_ITAGS') || '').split(/[:\s]+/).filter(Boolean));
+  if (inherited.size > 0) clone.tags = clone.tags.filter((t) => !inherited.has(t));
   for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS']) {
     deleteProperty(clone, key);
   }
@@ -573,24 +586,82 @@ function blankArchiveTargetHeading(title, level) {
  * @param {any} targetDoc
  * @param {Heading} extractedHeading
  * @param {string} headlinePart
+ * @param {{ sourceFileId?: string, targetFileId?: string, created?: boolean }} [options] where the subtree comes from, the file it goes to, and whether that file is new
  */
-function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart) {
-  const trimmedPath = String(headlinePart || '').trim();
+function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart, options = {}) {
+  const { sourceFileId = '', targetFileId = '', created = false } = options;
+  const sourceName = String(sourceFileId).split('/').pop() || '';
+  // %s is the name of the file the subtree comes from, in the heading as it is in the file part
+  const trimmedPath = String(headlinePart || '').split('%s').join(sourceName).trim();
+  // a new archive file starts as Emacs starts it: a mode line unless the name ends in .org, and a note of where the entries come from
+  if (created && isEmptyDoc(targetDoc)) {
+    const modeLine = /\.org$/.test(targetFileId) ? '' : '#    -*- mode: org -*-\n\n';
+    const head = /** @type {Doc} */ (parseOrg(`${modeLine}\nArchived entries from file ${sourceFileId}\n\n`));
+    targetDoc.keywords = head.keywords;
+    targetDoc.bodyLines = head.bodyLines;
+    targetDoc.body = head.body;
+  }
   if (!trimmedPath) {
+    endWithNewline(lastOwner(targetDoc));
     return appendToArchive(targetDoc, extractedHeading);
   }
   const starMatch = /^(\*+)\s*/.exec(trimmedPath);
   const targetLevel = starMatch ? starMatch[1].length : 1;
   const targetTitle = trimmedPath.replace(/^\*+\s*/, '');
   let target = findHeadingAtLevel(targetDoc, targetLevel, targetTitle);
-  if (!target) {
+  if (target) {
+    // one blank line, whatever the subtree ended with, between what is there and the new entry
+    const owner = lastOwner(target);
+    while (owner.bodyLines.length > 0 && owner.bodyLines[owner.bodyLines.length - 1].trim() === '') owner.bodyLines.pop();
+    owner.bodyLines.push('');
+  } else {
+    // a heading that is not there yet goes at the end, a blank line before it and one after it
+    endWithNewline(lastOwner(targetDoc));
     target = blankArchiveTargetHeading(targetTitle, targetLevel);
+    target.bodyLines = [''];
     targetDoc.children.push(target);
   }
   shiftLevels(extractedHeading, target.level + 1);
   target.children.push(extractedHeading);
   target.collapsed = false; // otherwise the just-archived item vanishes from view immediately -- same reasoning demoteHeading itself already applies
   return targetDoc;
+}
+
+/**
+ * Makes `heading` the last child of `destination` in `doc`, as a refile does. When the destination ends the file, the newline that
+ * ends the file moves to the end of the subtree, so no blank line appears before it.
+ * @param {Doc} doc @param {Heading} destination @param {Heading} heading
+ */
+function appendRefiled(doc, destination, heading) {
+  const end = lastOwner(doc);
+  if (lastOwner(destination) === end && end.bodyLines[end.bodyLines.length - 1] === '') {
+    end.bodyLines.pop();
+    const tail = lastOwner(heading);
+    if (tail.bodyLines[tail.bodyLines.length - 1] !== '') tail.bodyLines.push('');
+  }
+  shiftLevels(heading, destination.level + 1);
+  destination.children.push(heading);
+}
+
+/** @param {Doc} doc */
+function isEmptyDoc(doc) {
+  return doc.children.length === 0 && doc.keywords.length === 0 && (doc.bodyLines || []).every((l) => l.trim() === '');
+}
+
+/** The last element of the document, in file order: the deepest last heading, or the document itself when it has none.
+ * @param {Doc | Heading} node @returns {Doc | Heading} */
+function lastOwner(node) {
+  let n = node;
+  while (n.children.length > 0) n = n.children[n.children.length - 1];
+  if (!n.bodyLines) n.bodyLines = [];
+  return n;
+}
+
+/** Makes sure the last line of the element ends with a newline, as the file's last line does in Emacs after it inserts one.
+ * @param {Doc | Heading} node */
+function endWithNewline(node) {
+  const lines = node.bodyLines;
+  if (lines.length === 0 ? 'level' in node : lines[lines.length - 1] !== '') lines.push('');
 }
 
 /** Recursively searches `doc`'s own entire heading tree (not just its
@@ -629,6 +700,7 @@ export {
   formatOrgTimestamp,
   isArchivedInPlace,
   isArchived,
+  isRestorable,
   archiveInPlace,
   unarchiveInPlace,
   buildArchivedClone,
@@ -642,4 +714,5 @@ export {
   resolveArchiveFileId,
   getArchiveLocation,
   insertAtArchiveLocation,
+  appendRefiled,
 };

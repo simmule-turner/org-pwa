@@ -89,7 +89,7 @@ function faceFor(day, scheduled, deadline, done) {
 
 /**
  * The graph for one habit: `cells` for every day from today-precedingDays to today+followingDays, each
- * { day, face: 'b'|'g'|'y'|'r', future, mark: '*'|'!'|'' }.
+ * { day, face: 'b'|'g'|'y'|'r', light (Emacs's lighter -future-face), future, mark: '*'|'!'|'' }. The last following day is not drawn, as in Emacs.
  * @param {Heading} heading @param {(keyword: string) => boolean} isDone @param {Date} today
  * @param {{ precedingDays?: number, followingDays?: number }} [opts]
  */
@@ -110,17 +110,20 @@ export function buildHabitGraph(heading, isDone, today, opts = {}) {
   for (const d of doneAll) if (d < first) lastDone = d;
 
   const cells = [];
-  for (let day = first; day <= now + following; day++) {
+  // Emacs's graph string has preceding + following + 1 slots and leaves the last blank, so the last of the following days is not drawn
+  for (let day = first; day < now + following; day++) {
     const past = day < now;
     const done = doneSet.has(day);
     let face;
-    if (past && lastDone === null && !(spec.scheduled < now)) face = 'b'; // nothing done yet and not yet due: org-habit-clear-face
+    if (past && lastDone === null && !(spec.scheduled < now)) face = done && day === doneAll[0] ? 'g' : 'b'; // nothing done yet and not yet due: clear, except the first completion (ready)
     else {
       const scheduled = past && lastDone !== null ? lastDone + spec.minDays : spec.scheduled;
       const deadline = past && lastDone !== null ? scheduled + slack : realDeadline;
       face = faceFor(day, scheduled, deadline, done);
     }
-    cells.push({ day, face, future: day > now, mark: done ? '*' : day === now ? '!' : '' });
+    // Emacs draws a day in the plain face when it is done, today or a past overdue day, and in the lighter "-future-face" otherwise
+    const light = !(done || day === now || (face === 'r' && past));
+    cells.push({ day, face, light, future: day > now, mark: done ? '*' : day === now ? '!' : '' });
     if (done) lastDone = day;
   }
 
