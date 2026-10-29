@@ -18,20 +18,38 @@
  * convention rather than reintroducing the bare-line special case.
  */
 
+import { insertLogLines } from './todo-transition.js';
+
+/** How clock lines are written: `into` is `org-clock-into-drawer` (true, false, a drawer name or an integer), `logDrawer` is
+ *  `org-log-into-drawer` (the drawer `t` stands for), `removeZero` is `org-clock-out-remove-zero-time-clocks`.
+ * @typedef {{ into?: boolean | number | string, logDrawer?: string | null, removeZero?: boolean }} ClockOptions */
+
 const RUNNING_CLOCK_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)\s*$/;
 const COMPLETED_CLOCK_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+):(\d+)\s*$/;
 
-/** The index of `heading`'s own currently-running clock line within
- *  its logbookLines, or -1 if none is running. Only ever at most one
- *  clock can be running per heading at a time -- clocking in again
- *  while one is already running is a no-op (see clockIn below),
- * @param {Heading} heading
- *  matching real org's own refusal to double-start the same clock. */
-function findRunningClockLineIndex(heading) {
-  for (let i = 0; i < (heading.logbookLines || []).length; i++) {
-    if (RUNNING_CLOCK_RE.test(heading.logbookLines[i])) return i;
+/** Every array of a heading's lines that can hold CLOCK lines, in the order they are written: lines of other drawers before the
+ *  :LOGBOOK: drawer, the :LOGBOOK: drawer itself, then the body.
+ * @param {Heading} heading @returns {string[][]} */
+function clockLineArrays(heading) {
+  heading.logbookLines = heading.logbookLines || [];
+  return [heading.preLogLines || [], heading.logbookLines, heading.bodyLines || []];
+}
+
+/** Where `heading`'s currently-running clock line is (in any drawer, or bare), or null. At most one clock runs per heading;
+ *  clocking in again while one runs is a no-op (see clockIn below), as in Emacs.
+ * @param {Heading} heading @returns {{ lines: string[], idx: number } | null} */
+function findRunningClockLine(heading) {
+  for (const lines of clockLineArrays(heading)) {
+    const idx = lines.findIndex((l) => RUNNING_CLOCK_RE.test(l));
+    if (idx >= 0) return { lines, idx };
   }
-  return -1;
+  return null;
+}
+
+/** @param {Heading} heading */
+function runningClockText(heading) {
+  const at = findRunningClockLine(heading);
+  return at ? at.lines[at.idx] : null;
 }
 
 /**
@@ -39,7 +57,7 @@ function findRunningClockLineIndex(heading) {
  * @param {Heading} heading
  */
 function isClockRunning(heading) {
-  return findRunningClockLineIndex(heading) !== -1;
+  return findRunningClockLine(heading) !== null;
 }
 
 /** Starts the clock on `heading`: inserts a new "CLOCK: [timestamp]"
@@ -53,12 +71,92 @@ function isClockRunning(heading) {
  *  real org itself doesn't let you double-start the same clock, it
  * @param {Heading} heading
  * @param {string} timestamp
+ * @param {ClockOptions} [options]
  *  just continues the existing session. */
-function clockIn(heading, timestamp) {
+function clockIn(heading, timestamp, options = {}) {
   if (isClockRunning(heading)) return false;
   heading.logbookLines = heading.logbookLines || [];
-  heading.logbookLines.unshift(`CLOCK: ${timestamp}`);
+  const line = `CLOCK: ${timestamp}`;
+  const name = clockDrawerName(options);
+  const existing = allClockLines(heading).length;
+  const into = options.into === undefined ? true : options.into;
+  // an integer asks for a drawer only once the entry would hold that many clock lines (or when the drawer is already there)
+  const bare = name === null || (typeof into === 'number' && !hasDrawer(heading, name) && existing + 1 < into);
+  if (bare) {
+    insertBareClock(heading, line);
+    return true;
+  }
+  const target = /** @type {string} */ (name);
+  if (insertIntoDrawer(heading, target, [line])) return true;
+  // no such drawer yet: it is made, and the clock lines already in the entry move into it with the new one (the older ones in
+  // reverse order, as Emacs leaves them); a :LOGBOOK: drawer emptied by that stays, empty
+  const hadLogbook = heading.logbookLines.length > 0;
+  const old = takeClockLines(heading).reverse();
+  insertLogLines(heading, [line, ...old], target, false);
+  if (hadLogbook && heading.logbookLines.length === 0 && target.toUpperCase() !== 'LOGBOOK') heading.bodyLines.splice(old.length + 3, 0, ':LOGBOOK:', ':END:');
   return true;
+}
+
+/** Puts `lines` at the top of drawer `name` when the entry has it (in any case): the :LOGBOOK: lines, or a drawer among the body lines.
+ * @param {Heading} heading @param {string} name @param {string[]} lines @returns {boolean} */
+function insertIntoDrawer(heading, name, lines) {
+  if (name.toUpperCase() === 'LOGBOOK' && heading.logbookLines.length > 0) {
+    heading.logbookLines.splice(0, 0, ...lines);
+    return true;
+  }
+  const isOpen = (/** @type {string} */ l) => l.trim().toLowerCase() === `:${name.toLowerCase()}:`;
+  for (const arr of [heading.preLogLines || [], heading.bodyLines]) {
+    const open = arr.findIndex(isOpen);
+    if (open >= 0) {
+      arr.splice(open + 1, 0, ...lines);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The drawer clock lines go into, or null for none (`org-clock-into-drawer` nil).
+ * @param {ClockOptions} options @returns {string | null} */
+function clockDrawerName(options) {
+  const into = options.into === undefined ? true : options.into;
+  if (into === false) return null;
+  if (typeof into === 'string') return into;
+  return options.logDrawer || 'LOGBOOK';
+}
+
+/** @param {Heading} heading @param {string} name */
+function hasDrawer(heading, name) {
+  if (name.toUpperCase() === 'LOGBOOK' && heading.logbookLines.length > 0) return true;
+  const isOpen = (/** @type {string} */ l) => l.trim().toLowerCase() === `:${name.toLowerCase()}:`;
+  return (heading.preLogLines || []).some(isOpen) || (heading.bodyLines || []).some(isOpen);
+}
+
+/** Removes every CLOCK line from the entry (all drawers and the body) and returns them in order.
+ * @param {Heading} heading @returns {string[]} */
+function takeClockLines(heading) {
+  /** @type {string[]} */
+  const taken = [];
+  for (const lines of clockLineArrays(heading)) {
+    for (let i = 0; i < lines.length; ) {
+      if (/^CLOCK:/.test(lines[i])) taken.push(...lines.splice(i, 1));
+      else i++;
+    }
+  }
+  return taken;
+}
+
+/** A CLOCK line with no drawer: right before the first CLOCK line of the entry, or else directly under the heading (planning line and properties come first).
+ * @param {Heading} heading @param {string} line */
+function insertBareClock(heading, line) {
+  for (const lines of clockLineArrays(heading)) {
+    const first = lines.findIndex((l) => /^CLOCK:/.test(l));
+    if (first >= 0) {
+      lines.splice(first, 0, line);
+      return;
+    }
+  }
+  if (heading.logbookLines.length > 0) heading.preLogLines = [line, ...(heading.preLogLines || [])];
+  else heading.bodyLines.splice(0, 0, line);
 }
 
 /** Stops `heading`'s currently-running clock: replaces its bare
@@ -75,16 +173,26 @@ function clockIn(heading, timestamp) {
  * @param {Heading} heading
  * @param {string} endTimestamp
  * @param {Date} endDate
+ * @param {ClockOptions} [options]
  *  computing a nonsensical duration from a null start time. */
-function clockOut(heading, endTimestamp, endDate) {
-  const idx = findRunningClockLineIndex(heading);
-  if (idx === -1) return false;
-  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[idx]));
+function clockOut(heading, endTimestamp, endDate, options = {}) {
+  const at = findRunningClockLine(heading);
+  if (!at) return false;
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(at.lines[at.idx]));
   const startRaw = m[1];
   const startDate = parseClockTimestampToDate(startRaw);
   if (!startDate) return false;
   const minutes = Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
-  heading.logbookLines[idx] = `CLOCK: ${startRaw}--${endTimestamp} =>  ${formatClockDuration(minutes)}`;
+  if (minutes === 0 && options.removeZero) {
+    // org-clock-out-remove-zero-time-clocks: the line goes, and a drawer left empty by it goes too
+    at.lines.splice(at.idx, 1);
+    const open = at.lines[at.idx - 1];
+    if (at.lines !== heading.logbookLines && at.idx > 0 && /^:[^:\s]+:$/.test((open || '').trim()) && (at.lines[at.idx] || '').trim() === ':END:') at.lines.splice(at.idx - 1, 2);
+    if (heading.logbookLines.length === 0 && heading.bodyLines.length === 1 && heading.bodyLines[0] === '') heading.bodyLines.length = 0;
+    return true;
+  }
+  // Emacs writes the duration as "=> " and the hours in two columns: "=>  2:05", "=> 24:00", "=> 100:00"
+  at.lines[at.idx] = `CLOCK: ${startRaw}--${endTimestamp} => ${formatClockDuration(minutes).padStart(5, ' ')}`;
   return true;
 }
 
@@ -98,9 +206,9 @@ function clockOut(heading, endTimestamp, endDate) {
  * @param {Heading} heading
  *  changing anything if nothing is currently running. */
 function clockCancel(heading) {
-  const idx = findRunningClockLineIndex(heading);
-  if (idx === -1) return false;
-  heading.logbookLines.splice(idx, 1);
+  const at = findRunningClockLine(heading);
+  if (!at) return false;
+  at.lines.splice(at.idx, 1);
   return true;
 }
 
@@ -126,6 +234,13 @@ function parseClockDuration(raw) {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+/** The CLOCK lines of a heading: those in its :LOGBOOK: drawer and those written without a drawer (Emacs with `org-clock-into-drawer` nil).
+ * @param {Heading} heading */
+function allClockLines(heading) {
+  const clocks = (/** @type {string[] | undefined} */ lines) => (lines || []).filter((l) => /^CLOCK:/.test(l));
+  return [...clocks(heading.logbookLines), ...clocks(heading.preLogLines), ...clocks(heading.bodyLines)];
+}
+
 /** Every completed "CLOCK: [start]--[end] => H:MM" line directly on
  *  `heading` (not its descendants -- see totalClockedMinutes below for
  *  the whole-subtree sum org-clock-display actually wants), in
@@ -135,7 +250,7 @@ function parseClockDuration(raw) {
  *  doesn't contribute, rather than the whole computation failing. */
 function ownClockedMinutes(heading) {
   let total = 0;
-  for (const line of heading.logbookLines || []) {
+  for (const line of allClockLines(heading)) {
     const m = COMPLETED_CLOCK_RE.exec(line);
     if (!m) continue;
     total += parseClockDuration(`${m[3]}:${m[4]}`);
@@ -156,9 +271,9 @@ function ownClockedMinutes(heading) {
  */
 function totalClockedMinutes(heading, now = new Date()) {
   let total = ownClockedMinutes(heading);
-  const runningIdx = findRunningClockLineIndex(heading);
-  if (runningIdx !== -1) {
-    const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
+  const runningText = runningClockText(heading);
+  if (runningText !== null) {
+    const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(runningText));
     const startDate = parseClockTimestampToDate(m[1]);
     if (startDate) total += Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
   }
@@ -174,9 +289,9 @@ function totalClockedMinutes(heading, now = new Date()) {
  * @param {Heading} heading
  *  distinguish "not running" from "just started"). */
 function currentClockSessionMinutes(heading, now = new Date()) {
-  const runningIdx = findRunningClockLineIndex(heading);
-  if (runningIdx === -1) return 0;
-  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
+  const runningText = runningClockText(heading);
+  if (runningText === null) return 0;
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(runningText));
   const startDate = parseClockTimestampToDate(m[1]);
   if (!startDate) return 0;
   return Math.max(0, Math.round((now.getTime() - startDate.getTime()) / 60000));
@@ -185,9 +300,9 @@ function currentClockSessionMinutes(heading, now = new Date()) {
 /** When the running clock on `heading` started (minute precision, as the CLOCK line has it), or null.
  * @param {Heading} heading @returns {number | null} */
 function runningClockStartMs(heading) {
-  const runningIdx = findRunningClockLineIndex(heading);
-  if (runningIdx === -1) return null;
-  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(heading.logbookLines[runningIdx]));
+  const runningText = runningClockText(heading);
+  if (runningText === null) return null;
+  const m = /** @type {RegExpExecArray} */ (RUNNING_CLOCK_RE.exec(runningText));
   const startDate = parseClockTimestampToDate(m[1]);
   return startDate ? startDate.getTime() : null;
 }
@@ -255,16 +370,18 @@ function findHeadingWithRunningClock(doc) {
  * @param {Heading} heading
  * @param {string} timestamp
  * @param {Date} now
+ * @param {ClockOptions} [options] how the new clock is written
+ * @param {ClockOptions} [outOptions] how the clock stopped by the switch is closed
  */
-function clockInSwitchingTasks(doc, heading, timestamp, now) {
+function clockInSwitchingTasks(doc, heading, timestamp, now, options = {}, outOptions = options) {
   const previouslyRunning = findHeadingWithRunningClock(doc);
   let switchedFrom = null;
   if (previouslyRunning && previouslyRunning !== heading) {
-    if (clockOut(previouslyRunning, timestamp, now)) {
+    if (clockOut(previouslyRunning, timestamp, now, outOptions)) {
       switchedFrom = previouslyRunning;
     }
   }
-  const started = clockIn(heading, timestamp);
+  const started = clockIn(heading, timestamp, options);
   return { started, switchedFrom };
 }
 
@@ -347,6 +464,7 @@ function findMostRecentlyClockedHeading(doc) {
 }
 
 export {
+  allClockLines,
   listRecentlyClockedHeadings,
   isClockRunning,
   clockIn,

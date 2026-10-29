@@ -38,7 +38,7 @@ export function parseTagInheritance(inheritanceRaw, excludeRaw) {
     if (list) only = new Set(list);
     else if (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) {
       try {
-        only = new RegExp(raw.slice(1, -1).replace(/\\\\/g, '\\'));
+        only = new RegExp(raw.slice(1, -1).replace(/\\\\/g, '\\'), 'i'); // a regexp matches without regard to case, as in Emacs
       } catch {
         return true; // not a usable regexp: behave as the default
       }
@@ -52,9 +52,9 @@ export function parseTagInheritance(inheritanceRaw, excludeRaw) {
  * @param {string} tag */
 export function tagInherits(policy, tag) {
   if (typeof policy === 'boolean') return policy;
+  if (policy.only instanceof Set) return policy.only.has(tag); // a list of tags to inherit wins over the tags excluded from inheritance, as in Emacs
   if (policy.exclude.has(tag)) return false;
-  if (policy.only === null) return true;
-  return policy.only instanceof RegExp ? policy.only.test(tag) : policy.only.has(tag);
+  return policy.only === null ? true : policy.only.test(tag);
 }
 
 /** The heading's own tags, then the ones it inherits from its ancestors (root first).
@@ -172,4 +172,30 @@ export function showsInheritedTags(view, show, use) {
 export function knowsInheritedTags(view, show, use) {
   if (show.kind === 'always') return true;
   return use.all || use.views.has(view);
+}
+
+/** org-use-property-inheritance: `true` / `false` for t / nil, or the properties that inherit (a list of names, or a regexp).
+ * @typedef {boolean | { only: Set<string> | RegExp }} PropertyInheritance */
+
+/** @param {string | null | undefined} raw  the value of org-use-property-inheritance @returns {PropertyInheritance | null} null when the text is none of those forms */
+export function parsePropertyInheritance(raw) {
+  const text = String(raw ?? '').trim();
+  if (text === '' || text.toLowerCase() === 'nil') return false;
+  if (text.toLowerCase() === 't') return true;
+  const list = parseLispTagList(text);
+  if (list) return { only: new Set(list.map((n) => n.toLowerCase())) };
+  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
+    try {
+      return { only: new RegExp(text.slice(1, -1).replace(/\\\\/g, '\\'), 'i') };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Whether the property `key` is inherited under `policy`. @param {PropertyInheritance} policy @param {string} key */
+export function propertyInherits(policy, key) {
+  if (typeof policy === 'boolean') return policy;
+  return policy.only instanceof RegExp ? policy.only.test(key) : policy.only.has(key.toLowerCase()); // names compare without regard to case, as the property drawer does
 }

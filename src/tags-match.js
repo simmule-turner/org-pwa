@@ -38,7 +38,16 @@ function toNumber(s) {
   return m ? Number(m[1]) : 0;
 }
 
-const collator = new Intl.Collator();
+/** `string<` and `string>`: by character code, as Emacs compares text. @param {string} a @param {string} b */
+function compareText(a, b) {
+  const x = Array.from(a);
+  const y = Array.from(b);
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const d = /** @type {number} */ (x[i].codePointAt(0)) - /** @type {number} */ (y[i].codePointAt(0));
+    if (d) return d;
+  }
+  return x.length - y.length;
+}
 
 /** @param {string} op @returns {'<' | '>' | '<=' | '>=' | '=' | '<>'} */
 function normalizeOp(op) {
@@ -149,9 +158,9 @@ export function makeTagsMatcher(match, options = {}) {
         ands.push(minus ? (e) => !test(e) : test);
         term = term.slice(m[0].length);
       }
-      ors.push(ands);
+      if (ands.length) ors.push(ands); // an alternative without a keyword (`TODO|`) adds nothing
     }
-    todoTest = (e) => ors.some((ands) => ands.every((t) => t(e)));
+    todoTest = ors.length ? (e) => ors.some((ands) => ands.every((t) => t(e))) : () => false;
   }
 
   /** @type {(e: MatchEntry) => boolean} */
@@ -207,12 +216,13 @@ function condition(m, now) {
       return a > 0 && when > 0 && holds(timeOp, a - when);
     };
   }
-  if (isString) return (e) => holds(op, op === '=' || op === '<>' ? ((value(e) ?? '') === operand ? 0 : 1) : collator.compare(value(e) ?? '', operand));
+  if (isString) return (e) => holds(op, op === '=' || op === '<>' ? ((value(e) ?? '') === operand ? 0 : 1) : compareText(value(e) ?? '', operand));
   const n = toNumber(operand);
   return (e) => holds(op, toNumber(value(e) ?? '') - n);
 }
 
-/** `org-tags-expand`: a group tag stands for the tags of its group. @param {string} match @param {Map<string, string[]> | undefined} groups */
+/** `org-tags-expand`: a group tag stands for itself and the tags of its group, a `{regexp}` member for the tags it matches.
+ * @param {string} match @param {Map<string, string[]> | undefined} groups */
 function expandGroups(match, groups) {
   if (!groups || !groups.size) return match;
   /** @param {string} tag @param {Set<string>} seen @returns {string[]} */
@@ -220,10 +230,42 @@ function expandGroups(match, groups) {
     if (seen.has(tag)) return [];
     seen.add(tag);
     const own = groups.get(tag);
-    return own ? [tag, ...own.flatMap((t) => members(t, seen))] : [tag];
+    return own ? [tag, ...own.flatMap((t) => (t.startsWith('{') ? [t] : members(t, seen)))] : [tag];
   };
-  return match.replace(/([-+:]?)(\{[^}]+\}|[\p{L}\p{N}_@#%]+)/gu, (all, sign, tag) => {
-    if (tag.startsWith('{') || !groups.has(tag)) return all;
-    return `${sign || ''}{^(${members(tag, new Set()).join('|')})$}`.replace(/\(/g, '\\(').replace(/\)/g, '\\)').replace(/\|/g, '\\|');
+  const quote = (/** @type {string} */ t) => t.replace(/[\\^$.*+?[\]]/g, '\\$&');
+  return match.replace(/([-+:]?)(\{[^}]+\}|"[^"]*"|[\p{L}\p{N}_@#%]+)(?![<>=\p{L}\p{N}_@#%])/gu, (all, sign, tag) => {
+    if (tag.startsWith('{') || tag.startsWith('"')) return all;
+    if (!groups.has(tag)) return [...groups.keys()].some((g) => g.toLowerCase() === tag.toLowerCase()) ? `${sign || ''}{^${quote(tag)}$}` : all; // a group named in other case stands for its own tag only
+    const list = members(tag, new Set());
+    const plain = list.filter((t) => !t.startsWith('{')).map(quote);
+    const regexps = list.filter((t) => t.startsWith('{')).map((t) => t.slice(1, -1));
+    const alternatives = [...(plain.length ? [`^\\(${plain.join('\\|')}\\)$`] : []), ...regexps];
+    return `${sign || ''}{${alternatives.join('\\|')}}`;
   });
+}
+
+/** The tag groups of the files' `#+TAGS:` lines (`[ Group : a b ]`, `{ Exclusive : a b }`, `[ G : {regexp} ]`), group tag to members; the Agenda merges those of its files.
+ * @param {{ keywords?: { key: string, value: string }[] }[]} docs @returns {Map<string, string[]>} */
+export function parseTagGroups(docs) {
+  /** @type {Map<string, string[]>} */ const groups = new Map();
+  for (const doc of docs) {
+    for (const k of doc.keywords || []) {
+      if (k.key.toUpperCase() !== 'TAGS') continue;
+      const tokens = k.value.trim().split(/[ \t]+/).filter(Boolean);
+      for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i] !== '[' && tokens[i] !== '{') continue;
+        const close = tokens[i] === '[' ? ']' : '}';
+        const end = tokens.indexOf(close, i + 1);
+        if (end === -1) break;
+        const inner = tokens.slice(i + 1, end).map((t) => t.replace(/\(.\)$/, ''));
+        i = end;
+        const colon = inner.indexOf(':');
+        if (colon !== 1) continue; // a group names exactly one tag before the colon
+        const list = groups.get(inner[0]) || [];
+        for (const m of inner.slice(2)) if (!list.includes(m)) list.push(m);
+        groups.set(inner[0], list);
+      }
+    }
+  }
+  return groups;
 }

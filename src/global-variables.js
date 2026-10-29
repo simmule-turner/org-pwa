@@ -1,5 +1,6 @@
 // @ts-check
 /** @typedef {import('./types.js').LocalVars} LocalVars */
+import { setTagsColumn, tagsColumnOf } from './tags-column.js';
 /**
  * "Global Variables" -- an app-wide, cross-file settings mechanism
  * (configured in Settings, not embedded in any particular .org file)
@@ -103,5 +104,7 @@ export function serializeGlobalVariables(vars) {
  * @param {import('./types.js').LocalVars | null} [localVars]
  */
 export function mergeGlobalAndLocalVariables(globalVars, localVars) {
-  return { ...(globalVars || {}), ...(localVars || {}) };
+  const merged = { ...(globalVars || {}), ...(localVars || {}) };
+  setTagsColumn(tagsColumnOf(merged)); // headings written again put their tags where org-tags-column says
+  return merged;
 }

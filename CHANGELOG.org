@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v643 — Checked against Emacs, area by area
+Every feature area was run through Emacs 29.3 with defaults, empty input and error cases, and the app now matches. Fixed: promote/demote on outlines that skip a level, list and checkbox editing, tag inheritance and the match language, =#+TODO= lines, emphasis and sub/superscript rules, link schemes, priority cycling (first step =[#A]=), clock drawers and clocktable parameters, and table references. New settings: =org-tags-column= (default 0), =org-clock-into-drawer=, =org-clock-out-switch-to-state=, =org-clock-out-remove-zero-time-clocks=.
+Verified: about 15,000 Emacs comparisons and the related checks for each area.
+
 * v642 — Examples for every feature, and closer to Emacs
 Ten new files in =examples/= cover agenda settings, habits, LaTeX export and citations, the Lisp init, plots, archive and refile, logging, search and attachments, each checked against Emacs 29.3. Running them exposed differences, now fixed: habit strips are 28 days, archiving adds no tag, a failing =%(form)= stops the Agenda, replace uses =\1=, plots without =ind= use the row number, and citations print as in Emacs. The README is shorter: one example per command, the rest in the files.
 Verified: the new example tests against Emacs, and the related agenda, habit, attachment, search and refile checks.

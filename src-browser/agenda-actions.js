@@ -9,7 +9,7 @@ import { setPriority } from '../src/heading-edit.js';
 import { priorityCookies } from '../src/priorities.js';
 import { getPriorityRange } from '../src/local-variables.js';
 import { parseOrgTimestamp } from '../src/org-timestamp.js';
-import { hasRepeater, rescheduleTimestamp } from '../src/reschedule.js';
+import { hasRepeater, rescheduleTimestamp, setPlanningField } from '../src/reschedule.js';
 import { findSequenceForHeading, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
 import { currentEntry } from '../src/undo-history.js';
 import { S } from './app-state.js';
@@ -138,7 +138,7 @@ async function rescheduleItem(/** @type {any} */ item) {
   const field = planningFieldFor(item);
   const picked = await openTimestampPickerPopup({ active: true, hasTime: false });
   if (!picked) return;
-  heading.planning[field] = rescheduleTimestamp(heading.planning[field], picked);
+  setPlanningField(heading, field, rescheduleTimestamp(heading.planning[field], picked));
   commitAndRender(`${field === 'deadline' ? 'Deadline' : 'Scheduled'} moved: ${plainTitle(heading)}`);
 }
 

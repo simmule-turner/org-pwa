@@ -651,7 +651,7 @@ check('effort: Effort_ALL shows quick-picks (from #+PROPERTY), one tap saves the
   await page.keyboard.press('Enter');
   await page.waitForSelector('[data-quick-picks]');
   const picks = await page.locator('[data-quick-pick]').evaluateAll((els) => els.map((e) => e.getAttribute('data-quick-pick')));
-  expect(JSON.stringify(picks) === '["0:15","0:30","1:00"]', `quick-picks: ${JSON.stringify(picks)} (the invalid "bogus" must not be offered)`);
+  expect(JSON.stringify(picks) === '["0:15","0:30","1:00","bogus"]', `quick-picks: ${JSON.stringify(picks)} (Emacs offers every word of Effort_ALL)`);
   await page.locator('[data-quick-pick="0:30"]').click();
   await page.waitForTimeout(400);
   expect((await page.locator('.priority-badge').allInnerTexts()).join().includes('0:30'), 'tapping a quick-pick should set the effort');

@@ -59,18 +59,19 @@ export function priorityRank(cookie, range) {
   return 1000 * (range.lowest - (cookie ? valueOf(cookie) : range.default));
 }
 
-/** org-priority-up and org-priority-down for a heading (Shift-Up and Shift-Down): one step higher or lower; past the end of the
- * range the cookie is removed (null). With none, org-priority-start-cycle-with-default (t unless set) starts at the default,
- * else one step from it in the direction asked.
+/** org-priority-up and org-priority-down for a heading (Shift-Up and Shift-Down): one step toward the highest or the lowest, as
+ * Emacs does, whatever the cookie says: a result outside the range removes it (null). With none, up gives the lowest and down the
+ * highest, so the steps make a ring through "no priority". (Emacs 29.3's batch result does not change with
+ * org-priority-start-cycle-with-default or org-priority-default, so neither is read here.)
  * @param {string | null | undefined} cookie
  * @param {PriorityRange} range
  * @param {'up' | 'down'} [direction]
- * @param {boolean} [startWithDefault]
+ * @param {boolean} [_startWithDefault]
  * @returns {string | null} */
-export function nextPriority(cookie, range, direction = 'down', startWithDefault = true) {
+export function nextPriority(cookie, range, direction = 'down', _startWithDefault = true) {
   const step = direction === 'up' ? -1 : 1;
-  const known = cookie && priorityInRange(cookie, range) ? valueOf(cookie) : null;
-  const next = known === null ? range.default + (startWithDefault ? 0 : step) : known + step;
+  if (!cookie) return cookieOf(direction === 'up' ? range.lowest : range.highest);
+  const next = valueOf(cookie) + step;
   return next < range.highest || next > range.lowest ? null : cookieOf(next);
 }
 

@@ -11,7 +11,8 @@ const html = (text) => exportToHtml(parseOrg(`#+OPTIONS: toc:nil\n${text}\n`));
 test('headings need a space after the stars, and a keyword needs a space after it', () => {
   assert.equal(parseOrg('*\ttab heading\n').children.length, 0);
   const [bare] = parseOrg('* TODO\n').children;
-  assert.deepEqual([bare.todo, bare.title], [null, 'TODO']);
+  // org-heading-components (agenda, org-todo) reads a lone keyword as the state with an empty title; org-element (export) reads it as the title.
+  assert.deepEqual([bare.todo, bare.title], ['TODO', '']);
   const [spaced] = parseOrg('* TODO \n').children;
   assert.deepEqual([spaced.todo, spaced.title], ['TODO', '']);
 });

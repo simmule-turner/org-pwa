@@ -89,6 +89,10 @@ function convertCharClass(inner) {
         throw new EmacsRegexError(`Unknown POSIX class [:${name}:]`);
       }
     }
+    if (inner[i + 1] === '-' && i + 2 < inner.length && inner[i] !== '\\' && inner[i] > inner[i + 2]) {
+      i += 3; // a range whose end comes before its start is empty in Emacs
+      continue;
+    }
     if (inner[i] === ']') {
       out += '\\]';
       i++;
@@ -120,9 +124,18 @@ function translate(pattern) {
   let i = 0;
   const n = pattern.length;
   let groupDepth = 0;
+  let atStart = true; // at the start of the pattern or of a group or alternative: where ^ is an anchor
+  let canRepeat = false; // after an atom: where * + ? repeat it, rather than stand for themselves
+  let groupCount = 0;
+  /** @type {(number | null)[]} */ const openGroups = [];
+  const closedGroups = new Set();
 
   while (i < n) {
     const ch = pattern[i];
+    const wasStart = atStart;
+    const couldRepeat = canRepeat; // whether the previous token was an atom a repeat operator can apply to
+    atStart = false;
+    canRepeat = true; // branches that produce no atom (anchors, group opens, alternation) reset it below
 
     if (ch === '[') {
       // Character class: copy through to the matching close bracket,
@@ -150,6 +163,7 @@ function translate(pattern) {
       const inner = pattern.slice(start, j);
       out += '[' + (negate ? '^' : '') + convertCharClass(inner) + ']';
       i = j + 1;
+      canRepeat = true;
       continue;
     }
 
@@ -161,26 +175,40 @@ function translate(pattern) {
         // Emacs's own shy-group syntax is \(?: -- the ? immediately
         // follows the backslash-paren, not the paren alone the way a
         // stray literal "?" would be read anywhere else in the pattern.
+        const numbered = /^\?(\d+):/.exec(pattern.slice(i + 2));
         if (pattern[i + 2] === '?' && pattern[i + 3] === ':') {
           out += '(?:';
           i += 4;
+          openGroups.push(null);
+        } else if (numbered) { // \(?N: an explicitly numbered group
+          out += '(';
+          i += 2 + numbered[0].length;
+          openGroups.push(++groupCount);
         } else {
           out += '(';
           i += 2;
+          openGroups.push(++groupCount);
         }
         groupDepth++;
+        atStart = true;
+        canRepeat = false;
         continue;
       }
       if (next === ')') {
         if (groupDepth === 0) throw new EmacsRegexError('Unmatched \\) with no preceding \\(');
         groupDepth--;
+        const closed = openGroups.pop();
+        if (closed) closedGroups.add(closed);
         out += ')';
         i += 2;
+        canRepeat = true;
         continue;
       }
       if (next === '|') {
         out += '|';
         i += 2;
+        atStart = true;
+        canRepeat = false;
         continue;
       }
       if (next === '{') {
@@ -190,11 +218,14 @@ function translate(pattern) {
         if (!/^\d+(,\d*)?$/.test(body)) throw new EmacsRegexError(`Invalid interval \\{${body}\\}`);
         out += '{' + body + '}';
         i = close + 2;
+        canRepeat = true;
         continue;
       }
       if (/[1-9]/.test(next)) {
+        if (!closedGroups.has(Number(next))) throw new EmacsRegexError('Invalid back reference');
         out += '\\' + next; // backreference -- same bare digit syntax in both dialects
         i += 2;
+        canRepeat = true;
         continue;
       }
       if (next === 'w') {
@@ -262,6 +293,19 @@ function translate(pattern) {
         throw new EmacsRegexError(`\\s${code || ''} depends on a live buffer's own syntax table and has no equivalent here`);
       }
       if (next === 'S') {
+        const code = pattern[i + 2];
+        if (code === '-' || code === ' ') {
+          out += '\\S';
+          i += 3;
+          canRepeat = true;
+          continue;
+        }
+        if (code === 'w' || code === '_') {
+          out += '\\W';
+          i += 3;
+          canRepeat = true;
+          continue;
+        }
         throw new EmacsRegexError('\\S (negated syntax class) depends on a live buffer\'s own syntax table and has no equivalent here');
       }
       // Anything else escaped (\. \* \+ \? \^ \$ \[ \] \\ and any other
@@ -272,6 +316,7 @@ function translate(pattern) {
       // since \q and 'q' match identically there).
       out += '\\' + next;
       i += 2;
+      canRepeat = !(next === '`' || next === "'");
       continue;
     }
 
@@ -280,14 +325,35 @@ function translate(pattern) {
       // it so JS treats it the same, literal way.
       out += '\\' + ch;
       i++;
+      canRepeat = true;
       continue;
     }
 
-    // . * + ? ^ $ [ and every ordinary character mean the same thing
+    if (ch === '*' || ch === '+' || ch === '?') {
+      out += couldRepeat ? ch : '\\' + ch; // at the start of the pattern, a group or an alternative they stand for themselves
+      i++;
+      continue;
+    }
+    if (ch === '^') {
+      out += wasStart ? '^' : '\\^'; // an anchor only at the start of the pattern, a group or an alternative
+      i++;
+      canRepeat = !wasStart;
+      continue;
+    }
+    if (ch === '$') {
+      const last = i === n - 1 || pattern.startsWith('\\)', i + 1) || pattern.startsWith('\\|', i + 1);
+      out += last ? '$' : '\\$'; // an anchor only at the end of the pattern, a group or an alternative
+      i++;
+      canRepeat = !last;
+      continue;
+    }
+
+    // . [ and every ordinary character mean the same thing
     // unescaped in both dialects (case handled above), or are already
     // consumed by the character-class branch above.
     out += ch;
     i++;
+    canRepeat = true;
   }
 
   if (groupDepth > 0) throw new EmacsRegexError('Unmatched \\( with no closing \\)');

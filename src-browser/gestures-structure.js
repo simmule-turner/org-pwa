@@ -5,12 +5,12 @@
 /** @typedef {import('../src/types.js').Paragraph} Paragraph */
 /** @typedef {import('../src/types.js').ListItem} ListItem */
 // Extracted from app.js: gestures structure.
-import { findContainer, shiftLevels } from '../src/archive-model.js';
+import { findContainer } from '../src/archive-model.js';
 import { cycleFoldLevel } from '../src/fold-state.js';
-import { removeHeading } from '../src/heading-edit.js';
+import { pasteSubtreeAfter, removeHeading, subtreeText } from '../src/heading-edit.js';
 import { getCycleOpenArchivedTrees } from '../src/local-variables.js';
 import { findHeadingByOutlineKey, loadNarrowState, loadSparseNarrowState, outlineKeyForHeading, saveNarrowState, saveSparseNarrowState } from '../src/narrow-state.js';
-import { parseOrg, serializeHeadingSubtree } from '../src/org-parser.js';
+import { serializeHeadingSubtree } from '../src/org-parser.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
 import { isDoneKeyword, resolveTodoSequence, setTodoState } from '../src/todo-cycle.js';
 import { agendaStepAnchor } from './agenda-format.js';
@@ -172,7 +172,7 @@ export async function confirmHeadingDelete(heading) {
 
 /** @param {Heading} heading */
 export async function cutSubtree(heading) {
-  const text = serializeHeadingSubtree(heading);
+  const text = S.state.doc ? subtreeText(S.state.doc, heading) : serializeHeadingSubtree(heading);
   try {
     await platform.clipboard.writeText(text);
   } catch {
@@ -209,17 +209,13 @@ export async function pasteSubtree(heading) {
     setStatus('Clipboard is empty.');
     return;
   }
-  const parsed = parseOrg(text);
-  if (!parsed.children || parsed.children.length === 0) {
+  if (!findContainer(S.state.doc, heading)) return;
+  const pasted = pasteSubtreeAfter(S.state.doc, heading, text);
+  if (!pasted) {
     setStatus('Clipboard doesn\u2019t contain a subtree to paste.');
     return;
   }
-  const located = findContainer(S.state.doc, heading);
-  if (!located) return;
-  const targetLevel = heading.level;
-  for (const node of parsed.children) shiftLevels(node, targetLevel);
-  located.container.splice(located.index + 1, 0, ...parsed.children);
-  setKeyboardFocusToHeading(parsed.children[0]);
+  setKeyboardFocusToHeading(pasted[0]);
   commitAndRender('Pasted subtree');
 }
 

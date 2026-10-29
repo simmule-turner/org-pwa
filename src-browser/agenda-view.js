@@ -5,6 +5,7 @@ import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } fro
 import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, stripTitleStamps, weekView } from '../src/agenda.js';
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
+import { buildClockReport, ClockReportError } from '../src/clock-report.js';
 import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/effort-values.js';
 import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getHabitOptions, getScheduledDelayDays } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
@@ -871,8 +872,18 @@ export function buildClocktableSection() {
     const lastDay = S.clocktableEnd ? new Date(S.clocktableEnd + 'T00:00:00') : null;
     if (lastDay) lastDay.setDate(lastDay.getDate() + 1);
     const until = lastDay ? dateInputValue(lastDay) : '';
-    const result = computeClocktable(S.state.doc, S.clocktableStart, until, S.clocktableMaxlevel);
-    rendered = renderClocktable(result, S.clocktableStart, until, new Date(), S.clocktableMaxlevel);
+    if (S.clocktableParams.trim()) {
+      try {
+        const files = aggregateAgendaDocs().map(({ documentId, doc }) => ({ name: documentId, doc }));
+        rendered = buildClockReport({ files, params: S.clocktableParams.trim(), now: new Date(), origin: S.narrowedHeading });
+      } catch (error) {
+        if (!(error instanceof ClockReportError)) throw error;
+        rendered = `Clock report: ${error.message}`;
+      }
+    } else {
+      const result = computeClocktable(S.state.doc, S.clocktableStart, until, S.clocktableMaxlevel);
+      rendered = renderClocktable(result, S.clocktableStart, until, new Date(), S.clocktableMaxlevel);
+    }
 
     const copyBtn = menuButton('\ud83d\udccb Copy', async () => {
       try {
@@ -957,6 +968,20 @@ export function buildClocktableSection() {
   rangeRow.appendChild(maxlevelSelect);
 
   reportNest.appendChild(rangeRow);
+
+  // the parameters of a `#+BEGIN: clocktable` line (:scope :block :step :tags :match :link ...); when filled they replace the pickers
+  const paramsInput = document.createElement('input');
+  paramsInput.type = 'text';
+  textInputStyle(paramsInput);
+  paramsInput.placeholder = ':scope file :block thisweek :tags t';
+  paramsInput.setAttribute('aria-label', 'Clocktable parameters');
+  paramsInput.style.marginTop = '6px';
+  paramsInput.value = S.clocktableParams;
+  paramsInput.onchange = () => {
+    S.clocktableParams = paramsInput.value;
+    render();
+  };
+  reportNest.appendChild(paramsInput);
 
   const pre = document.createElement('pre');
   pre.style.marginTop = '8px';

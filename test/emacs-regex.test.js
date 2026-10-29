@@ -167,7 +167,8 @@ test('syntax-table-dependent escapes throw a clear, specific error rather than s
   assert.throws(() => emacsRegexToJs('\\s<'), EmacsRegexError);
   assert.throws(() => emacsRegexToJs('\\s>'), EmacsRegexError);
   assert.throws(() => emacsRegexToJs('\\sc'), EmacsRegexError);
-  assert.throws(() => emacsRegexToJs('\\S-'), EmacsRegexError);
+  assert.throws(() => emacsRegexToJs('\\Sc'), EmacsRegexError);
+  assert.equal(emacsRegexToJs('\\S-+').test('ab'), true); // \S- and \S  are the complement of whitespace
 });
 
 // ---- flags -----------------------------------------------------------------
@@ -188,4 +189,15 @@ test('escaped metacharacters mean the same literal thing in both dialects', () =
   assert.equal(emacsRegexToJs('3\\.5').test('3.5'), true);
   assert.equal(emacsRegexToJs('3\\.5').test('3X5'), false);
   assert.equal(emacsRegexToJs('a\\*b').test('a*b'), true);
+});
+
+test('repeat operators and anchors in a position where they cannot apply are literal, as in Emacs', () => {
+  assert.equal(emacsRegexToJs('*a').test('*a'), true);
+  assert.equal(emacsRegexToJs('\\(+a\\)').test('+a'), true);
+  assert.equal(emacsRegexToJs('a$b').test('a$b'), true);
+  assert.equal(emacsRegexToJs('a^b').test('a^b'), true);
+  assert.equal(emacsRegexToJs('a$').test('xa'), true);
+  assert.equal(emacsRegexToJs('[z-a]x').test('zx'), false);
+  assert.equal(emacsRegexToJs('\\(?1:a\\)\\1').test('aa'), true);
+  assert.throws(() => emacsRegexToJs('\\1'), EmacsRegexError);
 });

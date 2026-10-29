@@ -11,7 +11,9 @@
  * remains what is saved, so nothing about round-tripping or editing changes.
  */
 
-const AFFILIATED_RE = /^\s*#\+(NAME|CAPTION|ATTR_[A-Za-z0-9_-]+|HEADERS?|RESULTS)(?:\[[^\]]*\])?:[ \t]?(.*)$/i;
+// org-element--affiliated-re: CAPTION and RESULTS may have an optional [..], the others (NAME, HEADER(S), DATA, LABEL, PLOT, RESNAME, RESULT,
+// SOURCE, SRCNAME, TBLNAME, ATTR_*) may not
+const AFFILIATED_RE = /^[ \t]*#\+(?:(CAPTION|RESULTS)(?:\[.*\])?|(DATA|HEADERS?|LABEL|NAME|PLOT|RESNAME|RESULT|SOURCE|SRCNAME|TBLNAME)|(ATTR_[-_A-Za-z0-9]+)):[ \t]*(.*)$/i;
 
 /** Splits the leading run of affiliated-keyword lines off `lines`.
  * @param {string[]} lines
@@ -22,7 +24,7 @@ function splitAffiliated(lines) {
   for (; i < lines.length; i++) {
     const m = AFFILIATED_RE.exec(lines[i]);
     if (!m) break;
-    affiliated.push({ key: m[1].toUpperCase(), value: m[2].trim(), line: lines[i] });
+    affiliated.push({ key: (m[1] || m[2] || m[3]).toUpperCase(), value: m[4].trim(), line: lines[i] });
   }
   return { affiliated, rest: lines.slice(i) };
 }
@@ -32,13 +34,14 @@ function splitAffiliated(lines) {
  *  An option's value runs up to the next `:option`. */
 function parseAttrOptions(value) {
   const options = {};
-  const re = /(?:^|\s):([A-Za-z][\w-]*)(?=\s|$)/g;
+  const re = /(?:^|\s):([-_A-Za-z0-9]+)(?=\s|$)/g;
   /** @type {any[]} */ const marks = [];
   let m;
   while ((m = re.exec(value)) !== null) marks.push({ name: m[1].toLowerCase(), end: re.lastIndex, start: m.index });
   marks.forEach((mark, n) => {
     const stop = n + 1 < marks.length ? marks[n + 1].start : value.length;
-    /** @type {any} */ (options)[mark.name] = value.slice(mark.end, stop).trim();
+    const text = value.slice(mark.end, stop).trim();
+    if (!Object.prototype.hasOwnProperty.call(options, mark.name)) /** @type {any} */ (options)[mark.name] = text === 'nil' ? '' : text; // the first of a repeated option wins, and nil is no value, as in Org
   });
   return options;
 }

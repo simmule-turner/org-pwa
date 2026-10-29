@@ -10,9 +10,9 @@ test('#+SEQ_TODO: and #+TYP_TODO: are read like #+TODO:, so their keywords are r
   assert.equal(serializeOrg(doc), text, 'and the lines round-trip untouched');
 });
 
-test('the cycling code sees the same sequences, one per line', () => {
+test('the cycling code sees the same sequences, one per line, in the order Emacs lists them (TYP_TODO, TODO, SEQ_TODO)', () => {
   const doc = parseOrg('#+SEQ_TODO: NEXT WAIT | DONE\n#+TYP_TODO: Alice Bob | Done\n#+TODO: A | B\n* x\n');
-  assert.deepEqual(resolveTodoSequences(doc).map((s) => [s.todoKeywords, s.doneKeywords]), [[['NEXT', 'WAIT'], ['DONE']], [['Alice', 'Bob'], ['Done']], [['A'], ['B']]]);
+  assert.deepEqual(resolveTodoSequences(doc).map((s) => [s.todoKeywords, s.doneKeywords]), [[['Alice', 'Bob'], ['Done']], [['A'], ['B']], [['NEXT', 'WAIT'], ['DONE']]]);
 });
 
 test('the keyword match is case-insensitive and exact: other keywords and look-alikes are not sequences', () => {

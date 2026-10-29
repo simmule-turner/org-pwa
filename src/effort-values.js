@@ -46,6 +46,32 @@ function parseEffortValues(text) {
 }
 
 /**
+ * The words of an Effort_ALL value the way Emacs reads them (org-property-get-allowed-values calls `read` on the text wrapped in
+ * parentheses): whitespace separates words, a double-quoted string is one word without its quotes, a number is printed back in
+ * Lisp form ("+2" is 2, "1e2" is 100.0), and anything else is a symbol, kept as written. Nothing is validated or de-duplicated.
+ * @param {string} text
+ */
+function readLispWords(text) {
+  /** @type {string[]} */ const words = [];
+  const source = String(text == null ? '' : text);
+  const re = /"((?:[^"\\]|\\[\s\S])*)"|[^\s"]+/g;
+  let m;
+  while ((m = re.exec(source))) {
+    if (m[1] !== undefined) {
+      words.push(m[1].replace(/\\([\s\S])/g, '$1'));
+    } else if (/^[+-]?\d+\.?$/.test(m[0])) {
+      words.push(String(Number.parseInt(m[0], 10)));
+    } else if (/^[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:e[+-]?\d+)?$/i.test(m[0])) {
+      const n = Number(m[0]);
+      words.push(Number.isInteger(n) ? n.toFixed(1) : String(n));
+    } else {
+      words.push(m[0]);
+    }
+  }
+  return words;
+}
+
+/**
  * `org-global-properties` text -> { lowercased name: value string }.
  * @param {string} text
  */
@@ -74,9 +100,9 @@ function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } =
   const appended = [];
   /** @param {string | null | undefined} plain @param {string | null | undefined} plus @returns {string[] | null} */
   const level = (plain, plus) => {
-    const base = parseEffortValues(plain || '');
-    if (plus) appended.unshift(parseEffortValues(plus));
-    return base.length > 0 ? base : null;
+    if (plain != null && plain.trim() === '') throw new Error('Wrong type argument: listp, ""'); // an Effort_ALL with no value is an error in Emacs
+    if (plus) appended.unshift(readLispWords(plus));
+    return plain != null ? readLispWords(plain) : null;
   };
   /** @type {string[] | null} */
   let base = null;
@@ -98,7 +124,7 @@ function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } =
       const name = m[1].toLowerCase();
       if (name === PROPERTY_NAME.toLowerCase()) {
         fileMentions = true;
-        if (filePlain === null && parseEffortValues(m[2]).length > 0) filePlain = m[2];
+        if (filePlain === null && m[2].trim() !== '') filePlain = m[2];
       } else if (name === PLUS_NAME.toLowerCase()) {
         fileMentions = true;
         filePlus += ' ' + m[2];
@@ -107,15 +133,7 @@ function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } =
     base = level(filePlain, filePlus.trim() || null);
     if (!base && !fileMentions) base = level(/** @type {any} */ (parseGlobalProperties(globalProperties))[PROPERTY_NAME.toLowerCase()], null);
   }
-  const seen = new Set();
-  /** @type {string[]} */
-  const values = [];
-  for (const v of [...(base || []), ...appended.flat()]) {
-    if (seen.has(v)) continue;
-    seen.add(v);
-    values.push(v);
-  }
-  return values;
+  return [...(base || []), ...appended.flat()];
 }
 
-export { PROPERTY_NAME, PLUS_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, parseGlobalProperties, getAllowedEffortValues };
+export { PROPERTY_NAME, PLUS_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, readLispWords, parseGlobalProperties, getAllowedEffortValues };

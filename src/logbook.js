@@ -142,9 +142,9 @@ function formatStateLogLine(newState, oldState, timestamp, note = /** @type {str
   const newPart = padTo12(`"${newState ?? ''}"`);
   const oldPart = padTo12(oldState === null ? '' : `"${oldState}"`);
   const head = `- State ${newPart} from ${oldPart} ${timestamp}`;
-  if (!note) return [head];
-  const noteLines = note.split('\n');
-  return [`${head} \\\\`, ...noteLines.map((l) => `  ${l}`)];
+  const text = note ? note.replace(/^\s+|\s+$/g, '') : '';
+  if (!text) return [head];
+  return [`${head} \\\\`, ...text.split('\n').map((l) => (l.trim() ? `  ${l}` : ''))];
 }
 
 /**
@@ -153,8 +153,9 @@ function formatStateLogLine(newState, oldState, timestamp, note = /** @type {str
  * @param {string | null} [note]
  */
 function formatNoteLine(heading, note = null) {
-  if (!note) return [`- ${heading}`];
-  return [`- ${heading} \\\\`, ...note.split('\n').map((l) => (l ? `  ${l}` : l))];
+  const text = note ? note.replace(/^\s+|\s+$/g, '') : '';
+  if (!text) return [`- ${heading}`];
+  return [`- ${heading} \\\\`, ...text.split('\n').map((l) => (l.trim() ? `  ${l}` : ''))];
 }
 
 /** Every log item of a heading: those above its :LOGBOOK: drawer (Emacs's default placement), then the drawer's own.

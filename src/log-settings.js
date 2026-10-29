@@ -11,7 +11,8 @@
  *   #+STARTUP: logrepeat | lognoterepeat | nologrepeat
  */
 
-/** @typedef {{ logDone: 'time' | 'note' | null, logIntoDrawer: string | null, logRepeat: 'time' | 'note' | null }} LogSettings */
+/** @typedef {{ logDone: 'time' | 'note' | null, logIntoDrawer: string | null, logRepeat: 'time' | 'note' | null, logSpecs: Record<string, string> | null }} LogSettings */
+// logSpecs is null unless a LOGGING property is in force; then it replaces the `#+TODO:` keywords' own `(!)` and `(@)` settings.
 
 /** What `#+STARTUP:` says for each variable: undefined when it does not mention it, 'none' for the words that turn it off.
  * @param {Doc} doc */
@@ -84,18 +85,26 @@ export function readLogSettings(doc, localVarsOnly = {}, globalVarsOnly = {}, pa
   let logIntoDrawer = layers(drawerValue, 'org-log-into-drawer', startup.logIntoDrawer);
   let logRepeat = layers(repeatValue, 'org-log-repeat', startup.logRepeat);
 
-  // LOGGING: the nearest heading that has it, its words (logdone, nologrepeat, …) apply as #+STARTUP: words do
+  // LOGGING: the nearest heading that has it. As in Emacs it starts from "log nothing" (org-log-done, org-log-repeat and the keywords' own
+  // settings are all reset), then its words (logdone, nologrepeat, TODO(!), ...) switch things on, as #+STARTUP: words do.
+  /** @type {Record<string, string> | null} */
+  let logSpecs = null;
   const logging = nearestProperty(path, 'LOGGING');
   if (logging !== undefined) {
-    if (logging.trim() === 'nil') {
-      logDone = 'none';
-      logRepeat = 'none';
-    } else {
-      for (const word of logging.trim().split(/\s+/)) {
-        const e = wordEffect(word);
-        if (e.logDone) logDone = e.logDone;
-        if (e.logRepeat) logRepeat = e.logRepeat;
+    logDone = 'none';
+    logRepeat = 'none';
+    logSpecs = {};
+    for (const word of logging.trim().split(/\s+/)) {
+      if (word === 'nil') continue;
+      const spec = /^(\S+?)\((\S*)\)$/.exec(word);
+      if (spec) {
+        const [, keyword, how] = spec;
+        logSpecs[keyword] = how;
+        continue;
       }
+      const e = wordEffect(word);
+      if (e.logDone) logDone = e.logDone;
+      if (e.logRepeat) logRepeat = e.logRepeat;
     }
   }
   const own = nearestProperty(path, 'LOG_INTO_DRAWER');
@@ -105,6 +114,7 @@ export function readLogSettings(doc, localVarsOnly = {}, globalVarsOnly = {}, pa
     logDone: logDone === 'time' || logDone === 'note' ? logDone : null,
     logIntoDrawer: logIntoDrawer && logIntoDrawer !== 'none' ? logIntoDrawer : null,
     logRepeat: logRepeat === undefined ? 'time' : logRepeat === 'note' ? 'note' : logRepeat === 'none' ? null : 'time', // Emacs's default is `time`
+    logSpecs,
   };
 }
 

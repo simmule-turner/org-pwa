@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v642';
+const CACHE_NAME = 'org-pwa-shell-v643';
 
 const SHELL_FILES = [
   './',
@@ -116,6 +116,9 @@ const SHELL_FILES = [
   './src/org-table-layout.js',
   './src/org-plot.js',
   './src/clocktable.js',
+  './src/clock-report.js',
+  './src/clock-settings.js',
+  './src/clock-range.js',
   './src/extra-menu.js',
   './src/menu-alias.js',
   './src/multi-entry-format.js',
@@ -156,6 +159,7 @@ const SHELL_FILES = [
   './src/comment-model.js',
   './src/outline-view-model.js',
   './src/org-timestamp.js',
+  './src/emacs-chars.js',
   './src/inline-markup.js',
   './src/table-cookies.js',
   './src/sync-engine.js',
@@ -165,6 +169,7 @@ const SHELL_FILES = [
   './src/progress-logging.js',
   './src/logbook.js',
   './src/heading-edit.js',
+  './src/tags-column.js',
   './src/body-edit.js',
   './src/smart-quotes.js',
   './src/link-abbrev.js',
@@ -257,6 +262,7 @@ const SHELL_FILES = [
   './src-browser/attach-preview.js',
   './src-browser/attach-folder-panel.js',
   './src-browser/clock-watch.js',
+  './src-browser/clock-options.js',
   './src-browser/line-marks.js',
   './src-browser/heading-pick.js',
   './src-browser/camera-capture.js',

@@ -3,14 +3,15 @@
 // effort, a reminder (org-clock-notify-once-if-expired, with org-clock-sound), and, with org-clock-idle-time set, a question after
 // the person has been away that long (org-resolve-clocks-if-idle): keep the time, take the idle time off and go on, or take it
 // off and clock out. "Away" is no tap, key or scroll in the app; the clock of a device that slept counts the sleep as idle.
-import { clockCancel, clockInSwitchingTasks, clockOut, currentClockSessionMinutes, runningClockStartMs } from '../src/clock.js';
+import { clockCancel, clockInSwitchingTasks, currentClockSessionMinutes, runningClockStartMs } from '../src/clock.js';
 import { getProperty } from '../src/archive-model.js';
 import { effortReached, idleLimitMinutes, idlePrompt, reminderText, resolveIdleClock, soundFileName, soundKind } from '../src/clock-reminder.js';
 import { guessAudioMimeType } from '../src/link-resolve.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { S } from './app-state.js';
-import { clockGoto, clockInHeading, findRunningClockAcrossSessions } from './clock-flow.js';
+import { clockSettingsFor } from './clock-options.js';
+import { clockGoto, clockInHeading, clockOutAndSwitch, findRunningClockAcrossSessions } from './clock-flow.js';
 import { openGridChoiceModal, promptText } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { platform } from './platform.js';
@@ -115,7 +116,7 @@ function askIdle(running, idleStart) {
     if (!running.isActive) switchToTab(running.tabId ?? undefined);
     const heading = running.heading;
     if (plan.type === 'jump') {
-      if (plan.clockOutNow) clockOut(heading, stamp(now), new Date(now));
+      if (plan.clockOutNow) clockOutAndSwitch(heading, stamp(now), new Date(now));
       clockGoto();
       return;
     }
@@ -126,12 +127,12 @@ function askIdle(running, idleStart) {
       return;
     }
     if (plan.type === 'now') {
-      if (plan.clockOut && clockOut(heading, stamp(now), new Date(now))) commitAndRender('Clocked out');
+      if (plan.clockOut && clockOutAndSwitch(heading, stamp(now), new Date(now))) commitAndRender('Clocked out');
       return;
     }
-    if (clockOut(heading, stamp(plan.clockOutAt), new Date(plan.clockOutAt))) {
+    if (clockOutAndSwitch(heading, stamp(plan.clockOutAt), new Date(plan.clockOutAt))) {
       if (plan.clockInAt !== null && S.state.doc) {
-        clockInSwitchingTasks(S.state.doc, heading, stamp(plan.clockInAt), new Date(plan.clockInAt));
+        clockInSwitchingTasks(S.state.doc, heading, stamp(plan.clockInAt), new Date(plan.clockInAt), clockSettingsFor(heading));
         commitAndRender('Idle time resolved — clocking on');
       } else commitAndRender('Idle time resolved — clocked out');
     }

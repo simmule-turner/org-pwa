@@ -87,6 +87,30 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#progress-logging',
   },
   {
+    key: 'org-clock-into-drawer',
+    label: 'Clock lines go into a drawer',
+    section: 'Clocking',
+    type: 'text',
+    default: 't',
+    helpAnchor: '#clocking',
+  },
+  {
+    key: 'org-clock-out-switch-to-state',
+    label: 'Switch to this state when clocking out',
+    section: 'Clocking',
+    type: 'text',
+    default: 'nil',
+    helpAnchor: '#clocking',
+  },
+  {
+    key: 'org-clock-out-remove-zero-time-clocks',
+    label: 'Remove clocks of zero minutes',
+    section: 'Clocking',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#clocking',
+  },
+  {
     key: 'org-agenda-show-all-dates',
     label: 'Show empty days in Agenda',
     section: 'Agenda',
@@ -358,6 +382,7 @@ export const QUICK_SETTINGS_FIELDS = [
     default: false,
     helpAnchor: '#searching',
   },
+  { key: 'org-tags-column', label: 'Tags column (0 = one space after the title, negative = right-aligned)', section: 'Editing', type: 'number', default: 0, min: -300, max: 300, step: 1, helpAnchor: '#configuration' },
   {
     key: 'org-refile-allow-creating-parent-nodes',
     label: 'Refile: create a new heading to file under',

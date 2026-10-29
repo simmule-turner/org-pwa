@@ -7,7 +7,7 @@ import { runFunctionCommand } from '../src/agenda-lisp.js';
 import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
 import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
-import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
+import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getPropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
 import { buildHeadingRow, buildTodoEffortChip, prefixFailure, prefixFailureNote } from './agenda-view.js';
@@ -72,7 +72,7 @@ function queryOptions() {
     doneKeywords: sequence.doneKeywords,
     todoKeywords: sequence.todoKeywords,
     tagInheritance: getUseTagInheritance(vars),
-    propertyInheritance: getUsePropertyInheritance(vars),
+    propertyInheritance: getPropertyInheritance(vars),
     sortingStrategy: vars['org-agenda-sorting-strategy'] || null,
     localVariables: vars,
     documentOrder: aggregateAgendaDocs().map((d) => d.documentId),

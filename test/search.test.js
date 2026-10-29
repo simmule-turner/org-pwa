@@ -164,7 +164,7 @@ test('only matching properties produce results, not every property on the headin
 test('property search respects regex mode too', () => {
   const doc = parseOrg('* A\n:PROPERTIES:\n:dob: 1965-01-27\n:END:');
   const results = searchDocument(doc, '[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}', { useRegex: true });
-  const propResult = results.find((r) => r.type === 'property');
+  const propResult = results.find((r) => r.type === 'line'); // a regexp searches the entry's text, so the hit is its line
   assert.ok(propResult);
 });
 
@@ -221,7 +221,7 @@ test('a heading with both SCHEDULED and DEADLINE produces two separate planning 
 test('planning search respects regex mode too', () => {
   const doc = parseOrg('* A task\nSCHEDULED: <2026-05-15 Fri +1y>');
   const results = searchDocument(doc, '\\+\\d+y', { useRegex: true });
-  const planningResult = results.find((r) => r.type === 'planning');
+  const planningResult = results.find((r) => r.type === 'line');
   assert.ok(planningResult);
 });
 
@@ -392,8 +392,8 @@ test('THE FEATURE: highlight range points at the actual matched substring within
 
 test('THE FEATURE: highlight length in regex mode reflects the ACTUAL matched text, not the pattern string\u2019s own length', () => {
   const doc = parseOrg('* A\nCall 555-123456 for details.');
-  const results = searchDocument(doc, '+[0-9]\\{3\\}-[0-9]+', { useRegex: true });
-  const para = results.find((r) => r.type === 'paragraph');
+  const results = searchDocument(doc, '[0-9]\\{3\\}-[0-9]+', { useRegex: true });
+  const para = results.find((r) => r.type === 'line');
   const { text, highlightStart, highlightLength } = para.snippet;
   assert.equal(text.slice(highlightStart, highlightStart + highlightLength), '555-123456');
   assert.notEqual(highlightLength, '[0-9]\\{3\\}-[0-9]+'.length); // the pattern string itself is a different length than what it actually matched
@@ -583,7 +583,7 @@ test('child headings are still independently evaluated and can match on their ow
 test('a structured filter combines correctly with a regex-mode keyword term', () => {
   const doc = parseOrg('* A :work:\nCall 555-1234\n* B :work:\nno phone number here');
   const results = searchDocument(doc, 'tag:work [0-9]\\{3\\}-[0-9]\\{4\\}', { useRegex: true });
-  const headings = results.filter((r) => r.type === 'paragraph').map((r) => r.heading.title);
+  const headings = results.filter((r) => r.type === 'line').map((r) => r.heading.title);
   assert.deepEqual(headings, ['A']);
 });
 
@@ -767,4 +767,18 @@ test('results carry the same {type, heading, node, snippet} shape as the existin
   assert.equal(results[0].type, 'heading');
   assert.equal(results[0].heading, results[0].node);
   assert.equal(results[0].snippet.highlightStart, -1);
+});
+
+test('a regexp is one pattern, spaces included; only leading key:value filters are split off', () => {
+  const doc = parseOrg('* A :work:\nthe quick fox\n* B\nthe  quick fox');
+  assert.deepEqual(searchDocument(doc, 'the quick', { useRegex: true }).map((r) => r.heading.title), ['A']);
+  assert.deepEqual(searchDocument(doc, 'tag:work the quick', { useRegex: true }).map((r) => r.heading.title), ['A']);
+  assert.deepEqual(searchDocument(doc, 'quick ', { useRegex: true }).map((r) => r.heading.title), ['A', 'B']);
+});
+
+test('a search looks through the whole text of an entry: drawers, logbook notes and #+ lines', () => {
+  const doc = parseOrg('* A\n:LOGBOOK:\n- note about zebras\n:END:\n* B\n#+CAPTION: giraffe\n');
+  assert.deepEqual(searchDocument(doc, 'zebras').map((r) => r.heading.title), ['A']);
+  assert.deepEqual(searchDocument(doc, 'giraffe', { useRegex: true }).map((r) => r.heading.title), ['B']);
+  assert.deepEqual(searchDocument(doc, ':LOGBOOK:', { useRegex: true }).map((r) => r.heading.title), ['A']);
 });

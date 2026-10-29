@@ -37,13 +37,20 @@ export function openEffortEditor(heading) {
     setStatus('Buffer is read-only.');
     return;
   }
+  /** @type {string[]} */ let choices;
+  try {
+    choices = getAllowedEffortValues({ doc: S.state.doc, heading, globalProperties: getGlobalProperties(S.state.localVariables) });
+  } catch (e) {
+    setStatus(String(/** @type {Error} */ (e).message)); // Emacs signals an error for an Effort_ALL property with no value
+    return;
+  }
   const overlay = openTextFieldPopup({
     label: 'Effort estimate (e.g. 1:30, 2h, 1d 3h; blank to clear)',
     value: getProperty(heading, 'EFFORT') || '',
     placeholder: '1:30',
     resetInPlace: true,
     // Effort_ALL, when one is defined for this heading (see src/effort-values.js)
-    choices: getAllowedEffortValues({ doc: S.state.doc, heading, globalProperties: getGlobalProperties(S.state.localVariables) }),
+    choices,
     onSave: (/** @type {string} */ raw) => {
       const value = String(raw).trim();
       if (value === '') {

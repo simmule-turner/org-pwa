@@ -21,6 +21,7 @@
 
 import { findContainer, findAncestorPath, shiftLevels } from './archive-model.js';
 import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
+import { parseOrg, serializeHeadingSubtree } from './org-parser.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -203,7 +204,7 @@ function lastHeading(doc) {
  * @param {F} edit
  * @returns {F}
  */
-function keepFinalNewline(edit) {
+function keepFinalNewline(edit, addMissing = true) {
   return /** @type {F} */ (
     (/** @type {Doc} */ doc, /** @type {unknown[]} */ ...rest) => {
       const before = lastHeading(doc);
@@ -211,7 +212,10 @@ function keepFinalNewline(edit) {
       if (had && before) before.bodyLines.pop();
       const result = /** @type {(...a: unknown[]) => unknown} */ (edit)(doc, ...rest);
       const after = lastHeading(doc);
-      if (had && after) after.bodyLines.push('');
+      // Emacs ends the file with a newline once a different heading has become the last one
+      const adds = !had && addMissing && !!result && after !== before;
+      if ((had || adds) && after) after.bodyLines.push('');
+      if (adds && after) /** @type {Heading & { eofNewlineAdded?: boolean }} */ (after).eofNewlineAdded = true; // so that taking the heading out again leaves the file as it was
       return result;
     }
   );
@@ -276,32 +280,82 @@ function removeHeadingRaw(doc, heading) {
   return true;
 }
 
-/** Swaps heading with its previous sibling (same parent, same level).
- *  No-op (returns false) if heading is already first among its
- *  siblings. Matches real org's M-up: reorders among siblings without
- *  touching level or parent — the subtree (all descendants) moves as
- *  one unit automatically, since they're already part of the same
+/**
+ * The headings of `doc` in text order. Org's structure commands work on the text, where a subtree is a heading and the lines
+ * after it that are deeper, so the edits below work on this list and then rebuild the tree.
+ * @param {Doc} doc
+ * @returns {Heading[]}
+ */
+function flatHeadings(doc) {
+  /** @type {Heading[]} */
+  const out = [];
+  /** @param {Heading[]} nodes */
+  const walk = (nodes) => {
+    for (const n of nodes) {
+      out.push(n);
+      walk(n.children);
+    }
+  };
+  walk(doc.children);
+  return out;
+}
+
+/** Puts `list` back into `doc` as a tree, nesting by level as the parser does.
+ * @param {Doc} doc @param {Heading[]} list */
+function rebuildTree(doc, list) {
+  doc.children = [];
+  for (const h of list) h.children = [];
+  /** @type {Heading[]} */
+  const stack = [];
+  for (const h of list) {
+    while (stack.length && stack[stack.length - 1].level >= h.level) stack.pop();
+    (stack.length ? stack[stack.length - 1].children : doc.children).push(h);
+    stack.push(h);
+  }
+}
+
+/** One past the last heading of the subtree that starts at `list[i]`. @param {Heading[]} list @param {number} i */
+function subtreeEnd(list, i) {
+  let j = i + 1;
+  while (j < list.length && list[j].level > list[i].level) j++;
+  return j;
+}
+
+/**
+ * Swaps the subtree with the one before it at the same level (org-move-subtree-up). Refuses, returning false, when no heading
+ * of that level comes before it under the same parent.
  * @param {Doc} doc
  * @param {Heading} heading
- *  object. */
+ */
 function moveHeadingUpRaw(doc, heading) {
-  const located = findContainer(doc, heading);
-  if (!located || located.index === 0) return false;
-  const { container, index } = located;
-  [container[index - 1], container[index]] = [container[index], container[index - 1]];
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0) return false;
+  let p = i - 1;
+  while (p >= 0 && list[p].level > heading.level) p--;
+  // outline-mode's search for the previous sibling stops at the first heading of a file that starts with one, whatever its level
+  const quirk = p < 0 && i > 0 && !doc.keywords.some((k) => !k.virtual) && !(doc.bodyLines || []).length;
+  if (quirk) p = 0;
+  else if (p < 0 || list[p].level !== heading.level) return false;
+  const end = subtreeEnd(list, i);
+  rebuildTree(doc, [...list.slice(0, p), ...list.slice(i, end), ...list.slice(p, i), ...list.slice(end)]);
   return true;
 }
 
 /**
- * Swaps heading with its next sibling. No-op if already last.
+ * Swaps the subtree with the one after it at the same level (org-move-subtree-down). Refuses, returning false, when none follows
+ * under the same parent.
  * @param {Doc} doc
  * @param {Heading} heading
  */
 function moveHeadingDownRaw(doc, heading) {
-  const located = findContainer(doc, heading);
-  if (!located || located.index === located.container.length - 1) return false;
-  const { container, index } = located;
-  [container[index], container[index + 1]] = [container[index + 1], container[index]];
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0) return false;
+  const end = subtreeEnd(list, i);
+  if (end >= list.length || list[end].level !== heading.level) return false;
+  const end2 = subtreeEnd(list, end);
+  rebuildTree(doc, [...list.slice(0, i), ...list.slice(end, end2), ...list.slice(i, end), ...list.slice(end2)]);
   return true;
 }
 
@@ -380,27 +434,19 @@ function moveHeadingToRaw(doc, heading, target, position, climb = 0) {
 }
 
 /**
- * Promotes heading (and its whole subtree) up one level, as Org's `org-promote-subtree` does: the stars lose one and the
- * heading stays where it is in the text.  It ends up right after its former parent's subtree up to it, and the siblings that
- * followed it, being deeper than it now, become its children.  Nothing happens to a top-level heading.
+ * Promotes heading (and its whole subtree) up one level, as Org's `org-promote-subtree` does: the stars lose one and the heading
+ * stays where it is in the text. The headings after it that are deeper than it now become its children. Refuses, returning
+ * false, at level 1.
  * @param {Doc} doc
  * @param {Heading} heading
  */
 function promoteHeadingRaw(doc, heading) {
-  const path = findAncestorPath(doc, heading);
-  if (!path || path.length === 0) return false; // already top-level
-  const parent = path[path.length - 1];
-
-  const located = findContainer(doc, heading);
-  const parentLocated = findContainer(doc, parent);
-  if (!located || !parentLocated) return false;
-
-  const later = located.container.splice(located.index + 1);
-  located.container.splice(located.index, 1);
-  parentLocated.container.splice(parentLocated.index + 1, 0, heading);
-  heading.children.push(...later);
-  shiftLevels(heading, heading.level - 1);
-  for (const l of later) l.level = Math.max(l.level, heading.level + 1);
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0 || heading.level <= 1) return false;
+  const end = subtreeEnd(list, i);
+  for (let j = i; j < end; j++) list[j].level -= 1;
+  rebuildTree(doc, list);
   return true;
 }
 
@@ -412,25 +458,31 @@ function promoteHeadingRaw(doc, heading) {
  * @param {Heading} heading
  */
 function demoteHeadingRaw(doc, heading) {
-  const located = findContainer(doc, heading);
-  if (!located) return false;
-  const { container, index } = located;
-  if (index === 0) {
-    shiftLevels(heading, heading.level + 1);
-    return true;
-  }
-  const newParent = container[index - 1];
-
-  container.splice(index, 1);
-  newParent.children.push(heading);
-  newParent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
-  shiftLevels(heading, heading.level + 1);
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0) return false;
+  const end = subtreeEnd(list, i);
+  for (let j = i; j < end; j++) list[j].level += 1;
+  rebuildTree(doc, list);
+  const parent = list.slice(0, i).reverse().find((h) => h.level < heading.level);
+  if (parent) parent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
   return true;
 }
 
 export const insertHeadingAfter = keepFinalNewline(insertHeadingAfterRaw);
 
-export const removeHeading = keepFinalNewline(removeHeadingRaw);
+const removeHeadingKeepingNewline = keepFinalNewline(removeHeadingRaw);
+
+/** Removes `heading`; a heading that only gave the file its final newline takes it away again. @param {Doc} doc @param {Heading} heading */
+export function removeHeading(doc, heading) {
+  const wasLast = lastHeading(doc) === heading;
+  const hadNewline = wasLast && heading.bodyLines.length > 0 && heading.bodyLines[heading.bodyLines.length - 1] === '';
+  const fresh = /** @type {Heading & { eofNewlineAdded?: boolean }} */ (heading).eofNewlineAdded || (!heading.raw && !hadNewline); // made here, not read from the file
+  const ok = removeHeadingKeepingNewline(doc, heading);
+  const last = lastHeading(doc);
+  if (ok && wasLast && fresh && last && last.bodyLines[last.bodyLines.length - 1] === '') last.bodyLines.pop();
+  return ok;
+}
 
 export const moveHeadingUp = keepFinalNewline(moveHeadingUpRaw);
 
@@ -441,3 +493,34 @@ export const moveHeadingTo = keepFinalNewline(moveHeadingToRaw);
 export const promoteHeading = keepFinalNewline(promoteHeadingRaw);
 
 export const demoteHeading = keepFinalNewline(demoteHeadingRaw);
+
+/**
+ * org-paste-subtree on `heading`: the subtrees in `text` go in after it, at its level. Returns the pasted headings, or null when
+ * `text` holds no heading or `heading` is not in `doc`.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ * @param {string} text
+ * @returns {Heading[] | null}
+ */
+function pasteSubtreeAfterRaw(doc, heading, text) {
+  const parsed = parseOrg(text.replace(/\r?\n$/, ''));
+  if (!parsed.children || parsed.children.length === 0) return null;
+  const located = findContainer(doc, heading);
+  if (!located) return null;
+  for (const node of parsed.children) shiftLevels(node, heading.level);
+  located.container.splice(located.index + 1, 0, ...parsed.children);
+  return parsed.children;
+}
+
+/**
+ * The text org-copy-subtree puts on the clipboard: the heading and its subtree, every line ended with a newline.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ */
+export function subtreeText(doc, heading) {
+  const text = serializeHeadingSubtree(heading);
+  const last = lastHeading(doc);
+  return last && inSubtree(heading, last) && text.endsWith('\n') ? text : text + '\n'; // the last heading's own text already ends the file
+}
+
+export const pasteSubtreeAfter = keepFinalNewline(pasteSubtreeAfterRaw, false);

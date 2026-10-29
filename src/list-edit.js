@@ -7,6 +7,8 @@
  * count), and a checkbox with checkbox sub-items shows what they add up to.
  */
 
+/** The blocks whose lines Org keeps as plain text; a list can stand inside the others (quote, center, special). */
+const RAW_BEGIN_RE = /^[ \t]*#\+begin_(?:src|example|export|comment|verse)\b/i;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:([ \t]+)|$)/;
 
 /** @typedef {{ line: number, indent: number, bullet: string, parent: number, end: number }} ListItemInfo */
@@ -29,26 +31,52 @@ export function isItemLine(line) {
 }
 
 /**
+ * The parent of the item with indentation `ind` that follows `items`, as `org-list-parents-alist` finds it: a deeper item
+ * belongs to the item before it; one that is less indented returns to the level it matches, or else to the nearest level
+ * less indented (an ill-formed list), which may be the top.
+ * @param {ListItemInfo[]} items @param {{ ind: number, origin: number }[]} stack @param {number} ind
+ */
+function parentOf(items, stack, ind) {
+  if (items.length === 0) return -1;
+  const prevInd = stack[0].ind;
+  if (prevInd > ind) {
+    let at = stack.findIndex((e) => e.ind === ind);
+    if (at < 0) at = stack.findIndex((e) => e.ind < ind);
+    if (at >= 0) stack.splice(0, at);
+    else stack.splice(0, stack.length, { ind, origin: -1 });
+    return stack[0].origin;
+  }
+  if (prevInd < ind) {
+    stack.unshift({ ind, origin: items.length - 1 });
+    return items.length - 1;
+  }
+  return stack[0].origin;
+}
+
+/**
  * Every list in `lines`, as the items of each with their parents and ends.
  * @param {string[]} lines
+ * @param {boolean} [inBlocks] read the lines inside `#+begin_` blocks as list lines too, as `org-list-struct` does
  * @returns {{ items: ListItemInfo[], start: number, end: number }[]}
  */
-export function findLists(lines) {
+export function findLists(lines, inBlocks = false) {
   /** @type {{ items: ListItemInfo[], start: number, end: number }[]} */
   const lists = [];
   let i = 0;
   let block = false;
   while (i < lines.length) {
     const line = lines[i];
-    if (/^[ \t]*#\+begin_/i.test(line)) block = true;
+    if (RAW_BEGIN_RE.test(line)) block = true;
     else if (/^[ \t]*#\+end_/i.test(line)) block = false;
-    if (block || !isItemLine(line)) {
+    if ((block && !inBlocks) || !isItemLine(line)) {
       i += 1;
       continue;
     }
     const top = indentWidth(line);
     /** @type {ListItemInfo[]} */
     const items = [];
+    /** @type {{ ind: number, origin: number }[]} Org's `ind-to-ori`: the indentations open so far, innermost first */
+    const stack = [{ ind: top, origin: -1 }];
     let j = i;
     let blanks = 0;
     let end = i + 1;
@@ -65,14 +93,7 @@ export function findLists(lines) {
       end = j + 1;
       const m = ITEM_RE.exec(l);
       if (isItemLine(l) && m) {
-        let parent = -1;
-        for (let k = items.length - 1; k >= 0; k--) {
-          if (items[k].indent < ind) {
-            parent = k;
-            break;
-          }
-        }
-        items.push({ line: j, indent: ind, bullet: m[2], parent, end: -1 });
+        items.push({ line: j, indent: ind, bullet: m[2], parent: parentOf(items, stack, ind), end: -1 });
       }
     }
     for (let a = 0; a < items.length; a++) {
@@ -89,11 +110,32 @@ export function findLists(lines) {
 /** The list that has an item on `line`, and that item's index in it.
  * @param {string[]} lines @param {number} line */
 export function listAt(lines, line) {
-  for (const list of findLists(lines)) {
-    const index = list.items.findIndex((it) => it.line === line);
-    if (index >= 0) return { list, index };
+  for (const inBlocks of [false, true]) {
+    for (const list of findLists(lines, inBlocks)) {
+      const index = list.items.findIndex((it) => it.line === line);
+      if (index >= 0) return { list, index };
+    }
   }
   return null;
+}
+
+/** Whether `line` lies inside a block whose lines Org keeps as plain text (src, example, export, comment, verse).
+ * @param {string[]} lines @param {number} line */
+export function inBlockAt(lines, line) {
+  let open = false;
+  for (let i = 0; i < line && i < lines.length; i++) {
+    if (RAW_BEGIN_RE.test(lines[i])) open = true;
+    else if (/^[ \t]*#\+end_/i.test(lines[i])) open = false;
+  }
+  return open;
+}
+
+/** `org-list-repair` on the item at `line`: bullets, indentation and boxes put in order; an error where Org finds no list (a
+ * line inside a block).
+ * @param {string[]} lines @param {number} line */
+export function repairList(lines, line) {
+  if (inBlockAt(lines, line)) throw new Error('This is not a list');
+  return fixBoxes(renumber(lines, line), line);
 }
 
 /** The first line after the item, its sub-items and its text; blank lines are the item's own except at the end of the list.
@@ -111,53 +153,55 @@ export function itemEnd(lines, line) {
 const isOrdered = (bullet) => /^\d/.test(bullet);
 
 /**
- * Number the ordered items of the list that has an item on `line` again, shifting the lines of an item whose bullet changed
- * width.  Returns the new lines.
+ * Put the list that has an item on `line` in order the way `org-list-write-struct` does: each bullet follows the one before
+ * it (the first item's type decides, a `[@N]` counter restarts the count), one space follows every bullet, sub-items sit
+ * under their parent's text, and the text of an item moves with it.  Returns the new lines.
  * @param {string[]} lines @param {number} line
+ * @param {number} [keep] a line whose text after its bullet is left exactly as written (a new item's " :: ")
  */
-export function renumber(lines, line) {
+export function renumber(lines, line, keep = -1) {
   const found = listAt(lines, line);
   if (!found) return lines;
   const out = [...lines];
   const { items } = found.list;
-  /** @type {Map<number, number>} the next number for the children of each parent */
-  const next = new Map();
-  /** per-line indentation changes from wider or narrower bullets: [from, to, delta] */
-  /** @type {[number, number, number][]} */
-  const shifts = [];
-  for (let k = 0; k < items.length; k++) {
-    const it = items[k];
-    if (!isOrdered(it.bullet)) {
-      next.delete(k);
-      continue;
+  const itemLines = new Set(items.map((it) => it.line));
+  const topIndent = items[0].indent;
+  /** @type {string[]} */ const bullets = [];
+  /** @type {number[]} */ const indents = [];
+  const rewritten = items.map((it, k) => {
+    const m = (it.line === keep ? /^([ \t]*)([-+*]|\d+[.)])(?: |$)/ : /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+|$)/).exec(lines[it.line]);
+    if (!m) return null;
+    const rest = lines[it.line].slice(m[0].length);
+    const counter = /^\[@(\d+)\]/.exec(rest);
+    let prev = -1;
+    for (let p = k - 1; p >= 0; p--) {
+      if (items[p].indent < it.indent) break;
+      if (items[p].parent === it.parent && items[p].indent === it.indent) { prev = p; break; }
     }
-    // restart the count whenever the previous sibling was not ordered or this is the first of its group
-    const prevSibling = (() => {
-      for (let p = k - 1; p >= 0; p--) {
-        if (items[p].parent === it.parent && items[p].indent === it.indent) return p;
-        if (items[p].indent < it.indent) return -1;
-      }
-      return -1;
-    })();
-    const counter = /^[ \t]*\d+[.)][ \t]+\[@(\d+)\]/.exec(lines[it.line]);
-    let n = prevSibling >= 0 && isOrdered(items[prevSibling].bullet) ? (next.get(prevSibling) ?? 1) : 1;
-    if (counter) n = Number(counter[1]);
-    next.set(k, n + 1);
-    const m = /^([ \t]*)(\d+)([.)])/.exec(out[it.line]);
-    if (!m) continue;
-    const bullet = `${n}${m[3]}`;
-    if (bullet !== m[2] + m[3]) {
-      const delta = bullet.length - (m[2] + m[3]).length;
-      out[it.line] = m[1] + bullet + out[it.line].slice(m[0].length);
-      if (delta !== 0) shifts.push([it.line + 1, it.end, delta]);
-    }
-  }
-  for (const [from, to, delta] of shifts) {
-    for (let l = from; l < to; l++) {
+    const own = m[2];
+    let bullet = own;
+    if (prev >= 0) {
+      const pb = bullets[prev];
+      if (counter && isOrdered(pb)) bullet = counter[1] + pb.slice(/^\d+/.exec(pb)?.[0].length ?? 0);
+      else if (isOrdered(pb)) bullet = `${Number(/^\d+/.exec(pb)?.[0]) + 1}${pb.slice(-1)}`;
+      else bullet = pb;
+    } else if (counter && isOrdered(own)) bullet = counter[1] + own.slice(/^\d+/.exec(own)?.[0].length ?? 0);
+    else if (isOrdered(own)) bullet = `1${own.slice(-1)}`;
+    bullets[k] = bullet;
+    indents[k] = it.parent >= 0 ? indents[it.parent] + bullets[it.parent].length + 1 : topIndent;
+    return { rest, oldIndent: indentWidth(lines[it.line]), oldBullet: m[0].replace(/^[ \t]*/, '').length };
+  });
+  items.forEach((it, k) => {
+    const r = rewritten[k];
+    if (!r) return;
+    out[it.line] = ' '.repeat(indents[k]) + bullets[k] + ' ' + r.rest;
+    const shift = indents[k] + bullets[k].length + 1 - (r.oldIndent + r.oldBullet);
+    if (shift === 0) return;
+    for (let l = it.line + 1; l < it.end && !itemLines.has(l); l++) {
       if (out[l].trim() === '') continue;
-      out[l] = delta > 0 ? ' '.repeat(delta) + out[l] : out[l].slice(Math.min(-delta, /^[ ]*/.exec(out[l])?.[0].length ?? 0));
+      out[l] = shift > 0 ? ' '.repeat(shift) + out[l] : out[l].slice(Math.min(-shift, /^[ ]*/.exec(out[l])?.[0].length ?? 0));
     }
-  }
+  });
   return out;
 }
 
@@ -185,4 +229,55 @@ export function fixBoxes(lines, line, keep = -1) {
     out[items[k].line] = out[items[k].line].replace(BOX_RE, (_, head) => `${head}[${state}]`);
   }
   return out;
+}
+
+/**
+ * What kind of list the item on `line` is in, by the first item of its own level as `org-list-get-list-type` does: a number or
+ * letter bullet makes it ordered, else a term before ` ::` makes it descriptive.
+ * @param {string[]} lines @param {number} line @returns {'ordered' | 'descriptive' | 'unordered'}
+ */
+export function listKind(lines, line) {
+  const found = listAt(lines, line);
+  if (!found) return 'unordered';
+  const { items } = found.list;
+  const me = items[found.index];
+  let first = found.index;
+  for (let k = found.index - 1; k >= 0; k--) {
+    if (items[k].indent < me.indent) break;
+    if (items[k].parent === me.parent && items[k].indent === me.indent) first = k;
+  }
+  if (isOrdered(items[first].bullet)) return 'ordered';
+  const text = lines[items[first].line].replace(/^[ \t]*[-+*][ \t]*/, '').replace(/^\[@\d+\][ \t]*/, '').replace(/^\[[ xX-]\][ \t]*/, '');
+  const cut = /[ \t]::(?:[ \t]|$)/.exec(' ' + text);
+  return cut && /\S/.test((' ' + text).slice(0, cut.index)) ? 'descriptive' : 'unordered';
+}
+
+/**
+ * How many blank lines Org puts between the items around a new one (`org-list-separating-blank-lines-number` with
+ * `org-blank-before-new-entry` on `auto`): the blank lines above the next item of the same level, else above this item when
+ * it has a previous one, else none.
+ * @param {string[]} lines @param {number} line
+ */
+export function separatingBlankLines(lines, line) {
+  const found = listAt(lines, line);
+  if (!found) return 0;
+  const { items } = found.list;
+  const me = items[found.index];
+  const above = (/** @type {number} */ at) => {
+    let n = 0;
+    while (at - 1 - n >= 0 && lines[at - 1 - n].trim() === '') n += 1;
+    return n;
+  };
+  const same = (/** @type {ListItemInfo} */ it) => it.parent === me.parent && it.indent === me.indent;
+  let next = -1;
+  for (let k = found.index + 1; k < items.length; k++) {
+    if (items[k].indent < me.indent) break;
+    if (same(items[k])) { next = k; break; }
+  }
+  if (next >= 0) return above(items[next].line);
+  for (let k = found.index - 1; k >= 0; k--) {
+    if (items[k].indent < me.indent) break;
+    if (same(items[k])) return above(me.line);
+  }
+  return 0;
 }

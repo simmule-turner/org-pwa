@@ -325,7 +325,7 @@ function entry(h, ancestors, c) {
   for (let n = 2; c.uids.has(uidBase); n++) uidBase = `${base}-${n}`;
   c.uids.add(uidBase);
 
-  const title = h.title.replace(/^COMMENT\s+/, '');
+  const title = h.title.replace(/^COMMENT\s*/, '');
   const summary = cleanup(getProperty(h, 'SUMMARY') ?? exportAsciiObjects(c.stripped, title));
   // org-use-property-inheritance is nil in Emacs: these are the heading's own
   const prop = (/** @type {string} */ name) => getProperty(h, name) ?? '';

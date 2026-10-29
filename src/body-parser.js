@@ -40,8 +40,19 @@ const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
 const TABLE_RULE_RE = /^\s*\|-/; // as in Org, any row that starts with |- is a horizontal rule (|---|---| too)
 const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
+const AFFILIATED_RE = /^\s*#\+(\w+)(?:\[[^\]]*\])?:\s*(.*)$/;
+/** The #+NAME: of the table at line `at`: Org lets other affiliated keywords (#+CAPTION:, #+ATTR_*:, #+PLOT:) stand between.
+ * @param {string[]} lines @param {number} at @returns {string | undefined} */
+function nameBefore(lines, at) {
+  for (let k = at - 1; k >= 0; k--) {
+    const m = AFFILIATED_RE.exec(lines[k]);
+    if (!m || !/^(NAME|CAPTION|HEADER|PLOT|RESULTS|ATTR_\w+)$/i.test(m[1])) return undefined;
+    if (m[1].toUpperCase() === 'NAME') return m[2].trim();
+  }
+  return undefined;
+}
 const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
-const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])\s+(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\]\s+)?(.*)$/;
+const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\](?:\s+|$))?(.*)$/;
 // Real org: "a line consisting of only dashes, and at least 5 of them,
 // is exported as a horizontal line." Whitespace around the dashes is
 // tolerated (indentation, trailing spaces), matching how org itself is
@@ -114,14 +125,20 @@ function parseTable(lines, i) {
   }
   /** @type {string | null} */
   let tblfm = null;
-  if (i < lines.length) {
-    const m = TBLFM_RE.exec(lines[i]);
+  // Emacs finds the formulas after any blank lines below the table (org-table-get-stored-formulas)
+  let at = i;
+  while (at < lines.length && lines[at].trim() === '') at++;
+  if (at < lines.length) {
+    const m = TBLFM_RE.exec(lines[at]);
     if (m) {
       tblfm = m[1];
-      i++;
+      i = at + 1;
     }
   }
-  return [{ type: 'table', rows, tblfm, lineIndex: startIndex, lineCount: i - startIndex }, i];
+  const gap = tblfm === null ? 0 : i - 1 - startIndex - rows.length;
+  const table = /** @type {import('./types.js').Table} */ (/** @type {unknown} */ ({ type: 'table', rows, tblfm, lineIndex: startIndex, lineCount: i - startIndex }));
+  if (gap > 0) table.blankBeforeTblfm = gap;
+  return [table, i];
 }
 
 // ---- lists ------------------------------------------------------------
@@ -353,6 +370,8 @@ function parseBody(lines) {
       if (j < lines.length && TABLE_LINE_RE.test(lines[j])) {
         const [tableNode, next] = parseTable(lines, j);
         tableNode.plot = plotLines.join(' ');
+        const plotName = nameBefore(lines, i);
+        if (plotName) tableNode.name = plotName;
         nodes.push(tableNode);
         i = next;
         continue;
@@ -363,6 +382,8 @@ function parseBody(lines) {
     }
     if (TABLE_LINE_RE.test(line)) {
       const [node, next] = parseTable(lines, i);
+      const tableName = nameBefore(lines, i);
+      if (tableName) node.name = tableName;
       nodes.push(node);
       i = next;
       continue;

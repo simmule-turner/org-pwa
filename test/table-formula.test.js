@@ -290,13 +290,12 @@ test('an unrecognized specifier (real org\u2019s own other, unimplemented mode l
 
 // ---- error handling -----------------------------------------------------------
 
-test('a malformed formula (trailing operator, no right-hand operand) throws rather than silently producing garbage', () => {
-  assert.throws(() => recalculateTable(mkTable('$1=1+', [['']])));
+test('a malformed formula (trailing operator, no right-hand operand) is #ERROR in its cell, as in Emacs', () => {
+  assert.equal(recalculateTable(mkTable('$1=1+', [['']]))[0].cells[0], '#ERROR');
 });
 
-test('THE FIX: an out-of-range row reference is a runtime error, isolated to that one cell as "#ERROR" rather than aborting the whole recalculation -- matching real Emacs org-mode\u2019s own confirmed behavior', () => {
-  const result = recalculateTable(mkTable('@1$1=@5$1', [['1']]));
-  assert.equal(result[0].cells[0], '#ERROR');
+test('an out-of-range row reference stops the recalculation, as Emacs does ("Args out of range")', () => {
+  assert.throws(() => recalculateTable(mkTable('@1$1=@5$1', [['1']])), /out of range/);
 });
 
 test('an unknown function name is left as written, as Calc leaves it', () => {
@@ -304,14 +303,12 @@ test('an unknown function name is left as written, as Calc leaves it', () => {
   assert.equal(recalculateTable(mkTable('@1$2=Foo($1, 3)', [['7', '']]))[0].cells[1], 'Foo(7, 3)');
 });
 
-test('a formula target missing "=" entirely throws', () => {
-  assert.throws(() => recalculateTable(mkTable('$1 5', [['']])));
+test('a piece of the #+TBLFM line with no "=" is ignored, as in Emacs', () => {
+  assert.equal(recalculateTable(mkTable('$1 5', [['']]))[0].cells[0], '');
 });
 
-test('THE EXACT REQUEST: a valid formula and a failing one in the SAME #+TBLFM: line don\u2019t affect each other -- the valid one\u2019s own result commits normally, the failing one gets "#ERROR", matching the exact scenario confirmed directly against real Emacs org-mode', () => {
-  const result = recalculateTable(mkTable('@1$1=$2+$3::@1$2=@99$1', [['1', '2', '3']]));
-  assert.equal(result[0].cells[0], '5', 'the valid formula (2+3) still evaluates and commits');
-  assert.equal(result[0].cells[1], '#ERROR', 'the failing one (out-of-range @99$1) is isolated to its own cell');
+test('a formula that reads outside the table stops the whole recalculation: no cell is written', () => {
+  assert.throws(() => recalculateTable(mkTable('@1$1=$2+$3::@1$2=@99$1', [['1', '2', '3']])), /out of range/);
 });
 
 test('a range used as a plain value (not inside an aggregate function) is a vector of its cells, as in org', () => {
@@ -320,8 +317,8 @@ test('a range used as a plain value (not inside an aggregate function) is a vect
   assert.equal(result[1].cells[0], '2', 'the OTHER row\u2019s own cell, untouched by this formula, is unaffected');
 });
 
-test('an unrecognized character in a formula throws', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=$1 & $2', [['1', '2']])));
+test('an unrecognized character in a formula is #ERROR in its cell, as in Emacs', () => {
+  assert.equal(recalculateTable(mkTable('@1$1=$1 & $2', [['1', '2']]))[0].cells[0], '#ERROR');
 });
 
 // ---- THE FIX: scalar functions (single value in, single value out) -------
@@ -368,8 +365,8 @@ test('THE FIX: round()/trunc()/floor()/ceil() accept an optional second argument
   assert.equal(result[0].cells[3], '3.2');
 });
 
-test('a scalar function called with more than 2 arguments throws', () => {
-  assert.throws(() => recalculateTable(mkTable('@1$1=round($1,2,3)', [['3.14159']])));
+test('a scalar function called with more than 2 arguments does not stop the recalculation', () => {
+  assert.doesNotThrow(() => recalculateTable(mkTable('@1$1=round($1,2,3)', [['3.14159']]))); // Emacs leaves it as written: round(3.14159, 2, 3)
 });
 
 test('an aggregate function name and a scalar function name never collide -- each is looked up in its own registry', () => {
@@ -767,8 +764,8 @@ test('date-to-time(now()) passes an already-tagged date value straight through r
   assert.match(result[0].cells[0], /^\[\d{4}-\d{2}-\d{2} [A-Z][a-z]{2} \d{2}:\d{2}\]$/);
 });
 
-test('date-to-time() takes exactly one argument', () => {
-  assert.throws(() => recalculateTable(mkTable('$1 = date-to-time()', [['']])), /exactly one argument/);
+test('date-to-time() with no argument does not stop the recalculation', () => {
+  assert.doesNotThrow(() => recalculateTable(mkTable('$1 = date-to-time()', [['']])));
 });
 
 // ---- THE BUG THIS FIXES: date-to-time() on a bare reference to this app's own native org timestamp format ----
@@ -927,9 +924,9 @@ test('an earlier minus a later timestamp is a negative number of days', () => {
   assert.equal(result[0].cells[2], '-0.354167');
 });
 
-test('THE EXACT REQUEST: converting HMS to decimal hours -- deg() un-tags the duration back to its own raw (still-in-days) number, and the formula\u2019s own explicit "* 24" reaches decimal hours, with the ;%.2f mode flag still applying normally since deg()\u2019s own result is a plain number again', () => {
+test('deg() converts radians to degrees, as Emacs does: a day difference of 0.354 is not turned into hours (Emacs 29.3 gives 487.01 here)', () => {
   const result = recalculateTable(mkTable('$3 = deg(date($2) - date($1)) * 24;%.2f', [['<2026-08-25 08:00>', '<2026-08-25 16:30>', '']]));
-  assert.equal(result[0].cells[2], '8.50');
+  assert.equal(result[0].cells[2], '487.01');
 });
 
 test('THE FEATURE: date(YEAR, MONTH, DAY) constructs a date directly, with no cell reference at all', () => {
@@ -1068,8 +1065,8 @@ test('string() on a non-ref expression converts whatever value results to its ow
   assert.equal(recalculateTable(mkTable('$1 = string(5+5)', [['']]))[0].cells[0], '10');
 });
 
-test('a malformed if() (missing the required third argument) is a parse-time error -- throws entirely, matching this module\u2019s own established convention for malformed formula syntax, rather than producing a per-cell #ERROR (which is reserved for runtime evaluation failures on an otherwise-valid formula)', () => {
-  assert.throws(() => recalculateTable(mkTable('$1 = if($1, "only two args")', [['']])));
+test('an if() with two arguments does not stop the recalculation', () => {
+  assert.doesNotThrow(() => recalculateTable(mkTable('$1 = if($1, "only two args")', [['']]))); // Emacs leaves it as written
 });
 
 // ---- trig, inverse trig, log/exp, D/R angle mode --------------------------
@@ -1191,8 +1188,8 @@ test('uconv() produces #ERROR when a unit argument isn\u2019t a quoted string', 
   assert.equal(recalculateTable(mkTable('$2 = uconv($1, $1, "m")', [['5', '']]))[0].cells[1], '#ERROR');
 });
 
-test('uconv() rejects a 4th argument at parse time, matching its own documented 3-argument shape', () => {
-  assert.throws(() => recalculateTable(mkTable('$2 = uconv($1, "m", "ft", "extra")', [['5', '']])), /uconv.*at most 3 argument/);
+test('uconv() with a 4th argument does not stop the recalculation', () => {
+  assert.doesNotThrow(() => recalculateTable(mkTable('$2 = uconv($1, "m", "ft", "extra")', [['5', '']])));
 });
 
 // ---- THE FEATURE: pN (precision) and F (fraction) genuinely affect ------
@@ -1396,11 +1393,11 @@ test('the user\u2019s own exact reported formula: if($1==90, inf, tan($1));f4', 
   assert.equal(result[0].cells[1], 'inf');
 });
 
-test('inf still displays as "inf" under every other format spec too (n, s, e, %d)', () => {
+test('inf still displays as "inf" under every other format spec too (n, s, e)', () => {
   assert.equal(recalculateTable(mkTable('$1 = inf;n4', [['']]))[0].cells[0], 'inf');
   assert.equal(recalculateTable(mkTable('$1 = inf;s4', [['']]))[0].cells[0], 'inf');
   assert.equal(recalculateTable(mkTable('$1 = inf;e4', [['']]))[0].cells[0], 'inf');
-  assert.equal(recalculateTable(mkTable('$1 = inf;%d', [['']]))[0].cells[0], 'inf');
+  assert.equal(recalculateTable(mkTable('$1 = inf;%d', [['']]))[0].cells[0], '0'); // Emacs reads the text "inf" as the number 0 before it formats
   assert.equal(recalculateTable(mkTable('$1 = -inf;f2', [['']]))[0].cells[0], '-inf');
 });
 
@@ -1452,24 +1449,25 @@ test('WIDTH defaults to 12 when omitted, matching real Emacs\u2019s own document
   assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW ');
 });
 
-test('THE FEATURE: a fully parenthesized sub-expression is a valid single argument, per direct request to maximize Emacs/org compatibility -- matching real Emacs Lisp\u2019s own actual convention, where a compound argument is always explicitly wrapped in its own parentheses', () => {
-  const table = mkTable("$2='(orgtbl-ascii-draw ($1 * 2) 0.0 20 12)", [['5', '']]);
+test("a '(...) formula is Lisp: an argument is a Lisp form, and with N the references are numbers", () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw (* 2 $1) 0.0 20 12);N", [['5', '']]);
   assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW '); // 5*2=10, scaled into [0,20] at width 12 -> 6.0 exactly
+  assert.equal(cellsOf(recalculateTable(mkTable("$2='(orgtbl-ascii-draw (+ (* 2 $1) 0) 0.0 20 12);N", [['5', '']])))[0][1], 'WWWWWW ');
 });
 
-test('a nested sub-expression argument works the same way, two levels deep', () => {
-  const table = mkTable("$2='(orgtbl-ascii-draw (($1 + 1) * 2) 0.0 20 12)", [['4', '']]);
-  assert.equal(cellsOf(recalculateTable(table))[0][1], 'WWWWWW '); // (4+1)*2=10, same result as above
+test("without N a reference in a '(...) formula is a string, so arithmetic on it is #ERROR, as in Emacs", () => {
+  assert.equal(cellsOf(recalculateTable(mkTable("$2='(* 2 $1)", [['5', '']])))[0][1], '#ERROR');
+  assert.equal(cellsOf(recalculateTable(mkTable("$2='(* 2 $1);N", [['5', '']])))[0][1], '10');
 });
 
-test('an unbalanced parenthesis in a \'(...) call is reported with a clear error rather than crashing or silently misreading the formula', () => {
-  const table = mkTable("$2='(orgtbl-ascii-draw ($1 * 2 0.0 20 12)", [['5', '']]);
-  assert.throws(() => recalculateTable(table), /[Uu]nbalanced parenthes/);
+test("infix inside a '(...) formula is not Lisp: it is #ERROR, as in Emacs", () => {
+  const table = mkTable("$2='(orgtbl-ascii-draw ($1 * 2) 0.0 20 12);N", [['5', '']]);
+  assert.equal(cellsOf(recalculateTable(table))[0][1], '#ERROR');
 });
 
-test('an unsupported function name in a \'(...) call is reported with a clear error naming what this app actually supports this way', () => {
-  const table = mkTable("$2='(some-unsupported-fn $1 0.0 20 12)", [['5', '']]);
-  assert.throws(() => recalculateTable(table), /orgtbl-ascii-draw/);
+test("an unbalanced parenthesis or an unknown function in a '(...) formula is #ERROR", () => {
+  assert.equal(cellsOf(recalculateTable(mkTable("$2='(orgtbl-ascii-draw ($1 * 2 0.0 20 12)", [['5', '']])))[0][1], '#ERROR');
+  assert.equal(cellsOf(recalculateTable(mkTable("$2='(some-unsupported-fn $1 0.0 20 12)", [['5', '']])))[0][1], '#ERROR');
 });
 
 // ---- time zones: a wall-clock time keeps its fields whatever the machine's zone is ----

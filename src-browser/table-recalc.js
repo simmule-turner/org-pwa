@@ -5,7 +5,7 @@
 // Extracted from app.js: table recalc.
 import { allTablesInBody, commitLines, serializeTable } from '../src/body-edit.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
-import { parseTableConstants, recalculateTable } from '../src/table-formula.js';
+import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder } from './doc-helpers.js';
 import { commitAndRender, setStatus } from './editing.js';
@@ -34,6 +34,7 @@ export function recalculateOneTable(heading, table) {
     const newRows = recalculateTable(table, {
       hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables),
       constants: parseTableConstants(S.state.doc),
+      tables: parseNamedTables(S.state.doc),
       userCall: tableUserCall,
     });
     if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {

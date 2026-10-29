@@ -1133,7 +1133,7 @@ const hasTag = (/** @type {any} */ h, /** @type {string} */ tag) => (h.tags || [
 
 /** @param {Heading} h */
 function titleOf(h) {
-  return h.title.replace(/^COMMENT\s+/, '');
+  return h.title.replace(/^COMMENT\s*/, '');
 }
 
 /**
@@ -1521,7 +1521,7 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
     for (const el of elements) if (el.type === 'footnote-def') state.fnDefs.set(el.label, el.children);
   };
   const passes = buildFilter(state);
-  const filter = (/** @type {any} */ h) => h.title.replace(/^COMMENT\s+/, '').trim() !== 'Footnotes' && passes(h); // Org keeps its footnote section out of the export
+  const filter = (/** @type {any} */ h) => h.title.replace(/^COMMENT\s*/, '').trim() !== 'Footnotes' && passes(h); // Org keeps its footnote section out of the export
 
   const roots = scope ? scope.children || [] : doc.children || [];
   const levelOffset = scope ? scope.level : 0;
@@ -1595,7 +1595,7 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   /** @param {any[]} headings */
   const sectionDefs = (headings) => {
     for (const h of headings) {
-      if (h.title.replace(/^COMMENT\s+/, '').trim() === 'Footnotes') state.fnDefsCollect(parseElements(h.bodyLines || []));
+      if (h.title.replace(/^COMMENT\s*/, '').trim() === 'Footnotes') state.fnDefsCollect(parseElements(h.bodyLines || []));
       sectionDefs(h.children || []);
     }
   };

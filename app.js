@@ -631,6 +631,7 @@ S.showClocktable = false; // org-clock-report: whether the TODO view's own clock
 S.clocktableStart = '';
 S.clocktableEnd = '';
 S.clocktableMaxlevel = 2;
+S.clocktableParams = ''; // the parameters of a `#+BEGIN: clocktable` line; when filled, the report is built from them instead of the pickers
 // Which heading (by object reference) currently has its title in edit
 // mode, and whether it was just created (so an empty commit removes it
 // instead of leaving a titleless heading behind).

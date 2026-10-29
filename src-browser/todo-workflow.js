@@ -53,8 +53,9 @@ function headingPath(doc, heading) {
  * risking a stale read.
  * @param {Heading} heading
  * @param {() => void} performChange
+ * @param {{ inhibitLogging?: boolean }} [options] `inhibitLogging` writes no log item or note (Emacs's org-inhibit-logging); CLOSED still follows org-log-done
  */
-export function applyTodoTransition(heading, performChange) {
+export function applyTodoTransition(heading, performChange, options = {}) {
   const fromTodo = heading.todo;
   performChange();
 
@@ -62,7 +63,7 @@ export function applyTodoTransition(heading, performChange) {
   const fileLocalVarsOnly = parseLocalVariables(serializeOrg(S.state.doc));
   const settings = readLogSettings(S.state.doc, fileLocalVarsOnly, S.globalVariables, headingPath(S.state.doc, heading));
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(S.state.localVariables);
-  const pendingNote = applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now: new Date() });
+  const pendingNote = applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now: new Date(), inhibitLogging: options.inhibitLogging });
   if (pendingNote) S.pendingLogNote = pendingNote;
 
   // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"

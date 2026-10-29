@@ -64,9 +64,9 @@ test('the NEAREST ancestor wins', () => {
   assert.deepEqual(getAllowedEffortValues({ doc: d, heading: d.children[0].children[0].children[0] }), ['4:00']);
 });
 
-test('a source with no usable value falls through to the next rather than hiding it', () => {
+test('Emacs offers every word of the nearest Effort_ALL as written, usable or not (oracle-checked)', () => {
   const d = doc(['#+PROPERTY: Effort_ALL 1:00', '* A', ':PROPERTIES:', ':Effort_ALL: nonsense words', ':END:', ''].join('\n'));
-  assert.deepEqual(getAllowedEffortValues({ doc: d, heading: d.children[0] }), ['1:00']);
+  assert.deepEqual(getAllowedEffortValues({ doc: d, heading: d.children[0] }), ['nonsense', 'words']);
 });
 
 test('the agenda filter default is the set org-agenda-filter-by-effort itself uses', () => {

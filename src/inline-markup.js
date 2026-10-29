@@ -2,6 +2,8 @@
 
 import { parseCitationAt } from './cite.js';
 import { unescapeLink } from './link-string.js';
+import { EMACS_SPACE_RE, EMACS_ALNUM_RE, DOLLAR_FOLLOW_RE } from './emacs-chars.js';
+import { ENTITIES } from './entities.js';
 
 /**
  * Inline markup parser. Turns a single line of text into a sequence of
@@ -37,11 +39,11 @@ const LITERAL_KINDS = new Set(['code', 'verbatim']);
 
 // [[path]] and [[path][description]], as org-link-bracket-re reads them: a backslash before a bracket escapes it (a run of backslashes
 // counts in pairs), the description may hold single brackets and runs to the first `]]`, and it cannot be empty.
-const LINK_RE = /^\[\[((?:[^[\]\\]|\\(?:\\\\)*[[\]]|\\+[^[\]]|\\+(?=\]))+)\](?:\[([\s\S]+?)\])?\]/;
+const LINK_RE = /^\[\[((?:[^[\]\\]|\\(?:\\\\)*[[\]]|\\+[^[\]])+)\](?:\[([\s\S]+?)\])?\]/;
 const COMMENT_RE = /^@@comment:(.*?)@@/;
 // <<<radio target>>> and <<dedicated target>>: no space just inside the brackets, and no angle bracket or line break within
-const RADIO_TARGET_RE = /^<<<(?=\S)([^<>\n]*[^<>\s])>>>/;
-const TARGET_RE = /^<<(?=[^\s<])([^<>\n]*[^<>\s])>>(?!>)/;
+const RADIO_TARGET_RE = /^<<<([^<>\n \t]|[^<>\n \t][^<>\n]*[^<>\n \t])>>>/;
+const TARGET_RE = /^<<([^<>\n \t]|[^<>\n \t][^<>\n]*[^<>\n \t])>>/;
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 
 // LaTeX math fragment delimiters -- confirmed directly against the Org
@@ -54,15 +56,16 @@ const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|heic|heif)$/i;
 // genuinely spanning multiple lines is a known, deliberate limitation
 // of this pass, not silently broken -- see math-render.js's own docs
 // for the full account.
-const DISPLAY_DOLLAR_RE = /^\$\$([\s\S]+?)\$\$/;
+const DISPLAY_DOLLAR_RE = /^\$\$([\s\S]*?)\$\$/;
 const INLINE_PAREN_RE = /^\\\(([\s\S]*?)\\\)/;
 const DISPLAY_BRACKET_RE = /^\\\[([\s\S]*?)\\\]/;
-const BEGIN_ENV_RE = /^\\begin\{([A-Za-z*]+)\}([\s\S]+?)\\end\{\1\}/;
+// \begin{name} ... \end{name} as org-element-latex-environment-parser reads it: the name is letters, digits and *, case does not matter, and
+// nothing but blanks follows the \end{name} on its line
+const BEGIN_ENV_RE = /^\\begin\{([A-Za-z0-9*]+)\}([\s\S]*?)\\end\{\1\}(?=[ \t]*(?:\n|$))/i;
 // `$...$` as org-element-latex-fragment-parser reads it: the text after the opening `$` does not start with a blank, comma, period or semicolon,
 // the closing `$` is the next one and is not preceded by a blank, comma or period, and what follows it is a blank, the end of the line or one of
-// . , ; : ! ? ( ) [ ] { } < > " ' ` # @ ^ . One character is enough (`$x$`); the text may run over lines but not over a blank line.
+// a character of the punctuation, whitespace, parenthesis or quote classes of Emacs's syntax table (emacs-chars.js). One character is enough (`$x$`); the text may run over lines but not over a blank line.
 const DOLLAR_INLINE_RE = /^\$([^ \t\n,;.$](?:[^$]*[^ \t\n,.$])?)\$/;
-const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?()[\]{}<>"'`#@^]/;
 
 /** Matches a real org LaTeX math fragment at `text[pos]` -- tries the
  *  display forms first ($$...$$, \[...\], \begin{env}...\end{env})
@@ -101,7 +104,7 @@ const DOLLAR_VALID_FOLLOW_RE = /[\s.,;:!?()[\]{}<>"'`#@^]/;
 function matchLatexFragmentAt(text, pos) {
   const remaining = text.slice(pos);
 
-  if (remaining.startsWith('\\begin{')) {
+  if (/^\\begin\{/i.test(remaining)) {
     const beforeOnLine = text.slice(0, pos);
     const linePrefix = beforeOnLine.slice(beforeOnLine.lastIndexOf('\n') + 1);
     if (/^\s*$/.test(linePrefix)) {
@@ -123,7 +126,7 @@ function matchLatexFragmentAt(text, pos) {
     const m = DOLLAR_INLINE_RE.exec(remaining);
     if (m && !/\n[ \t]*\n/.test(m[1])) {
       const after = text[pos + m[0].length];
-      if (after === undefined || DOLLAR_VALID_FOLLOW_RE.test(after)) {
+      if (after === undefined || after === '\n' || DOLLAR_FOLLOW_RE.test(after)) {
         return { content: m[1], displayMode: false, length: m[0].length };
       }
     }
@@ -243,7 +246,7 @@ function extractLatexFragments(lines) {
 // commonly contains its own [[link]] -- a naive non-greedy match would
 // stop at the first ']' it finds, which could easily belong to a
 // nested link instead of actually closing the footnote.
-const FOOTNOTE_START_RE = /^\[fn:([A-Za-z0-9_-]*)/;
+const FOOTNOTE_START_RE = new RegExp(`^\\[fn:([-_${EMACS_ALNUM_RE.source.slice(1, -1)}]*)`, 'u');
 
 /**
  * @param {string} text
@@ -305,17 +308,58 @@ const BARE_URL_RE = new RegExp(`^(?:${TYPES_RE}):(?:(?:${PLAIN_CHARS}|${PLAIN_PA
 // relying on trailing-punctuation heuristics.
 const ANGLE_URL_RE = new RegExp(`^<((?:${TYPES_RE}):[^>\\n]*)>`, 'i');
 
-const OPEN_PRE_RE = /[\s\-({'"]/;
-const CLOSE_POST_RE = /[\s.,;:!?)\]}'"-]/;
+// Emphasis borders as org-element--parse-generic-emphasis has them: an opening marker follows the start of the text, whitespace or one of
+// -('"{ and is not followed by whitespace; the closing one is not preceded by whitespace and is followed by whitespace, the end or one of
+// -.,;:!?'")}\[ . Whitespace is Emacs's [[:space:]] (emacs-chars.js), which includes the zero-width space and no-break space.
+const OPEN_PRE_CHARS = "-('\"{";
+const CLOSE_POST_CHARS = "-.,;:!?'\")}\\[";
+/** @param {string | undefined} ch */
+const isSpace = (ch) => ch !== undefined && EMACS_SPACE_RE.test(ch);
 
-// Bare (unbraced) sub/superscript content, as Org's `org-match-substring-regexp` has it: `*`, or an optional sign and letters, digits, `.`,
-// `,` and `\` that end in a letter or digit (`a_b.c`, `a_1.5`, `x_\alpha`; `a_b,` is `b` and a comma).
-const BARE_SCRIPT_RE = /^(?:\*|[+-]?[A-Za-z0-9.,\\]*[A-Za-z0-9])/;
+// The text of a sub/superscript as org-match-substring-regexp reads it: braces or parentheses nested up to three deep, `*`, or an optional
+// sign and letters, digits, `.`, `,` and `\` that end in a letter or digit (`a_b.c`, `a_1.5`, `x_\alpha`; `a_b,` is `b` and a comma).
+/** @param {string} o @param {string} c */
+const pairs = (o, c) => {
+  const n = `[^\\${o}\\${c}]*?`;
+  return `\\${o}(?:${n}|(?:${n}\\${o}${n}\\${c})+${n}|(?:${n}\\${o}(?:${n}\\${o}${n}\\${c})+${n}\\${c})+${n})\\${c}`;
+};
+const ALNUM = EMACS_ALNUM_RE.source.slice(1, -1);
+const SCRIPT_BODY_RE = new RegExp(`^(?:${pairs('{', '}')}|${pairs('(', ')')}|\\*|[+-]?[${ALNUM}.,\\\\]*[${ALNUM}])`, 'u');
 
-/** The text through the bracket that closes the one at `pos` (`{}` or `()`, nested up to Org's depth of 3), or -1. @param {string} text @param {number} pos */
-function closingBracket(text, pos) {
+/**
+ * A `_{...}`/`^{...}` or bare `_word`/`^word` sub/superscript whose marker is at `pos`, as Org reads it: the character before the marker
+ * (in the text parsed) is not whitespace. Returns { kind, length, braces } or null. Whether org-use-sub-superscripts lets it count is up to
+ * the caller, as in Org, where the parser finds it either way.
+ * @param {string} text
+ * @param {number} pos
+ */
+function matchScriptAt(text, pos) {
+  const marker = text[pos];
+  if (marker !== '_' && marker !== '^') return null;
+  if (pos === 0 || isSpace(text[pos - 1])) return null;
+  // Org only looks at a ^ that is followed by one of these (an _ is looked at whatever follows, as the start of underline)
+  if (marker === '^' && !'-{(*+.,'.includes(text[pos + 1] ?? ' ') && !EMACS_ALNUM_RE.test(text[pos + 1] ?? '')) return null;
+  const m = SCRIPT_BODY_RE.exec(text.slice(pos + 1));
+  if (!m) return null;
+  return { kind: marker === '_' ? 'subscript' : 'superscript', length: 1 + m[0].length, braces: text[pos + 1] === '{' };
+}
+
+// `\name` is an entity when the name is one of org-entities and a letter does not follow (`\alpha`, `\alpha{}beta`, `\there4`); the empty
+// braces belong to it. Anything else that looks like a LaTeX command, with its `[..]` and `{..}` arguments, is a LaTeX fragment in Org.
+const ENTITY_RE = /^\\(there4|sup[123]|frac[13][24]|[a-zA-Z]+)(?:$|\{\}|[^\p{L}])/mu;
+const MACRO_RE = /^\{\{\{[a-zA-Z][-a-zA-Z0-9_]*(?:\([\s\S]*?\))?\}\}\}/;
+const LATEX_MACRO_RE = /^\\[a-zA-Z]+\*?(?:\[[^[\]\n{}]*\]|\{[^{}\n]*\})*/;
+/** The length of the entity at `pos`, or 0. @param {string} text @param {number} pos */
+function matchEntityAt(text, pos) {
+  const m = ENTITY_RE.exec(text.slice(pos, pos + 40));
+  if (!m || !Object.prototype.hasOwnProperty.call(ENTITIES, m[1])) return 0;
+  return 1 + m[1].length + (text.startsWith('{}', pos + 1 + m[1].length) ? 2 : 0);
+}
+
+/** The text between the bracket at `pos` and its partner, the bracket counted in pairs; -1 when unbalanced. @param {string} text @param {number} pos */
+function closingPair(text, pos) {
   const open = text[pos];
-  const close = open === '{' ? '}' : ')';
+  const close = { '[': ']', '{': '}', '(': ')' }[/** @type {'[' | '{' | '('} */ (open)];
   let depth = 0;
   for (let i = pos; i < text.length; i++) {
     if (text[i] === open) depth++;
@@ -325,42 +369,30 @@ function closingBracket(text, pos) {
 }
 
 /**
- * Attempts to match a `_{...}`/`^{...}` or bare `_word`/`^word`
- * sub/superscript starting exactly at `pos`. `mode` matches
- * org-use-sub-superscripts: 'nil' disables this entirely (never
- * matches), '{}' only matches the braced form (a bare `a_b` is left as
- * literal text), and 't' (the default) matches both forms. Requires a
- * non-whitespace character immediately before `pos` -- `_`/`^` at the
- * very start of a line, or after whitespace, is always literal, in
- * every mode, matching how `a_b` needs the `a` immediately before it.
- * Returns { kind, content, length } or null.
- * @param {string} text
- * @param {number} pos
- * @param {string} mode
+ * An inline source block `src_lang[opts]{code}` or inline call `call_name[opts](args)[opts]` at `pos`, as org-element reads it: the length,
+ * or 0. Both are objects whose text no markup is read in.
+ * @param {string} text @param {number} pos
  */
-function matchScriptAt(text, pos, mode) {
-  if (mode === 'nil') return null;
-  const marker = text[pos];
-  if (marker !== '_' && marker !== '^') return null;
-  if (pos === 0 || /\s/.test(text[pos - 1])) return null;
-
-  const kind = marker === '_' ? 'subscript' : 'superscript';
-
-  if (text[pos + 1] === '{') {
-    const close = closingBracket(text, pos + 1);
-    if (close === -1) return null;
-    return { kind, content: text.slice(pos + 2, close), length: close - pos + 1 };
+function matchInlineCodeAt(text, pos) {
+  const head = /^(src_([^ \t\n[{]+)[{[]|call_([^ \t\n[(]+)[([])/.exec(text.slice(pos, pos + 200));
+  if (!head) return 0;
+  const isSrc = head[0].startsWith('src_');
+  let at = pos + head[0].length - 1;
+  if (text[at] === '[') {
+    const end = closingPair(text, at);
+    if (end === -1) return 0;
+    at = end + 1;
   }
-
-  if (mode === '{}') return null; // braces required in this mode; a bare a_b is left as literal underscore + text
-
-  if (text[pos + 1] === '(') {
-    const close = closingBracket(text, pos + 1);
-    if (close !== -1) return { kind, content: text.slice(pos + 1, close + 1), length: close - pos + 1 };
+  const bodyOpen = isSrc ? '{' : '(';
+  if (text[at] !== bodyOpen) return 0;
+  const end = closingPair(text, at);
+  if (end === -1) return 0;
+  at = end + 1;
+  if (!isSrc && text[at] === '[') {
+    const e2 = closingPair(text, at);
+    if (e2 !== -1) at = e2 + 1;
   }
-  const bareMatch = BARE_SCRIPT_RE.exec(text.slice(pos + 1));
-  if (!bareMatch) return null;
-  return { kind, content: bareMatch[0], length: 1 + bareMatch[0].length };
+  return at - pos;
 }
 
 /** @param {string} ch */
@@ -379,17 +411,17 @@ function matchEmphasisAt(text, pos) {
   if (!isEmphasisMarker(marker)) return null;
 
   const prev = pos > 0 ? text[pos - 1] : null;
-  if (prev !== null && !OPEN_PRE_RE.test(prev)) return null;
+  if (prev !== null && prev !== '\n' && !isSpace(prev) && !OPEN_PRE_CHARS.includes(prev)) return null;
 
   const afterOpen = text[pos + 1];
-  if (!afterOpen || /\s/.test(afterOpen)) return null;
+  if (afterOpen === undefined || isSpace(afterOpen)) return null;
 
+  // The first closing marker that follows a non-blank character and a blank, the end or one of the closing punctuation characters
   for (let j = pos + 2; j < text.length; j++) {
     if (text[j] !== marker) continue;
-    const beforeClose = text[j - 1];
-    if (/\s/.test(beforeClose)) continue;
-    const afterClose = j + 1 < text.length ? text[j + 1] : null;
-    if (afterClose !== null && !CLOSE_POST_RE.test(afterClose)) continue;
+    if (isSpace(text[j - 1])) continue;
+    const afterClose = text[j + 1];
+    if (afterClose !== undefined && !isSpace(afterClose) && !CLOSE_POST_CHARS.includes(afterClose)) continue;
     return { marker, content: text.slice(pos + 1, j), length: j - pos + 1 };
   }
   return null;
@@ -407,16 +439,8 @@ function matchEmphasisAt(text, pos) {
  * bare `a_b` as literal text; `'nil'` disables sub/superscript
  * interpretation entirely, so `_`/`^` are always literal characters.
  *
- * `_` doubles as both the underline marker and the subscript marker --
- * real org's own overload, disambiguated the same way here: underline
- * requires the character before it to be whitespace/start-of-line/
- * certain punctuation (matchEmphasisAt's own border rule), while
- * subscript requires the opposite, a non-whitespace character
- * immediately before it. These two conditions are mutually exclusive
- * for the overwhelming majority of real text; emphasis is checked
- * first below as the tiebreak for the rare remaining overlap (a
- * hyphen/paren/quote sitting immediately before the underscore, which
- * satisfies both rules at once).
+ * `_` is both the underline marker and the subscript marker. As in Org, a subscript is tried first (it needs a non-blank character before
+ * the `_`), then underline. A script that org-use-sub-superscripts does not interpret stays text, and its text is not read for markup.
  * @param {string} text
  */
 /** @returns {any} */ function parseInline(/** @type {any} */ text, opts = {}) {
@@ -440,6 +464,17 @@ function matchEmphasisAt(text, pos) {
       nodes.push({ type: 'text', value: buffer });
     }
     buffer = '';
+  };
+
+  /** Adds the script at `at` unless org-use-sub-superscripts leaves it as text (then false). @param {number} at @param {{ kind: string, length: number, braces: boolean }} sc */
+  const pushScript = (at, sc) => {
+    if (subSuperscriptMode === 'nil' || (subSuperscriptMode === '{}' && !sc.braces)) return false;
+    flush();
+    const script = { type: sc.kind, value: sc.braces ? text.slice(at + 2, at + sc.length - 1) : text.slice(at + 1, at + sc.length) };
+    Object.defineProperty(script, 'raw', { value: text.slice(at, at + sc.length) }); // as typed (a_{bc}); not an enumerable field
+    nodes.push(script);
+    pos = at + sc.length;
+    return true;
   };
 
   while (pos < text.length) {
@@ -540,12 +575,65 @@ function matchEmphasisAt(text, pos) {
       }
     }
 
+    if (text[pos] === '\\') {
+      const entity = matchEntityAt(text, pos);
+      if (entity) {
+        buffer += text.slice(pos, pos + entity);
+        pos += entity;
+        continue;
+      }
+    }
+
+    if (text[pos] === '{' && text[pos + 1] === '{') {
+      const macro = MACRO_RE.exec(remaining);
+      if (macro) { // {{{name(args)}}}: expanded elsewhere; its arguments are not read for markup
+        buffer += macro[0];
+        pos += macro[0].length;
+        continue;
+      }
+    }
+
     if (text[pos] === '$' || text[pos] === '\\') {
       const latex = matchLatexFragmentAt(text, pos);
       if (latex) {
         flush();
         nodes.push(latexNode(latex.content, latex.displayMode, text.slice(pos, pos + latex.length)));
         pos += latex.length;
+        continue;
+      }
+      const macro = text[pos] === '\\' ? LATEX_MACRO_RE.exec(remaining) : null;
+      if (macro) { // \name[opt]{arg}: a LaTeX command is a fragment in Org; here it stays text, whose arguments are not read for markup
+        buffer += macro[0];
+        pos += macro[0].length;
+        continue;
+      }
+    }
+
+    if ((text[pos] === 's' || text[pos] === 'S' || text[pos] === 'c' || text[pos] === 'C') && (pos === 0 || !EMACS_ALNUM_RE.test(text[pos - 1]))) {
+      const inline = matchInlineCodeAt(text, pos);
+      if (inline) { // src_lang{code} and call_name(args): their text is not read for markup
+        buffer += text.slice(pos, pos + inline);
+        pos += inline;
+        continue;
+      }
+    }
+
+    // A script is looked for before underline. At the start of a line Org's parser looks one character back from the marker, which is
+    // then this one (`__a` is `_` followed by the subscript `_a`).
+    if (text[pos] === '_' && (pos === 0 || text[pos - 1] === '\n') && (text[pos + 1] === '_' || text[pos + 1] === '^')) {
+      const s2 = matchScriptAt(text, pos + 1);
+      if (s2) {
+        s2.kind = 'subscript'; // the subscript parser is the one that runs, whichever marker it then finds
+        buffer += text[pos];
+        pos++;
+        if (!pushScript(pos, s2)) { buffer += text.slice(pos, pos + s2.length); pos += s2.length; }
+        continue;
+      }
+    }
+    if (text[pos] === '_' || text[pos] === '^') {
+      const s2 = matchScriptAt(text, pos);
+      if (s2) {
+        if (!pushScript(pos, s2)) { buffer += text.slice(pos, pos + s2.length); pos += s2.length; }
         continue;
       }
     }
@@ -561,18 +649,6 @@ function matchEmphasisAt(text, pos) {
           nodes.push({ type: kind, children: parseInline(m.content, opts) });
         }
         pos += m.length;
-        continue;
-      }
-    }
-
-    if (text[pos] === '_' || text[pos] === '^') {
-      const s = matchScriptAt(text, pos, subSuperscriptMode);
-      if (s) {
-        flush();
-        const script = { type: s.kind, value: s.content };
-        Object.defineProperty(script, 'raw', { value: text.slice(pos, pos + s.length) }); // as typed (a_{bc}); not an enumerable field
-        nodes.push(script);
-        pos += s.length;
         continue;
       }
     }

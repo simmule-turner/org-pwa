@@ -147,10 +147,10 @@ test('resolveLinkTarget: file-like targets, with the file: prefix stripped', () 
   });
 });
 
-test('resolveLinkTarget trims whitespace around the target', () => {
+test('resolveLinkTarget keeps blanks around the target, as Org does: the link is then a text search', () => {
   const doc = docWithHeadings();
-  const result = resolveLinkTarget(doc, '  *Installation  ');
-  assert.equal(result.type, 'heading');
+  assert.equal(resolveLinkTarget(doc, '*Installation').type, 'heading');
+  assert.notEqual(resolveLinkTarget(doc, '  *Installation  ').type, 'heading');
 });
 
 // ---- doi: ------------------------------------------------------------

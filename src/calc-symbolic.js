@@ -1073,7 +1073,7 @@ function apply(form, args) {
       return O('lor', x, y);
     }
     case 'if':
-      if (isNum(args[0])) return zerop(args[0]) ? args[2] : args[1];
+      if (args.length === 3 && isNum(args[0])) return zerop(args[0]) ? args[2] : args[1];
       return O('if', ...args);
     default:
       return callFunction(form.f, args);
@@ -1222,7 +1222,7 @@ function lex(text) {
     } else if (rest.startsWith('..')) {
       out.push({ kind: 'op', text: '..' });
       i += 2;
-    } else if ((m = /^\d+:\d+/.exec(rest))) {
+    } else if ((m = /^\d+:\d+(?::\d+)?/.exec(rest))) {
       out.push({ kind: 'frac', text: m[0] });
       i += m[0].length;
     } else if ((m = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest))) {
@@ -1288,8 +1288,12 @@ export function parseExpression(text) {
       return /[.eE]/.test(t.text) ? D(t.text) : I(BigInt(t.text));
     }
     if (t.kind === 'frac') {
-      const [n, d] = t.text.split(':');
-      return frac(BigInt(n), BigInt(d));
+      const parts = t.text.split(':').map((x) => BigInt(x)); // a:b is a fraction, a:b:c is a + b/c
+      const [first, second, third] = parts;
+      const numerator = third === undefined ? first : first * third + second;
+      const denominator = third === undefined ? second : third;
+      if (denominator === 0n) throw new SymbolicSyntaxError('zero denominator'); // Calc cannot read 100:00
+      return frac(numerator, denominator);
     }
     if (t.kind === 'id') {
       if (isOpTok('(')) {

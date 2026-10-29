@@ -16,7 +16,7 @@ export function width(s) {
 
 /** Width with each link counted as the text it shows, as in an Org buffer. @param {string} s */
 export function widthWithLinks(s) {
-  return width(s.replace(/\[\[[^\][]*\]\[([^\]]*)\]\]/g, '$1').replace(/\[\[([^\][]*)\]\]/g, '$1'));
+  return width(s.replace(/\[\[(?:[^\][\\]|\\.)*\]\[([^\]]*)\]\]/g, '$1').replace(/\[\[((?:[^\][\\]|\\.)*)\]\]/g, '$1'));
 }
 
 const NUMBER_RE = /^(?:[<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx():%]*|0[xX][0-9a-fA-F]+|nan|[-+]?inf)$/;

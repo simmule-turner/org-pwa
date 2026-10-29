@@ -37,7 +37,7 @@
  * fully fixed by that earlier pass.
  */
 
-import { DEFAULT_TODO_KEYWORDS, DEFAULT_DONE_KEYWORDS, isTodoSequenceKey, parseTodoSpecValue } from './org-parser.js';
+import { parseTodoSpecValue } from './org-parser.js';
 
 const DEFAULT_SEQUENCE = { todoKeywords: ['TODO'], doneKeywords: ['DONE'], keySpecs: {}, logSpecs: {} };
 
@@ -54,15 +54,13 @@ function resolveTodoSequences(doc, globalDefault) {
   const fallback = globalDefault || DEFAULT_SEQUENCE;
   if (!doc || !Array.isArray(doc.keywords)) return [fallback];
   const sequences = [];
-  for (const kw of doc.keywords) {
-    if (!isTodoSequenceKey(kw.key)) continue;
+  // Org lists #+TYP_TODO: lines first, then #+TODO: ones, then #+SEQ_TODO: ones, each in file order
+  const of = (/** @type {string} */ key) => doc.keywords.filter((kw) => kw.key.toUpperCase() === key);
+  const lines = [...of('TYP_TODO'), ...of('TODO'), ...of('SEQ_TODO')];
+  for (const kw of lines) {
     const parsed = parseTodoSpecValue(kw.value);
-    sequences.push({
-      todoKeywords: parsed.todoKeywords.length ? parsed.todoKeywords : [...DEFAULT_TODO_KEYWORDS],
-      doneKeywords: parsed.doneKeywords.length ? parsed.doneKeywords : [...DEFAULT_DONE_KEYWORDS],
-      keySpecs: parsed.keySpecs,
-      logSpecs: parsed.logSpecs,
-    });
+    // a line without keywords still counts: it replaces the default set with an empty one, as in Emacs
+    sequences.push({ todoKeywords: parsed.todoKeywords, doneKeywords: parsed.doneKeywords, keySpecs: parsed.keySpecs, logSpecs: parsed.logSpecs });
   }
   return sequences.length ? sequences : [fallback];
 }

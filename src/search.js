@@ -3,13 +3,13 @@
 /**
  * @typedef {{ type: 'tag' | 'todo' | 'priority', mode: string, values: string[] } | { type: 'property', mode: string, key: string, values: string[] } | { type: 'keyword', mode: string, value: string }} SearchFilter
  * @typedef {(text: string) => boolean} Matcher
- * @typedef {{ useRegex?: boolean, useTagInheritance?: TagInheritance, usePropertyInheritance?: boolean, doneKeywords?: Iterable<string>, tagGroups?: Map<string, string[]>, now?: Date }} SearchOptions
+ * @typedef {{ useRegex?: boolean, useTagInheritance?: TagInheritance, usePropertyInheritance?: boolean | import('./tag-inheritance.js').PropertyInheritance, doneKeywords?: Iterable<string>, tagGroups?: Map<string, string[]>, now?: Date }} SearchOptions
  * @typedef {{ text: string, highlightStart: number, highlightLength: number }} Snippet
  * @typedef {{ type: string, heading: Heading, node: any, snippet: Snippet, documentId?: string }} SearchResult
  */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
-import { tagInherits, effectiveTagsOf } from './tag-inheritance.js';
+import { propertyInherits, tagInherits, effectiveTagsOf } from './tag-inheritance.js';
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't
@@ -58,7 +58,8 @@ import { tagInherits, effectiveTagsOf } from './tag-inheritance.js';
  */
 
 import { emacsRegexToJs } from './emacs-regex.js';
-import { makeTagsMatcher } from './tags-match.js';
+import { headingPreambleLines } from './org-parser.js';
+import { makeTagsMatcher, parseTagGroups } from './tags-match.js';
 
 const SNIPPET_RADIUS = 40;
 
@@ -90,6 +91,45 @@ function buildMatcher(query, useRegex) {
 function headingLine(h) {
   const tags = (h.tags || []).length ? ' :' + (h.tags || []).join(':') + ':' : '';
   return '*'.repeat(h.level || 1) + ' ' + (h.todo ? h.todo + ' ' : '') + (h.priority ? `[#${h.priority}] ` : '') + h.title + tags;
+}
+
+/** Every line of the heading's own entry as it stands in the file -- heading line, planning, drawers, logbook, body -- the text
+ *  Emacs's org-occur and org-search-view look through. A trailing newline ends the last line, as in a buffer.
+ * @param {Heading} h */
+function entryText(h) {
+  const lines = entryLines(h);
+  // in a buffer the next heading's first character follows the last newline, except after the very last heading
+  return lines.join('\n') + (h === lastHeading ? '\n' : '\n*');
+}
+
+/** @param {Heading} h */
+function entryLines(h) {
+  const lines = [...headingPreambleLines(h), ...(h.bodyLines || [])];
+  if (h === lastHeading && lines.length > 1 && lines[lines.length - 1] === '') lines.pop(); // the file's final newline is not a line of its own
+  return lines;
+}
+
+/** The last heading of the document being searched, which is followed by the end of the buffer rather than another heading. @type {Heading | null} */
+let lastHeading = null;
+
+/** @param {Doc} doc @returns {Heading | null} */
+function lastHeadingOf(doc) {
+  let node = null;
+  let list = doc.children;
+  while (list && list.length) {
+    node = list[list.length - 1];
+    list = node.children;
+  }
+  return node;
+}
+
+/** The first line of the entry's raw text that `matches` accepts, or null.
+ * @param {Heading} h
+ * @param {Matcher} matches */
+function firstMatchingLine(h, matches) {
+  if (!matches(entryText(h))) return null;
+  const lines = entryLines(h);
+  return lines.find((l) => matches(l + '\n*')) ?? lines[0] ?? '';
 }
 
 /** Whether a regexp matcher matches the heading line as written.
@@ -230,9 +270,25 @@ const KV_TOKEN_RE = /^([+-]?)([A-Za-z_][\w-]*):(.+)$/; // optional leading sign 
  * own `:tag1:tag2:` suffix, never a drawer property) isn't reachable
  * via `tag:value`, the one non-additive edge of this design.
  * @param {string} query
+ * @param {boolean} [useRegex]
  * @returns {{ filters: SearchFilter[] }}
  */
-function parseFilterQuery(query) {
+function parseFilterQuery(query, useRegex = false) {
+  if (useRegex) {
+    // A regexp is one pattern, spaces and all, as in org-occur; only leading key:value filters (tag:work) are peeled off it
+    /** @type {SearchFilter[]} */ const leading = [];
+    let rest = query;
+    for (;;) {
+      const m = /^\s*(\S+)(\s|$)/.exec(rest);
+      if (!m) break;
+      const { filters: one } = parseFilterQuery(m[1]);
+      if (one.length !== 1 || one[0].type === 'keyword') break;
+      leading.push(one[0]);
+      rest = rest.slice(m[0].length);
+    }
+    if (rest.trim()) leading.push({ type: 'keyword', mode: 'include', value: leading.length ? rest : rest.replace(/^\s+/, '') });
+    return { filters: leading };
+  }
   const tokens = query.split(/\s+/).filter(Boolean);
   /** @type {SearchFilter[]} */ const filters = [];
 
@@ -337,7 +393,7 @@ function effectivePropertyValue(heading, ancestors, key, useInheritance) {
  * @param {SearchFilter[]} filters
  * @param {Heading[]} ancestors
  * @param {TagInheritance} useTagInheritance
- * @param {boolean} usePropertyInheritance
+ * @param {boolean | import("./tag-inheritance.js").PropertyInheritance} usePropertyInheritance
  * @param {Map<string, Matcher>} keywordMatchers
  * @param {string[]} [fileTags]  the file's #+FILETAGS:, which every heading in it inherits
  */
@@ -353,7 +409,7 @@ function headingPassesFilters(heading, filters, ancestors, useTagInheritance, us
     } else if (filter.type === 'priority') {
       matched = !!heading.priority && filter.values.some((v) => /** @type {string} */ (heading.priority).toLowerCase() === v.toLowerCase());
     } else if (filter.type === 'property') {
-      const propValue = effectivePropertyValue(heading, ancestors, filter.key, usePropertyInheritance);
+      const propValue = effectivePropertyValue(heading, ancestors, filter.key, !!usePropertyInheritance);
       matched = propValue !== null && filter.values.some((v) => propValue.toLowerCase().includes(v.toLowerCase()));
     } else if (filter.type === 'keyword') {
       matched = headingContainsKeyword(heading, /** @type {Matcher} */ (keywordMatchers.get(filter.value)));
@@ -417,6 +473,7 @@ function bodyContainsKeyword(bodyNodes, matches) {
  * @param {Matcher} matches
  *  searchTextWithinHeading's own walk need updating together. */
 function headingContainsKeyword(heading, matches) {
+  if ('sees' in matches) return matches(entryText(heading)); // a regexp looks through the buffer text only, as org-occur does
   if (matches(heading.title) || lineMatches(heading, matches)) return true;
   if ((heading.tags || []).some((t) => matches(t))) return true;
   if (heading.todo && matches(heading.todo)) return true;
@@ -428,7 +485,7 @@ function headingContainsKeyword(heading, matches) {
     if (heading.planning.scheduled && matches(heading.planning.scheduled)) return true;
     if (heading.planning.deadline && matches(heading.planning.deadline)) return true;
   }
-  return bodyContainsKeyword(heading.body, matches);
+  return bodyContainsKeyword(heading.body, matches) || matches(entryText(heading));
 }
 
 /**
@@ -499,6 +556,12 @@ function walkBodyForMatches(results, heading, bodyNodes, query, matches, useRege
  * @param {boolean} useRegex
  *  than a single row that can only highlight one of them. */
 function searchTextWithinHeading(results, node, q, matches, useRegex) {
+  const start = results.length;
+  if ('sees' in matches) { // a regexp looks through the buffer text only, as org-occur does: one hit per heading, on its first matching line
+    const line = firstMatchingLine(node, matches);
+    if (line !== null) results.push({ type: 'line', heading: node, node, snippet: makeSnippet(line, q, useRegex) });
+    return;
+  }
   const titleMatch = matches(node.title) || lineMatches(node, matches);
   const tagMatch = (node.tags || []).some((t) => matches(t));
   const todoMatch = !!node.todo && matches(node.todo);
@@ -532,6 +595,11 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
   }
 
   walkBodyForMatches(results, node, node.body, q, matches, useRegex);
+  if (results.length === start) {
+    // nothing structured matched, but the text of the entry itself does (a drawer, a logbook note, a #+ line, a planning line)
+    const line = firstMatchingLine(node, matches);
+    if (line !== null) results.push({ type: 'line', heading: node, node, snippet: makeSnippet(line, q, useRegex) });
+  }
 }
 
 /** The actual per-document heading walk, shared between searchDocument
@@ -546,10 +614,11 @@ function searchTextWithinHeading(results, node, q, matches, useRegex) {
  * @param {Map<string, Matcher>} keywordMatchers
  * @param {boolean} useRegex
  * @param {TagInheritance} useTagInheritance
- * @param {boolean} usePropertyInheritance
+ * @param {boolean | import("./tag-inheritance.js").PropertyInheritance} usePropertyInheritance
  *  the document. */
 function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance) {
   /** @type {any[]} */ const results = [];
+  lastHeading = lastHeadingOf(doc);
   const fileTags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
   const includeKeywords = filters.filter(/** @param {SearchFilter} f @returns {f is { type: 'keyword', mode: string, value: string }} */ (f) => f.type === 'keyword' && f.mode === 'include');
 
@@ -609,10 +678,10 @@ function buildKeywordMatchers(filters, useRegex) {
  */
 export function searchDocument(doc, query, opts = /** @type {SearchOptions} */ ({})) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
-  const trimmed = String(query).trim();
-  if (!trimmed) return [];
+  const trimmed = useRegex ? String(query) : String(query).trim(); // a regexp keeps its spaces, even trailing ones
+  if (!trimmed.trim()) return [];
 
-  const { filters } = parseFilterQuery(trimmed);
+  const { filters } = parseFilterQuery(trimmed, useRegex);
   const keywordMatchers = buildKeywordMatchers(filters, useRegex); // throws here on an invalid regex, before any results are built
 
   return searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheritance, usePropertyInheritance);
@@ -624,10 +693,10 @@ export function searchDocument(doc, query, opts = /** @type {SearchOptions} */ (
  */
 export function searchDocuments(docs, query, opts = /** @type {SearchOptions} */ ({})) {
   const { useRegex = false, useTagInheritance = true, usePropertyInheritance = false } = opts;
-  const trimmed = String(query).trim();
-  if (!trimmed) return [];
+  const trimmed = useRegex ? String(query) : String(query).trim(); // a regexp keeps its spaces, even trailing ones
+  if (!trimmed.trim()) return [];
 
-  const { filters } = parseFilterQuery(trimmed);
+  const { filters } = parseFilterQuery(trimmed, useRegex);
   const keywordMatchers = buildKeywordMatchers(filters, useRegex); // built ONCE, not once per document -- an invalid regex throws a single clear error, not one per file
 
   const results = [];
@@ -639,20 +708,105 @@ export function searchDocuments(docs, query, opts = /** @type {SearchOptions} */
   return results;
 }
 
+/** @typedef {import('./tag-inheritance.js').PropertyInheritance} PropertyInheritance */
+/** @typedef {[string, string][]} PropertyEntries  a drawer's `NAME` / value pairs, in order */
+
+/** @param {Heading} heading @returns {PropertyEntries} */
+function drawerEntries(heading) {
+  const drawer = heading.raw?.drawers?.find((d) => d.type === 'properties');
+  if (drawer) {
+    /** @type {PropertyEntries} */ const entries = [];
+    for (const line of drawer.lines) {
+      const m = /^\s*:([^:\s]+):(?:\s+(.*?))?\s*$/.exec(line);
+      if (m && m[1].toUpperCase() !== 'PROPERTIES' && m[1].toUpperCase() !== 'END') entries.push([m[1], m[2] ?? '']);
+    }
+    return entries;
+  }
+  return (heading.propertyOrder || []).map((k) => [k, heading.properties[k]]);
+}
+
+/** One level's own values of `key`: the `KEY` property and every `KEY+` after it.
+ * @param {PropertyEntries} entries @param {string} key */
+function ownPropertyParts(entries, key) {
+  const upper = key.toUpperCase();
+  /** @type {string | null} */ let base = null;
+  /** @type {string[]} */ const plus = [];
+  for (const [name, value] of entries) {
+    const n = name.toUpperCase();
+    if (n === upper) base = base ?? value;
+    else if (n === upper + '+') plus.push(value);
+  }
+  return { base, plus };
+}
+
+/** `org-entry-get`: a property's value with its `KEY+` lines appended and, with inheritance, the ancestors' values (and those of the
+ *  file's `#+PROPERTY:` lines) up to the nearest one that is not an append.
+ * @param {Heading} heading @param {Heading[]} ancestors @param {string} key @param {PropertyInheritance} policy @param {PropertyEntries} file */
+function entryPropertyValue(heading, ancestors, key, policy, file) {
+  const inherit = propertyInherits(policy, key);
+  const levels = [drawerEntries(heading), ...(inherit ? [...ancestors].reverse().map(drawerEntries) : []), ...(inherit ? [file] : [])].map((e) => ownPropertyParts(e, key));
+  /** @type {string[]} */ const parts = [];
+  for (const { base, plus } of levels) {
+    if (base === null && !plus.length) continue;
+    parts.unshift([...(base === null ? [] : [base]), ...plus].join(' '));
+    if (base !== null) break;
+  }
+  return parts.length ? parts.join(' ') : null;
+}
+
+/** The file's `#+PROPERTY: NAME value` lines. @param {Doc} doc @returns {PropertyEntries} */
+function filePropertyEntries(doc) {
+  /** @type {PropertyEntries} */ const entries = [];
+  for (const k of doc.keywords || []) {
+    if (k.key.toUpperCase() !== 'PROPERTY') continue;
+    const m = /^(\S+)\s*(.*)$/.exec(k.value.trim());
+    if (m) entries.push([m[1], m[2]]);
+  }
+  return entries;
+}
+
+/** The first timestamp of an entry after its planning line, active (`<..>`) or inactive (`[..]`): the logbook counts, the property drawer does not.
+ * @param {Heading} heading @param {boolean} active @returns {string | null} */
+function firstTimestamp(heading, active) {
+  const re = active ? /<\d{4}-\d{2}-\d{2}[^\r\n>]*>/ : /\[\d{4}-\d{2}-\d{2}[^\r\n\]]*\]/;
+  let inDrawer = false;
+  for (const line of [heading.title, ...(heading.preLogLines || []), ...(heading.logbookLines || []), ...(heading.bodyLines || [])]) {
+    if (/^\s*:PROPERTIES:\s*$/i.test(line)) inDrawer = true;
+    else if (inDrawer) inDrawer = !/^\s*:END:\s*$/i.test(line);
+    else {
+      const m = re.exec(line);
+      if (m) return m[0];
+    }
+  }
+  return null;
+}
+
+/** The priority `org-entry-get` reports: the heading's cookie, a `[#X]` anywhere in the headline, else the default `B`. @param {Heading} heading */
+function entryPriority(heading) {
+  if (heading.priority) return heading.priority;
+  const m = /\[#([A-Z0-9]+)\]/.exec(heading.title);
+  return m ? m[1] : 'B';
+}
+
 /** What the matcher reads of a heading: its keyword, tags, level, category, and any property (special ones like PRIORITY and DEADLINE
  *  included, as `org-entry-get` answers them).
  * @param {Heading} heading
  * @param {Heading[]} ancestors
  * @param {TagInheritance} useTagInheritance
- * @param {boolean} usePropertyInheritance
+ * @param {PropertyInheritance} usePropertyInheritance
  * @param {string} fileCategory
  * @param {string[]} [fileTags]
+ * @param {PropertyEntries} [fileProperties]
+ * @param {string} [file]
  * @returns {import('./tags-match.js').MatchEntry}
  */
-function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags = []) {
+function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags = [], fileProperties = [], file = '') {
   const all = effectiveTags(heading, ancestors, useTagInheritance);
   // #+FILETAGS: tags are inherited by every heading, as if from a level-0 parent
   for (const tag of fileTags) if (!all.includes(tag) && tagInherits(useTagInheritance || false, tag)) all.push(tag);
+  // ALLTAGS lists the file's tags, then the ancestors' from the top, then the heading's own
+  const policy = useTagInheritance || false;
+  const allTags = [...new Set([...fileTags.filter((t) => tagInherits(policy, t)), ...ancestors.flatMap((a) => (a.tags || []).filter((t) => tagInherits(policy, t))), ...(heading.tags || [])])];
   return {
     tags: all,
     todo: heading.todo || null,
@@ -661,7 +815,7 @@ function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInher
     property(name) {
       switch (name) {
         case 'PRIORITY':
-          return heading.priority || 'B';
+          return entryPriority(heading);
         case 'DEADLINE':
           return heading.planning?.deadline || null;
         case 'SCHEDULED':
@@ -673,9 +827,15 @@ function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInher
         case 'TAGS':
           return heading.tags && heading.tags.length ? `:${heading.tags.join(':')}:` : null;
         case 'ALLTAGS':
-          return all.length ? `:${all.join(':')}:` : null;
+          return allTags.length ? `:${allTags.join(':')}:` : null;
+        case 'TIMESTAMP':
+          return firstTimestamp(heading, true);
+        case 'TIMESTAMP_IA':
+          return firstTimestamp(heading, false);
+        case 'FILE':
+          return file || null;
         default:
-          return effectivePropertyValue(heading, ancestors, name, usePropertyInheritance);
+          return entryPropertyValue(heading, ancestors, name, usePropertyInheritance, fileProperties);
       }
     },
   };
@@ -688,15 +848,17 @@ function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInher
  */
 export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {SearchOptions} */ ({})) {
   const { useTagInheritance = true, usePropertyInheritance = false } = opts;
-  const trimmed = String(query).trim();
-  if (!trimmed) return [];
+  if (!String(query).trim()) return [];
 
-  const matcher = makeTagsMatcher(trimmed, { doneKeywords: opts.doneKeywords, tagGroups: opts.tagGroups, now: opts.now });
+  // the tag groups of the files' #+TAGS: lines, as the Agenda merges them
+  const tagGroups = opts.tagGroups ?? parseTagGroups(docs.map((d) => d.doc));
+  const matcher = makeTagsMatcher(String(query), { doneKeywords: opts.doneKeywords, tagGroups, now: opts.now });
 
   /** @type {any[]} */ const results = [];
   for (const { documentId, doc } of docs) {
     const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'CATEGORY');
     const fileCategory = kw && kw.value.trim() ? kw.value.trim() : (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
+    const fileProperties = filePropertyEntries(doc);
     const fileTags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
     /**
      * @param {Heading[]} nodes
@@ -705,7 +867,7 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
     function walk(nodes, ancestors) {
       for (const node of nodes) {
         if (node.type !== 'heading') continue;
-        const entry = buildMatchEntry(node, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags);
+        const entry = buildMatchEntry(node, ancestors, useTagInheritance, usePropertyInheritance, fileCategory, fileTags, fileProperties, documentId && !documentId.startsWith('/') ? `/${documentId}` : documentId); // Emacs's FILE is an absolute path; the app knows only the path inside its storage, so it is rooted at /
         if (matcher.test(entry)) {
           results.push({ type: 'heading', heading: node, node, documentId, ancestors, category: entry.category, snippet: { text: node.title, highlightStart: -1, highlightLength: 0 } });
         }

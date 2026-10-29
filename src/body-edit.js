@@ -38,7 +38,8 @@
 
 import { parseBody } from './body-parser.js';
 import { layoutTable } from './org-table-layout.js';
-import { fixBoxes, isItemLine, itemEnd, renumber } from './list-edit.js';
+import { fixBoxes, inBlockAt, isItemLine, itemEnd, listKind, renumber, separatingBlankLines } from './list-edit.js';
+import { updateCheckboxCookie } from './checkbox-cookie.js';
 
 // ---- table serialization (pure, independently testable) ------------------
 
@@ -62,7 +63,10 @@ export function serializeTable(table, align = true) {
   const lines = align
     ? layoutTable(table.rows.map((row) => (row.type === 'rule' ? null : row.cells)))
     : table.rows.map((row) => (row.type === 'rule' ? serializeTableRule(columnCount) : serializeTableRow(row.cells)));
-  if (table.tblfm !== null) lines.push('#+TBLFM: ' + table.tblfm);
+  if (table.tblfm !== null) {
+    for (let k = 0; k < (table.blankBeforeTblfm || 0); k++) lines.push('');
+    lines.push('#+TBLFM: ' + table.tblfm);
+  }
   return lines;
 }
 
@@ -340,20 +344,36 @@ export function editListItemText(heading, item, newText) {
  * @param {boolean} [withCheckbox]
  */
 export function insertListItem(heading, afterItem, text = '', withCheckbox = false) {
+  const key = /** @type {'bodyLines' | 'logbookLines' | 'preLogLines'} */ (afterItem.linesKey || 'bodyLines');
+  const lines = heading[key] || (heading[key] = []);
+  if (inBlockAt(lines, afterItem.lineIndex)) {
+    // Org does not read a block's lines as a list: M-RET there starts a heading under the line, M-S-RET a TODO heading
+    commitLinesIn(heading, key, afterItem.lineIndex + 1, 0, [withCheckbox ? '* TODO ' : '* ']);
+    return null;
+  }
   const checkboxPart = withCheckbox ? '[ ] ' : '';
-  // A description item gets an empty term, as Org's M-RET does; an ordered one is numbered below
-  const termPart = afterItem.tag && !text ? ' :: ' : '';
+  // Only a list whose first item has a term gets a new term (a description item's M-RET); an ordered one is numbered below
+  const termPart = listKind(lines, afterItem.lineIndex) === 'descriptive' && !text ? ' :: ' : '';
   const line = `${afterItem.indent}${afterItem.marker} ${checkboxPart}${termPart}${text}`;
-  // M-RET at the end of the item's line: the new item goes right under it, the item's sub-items and text following it
-  const insertAt = afterItem.lineIndex + 1;
-  commitLines(heading, insertAt, 0, [line]);
-  heading.bodyLines = fixBoxes(renumber(heading.bodyLines, insertAt), insertAt);
-  heading.body = parseBody(heading.bodyLines);
+  // M-RET at the end of the item's line: trailing blanks go, and the new item goes right under it with the item's sub-items and
+  // text following it; an item with nothing after its bullet and box gets the new one above it
+  const own = lines[afterItem.lineIndex];
+  const bare = /^[ \t]*(?:[-+*]|\d+[.)])(?:[ \t]+(?:\[@\d+\][ \t]*)?(?:\[[ xX-]\])?)?[ \t]*$/.test(own);
+  const insertAt = bare ? afterItem.lineIndex : afterItem.lineIndex + 1;
+  if (!bare && /[ \t]$/.test(own)) lines[afterItem.lineIndex] = own.replace(/[ \t]+$/, '');
+  // blank lines separate the new item from its neighbors as they separate the others
+  const blanks = Array(separatingBlankLines(lines, afterItem.lineIndex)).fill('');
+  const newAt = bare ? insertAt : insertAt + blanks.length;
+  commitLinesIn(heading, key, insertAt, 0, bare ? [line, ...blanks] : [...blanks, line]);
+  heading[key] = fixBoxes(renumber(lines, newAt, newAt), newAt);
+  if (key === 'bodyLines') heading.body = parseBody(heading.bodyLines);
+  if (withCheckbox && typeof heading.title === 'string') updateCheckboxCookie(heading);
+  if (key !== 'bodyLines') return { ...parseListItemAt(heading[key] || [], newAt), linesKey: key };
 
   /** @param {any} [items] */
   function findByLineIndex(items) {
     for (const item of items) {
-      if (item.lineIndex === insertAt) return item;
+      if (item.lineIndex === newAt) return item;
       for (const nestedList of item.children || []) {
         /** @type {any} */ const found = findByLineIndex(nestedList.items);
         if (found) return found;
@@ -370,6 +390,46 @@ export function insertListItem(heading, afterItem, text = '', withCheckbox = fal
   return null;
 }
 
+/** Replaces lines of `heading[key]` (`bodyLines`, or the lines of a LOGBOOK drawer), parsing the body again when it is the body.
+ * @param {Heading} heading @param {'bodyLines' | 'logbookLines' | 'preLogLines'} key
+ * @param {number} lineIndex @param {number} lineCount @param {string[]} newLines */
+function commitLinesIn(heading, key, lineIndex, lineCount, newLines) {
+  (heading[key] || (heading[key] = [])).splice(lineIndex, lineCount, ...newLines);
+  if (key === 'bodyLines') heading.body = parseBody(heading.bodyLines);
+}
+
+/** An item described from its line, for a line the body tree has no item for (a drawer's, a block's).
+ * @param {string[]} lines @param {number} lineIndex */
+function parseListItemAt(lines, lineIndex) {
+  const m = /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+(?:\[@\d+\][ \t]*)?(?:\[([ xX-])\](?:[ \t]+|$))?(.*))?$/.exec(lines[lineIndex]);
+  const text = m?.[4] ?? '';
+  return { type: 'list-item', indent: m?.[1] ?? '', marker: m?.[2] ?? '-', ordered: /^\d/.test(m?.[2] ?? ''), checkbox: m?.[3] ? m[3].toUpperCase() : null, startValue: null, tag: null, text, children: [], lineIndex };
+}
+
+/**
+ * The list item on line `lineIndex` of `heading[key]` (the body, or the lines of a LOGBOOK drawer): the body tree's item, or one
+ * read from the line itself where the tree has none (a drawer's, a `#+begin_` block's), as `org-list-struct` reads any line.
+ * @param {Heading} heading @param {number} lineIndex @param {'bodyLines' | 'logbookLines' | 'preLogLines'} [key]
+ */
+export function listItemAtLine(heading, lineIndex, key = 'bodyLines') {
+  const lines = heading[key];
+  if (!lines || !isItemLine(lines[lineIndex] ?? '')) return null;
+  if (key === 'bodyLines') {
+    /** @param {import('./types.js').List[]} lists @returns {import('./types.js').ListItem | null} */
+    const walk = (lists) => {
+      for (const list of lists) for (const item of list.items || []) {
+        if (item.lineIndex === lineIndex) return item;
+        const found = walk(item.children || []);
+        if (found) return found;
+      }
+      return null;
+    };
+    const found = walk(/** @type {import('./types.js').List[]} */ (heading.body.filter((n) => n.type === 'list')));
+    if (found) return found;
+  }
+  return { ...parseListItemAt(lines, lineIndex), linesKey: key };
+}
+
 /**
  * Deletes a list item and everything nested under it (sub-items, at any
  * depth) — deleting a parent bullet takes its children with it, silently,
@@ -382,14 +442,19 @@ export function insertListItem(heading, afterItem, text = '', withCheckbox = fal
  * @param {any} [item]
  */
 export function deleteListItem(heading, item) {
+  const key = /** @type {'bodyLines' | 'logbookLines' | 'preLogLines'} */ (item.linesKey || 'bodyLines');
   const start = item.lineIndex;
-  const end = itemEnd(heading.bodyLines, start);
-  commitLines(heading, start, end - start, []);
+  const all = heading[key] || [];
+  const end = itemEnd(all, start);
+  const plainText = inBlockAt(all, start); // Org repairs no list inside such a block
+  // the last item of a drawer's list ends before its final newline in Org, so deleting it leaves an empty line
+  const drawerEnd = end >= all.length ? key !== 'bodyLines' : /^[ \t]*(?::END:|#\+end_\w+)[ \t]*$/i.test(all[end]);
+  commitLinesIn(heading, key, start, end - start, drawerEnd ? [''] : []);
   // What is left follows Org's list rules: ordered items numbered again, parent checkboxes showing their sub-items
-  const rest = heading.bodyLines;
+  const rest = heading[key] || [];
   const at = [start, start - 1, start + 1].find((l) => l >= 0 && l < rest.length && isItemLine(rest[l]));
-  if (at !== undefined) heading.bodyLines = fixBoxes(renumber(rest, at), at);
-  heading.body = parseBody(heading.bodyLines);
+  if (at !== undefined && !plainText) heading[key] = fixBoxes(renumber(rest, at), at);
+  if (key === 'bodyLines') heading.body = parseBody(heading.bodyLines);
 }
 
 // ---- paragraph edits --------------------------------------------------

@@ -26,27 +26,28 @@ test('the range reads ?A, letters and numbers, and falls back to A, C, B', () =>
   assert.deepEqual(priorityCookies(readPriorityRange({ 'org-priority-highest': 'A', 'org-priority-lowest': '5' })), ['A', 'B', 'C']); // mixed
 });
 
-test('cycling is org-priority-down: none, the default, each lower one, none', () => {
+test('cycling is org-priority-down: none, the highest, each lower one, none (Emacs 29.3)', () => {
   const range = readPriorityRange({ 'org-priority-lowest': 'D' });
-  assert.equal(nextPriority(null, range), 'B');
-  assert.equal(nextPriority('B', range), 'C');
+  assert.equal(nextPriority(null, range), 'A');
+  assert.equal(nextPriority('A', range), 'B');
   assert.equal(nextPriority('D', range), null);
-  assert.equal(nextPriority('Z', range), 'B');
+  assert.equal(nextPriority('Z', range), null); // one past an out-of-range cookie is out of range
 });
 
-test('org-priority-up steps higher and removes the cookie past the highest', () => {
+test('org-priority-up steps higher, removes the cookie past the highest, and from none gives the lowest', () => {
   const range = readPriorityRange({});
-  assert.equal(nextPriority(null, range, 'up'), 'B');
+  assert.equal(nextPriority(null, range, 'up'), 'C');
   assert.equal(nextPriority('C', range, 'up'), 'B');
   assert.equal(nextPriority('A', range, 'up'), null);
+  assert.equal(nextPriority('D', range, 'up'), 'C'); // Emacs steps from the character, in range or not
 });
 
-test('org-priority-start-cycle-with-default nil starts one step from the default', () => {
+test('org-priority-start-cycle-with-default is read but changes nothing in Emacs 29.3 batch', () => {
   const range = readPriorityRange({});
   assert.equal(startCycleWithDefault({}), true);
   assert.equal(startCycleWithDefault({ 'org-priority-start-cycle-with-default': 'nil' }), false);
-  assert.equal(nextPriority(null, range, 'down', false), 'C');
-  assert.equal(nextPriority(null, range, 'up', false), 'A');
+  assert.equal(nextPriority(null, range, 'down', false), 'A');
+  assert.equal(nextPriority(null, range, 'up', false), 'C');
 });
 
 test('#+PRIORITIES: sets the range of the file, the default being optional', () => {

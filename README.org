@@ -158,7 +158,7 @@ Landing on a step identical to the last saved text clears the modified indicator
 :CUSTOM_ID: lists-tables-and-body-text
 :END:
 
-- *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term). *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
+- *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term only when the list's first item has one; an item with nothing after its bullet gets the new item above it; blank lines between items are kept). Lists inside drawers and example blocks edit like any other list. *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
 - *Checkboxes* toggle between unchecked and done. A box that has boxes under it shows what they add up to (~[-]~ when some are done), as in Org, so tapping it changes nothing. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
 - *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table. Every edit aligns the table the way ~org-table-align~ does (deleting a row leaves the others as they are), and the references in ~#+TBLFM:~ follow an inserted or deleted row or column. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
@@ -292,7 +292,7 @@ All six of org's emphasis markers work in headings, paragraphs and list items:
 | Verbatim | ~=verbatim text=~ | ~verbatim text~ (literal, not further parsed) |
 | Code | =~code text~= | ~code text~ (literal, not further parsed) |
 
-A marker opens after the start of a line, whitespace or one of ~-({'"~, and isn't followed by whitespace. It closes where it isn't preceded by whitespace and is followed by the end of the line, whitespace or closing punctuation. Bold, italic, underline and strikethrough nest (~*bold /italic/ bold*~); verbatim and code never do.
+A marker opens after the start of a line, whitespace or one of ~-({'"~, and isn't followed by whitespace. It closes where it isn't preceded by whitespace and is followed by the end of the line, whitespace or one of ~-.,;:!?'")}[\~. Bold, italic, underline and strikethrough nest (~*bold /italic/ bold*~); verbatim and code never do.
 
 *Horizontal rule*: a line of only dashes, at least five (~-----~), is a horizontal rule. Whitespace around the dashes is fine; any other character on the line makes it a paragraph.
 
@@ -644,6 +644,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
 | ~org-clock-idle-time~ | ~nil~ | A whole number of minutes. While a clock runs, after that long without a tap, key press or scroll in the app you are asked whether to keep the time, subtract it and keep clocking, or subtract it and clock out |
+| ~org-clock-into-drawer~ | ~t~ | Where clock lines go: ~t~ the ~:LOGBOOK:~ drawer, a drawer name, a number (a drawer once the entry holds that many clock lines), or ~nil~ (bare lines under the heading); also a ~CLOCK_INTO_DRAWER~ property. Settings → Clocking |
+| ~org-clock-out-remove-zero-time-clocks~ | ~nil~ | ~t~ removes a clock line that lasted zero minutes when you clock out |
+| ~org-clock-out-switch-to-state~ | ~nil~ | A TODO keyword to switch to when clocking out of an entry that has a state |
 | ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); it beeps if the file is not there, and in the browser |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~); also Settings → Quick Settings → *Diary* |
@@ -683,13 +686,14 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-priority-get-priority-function~ | unset | A function of the headline text (~"TODO [#A] Title :tag:"~) that returns the heading's priority number for ~priority-up~ and ~-down~, with the heading as the place ~org-entry-get~ reads; anything but a number keeps the cookie's rank |
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
 | ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
-| ~org-priority-start-cycle-with-default~ | ~t~ | ~t~: the first step from no priority is the default; ~nil~: one step below it |
+| ~org-priority-start-cycle-with-default~ | ~t~ | Accepted for compatibility; as in Emacs 29.3 it does not change the cycle |
 | ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
+| ~org-tags-column~ | ~0~ | Where a heading's tags sit when the line is rewritten: ~0~ one space after the title, a negative number right-aligns them to that column, a positive one starts them at that column; also Settings → Editing |
 | ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~("private")~) or just words (~private archive~) |
 | ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter also match a value inherited from an ancestor (a heading's own value wins). A ~t~ or ~nil~ simplification of org's fuller value space |
 | ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org); see [[#inline-text-markup][Inline text markup]]. An unrecognized value falls back to ~t~ |
@@ -994,7 +998,7 @@ Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the I
 Clocking actions are [[#command-palette][command palette]] commands, found by name or by Org name: *Clock in*, *Clock out*, *Cancel clock*, *Continue last clock*, *Go to clocked task* and *Set effort estimate*. One clock runs at a time.
 
 - *org-clock-in* inserts a bare ~CLOCK: [timestamp]~ line on the heading whose action menu is open, else the focused one. Clocking in elsewhere clocks the running one out at the same moment.
-- *org-clock-out* turns the line into ~CLOCK: [start]--[end] =>  H:MM~; *org-clock-cancel* removes it and records nothing.
+- *org-clock-out* turns the line into ~CLOCK: [start]--[end] =>  H:MM~ (one space before HH:MM from ten hours); *org-clock-cancel* removes it and records nothing. Clocking out also follows ~org-clock-out-switch-to-state~ and ~org-clock-out-remove-zero-time-clocks~; the lines go where ~org-clock-into-drawer~ says.
 - *org-clock-in-last* (~C-c C-x C-x~, god-mode ~c x x~) resumes the most recently clocked heading.
 - *org-clock-goto* (~C-c C-x C-j~, ~c x j~) jumps to the clocked heading from any tab. With ~C-u~ (~u c x j~, or *Go to a recently clocked task*, ~org-clock-select-task~) it lists recently clocked tasks from every open tab.
 
@@ -1089,7 +1093,7 @@ The chips start from ~org-agenda-tag-filter-preset~, ~org-agenda-category-filter
 
 By default each Agenda day orders habits last, then time, then priority with ~[#A]~ first, then category. With that prefix, ~** Call bank~ under ~* Errands~ in a file with category ~home~ starts with ~home:     Errands->~.
 
-*Priorities*: the range is ~org-priority-highest~ to ~org-priority-lowest~ (letters, or numbers for ~[#1]~ cookies), with ~org-priority-default~ for a heading without a cookie. A file can set all three with ~#+PRIORITIES: 1 5 3~. The priority buttons, the cycle and the Agenda's Priority menu offer that range. Tapping a priority badge steps down as ~org-priority-down~ does: none, the default, then each lower priority, then none (~org-priority-start-cycle-with-default~ ~nil~ starts one below the default). ~org-priority-faces~ colors the badges: ~((?A . error) (?B . "orange"))~.
+*Priorities*: the range is ~org-priority-highest~ to ~org-priority-lowest~ (letters, or numbers for ~[#1]~ cookies), with ~org-priority-default~ for a heading without a cookie. A file can set all three with ~#+PRIORITIES: 1 5 3~. The priority buttons, the cycle and the Agenda's Priority menu offer that range. Tapping a priority badge steps down as ~org-priority-down~ does: none, the highest priority, then each lower one, then none. ~org-priority-faces~ colors the badges: ~((?A . error) (?B . "orange"))~.
 
 *Inherited tags*: ~org-agenda-show-inherited-tags~ chooses where rows show them: ~(todo)~ for the TODO list only, ~always~, or ~nil~.
 
@@ -1376,7 +1380,7 @@ Tap *View → TODO* for every active TODO-state heading in the file, whatever it
 
 It is a flat list in document order showing each item's keyword, title, category and SCHEDULED or DEADLINE date (overdue in red). The filter chips work as in the Agenda, and *Sort* cycles document order, date order (undated last), least effort and most effort. Tap an item to jump to it; press and hold or swipe as in the [[#agenda][Agenda]]. The Agenda's exclusions apply (completed, archived and commented headings).
 
-*Clock report*: a checkbox beside *Clock* shows ~org-clock-report~ read-only instead of writing a ~clocktable~ block into the document. It asks for a start and end date (the last 7 days at first) and a ~maxlevel~ (1 to 10, default 2). The table is Org's: a time column per level, a total first, rows that include their descendants, titles cut at 40 characters. Headings with no clocked time are omitted and a running clock is excluded. *Copy* gives dynamic-block syntax to paste into a file.
+*Clock report*: a checkbox beside *Clock* shows ~org-clock-report~ read-only instead of writing a ~clocktable~ block into the document. It asks for a start and end date (the last 7 days at first) and a *Parameters* field that takes the clocktable parameters of Org (~:scope~, ~:block~, ~:maxlevel~, ~:tags~, ~:step~, ~:narrow~, ~:formula~, ~:link~, ~:compact~, ~:properties~ and the rest); ~:maxlevel~ is 2 at first. The table is Org's: a time column per level, a total first, rows that include their descendants, titles cut at 40 characters. Headings with no clocked time are omitted and a running clock is excluded. *Copy* gives dynamic-block syntax to paste into a file.
 
 -----
 
@@ -2139,7 +2143,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Inheritance* (see [[#local-variables][Local Variables]]): property inheritance is a boolean.
 
-*Tables* (see [[#table-formulas][Table formulas]]): formulas recalculate on command, not on every keystroke.
+*Tables* (see [[#table-formulas][Table formulas]]): formulas recalculate on command, not on every keystroke. Calc is not embedded: results that Calc writes as symbolic algebra or computes on dates, and Calc-only number forms such as ~0x10~, ~1_000~ and two numbers side by side (~$1$2~), can differ.
 
 *Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and a sound file plays in the Android app only.
 

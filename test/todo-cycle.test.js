@@ -49,14 +49,15 @@ test('THE FIX: the no-separator fallback still correctly carries fast-select key
 test('a single bare keyword with no "|" at all becomes the done state; the (separate, intentional) "don\u2019t overwrite with empty" behavior in resolveTodoSequence -- needed for the legitimate multi-line #+TODO: case, see the test above -- means the global default\u2019s own todoKeywords stays in effect here rather than clearing to [], since this one #+TODO: line has none of its own to contribute', () => {
   const doc = parseOrg(['#+TODO: ONLYSTATE', '* Something'].join('\n'));
   const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
-  assert.deepEqual(seq.todoKeywords, ['TODO'], 'the global default carries through, unaffected -- this file\u2019s own line contributed no todo keywords of its own');
+  assert.deepEqual(seq.todoKeywords, [], 'a #+TODO line replaces the default sequence entirely, as in Emacs (oracle-checked); it contributes no todo keywords of its own');
   assert.deepEqual(seq.doneKeywords, ['ONLYSTATE'], 'the fix itself: this file\u2019s own single keyword is correctly recognized as the done state');
 });
 
 test('a "|" that IS present, even with nothing after it, is a genuinely different case (explicitly "no done states at all") and must NOT trigger the no-separator fallback', () => {
   const doc = parseOrg(['#+TODO: TODO NEXT |', '* Something'].join('\n'));
   const seq = resolveTodoSequence(doc, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
-  assert.deepEqual(seq.todoKeywords, ['TODO', 'NEXT'], 'both keywords stay as TODO-type, neither gets silently reassigned to done');
+  assert.deepEqual(seq.todoKeywords, ['TODO'], 'Emacs (oracle-checked): when nothing follows the bar, the last keyword is the done state');
+  assert.deepEqual(seq.doneKeywords, ['NEXT']);
 });
 
 test('cycleTodoState walks null -> TODO -> DONE -> null with the default sequence', () => {

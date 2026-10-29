@@ -4,14 +4,19 @@
 // Extracted from app.js: clock flow.
 import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading, isClockRunning, listRecentlyClockedHeadings } from '../src/clock.js';
 import { findAncestorPath } from '../src/archive-model.js';
+import { clockOutSwitchState } from '../src/clock-settings.js';
+import { resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
 import { saveDocument } from '../src/document-store.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
 import { S } from './app-state.js';
+import { clockSettingsFor } from './clock-options.js';
+import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { openButtonChoiceModal } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
+import { applyTodoTransition } from './todo-workflow.js';
 import { kv } from './singletons.js';
 import { documentDisplayLabel } from './sync-helpers.js';
 import { switchToTab } from './tabs.js';
@@ -66,7 +71,7 @@ export function clockInHeading(heading) {
   let crossTabSwitchedFrom = null;
   const running = findRunningClockAcrossSessions();
   if (running && !running.isActive) {
-    if (clockOut(running.heading, timestamp, now)) {
+    if (clockOutAndSwitch(running.heading, timestamp, now, running.doc)) {
       crossTabSwitchedFrom = running.heading;
       const session = S.documentSessions.find((s) => s.tabId === running.tabId);
       if (session) {
@@ -76,7 +81,8 @@ export function clockInHeading(heading) {
     }
   }
 
-  const { started, switchedFrom } = clockInSwitchingTasks(S.state.doc, heading, timestamp, now);
+  const { started, switchedFrom } = clockInSwitchingTasks(S.state.doc, heading, timestamp, now, clockSettingsFor(heading));
+  if (switchedFrom) switchStateAfterClockOut(switchedFrom);
   if (!started) {
     setStatus('A clock is already running on this heading.');
     render();
@@ -109,7 +115,7 @@ export function clockContinue() {
   }
   const now = new Date();
   const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
-  clockIn(target, timestamp);
+  clockIn(target, timestamp, clockSettingsFor(target));
   commitAndRender(`Resumed clock on "${target.title}"`);
 }
 
@@ -137,6 +143,28 @@ export function clockGoto() {
   navigateToHeading(running.heading);
 }
 
+/** org-clock-out-switch-to-state: after a clock stops, moves the entry to that state (the change Emacs makes with logging inhibited).
+ * @param {Heading} heading @param {Doc | null} [inDoc] */
+export function switchStateAfterClockOut(heading, inDoc = S.state.doc) {
+  const target = clockOutSwitchState(heading, clockSettingsFor(heading, inDoc).switchTo);
+  if (!target || inDoc !== S.state.doc || !inDoc) return;
+  const sequence = resolveTodoSequences(inDoc, GLOBAL_TODO_DEFAULT).find((seq) => [...seq.todoKeywords, ...seq.doneKeywords].includes(target));
+  if (!sequence) {
+    setStatus(`State "${target}" is not valid in this file`);
+    return;
+  }
+  applyTodoTransition(heading, () => setTodoState(heading, target, sequence), { inhibitLogging: true });
+}
+
+/** org-clock-out as the settings have it: the clock line closed (or removed when it is zero minutes and
+ *  `org-clock-out-remove-zero-time-clocks` is t), then `org-clock-out-switch-to-state`.
+ * @param {Heading} heading @param {string} timestamp @param {Date} end @param {Doc | null} [inDoc] */
+export function clockOutAndSwitch(heading, timestamp, end, inDoc = S.state.doc) {
+  if (!clockOut(heading, timestamp, end, clockSettingsFor(heading, inDoc))) return false;
+  switchStateAfterClockOut(heading, inDoc);
+  return true;
+}
+
 /** org-clock-out: stops whatever clock is currently running on
  *  `heading`. A no-op (with a status message) if nothing is running --
  *  matches clockInHeading's own "surface it, don't silently do
@@ -145,7 +173,7 @@ export function clockGoto() {
 export function clockOutHeading(heading) {
   const end = new Date();
   const timestamp = formatOrgTimestamp({ date: end, time: end.toTimeString().slice(0, 5), active: false });
-  if (!clockOut(heading, timestamp, end)) {
+  if (!clockOutAndSwitch(heading, timestamp, end)) {
     setStatus('No clock is currently running on this heading.');
     render();
     return;

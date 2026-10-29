@@ -7,7 +7,7 @@ import { deleteProperty, setProperty } from '../src/archive-model.js';
 import { commitLines } from '../src/body-edit.js';
 import { agendaOccurrences, normalizeAgendaItems, normalizeLine } from '../src/extensions.js';
 import { checkLinkOpenUrl, normalizeExport, usableLinkPrefix } from '../src/extension-net.js';
-import { recalculateTable, setUserTableFunctions, isBuiltinFormulaName, parseTableConstants } from '../src/table-formula.js';
+import { recalculateTable, setUserTableFunctions, isBuiltinFormulaName, parseTableConstants, parseNamedTables } from '../src/table-formula.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
 import { links } from './extension-links.js';
 import { saveOut } from './save-out.js';
@@ -280,7 +280,7 @@ export async function warmTableFunctions(tables) {
   if (!active || !info.tableFunctions.length) return;
   tableCache.clear();
   const mine = tables.filter((t) => t.tblfm && info.tableFunctions.some((n) => /** @type {string} */ (t.tblfm).includes(n + '(')));
-  const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc) };
+  const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc), tables: parseNamedTables(S.state.doc) };
   let total = 0;
   for (let pass = 0; pass < 3 && mine.length; pass++) {
     const misses = new Map();

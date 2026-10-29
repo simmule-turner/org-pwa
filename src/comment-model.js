@@ -11,7 +11,7 @@
  * the exporters' own handling (see local-variables.js).
  */
 
-const COMMENT_TITLE_RE = /^COMMENT(\s|$)/;
+const COMMENT_TITLE_RE = /^COMMENT(\s|$)/; // COMMENTED is not commented, but export drops its COMMENT prefix all the same (an Org quirk)
 
 /** @param {Heading} heading */
 function isCommentedHeading(heading) {

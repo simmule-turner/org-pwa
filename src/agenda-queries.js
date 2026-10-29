@@ -12,7 +12,7 @@ import { effectivePropertyValue, searchDocumentsByMatchQuery } from './search.js
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {{ skipArchived?: boolean, skipCommented?: boolean, doneKeywords?: string[], todoKeywords?: string[], todoOnly?: boolean,
- *   tagInheritance?: import('./tag-inheritance.js').TagInheritance, propertyInheritance?: boolean, tagGroups?: Map<string, string[]>, now?: Date,
+ *   tagInheritance?: import('./tag-inheritance.js').TagInheritance, propertyInheritance?: import('./tag-inheritance.js').PropertyInheritance, tagGroups?: Map<string, string[]>, now?: Date,
  *   sortingStrategy?: string | null, localVariables?: Record<string, string>, documentOrder?: string[],
  *   alwaysBoolean?: boolean, forceFullWords?: boolean, maxLevel?: number }} QueryOptions */
 
@@ -66,7 +66,7 @@ export function matchViewItems(docs, query, options = {}) {
   const done = new Set(options.doneKeywords || ['DONE']);
   const hits = searchDocumentsByMatchQuery(docs, query, {
     useTagInheritance: options.tagInheritance ?? true,
-    usePropertyInheritance: !!options.propertyInheritance,
+    usePropertyInheritance: options.propertyInheritance ?? false,
     doneKeywords: done,
     tagGroups: options.tagGroups,
     now: options.now,

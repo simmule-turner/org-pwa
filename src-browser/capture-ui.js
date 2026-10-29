@@ -3,7 +3,7 @@
 import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, fileCapture, getCaptureFileScheme, plannedTableRow, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { parseOrg } from '../src/org-parser.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
-import { parseTableConstants, recalculateTable } from '../src/table-formula.js';
+import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
 import { tableUserCall } from './extension-flow.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
@@ -507,7 +507,7 @@ function placeOptions(template, doc) {
     tableHeader: template.tableHeader,
     recalculate: (/** @type {import('../src/types.js').Table} */ table) => {
       try {
-        return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(doc), userCall: tableUserCall });
+        return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(doc), tables: parseNamedTables(doc), userCall: tableUserCall });
       } catch {
         return null;
       }

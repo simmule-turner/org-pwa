@@ -21,7 +21,9 @@
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { inheritedProperty } from './babel-args.js';
 import { parseInline } from './inline-markup.js';
+import { findLists } from './list-edit.js';
 
+const BOX_LINE_RE = /^[ \t]*(?:[-+*]|\d+[.)])[ \t]+(?:\[@\d+\][ \t]*)?\[([ xX-])\](?:[ \t]|$)/;
 const COOKIE_RE = /\[\d*\/\d*\]|\[\d*%\]/g;
 
 /**
@@ -54,11 +56,18 @@ function walkListForCheckboxes(items, recursive) {
 export function countCheckboxes(heading, recursive = false) {
   let total = 0;
   let checked = 0;
-  for (const node of heading.body || []) {
-    if (node.type !== 'list') continue;
-    const sub = walkListForCheckboxes(node.items, recursive);
-    total += sub.total;
-    checked += sub.checked;
+  // Org counts the boxes of every list in the section by its lines, text under an item and drawers included
+  for (const lines of [heading.logbookLines, heading.preLogLines, heading.bodyLines]) {
+    if (!Array.isArray(lines)) continue;
+    for (const list of findLists(lines)) {
+      for (const it of list.items) {
+        if (!recursive && it.parent !== -1) continue;
+        const box = BOX_LINE_RE.exec(lines[it.line]);
+        if (!box) continue;
+        total++;
+        if (box[1] === 'X') checked++;
+      }
+    }
   }
   return { total, checked };
 }

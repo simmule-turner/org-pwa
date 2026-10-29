@@ -86,7 +86,7 @@ function headingText(c, noTags, noTodo, noPriority, noComment) {
   const parts = [];
   if (h.todo && !noTodo) parts.push(h.todo);
   if (h.priority && !noPriority) parts.push(`[#${h.priority}]`);
-  const title = noComment ? String(h.title || '').replace(/^COMMENT(\s+|$)/, '') : String(h.title || '');
+  const title = noComment ? String(h.title || '').replace(/^COMMENT\s*/, '') : String(h.title || '');
   if (title) parts.push(title);
   if (h.tags && h.tags.length && !noTags) parts.push(`:${h.tags.join(':')}:`);
   return parts.join(' ');

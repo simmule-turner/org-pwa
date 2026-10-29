@@ -2,15 +2,16 @@
 /**
  * What a formula is evaluated against: the table's cells and the active modes. `currentRow`/`currentCol` are filled in per cell.
  * @typedef {{
- *   dataRows: any[], dataRowCount: number, colCount: number, hlinePositions: number[],
+ *   dataRows: any[], dataRowCount: number, colCount: number, hlinePositions: HlineBoundary[],
+ *   namedTables?: Map<string, import('./types.js').TableRow[]>,
  *   complexDomain?: any, numericMode?: any, durationMode?: boolean, emptyMode?: string, forceNumeric?: boolean, angleMode?: string,
  *   constants?: Record<string, any>, userCall?: ((name: string, args: any[]) => any) | undefined, now?: Date,
- *   currentRow?: number, currentCol?: number, probe?: { nonNumeric: boolean },
+ *   currentRow?: number, currentCol?: number, probe?: { nonNumeric: boolean }, literal?: boolean, durationFlag?: string | null, hourZeroPad?: boolean,
  * }} FormulaCtx
  */
 /** @typedef {import('./types.js').Table} Table */
-/** @typedef {{ type: 'absolute', n: number } | { type: 'relative', delta: number } | { type: 'first' } | { type: 'last' } | { type: 'hline', count: number, offset: number }} RowRef */
-/** @typedef {{ type: 'absolute', n: number } | { type: 'first' } | { type: 'last' }} ColRef */
+/** @typedef {{ type: 'absolute', n: number } | { type: 'relative', delta: number } | { type: 'first', n?: number } | { type: 'last', n?: number } | { type: 'hline', count: number, offset: number } | { type: 'hlineRel', dir: number, count: number }} RowRef */
+/** @typedef {{ type: 'absolute', n: number } | { type: 'relative', delta: number } | { type: 'first', n?: number } | { type: 'last', n?: number }} ColRef */
 /** @typedef {{ asStart: number, asEnd: number }} HlineBoundary */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -89,6 +90,10 @@ import './calc-solve.js'; // registers solve, fsolve and expand with the symboli
 import './calc-deriv.js'; // registers deriv and tderiv
 import './calc-prfac.js'; // registers prfac
 import { formatTimeString } from './format-time.js';
+import { run as runLisp } from './elisp.js';
+import { defun as defineLispFunction } from './elisp-core.js';
+import { Flt, print as printLisp, wrongType, NIL, Cons } from './elisp-data.js';
+import { floatToString } from './elisp-data.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
 } from './calc-vector.js';
@@ -149,12 +154,14 @@ function mathjsForPrecision(precision) {
  * @param {string} text
  *  match any recognized row-reference shape. */
 function parseRowRef(text) {
-  if (text === '<') return { type: 'first' };
-  if (text === '>') return { type: 'last' };
+  if (/^<+$/.test(text)) return { type: 'first', n: text.length };
+  if (/^>+$/.test(text)) return { type: 'last', n: text.length };
   const relative = /^([+-])(\d+)$/.exec(text);
   if (relative) return { type: 'relative', delta: (relative[1] === '-' ? -1 : 1) * Number(relative[2]) };
   const absolute = /^(\d+)$/.exec(text);
   if (absolute) return { type: 'absolute', n: Number(absolute[1]) };
+  const hlineRel = /^([+-])(I+)$/.exec(text);
+  if (hlineRel) return { type: 'hlineRel', dir: hlineRel[1] === '-' ? -1 : 1, count: hlineRel[2].length };
   const hline = /^(I+)([+-]\d+)?$/.exec(text);
   if (hline) return { type: 'hline', count: hline[1].length, offset: hline[2] ? Number(hline[2]) : 0 };
   return null;
@@ -171,8 +178,10 @@ function parseRowRef(text) {
  * @param {string} text
  *  repeating axis a formula is normally applied down). */
 function parseColRef(text) {
-  if (text === '<') return { type: 'first' };
-  if (text === '>') return { type: 'last' };
+  if (/^<+$/.test(text)) return { type: 'first', n: text.length };
+  if (/^>+$/.test(text)) return { type: 'last', n: text.length };
+  const relativeCol = /^([+-])(\d+)$/.exec(text);
+  if (relativeCol) return { type: 'relative', delta: (relativeCol[1] === '-' ? -1 : 1) * Number(relativeCol[2]) };
   const absolute = /^(\d+)$/.exec(text);
   if (absolute) return { type: 'absolute', n: Number(absolute[1]) };
   return null;
@@ -189,18 +198,26 @@ function parseColRef(text) {
  * @param {number} currentRow
  * @param {number} dataRowCount
  * @param {HlineBoundary[]} hlinePositions
- * @param {boolean} asRangeStart
+ * @param {boolean | undefined} [asRangeStart]
  *  surface, not something to silently reinterpret. */
 function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeStart) {
   let n;
-  if (ref.type === 'absolute') n = ref.n;
+  if (ref.type === 'absolute') n = ref.n === 0 ? currentRow : ref.n; // @0 is the row of the formula
   else if (ref.type === 'relative') n = currentRow + ref.delta;
-  else if (ref.type === 'first') n = 1;
-  else if (ref.type === 'hline') {
+  else if (ref.type === 'first') n = ref.n ?? 1;
+  else if (ref.type === 'hlineRel') {
+    // The Nth hline above (-) or below (+) the row of the formula; the row after it. Past the table's end counts once as a hline below.
+    const ends = (hlinePositions || []).map((/** @type {HlineBoundary} */ b) => b.asEnd);
+    const found = ref.dir < 0 ? ends.filter((e) => e < currentRow).sort((a, b) => b - a) : ends.filter((e) => e >= currentRow).sort((a, b) => a - b).concat([dataRowCount]);
+    const at = found[ref.count - 1];
+    n = at === undefined ? 0 : asRangeStart === false ? at : Math.min(at + 1, dataRowCount); // the end of a range is the row before the hline
+  } else if (ref.type === 'hline') {
     const boundary = hlinePositions && hlinePositions[ref.count - 1];
-    const base = boundary ? (asRangeStart ? boundary.asStart : boundary.asEnd) : asRangeStart ? dataRowCount + 1 : dataRowCount;
-    n = base + ref.offset;
-  } else n = dataRowCount; // 'last'
+    const single = asRangeStart === undefined; // one cell, not the end of a range: the row after the hline, or the last row when the table has no such hline
+    const base = boundary ? (asRangeStart || single ? boundary.asStart : boundary.asEnd) : asRangeStart ? dataRowCount + 1 : dataRowCount;
+    // +N counts rows from the hline line itself downward (@I+1 is the row after it), -N upward (@I-1 is the row before it)
+    n = boundary && ref.offset !== 0 ? boundary.asEnd + (ref.offset > 0 ? ref.offset : 1 + ref.offset) : base;
+  } else n = dataRowCount - ((ref.n ?? 1) - 1); // 'last': @>> is the row before the last
   return n >= 1 && n <= dataRowCount ? n : null;
 }
 
@@ -212,7 +229,7 @@ function resolveRowRef(ref, currentRow, dataRowCount, hlinePositions, asRangeSta
  */
 function resolveColRef(ref, colCount, currentCol) {
   if (ref === null) return /** @type {number} */ (currentCol); // no column specified in this ref at all -- real org's own actual convention for a bare row-only reference/range ("@2", "@2..@6"): defaults to the formula's own target column, the same way a bare row-less reference ("$2") already defaults to the current row
-  const n = ref.type === 'absolute' ? ref.n : ref.type === 'first' ? 1 : colCount;
+  const n = ref.type === 'absolute' ? (ref.n === 0 && currentCol !== undefined ? currentCol : ref.n) : ref.type === 'relative' ? (currentCol ?? NaN) + ref.delta : ref.type === 'first' ? (ref.n ?? 1) : colCount - ((ref.n ?? 1) - 1); // $<< is column 2, $>> the one before the last
   return n >= 1 && n <= colCount ? n : null;
 }
 
@@ -247,7 +264,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:[<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$(?:[<>]|\d+))?|\$(?:[<>]|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -332,6 +349,13 @@ const AGGREGATE_FUNCTIONS = {
   vsum: (/** @type {number[]} */ vals) => vals.reduce((a, b) => a + b, 0),
   vmean: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / vals.length),
   vcount: (/** @type {number[]} */ vals) => vals.length,
+  // the mean with its error, as Calc shows an error form: sdev / sqrt(n)
+  vmeane: (/** @type {number[]} */ vals) => {
+    const n = vals.length;
+    const mean = n === 0 ? 0 : vals.reduce((a, b) => a + b, 0) / n;
+    return `${formatResult(mean)} +/- ${formatResult(n < 2 ? 0 : Math.sqrt(sampleVariance(vals)) / Math.sqrt(n))}`;
+  },
+  vflat: (/** @type {any[]} */ vals) => vals, // evaluateAst builds the vector
   vprod: (/** @type {number[]} */ vals) => vals.reduce((a, b) => a * b, 1),
   vmin: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : Math.min(...vals)),
   vmax: (/** @type {number[]} */ vals) => (vals.length === 0 ? 0 : Math.max(...vals)),
@@ -388,6 +412,17 @@ const TRIG_FUNCTION_NAMES = new Set(['sin', 'cos', 'tan', 'arcsin', 'arccos', 'a
 
 const DEG_TO_RAD = Math.PI / 180;
 
+/** @param {number} x hours @param {boolean} isFloat @returns {string} */
+function hmsText(x, isFloat) {
+  const total = Math.round(Math.abs(x) * 3600 * 1e6) / 1e6;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total - h * 3600) / 60);
+  const sec = Math.round((total - h * 3600 - m * 60) * 1e6) / 1e6;
+  let secText = formatResult(sec);
+  if (isFloat && !secText.includes('.') && !/e/.test(secText)) secText += '.';
+  return `${x < 0 ? '-' : ''}${h}@ ${m}' ${secText}"`;
+}
+
 const SCALAR_FUNCTIONS = {
   sqrt: (/** @type {any} */ x) => {
     if (x < 0) throw new Error('sqrt of a negative number has no real result');
@@ -401,12 +436,54 @@ const SCALAR_FUNCTIONS = {
   ceil: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.ceil),
   round: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
   trunc: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.trunc),
-  deg: (/** @type {any} */ x) => (isTaggedValue(x) ? x.days : x),
+  deg: (/** @type {number} */ x) => (((isTaggedValue(x) ? /** @type {any} */ (x).days : x) * 180) / Math.PI), // radians to degrees, as in Calc
+  // Calc's HMS form as it prints: 3@ 45' 0." (a non-integer argument gives a float for the seconds)
+  hms: (/** @type {number} */ x) => hmsText(x, !Number.isInteger(x)),
+  time: (/** @type {number} */ x) => hmsText(Math.round((x - Math.floor(x)) * 86400) / 3600, false),
+  rad: (/** @type {number} */ x) => x * DEG_TO_RAD,
+  sinh: (/** @type {number} */ x) => Math.sinh(x),
+  cosh: (/** @type {number} */ x) => Math.cosh(x),
+  tanh: (/** @type {number} */ x) => Math.tanh(x),
+  sign: (/** @type {number} */ x) => Math.sign(x),
+  mod: (/** @type {number} */ x, /** @type {number} */ y) => {
+    if (y === 0) throw new Error('mod by zero');
+    return x - y * Math.floor(x / y);
+  },
+  pow: (/** @type {number} */ x, /** @type {number} */ y) => Math.pow(x, y),
+  gcd: (/** @type {number} */ a, /** @type {number} */ b) => {
+    if (!Number.isInteger(a) || !Number.isInteger(b)) throw new Error('gcd needs integers');
+    let x = Math.abs(a); let y = Math.abs(b);
+    while (y) [x, y] = [y, x % y];
+    return x;
+  },
+  lcm: (/** @type {number} */ a, /** @type {number} */ b) => {
+    if (!Number.isInteger(a) || !Number.isInteger(b)) throw new Error('lcm needs integers');
+    if (a === 0 || b === 0) return 0;
+    let x = Math.abs(a); let y = Math.abs(b);
+    while (y) [x, y] = [y, x % y];
+    return Math.abs(a * b) / x;
+  },
+  fact: (/** @type {number} */ n) => {
+    if (!Number.isInteger(n) || n < 0 || n > 170) throw new Error('fact needs an integer from 0 to 170');
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  },
+  choose: (/** @type {number} */ n, /** @type {number} */ k) => {
+    if (!Number.isInteger(n) || !Number.isInteger(k) || n < 0) throw new Error('choose needs integers');
+    if (k < 0 || k > n) return 0;
+    let r = 1;
+    for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+    return Math.round(r);
+  },
   // Complex-aware names (see calc-complex.js); with a real argument these are Calc's plain real answers.
   abs: (/** @type {any} */ x) => Math.abs(x),
   // matrix and vector functions (calc-vector.js); they need a vector or matrix, which vectorScalarCall handles
   det: () => { throw new Error('det needs a square matrix'); },
-  inv: () => { throw new Error('inv needs a square matrix'); },
+  inv: (/** @type {number} */ x) => {
+    if (typeof x !== 'number' || x === 0) throw new Error('inv needs a square matrix or a nonzero number');
+    return 1 / x;
+  },
   trn: () => { throw new Error('trn needs a matrix'); },
   tr: () => { throw new Error('tr needs a square matrix'); },
   cross: () => { throw new Error('cross needs two 3-element vectors'); },
@@ -512,6 +589,7 @@ function roundHalfAwayFromZero(x) {
  */
 function roundToDigits(x, digits, roundFn) {
   const d = digits === undefined ? 0 : digits;
+  if (d < 0) return x; // Calc 2.x leaves the value as it is for a negative digit count
   const factor = Math.pow(10, d);
   return roundFn(x * factor) / factor;
 }
@@ -692,13 +770,13 @@ function formatHmsValue(value) {
  * @param {string} token
  *  current row", resolved later by the evaluator). */
 function parseRef(token) {
-  const atMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)(?:\$([<>]|\d+))?$/.exec(token);
+  const atMatch = /^@(<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(<+|>+|[+-]\d+|\d+))?$/.exec(token);
   if (atMatch) {
     const row = parseRowRef(atMatch[1]);
     const col = atMatch[2] !== undefined ? parseColRef(atMatch[2]) : null;
     return row ? { row, col } : null;
   }
-  const dollarMatch = /^\$([<>]|\d+)$/.exec(token);
+  const dollarMatch = /^\$(<+|>+|[+-]\d+|\d+)$/.exec(token);
   if (dollarMatch) {
     const col = parseColRef(dollarMatch[1]);
     return col ? { row: null, col } : null;
@@ -794,6 +872,10 @@ function parseExpression(tokens) {
       next();
       return { type: 'neg', operand: parseNegation() };
     }
+    if (peek() === '+') {
+      next(); // a unary plus changes nothing
+      return parseNegation();
+    }
     return parsePower();
   }
   /** @returns {any} */ function parsePower() {
@@ -854,6 +936,17 @@ function parseExpression(tokens) {
       if (name === 'e') return { type: 'number', value: Math.E, float: true, symbolic: 'e' };
       if (name === 'i') return { type: 'complexLiteral', re: { type: 'number', value: 0 }, im: { type: 'number', value: 1 } };
       if (name === 'inf') return { type: 'number', value: Infinity };
+      if (name === 'remote' && peek() === '(') {
+        // remote(NAME, REF): REF read in the table with that #+NAME:
+        next();
+        let tableName = '';
+        while (peek() !== undefined && peek() !== ',') tableName += next();
+        expect(',');
+        /** @type {any} */ const target = parseRangeOrRef();
+        expect(')');
+        target.remote = tableName;
+        return target;
+      }
       if (name === 'date' || name === 'now' || name === 'date-to-time') {
         expect('(');
         const args = [];
@@ -893,13 +986,17 @@ function parseExpression(tokens) {
       }
       if (name === 'if') {
         expect('(');
-        /** @type {any} */ const condition = parseExpr();
-        expect(',');
-        /** @type {any} */ const trueExpr = parseExpr();
-        expect(',');
-        /** @type {any} */ const falseExpr = parseExpr();
+        /** @type {any[]} */ const ifArgs = [];
+        if (peek() !== ')') {
+          ifArgs.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            ifArgs.push(parseExpr());
+          }
+        }
         expect(')');
-        return { type: 'ifCall', condition, trueExpr, falseExpr };
+        if (ifArgs.length !== 3) return { type: 'unknownCall', name: rawName, args: ifArgs }; // Calc's if() takes three arguments; with another count the call stays as written
+        return { type: 'ifCall', condition: ifArgs[0], trueExpr: ifArgs[1], falseExpr: ifArgs[2] };
       }
       if (userTableFunctionNames.has(name) && !isBuiltinFormulaName(name)) {
         expect('(');
@@ -946,6 +1043,7 @@ function parseExpression(tokens) {
         args.push(parseExpr());
       }
       expect(')');
+      if (['idiv', 'mod', 'pow', 'gcd', 'lcm', 'choose'].includes(name) && args.length !== 2) return { type: 'unknownCall', name: rawName, args }; // with another count Calc leaves the call as written
       const maxArgs = name === 'uconv' ? 3 : 2;
       if (args.length > maxArgs) throw new Error(`"${name}" takes at most ${maxArgs} arguments, got ${args.length}`);
       return { type: 'scalarCall', name, args };
@@ -1037,9 +1135,9 @@ function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = f
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
   const trimmed = text.trim();
   if (trimmed === '') return emptyMode === 'nan' ? NaN : 0;
+  if (forceNumeric) return stringToNumber(trimmed).n; // N: Org turns a field into `(string-to-number field)`, so "1:30" is 1 and "x" is 0
   const n = Number(trimmed);
-  if (!Number.isNaN(n)) return n;
-  return forceNumeric ? 0 : NaN;
+  return Number.isNaN(n) ? NaN : n;
 }
 
 /** Reads one resolved (row, col) cell's own value for use in an
@@ -1061,6 +1159,7 @@ function readCellNumber(dataRows, row, col, emptyMode = 'omit', forceNumeric = f
  *  narrower engine doesn't reproduce either way. */
 function readCellValue(dataRows, row, col, ctx) {
   const text = (dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '';
+  if (/^\s*\$\d+\s*$/.test(text)) throw new FormatFault('Calc cannot read a stack reference in a field'); // a field "$5" reaches Calc as a stack reference: Emacs stops the recalculation
   if (ctx.durationMode) {
     const trimmed = text.trim();
     if (trimmed !== '') {
@@ -1068,7 +1167,7 @@ function readCellValue(dataRows, row, col, ctx) {
       if (seconds !== null) return seconds;
     }
   }
-  const tagged = parseCellTimestamp(text);
+  const tagged = ctx.forceNumeric ? null : parseCellTimestamp(text);
   if (tagged) return tagged;
   if (!ctx.forceNumeric && text.trimStart().startsWith('[')) {
     const vector = parseVectorCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
@@ -1083,6 +1182,20 @@ function readCellValue(dataRows, row, col, ctx) {
   return number;
 }
 
+/** Both ends of a range. A range between two hlines counts the rows between them, so the later hline stands for the row before it and the
+ *  earlier for the row after it, whichever way the range is written (@I..@II and @-I..@-II).
+ * @param {{ from: any, to: any }} node @param {FormulaCtx} ctx */
+function resolveRangeEnds(node, ctx) {
+  const at = (/** @type {{ row: RowRef | null, col: ColRef | null }} */ ref, /** @type {boolean} */ start) => resolveRef(ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, start);
+  let from = at(node.from, true);
+  let to = at(node.to, false);
+  if (node.from.row?.type === 'hlineRel' && node.to.row?.type === 'hlineRel' && at(node.from, true).row > at(node.to, true).row) {
+    from = at(node.from, false);
+    to = at(node.to, true);
+  }
+  return { from, to };
+}
+
 /** Expands a { row, col } ref descriptor (row and/or col possibly
  *  null, meaning "the current row"/never valid for col) into an
  *  actual resolved (row, col) pair, given the row this evaluation is
@@ -1094,12 +1207,14 @@ function readCellValue(dataRows, row, col, ctx) {
  * @param {any} [colCount]
  * @param {any} [currentCol]
  * @param {any} [hlinePositions]
+ * @param {boolean} [asRangeStart]
  *  required). */
-function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePositions, asRangeStart = false) {
+function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePositions, asRangeStart = undefined) { // a lone @I$1 is the row after the hline, like the start of a range
   const row = ref.row === null ? currentRow : resolveRowRef(ref.row, currentRow, dataRowCount, hlinePositions, asRangeStart);
-  const col = resolveColRef(ref.col, colCount, currentCol);
-  if (row === null) throw new Error('Row reference out of range in formula');
-  if (col === null) throw new Error('Column reference out of range in formula');
+  let col = resolveColRef(ref.col, colCount, currentCol);
+  if (col === null && ref.row !== null && ref.col?.type === 'absolute' && ref.col.n > colCount) col = ref.col.n; // a column past the last one is an empty field, as in Emacs
+  if (row === null) throw new FormatFault('Row reference out of range in formula');
+  if (col === null) throw new FormatFault('Column reference out of range in formula');
   return { row, col };
 }
 
@@ -1597,6 +1712,9 @@ function complexScalarCall(name, argValues, ctx) {
       throw new Error(`Unknown operator "${node.op}"`);
     }
     case 'ref': {
+      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(node.remote, ctx));
+      const rowKind = node.ref.row?.type;
+      if (node.ref.col === null && (rowKind === 'hline' || rowKind === 'hlineRel')) return 0; // a hline alone holds no field: Emacs reads it as 0
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
       return wrapNumericLiteral(readCellValue(ctx.dataRows, row, col, ctx), ctx, cellTextIsFloat(ctx.dataRows, row, col));
     }
@@ -1606,11 +1724,16 @@ function complexScalarCall(name, argValues, ctx) {
       return value;
     }
     case 'range': {
+      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(node.remote, ctx));
       // a range is a flat vector of its non-blank cells, in reading order, as in org
       const D = ctx.complexDomain;
       return makeVector(collectRangeValues(node, ctx).map((/** @type {any} */ v) => vectorOperand(v, D)));
     }
     case 'call': {
+      if (node.name === 'vflat') { // the range's cells as one vector
+        const D = ctx.complexDomain;
+        return makeVector(collectRangeValues(node.arg, ctx).map((/** @type {any} */ v) => vectorOperand(v, D)));
+      }
       const fn = /** @type {any} */ (AGGREGATE_FUNCTIONS)[node.name];
       /** @type {any} */ let values = collectRangeValues(node.arg, ctx);
       values = values.map((/** @type {any} */ v) => (typeof v === 'bigint' ? Number(v) : v));
@@ -1637,10 +1760,12 @@ function complexScalarCall(name, argValues, ctx) {
       if (TRIG_FUNCTION_NAMES.has(node.name)) return fn(argValues[0], ctx.angleMode === 'degrees');
       return fn(...argValues);
     }
-    case 'lispCall': {
-      const fn = /** @type {any} */ (LISP_CALL_FUNCTIONS)[node.name];
-      const argValues = node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx));
-      return fn(...argValues);
+    case 'blank': return '';
+    case 'invalid': throw new Error(node.message);
+    case 'lispForm': {
+      const text = evalLispForm(node.source, ctx);
+      if (ctx.durationMode && text !== '#ERROR') return formatDuration(stringToNumber(text).n, ctx.durationFlag, ctx.hourZeroPad);
+      return text;
     }
     case 'dateCall': {
       if (node.name === 'now') {
@@ -1733,6 +1858,7 @@ function complexScalarCall(name, argValues, ctx) {
  * @param {FormulaCtx} ctx
  *  would naturally read the range they wrote. */
 /** @returns {any} */ function collectRangeValues(/** @type {any} */ argNode, /** @type {any} */ ctx) {
+  if (argNode.remote) return collectRangeValues({ ...argNode, remote: undefined }, remoteView(argNode.remote, ctx));
   if (argNode.type === 'ref') {
     const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
     if (isCellBlank(ctx.dataRows, row, col) && ctx.emptyMode === 'omit') return [];
@@ -1743,8 +1869,7 @@ function complexScalarCall(name, argValues, ctx) {
     // real org supports this too; evaluate it as one single value.
     return [evaluateAst(argNode, ctx)];
   }
-  const from = resolveRef(argNode.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
-  const to = resolveRef(argNode.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+  const { from, to } = resolveRangeEnds(argNode, ctx);
   const rowStart = Math.min(from.row, to.row);
   const rowEnd = Math.max(from.row, to.row);
   const colStart = Math.min(from.col, to.col);
@@ -1757,6 +1882,38 @@ function complexScalarCall(name, argValues, ctx) {
     }
   }
   return values;
+}
+
+/** The evaluation context of the table with #+NAME: `name`, for a remote(name, ref); Emacs stops the recalculation when there is no such table.
+ * @param {string} name @param {FormulaCtx} ctx @returns {FormulaCtx} */
+function remoteView(name, ctx) {
+  const rows = ctx.namedTables && ctx.namedTables.get(name);
+  if (!rows) throw new FormatFault(`Can't find remote table "${name}"`);
+  const { positions, dataRowCount } = computeHlinePositions(rows);
+  const dataRows = /** @type {{ cells: string[] }[]} */ (rows.filter((r) => r.type === 'row'));
+  return { ...ctx, dataRows, dataRowCount, colCount: dataRows.reduce((/** @type {number} */ m, r) => Math.max(m, r.cells.length), 0), hlinePositions: positions };
+}
+
+/** The tables of a document by #+NAME:, as rows, for remote(); the first table of a name wins.
+ * @param {import('./types.js').Doc} doc @returns {Map<string, import('./types.js').TableRow[]>} */
+export function parseNamedTables(doc) {
+  /** @type {Map<string, import('./types.js').TableRow[]>} */ const tables = new Map();
+  /** @param {any[] | undefined} nodes */
+  const visit = (nodes) => {
+    for (const node of nodes || []) {
+      if (node.type === 'table' && node.name && !tables.has(node.name)) tables.set(node.name, node.rows);
+      if (node.type === 'heading') { visit(node.body); visit(node.children); }
+    }
+  };
+  visit(doc.body);
+  // before the first heading the parser takes the #+NAME: lines out of the text and keeps the line they stood before
+  for (const node of doc.body || []) {
+    if (node.type !== 'table' || node.name) continue;
+    const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'NAME' && k.bodyLineIndex === node.lineIndex);
+    if (kw && !tables.has(kw.value.trim())) tables.set(kw.value.trim(), node.rows);
+  }
+  visit(doc.children);
+  return tables;
 }
 
 /** Formats a computed numeric result back into cell text -- an
@@ -1784,7 +1941,6 @@ function complexScalarCall(name, argValues, ctx) {
  *  this default is only ever used when a formula has no format flag
  *  of its own. */
 
-const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|%\.(\d+)[eg]|%[eg]|p\d+|n(\d+)|s(\d+)|e(\d+)|f(\d+)|[TtUENFSDR]/y;
 
 /** Parses a formula's own trailing mode string (everything after the
  *  ";", already split off by parseFormulaStatement below) into a
@@ -1843,29 +1999,123 @@ const MODE_TOKEN_RE = /%0?\.(\d+)f|%d|%\.(\d+)[eg]|%[eg]|p\d+|n(\d+)|s(\d+)|e(\d
  * @param {string} suffix
  *  discarding the whole mode string. */
 function parseModeString(suffix) {
-  const mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
-  MODE_TOKEN_RE.lastIndex = 0;
-  let m;
-  while ((m = MODE_TOKEN_RE.exec(suffix))) {
+  const mode = /** @type {any} */ ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null, printfFormat: null, literal: false });
+  // As org-table-eval-formula does: the p/n/f/s/e flags with their number come out first, then the one-letter flags, and whatever is left
+  // is a Lisp format string the result goes through.
+  let fmt = suffix;
+  for (let m = /([pnfse])(-?[0-9]+)/.exec(fmt); m; m = /([pnfse])(-?[0-9]+)/.exec(fmt)) {
+    const digits = Number(m[2]);
+    if (m[1] === 'p') mode.precision = digits;
+    else mode.format = { type: { n: 'normal', f: 'fixed', s: 'scientific', e: 'engineering' }[m[1]], digits };
+    fmt = fmt.slice(0, m.index) + fmt.slice(m.index + m[0].length);
+  }
+  for (let m = /[tTUNLEDRFSu]/.exec(fmt); m; m = /[tTUNLEDRFSu]/.exec(fmt)) {
     const token = m[0];
-    if (m[1] !== undefined) mode.format = { type: 'fixed', digits: Number(m[1]), printf: true }; // %.Nf
-    else if (token.startsWith('%') && /[eg]$/.test(token)) mode.format = { type: 'exponential', printf: true, conversion: token.slice(-1), digits: m[2] === undefined ? undefined : Number(m[2]) }; // %e %g %.Ne %.Ng
-    else if (token === '%d') mode.format = { type: 'integer' };
-    else if (token.startsWith('p')) mode.precision = Number(token.slice(1));
-    else if (m[3] !== undefined) mode.format = { type: 'normal', digits: Number(m[3]) };
-    else if (m[4] !== undefined) mode.format = { type: 'scientific', digits: Number(m[4]) };
-    else if (m[5] !== undefined) mode.format = { type: 'engineering', digits: Number(m[5]) };
-    else if (m[6] !== undefined) mode.format = { type: 'fixed', digits: Number(m[6]) }; // fN
-    else if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
+    if (token === 'T' || token === 't' || token === 'U') mode.duration = token;
     else if (token === 'E') mode.emptyMode = 'nan';
     else if (token === 'N') mode.forceNumeric = true;
     else if (token === 'F') mode.fraction = true;
     else if (token === 'S') mode.mixedNumber = true;
     else if (token === 'R') mode.angleMode = 'radians';
-    else if (token === 'D') mode.angleMode = 'degrees'; // already the default -- consumed for completeness, matching real org accepting it explicitly
+    else if (token === 'D') mode.angleMode = 'degrees';
+    else if (token === 'L') mode.literal = true;
+    fmt = fmt.slice(0, m.index) + fmt.slice(m.index + 1);
   }
+  if (/\S/.test(fmt)) mode.printfFormat = fmt;
   if (mode.forceNumeric && mode.emptyMode === 'nan') mode.emptyMode = 'zero'; // E and N together: blank fields are 0, not nan
   return mode;
+}
+
+/** Emacs's `string-to-number` on a result: the number at the start of the text, 0 when there is none. `isFloat` tells 2.0 from 2.
+ * @param {string} text @returns {{ n: number, isFloat: boolean }} */
+function stringToNumber(text) {
+  const m = /^[ \t]*([-+]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))([eE][-+]?\d+)?/.exec(text);
+  if (!m) return { n: 0, isFloat: false };
+  const isFloat = (m[3] !== undefined && m[3] !== '') || m[4] !== undefined || m[5] !== undefined;
+  const body = m[2] !== undefined ? `${m[2]}${m[3] ? '.' + m[3] : ''}` : `.${m[4]}`;
+  return { n: Number(`${m[1]}${body}${m[5] || ''}`), isFloat };
+}
+
+/** Emacs's `(format FMT N)`: the one number goes into the first conversion. Throws what Emacs signals for a bad format.
+ * @param {string} fmt @param {number} n @param {boolean} isFloat @returns {string} */
+function emacsFormat(fmt, n, isFloat) {
+  try {
+    return emacsFormatOrThrow(fmt, n, isFloat);
+  } catch (err) {
+    throw new FormatFault(/** @type {Error} */ (err).message);
+  }
+}
+
+/** A bad Lisp format string: Emacs stops the whole recalculation with it, so it is not shown as #ERROR in one cell. */
+class FormatFault extends Error {}
+// A reference outside the table is the same kind of fault: Emacs stops the recalculation with its message.
+
+/** @param {string} fmt @param {number} n @param {boolean} isFloat @returns {string} */
+function emacsFormatOrThrow(fmt, n, isFloat) {
+  let out = '';
+  let used = false;
+  for (let i = 0; i < fmt.length; i++) {
+    if (fmt[i] !== '%') {
+      out += fmt[i];
+      continue;
+    }
+    const m = /^%(?:\d+\$)?([-+ #0]*)(\d*)(?:\.(\d*))?/.exec(fmt.slice(i));
+    const spec = /** @type {RegExpExecArray} */ (m);
+    const conv = fmt[i + spec[0].length];
+    if (conv === undefined) throw new Error('Format string ends in middle of format specifier');
+    i += spec[0].length;
+    if (conv === '%') {
+      out += '%';
+      continue;
+    }
+    if (used) throw new Error('Not enough arguments for format string');
+    used = true;
+    const flags = spec[1];
+    const width = spec[2] === '' ? 0 : Number(spec[2]);
+    const precision = spec[3] === undefined ? undefined : spec[3] === '' ? 0 : Number(spec[3]);
+    const left = flags.includes('-');
+    const plus = flags.includes('+') ? '+' : flags.includes(' ') ? ' ' : '';
+    /** @param {string} digits unsigned text @param {boolean} negative @param {string} [prefix] */
+    const pad = (digits, negative, prefix = '') => {
+      const sign = negative ? '-' : plus;
+      const zero = flags.includes('0') && !left;
+      const room = width - sign.length - prefix.length - digits.length;
+      if (room <= 0) return sign + prefix + digits;
+      if (left) return sign + prefix + digits + ' '.repeat(room);
+      return zero ? sign + prefix + '0'.repeat(room) + digits : ' '.repeat(room) + sign + prefix + digits;
+    };
+    const whole = Number.isFinite(n) ? BigInt(Math.trunc(n)) : null;
+    if (conv === 'd' || conv === 'i') {
+      if (whole === null) out += pad(Number.isNaN(n) ? 'nan' : 'inf', n < 0);
+      else {
+        let digits = (whole < 0n ? -whole : whole).toString();
+        if (precision !== undefined) digits = digits.padStart(precision, '0');
+        out += pad(digits, whole < 0n);
+      }
+    } else if (conv === 'x' || conv === 'X' || conv === 'o') {
+      const base = conv === 'o' ? 8 : 16;
+      let digits = whole === null ? '0' : (whole < 0n ? -whole : whole).toString(base);
+      if (conv === 'X') digits = digits.toUpperCase();
+      if (precision !== undefined) digits = digits.padStart(precision, '0');
+      out += pad(digits, whole !== null && whole < 0n, flags.includes('#') ? (conv === 'o' ? '0' : conv === 'x' ? '0x' : '0X') : '');
+    } else if (conv === 'c') {
+      if (isFloat) throw new Error("Format specifier doesn't match argument type");
+      out += pad(String.fromCodePoint(n), false).replace(/^[+ ]/, '');
+    } else if (conv === 'e' || conv === 'f' || conv === 'g') {
+      if (!Number.isFinite(n)) out += pad(Number.isNaN(n) ? 'nan' : 'inf', n < 0);
+      else {
+        const shown = conv === 'f' ? printfFixed(Math.abs(n), precision ?? 6) : printfExponential(Math.abs(n), conv, precision ?? 6);
+        out += pad(shown, n < 0 || Object.is(n, -0));
+      }
+    } else if (conv === 's' || conv === 'S') {
+      let text = isFloat ? (Number.isInteger(n) && Math.abs(n) < 1e21 ? `${n}.0` : String(n).replace(/e([-+])(\d)$/, 'e$10$2')) : String(n);
+      if (precision !== undefined) text = text.slice(0, precision);
+      out += left ? text.padEnd(width) : text.padStart(width);
+    } else {
+      throw new Error(`Invalid format operation %${conv}`);
+    }
+  }
+  return out;
 }
 
 /** Parses "HH:MM[:SS]" (an optional leading "-" for a negative
@@ -1878,13 +2128,13 @@ function parseModeString(suffix) {
  * @param {string} text
  *  reproduce -- see readCellValue's own docs). */
 function parseDurationSeconds(text) {
-  const m = /^(-)?(\d+):([0-5]?\d)(?::([0-5]?\d))?$/.exec(text.trim());
-  if (!m) return null;
-  const sign = m[1] ? -1 : 1;
-  const hours = Number(m[2]);
-  const minutes = Number(m[3]);
-  const seconds = m[4] !== undefined ? Number(m[4]) : 0;
-  return sign * (hours * 3600 + minutes * 60 + seconds);
+  // org-table-time-string-to-seconds, searching the text as Emacs does: H:M:S anywhere, else H:M (not in a timestamp), else the number it starts with
+  const hms = /(-?)(\d+):(\d+):(\d+)/.exec(text);
+  if (hms) return (hms[1] ? -1 : 1) * (Number(hms[2]) * 3600 + Number(hms[3]) * 60 + Number(hms[4]));
+  const hm = /[[<]\d{4}-\d\d-\d\d[^\]\r\n>]*?[\]>]/.test(text) ? null : /(-?)(\d+):(\d+)/.exec(text);
+  if (hm) return (hm[1] ? -1 : 1) * (Number(hm[2]) * 3600 + Number(hm[3]) * 60);
+  const number = /^\s*[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/.exec(text);
+  return number ? Number(number[0]) : 0;
 }
 
 /** Formats a total-seconds value for a duration-mode formula's own
@@ -1901,7 +2151,9 @@ function formatDuration(totalSeconds, flag, hourZeroPad) {
   if (Number.isNaN(totalSeconds)) return 'nan';
   if (!Number.isFinite(totalSeconds)) return totalSeconds > 0 ? 'inf' : '-inf'; // an infinite duration has no sensible HH:MM:SS representation
   const sign = totalSeconds < 0 ? '-' : '';
-  const abs = Math.round(Math.abs(totalSeconds));
+  const exact = Math.abs(totalSeconds);
+  const floor = Math.floor(exact);
+  const abs = exact - floor === 0.5 ? (floor % 2 === 0 ? floor : floor + 1) : Math.round(exact); // Emacs's `round` sends a half to the even second
   if (flag === 't') {
     // org-table-duration-custom-format's own default: fractional hours, 2 decimal places.
     return (totalSeconds / 3600).toFixed(2);
@@ -2034,43 +2286,16 @@ function printfExponential(n, conversion, precision = 6) {
   return trim(printfFixed(n, p - 1 - x));
 }
 
-/** Formats `n` per an explicit, real org format specifier -- "%.Nf"
- *  (fixed N decimal places, confirmed directly against both the Org
- *  Manual's own wording and a real, published org file using this
- *  exact syntax) or "%d" (integer; the exact rounding rule isn't
- *  independently source-confirmed the way "%.Nf" is, so round-to-
- *  nearest is used as the most defensible choice, not a confirmed
+/** Formats `n` the way Calc's n, f, s and e flags show a number.
  * @param {any} [n]
  * @param {any} [spec]
- *  match to real Calc's own exact behavior). */
+ */
 function applyFormatSpec(n, spec, isFloat = false, prec = 12) {
   if (Number.isNaN(n)) return 'nan';
-  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // real Calc's own actual display convention -- a digit count is meaningless for an infinite value, so no format spec (fixed/normal/scientific/engineering/%d) applies to it at all
-  if (spec.printf) {
-    // A printf-style flag formats the number Calc has already displayed to its default 8 digits.
-    const shown = Number.isInteger(n) && !isFloat ? n : Number(calcFloatString(n, 'float', 8, prec).replace(/\.$/, ''));
-    if (spec.type === 'fixed') return printfFixed(shown, spec.digits);
-    return printfExponential(shown, spec.conversion, spec.digits);
-  }
+  if (!Number.isFinite(n)) return n > 0 ? 'inf' : '-inf'; // a digit count means nothing for an infinite value
+  if (Number.isInteger(n) && !isFloat) return String(n); // an integer is not a float, so the float format does not touch it
   const calcFormats = { fixed: 'fix', normal: 'float', scientific: 'sci', engineering: 'eng' };
-  if (spec.type in calcFormats) {
-    if (Number.isInteger(n) && !isFloat) return String(n); // an integer is not a float, so the float format does not touch it
-    return calcFloatString(n, /** @type {'float' | 'fix' | 'sci' | 'eng'} */ (/** @type {any} */ (calcFormats)[spec.type]), spec.digits, prec);
-  }
-  // Truncates toward zero, not round-to-nearest -- unlike "%.Nf"
-  // above (confirmed directly against both the Org Manual's own
-  // wording and a real, published org file using that exact syntax),
-  // this specific rule for "%d" isn't confirmed against a primary
-  // source the same way, despite multiple targeted searches for the
-  // actual Calc/Lisp mechanism behind it. Truncation is used on
-  // converging, but indirect, evidence instead: real Emacs Lisp's own
-  // `format` function is strict about argument types for "%d" (it
-  // won't silently accept a float at all), so Calc must explicitly
-  // convert to an integer before formatting -- and truncation is the
-  // conventional default "convert to int" behavior across the
-  // C-derived languages Calc's own format mechanism is explicitly
-  // modeled on ("similar to printf," per the Org Manual itself).
-  return String(Math.trunc(n));
+  return calcFloatString(n, /** @type {'float' | 'fix' | 'sci' | 'eng'} */ (/** @type {any} */ (calcFormats)[spec.type]), spec.digits, prec);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -2118,7 +2343,7 @@ function symbolicForm(source, ctx) {
   const tokens = tokenize(source, true);
   /** @type {Map<string, FormulaNode>} */ const bound = new Map();
   /** @type {string[]} */ const out = [];
-  const isRef = (/** @type {string} */ t) => /^@|^\$(?:[<>]|\d+)$/.test(t);
+  const isRef = (/** @type {string} */ t) => /^@|^\$(?:<+|>+|[+-]\d+|\d+)$/.test(t);
   const hold = (/** @type {FormulaNode} */ form) => {
     const name = `zzref${bound.size}zz`;
     bound.set(name, form);
@@ -2156,8 +2381,7 @@ function symbolicForm(source, ctx) {
 
 /** @param {FormulaNode} node a range node @param {FormulaNode} ctx @returns {FormulaNode} */
 function symbolicRange(node, ctx) {
-  const from = resolveRef(node.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
-  const to = resolveRef(node.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+  const { from, to } = resolveRangeEnds(node, ctx);
   const items = [];
   for (let r = Math.min(from.row, to.row); r <= Math.max(from.row, to.row); r++) {
     for (let c = Math.min(from.col, to.col); c <= Math.max(from.col, to.col); c++) {
@@ -2180,9 +2404,10 @@ function usesSymbolicConstant(node) {
 function isPlainAlgebra(node, allowUnknown = false) {
   switch (node.type) {
     case 'number':
+      return true;
     case 'ref':
     case 'range':
-      return true;
+      return !node.remote;
     case 'vectorLiteral':
       return node.items.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'neg':
@@ -2337,8 +2562,7 @@ function exprIsFloat(node, ctx) {
         return cellTextIsFloat(ctx.dataRows, row, col);
       }
       if (arg.type !== 'range') return exprIsFloat(arg, ctx);
-      const from = resolveRef(arg.from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, true);
-      const to = resolveRef(arg.to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+      const { from, to } = resolveRangeEnds(arg, ctx);
       for (let r = Math.min(from.row, to.row); r <= Math.max(from.row, to.row); r++) {
         for (let c = Math.min(from.col, to.col); c <= Math.max(from.col, to.col); c++) if (cellTextIsFloat(ctx.dataRows, r, c)) return true;
       }
@@ -2396,9 +2620,9 @@ function formatResult(n, isFloat = false) {
  * @param {number} min
  * @param {number} max
  * @param {number} [width]
+ * @param {string} [characters]
  *  to match exactly), not derived from the docstring alone. */
-function orgtblAsciiDraw(value, min, max, width) {
-  const characters = ' .:;c!lhVHW';
+function orgtblAsciiDraw(value, min, max, width, characters = ' .:;c!lhVHW') {
   const columns = Math.ceil(width === undefined ? 12 : width);
   const len = characters.length - 1; // 10 -- index of the final, full-block character
   const relative = (value - min) / (max - min);
@@ -2409,75 +2633,73 @@ function orgtblAsciiDraw(value, min, max, width) {
   return characters[len].repeat(whole) + characters[steps - whole * len];
 }
 
-/** Real functions this app supports through the '(function ...) raw
- *  Lisp-call syntax below -- deliberately narrow, not a general Elisp
- *  interpreter: exactly the one real function actually requested. */
-const LISP_CALL_FUNCTIONS = {
-  'orgtbl-ascii-draw': orgtblAsciiDraw,
-};
+/** A Lisp value as a JS number: the argument orgtbl-ascii-draw does arithmetic on. @param {import('./elisp.js').LObj} x @returns {number} */
+function lispNumber(x) {
+  if (typeof x === 'number') return x;
+  if (typeof x === 'bigint') return Number(x);
+  if (x instanceof Flt) return x.v;
+  throw wrongType('number-or-marker-p', x);
+}
 
-/** Parses real org-mode's own '(function-name arg1 arg2 ...) form --
- *  a raw Elisp function call in a #+TBLFM: line, bypassing this app's
- *  own normal infix expression grammar entirely, exactly the way real
- *  org-mode treats a formula starting with a quote as a literal Elisp
- *  form to evaluate directly rather than its own spreadsheet syntax.
- *  `rhs` is already known to start with "'(" and end with ")" by the
- *  time this is called (see parseFormulaStatement's own check).
- *
- *  Tokenizes the whole inner content ONCE (reusing this module's own
- *  existing tokenize, now that orgtbl-ascii-draw is a recognized
- *  hyphenated name too), then walks that single token stream to find
- *  each argument's own boundary: a bare, space-free token (a number
- *  or a $N reference) is one complete argument on its own; a "("
- *  opens a fully parenthesized sub-expression argument, whose own
- *  matching ")" is found by tracking nesting depth (so a compound
- *  argument like "($2 * 2)" is one argument, not three). This matches
- *  real Emacs Lisp's own actual convention exactly -- real Lisp has
- *  no infix operators at all, so a compound argument there is always
- *  explicitly wrapped in its own parentheses; there's no such thing
- *  as an ambiguous, unparenthesized multi-token argument to begin
- *  with. Once inside those parens, the content is parsed with this
- *  app's own existing infix grammar (the same "(expr)" grouping
- *  construct ordinary formulas already support), not real Elisp's own
- *  separate prefix-notation convention -- reusing this app's own,
- *  already-consistent syntax rather than requiring a second one just
- *  for arguments inside a '(...) call. Each argument's own token
- *  slice is handed to this module's own existing parseExpression
- *  unchanged, so a $N reference, arithmetic, or any other construct
- * @param {any} [rhs]
- *  an ordinary formula already supports works identically here. */
-function parseLispCall(rhs) {
-  const inner = rhs.slice(2, -1).trim();
-  const tokens = tokenize(inner);
-  if (tokens.length === 0) throw new Error(`Malformed Lisp call: "${rhs}"`);
-  const name = tokens[0];
-  if (!(name in LISP_CALL_FUNCTIONS)) {
-    throw new Error(`Unsupported Lisp function "${name}" in '(...) formula -- only ${Object.keys(LISP_CALL_FUNCTIONS).join(', ')} ${Object.keys(LISP_CALL_FUNCTIONS).length === 1 ? 'is' : 'are'} supported this way`);
+// orgtbl-ascii-draw, for the Lisp the '(...) formulas run
+defineLispFunction('orgtbl-ascii-draw', 3, 5, ([value, min, max, width, characters]) => {
+  const bar = orgtblAsciiDraw(typeof value === 'string' ? stringToNumber(value).n : lispNumber(value), lispNumber(min), lispNumber(max), width === undefined || width === NIL ? undefined : lispNumber(width), typeof characters === 'string' ? characters : undefined);
+  return bar;
+});
+
+/** A Lisp float as `prin1` prints it. @param {number} n */
+const lispFloat = (n) => floatToString(n);
+
+/** A reference's text as it goes into a '(...) formula: a quoted string, or a number under N. @param {string} text @param {boolean} numbers @param {boolean} literal @param {boolean} keepEmpty */
+function lispLiteral(text, numbers, literal, keepEmpty) {
+  if (literal) return text;
+  if (text === '' && !keepEmpty) return '';
+  if (numbers) {
+    const { n, isFloat } = stringToNumber(text);
+    return isFloat ? lispFloat(n) : String(n);
   }
-  const args = [];
-  let i = 1;
-  while (i < tokens.length) {
-    if (tokens[i] === '(') {
-      let depth = 1;
-      let j = i + 1;
-      while (j < tokens.length && depth > 0) {
-        if (tokens[j] === '(') depth++;
-        else if (tokens[j] === ')') depth--;
-        j++;
+  return `"${text.replace(/[\\"]/g, '\\$&')}"`;
+}
+
+const LISP_REF = '@(?:<+|>+|[-+]?\\d+|[-+]?I+(?:[-+]\\d+)?)(?:\\$(?:<+|>+|[-+]?\\d+))?|\\$(?:<+|>+|[-+]?\\d+)';
+const LISP_REF_RE = new RegExp(`@#|\\$#|(?:${LISP_REF})(?:\\.\\.(?:${LISP_REF}))?`, 'g');
+
+/** Evaluates a `'(...)` formula as Org does: the references become Lisp text, the form is evaluated twice (`(eval (eval (read form)))`), and an
+ *  error is the cell text "#ERROR". The result goes into the cell as text.
+ * @param {string} source @param {FormulaCtx} ctx @returns {string} */
+function evalLispForm(source, ctx) {
+  const keepEmpty = ctx.emptyMode !== 'omit';
+  const numbers = ctx.forceNumeric === true;
+  const literal = ctx.literal === true;
+  const cell = (/** @type {number} */ row, /** @type {number} */ col) => String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) ?? '');
+  const form = source.replace(LISP_REF_RE, (token) => {
+    if (token === '@#') return String(ctx.currentRow);
+    if (token === '$#') return String(ctx.currentCol);
+    const [fromText, toText] = token.split('..');
+    const from = parseRef(fromText);
+    if (!from) return token;
+    const start = resolveRef(from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, toText !== undefined);
+    if (toText === undefined) return lispLiteral(cell(start.row, start.col), numbers, literal, keepEmpty);
+    const to = parseRef(toText);
+    if (!to) return token;
+    const end = resolveRef(to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+    const parts = [];
+    for (let r = Math.min(start.row, end.row); r <= Math.max(start.row, end.row); r++) {
+      for (let c = Math.min(start.col, end.col); c <= Math.max(start.col, end.col); c++) {
+        const text = cell(r, c);
+        if (!keepEmpty && !/\S/.test(text)) continue;
+        parts.push(lispLiteral(text, numbers, literal, true));
       }
-      if (depth !== 0) throw new Error(`Unbalanced parentheses in Lisp call: "${rhs}"`);
-      args.push(parseExpression(tokens.slice(i + 1, j - 1)));
-      i = j;
-    } else if (tokens[i] === '-' && i + 1 < tokens.length && tokens[i + 1] !== '(') {
-      // A negative literal such as -1 is one argument, as in Lisp.
-      args.push(parseExpression([tokens[i], tokens[i + 1]]));
-      i += 2;
-    } else {
-      args.push(parseExpression([tokens[i]]));
-      i += 1;
     }
-  }
-  return { type: 'lispCall', name, args };
+    return parts.join(' ');
+  });
+  const outcome = runLisp(`(eval ${form})`);
+  if (!outcome.ok) return '#ERROR';
+  const value = outcome.value;
+  if (typeof value === 'number' || typeof value === 'bigint') return String(value);
+  if (value instanceof Flt) return floatToString(value.v);
+  if (value instanceof Cons) return '#ERROR'; // Org treats a list result as an error, as it does Calc's error value
+  return typeof value === 'string' ? value : printLisp(value, false);
 }
 
 /** @param {any} [statement] */
@@ -2487,7 +2709,7 @@ function parseFormulaStatement(statement) {
   const lhs = statement.slice(0, eq).trim();
   let rhs = statement.slice(eq + 1).trim();
   const formatSuffix = /;[^;]*$/.exec(rhs);
-  let mode = ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null });
+  let mode = ({ format: null, duration: null, emptyMode: 'omit', forceNumeric: false, fraction: false, mixedNumber: false, angleMode: 'degrees', precision: null, printfFormat: /** @type {string | null} */ (null), literal: false });
   if (formatSuffix) {
     rhs = rhs.slice(0, formatSuffix.index).trim();
     mode = parseModeString(formatSuffix[0].slice(1)); // slice(1): drop the leading ";" itself
@@ -2495,17 +2717,27 @@ function parseFormulaStatement(statement) {
 
   let target;
   const rangeMatch = lhs.includes('..') ? /^(.+)\.\.(.+)$/.exec(lhs) : null;
-  const cellMatch = /^@([<>]|[+-]?\d+|I+(?:[+-]\d+)?)\$([<>]|\d+)$/.exec(lhs);
-  const colMatch = /^\$([<>]|\d+)$/.exec(lhs);
+  const cellMatch = /^@(<+|>+|[+-]?\d+|I+(?:[+-]\d+)?)\$(<+|>+|\d+)$/.exec(lhs);
+  const colMatch = /^\$(<+|>+|\d+)$/.exec(lhs);
+  const rowMatch = /^@(<+|>+|[+-]?\d+|I+(?:[+-]\d+)?)$/.exec(lhs);
   if (rangeMatch) {
     const from = parseRef(rangeMatch[1]);
     const to = parseRef(rangeMatch[2]);
-    if (!from || !to || from.col === null || to.col === null) throw new Error(`Malformed formula target: "${lhs}"`);
-    target = { type: 'range', from, to };
+    if (!from || !to) throw new Error(`Malformed formula target: "${lhs}"`);
+    if (from.row?.type === 'hline' || to.row?.type === 'hline') throw new Error("Can't assign to hline relative reference");
+    target = { type: 'range', from: from.col === null ? { ...from, col: { type: 'absolute', n: 1 } } : from, to: to.col === null ? { ...to, col: { type: 'absolute', n: 1 } } : to }; // a range with no column is in the first
+  } else if (rowMatch) {
+    const row = parseRowRef(rowMatch[1]);
+    if (!row) throw new Error(`Malformed formula target: "${lhs}"`);
+    if (row.type === 'hline') throw new Error("Can't assign to hline relative reference");
+    if (row.type === 'absolute' && row.n === 0) throw new Error(`Unknown field: ${lhs}`);
+    target = { type: 'row', row };
   } else if (cellMatch) {
     const row = parseRowRef(cellMatch[1]);
     const col = parseColRef(cellMatch[2]);
     if (!row || !col) throw new Error(`Malformed formula target: "${lhs}"`);
+    if (row.type === 'hline') throw new Error("Can't assign to hline relative reference");
+    if ((row.type === 'absolute' && row.n === 0) || (row.type === 'relative')) throw new Error(`Unknown field: ${lhs}`);
     target = { type: 'cell', row, col };
   } else if (colMatch) {
     const col = parseColRef(colMatch[1]);
@@ -2515,15 +2747,17 @@ function parseFormulaStatement(statement) {
     throw new Error(`Malformed formula target: "${lhs}"`);
   }
 
-  const isLisp = rhs.startsWith("'(") && rhs.endsWith(')');
+  const isLisp = rhs.length > 2 && rhs.startsWith("'(");
+  if (isLisp) return { target, expr: { type: 'lispForm', source: rhs }, mode, source: null };
+  if (rhs === '') return { target, expr: { type: 'blank' }, mode, source: null };
   /** @type {FormulaNode} */ let expr;
   try {
     if (!isLisp && /\d:\d/.test(rhs) && readsAsAlgebra(rhs)) throw new Error('Calc fraction'); // 1:2 is Calc's; only the symbolic engine reads it
-    expr = isLisp ? parseLispCall(rhs) : parseExpression(tokenize(rhs));
+    expr = parseExpression(tokenize(rhs));
   } catch (err) {
     // Calc algebra the numeric parser has no word for (an interval, a bare name): the symbolic engine reads it when the cells are known
-    if (isLisp || !(rhs.includes('..') || /\d:\d/.test(rhs) || /chain of comparisons|^Expected "\("/.test(/** @type {Error} */ (err).message)) || !readsAsAlgebra(rhs)) throw err;
-    expr = { type: 'algebra' };
+    if (isLisp || !(rhs.includes('..') || /\d:\d/.test(rhs) || /chain of comparisons|^Expected "\("/.test(/** @type {Error} */ (err).message)) || !readsAsAlgebra(rhs)) expr = { type: 'invalid', message: /** @type {Error} */ (err).message }; // Calc cannot read it: that cell is #ERROR, the others go on
+    else expr = { type: 'algebra' };
   }
   return { target, expr, mode, source: isLisp ? null : rhs };
 }
@@ -2531,11 +2765,19 @@ function parseFormulaStatement(statement) {
 /** Does Calc's own reader take this formula, cell references standing for numbers? @param {string} rhs @returns {boolean} */
 function readsAsAlgebra(rhs) {
   try {
-    Sym.parseExpression(tokenize(rhs, true).map((t) => (/^@|^\$(?:[<>]|\d+)$/.test(t) ? '1' : t)).join(' '));
+    Sym.parseExpression(tokenize(rhs, true).map((t) => (/^@|^\$(?:<+|>+|[+-]\d+|\d+)$/.test(t) ? '1' : t)).join(' '));
     return true;
   } catch (err) {
     return err instanceof Sym.SymbolicSyntaxError && err.definite; // Calc rejects it outright: the cell shows #ERROR
   }
+}
+
+/** Emacs sets nothing for a target that is a relative column ($-1), a range that starts with a column ($1..$2); the line goes on. @param {string} lhs @returns {boolean} */
+function ignoredTarget(lhs) {
+  if (/^@[^$]*\$[a-zA-Z_]\w*$/.test(lhs) || /^\$[+-]\d+$/.test(lhs) || lhs === '' || lhs === '@' || /\s/.test(lhs)) return true; // also an empty target, a bare @ and a target with a space
+  const range = /^(.+)\.\.(.+)$/.exec(lhs);
+  if (!range) return false;
+  return !/^@/.test(range[1]);
 }
 
 /** Splits a full #+TBLFM: value on "::" (real org's own multi-formula
@@ -2545,11 +2787,20 @@ function readsAsAlgebra(rhs) {
  * @param {any} [tblfm]
  *  applied). */
 function parseTblfm(tblfm) {
-  return tblfm
+  const parsed = tblfm
     .split('::')
     .map((/** @type {any} */ s) => s.trim())
-    .filter(Boolean)
+    .filter((/** @type {string} */ s) => s.includes('=')) // Org ignores a piece with no "="
+    .filter((/** @type {string} */ s) => !ignoredTarget(s.slice(0, s.indexOf('=')).trim()))
     .map(parseFormulaStatement);
+  const columns = new Set();
+  for (const { target } of parsed) {
+    if (target.type !== 'column') continue;
+    const key = JSON.stringify(/** @type {{ col: unknown }} */ (/** @type {unknown} */ (target)).col);
+    if (columns.has(key)) throw new Error('Double definition of a column formula in the #+TBLFM line, please fix by hand');
+    columns.add(key);
+  }
+  return parsed;
 }
 
 // ---- table-level recalculation -------------------------------------------
@@ -2616,7 +2867,7 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = fal
   if (isComplex(value) || isVector(value)) return formatCalcValue(value, complexDomain, { spec: mode.format, applySpec: applyFormatSpec });
   if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
   if (isMathjsValue(value) && value.isBigNumber) {
-    if (!mode.duration && !(mode.format && mode.format.printf) && mode.format?.type !== 'integer') {
+    if (!mode.duration) {
       const asInteger = value.isInteger() && !isFloat;
       const named = { fixed: 'fix', normal: 'float', scientific: 'sci', engineering: 'eng' };
       const kind = mode.format ? /** @type {any} */ (named)[mode.format.type] : 'float';
@@ -2695,6 +2946,9 @@ function tableNames(rows) {
     } else if (mark === '_' || mark === '^') {
       const target = data[index + (mark === '_' ? 1 : -1)];
       if (!target) return;
+      // Org reads the line next to the marked row, whatever it is: a rule there gives no field to name
+      const lineAt = rows.indexOf(rows.filter((r) => r.type === 'row')[index]) + (mark === '_' ? 1 : -1);
+      if (rows[lineAt]?.type === 'rule') return;
       row.cells.forEach((/** @type {string} */ cell, /** @type {number} */ i) => {
         const name = String(cell).trim();
         if (i === 0 || !NAME_RE.test(name) || i >= target.cells.length) return;
@@ -2803,7 +3057,10 @@ export function recalculateTable(table, options = {}) {
   // the manual's own words about it and stopping there.
   const dataRows = workingRows.filter((r) => r.type === 'row');
   const dataRowCount = dataRows.length;
-  const colCount = dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0);
+  // A column formula for a column past the last one adds the column, as in Emacs
+  const wantedColumns = statements.reduce((/** @type {number} */ max, /** @type {{ target: { type: string, col?: { type: string, n?: number } } }} */ st) => (st.target.type === 'column' && st.target.col?.type === 'absolute' ? Math.max(max, st.target.col.n ?? 0) : max), 0);
+  const colCount = Math.max(wantedColumns, dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0));
+  for (const r of dataRows) while (r.cells.length < colCount && wantedColumns > r.cells.length) r.cells.push('');
   // The header-row exclusion real org DOES have is narrower and
   // different from @N numbering: specifically, the column-formula
   // SHORTHAND ($N=, applied to every row at once) skips any row
@@ -2829,7 +3086,7 @@ export function recalculateTable(table, options = {}) {
       : null;
     const digits = mode.precision !== null ? mode.precision : 12;
     const complexDomain = mode.fraction ? fractionDomain(mathjsDefault, bigDomain(mathjsForPrecision(12), 12, mathjsForPrecision(18))) : bigDomain(mathjsForPrecision(digits), digits, mathjsForPrecision(digits + 6));
-    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: /** @type {any} */ (options).constants || {}, numericMode, userCall: /** @type {any} */ (options).userCall };
+    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: /** @type {any} */ (options).constants || {}, namedTables: /** @type {any} */ (options).tables, numericMode, userCall: /** @type {any} */ (options).userCall, literal: mode.literal, durationFlag: mode.duration, hourZeroPad };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
@@ -2853,11 +3110,13 @@ export function recalculateTable(table, options = {}) {
       const cellCtx = { ...evalCtx, currentRow: row, currentCol: col, probe };
       /** @param {string} text */
       const store = (text) => {
-        dataRows[row - 1].cells[col - 1] = text;
+        // Org runs the result through `format` with what is left of the flags; an error is shown as it is
+        dataRows[row - 1].cells[col - 1] = mode.printfFormat && text !== '#ERROR' ? (({ n, isFloat }) => emacsFormat(mode.printfFormat, n, isFloat))(stringToNumber(text)) : text;
       };
       /** @param {any} outcome @returns {boolean} */
       const storeSymbolic = (outcome) => {
         if (!outcome) return false;
+        if (outcome.kind === 'text' && mode.duration) throw new FormatFault('A duration format needs a number'); // Emacs cannot turn an unevaluated form into a duration and stops
         store(outcome.kind === 'text' ? outcome.text : formatFinalValue(outcome.value, mode, hourZeroPad, complexDomain, outcome.isFloat));
         return true;
       };
@@ -2876,6 +3135,8 @@ export function recalculateTable(table, options = {}) {
         if ((probe.nonNumeric || isNanValue(value)) && canFallBack && !mode.forceNumeric && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
         store(typeof value === 'string' && (expr.type === 'string' || expr.type === 'ifCall') ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, cellCtx)));
       } catch (err) {
+        if (err instanceof FormatFault) throw err;
+        if (err instanceof DivisionByZero && mode.duration) throw new FormatFault('Division by zero in a duration formula'); // the unevaluated quotient is no duration: Emacs stops
         const showsExpression = !mode.format && !mode.forceNumeric && !mode.duration;
         if (canFallBack && !mode.forceNumeric && (!(err instanceof DivisionByZero) || showsExpression) && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
         const shown = err instanceof DivisionByZero && err.node === expr && !mode.format && !mode.forceNumeric && !mode.duration ? unevaluatedDivision(err) : null;
@@ -2890,6 +3151,11 @@ export function recalculateTable(table, options = {}) {
   /** @param {Prepared['target']} given @returns {[number, number, number, number] | null} */
   const fieldBounds = (given) => {
     const target = /** @type {{ type: string, row: RowRef, col: ColRef | null, from: { row: RowRef | null, col: ColRef | null }, to: { row: RowRef | null, col: ColRef | null } }} */ (/** @type {unknown} */ (given));
+    if (target.type === 'row') {
+      const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false);
+      if (row === null) throw new Error('Formula target is out of range for this table');
+      return [row, row, 1, colCount]; // a row target is every column of the row
+    }
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
       const col = resolveColRef(target.col, colCount);

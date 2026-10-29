@@ -37,6 +37,7 @@
 
 import { parseBody } from './body-parser.js';
 import { setupKeywords } from './setupfile.js';
+import { getTagsColumn, withTags } from './tags-column.js';
 
 const DEFAULT_TODO_KEYWORDS = ['TODO'];
 
@@ -77,8 +78,8 @@ const LOGBOOK_DRAWER_END_RE = /^\s*:END:\s*$/i;
 // Org's own rule (org-property-re): the name is the first token without its closing colon, however many
 // colons or plus signs it contains -- :ID:, :header-args+:, :header-args:emacs-lisp:, :Effort_ALL:.
 const PROPERTY_LINE_RE = /^\s*:(\S+):[ \t]*(.*?)[ \t]*$/;
-const TAGS_RE = /\s+(:[A-Za-z0-9_@#%:]+:)\s*$/;
-const PRIORITY_RE = /^\[#([A-Za-z]|\d{1,2})\]\s*/;
+const TAGS_RE = /(?:^|[ \t]+)(:[\p{L}\p{N}_@#%:]+:)[ \t]*$/u; // Org's tag characters: letters and digits of any script, and _ @ # %; nbsp is not a separator
+const PRIORITY_RE = /^ *\[#(.)\](?:\s+|$)/; // as org-heading-components reads it: one character, then a space or the end of the line
 
 const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g;
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
@@ -111,9 +112,9 @@ function isPlanningLine(line) {
 /** @param {string} rest */
 function parseTags(rest) {
   const m = TAGS_RE.exec(rest);
-  if (!m) return { rest, tags: [] };
-  const tags = m[1].split(':').filter(Boolean);
-  return { rest: rest.slice(0, m.index), tags };
+  if (!m) return { rest, tags: [], tail: '' };
+  const tags = m[1].split(':').filter(Boolean); // :a::b: is a and b, as org-get-tags reads it
+  return { rest: rest.slice(0, m.index), tags, tail: /[ \t]*$/.exec(m[0])?.[0] ?? '' };
 }
 
 /** @param {string} rest */
@@ -130,8 +131,8 @@ function parsePriority(rest) {
 function parseTodoKeyword(rest, todoKeywords) {
   const spaceIdx = rest.indexOf(' ');
   const firstWord = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx);
-  if (spaceIdx !== -1 && todoKeywords.includes(firstWord)) { // as in Org, a keyword needs a space after it: "* TODO" alone is a title
-    return { rest: rest.slice(spaceIdx + 1), todo: firstWord };
+  if (todoKeywords.includes(firstWord)) { // a keyword alone on the line is still the keyword, as org-heading-components reads it
+    return { rest: spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1), todo: firstWord };
   }
   return { rest, todo: null };
 }
@@ -148,7 +149,7 @@ function parseTodoKeyword(rest, todoKeywords) {
  * @param {string} token
  *  regardless of which are actually present. */
 function parseTodoKeywordToken(token) {
-  const m = /^([^\s(]+)(?:\(([^)]*)\))?$/.exec(token);
+  const m = /^([^\s(]+)(?:\(([^)]*)\).*)?$/.exec(token);
   if (!m) return { keyword: token, key: null, logSpec: null };
   const keyword = m[1];
   const paren = m[2] || '';
@@ -167,11 +168,13 @@ function parseTodoKeywordToken(token) {
  * @param {string} value
  *  caller can use straightforward `in`/property-access checks. */
 function parseTodoSpecValue(value) {
-  const hasBar = value.includes('|');
-  const [todoPart, donePart = ''] = value.split('|').map((s) => s.trim());
+  // Emacs splits at the first "|" only: any later "|" is itself a (done) keyword, as org-set-regexps-and-options reads it
+  const bar = value.indexOf('|');
+  const todoPart = (bar < 0 ? value : value.slice(0, bar)).trim();
+  const donePart = bar < 0 ? '' : value.slice(bar + 1).trim();
   let todoTokens = todoPart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
   let doneTokens = donePart.split(/\s+/).filter(Boolean).map(parseTodoKeywordToken);
-  if (!hasBar && todoTokens.length > 0) {
+  if (doneTokens.length === 0 && todoTokens.length > 0) { // the last keyword is the done state when nothing follows the bar (or there is none)
     doneTokens = [todoTokens[todoTokens.length - 1]];
     todoTokens = todoTokens.slice(0, -1);
   }
@@ -267,7 +270,8 @@ function parseOrg(text, opts = {}) {
       rest = priorityParsed.rest;
 
       const tagsParsed = parseTags(rest);
-      const title = tagsParsed.rest.trim();
+      const title = tagsParsed.rest.replace(/^ +/, '').replace(/\s+$/, ''); // a leading tab stays, as in Emacs
+      const titleTail = title && !tagsParsed.tags.length ? /\s*$/.exec(tagsParsed.rest)?.[0] ?? '' : '';
 
       const heading = /** @type {Heading} */ (/** @type {unknown} */ ({ // `body` is filled in once the section's lines are parsed
         type: 'heading',
@@ -275,6 +279,8 @@ function parseOrg(text, opts = {}) {
         todo: todoParsed.todo,
         priority: priorityParsed.priority,
         title,
+        titleTail,
+        tagsTail: tagsParsed.tail,
         tags: tagsParsed.tags,
         planning: { scheduled: null, deadline: null, closed: null },
         properties: {},
@@ -289,7 +295,7 @@ function parseOrg(text, opts = {}) {
       // The original text of the lines above the body, so an unedited heading is written back exactly as it was read.
       heading.raw = {
         header: line,
-        headerSig: serializeHeadingLine(heading),
+        headerSig: serializeHeadingLine(heading, 0),
         planning: null,
         planningSig: null,
         drawers: [],
@@ -402,7 +408,7 @@ function attachBody(node) {
 // ---- serialize -------------------------------------------------------
 
 /** @param {Heading} node */
-function serializeHeadingLine(node) {
+function serializeHeadingLine(node, column = getTagsColumn()) {
   const stars = '*'.repeat(node.level);
   const parts = [stars];
   if (node.todo) parts.push(node.todo);
@@ -410,10 +416,8 @@ function serializeHeadingLine(node) {
   let line = parts.join(' ');
   line += node.title ? ` ${node.title}` : '';
   if (!node.title && !(node.tags && node.tags.length)) line += ' '; // Org needs the space after the stars (or the keyword) even when nothing follows
-  if (node.tags && node.tags.length) {
-    line += ` :${node.tags.join(':')}:`;
-  }
-  return line;
+  if (node.tags && node.tags.length) return withTags(line, `:${node.tags.join(':')}:`, column) + (node.tagsTail || ''); // blanks after the tags stay too
+  return node.title && node.titleTail ? line + node.titleTail : line; // blanks after the last word stay, as in Emacs
 }
 
 /** @param {Heading['planning'] | null | undefined} planning */
@@ -492,7 +496,7 @@ function headingPreambleLines(node) {
   const lines = [];
 
   const header = serializeHeadingLine(node);
-  lines.push(raw && raw.headerSig === header ? raw.header : header);
+  lines.push(raw && raw.headerSig === serializeHeadingLine(node, 0) ? raw.header : header);
 
   const planning = serializePlanningLine(node.planning);
   if (raw && raw.planning != null && raw.planningSig === planning) lines.push(raw.planning);

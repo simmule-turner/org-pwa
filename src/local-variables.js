@@ -27,7 +27,7 @@ import { parseBrokenLinks } from './broken-links.js';
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 import { readPriorityRange, prioritiesKeyword } from './priorities.js';
-import { parseLispTagList, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
+import { parseLispTagList, parsePropertyInheritance, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
 const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
@@ -577,6 +577,14 @@ export function getShowInheritedTagsOutline(vars) {
  *  stated simplification as getUseTagInheritance above. */
 export function getUsePropertyInheritance(vars) {
   return parseLispBoolean((vars || {})['org-use-property-inheritance'], false);
+}
+
+/** org-use-property-inheritance with its list and regexp forms: which properties a heading takes from its ancestors.
+ * @param {LocalVars} vars @returns {import('./tag-inheritance.js').PropertyInheritance} */
+export function getPropertyInheritance(vars) {
+  const raw = (vars || {})['org-use-property-inheritance'];
+  const policy = parsePropertyInheritance(raw);
+  return policy === null ? parseLispBoolean(raw, false) : policy;
 }
 
 /** buffer-read-only: real Emacs's own actual variable -- whether this

@@ -199,6 +199,16 @@ function referenceAt(text, pos) {
 
 /** Every footnote reference in buffer order. A [fn:label] at the start of a line is a definition, not a reference.
  * @param {string} text @returns {FootnoteRef[]} */
+/** Whether `at` is inside a `<<target>>` or `<<<radio target>>>` on its line, where Org reads no footnote.
+ * @param {string} text @param {number} at */
+function inTarget(text, at) {
+  const start = text.lastIndexOf('\n', at - 1) + 1;
+  const end = text.indexOf('\n', at);
+  const line = text.slice(start, end < 0 ? text.length : end);
+  for (const m of line.matchAll(/<<<?[^<>\n]*>>>?/g)) if (start + m.index < at && at < start + m.index + m[0].length) return true;
+  return false;
+}
+
 function scanReferences(text) {
   const { blocked } = analyze(text);
   const { elements } = findDefinitionElements(text);
@@ -209,6 +219,7 @@ function scanReferences(text) {
     if (at < 0) break;
     from = at + 1;
     if (blocked[at]) continue;
+    if (inTarget(text, at)) continue;
     const ref = referenceAt(text, at);
     if (!ref) continue;
     if (!ref.inline && (at === 0 || text[at - 1] === '\n')) continue; // a definition
@@ -339,7 +350,8 @@ function clearFootnoteSection(buf, section) {
     const n = nextRe.exec(buf.text);
     buf.replace(m.index, n ? n.index + 1 : buf.text.length, '');
   }
-  const kept = buf.text.replace(/[ \r\t\n]+$/, '').length;
+  let kept = buf.text.replace(/[ \r\t\n]+$/, '').length;
+  while (buf.text[kept] === ' ' || buf.text[kept] === '\t') kept++; // blanks ending the last line stay, as in Org
   buf.replace(kept, buf.text.length, kept === 0 ? '\n' : '\n\n');
   buf.insert(buf.text.length, '* ' + section + '\n');
   return buf.text.length;
@@ -421,6 +433,7 @@ function localInsertionPoint(buf, pos) {
 export function normalizeFootnotes(text, options) {
   const opt = { ...footnoteDefaults, ...options };
   const refs = collectReferences(text, true);
+  if (scanReferences(text).length === 0 && !opt.section) return text; // nothing refers to a definition: Org leaves the text as it is
   /** @type {Map<FootnoteRef, string>} */
   const newLabel = new Map();
   /** @type {Map<string, string>} */
@@ -577,15 +590,22 @@ export function adjustFootnotes(text, options) {
   return { text, map };
 }
 
-/** Removes every definition of `label` (and the blank lines before each); returns how many.
+/** Removes every definition of `label` (and the blank lines before each); returns how many. As `org-footnote-delete-definitions`
+ * does: each line that starts with `[fn:label]` is looked up as a definition element, and that element is removed, whichever
+ * label it belongs to (a `[fn:+1]` line is no definition of its own, so the definition above it goes).
  * @param {Buf} buf @param {string} label */
 function removeDefinitionsOf(buf, label) {
   let count = 0;
-  let searchFrom = 0;
+  let from = 0;
+  const needle = `[fn:${label}]`;
   for (;;) {
+    const idx = buf.text.indexOf(needle, from);
+    if (idx < 0) break;
+    from = idx + 1;
+    if (idx > 0 && buf.text[idx - 1] !== '\n') continue;
     const { elements } = findDefinitionElements(buf.text);
-    const el = elements.find((e) => e.begin >= searchFrom && e.label === label);
-    if (!el) break;
+    const el = elements.find((e) => idx >= e.begin && idx < e.end);
+    if (!el) continue;
     const text = buf.text;
     let b = el.begin;
     while (b > 0 && /[ \r\t\n]/.test(text[b - 1])) b--;
@@ -599,22 +619,40 @@ function removeDefinitionsOf(buf, label) {
     const nl = text.indexOf('\n', e);
     buf.replace(beg, nl < 0 ? text.length : nl + 1, '');
     count++;
-    searchFrom = beg;
+    from = beg;
   }
   return count;
 }
 
-/** Deletes footnote `label`: its definitions and every reference to it (org-footnote-delete).
+/** Deletes footnote `label`: its definitions and every reference to it (org-footnote-delete). The references are found with the
+ * label as a regular expression, as Org does.
  * @param {string} text @param {string} label @param {Partial<FootnoteOptions>} [options]
  * @returns {{ text: string, references: number, definitions: number }} */
 export function deleteFootnote(text, label, options) {
   const buf = new Buf(text);
   let references = 0;
-  for (;;) {
-    const ref = scanReferences(buf.text).find((r) => r.label === label);
-    if (!ref) break;
+  /** @type {RegExp | null} */
+  let labelRe;
+  try {
+    labelRe = new RegExp(`\\[fn:${label}[\\]:]`, 'g');
+  } catch {
+    labelRe = null;
+  }
+  let from = 0;
+  while (labelRe) {
+    labelRe.lastIndex = from;
+    const m = labelRe.exec(buf.text);
+    if (!m) break;
+    const at = m.index + m[0].length - 1;
+    const inside = scanReferences(buf.text).filter((r) => at >= r.begin && at < r.end);
+    const ref = inside.sort((x, y) => y.begin - x.begin)[0];
+    if (!ref) {
+      from = m.index + 1;
+      continue;
+    }
     buf.replace(ref.begin, ref.end, '');
     references++;
+    from = ref.begin;
   }
   const definitions = removeDefinitionsOf(buf, label);
   return { text: adjustFootnotes(buf.text, options).text, references, definitions };
@@ -669,7 +707,7 @@ export function canInsertFootnoteAt(text, pos) {
   for (const r of scanReferences(text)) {
     if (pos > r.begin && pos < r.end && (!r.inline || pos < r.contentsBegin || pos > r.contentsEnd)) return false; // inside a footnote
   }
-  if (/^[ \t]*(?::(?:\w|[-_])+:[ \t]*$|#\+(?:begin|end)_|(?:SCHEDULED|DEADLINE|CLOSED):)/i.test(line)) return false; // drawer, block and planning lines
+  if (/^[ \t]*(?::(?:\w|[-_])+:[ \t]*$|#\+(?:begin|end)_|(?:SCHEDULED|DEADLINE|CLOSED):|-{5,}[ \t]*$)/i.test(line)) return false; // drawer, block, planning and rule lines
   const head = /^(\*+ +(?:(?:TODO|DONE|[A-Z]{3,}) +)?(?:\[#[A-Z0-9]+\] +)?)/.exec(line);
   if (/^\*+ /.test(line)) {
     if (!head || col < head[1].length) return false;

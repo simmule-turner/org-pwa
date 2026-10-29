@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: search ui.
 import { EmacsRegexError } from '../src/emacs-regex.js';
-import { getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
+import { getPropertyInheritance, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { countBlockOnlyMatches, createQueryReplace, createTextQueryReplace } from '../src/query-replace.js';
 import { searchDocuments, searchDocumentsByMatchQuery } from '../src/search.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -633,7 +633,7 @@ export function renderSearchResults() {
     results = S.searchUseMatch
       ? searchDocumentsByMatchQuery(aggregateSearchDocs(), S.searchQuery, {
           useTagInheritance: getUseTagInheritance(S.state.localVariables),
-          usePropertyInheritance: getUsePropertyInheritance(S.state.localVariables),
+          usePropertyInheritance: getPropertyInheritance(S.state.localVariables),
         })
       : searchDocuments(aggregateSearchDocs(), S.searchQuery, {
           useRegex: S.searchUseRegex,

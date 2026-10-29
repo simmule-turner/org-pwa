@@ -229,14 +229,17 @@ function cycleItemCheckbox(heading, item) {
   const next = item.checkbox === 'X' ? ' ' : 'X';
   item.checkbox = next;
 
-  if (typeof item.lineIndex === 'number' && heading.bodyLines[item.lineIndex] !== undefined) {
-    heading.bodyLines[item.lineIndex] = heading.bodyLines[item.lineIndex].replace(/\[([ xX-])\]/, `[${next}]`);
-    const fixed = fixBoxes(heading.bodyLines, item.lineIndex);
-    if (fixed.some((l, i) => l !== heading.bodyLines[i])) {
-      heading.bodyLines = fixed;
-      heading.body = parseBody(fixed);
+  // an item may live in another list of lines than the body (a LOGBOOK drawer's)
+  const key = /** @type {'bodyLines' | 'logbookLines' | 'preLogLines'} */ (item.linesKey || 'bodyLines');
+  const lines = heading[key];
+  if (typeof item.lineIndex === 'number' && lines && lines[item.lineIndex] !== undefined) {
+    lines[item.lineIndex] = lines[item.lineIndex].replace(/\[([ xX-])\]/, `[${next}]`);
+    const fixed = fixBoxes(lines, item.lineIndex);
+    if (fixed.some((l, i) => l !== lines[i])) {
+      heading[key] = fixed;
+      if (key === 'bodyLines') heading.body = parseBody(fixed);
     }
-    const shown = /\[([ xX-])\]/.exec(heading.bodyLines[item.lineIndex]);
+    const shown = /\[([ xX-])\]/.exec((heading[key] || [])[item.lineIndex]);
     return shown ? shown[1].toUpperCase() : next;
   }
 

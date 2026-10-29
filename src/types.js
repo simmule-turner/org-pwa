@@ -11,6 +11,8 @@
  *   todo: string | null,
  *   priority: string | null,
  *   title: string,
+ *   titleTail?: string,
+ *   tagsTail?: string,
  *   tags: string[],
  *   planning: { scheduled: string | null, deadline: string | null, closed: string | null, order?: string[] },
  *   properties: Record<string, string>,
@@ -77,7 +79,7 @@
  * @typedef {{ type: 'paragraph', lines: string[], extractedLines: string[], inlineLines: InlineNode[][], footnoteLabel: string | null, lineIndex: number, lineCount: number }} Paragraph
  * @typedef {{ type: 'list-item', indent: number, marker: string, ordered: boolean, checkbox: string | null, startValue: number | null, tag: string | null, text: string, inline: InlineNode[], children: List[], lineIndex: number }} ListItem
  * @typedef {{ type: 'list', items: ListItem[] }} List
- * @typedef {{ type: 'table', rows: TableRow[], tblfm: string | null, lineIndex: number, lineCount: number, plot?: string }} Table
+ * @typedef {{ type: 'table', rows: TableRow[], tblfm: string | null, lineIndex: number, lineCount: number, plot?: string, blankBeforeTblfm?: number, name?: string }} Table
  * @typedef {{ type: 'block', name: string, params: string, lines: string[], lineIndex: number, lineCount: number }} Block
  * @typedef {{ type: 'hr', lineIndex?: number, lineCount?: number }} Hr
  * @typedef {Paragraph | List | Table | Block | Hr} BodyNode
@@ -173,7 +175,7 @@ export {};
  *   agendaEffortSort: string | null, agendaEffortFilter: { op: string, minutes: number | null, text: string } | null, agendaEffortMax: { minutes: number | null, text: string } | null,
  *   viewFilter: import('./agenda-filter.js').ViewFilter, agendaSeedSignature?: string, undoToastTimer: number, taskSort: string, taskKeywords?: string | null, queryView?: { kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string, focusInput?: boolean },
  *   agendaShowAllDatesOverride: boolean | null, showClockDisplay: boolean, showClocktable: boolean,
- *   clocktableStart: string, clocktableEnd: string, clocktableMaxlevel: number,
+ *   clocktableStart: string, clocktableEnd: string, clocktableMaxlevel: number, clocktableParams: string,
  *   weatherData: Record<string, any> | null, weatherLastRefreshed: string | null,
  *   expandedThemeColorSection: string | null, customThemeColors: Record<string, Record<string, string>>,
  *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null, ancestorIndexCache: WeakMap<Heading, Heading[]> | null, fileTagsIndexCache?: WeakMap<Heading, string[]> | null,

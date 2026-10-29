@@ -40,10 +40,11 @@ import { findAncestorPath, getProperty } from './archive-model.js';
 import { ownAttachmentDirectory } from './attach.js';
 import { findDedicatedTargetHeading } from './targets.js';
 
-const EXTERNAL_URL_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
+// Org's http:, https: and ftp: links, with or without the slashes; any other scheme:// is a text search, as in Org
+const EXTERNAL_URL_RE = /^(?:https?|ftp):/i;
 const MAILTO_RE = /^mailto:/i;
 const DOI_RE = /^doi:/i;
-const FILE_LIKE_RE = /^(file:|github:|webdav:|local:|\.{1,2}\/|~\/|\/)/i;
+const FILE_LIKE_RE = /^(file(?:\+(?:sys|emacs))?:|github:|webdav:|local:|\.{1,2}\/|~(?:\/|$)|\/)/i;
 
 /** @param {string} target */
 export function isExternalUrl(target) {
@@ -332,7 +333,7 @@ const COOKIE_RE = /\[\d*(?:%|\/\d*)\]/g;
 /** The words of a heading as org-link-search compares them: a COMMENT keyword and statistics cookies dropped, runs of blanks as one.
  * @param {string} title */
 function headingWords(title) {
-  return title.replace(/^COMMENT(?=\s|$)/, '').replace(COOKIE_RE, ' ').split(/\s+/).filter(Boolean);
+  return title.replace(/^COMMENT\s*/, '').replace(COOKIE_RE, ' ').split(/\s+/).filter(Boolean);
 }
 
 /** @param {string[]} a @param {string[]} b */
@@ -548,7 +549,7 @@ export function splitFileLinkTarget(pathAndTarget) {
  * @returns {LinkResolution}
  */
 export function resolveLinkTarget(doc, rawTarget) {
-  const target = String(rawTarget).trim();
+  const target = String(rawTarget); // blanks around it count, as in Org
 
   if (isDoi(target)) {
     return { type: 'external', url: doiToUrl(target) };
@@ -576,7 +577,7 @@ export function resolveLinkTarget(doc, rawTarget) {
 
   if (isFileLink(target)) {
     const scheme = fileLinkScheme(target);
-    const withoutScheme = target.replace(/^(file:|github:|webdav:|local:)/i, '');
+    const withoutScheme = target.replace(/^(file(?:\+(?:sys|emacs))?:|github:|webdav:|local:)/i, '');
     const { path, inFileTarget } = splitFileLinkTarget(withoutScheme);
     return { type: 'file', scheme, path, inFileTarget };
   }

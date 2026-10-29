@@ -47,6 +47,7 @@ export const SEARCH_TYPE_ICON = {
   heading: '\u25c9',
   paragraph: '\u00b6',
   'list-item': '\u2022',
+  line: '\u2261',
   table: '\u25a6',
   block: '\u2318',
   property: '\ud83c\udff7\ufe0f',
