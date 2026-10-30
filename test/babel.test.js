@@ -20,11 +20,11 @@ test('language and header arguments', () => {
 });
 
 test('results spec and timeout', () => {
-  assert.deepEqual(parseResultsSpec('output raw'), { collect: 'output', words: new Set(['raw']), handling: 'replace', silent: false, unsupported: null });
+  assert.deepEqual(parseResultsSpec('output raw'), { collect: 'output', words: new Set(['raw']), handling: 'replace', silent: false, unsupported: null, file: false });
   assert.deepEqual([...parseResultsSpec('table raw').words], ['table', 'raw']);
   assert.equal(parseResultsSpec('append').handling, 'append');
   assert.equal(parseResultsSpec('silent').silent, true);
-  assert.equal(parseResultsSpec('file').unsupported, 'file');
+  assert.equal(parseResultsSpec('file').file, true);
   assert.equal(timeoutMs({}), 5000);
   assert.equal(timeoutMs({ timeout: '2' }), 2000);
   assert.equal(timeoutMs({ timeout: '9999' }), 60000);
@@ -123,7 +123,7 @@ test('existing results are replaced, whatever their shape', () => {
   assert.deepEqual(apply([...head, '#+RESULTS:', ': old', ': older', '', 'keep'], [': 2']), [...head, '#+RESULTS:', ': 2', '', 'keep']);
   assert.deepEqual(apply([...head, '#+RESULTS:', '| a | b |', '| c | d |', 'keep'], ['- x']), [...head, '#+RESULTS:', '- x', 'keep']);
   assert.deepEqual(apply([...head, '#+RESULTS:', '#+begin_quote', 'q', '#+end_quote', 'keep'], [': 3']), [...head, '#+RESULTS:', ': 3', 'keep']);
-  assert.deepEqual(apply([...head, '#+RESULTS[abc123]:', ': old'], [': 4']), [...head, '#+RESULTS:', ': 4']); // a run without :cache drops the old hash
+  assert.deepEqual(apply([...head, '#+RESULTS[abc123]:', ': old'], [': 4']), [...head, '#+RESULTS[abc123]:', ': 4']); // without :cache Emacs keeps the stale hash
 });
 
 test('results keep the block indentation', () => {

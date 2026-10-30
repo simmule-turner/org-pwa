@@ -2,7 +2,12 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 // Extracted from app.js: agenda view.
 import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } from '../src/agenda-filter.js';
-import { applyAgendaEffortView, buildAgendaItems, buildTaskList, dayView, endOfDay, itemEffortText, monthView, startOfDay, startOfWeek, stripTitleStamps, weekView } from '../src/agenda.js';
+import { readTodoListSettings } from '../src/agenda-todo-list.js';
+import { agendaSkipper } from '../src/agenda-skip.js';
+import { readLogSettings } from '../src/agenda-log.js';
+import { readDaySettings } from '../src/agenda-emacs-days.js';
+import { applyAgendaEffortView, buildAgendaItems, buildTaskList, endOfDay, itemEffortText, rangeView, stripTitleStamps } from '../src/agenda.js';
+import { parseSpan, readAgendaSpan, readAgendaStartDay, readStartOnWeekday, spanKey, spanName, spanRange, startingDayForSpan } from '../src/agenda-span.js';
 import { formatClockDuration, totalClockedMinutes } from '../src/clock.js';
 import { computeClocktable, renderClocktable } from '../src/clocktable.js';
 import { buildClockReport, ClockReportError } from '../src/clock-report.js';
@@ -42,20 +47,20 @@ import { agendaSexpOptions } from './agenda-settings.js';
  * @param {Date} anchorDate
  */
 export function agendaRangeFor(viewType, anchorDate) {
-  if (viewType === 'day') {
-    return { start: startOfDay(anchorDate), end: endOfDay(anchorDate) };
-  }
-  if (viewType === 'week') {
-    const startOnWeekday = getAgendaStartOnWeekday(S.state.localVariables);
-    const start = startOfWeek(anchorDate, startOnWeekday);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    return { start, end: endOfDay(end) };
-  }
-  // month
-  const start = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-  const end = endOfDay(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0));
-  return { start, end };
+  // as org-agenda-list: a span runs from its start day (the anchor), back to the week start for a week or a fortnight
+  const range = spanRange(parseSpan(viewType) ?? 'week', anchorDate, readStartOnWeekday(S.state.localVariables));
+  return { start: range.start, end: endOfDay(range.end), ndays: range.ndays };
+}
+
+/** The first time the agenda opens, org-agenda-span and org-agenda-start-day set the view (a view the person chose before is left). */
+function applyInitialSpan() {
+  if (S.agendaInitialSpanApplied) return;
+  S.agendaInitialSpanApplied = true;
+  const vars = S.state.localVariables;
+  if (S.agendaViewType !== 'week' || (vars['org-agenda-span'] === undefined && vars['org-agenda-start-day'] === undefined)) return;
+  const span = readAgendaSpan(vars);
+  S.agendaViewType = spanKey(span);
+  S.agendaAnchorDate = readAgendaStartDay(vars, new Date()) ?? S.agendaAnchorDate;
 }
 
 /** The rows in the order of org-agenda-sorting-strategy for this view (Emacs's default when it is unset); as they are when the variable has no entry for it.
@@ -290,6 +295,7 @@ export function prefixFailureNote(message) {
 }
 
 export function renderAgendaView() {
+  applyInitialSpan();
   seedAgendaDefaults();
   ensureAgendaFilesLoaded();
   outlineEl.innerHTML = '';
@@ -332,16 +338,24 @@ export function renderAgendaView() {
     return btn;
   }
 
-  const AGENDA_VIEW_CYCLE = ['day', 'week', 'month'];
-  const AGENDA_VIEW_LABELS = { day: 'Day', week: 'Week', month: 'Month' };
-  const viewToggleBtn = agendaControlBtn(/** @type {any} */ (AGENDA_VIEW_LABELS)[S.agendaViewType], () => {
-    const nextIndex = (AGENDA_VIEW_CYCLE.indexOf(S.agendaViewType) + 1) % AGENDA_VIEW_CYCLE.length;
-    S.agendaViewType = AGENDA_VIEW_CYCLE[nextIndex];
+  // day, week and month (Emacs's `v d`, `v w`, `v m`), and the span the settings name when it is another (a fortnight, a year, N days)
+  const configuredSpan = spanKey(readAgendaSpan(S.state.localVariables));
+  const AGENDA_VIEW_CYCLE = ['day', 'week', 'month', ...(['day', 'week', 'month'].includes(configuredSpan) ? [] : [configuredSpan])];
+  const currentSpan = parseSpan(S.agendaViewType) ?? 'week';
+  const viewLabel = spanName(currentSpan);
+  const viewToggleBtn = agendaControlBtn(viewLabel, () => {
+    const nextKey = AGENDA_VIEW_CYCLE[(AGENDA_VIEW_CYCLE.indexOf(spanKey(currentSpan)) + 1) % AGENDA_VIEW_CYCLE.length];
+    // org-agenda-change-time-span: the new span starts on the week start, the 1st of the month or year, or the day the view was on
+    const range = agendaRangeFor(S.agendaViewType, S.agendaAnchorDate);
+    const today = new Date();
+    const basis = today >= range.start && today <= range.end ? today : range.start;
+    S.agendaViewType = nextKey;
+    S.agendaAnchorDate = startingDayForSpan(basis, parseSpan(nextKey) ?? 'week', readStartOnWeekday(S.state.localVariables));
     render();
   });
-  viewToggleBtn.style.width = '64px'; // fixed -- fits "Month", the longest label, without the button's own size shifting as the label cycles
+  viewToggleBtn.style.minWidth = '64px'; // fits "Month" without the button's own size shifting as the label cycles
   viewToggleBtn.style.textAlign = 'center';
-  viewToggleBtn.setAttribute('aria-label', 'Switch agenda view (currently ' + /** @type {any} */ (AGENDA_VIEW_LABELS)[S.agendaViewType] + ')');
+  viewToggleBtn.setAttribute('aria-label', 'Switch agenda view (currently ' + viewLabel + ')');
   controls.appendChild(viewToggleBtn);
 
   controls.appendChild(
@@ -358,7 +372,10 @@ export function renderAgendaView() {
 
   controls.appendChild(
     agendaControlBtn('Today', () => {
-      S.agendaAnchorDate = new Date();
+      // org-agenda-goto-today: a view that already shows today stays; any other starts again from today
+      const range = agendaRangeFor(S.agendaViewType, S.agendaAnchorDate);
+      const now = new Date();
+      if (!(now >= range.start && now <= range.end)) S.agendaAnchorDate = startingDayForSpan(now, 'day');
       render();
     })
   );
@@ -414,7 +431,7 @@ export function renderAgendaView() {
 
   container.appendChild(controls);
 
-  const { start, end } = agendaRangeFor(S.agendaViewType, S.agendaAnchorDate);
+  const { start, end, ndays } = agendaRangeFor(S.agendaViewType, S.agendaAnchorDate);
   const rangeRow = document.createElement('div');
   rangeRow.style.display = 'flex';
   rangeRow.style.alignItems = 'center';
@@ -499,8 +516,8 @@ export function renderAgendaView() {
   const agendaDocs = aggregateAgendaDocs();
   const items = buildAgendaItems(agendaDocs, {
     contactsDocs: contactsDocsForAgenda(agendaDocs), // org-contacts-files, as in Emacs (null: scan the agenda's own documents)
-    includeLogbook: S.agendaLogMode,
-    todoFilter: (/** @type {any} */ todo) => !todoSequence.doneKeywords.includes(todo),
+    logSettings: readLogSettings(S.state.localVariables, S.agendaLogMode ? true : null), // log mode: org-agenda-log-mode-items, add-notes
+    skipEntry: agendaSkipper(S.state.localVariables, agendaDocs, { todoKeywords: todoSequence.todoKeywords, doneKeywords: todoSequence.doneKeywords }),
     // Real org's default is to skip both commented headings (title
     // starts with COMMENT) and archived ones (:ARCHIVE: tag) in agenda
     // views — org-agenda-skip-comment-trees / org-agenda-skip-archived-
@@ -521,6 +538,7 @@ export function renderAgendaView() {
     birthdayProperty: getContactsBirthdayProperty(S.state.localVariables),
     deadlineWarningDays: getDeadlineWarningDays(S.state.localVariables),
     scheduledDelayDays: getScheduledDelayDays(S.state.localVariables),
+    daySettings: readDaySettings(S.state.localVariables), // org-agenda-skip-*, org-deadline-past-days, future and last repeats ...
     ...agendaSexpOptions(),
     habits: { enabled: !S.agendaHabitsHidden, ...getHabitOptions(S.state.localVariables) },
   });
@@ -529,12 +547,7 @@ export function renderAgendaView() {
   filterSlot.appendChild(buildViewFilterRow(items, render, [], 'agenda'));
   const shownItems = filterItemsForView(items, 'agenda');
 
-  const groupedByDay =
-    S.agendaViewType === 'day'
-      ? dayView(shownItems, S.agendaAnchorDate)
-      : S.agendaViewType === 'week'
-        ? weekView(shownItems, S.agendaAnchorDate, getAgendaStartOnWeekday(S.state.localVariables))
-        : monthView(shownItems, S.agendaAnchorDate);
+  const groupedByDay = rangeView(shownItems, start, ndays);
   // The effort view is applied here, once, so the rows, the empty-day
   // hiding below and each day's total all describe the same items.
   const effortView = currentAgendaEffortView();
@@ -614,6 +627,12 @@ export function renderAgendaView() {
     const text = document.createElement('div');
     text.style.flex = '1 1 auto';
     text.style.minWidth = '0';
+    if (item.logLabel) {
+      const label = document.createElement('span'); // "Closed:", "Clocked: (0:45)", "State: (DONE)"
+      label.textContent = `${item.logLabel.replace(/ +/g, ' ')} `;
+      label.style.opacity = '0.7';
+      text.appendChild(label);
+    }
     if (item.todo && item.kind !== 'logbook') {
       const badge = document.createElement('span');
       badge.textContent = item.todo + ' ';
@@ -1192,6 +1211,10 @@ export function renderTaskListView() {
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
     keywords: S.taskKeywords || null,
+    today: new Date(),
+    deadlineWarningDays: getDeadlineWarningDays(S.state.localVariables),
+    todoListSettings: readTodoListSettings(S.state.localVariables), // org-agenda-todo-ignore-*, org-agenda-todo-list-sublevels
+    skipEntry: agendaSkipper(S.state.localVariables, aggregateAgendaDocs(), { todoKeywords: todoSequence.todoKeywords, doneKeywords: todoSequence.doneKeywords }), // org-agenda-skip-function
   });
 
   if (items.length === 0) {

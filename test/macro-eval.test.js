@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
-import { expandMacrosForExport } from '../src/export-org.js';
+import { expandMacrosForExport } from '../src/export-macros.js';
 import { exportToHtml } from '../src/export-html.js';
 
 // Emacs 29.3 (tools/gen-macro-eval-oracle.mjs): macros whose template starts with (eval ...), expanded by org-macro-replace-all.

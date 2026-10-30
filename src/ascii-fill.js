@@ -31,7 +31,7 @@ export function stringWidth(s) {
   for (const ch of s) {
     const c = /** @type {number} */ (ch.codePointAt(0));
     if ((c >= 0x300 && c <= 0x36f) || c === 0x200b || c === 0x200d || (c >= 0xfe00 && c <= 0xfe0f)) continue;
-    w += isWide(c) ? 2 : 1;
+    w += c === 9 ? 8 : isWide(c) ? 2 : 1; // a tab counts as `tab-width` columns
   }
   return w;
 }
@@ -54,6 +54,10 @@ export function indentString(s, n) {
 const PREFIX_RE = /^[-–!|#%;>*·•‣⁃◦ \t]*/;
 const SENTENCE_END_RE = /[.?!…‽][\]"'”’)}»›]*$/;
 
+/** Characters a CJK line may not start with (closing marks) or end with (opening marks). */
+const NO_BREAK_BEFORE = /^[、。，．・：；？！）」』】〉》〕ー゛゜ゝゞぁぃぅぇぉっゃゅょァィゥェォッャュョ]/u;
+const NO_BREAK_AFTER = /[（「『【〈《〔]$/u;
+
 /**
  * Fills one paragraph the way `fill-region` does: `lines` are the paragraph's source lines.
  * @param {string[]} lines
@@ -75,18 +79,22 @@ function fillParagraph(lines, width) {
   /** @type {{ word: string, gap: string }[]} */
   const tokens = [];
   const re = /([^ \t\n]+)([ \t\n]*)/g;
-  let m;
-  while ((m = re.exec(text))) tokens.push({ word: m[1], gap: m[2] });
+  for (const m of text.matchAll(re)) {
+    // text in a script written without spaces (CJK) may break between any two characters, as Emacs fills it
+    const chunks = m[1].match(/[^\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef\u3000-\u303f]+|[\s\S]/gu) || [m[1]];
+    chunks.forEach((chunk, i) => tokens.push({ word: chunk, gap: i === chunks.length - 1 ? m[2] : '' }));
+  }
   if (tokens.length === 0) return [];
   // the space written after each word when the line goes on: two after a sentence end the source marked, else one
   const spaceAfter = tokens.map((t, i) => {
-    if (i === tokens.length - 1) return '';
+    if (i === tokens.length - 1 || t.gap === '') return '';
     if (SENTENCE_END_RE.test(t.word) && (t.gap.includes('\n') || t.gap.length >= 2)) return '  ';
     return ' ';
   });
   // a line must not end with a period that is followed by one space: Emacs would read it as a sentence end
   const canBreakAfter = tokens.map((t, i) => {
     if (i === tokens.length - 1) return true;
+    if (t.gap === '' && (NO_BREAK_BEFORE.test(tokens[i + 1].word) || NO_BREAK_AFTER.test(t.word))) return false; // kinsoku: no line starts with a closing mark or ends with an opening one
     return !(spaceAfter[i] === ' ' && t.word.endsWith('.'));
   });
   /** @type {string[]} */

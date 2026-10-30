@@ -11,7 +11,7 @@ import { describeFailure } from './elisp.js';
 import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { startOfDay } from './agenda.js';
 import { holidaysOn, initBindings } from './holidays.js';
-import { nthNamedDay } from './calendar-conv.js';
+import { absoluteFromGregorian, nthNamedDay } from './calendar-conv.js';
 import { nonGregorianDateLine } from './diary-nongregorian.js';
 import { hebrewBirthday, hebrewYahrzeit, hebrewOmer, hebrewRoshHodesh, hebrewParasha, isFriday } from './diary-hebrew.js';
 import { chineseDateString } from './calendar-chinese.js';
@@ -299,14 +299,22 @@ export function solarTimeString(time, zone, context) {
 
 defun('today-p', 0, 0, () => (startOfDay(ctx().candidateDate).getTime() === startOfDay(ctx().today).getTime() ? T : NIL));
 
-defun('org-block', 6, 6, (a) => {
-  const n = a.map(intOf);
-  const start = realDate(n[0], n[1], n[2]);
-  const end = realDate(n[3], n[4], n[5]);
-  if (!start || !end) return NIL;
-  const [from, to] = start <= end ? [start, end] : [end, start];
-  const day = startOfDay(ctx().candidateDate);
-  return day >= from && day <= to ? T : NIL;
+/** The day number Emacs's calendar-absolute-from-gregorian gives a date (an overflowing month or day rolls over; year 0 is an error). @param {number} y @param {number} m @param {number} d */
+const absDay = (y, m, d) => absoluteFromGregorian([m, d, y]);
+/** The day number of the day being evaluated. */
+const candidateAbs = () => {
+  const c = ctx().candidateDate;
+  return absDay(c.getFullYear(), c.getMonth() + 1, c.getDate());
+};
+
+// diary-block as org-block reads it (year month day, twice, and an optional mark): from the first date to the second, so a range
+// written backwards matches nothing, as in Emacs
+defun('org-block', 6, 7, (a) => {
+  const n = a.slice(0, 6).map(intOf);
+  const day = candidateAbs();
+  const first = absDay(n[0], n[1], n[2]);
+  const second = absDay(n[3], n[4], n[5]);
+  return first <= day && day <= second ? T : NIL;
 });
 
 /** @param {LObj} node @param {number} value */
@@ -314,7 +322,7 @@ function fieldMatches(node, value) {
   if (node instanceof Cons) return toArray(node).some((n) => n === value);
   return node === T || node === value;
 }
-defun('org-date', 3, 3, ([y, m, d]) => {
+defun('org-date', 3, 4, ([y, m, d]) => {
   const c = ctx().candidateDate;
   return fieldMatches(y, c.getFullYear()) && fieldMatches(m, c.getMonth() + 1) && fieldMatches(d, c.getDate()) ? T : NIL;
 });
@@ -344,8 +352,9 @@ defun('calendar-check-holidays', 1, 1, ([d]) => {
   return names.length ? list(names) : NIL;
 });
 
-defun('org-cyclic', 4, 4, (a) => {
-  const [n, year, month, day] = a.map(intOf);
+defun('org-cyclic', 4, 5, (a) => {
+  const [n, year, month, day] = a.slice(0, 4).map(intOf);
+  if (n < 1) throw signal('user-error', ['Day count must be positive']);
   return expandOrgCyclicOccurrences(n, new Date(year, month - 1, day), ctx().candidateDate, ctx().candidateDate).length > 0 ? T : NIL;
 });
 defun('org-anniversary', 3, 3, (a) => {

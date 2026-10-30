@@ -202,9 +202,9 @@ const ORG_BLOCK_RE =
 
 /** Parses an org-block line into { dateA, dateB, title }, or null if
  *  it doesn't match. `dateA`/`dateB` are returned in the order given
- *  in the source -- expandOrgBlockOccurrences below sorts them itself,
+ *  in the source; a block written "backwards" (end date first) covers
  * @param {string} line
- *  so a block written "backwards" (end date first) still works. */
+ *  no day, as in Emacs. */
 function parseOrgBlockLine(line) {
   const m = ORG_BLOCK_RE.exec(line.trim());
   if (!m) return null;
@@ -213,17 +213,15 @@ function parseOrgBlockLine(line) {
   return { dateA: new Date(y1, mo1 - 1, d1), dateB: new Date(y2, mo2 - 1, d2), title: m[7] };
 }
 
-/** Every day between `dateA` and `dateB` (inclusive, order-
+/** Every day from `dateA` to `dateB` (inclusive; none when `dateB` is earlier),
  * @param {Date} dateA
  * @param {Date} dateB
  * @param {any} [rangeStart]
  * @param {any} [rangeEnd]
- *  independent), intersected with [rangeStart, rangeEnd]. */
+ *  intersected with [rangeStart, rangeEnd]. */
 function expandOrgBlockOccurrences(dateA, dateB, rangeStart, rangeEnd) {
-  const lo = dateA <= dateB ? dateA : dateB;
-  const hi = dateA <= dateB ? dateB : dateA;
-  const windowStart = lo > rangeStart ? lo : rangeStart;
-  const windowEnd = hi < rangeEnd ? hi : rangeEnd;
+  const windowStart = dateA > rangeStart ? dateA : rangeStart;
+  const windowEnd = dateB < rangeEnd ? dateB : rangeEnd;
   if (startOfDay(windowStart) > startOfDay(windowEnd)) return [];
   return enumerateDays(windowStart, windowEnd);
 }

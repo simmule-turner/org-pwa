@@ -127,10 +127,10 @@ test('flags every day within an inclusive date range', () => {
   assert.equal(occs[4].getDate(), 5);
 });
 
-test('org-block is order-independent -- a block written with the end date first still works', () => {
+test('org-block written with the end date first covers no day, as in Emacs', () => {
   const parsed = parseOrgBlockLine('%%(org-block 2026 1 5 2026 1 1) Winter break (backwards)');
   const occs = expandOrgBlockOccurrences(parsed.dateA, parsed.dateB, new Date(2026, 0, 1), new Date(2026, 0, 31));
-  assert.equal(occs.length, 5);
+  assert.equal(occs.length, 0);
 });
 
 test('org-block correctly clips to the requested agenda range, not the full block', () => {

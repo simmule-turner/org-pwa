@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v644 — Checked against Emacs, part two
+The rest of the app was run through Emacs 29.3 with defaults, empty input and error cases, and now matches. Fixed: agenda days, spans, skip settings and the habit graph; calendars, durations and timestamps; capture and archive blank lines and errors; source-block header arguments, noweb and tangle; export footnotes, links, captions and translated strings; the Lisp interpreter, macros and file-local variables. Table formulas now follow Calc for literals and dates. New: stuck projects, log mode and clock-check match Emacs.
+Verified: about 40,000 Emacs comparisons and the related checks for each area.
+
 * v643 — Checked against Emacs, area by area
 Every feature area was run through Emacs 29.3 with defaults, empty input and error cases, and the app now matches. Fixed: promote/demote on outlines that skip a level, list and checkbox editing, tag inheritance and the match language, =#+TODO= lines, emphasis and sub/superscript rules, link schemes, priority cycling (first step =[#A]=), clock drawers and clocktable parameters, and table references. New settings: =org-tags-column= (default 0), =org-clock-into-drawer=, =org-clock-out-switch-to-state=, =org-clock-out-remove-zero-time-clocks=.
 Verified: about 15,000 Emacs comparisons and the related checks for each area.

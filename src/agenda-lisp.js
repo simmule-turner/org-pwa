@@ -35,6 +35,45 @@ export function settingFunction(name, text) {
 }
 
 /**
+ * A skip setting (org-agenda-skip-function): a function (name or lambda) to call, or a form such as `'(org-agenda-skip-entry-if 'todo
+ * '("NEXT"))` that org-agenda-skip evaluates at each entry. null when it is unset or unreadable.
+ * @param {string} name @param {string | null | undefined} text
+ * @returns {{ fn: LObj } | { form: LObj } | null}
+ */
+export function skipSetting(name, text) {
+  const fromInit = initValue(name);
+  if (fromInit !== undefined) return fromInit === NIL ? null : { fn: fromInit };
+  const source = String(text ?? '').trim();
+  if (!source || source === 'nil') return null;
+  try {
+    let form = new Reader(source).read();
+    if (form instanceof Cons && form.car instanceof Sym && (form.car.name === 'quote' || form.car.name === 'function') && form.cdr instanceof Cons) form = form.cdr.car;
+    if (form instanceof Sym) return form === NIL ? null : { fn: form };
+    if (form instanceof Cons && form.car instanceof Sym && form.car.name === 'lambda') return { fn: withContext({}, () => evalForm(form, null)) };
+    return { form };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Runs a skip setting on a heading, with `variables` bound.
+ * @param {{ fn: LObj } | { form: LObj }} setting @param {HeadingContext} heading @param {Record<string, LObj>} [variables]
+ * @returns {Outcome}
+ */
+export function callSkipSetting(setting, heading, variables = {}) {
+  if ('fn' in setting) return callFunction(setting.fn, [], heading, variables);
+  try {
+    const pairs = Object.entries(variables).map(([name, value]) => /** @type {[Sym, LObj]} */ ([intern(name), value]));
+    for (const [s] of pairs) s.special = true;
+    const value = withContext({}, () => withDynamic(pairs, () => withHeading(heading, () => evalForm(setting.form, null))));
+    return { ok: true, value };
+  } catch (raw) {
+    return { ok: false, message: describeFailure(raw).message };
+  }
+}
+
+/**
  * Calls `fn` with `args` (on the heading, when given) under the step budget and nesting limit.
  * @param {LObj} fn @param {LObj[]} args @param {HeadingContext | null} [heading] @param {Record<string, LObj>} [variables]
  * @returns {Outcome}

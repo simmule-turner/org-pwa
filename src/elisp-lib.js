@@ -2,7 +2,7 @@
 /** The built-in functions of the Lisp interpreter: numbers, lists, strings, vectors, hash tables, output, errors, `format`. */
 import {
   Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
-  bool, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, list, print, signal, toArray, userErrors, wrongType,
+  allSymbols, bool, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, list, print, signal, toArray, userErrors, wrongType,
 } from './elisp-data.js';
 import { Reader, readFromString } from './elisp-read.js';
 import { regexpQuote, toRegExp, translate } from './elisp-regex.js';
@@ -11,6 +11,13 @@ import {
 } from './elisp-core.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
+
+/** The columns a character takes: 0 for combining marks, 2 for wide East Asian and emoji, else 1. @param {number} c */
+export function charWidth(c) {
+  if (c === 0x200b || (c >= 0x0300 && c <= 0x036f) || (c >= 0x200c && c <= 0x200f) || (c >= 0xfe00 && c <= 0xfe0f)) return 0;
+  if ((c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf && c !== 0x303f) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xfe30 && c <= 0xfe6f) || (c >= 0xff00 && c <= 0xff60) || (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x1f300 && c <= 0x1f64f) || (c >= 0x1f900 && c <= 0x1f9ff) || (c >= 0x20000 && c <= 0x3fffd)) return 2;
+  return 1;
+}
 
 // ---- numbers ------------------------------------------------------------------------------------
 
@@ -33,7 +40,18 @@ function int(x, pred = 'integerp') {
   throw wrongType(pred, x);
 }
 /** A float from a JS number. @param {number} v */
-const flt = (v) => new Flt(v);
+/** A float whose NaN, if it is one, has a clear sign bit (what the C library's `asin` and `acos` return for a value out of range). @param {number} v @param {...LObj} inputs */
+const posNaN = (v, ...inputs) => {
+  const r = flt(v, ...inputs);
+  if (Number.isNaN(v)) r.pos = true;
+  return r;
+};
+/** @param {number} v @param {...LObj} inputs */
+const flt = (v, ...inputs) => {
+  const r = new Flt(v);
+  if (Number.isNaN(v)) r.pos = inputs.some((i) => i instanceof Flt && Number.isNaN(i.v) && i.pos);
+  return r;
+};
 /** @param {LObj} x @returns {string} */
 function str(x) {
   if (typeof x === 'string') return x;
@@ -63,7 +81,7 @@ function fold(args, op, unit) {
   let acc = args[0];
   if (!isNum(acc)) throw wrongType('number-or-marker-p', acc);
   if (args.length === 1) {
-    if (op === '-') return isInt(acc) ? intOp('-', 0, /** @type {number | bigint} */ (acc)) : flt(-/** @type {Flt} */ (acc).v);
+    if (op === '-') return isInt(acc) ? intOp('-', 0, /** @type {number | bigint} */ (acc)) : flt(-/** @type {Flt} */ (acc).v, acc);
     return acc;
   }
   for (let i = 1; i < args.length; i++) {
@@ -73,7 +91,7 @@ function fold(args, op, unit) {
     else {
       const x = num(acc);
       const y = num(b);
-      acc = flt(op === '+' ? x + y : op === '-' ? x - y : x * y);
+      acc = flt(op === '+' ? x + y : op === '-' ? x - y : x * y, acc, b);
     }
   }
   return acc;
@@ -88,7 +106,7 @@ defun('/', 1, -1, (a) => {
   if (anyFloat) {
     let acc = num(items[0]);
     for (let i = 1; i < items.length; i++) acc /= num(items[i]);
-    return flt(acc);
+    return flt(acc, ...items);
   }
   /** @type {number | bigint} */
   let acc = /** @type {number | bigint} */ (items[0]);
@@ -114,7 +132,7 @@ defun('mod', 2, 2, ([x, y]) => {
     const b = num(y);
     let r = a % b;
     if (r !== 0 && (r < 0) !== (b < 0)) r += b;
-    return flt(r);
+    return flt(r, x, y);
   }
   const a = BigInt(/** @type {number | bigint} */ (x));
   const b = BigInt(/** @type {number | bigint} */ (y));
@@ -166,18 +184,18 @@ const extreme = (wantMax) => (/** @type {LObj[]} */ a) => {
 defun('max', 1, -1, extreme(true));
 defun('min', 1, -1, extreme(false));
 defun('abs', 1, 1, ([x]) => {
-  if (x instanceof Flt) return flt(Math.abs(x.v));
+  if (x instanceof Flt) return flt(Math.abs(x.v), x);
   const i = int(x, 'numberp');
   return typeof i === 'number' ? intOp('*', Math.abs(i), 1) : i < 0n ? -i : i;
 });
 defun('float', 1, 1, ([x]) => (x instanceof Flt ? x : flt(num(x, 'numberp'))));
-defun('zerop', 1, 1, ([x]) => bool(num(x, 'numberp') === 0));
+defun('zerop', 1, 1, ([x]) => bool(num(x) === 0));
 defun('natnump', 1, 1, ([x]) => bool(isInt(x) && x >= 0));
 defAlias('wholenump', 'natnump');
-defun('cl-plusp', 1, 1, ([x]) => bool(num(x, 'numberp') > 0));
-defun('cl-minusp', 1, 1, ([x]) => bool(num(x, 'numberp') < 0));
-defun('cl-evenp', 1, 1, ([x]) => bool(BigInt(int(x)) % 2n === 0n));
-defun('cl-oddp', 1, 1, ([x]) => bool(BigInt(int(x)) % 2n !== 0n));
+defun('cl-plusp', 1, 1, ([x]) => bool(num(x) > 0));
+defun('cl-minusp', 1, 1, ([x]) => bool(num(x) < 0));
+defun('cl-evenp', 1, 1, ([x]) => bool(BigInt(int(x, 'integer-or-marker-p')) % 2n === 0n));
+defun('cl-oddp', 1, 1, ([x]) => bool(BigInt(int(x, 'integer-or-marker-p')) % 2n !== 0n));
 defun('integerp', 1, 1, ([x]) => bool(isInt(x)));
 defun('fixnump', 1, 1, ([x]) => bool(typeof x === 'number' || (typeof x === 'bigint' && x <= 2305843009213693951n && x >= -2305843009213693952n)));
 defun('bignump', 1, 1, ([x]) => bool(typeof x === 'bigint' && (x > 2305843009213693951n || x < -2305843009213693952n)));
@@ -185,15 +203,21 @@ defun('floatp', 1, 1, ([x]) => bool(x instanceof Flt));
 defun('numberp', 1, 1, ([x]) => bool(isNum(x)));
 defAlias('number-or-marker-p', 'numberp');
 defAlias('integer-or-marker-p', 'integerp');
-defun('isnan', 1, 1, ([x]) => bool(x instanceof Flt ? Number.isNaN(x.v) : (num(x, 'floatp'), false)));
-defun('sqrt', 1, 1, ([x]) => flt(Math.sqrt(num(x, 'numberp'))));
-defun('exp', 1, 1, ([x]) => flt(Math.exp(num(x, 'numberp'))));
-defun('log', 1, 2, ([x, b]) => flt(b === undefined || b === NIL ? Math.log(num(x, 'numberp')) : Math.log(num(x, 'numberp')) / Math.log(num(b, 'numberp'))));
-for (const f of ['sin', 'cos', 'tan', 'asin', 'acos']) defun(f, 1, 1, ([x]) => flt(/** @type {(n: number) => number} */ (Math[/** @type {'sin'} */ (f)])(num(x, 'numberp'))));
-defun('atan', 1, 2, ([y, x]) => flt(x === undefined || x === NIL ? Math.atan(num(y, 'numberp')) : Math.atan2(num(y, 'numberp'), num(x, 'numberp'))));
+defun('isnan', 1, 1, ([x]) => bool(x instanceof Flt ? Number.isNaN(x.v) : (() => { throw wrongType('floatp', x); })()));
+defun('sqrt', 1, 1, ([x]) => flt(Math.sqrt(num(x, 'numberp')), x));
+defun('exp', 1, 1, ([x]) => flt(Math.exp(num(x, 'numberp')), x));
+defun('log', 1, 2, ([x, b]) => flt(b === undefined || b === NIL ? Math.log(num(x, 'numberp')) : Math.log(num(x, 'numberp')) / Math.log(num(b, 'numberp')), x, b));
+for (const f of ['sin', 'cos', 'tan', 'asin', 'acos']) defun(f, 1, 1, ([x]) => (f === 'asin' || f === 'acos' ? posNaN : flt)(/** @type {(n: number) => number} */ (Math[/** @type {'sin'} */ (f)])(num(x, 'numberp')), x));
+defun('atan', 1, 2, ([y, x]) => flt(x === undefined || x === NIL ? Math.atan(num(y, 'numberp')) : Math.atan2(num(y, 'numberp'), num(x, 'numberp')), y, x));
 defun('expt', 2, 2, ([x, y]) => {
-  if (isInt(x) && isInt(y) && y >= 0) return normInt(BigInt(x) ** BigInt(y));
-  return flt(num(x, 'numberp') ** num(y, 'numberp'));
+  if (isInt(x) && isInt(y) && y >= 0) {
+    if (y === 0 || y === 0n) return 1;
+    if (x === 0 || x === 1 || x === 0n || x === 1n) return x;
+    if (x === -1 || x === -1n) return BigInt(y) % 2n === 0n ? 1 : -1;
+    if (y > 4_000_000) throw signal('overflow-error', []);
+    return normInt(BigInt(x) ** BigInt(y));
+  }
+  return flt(num(x, 'numberp') ** num(y, 'numberp'), x, y);
 });
 defun('logand', 0, -1, (a) => {
   /** @type {bigint} */
@@ -214,9 +238,25 @@ defun('logxor', 0, -1, (a) => {
   return normInt(acc);
 });
 defun('lognot', 1, 1, ([x]) => normInt(~BigInt(int(x))));
-defun('ash', 2, 2, ([x, n]) => normInt(BigInt(int(x)) << BigInt(int(n))));
-defun('lsh', 2, 2, ([x, n]) => normInt(BigInt(int(x)) << BigInt(int(n))));
-defun('random', 0, 1, ([n]) => (typeof n === 'number' && n > 0 ? Math.floor(Math.random() * n) : Math.floor(Math.random() * 2 ** 40)));
+/** Shifts `x` left by `n` bits (right when negative); a shift too large for memory is an overflow. @param {bigint} x @param {bigint} n */
+function shift(x, n) {
+  if (n >= 0n) {
+    if (x === 0n) return 0n;
+    if (n > 1n << 32n) throw signal('overflow-error', []);
+    return x << n;
+  }
+  return -n > 1n << 32n ? (x < 0n ? -1n : 0n) : x >> -n;
+}
+defun('ash', 2, 2, ([x, n]) => normInt(shift(BigInt(int(x)), BigInt(int(n)))));
+defun('lsh', 2, 2, ([x, n]) => {
+  const a = BigInt(int(x));
+  const k = BigInt(int(n));
+  return normInt(shift(a < 0n && k < 0n ? a + (1n << 62n) : a, k));
+});
+defun('random', 0, 1, ([n]) => {
+  if (isInt(n) && n <= 0) throw signal('args-out-of-range', [n]);
+  return typeof n === 'number' ? Math.floor(Math.random() * n) : Math.floor(Math.random() * 2 ** 40);
+});
 
 /** Rounds `x / d` the Emacs way. @param {string} kind @param {LObj} x @param {LObj | undefined} d */
 function roundOp(kind, x, d) {
@@ -235,7 +275,7 @@ function roundOp(kind, x, d) {
   if (d === undefined || d === NIL) {
     if (isInt(x)) return x;
     const v = num(x, 'numberp');
-    if (!Number.isFinite(v)) throw signal('overflow-error', [x]);
+    if (!Number.isFinite(v)) throw signal('overflow-error', []);
     const r = apply(v);
     return Number.isSafeInteger(r) ? r : normInt(BigInt(r));
   }
@@ -259,13 +299,16 @@ function roundOp(kind, x, d) {
   }
   const bv = num(d, 'numberp');
   if (bv === 0) throw signal('arith-error', []);
-  const r = apply(num(x, 'numberp') / bv);
+  const q = num(x, 'numberp') / bv;
+  if (!Number.isFinite(q)) throw signal('overflow-error', []);
+  const r = apply(q);
   return Number.isSafeInteger(r) ? r : normInt(BigInt(r));
 }
 for (const k of ['floor', 'ceiling', 'truncate', 'round']) defun(k, 1, 2, ([x, d]) => roundOp(k, x, d));
 for (const [name, k] of [['ffloor', 'floor'], ['fceiling', 'ceiling'], ['ftruncate', 'truncate'], ['fround', 'round']]) {
   defun(name, 1, 1, ([x]) => {
     if (!(x instanceof Flt)) throw wrongType('floatp', x);
+    if (!Number.isFinite(x.v)) return x;
     return flt(Number(roundOp(k, x, undefined)));
   });
 }
@@ -370,29 +413,49 @@ defun('setcdr', 2, 2, ([c, v]) => {
   return v;
 });
 defun('list', 0, -1, (a) => list(a));
-defun('make-list', 2, 2, ([n, x]) => list(Array(Number(int(n))).fill(x)));
+/** A non-negative count, or the `wholenump` error. @param {LObj} n */
+function count(n) {
+  if (typeof n !== 'number' || n < 0) throw wrongType('wholenump', n);
+  if (n > 2 ** 30) throw signal('error', ['Memory exhausted']);
+  return n;
+}
+defun('make-list', 2, 2, ([n, x]) => list(Array(count(n)).fill(x)));
 defun('nth', 2, 2, ([n, l]) => carOf(nthcdr(Number(int(n)), l)));
-defun('nthcdr', 2, 2, ([n, l]) => nthcdr(Number(int(n)), l));
+defun('nthcdr', 2, 2, ([n, l]) => {
+  const k = Number(int(n));
+  if (k <= 0) return l;
+  if (!(l instanceof Cons) && l !== NIL) throw wrongType('listp', l);
+  return nthcdr(k, l);
+});
 defun('elt', 2, 2, ([s, n]) => {
   if (s instanceof Cons || s === NIL) return carOf(nthcdr(Number(int(n)), s));
+  if (typeof s !== 'string' && !Array.isArray(s)) throw wrongType('sequencep', s);
   return seqGet(s, Number(int(n)));
 });
 defun('last', 1, 2, ([l, n]) => {
   const items = [];
   for (let p = l; p instanceof Cons; p = p.cdr) items.push(p);
-  const k = n === undefined || n === NIL ? 1 : Number(int(n));
-  if (k <= 0) return NIL;
+  const k = n === undefined || n === NIL ? 1 : Number(num(n));
+  if (k < 0) return NIL;
+  if (k === 0 && !(l instanceof Cons)) return l;
+  if (k === 0) return NIL;
   return items.length ? (items[Math.max(0, items.length - k)] ?? NIL) : l === NIL ? NIL : l;
 });
 defun('butlast', 1, 2, ([l, n]) => {
-  const k = n === undefined || n === NIL ? 1 : Number(int(n));
+  const k = n === undefined || n === NIL ? 1 : Number(num(n));
+  if (n !== undefined && n !== NIL && k <= 0) return l;
+  if (Array.isArray(l) && k >= l.length) return NIL;
+  if (typeof l !== 'string' && !Array.isArray(l) && l !== NIL && !(l instanceof Cons)) throw wrongType('sequencep', l);
   const a = toArray(l);
   return list(k <= 0 ? a : a.slice(0, Math.max(0, a.length - k)));
 });
 defAlias('nbutlast', 'butlast');
 defun('take', 2, 2, ([n, l]) => {
+  if (typeof n !== 'number' && typeof n !== 'bigint') throw wrongType('integerp', n);
+  if (n <= 0) return NIL;
+  if (!(l instanceof Cons) && l !== NIL) throw wrongType('listp', l);
   const out = [];
-  let p = l;
+  /** @type {LObj} */ let p = l;
   for (let i = 0; i < Number(int(n)) && p instanceof Cons; i++, p = p.cdr) out.push(p.car);
   return list(out);
 });
@@ -477,11 +540,13 @@ defun('nconc', 0, -1, (a) => {
   return result;
 });
 defun('reverse', 1, 1, ([s]) => {
+  if (typeof s !== 'string' && !Array.isArray(s) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
   if (typeof s === 'string') return chars(s).reverse().join('');
   if (Array.isArray(s)) return s.slice().reverse();
   return list(toArray(s).reverse());
 });
 defun('nreverse', 1, 1, ([s]) => {
+  if (s !== NIL && !(s instanceof Cons) && !Array.isArray(s) && typeof s !== 'string') throw wrongType('arrayp', s);
   if (Array.isArray(s)) return s.reverse();
   if (typeof s === 'string') return chars(s).reverse().join('');
   /** @type {LObj} */
@@ -495,10 +560,13 @@ defun('nreverse', 1, 1, ([s]) => {
     prev = p;
     p = next;
   }
-  if (p !== NIL) throw wrongType('listp', p);
+  if (p !== NIL) {
+    throw wrongType('listp', prev);
+  }
   return prev;
 });
 defun('copy-sequence', 1, 1, ([s]) => {
+  if (typeof s !== 'string' && !Array.isArray(s) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
   if (s === NIL || typeof s === 'string') return s;
   if (Array.isArray(s)) return s.slice();
   return list(toArray(s));
@@ -604,10 +672,11 @@ defun('remove', 2, 2, ([x, l]) => {
   return list(toArray(l).filter((e) => !equal(e, x)));
 });
 defun('delete-dups', 1, 1, ([l]) => {
+  if (l !== NIL && !(l instanceof Cons)) throw wrongType(typeof l === 'string' || Array.isArray(l) ? 'listp' : 'sequencep', l);
   /** @type {LObj[]} */
   const seen = [];
   const kept = toArray(l).filter((e) => (seen.some((s) => equal(s, e)) ? false : (seen.push(e), true)));
-  let p = l;
+  /** @type {LObj} */ let p = l;
   kept.forEach((e, i) => {
     /** @type {Cons} */ (p).car = e;
     if (i === kept.length - 1) /** @type {Cons} */ (p).cdr = NIL;
@@ -624,6 +693,10 @@ defun('plist-get', 2, 3, ([pl, k, pred]) => {
   return NIL;
 });
 defun('plist-put', 3, 4, ([pl, k, v, pred]) => {
+  for (let p = pl, n = 0; p !== NIL; p = /** @type {Cons} */ (/** @type {Cons} */ (p).cdr).cdr, n++) {
+    if (!(p instanceof Cons) || !(p.cdr instanceof Cons)) throw wrongType('plistp', pl);
+    if (n > 1e7) break;
+  }
   for (let p = pl; p instanceof Cons && p.cdr instanceof Cons; p = p.cdr.cdr) {
     if (pred === undefined || pred === NIL ? eqSame(p.car, k) : funcall(pred, [p.car, k]) !== NIL) {
       p.cdr.car = v;
@@ -670,7 +743,7 @@ defun('apply', 1, -1, ([f, ...rest]) => {
   const last = rest.pop();
   return funcall(f, [...rest, ...toArray(/** @type {LObj} */ (last))]);
 });
-defun('sort', 1, -1, ([s, pred]) => {
+defun('sort', 1, 2, ([s, pred]) => {
   if (pred === undefined) throw signal('wrong-number-of-arguments', [intern('sort'), 1]);
   /** @param {LObj} a @param {LObj} b */
   const cmp = (a, b) => (funcall(pred, [a, b]) !== NIL ? -1 : funcall(pred, [b, a]) !== NIL ? 1 : 0);
@@ -708,11 +781,7 @@ defun('seq-some', 2, 2, ([f, s]) => {
 defun('seq-every-p', 2, 2, ([f, s]) => bool(seqToArray(s).every(truthy(f))));
 defun('seq-count', 2, 2, ([f, s]) => seqToArray(s).filter(truthy(f)).length);
 defun('seq-length', 1, 1, ([s]) => seqLength(s));
-defun('seq-elt', 2, 2, ([s, n]) => seqToArray(s)[Number(n)] ?? signalRange(s, n));
-/** @param {LObj} s @param {LObj} n @returns {never} */
-function signalRange(s, n) {
-  throw signal('args-out-of-range', [s, n]);
-}
+defun('seq-elt', 2, 2, ([s, n]) => funcall(intern('elt'), [s, n]));
 defun('seq-reverse', 1, 1, ([s]) => funcall(intern('reverse'), [s]));
 defun('seq-uniq', 1, 2, ([s, test]) => {
   /** @type {LObj[]} */
@@ -720,8 +789,19 @@ defun('seq-uniq', 1, 2, ([s, test]) => {
   for (const x of seqToArray(s)) if (!out.some((y) => (test === undefined || test === NIL ? equal(x, y) : funcall(test, [x, y]) !== NIL))) out.push(x);
   return list(out);
 });
-defun('seq-take', 2, 2, ([s, n]) => list(seqToArray(s).slice(0, Math.max(0, Number(n)))));
-defun('seq-drop', 2, 2, ([s, n]) => list(seqToArray(s).slice(Math.max(0, Number(n)))));
+/** @param {LObj} s @param {LObj} n @param {boolean} take */
+function seqCut(s, n, take) {
+  const k = num(n);
+  if (s instanceof Cons || s === NIL) {
+    if (take) return funcall(intern('take'), [n, s]);
+    return nthcdr(Math.max(0, k), s);
+  }
+  const items = seqToArray(s);
+  const part = take ? items.slice(0, Math.max(0, k)) : items.slice(Math.max(0, k));
+  return typeof s === 'string' ? String.fromCodePoint(...part.map(Number)) : part;
+}
+defun('seq-take', 2, 2, ([s, n]) => seqCut(s, n, true));
+defun('seq-drop', 2, 2, ([s, n]) => seqCut(s, n, false));
 defun('seq-contains-p', 2, 3, ([s, x, test]) => bool(seqToArray(s).some((y) => (test === undefined || test === NIL ? equal(x, y) : funcall(test, [x, y]) !== NIL))));
 defun('seq-position', 2, 3, ([s, x]) => {
   const i = seqToArray(s).findIndex((y) => equal(x, y));
@@ -729,16 +809,20 @@ defun('seq-position', 2, 3, ([s, x]) => {
 });
 defun('seq-min', 1, 1, ([s]) => funcall(intern('min'), seqToArray(s)));
 defun('seq-max', 1, 1, ([s]) => funcall(intern('max'), seqToArray(s)));
-defun('seq-sort', 2, 2, ([p, s]) => funcall(intern('sort'), [list(seqToArray(s)), p]));
+defun('seq-sort', 2, 2, ([p, s]) => {
+  const sorted = funcall(intern('sort'), [list(seqToArray(s)), p]);
+  return Array.isArray(s) ? toArray(sorted) : typeof s === 'string' ? String.fromCodePoint(...toArray(sorted).map(Number)) : sorted;
+});
 defun('seq-concatenate', 1, -1, ([type, ...seqs]) => {
   const items = seqs.flatMap(seqToArray);
   const t = /** @type {Sym} */ (type).name;
   return t === 'vector' ? items : t === 'string' ? String.fromCodePoint(...items.map(Number)) : list(items);
 });
-defun('seq-empty-p', 1, 1, ([s]) => bool(seqLength(s) === 0));
-defun('seq-first', 1, 1, ([s]) => seqToArray(s)[0] ?? NIL);
-defun('seq-rest', 1, 1, ([s]) => list(seqToArray(s).slice(1)));
+defun('seq-empty-p', 1, 1, ([s]) => bool(s instanceof Cons ? false : seqLength(s) === 0));
+defun('seq-first', 1, 1, ([s]) => funcall(intern('elt'), [s, 0]));
+defun('seq-rest', 1, 1, ([s]) => seqCut(s, 1, false));
 defun('seq-subseq', 2, 3, ([s, a, b]) => {
+  if (s !== NIL && !(s instanceof Cons) && !Array.isArray(s) && typeof s !== 'string') throw signal('error', [`Unsupported sequence: ${print(s)}`]);
   const items = seqToArray(s);
   const from = Number(a) < 0 ? items.length + Number(a) : Number(a);
   const to = b === undefined || b === NIL ? items.length : Number(b) < 0 ? items.length + Number(b) : Number(b);
@@ -768,6 +852,13 @@ defun('cl-every', 2, 2, ([f, s]) => bool(seqToArray(s).every(truthy(f))));
 defun('cl-reduce', 2, -1, ([f, s, ...kw]) => {
   const items = seqToArray(s);
   const at = kw.indexOf(intern(':initial-value'));
+  const fe = kw.indexOf(intern(':from-end'));
+  if (fe >= 0 && kw[fe + 1] !== NIL) {
+    const rev = items.reverse();
+    if (at >= 0) return rev.reduce((acc, x) => funcall(f, [x, acc]), kw[at + 1]);
+    if (!rev.length) return funcall(f, []);
+    return rev.slice(1).reduce((acc, x) => funcall(f, [x, acc]), rev[0]);
+  }
   if (at >= 0) return items.reduce((acc, x) => funcall(f, [acc, x]), kw[at + 1]);
   if (!items.length) return funcall(f, []);
   return items.slice(1).reduce((acc, x) => funcall(f, [acc, x]), items[0]);
@@ -796,17 +887,26 @@ defun('cl-mapcar', 2, -1, ([f, ...seqs]) => {
   const n = Math.min(...arrays.map((a) => a.length));
   return list(Array.from({ length: n }, (_, i) => funcall(f, arrays.map((a) => a[i]))));
 });
-defun('cl-parse-integer', 1, -1, ([s]) => {
-  const n = parseInt(str(s), 10);
-  if (Number.isNaN(n)) throw signal('error', [`Not an integer string: ‘${s}’`]);
-  return n;
+defun('cl-parse-integer', 1, -1, ([s, ...kw]) => {
+  const opt = (/** @type {string} */ name) => { const at = kw.indexOf(intern(name)); return at >= 0 ? kw[at + 1] : NIL; };
+  const radix = opt(':radix') === NIL ? 10 : Number(opt(':radix'));
+  const junk = opt(':junk-allowed') !== NIL;
+  const text = str(s).trim();
+  const sign = /^[+-]/.exec(text)?.[0] ?? '';
+  let i = sign.length;
+  while (i < text.length && parseInt(text[i], 36) < radix) i += 1;
+  const digits = text.slice(sign.length, i);
+  if (digits === '' || (!junk && i < text.length)) {
+    if (junk) return NIL;
+    throw signal('error', [`Not an integer string: ‘${str(s)}’`]);
+  }
+  return parseInt(sign + digits, radix);
 });
-defun('cl-evenp-p', 1, 1, ([x]) => bool(Number(x) % 2 === 0));
 
 // ---- vectors and hash tables -------------------------------------------------------------------
 
 defun('vector', 0, -1, (a) => a);
-defun('make-vector', 2, 2, ([n, x]) => Array(Number(int(n))).fill(x));
+defun('make-vector', 2, 2, ([n, x]) => Array(count(n)).fill(x));
 defun('vconcat', 0, -1, (a) => a.flatMap(seqToArray));
 defun('aref', 2, 2, ([s, i]) => seqGet(s, Number(int(i))));
 defun('aset', 3, 3, ([s, i, v]) => {
@@ -872,7 +972,7 @@ defun('copy-hash-table', 1, 1, ([h]) => {
 
 defun('symbol-name', 1, 1, ([s]) => sym(s).name);
 defun('intern', 1, 2, ([s]) => intern(str(s)));
-defun('intern-soft', 1, 2, ([s]) => (typeof s === 'string' ? intern(s) : s));
+defun('intern-soft', 1, 2, ([s]) => (typeof s === 'string' ? (allSymbols().find((x) => x.name === s) ?? NIL) : s));
 defun('make-symbol', 1, 1, ([s]) => new Sym(str(s), false));
 let gensymCounter = 0;
 defun('gensym', 0, 1, ([p]) => new Sym(`${typeof p === 'string' ? p : 'g'}${gensymCounter++}`, false));
@@ -891,7 +991,11 @@ defun('set', 2, 2, ([s, v]) => {
   symbol.value = v;
   return v;
 });
-defun('default-value', 1, 1, ([s]) => sym(s).value ?? NIL);
+defun('default-value', 1, 1, ([s]) => {
+  const v = sym(s).value;
+  if (v === undefined) throw signal('void-variable', [s]);
+  return v;
+});
 defun('fset', 2, 2, ([s, f]) => ((sym(s).fn = f === NIL ? undefined : f), f));
 defun('defalias', 2, 3, ([s, f]) => ((sym(s).fn = f), s));
 defun('fmakunbound', 1, 1, ([s]) => ((sym(s).fn = undefined), s));
@@ -995,17 +1099,13 @@ defun('define-error', 2, 3, ([name, message, parent]) => {
   return message;
 });
 defun('error-message-string', 1, 1, ([e]) => errorMessageString(e));
-defun('assert', 1, -1, ([x]) => {
-  if (x === NIL) throw signal('cl-assertion-failed', [NIL]);
-  return NIL;
-});
 
 // ---- output -------------------------------------------------------------------------------------
 
 /** @param {LObj | undefined} dest @param {string} text */
 function out(dest, text) {
   if (dest === undefined || dest === NIL || dest === T || dest === intern('standard-output')) emit(text);
-  else if (isFunction(dest)) for (const c of chars(text)) funcall(dest, [/** @type {number} */ (c.codePointAt(0))]);
+  else if (dest instanceof Sym || isFunction(dest)) for (const c of chars(text)) funcall(dest, [/** @type {number} */ (c.codePointAt(0))]);
   else emit(text);
 }
 defun('message', 1, -1, ([f, ...rest]) => {
@@ -1056,12 +1156,18 @@ function concatPiece(x) {
 }
 defun('concat', 0, -1, (a) => a.map(concatPiece).join(''));
 defun('string', 0, -1, (a) => String.fromCodePoint(...a.map((c) => Number(int(c, 'characterp')))));
-defun('make-string', 2, 3, ([n, c]) => String.fromCodePoint(Number(int(c))).repeat(Number(int(n))));
-defun('char-to-string', 1, 1, ([c]) => String.fromCodePoint(Number(int(c, 'characterp'))));
+defun('make-string', 2, 3, ([n, c]) => {
+  const k = count(n);
+  if (typeof c !== 'number' || c < 0 || c > 0x10ffff) throw wrongType('characterp', c);
+  return String.fromCodePoint(c).repeat(k);
+});
+defun('char-to-string', 1, 1, ([c]) => {
+  if (typeof c !== 'number' || c < 0 || c > 0x3fffff) throw wrongType('characterp', c);
+  return c > 0x10ffff ? '\ufffd' : String.fromCodePoint(c);
+});
 defun('string-to-char', 1, 1, ([s]) => (str(s) === '' ? 0 : /** @type {number} */ (str(s).codePointAt(0))));
 defun('string-to-list', 1, 1, ([s]) => list(seqToArray(str(s))));
 defun('string-to-vector', 1, 1, ([s]) => seqToArray(str(s)));
-defun('symbol-to-string', 1, 1, ([s]) => sym(s).name);
 
 /** Resolves FROM/TO of `substring`-like functions over `n` characters. @param {LObj} obj @param {LObj | undefined} from @param {LObj | undefined} to @param {number} n @returns {[number, number]} */
 function range(obj, from, to, n) {
@@ -1077,7 +1183,8 @@ defun('substring', 1, 3, ([s, from, to]) => {
     const [a, b] = range(s, from, to, s.length);
     return s.slice(a, b);
   }
-  const c = chars(str(s));
+  if (typeof s !== 'string') throw wrongType('arrayp', s);
+  const c = chars(s);
   const [a, b] = range(s, from, to, c.length);
   return c.slice(a, b).join('');
 });
@@ -1108,9 +1215,16 @@ defun('string-replace', 3, 3, ([from, to, s]) => {
   if (str(from) === '') throw signal('wrong-length-argument', [0]);
   return str(s).split(str(from)).join(str(to));
 });
-defun('string-join', 1, 2, ([l, sep]) => toArray(l).map(str).join(sep === undefined || sep === NIL ? '' : str(sep)));
+/** One element of `string-join`, as `concat` takes it: a string, nil, or a list or vector of characters. @param {LObj} x @returns {string} */
+function joinPart(x) {
+  if (typeof x === 'string') return x;
+  if (x === NIL) return '';
+  if (x instanceof Cons || Array.isArray(x)) return (Array.isArray(x) ? x : toArray(x)).map((c) => (typeof c === 'number' && c >= 0 ? String.fromCodePoint(c) : (() => { throw wrongType('characterp', c); })())).join('');
+  throw wrongType('sequencep', x);
+}
+defun('string-join', 1, 2, ([l, sep]) => (Array.isArray(l) ? l : toArray(l)).map(joinPart).join(sep === undefined || sep === NIL ? '' : str(sep)));
 defun('string-reverse', 1, 1, ([s]) => chars(str(s)).reverse().join(''));
-defun('string-width', 1, 3, ([s]) => chars(str(s)).length);
+defun('string-width', 1, 3, ([s]) => chars(str(s)).reduce((n, c) => n + charWidth(/** @type {number} */ (c.codePointAt(0))), 0));
 defun('string-pad', 2, 4, ([s, n, pad, start]) => {
   const p = pad === undefined || pad === NIL ? ' ' : String.fromCodePoint(Number(pad));
   const missing = Math.max(0, Number(n) - chars(str(s)).length);
@@ -1124,12 +1238,20 @@ defun('number-to-string', 1, 1, ([x]) => {
 });
 defun('string-to-number', 1, 2, ([s, base]) => {
   const text = str(s).replace(/^[ \t]+/, '');
-  const b = base === undefined || base === NIL ? 10 : Number(base);
+  const b = base === undefined || base === NIL ? 10 : Number(int(base));
+  if (b < 2 || b > 16) throw signal('args-out-of-range', [base ?? NIL]);
   if (b !== 10) {
     const m = new RegExp(`^[-+]?[${'0123456789abcdefghijklmnopqrstuvwxyz'.slice(0, b)}]+`, 'i').exec(text);
     if (!m) return 0;
     const n = parseInt(m[0], b);
     return Number.isSafeInteger(n) ? n : normInt(BigInt(n));
+  }
+  const special = /^([-+]?)\d+\.\d+e\+(INF|NaN)/.exec(text);
+  if (special) {
+    if (special[2] === 'INF') return flt(special[1] === '-' ? -Infinity : Infinity);
+    const nan = flt(NaN);
+    nan.pos = special[1] !== '-';
+    return nan;
   }
   const m = /^[-+]?(\d+\.?\d*(e[-+]?\d+)?|\.\d+(e[-+]?\d+)?)/i.exec(text);
   if (!m) return 0;
@@ -1161,14 +1283,16 @@ function search(re, s, start, setData) {
     const idx = /** @type {{ indices?: number[][] }} */ (m).indices;
     void idx;
     // Locate groups by re-running with the `d` flag when the pattern has any
-    const groups = translate(re).groups;
+    const { groups, nums, size } = translate(re);
     if (groups) {
       const rd = new RegExp(rx.source, rx.flags.replace('g', '') + 'dy');
       rd.lastIndex = m.index;
       const dm = /** @type {RegExpExecArray & { indices?: ([number, number] | undefined)[] }} */ (rd.exec(s));
+      while (md.length < (size + 1) * 2) md.push(null);
       for (let g = 1; g <= groups; g++) {
         const ind = dm?.indices?.[g];
-        md.push(ind ? ind[0] : null, ind ? ind[1] : null);
+        md[nums[g - 1] * 2] = ind ? ind[0] : null;
+        md[nums[g - 1] * 2 + 1] = ind ? ind[1] : null;
       }
     }
     state.matchData = md;
@@ -1208,16 +1332,13 @@ defun('match-string', 1, 2, ([n, s]) => {
 });
 defAlias('match-string-no-properties', 'match-string');
 defun('regexp-quote', 1, 1, ([s]) => regexpQuote(str(s)));
-defun('regexp-opt', 1, 2, ([l, paren]) => {
-  const words = toArray(l).map((w) => regexpQuote(str(w))).sort((a, b) => b.length - a.length);
-  const body = words.join('\\|');
-  return paren === intern('words') ? `\\<\\(${body}\\)\\>` : paren === intern('symbols') ? `\\_<\\(${body}\\)\\_>` : paren === NIL || paren === undefined ? `\\(?:${body}\\)` : `\\(${body}\\)`;
-});
 
 /** Expands `\&`, `\N` and `\\` of a replacement. @param {string} rep @param {string} source @param {(number | null)[]} md @param {string} whole */
 function expandReplacement(rep, source, md, whole) {
   void whole;
-  return rep.replace(/\\(.)/g, (_, c) => {
+  if (/(^|[^\\])(\\\\)*\\$/.test(rep)) throw signal('error', ['Invalid use of ‘\\’ in replacement text']);
+  return rep.replace(/\\(.)/gs, (_, c) => {
+    if (c === '?') return '\\?';
     if (c === '&') return source.slice(md[0] ?? 0, md[1] ?? 0);
     if (/\d/.test(c)) {
       const a = md[Number(c) * 2];
@@ -1225,7 +1346,7 @@ function expandReplacement(rep, source, md, whole) {
       return a === undefined || a === null || b === undefined || b === null ? '' : source.slice(a, b);
     }
     if (c === '\\') return '\\';
-    throw signal('error', ['Invalid use of `\\\' in replacement text']);
+    throw signal('error', ['Invalid use of ‘\\’ in replacement text']);
   });
 }
 const WORD = /[\p{L}\p{N}]/u;
@@ -1262,7 +1383,7 @@ function replaceMatchIn(rep, fixedcase, literal, s, sub) {
   const b = md?.[sub * 2 + 1];
   if (!md || a === undefined || a === null || b === undefined || b === null) throw signal('error', [`replace-match subexpression does not exist`, sub]);
   let text = literal ? rep : expandReplacement(rep, s, md, s);
-  if (!fixedcase && foldCase()) text = adaptCase(s.slice(a, b), text);
+  if (!fixedcase) text = adaptCase(s.slice(a, b), text);
   return s.slice(0, a) + text + s.slice(b);
 }
 defun('replace-match', 1, 5, ([rep, fixed, literal, s, sub]) => {
@@ -1277,6 +1398,7 @@ defun('replace-regexp-in-string', 3, 7, ([re, rep, s, fixed, literal, sub, start
   const subexp = sub === undefined || sub === NIL ? 0 : Number(sub);
   let begin = start === undefined || start === NIL ? 0 : Number(start);
   const l = text.length;
+  if (begin > l || begin < 0) throw signal('args-out-of-range', [s, start ?? NIL, l]);
   const saved = state.matchData;
   const savedString = state.matchString;
   try {
@@ -1429,7 +1551,7 @@ export function format(fmt, args) {
     switch (conv) {
       case 's':
       case 'S': {
-        body = conv === 's' ? (typeof arg === 'string' ? arg : print(arg, false)) : print(arg, true);
+        body = conv === 's' ? (typeof arg === 'string' ? arg : arg instanceof Sym ? arg.name : print(arg, false)) : print(arg, true);
         if (prec >= 0) body = chars(body).slice(0, prec).join('');
         break;
       }
@@ -1470,7 +1592,7 @@ export function format(fmt, args) {
         const ax = Math.abs(x);
         if (!Number.isFinite(x)) {
           body = Number.isNaN(x) ? 'nan' : 'inf';
-          if (Number.isNaN(x)) sign = '-';
+          if (Number.isNaN(x)) sign = /** @type {Flt} */ (arg).pos ? (plus ? '+' : space ? ' ' : '') : '-';
           break;
         }
         const p = prec >= 0 ? prec : 6;

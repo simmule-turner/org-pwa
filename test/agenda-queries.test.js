@@ -71,7 +71,7 @@ test('saved commands: read, add and replace by key', () => {
   assert.deepEqual(parseCustomCommands(two).map((c) => [c.key, c.type, c.sortingStrategy]), [['w', 'tags', null], ['b', 'search', '((search alpha-up))']]);
   const replaced = withCustomCommand(two, { key: 'w', description: 'Urgent', type: 'tags-todo', query: 'urgent', sortingStrategy: null });
   assert.deepEqual(parseCustomCommands(replaced).map((c) => [c.key, c.type, c.query]), [['w', 'tags-todo', 'urgent'], ['b', 'search', '+budget "Q4 plan"']]);
-  assert.equal(parseCustomCommands('(("z" "Stuck" stuck "") ("a" "Agenda" agenda ""))').map((c) => c.key).join(), 'a');
+  assert.equal(parseCustomCommands('(("z" "Stuck" stuck "") ("a" "Agenda" agenda "") ("n" "None" todo-tree "x"))').map((c) => c.key).join(), 'z,a'); // a type that is not read is dropped
   assert.deepEqual(parseCustomCommands(''), []);
 });
 

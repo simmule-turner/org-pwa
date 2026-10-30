@@ -403,18 +403,23 @@ function expandCaptureText(preText, template, postText, context = {}) {
  * org-xx-extra-menu's own OLP navigation entries, which should never
  * silently create headings just from browsing a quick-access menu --
  * see runExtraMenuEntry in app.js.
- * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean }} [options]
+ * `unique` (default false): when true, two sibling headings of one title are an error ("Heading not unique on level N: TITLE"), as in
+ * Emacs's file+olp; false takes the first.
+ * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean }} [options]
  */
-function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
   /** @type {any} */
   let found = null;
 
+  let depth = 0;
   for (const rawSegment of olpPath) {
+    depth++;
     const wrapped = /^%<(.*)>$/.exec(rawSegment);
     const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
+    if (unique && siblings.filter((h) => h.title === title).length > 1) throw new Error(`Heading not unique on level ${depth}: ${title}`);
     found = siblings.find((h) => h.title === title);
     if (!found) {
       if (!allowCreate) return null;
@@ -827,7 +832,7 @@ function placeTableLine(target, text, prepend, pre, post, opts) {
 function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '', opts = {}) {
   const [before, after] = emptyLinesOf(opts);
   if (type === 'item' || type === 'checkitem') {
-    const placed = placeItem(target, type === 'item' ? '- ' : '- [ ] ', expandedPreText + expandedText + expandedPostText, prepend, before, after);
+    const placed = placeItem(target, '- ', expandedPreText + expandedText + expandedPostText, prepend, before, after);
     for (const node of placed.host.body || []) {
       if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
     }

@@ -1010,8 +1010,9 @@ test('THE EXACT REQUEST: string-example -- string() wraps a cell reference so it
       ['Tech', ''],
     ])
   );
-  assert.equal(result[0].cells[1], '5000');
-  assert.equal(result[1].cells[1], '10000');
+  // Calc has no string(): the call stays and the comparison with a string (a vector of character codes) stays an equation
+  assert.equal(result[0].cells[1], 'string(Sales) = [83, 97, 108, 101, 115] ? 5000 : 10000');
+  assert.equal(result[1].cells[1], 'string(Tech) = [83, 97, 108, 101, 115] ? 5000 : 10000');
 });
 
 test('THE FEATURE: all six comparison operators, both == and = for equality', () => {
@@ -1032,7 +1033,8 @@ test('THE FEATURE: && and || both as operators and as and()/or() function calls,
   assert.equal(recalculateTable(mkTable('$1 = if(and(1, 1), "y", "n")', [['']]))[0].cells[0], codes('y'));
   assert.equal(recalculateTable(mkTable('$1 = if(or(0, 0), "y", "n")', [['']]))[0].cells[0], codes('n'));
   assert.equal(recalculateTable(mkTable('$1 = if(!0, "y", "n")', [['']]))[0].cells[0], codes('y'));
-  assert.equal(recalculateTable(mkTable('$1 = if(not(1), "y", "n")', [['']]))[0].cells[0], codes('n'));
+  assert.equal(recalculateTable(mkTable('$1 = if(not(1), "y", "n")', [['']]))[0].cells[0], codes('y')); // not() is Calc's bitwise not: not(1) is 4294967294, as in Emacs 29.3
+  assert.equal(recalculateTable(mkTable('$1 = if(lnot(1), "y", "n")', [['']]))[0].cells[0], codes('n'));
 });
 
 test('THE FIX: if() is lazy -- the branch NOT taken is never evaluated at all, matching real Calc\u2019s own short-circuiting behavior. Proven with a branch that would throw (not just misbehave) if it were eagerly evaluated', () => {
@@ -1062,7 +1064,7 @@ test('a string literal can be output directly, and can contain an escaped quote'
 });
 
 test('string() on a non-ref expression converts whatever value results to its own string form, not just a bare cell reference', () => {
-  assert.equal(recalculateTable(mkTable('$1 = string(5+5)', [['']]))[0].cells[0], '10');
+  assert.equal(recalculateTable(mkTable('$1 = string(5+5)', [['']]))[0].cells[0], 'string(10)'); // Calc leaves string() as written
 });
 
 test('an if() with two arguments does not stop the recalculation', () => {
@@ -1244,7 +1246,7 @@ test('F on an irrational result is a float, as in Calc', () => {
 test('and()/or()/not() and uconv() all still work correctly under F mode, rather than throwing (both once called the BigNumber-only .toNumber() on a Fraction, which has no such method)', () => {
   assert.equal(recalculateTable(mkTable('$1=and(1,0);F', [['']]))[0].cells[0], '0');
   assert.equal(recalculateTable(mkTable('$1=or(1,0);F', [['']]))[0].cells[0], '1');
-  assert.equal(recalculateTable(mkTable('$1=not(0);F', [['']]))[0].cells[0], '1');
+  assert.equal(recalculateTable(mkTable('$1=not(0);F', [['']]))[0].cells[0], '4294967295');
   const result = recalculateTable(mkTable('$2=uconv($1,"m","ft");F', [['5', '']]))[0].cells[1];
   assert.ok(/^\d+(\.\d+)?$/.test(result), `expected a number, got ${result}`);
 });

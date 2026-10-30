@@ -67,8 +67,8 @@ test('returns an empty object for a Local Variables block with no End: line (mal
   assert.deepEqual(parseLocalVariables(text), {});
 });
 
-test('is tolerant of extra whitespace around the markers and values', () => {
-  const text = ['#   Local Variables:  ', '#  org-agenda-start-on-weekday:   2  ', '#   End:  '].join('\n');
+test('is tolerant of extra whitespace around the values and the End: marker (every line carries the text before "Local Variables:", as Emacs needs)', () => {
+  const text = ['#   Local Variables:', '#   org-agenda-start-on-weekday:   2  ', '#   End:  '].join('\n');
   assert.deepEqual(parseLocalVariables(text), { 'org-agenda-start-on-weekday': '2' });
 });
 
@@ -77,7 +77,7 @@ test('is case-insensitive to the Local Variables: / End: markers themselves', ()
   assert.deepEqual(parseLocalVariables(text), { 'org-agenda-start-on-weekday': '0' });
 });
 
-test('skips a malformed line inside the block instead of throwing', () => {
+test('a malformed line makes Emacs ignore the whole block (oracle-org-settings.test.js); it never throws', () => {
   const text = [
     '# Local Variables:',
     '# org-agenda-start-on-weekday: 0',
@@ -85,10 +85,7 @@ test('skips a malformed line inside the block instead of throwing', () => {
     '# org-cycle-open-archived-trees: t',
     '# End:',
   ].join('\n');
-  assert.deepEqual(parseLocalVariables(text), {
-    'org-agenda-start-on-weekday': '0',
-    'org-cycle-open-archived-trees': 't',
-  });
+  assert.deepEqual(parseLocalVariables(text), {});
 });
 
 test('an arbitrary/future variable name is captured too, not just the two currently acted on', () => {
@@ -320,8 +317,8 @@ test('getDeadlineWarningDays allows 0 explicitly (no early warning at all) -- di
   assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '0' }), 0);
 });
 
-test('a negative value falls back to the default rather than producing a nonsensical negative window', () => {
-  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '-5' }), 14);
+test('a negative value is kept: Emacs (org-get-wdays) uses its opposite as the window (test/oracle-agenda.test.js, "setting warn -3")', () => {
+  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '-5' }), -5);
 });
 
 test('a non-numeric value falls back to the default', () => {
@@ -339,8 +336,8 @@ test('getScheduledDelayDays reads an explicit override', () => {
   assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '3' }), 3);
 });
 
-test('a negative value falls back to 0 rather than producing a nonsensical negative delay', () => {
-  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '-2' }), 0);
+test('a negative value is kept: Emacs (org-get-wdays) uses its opposite as the delay (test/oracle-agenda.test.js, "setting delay -2")', () => {
+  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '-2' }), -2);
 });
 
 test('a non-numeric value falls back to 0', () => {

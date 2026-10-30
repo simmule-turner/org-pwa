@@ -34,8 +34,15 @@ const DEFAULT_UNITS = /** @type {[string, number][]} */ ([
 
 /** @param {[string, number][]} units */
 function unitTable(units) {
-  const names = units.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((x, y) => y.length - x.length);
-  return { minutes: new Map(units), re: new RegExp(`\\s*(\\d+(?:\\.\\d*)?)\\s*(${names.join('|')})`, 'y') };
+  const names = units.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((x, y) => y.length - x.length).join('|');
+  const one = `[ \\t]*(\\d+(?:\\.\\d*)?)[ \\t]*(${names})`;
+  return {
+    minutes: new Map(units),
+    unit: new RegExp(one, 'y'),
+    // org-duration--full-re and org-duration--mixed-re: blanks mean spaces and tabs only, and the string is matched whole
+    full: new RegExp(`^(?:${one})+[ \\t]*$`),
+    mixed: new RegExp(`^((?:${one})+)[ \\t]*(\\d+(?::\\d\\d){1,2})[ \\t]*$`),
+  };
 }
 
 /** The units in force; changed by org-duration-units (applyDurationVariables). */
@@ -77,33 +84,39 @@ function applyDurationVariables(vars) {
 }
 
 const BARE_NUMBER_RE = /^\d+(?:\.\d*)?$/;
-const TRAILING_HMS_RE = /(?:^|\s)(\d+):(\d{2})(?::(\d{2}))?$/;
+const HMM_RE = /^[ \t]*(\d+)((?::\d{2}){1,2})[ \t]*$/;
 
-/** @param {string} text */
+/** The minutes of an H:MM or H:MM:SS part. @param {string} hours @param {string} rest */
+const hms = (hours, rest) => {
+  const [minutes, seconds] = rest.split(':').slice(1).map(Number);
+  return Number(hours) * 60 + minutes + (seconds || 0) / 60;
+};
+
+/**
+ * org-duration-to-minutes, branch for branch: empty is 0; H:MM(:SS); units alone; units then H:MM(:SS); a bare number. Only
+ * spaces and tabs count as blanks, and a bare number takes none. Anything else is null (an error in Emacs).
+ * @param {string} text
+ */
 function parseOrgDuration(text) {
-  const s = String(text == null ? '' : text).trim();
+  const s = String(text == null ? '' : text);
   if (s === '') return 0;
-  if (BARE_NUMBER_RE.test(s)) return Number(s);
-
-  let total = 0;
-  let rest = s;
-
-  const hms = TRAILING_HMS_RE.exec(rest);
-  if (hms) {
-    total += Number(hms[1]) * 60 + Number(hms[2]) + (hms[3] ? Number(hms[3]) / 60 : 0);
-    rest = rest.slice(0, hms.index).trim();
+  const clock = HMM_RE.exec(s);
+  if (clock) return hms(clock[1], clock[2]);
+  const { full, mixed, unit, minutes } = current.table;
+  /** @param {string} units */
+  const sum = (units) => {
+    let total = 0;
+    unit.lastIndex = 0;
+    for (let m = unit.exec(units); m; m = unit.exec(units)) total += Number(m[1]) * /** @type {number} */ (minutes.get(m[2]));
+    return total;
+  };
+  if (full.test(s)) return sum(s);
+  const both = mixed.exec(s);
+  if (both) {
+    const t = /(\d+)((?::\d\d){1,2})[ \t]*$/.exec(s);
+    return sum(both[1]) + (t ? hms(t[1], t[2]) : 0);
   }
-
-  const { re, minutes } = current.table;
-  let pos = 0;
-  while (pos < rest.length) {
-    re.lastIndex = pos;
-    const m = re.exec(rest);
-    if (!m) return null;
-    total += Number(m[1]) * /** @type {number} */ (minutes.get(m[2]));
-    pos = re.lastIndex;
-  }
-  return total;
+  return BARE_NUMBER_RE.test(s) ? Number(s) : null;
 }
 
 export { parseOrgDuration, parseDurationUnits, applyDurationVariables };

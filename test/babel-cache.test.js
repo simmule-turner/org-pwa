@@ -26,6 +26,6 @@ test('placeResults writes, keeps and drops the hash in the results line', () => 
   const withResults = [...lines, '', '#+RESULTS[abc]:', ': 1'];
   assert.equal(existingResultsHash(withResults, block), 'abc');
   assert.equal(placeResults(withResults, block, [': 2'], { hash: 'def' }).insert[0], '#+RESULTS[def]:');
-  assert.equal(placeResults(withResults, block, [': 2']).insert[0], '#+RESULTS:');
+  assert.equal(placeResults(withResults, block, [': 2']).insert[0], '#+RESULTS[abc]:'); // Emacs keeps the old hash without :cache yes
   assert.equal(existingResultsHash([...lines, '', '#+RESULTS:', ': 1'], block), null);
 });

@@ -614,6 +614,7 @@ S.viewMenuOpen = false;
 // month), matching "scrolling by the view amount".
 S.agendaViewType = 'week'; // 'day' | 'week' | 'month'
 S.agendaAnchorDate = new Date();
+S.agendaInitialSpanApplied = false;
 S.agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
 
 // Effort sorting / filtering / per-day limit for the Agenda -- session state,

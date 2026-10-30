@@ -3,6 +3,7 @@
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { summarizeDayEffort } from '../src/agenda.js';
 import { formatClockDuration } from '../src/clock.js';
+import { parseSpan, stepStartDay } from '../src/agenda-span.js';
 
 /** Moves `anchorDate` by one unit of `viewType` in `direction` (-1 or 1)
  * @param {string} viewType
@@ -10,11 +11,7 @@ import { formatClockDuration } from '../src/clock.js';
  * @param {number} direction
  *  — this is "scrolling by the view amount": a day, a week, or a month. */
 export function agendaStepAnchor(viewType, anchorDate, direction) {
-  const next = new Date(anchorDate);
-  if (viewType === 'day') next.setDate(next.getDate() + direction);
-  else if (viewType === 'week') next.setDate(next.getDate() + direction * 7);
-  else next.setMonth(next.getMonth() + direction);
-  return next;
+  return stepStartDay(parseSpan(viewType) ?? 'week', new Date(anchorDate), direction);
 }
 
 /** @param {Date} date */
@@ -123,11 +120,12 @@ export function formatAgendaRangeLabel(viewType, start, end) {
   /** @param {Date} d */
   const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   if (viewType === 'day') return fmt(start) + ` (W${isoWeekNumber(start)})`;
-  if (viewType === 'month') {
+  if (viewType === 'month' && start.getDate() === 1) {
     const w1 = isoWeekNumber(start);
     const w2 = isoWeekNumber(end);
     const weekRange = w1 === w2 ? `W${w1}` : `W${w1}-W${w2}`;
     return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + ` (${weekRange})`;
   }
-  return fmt(start) + ' \u2013 ' + fmt(end) + ` (W${isoWeekNumber(start)})`;
+  const [w1, w2] = [isoWeekNumber(start), isoWeekNumber(end)];
+  return fmt(start) + ' \u2013 ' + fmt(end) + (w1 === w2 ? ` (W${w1})` : ` (W${w1}-W${w2})`);
 }

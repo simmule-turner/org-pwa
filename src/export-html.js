@@ -9,7 +9,7 @@
  *   counters: { table: number, listing: number, figure: number }, math: boolean,
  *   tokens: string[], tokenSources: string[], doneKeywords: string[], todoKeywords: string[] | null,
  *   radioRe: RegExp | null, noRadio: boolean, namedElements: Map<string, string>, currentNode: OutlineNode | null,
- *   parsed: Map<Heading, import('./org-elements.js').OrgElement[]>, fnDefsCollect?: any, outline: OutlineNode[], captioned: { kind: string, n: number, id: string, html: string }[],
+ *   parsed: Map<Heading, import('./org-elements.js').OrgElement[]>, fnDefsCollect?: any, outline: OutlineNode[], captioned: { kind: string, n: number, id: string, html: string }[], ordinals: Map<string, number>,
  *   headingNodes: Map<Heading, OutlineNode>, targetHeadings: Map<string, OutlineNode>, cite: any,
  *   nested: Map<string[], import('./org-elements.js').OrgElement[]>, codeCounter: { loc: number }, codeBlocks: { lines: string[], switches: import("./code-lines.js").CodeSwitches, refs: Map<number, string>, start: number | null }[], usesCoderef: boolean,
  * }} ExportState
@@ -29,12 +29,15 @@
  * and `#+SETUPFILE:` need files this page cannot read, and element ids are readable slugs instead of hashes.
  */
 
+import { withBufferKeywords } from './export-keywords.js';
+import { expandMacrosForExport } from './export-macros.js';
 import { quoteStatuses, smartQuotes } from './smart-quotes.js';
 import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
 import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
 import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
 import { parseInline, extractLatexFragments } from './inline-markup.js';
 import { parseElements, parseAttributes } from './org-elements.js';
+import { translate } from './export-dictionary.js';
 import { leadingOverlay } from './export-beamer.js';
 import { evalMacro, isEvalTemplate } from './macro-eval.js';
 import { tableModel } from './table-model.js';
@@ -107,6 +110,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     arch: 'headline',
     comments: false,
     drawers: { all: false, exclude: ['LOGBOOK'], include: null },
+    properties: /** @type {boolean | string[]} */ (false), // prop:t shows every property, a list only those
   };
   const tokens = [];
   for (const kw of doc.keywords || []) {
@@ -151,7 +155,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'f': o.footnotes = !isNil(v); break;
       case '|': o.tables = !isNil(v); break;
       case 'stat': o.stat = !isNil(v); break;
-      case 'tasks': o.tasks = isNil(v) ? false : v === 'todo' || v === 'done' ? v : true; break;
+      case 'tasks': o.tasks = isNil(v) ? false : v === 'todo' || v === 'done' ? v : v.startsWith('(') ? [...v.matchAll(/"([^"]*)"|([^\s()"]+)/g)].map((m) => m[1] ?? m[2]) : true; break; // a list keeps the headings of those keywords
       case 'p': o.planning = v === 't'; break;
       case 'author': o.author = !isNil(v); break;
       case 'date': o.date = !isNil(v); break;
@@ -163,6 +167,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case '<': o.stamps = !isNil(v); break;
       case 'arch': o.arch = isNil(v) ? false : v === 't' ? true : 'headline'; break;
       case 'c': o.comments = v === 't'; break;
+      case 'prop': o.properties = isNil(v) ? false : v.startsWith('(') ? [...v.matchAll(/"([^"]*)"|([^\s()"]+)/g)].map((m) => (m[1] ?? m[2]).toUpperCase()) : true; break;
       case 'd':
         if (isNil(v)) o.drawers = { all: false, exclude: null, include: [] };
         else if (v === 't') o.drawers = { all: true, exclude: null, include: null };
@@ -226,6 +231,22 @@ function htmlAttributes(aff, skip = []) {
   return out;
 }
 
+/**
+ * The `class` attribute and the other attributes of an element whose own class (`base`) and the one of `#+ATTR_HTML:` are joined.
+ * @param {import('./org-elements.js').Affiliated | null | undefined} aff @param {string} base @param {boolean} [userFirst]
+ * @returns {{ cls: string, rest: string }}
+ */
+function classAndAttributes(aff, base, userFirst = false) {
+  const { class: userClass, ...others } = parseAttributes(aff && aff.attr.html);
+  const classes = (userFirst ? [userClass, base] : [base, userClass]).filter(Boolean).join(' ');
+  let rest = '';
+  for (const [k, v] of Object.entries(others)) rest += v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`;
+  return { cls: classes ? ` class="${escapeAttr(classes)}"` : '', rest };
+}
+
+/** A word the export writes for itself, in the document's language. @param {ExportState} state @param {string} key */
+const tr = (state, key) => translate(key, state.options.language, 'html');
+
 // ---- state --------------------------------------------------------------------
 
 /**
@@ -267,6 +288,7 @@ function createState(doc, scope, defaults = {}) {
     currentNode: null,
     outline: [],
     captioned: [],
+    ordinals: new Map(),
     headingNodes: new Map(), // heading -> its outline node (number, level), for a link with no description
     targetHeadings: new Map(), // target key -> the outline node it is under
   };
@@ -296,18 +318,19 @@ function addToken(state, html, source = '') {
 
 const TIMESTAMP_RE = /<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)>(?:--<(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)>)?|\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?)?(?: [+.]?[+-]\d+[hdwmy])*)\](?:--\[(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?(?: \d{1,2}:\d{2})?(?: [+.]?[+-]\d+[hdwmy])*)\])?/g;
 
+const TIMESTAMP_WITH_BLANKS_RE = new RegExp('(?:' + TIMESTAMP_RE.source + '|<%%\\([^>\\n]*\\)>)([ \\t]*)', 'g');
+
 /**
  * @param {ExportState} state
- * @param {RegExpExecArray} match
+ * @param {string[]} match
  */
-function timestampHtml(state, match) {
+function timestampHtml(state, match, blanks = '') {
   const [whole] = match;
-  if (!state.options.stamps) return '';
   // a time range within one day, <2026-03-04 Wed 10:00-11:00>, is written as two timestamps
   const range = /^([<[])(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?) (\d{1,2}:\d{2})-(\d{1,2}:\d{2})((?: [^>\]]+)?)([>\]])$/.exec(whole);
   const spelled = range ? `${range[1]}${range[2]} ${range[3]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}--${range[1]}${range[2]} ${range[4]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}` : whole;
   const text = escapeHtml(spelled).replace(/--/g, '&#x2013;');
-  return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}</span></span>`, whole);
+  return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}${blanks}</span></span>`, whole);
 }
 
 /**
@@ -397,12 +420,16 @@ function targetsInLines(lines) {
 function renderInline(state, rawText) {
   let text = expandMacros(state, rawText);
   // forced line breaks: a line ending in two backslashes
-  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => addToken(state, `<br${closing}`, '\\\\') + (m.endsWith('\n') ? '\n' : ''));
+  text = text.replace(/\\\\[ \t]*(?:\n|$)/g, (m) => {
+    const nl = m.endsWith('\n');
+    return state.options.brk ? addToken(state, `<br${closing}` + (nl ? '\n' : ''), '\\\\') : addToken(state, `<br${closing}`, '\\\\') + (nl ? '\n' : ''); // `\n:t` adds no second break after this one
+  });
   // export snippets
   text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
   // inline source code
   text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
   // inline calls to Babel blocks print nothing when nothing is run
+  text = text.replace(/^[ \t]*call_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, (whole) => addToken(state, '', whole)); // at the start of a paragraph, the blanks after it go too
   text = text.replace(/\bcall_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, (whole) => addToken(state, '', whole));
   // radio targets and targets (not inside =verbatim= or ~code~, where they are just characters)
   text = outsideVerbatim(text, (/** @type {string} */ piece) =>
@@ -411,7 +438,11 @@ function renderInline(state, rawText) {
       .replace(/<<([^<>\n]+)>>/g, (whole, /** @type {string} */ name) => addToken(state, `<a id="${targetId(state, name)}"></a>`, whole))
   );
   // timestamps
-  text = text.replace(TIMESTAMP_RE, (/** @type {any} */ ...m) => timestampHtml(state, m));
+  // the blanks after a timestamp belong to it: Org writes them inside the timestamp's span and again after it
+  text = text.replace(TIMESTAMP_WITH_BLANKS_RE, (/** @type {any} */ ...m) => {
+    const blanks = m[m.length - 3];
+    return timestampHtml(state, [m[0].slice(0, m[0].length - blanks.length)], blanks) + blanks;
+  });
 
   const { lines, fragments } = extractLatexFragments(text.split('\n'));
   const nodes = parseInline(lines.join('\n'), { latexFragments: fragments, subSuperscriptMode: state.options.sup });
@@ -455,7 +486,7 @@ function renderText(state, value) {
   const plain = (segment) => {
     let h = escapeHtml(segment);
     if (options.special) {
-      h = h.replace(/\\-/g, '&shy;').replace(/(^|[^-])---(?=[^-]|$)/g, '$1&#x2014;').replace(/(^|[^-])--(?=[^-]|$)/g, '$1&#x2013;').replace(/\.\.\./g, '&#x2026;');
+      h = h.replace(/\\-/g, '&#x00ad;').replace(/---(?!-)/g, '&#x2014;').replace(/(^|[^-])--(?=[^-]|$)/g, '$1&#x2013;').replace(/\.\.\./g, '&#x2026;');
     }
     h = h.replace(COOKIE_RE, options.stat ? '<code>[$1]</code>' : '');
     if (state.radioRe && !state.noRadio) h = h.replace(state.radioRe, (m) => `<a href="#${state.targets.get(m.trim().replace(/\s+/g, ' ').toLowerCase())}">${m}</a>`);
@@ -489,7 +520,7 @@ function isImageTarget(target) {
 
 /** @param {string} path */
 function fileHref(path) {
-  let p = path.replace(/^file:/i, '');
+  let p = path.replace(/^file(?:\+(?:sys|emacs))?:/i, '');
   let search = '';
   const at = p.indexOf('::');
   if (at >= 0) {
@@ -500,7 +531,7 @@ function fileHref(path) {
   if (p.startsWith('//')) p = p.slice(2);
   else if (p.startsWith('/')) p = 'file://' + p;
   let hash = '';
-  if (search) hash = search.startsWith('#') ? search : search.startsWith('*') ? '#' + slugify(search.slice(1)) : '';
+  if (search) hash = search.startsWith('#') ? search : search.startsWith('*') ? '#' + slugify(search.slice(1)) : search.startsWith('/') ? '#MissingReference' : '';
   return p + hash;
 }
 
@@ -522,15 +553,18 @@ function imageSrc(target) {
  */
 function linkHref(state, target) {
   const t = target.trim();
-  if (/^(https?|ftp|mailto|news|irc|doi):/i.test(t)) return (/^doi:/i.test(t) ? 'https://doi.org/' + t.replace(/^doi:/i, '') : t).replace(/ /g, '%20'); // Org encodes spaces in a link
+  if (/^(https?|ftp|mailto|news|irc|doi):/i.test(t)) return (/^doi:/i.test(t) ? 'https://doi.org/' + t.replace(/^doi:/i, '') : t).replace(/ /g, '%20').replace(/\^/g, '%5E').replace(/\[/g, '%5B').replace(/\]/g, '%5D'); // Org encodes spaces in a link
   if (/^id:/i.test(t)) {
     const id = t.slice(3);
     const h = findByProperty(state.doc.children || [], 'ID', id);
     return h && state.headingIds.has(h) ? '#' + state.headingIds.get(h) : '#' + id;
   }
-  if (/^file:/i.test(t) || /^\.{0,2}\//.test(t) || /^~\//.test(t)) return fileHref(t);
+  if (/^file(?:\+(?:sys|emacs))?:/i.test(t) || /^\.{0,2}\//.test(t) || /^~\//.test(t)) return fileHref(t);
+  const info = /^info:([^#:]+)(?:#(.*))?$/i.exec(t);
+  if (info) return `https://www.gnu.org/software/emacs/manual/html_mono/${info[1]}.html${info[2] ? '#' + info[2].replace(/ /g, '-') : ''}`;
   const key = t.replace(/^#/, '').trim().replace(/\s+/g, ' ').toLowerCase();
   if (!t.startsWith('*') && !t.startsWith('#') && state.targets.has(key)) return '#' + state.targets.get(key);
+  if (!t.startsWith('*') && !t.startsWith('#') && state.namedElements.has(t)) return '#' + state.namedElements.get(t); // a named element comes before a heading
   const res = resolveLinkTarget(state.doc, t);
   if (res.type === 'heading' && state.headingIds.has(res.heading)) return '#' + state.headingIds.get(res.heading);
   if (res.type === 'external') return res.url;
@@ -641,9 +675,9 @@ function renderNode(state, node) {
     case 'verbatim':
       return `<code>${literal(state, node.value)}</code>`;
     case 'subscript':
-      return `<sub>${literal(state, node.value)}</sub>`;
+      return `<sub>${/[_^]/.test(node.value) ? renderInline(state, node.value) : literal(state, node.value)}</sub>`; // a script inside a script
     case 'superscript':
-      return `<sup>${literal(state, node.value)}</sup>`;
+      return `<sup>${/[_^]/.test(node.value) ? renderInline(state, node.value) : literal(state, node.value)}</sup>`;
     case 'image':
       return imageHtml(node.target);
     case 'link':
@@ -655,7 +689,7 @@ function renderNode(state, node) {
     case 'footnote-def': {
       if (!state.options.footnotes) return '';
       const label = node.label === null || node.label === '' ? 'anon-' + (state.fnOrder.length + 1) : node.label;
-      return footnoteRef(state, label, `<p class="footpara">${renderNodes(state, node.children)}</p>`);
+      return footnoteRef(state, label, `<p class="footpara">${renderNodes(state, node.children).replace(/^\s+/, '')}</p>`);
     }
     case 'citation': {
       const segments = state.cite ? state.cite.formatCitation(node) : null;
@@ -689,7 +723,8 @@ function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
   const plain = target.replace(/^(file|attachment):/i, '').replace(/::.*$/, '');
   const name = plain.replace(/^.*\//, '');
-  return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${attrs}${closing}`;
+  const svg = /\.svg$/i.test(plain) && !/\sclass=/.test(attrs) ? ' class="org-svg"' : '';
+  return `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt ?? name)}"${svg}${attrs}${closing}`;
 }
 
 /**
@@ -713,7 +748,7 @@ function internalLinkLabel(state, rawTarget) {
   const id = !t.startsWith('*') && !t.startsWith('#') ? state.namedElements.get(t) : undefined; // a named element comes before a heading
   if (id) {
     const cap = state.captioned.find((c) => c.id === id);
-    return cap ? String(cap.n) : 'No description for this link';
+    return cap ? String(cap.n) : state.ordinals.has(id) ? String(state.ordinals.get(id)) : 'No description for this link';
   }
   const res = resolveLinkTarget(state.doc, t);
   if (res.type === 'heading') {
@@ -744,12 +779,13 @@ function linkHtml(state, node) {
     const broken = brokenLinkPath(state.doc, target, (n) => state.namedElements.has(n));
     if (broken !== null) return escapeHtml(brokenLinkText(state.options.broken, broken));
   }
+  if (/^bbdb:/i.test(target) && desc) return `<i>${renderInline(state, desc)}</i>`; // Org writes a BBDB link as its description, in italics
   if (desc === null || desc === undefined || desc === '') {
     if (isImageTarget(target)) return imageHtml(target);
     const internal = internalLinkLabel(state, target);
     if (internal !== null) return `<a href="${escapeAttr(linkHref(state, target))}">${internal}</a>`;
-    const label = escapeHtml(/^(file:)/i.test(target) ? target.replace(/^file:/i, '') : target);
-    const display = /^(https?|ftp):/i.test(target) ? escapeHtml(target.replace(/ /g, '%20')) : /^(mailto):/i.test(target) || /^file:/i.test(target) ? label : escapeHtml(target); // a link without text shows its encoded address
+    const isFile = /^file(?:\+(?:sys|emacs))?:/i.test(target) || /^(?:\.{0,2}\/|\/)/.test(target);
+    const display = /^(https?|ftp):/i.test(target) ? escapeHtml(target.replace(/ /g, '%20')) : /^(mailto):/i.test(target) ? escapeHtml(target) : isFile ? escapeHtml(linkHref(state, target).replace(/#.*$/, '')) : /^doi:/i.test(target) ? escapeHtml(linkHref(state, target)) : escapeHtml(target); // a link without text shows its encoded address
     return `<a href="${escapeAttr(linkHref(state, target))}">${display}</a>`;
   }
   // a description that is itself an image link shows the picture inside the link
@@ -794,10 +830,11 @@ function paragraphHtml(state, el, ctx) {
   const text = el.lines.join('\n');
   const image = standaloneImage(el);
   if (image && ctx.parent !== 'item-first') return figureHtml(state, el, image);
+  if (!state.options.stamps && !text.replace(TIMESTAMP_WITH_BLANKS_RE, '').trim()) return ''; // `<:nil` leaves out a paragraph made of timestamps only
   const body = renderInline(state, state.options.brk ? text + '\n' : text);
   if (ctx.bare) return body;
-  const cls = ctx.footnote ? ' class="footpara"' : '';
-  return `<p${cls}>\n${body}\n</p>`;
+  const { cls, rest } = classAndAttributes(el.aff, ctx.footnote ? 'footpara' : '');
+  return `<p${cls}${rest}>\n${body}\n</p>`;
 }
 
 /** @param {OrgEl<'paragraph'>} el */
@@ -806,6 +843,7 @@ function standaloneImage(el) {
   const m = /^\[\[([^\]]+)\](?:\[([^\]]*)\])?\]$/.exec(text);
   if (!m) return null;
   if (m[2] && !isImageTarget(m[2])) return null;
+  if (m[2] && !isImageTarget(m[1])) return { target: m[2], link: m[1], thumb: m[2] }; // an image as the description of any link
   return isImageTarget(m[1]) ? { target: m[1], link: m[2] ? m[1] : null, thumb: m[2] || null } : null;
 }
 
@@ -820,12 +858,12 @@ function figureHtml(state, el, image) {
   const alt = (attrs).alt !== undefined ? /** @type {any} */ (attrs).alt : undefined;
   const rest = htmlAttributes(aff, ['alt']);
   let img = imageHtml(image.thumb || image.target, alt, rest);
-  if (image.link) img = `<a href="${escapeAttr(imageSrc(image.link))}">${img}</a>`;
+  if (image.link) img = `<a href="${escapeAttr(activeImages.has(image.link) ? imageSrc(image.link) : linkHref(state, image.link))}">${img}</a>`;
   const caption = captionHtml(state, aff);
   const id = aff && aff.name ? aff.name : uniqueId(state, 'figure');
   state.namedElements.set(aff && aff.name ? aff.name : id, id);
   let out = `<div id="${escapeAttr(id)}" class="figure">\n<p>${img}\n</p>`;
-  if (caption !== null) out += `\n<p><span class="figure-number">Figure ${++state.counters.figure}: </span>${caption}</p>`;
+  if (caption !== null) out += `\n<p><span class="figure-number">${tr(state, 'Figure')} ${++state.counters.figure}: </span>${caption}</p>`;
   return out + '\n</div>';
 }
 
@@ -837,9 +875,9 @@ function figureHtml(state, el, image) {
  */
 function listHtml(state, el, ctx) {
   const tag = el.listType === 'ordered' ? 'ol' : el.listType === 'descriptive' ? 'dl' : 'ul';
-  const attrs = htmlAttributes(el.aff);
+  const { cls, rest } = classAndAttributes(el.aff, `org-${tag}`);
   const rows = el.items.map((item) => itemHtml(state, item, el.listType));
-  return `<${tag} class="org-${tag}"${attrs}>\n${rows.join('\n')}\n</${tag}>`;
+  return `<${tag}${cls}${rest}>\n${rows.join('\n')}\n</${tag}>`;
 }
 
 /**
@@ -859,14 +897,14 @@ function itemHtml(state, item, listType) {
     const tag = item.tag === null ? '(no term)' : renderInline(state, item.tag);
     const box = item.checkbox ? `${checkboxHtml(state, item.checkbox)} ` : '';
     const cls = item.checkbox ? ` class="${item.checkbox}"` : '';
-    return `<dt${cls}>${box}${tag}</dt><dd>${inner.replace(/\n$/, '')}</dd>`;
+    return `<dt${cls}>${box}${tag}</dt><dd>${inner.trimEnd()}</dd>`;
   }
   const cls = item.checkbox ? ` class="${item.checkbox}"` : '';
   // a tag in a list that is not descriptive (its first item has none) becomes the value or the id, ahead of the counter
   const tag = item.tag === null || item.tag === undefined ? null : renderInline(state, item.tag);
   const attr = listType === 'ordered' ? 'value' : 'id';
   const value = tag !== null ? ` ${attr}="${tag}"` : item.counter !== null ? ` value="${item.counter}"` : '';
-  return `<li${cls}${value}>${inner.replace(/\n$/, '')}</li>`;
+  return `<li${cls}${value}>${inner.trimEnd()}</li>`; // the contents of an item lose their trailing blanks
 }
 
 
@@ -887,18 +925,18 @@ function tableHtml(state, el) {
   const aff = el.aff;
   const model = tableModel(el.rows);
   const { rows: all, specials, offset, hasHeader, groupOf, alignment, leftBorder, rightBorder, firstIndex } = model;
-  if (!all.some((r) => !r.rule)) return '';
-  const firstRow = firstIndex >= 0 ? all[firstIndex] : all.find((r) => !r.rule);
-  if (!firstRow) return '';
   const attrs = parseAttributes(aff && aff.attr.html);
   // org-html-table-default-attributes, which a page of HTML 5 does not carry
   const base = html5Page ? {} : { border: '2', cellspacing: '0', cellpadding: '6', rules: 'groups', frame: 'hsides' };
   let tableAttrs = '';
-  for (const [k, v] of Object.entries({ ...base, ...attrs })) tableAttrs += v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`;
+  const { id: userId, ...otherAttrs } = /** @type {Record<string, string>} */ ({ ...base, ...attrs }); // a table's id is the one Org makes, which stands first
+  for (const [k, v] of Object.entries(otherAttrs)) tableAttrs += v === '' ? ` ${k}` : ` ${k}="${escapeAttr(v)}"`;
+  const idAttr = el.__id && el.aff && el.aff.name ? ` id="${escapeAttr(el.__id)}"` : userId !== undefined ? ` id="${escapeAttr(el.__id || (el.__id = uniqueId(state, 'org-table')))}"` : ''; // only a named table, or one with attributes of its own, has an id
+  const firstRow = firstIndex >= 0 ? all[firstIndex] : all.find((r) => !r.rule);
+  if (!firstRow || !all.some((r, i) => !r.rule && !specials[i])) return `<table${idAttr}${tableAttrs}>\n</table>`;
   const caption = captionHtml(state, aff);
-  const idAttr = el.__id ? ` id="${escapeAttr(el.__id)}"` : '';
   let out = `<table${idAttr}${tableAttrs}>\n`;
-  if (caption !== null) out += `<caption class="t-above"><span class="table-number">Table ${++state.counters.table}:</span> ${caption}</caption>\n`;
+  if (caption !== null) out += `<caption class="t-above"><span class="table-number">${tr(state, '%e %n: %c').replace('%e', () => tr(state, 'Table')).replace('%n', () => String(++state.counters.table)).replace(/ ?%c/, '').replace(/&nbsp;/g, ' ')}</span> ${caption}</caption>\n`;
   const specs = [];
   for (let c = offset; c < firstRow.cells.length; c++) {
     const starts = c === offset || leftBorder(c);
@@ -994,8 +1032,8 @@ function srcBlockHtml(state, el) {
   const code = formatCodeHtml(block, highlightToHtml(block.lines.join('\n'), lang).split('\n'));
   const caption = captionHtml(state, el.aff);
   const cls = lang ? `src src-${escapeAttr(lang)}` : 'src';
-  const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">Listing ${++state.counters.listing}: </span>${caption}</label>` : '';
-  const id = el.__id ? ` id="${escapeAttr(el.__id)}"` : '';
+  const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">${tr(state, 'Listing')} ${++state.counters.listing}: </span>${caption}</label>` : '';
+  const id = el.__id && el.aff && el.aff.name ? ` id="${escapeAttr(el.__id)}"` : '';
   return `<div class="org-src-container">\n${label}<pre class="${cls}"${id}>${code}\n</pre>\n</div>`;
 }
 
@@ -1019,12 +1057,13 @@ function blockHtml(state, el, ctx) {
       return backend === 'html' ? el.lines.join('\n') : '';
     }
     case 'src':
-      if (!el.params.trim().split(/\s+/)[0] || /^[-+]/.test(el.params.trim())) return blockHtml(state, { ...el, name: 'example' }, ctx);
+      if (!el.params.trim().split(/\s+/)[0] || /^[-+]/.test(el.params.trim())) return blockHtml(state, /** @type {OrgEl<'block'>} */ ({ ...el, name: 'example', __noId: true }), ctx); // a source block without a language is shown as an example block, without an id
       return srcBlockHtml(state, el);
     case 'example':
     {
       const block = prepareCode(state, el);
-      return `<pre class="example"${el.aff && el.aff.name ? ` id="${escapeAttr(el.aff.name)}"` : ''}>\n${formatCodeHtml(block, block.lines.map(escapeHtml))}\n</pre>`;
+      const exampleId = /** @type {{ __noId?: boolean }} */ (el).__noId ? '' : ` id="${escapeAttr(el.aff && el.aff.name ? el.aff.name : uniqueId(state, 'org-example'))}"`;
+      return `<pre class="example"${exampleId}>\n${formatCodeHtml(block, block.lines.map(escapeHtml))}\n</pre>`;
     }
     case 'quote':
       return `<blockquote${htmlAttributes(el.aff)}>\n${inner(el.lines)}\n</blockquote>`;
@@ -1048,8 +1087,9 @@ function blockHtml(state, el, ctx) {
       return `<p class="verse">\n${html}\n</p>`;
     }
     default: {
-      const id = el.aff && el.aff.name ? ` id="${escapeAttr(el.aff.name)}"` : '';
-      return `<div class="${escapeAttr(name)}"${id}${htmlAttributes(el.aff)}>\n${inner(el.lines)}\n</div>`;
+      const id = ` id="${escapeAttr(el.aff && el.aff.name ? el.aff.name : uniqueId(state, 'org-' + slugify(name)))}"`; // Org gives every special block an id
+      const { cls, rest } = classAndAttributes(el.aff, el.rawName || name, true); // the block's name keeps its case
+      return `<div${cls}${id}${rest}>\n${inner(el.lines)}\n</div>`;
     }
   }
 }
@@ -1184,6 +1224,7 @@ export function buildFilter(state) {
       if (options.tasks === false) return false;
       if (options.tasks === 'todo' && done.has(h.todo)) return false;
       if (options.tasks === 'done' && !done.has(h.todo)) return false;
+      if (Array.isArray(options.tasks) && !options.tasks.includes(h.todo)) return false;
     }
     return true;
   };
@@ -1203,23 +1244,27 @@ function isArchived(h) {
  * @param {number[]} numbers
  * @returns {OutlineNode[]}
  */
-function buildOutline(state, headings, levelOffset, filter, numbers, /** @type {string | null} */ inherited = null) {
+function buildOutline(state, headings, levelOffset, filter, numbers, /** @type {string | null} */ inherited = null, counts = /** @type {number[]} */ ([])) {
   /** @type {OutlineNode[]} */ const out = [];
-  let n = 0;
   for (const heading of headings) {
     if (!filter(heading)) continue;
     const own = heading.properties && Object.keys(heading.properties).find((k) => k.toUpperCase() === 'UNNUMBERED');
     const unnumbered = own ? String(heading.properties[own]) : inherited;
     const isUnnumbered = unnumbered !== null && unnumbered.trim().toLowerCase() !== 'nil';
-    if (!isUnnumbered) n++;
-    const number = [...numbers, n];
+    // Org numbers by level: a heading that skips levels is numbered with zeros for the ones it skipped (1.0.1)
+    const rel = Math.max(1, heading.level - levelOffset);
+    while (counts.length < rel) counts.push(0);
+    const before = counts.slice();
+    if (!isUnnumbered) counts[rel - 1]++;
+    counts.length = rel;
+    const number = counts.slice(0, rel);
     const archived = isArchived(heading) && state.options.arch !== true;
     if (archived && state.options.arch === false) {
-      n--;
+      counts.splice(0, counts.length, ...before);
       continue;
     }
     const node = { heading, level: heading.level - levelOffset, number, archived, unnumbered: isUnnumbered ? unnumbered : null, children: /** @type {OutlineNode[]} */ ([]) };
-    node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number, unnumbered);
+    node.children = archived ? [] : buildOutline(state, heading.children || [], levelOffset, filter, number, unnumbered, counts);
     out.push(node);
   }
   return out;
@@ -1238,7 +1283,7 @@ function headingTitleHtml(state, node, { inToc = false } = {}) {
     parts.push(`<span class="${done ? 'done' : 'todo'} ${escapeHtml(heading.todo)}">${escapeHtml(heading.todo)}</span>`);
   }
   if (heading.priority && options.pri) parts.push(`<span class="priority">[${escapeHtml(heading.priority)}]</span>`);
-  parts.push(renderInline(state, titleOf(heading)) || '(untitled)');
+  parts.push(renderInline(state, inToc ? titleOf(heading).replace(/\[fn:[^\]\s]*(?::[^\]]*)?\]/g, '') : titleOf(heading))); // the table of contents shows no footnote reference
   let html = parts.join(' ');
   if (options.tags && !(inToc && options.tags === 'not-in-toc') && heading.tags && heading.tags.length) {
     html += `${NBSP}${NBSP}${NBSP}<span class="tag">${heading.tags.map((t) => `<span class="${escapeAttr(String(t).replace(/[@#%]/g, '_'))}">${escapeHtml(t)}</span>`).join(NBSP)}</span>`;
@@ -1293,22 +1338,40 @@ function sectionHtml(state, node, ids) {
   const { heading } = node;
   const limit = state.options.H;
   const isStructural = node.level <= limit;
-  const textPath = node.number.join('-');
   const id = state.headingIds.get(heading) || '';
+  // the id of the text div follows the custom id, else the section number, else (no number shown) the heading's own id
+  const textPath = getProperty(heading, 'CUSTOM_ID') || (numberLabel(state, node) ? node.number.join('-') : id);
   if (!isStructural) return '';
-  const hl = Math.min(6, node.level + 1);
-  let out = `<div id="outline-container-${escapeAttr(id)}" class="outline-${node.level + 1}">\n`;
+  const hl = node.level + 1;
+  const container = (node.level === 1 && String(keywordValue(state.doc, 'HTML_CONTAINER') || '').trim()) || 'div'; // Emacs applies #+HTML_CONTAINER to top-level headings only
+  let out = `<${container} id="outline-container-${escapeAttr(id)}" class="outline-${node.level + 1}">\n`;
   out += `<h${hl} id="${escapeAttr(id)}">${numberLabel(state, node)}${headingTitleHtml(state, node)}</h${hl}>\n`;
   const planning = planningHtml(state, heading);
   const body = node.archived ? '' : bodyHtml(state, heading, node);
   const deepChildren = node.children.filter((c) => c.level > limit);
-  const content = [planning, body].filter(Boolean).join('\n');
-  if (content) out += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(textPath)}">\n${content}\n</div>\n`;
+  const content = [planning, propertiesHtml(state, heading), body].filter(Boolean).join('\n');
+  // a headline with a section, or with subheadings, always has its text container, empty or not
+  if ((!node.archived && (content || hasSection(heading))) || node.children.length) out += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(textPath)}">\n${content ? content + '\n' : ''}</div>\n`;
   const deep = deepChildren.length ? deepListHtml(state, deepChildren) : '';
   const structural = node.children.filter((c) => c.level <= limit);
   for (const child of structural) out += sectionHtml(state, child) + '\n';
   if (deep) out += deep + '\n';
-  return out.replace(/\n+$/, '\n') + '</div>';
+  return out.replace(/\n+$/, '\n') + `</${container}>`;
+}
+
+/** The property drawer as ox-html writes it with prop:t (or a list of names): one example block of KEY: value lines. @param {ExportState} state @param {Heading} h */
+function propertiesHtml(state, h) {
+  const wanted = state.options.properties;
+  if (!wanted) return '';
+  const keys = (h.propertyOrder && h.propertyOrder.length ? h.propertyOrder : Object.keys(h.properties || {})).filter((k) => wanted === true || wanted.includes(k.toUpperCase()));
+  if (!keys.length) return '';
+  return `<pre class="example">\n${keys.map((k) => escapeHtml(h.properties[k] ? `${k}: ${h.properties[k]}` : `${k}:`)).join('\n')}\n</pre>`;
+}
+
+/** Does the heading have a section (anything but blank lines under it, planning, drawers and properties included)? @param {Heading} h */
+function hasSection(h) {
+  const p = h.planning;
+  return (h.bodyLines || []).some((l) => l.trim() !== '') || 'hadClock' in h || !!(p && (p.scheduled || p.deadline || p.closed)) || Object.keys(h.properties || {}).length > 0 || (h.logbookLines || []).length > 0 || (h.preLogLines || []).length > 0 || !!(h.raw && h.raw.drawers.length);
 }
 
 /**
@@ -1324,9 +1387,9 @@ function deepListHtml(state, nodes) {
     const id = state.headingIds.get(node.heading) || '';
     let li = `<li><a id="${escapeAttr(id)}"></a>${headingTitleHtml(state, node)}<br${closing}\n`;
     const body = node.archived ? '' : bodyHtml(state, node.heading, node);
-    if (body) li += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(node.number.join('-'))}">\n${body}\n</div>\n`;
+    if (body) li += `<div class="outline-text-${node.level + 1}" id="text-${escapeAttr(getProperty(node.heading, 'CUSTOM_ID') || id)}">\n${body}\n</div>\n`;
     if (node.children.length) li += deepListHtml(state, node.children) + '\n';
-    return li + '</li>';
+    return li.replace(/<br \/>\n$|<br>\n$/, (m) => m.trimEnd()) + '</li>'; // a bare item closes on the same line
   });
   return `<${tag} class="org-${tag}">\n${items.join('\n')}\n</${tag}>`;
 }
@@ -1339,15 +1402,29 @@ function deepListHtml(state, nodes) {
  * @param {number} maxDepth
  * @returns {string}
  */
-function tocListHtml(state, nodes, maxDepth, depth = 1) {
+function tocListHtml(state, nodes, maxDepth, depth = 1, base = 0) {
   const visible = nodes.filter((n) => n.level <= Math.min(state.options.H, maxDepth) && !/^notoc$/i.test((n.unnumbered || '').trim()));
   if (!visible.length) return '';
-  const items = visible.map((node) => {
+  const top = base || Math.min(...visible.map((n) => n.level));
+  /** @param {OutlineNode} node */
+  const item = (node) => {
     const id = state.headingIds.get(node.heading) || '';
     const label = (state.options.num && node.unnumbered === null && !(typeof state.options.num === 'number' && node.level > state.options.num) ? node.number.join('.') + '. ' : '') + headingTitleHtml(state, node, { inToc: true }).replace(/<a [^>]*>([\s\S]*?)<\/a>/g, '$1');
-    const sub = tocListHtml(state, node.children, maxDepth, depth + 1);
+    const sub = tocListHtml(state, node.children, maxDepth, depth + 1, node.level + 1);
     return `<li><a href="#${escapeAttr(id)}">${label}</a>${sub ? '\n' + sub + '\n' : ''}</li>`;
-  });
+  };
+  const items = [];
+  for (let i = 0; i < visible.length; i++) {
+    if (visible[i].level <= top) {
+      items.push(item(visible[i]));
+      continue;
+    }
+    // headings deeper than the next level down are listed in a list of their own inside an empty item
+    const run = [];
+    while (i < visible.length && visible[i].level > top) run.push(visible[i++]);
+    i--;
+    items.push(`<li>\n${tocListHtml(state, run, maxDepth, depth + 1, top + 1)}\n</li>`);
+  }
   return `<ul>\n${items.join('\n')}\n</ul>`;
 }
 
@@ -1355,11 +1432,13 @@ function tocListHtml(state, nodes, maxDepth, depth = 1) {
  * @param {ExportState} state
  * @param {number | true} depth
  * @param {OutlineNode[]} [nodes]
+ * @param {boolean} [local]
  */
-function tocHtml(state, depth, nodes = state.outline) {
+function tocHtml(state, depth, nodes = state.outline, local = false) {
   const list = tocListHtml(state, nodes, depth === true ? Infinity : depth);
   if (!list) return '';
-  return `<div id="table-of-contents" role="doc-toc">\n<h2>Table of Contents</h2>\n<div id="text-table-of-contents" role="doc-toc">\n${list}\n</div>\n</div>`;
+  if (local) return `<div id="text-table-of-contents" role="doc-toc">\n${list}\n</div>`; // a local table of contents has no title of its own
+  return `<div id="table-of-contents" role="doc-toc">\n<h2>${tr(state, 'Table of Contents')}</h2>\n<div id="text-table-of-contents" role="doc-toc">\n${list}\n</div>\n</div>`;
 }
 
 /**
@@ -1373,17 +1452,17 @@ function tocKeywordHtml(state, el) {
   const kind = m[1].toLowerCase();
   if (kind === 'headlines') {
     const depth = m[2] ? Number(m[2]) : true;
-    if (m[3] && state.currentNode) return tocHtml(state, depth === true ? Infinity : state.currentNode.level + depth, state.currentNode.children);
+    if (m[3] && state.currentNode) return tocHtml(state, depth === true ? Infinity : state.currentNode.level + depth, state.currentNode.children, true);
     return tocHtml(state, depth);
   }
   const wanted = kind === 'tables' ? 'table' : 'listing';
   const entries = state.captioned.filter((c) => c.kind === wanted);
   if (!entries.length) return '';
-  const title = wanted === 'table' ? 'List of Tables' : 'List of Listings';
+  const title = tr(state, wanted === 'table' ? 'List of Tables' : 'List of Listings');
   const label = wanted === 'table' ? 'table-number' : 'listing-number';
-  const word = wanted === 'table' ? 'Table' : 'Listing';
+  const word = tr(state, wanted === 'table' ? 'Table' : 'Listing');
   const slug = wanted === 'table' ? 'list-of-tables' : 'list-of-listings';
-  const items = entries.map((c) => `<li><a href="#${escapeAttr(c.id)}"><span class="${label}">${word} ${c.n}:</span> ${c.html}</a></li>`);
+  const items = entries.map((c) => `<li><span class="${label}">${word} ${c.n}:</span> ${c.html}</li>`);
   return `<div id="${slug}">\n<h2>${title}</h2>\n<div id="text-${slug}">\n<ul>\n${items.join('\n')}\n</ul>\n</div>\n</div>`;
 }
 
@@ -1403,7 +1482,7 @@ function footnotesHtml(state) {
     // definitions are rendered with a leading footpara paragraph, as ox-html does
     defs.push(`<div class="footdef"><sup><a id="fn.${n}" class="footnum" href="#fnr.${n}" role="doc-backlink">${n}</a></sup> <div class="footpara" role="doc-footnote">${body}</div></div>`);
   }
-  return `<div id="footnotes">\n<h2 class="footnotes">Footnotes: </h2>\n<div id="text-footnotes">\n\n${defs.join('\n\n')}\n\n</div>\n</div>`;
+  return `<div id="footnotes">\n<h2 class="footnotes">${tr(state, 'Footnotes')}: </h2>\n<div id="text-footnotes">\n\n${defs.join('\n\n')}\n\n</div>\n</div>`;
 }
 
 // ---- document --------------------------------------------------------------------
@@ -1496,6 +1575,8 @@ export function exportToHtml(doc, scope = null, options = {}) {
  * @param {Doc} doc
  */
 function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
+  doc = withBufferKeywords(doc);
+  ({ doc, scope } = expandMacrosForExport(doc, scope, new Date(), /** @type {{ file?: { name?: string, mtime?: Date } }} */ (defaults).file || null)); // {{{macros}}} are expanded before anything is read
   const prepared = prepareHtmlExport(doc, scope, { images, defaults });
   ({ doc, scope } = prepared);
   const { state, preElements, preamble, doctype } = prepared;
@@ -1554,21 +1635,27 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   state.fnDefsCollect(preElements);
   state.parsed = new Map();
   state.captioned = [];
+  state.ordinals = new Map();
   let tableN = 0;
   let listingN = 0;
+  let namedN = 0;
   /** @param {any} [elements] */
   const scan = (elements) => {
     for (const el of elements) {
       if (el.type === 'block' && (el.name === 'src' || el.name === 'example')) prepareCode(state, el);
       const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1].text : null;
+      // a named paragraph or list has no id of its own; a link to it points at a reference of its own that nothing carries
+      if (el.aff && el.aff.name && (el.type === 'paragraph' || el.type === 'list') && !state.namedElements.has(el.aff.name) && (el.type !== 'paragraph' || !standaloneImage(el))) { state.namedElements.set(el.aff.name, uniqueId(state, 'org-ref')); state.ordinals.set(state.namedElements.get(el.aff.name) || '', ++namedN); }
       if (el.type === 'table' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'table-' + (tableN + 1));
         if (el.aff && el.aff.name) state.namedElements.set(el.aff.name, el.__id);
         if (cap !== null) state.captioned.push({ kind: 'table', n: ++tableN, id: el.__id, html: renderInline(state, cap) });
+        else state.ordinals.set(el.__id, tableN + 1); // a named table without a caption is counted after the captioned ones before it
       } else if (el.type === 'block' && el.name === 'src' && (cap !== null || (el.aff && el.aff.name))) {
         el.__id = (el.aff && el.aff.name) || uniqueId(state, 'listing-' + (listingN + 1));
         if (el.aff && el.aff.name) state.namedElements.set(el.aff.name, el.__id);
         if (cap !== null) state.captioned.push({ kind: 'listing', n: ++listingN, id: el.__id, html: renderInline(state, cap) });
+        else state.ordinals.set(el.__id, listingN + 1);
       } else if (el.type === 'list') for (const item of el.items) scan(item.children);
       else if (el.type === 'drawer') scan(nestedElements(state, el.lines, false));
       else if (el.type === 'block' && !['src', 'example', 'comment', 'export', 'verse'].includes(el.name)) scan(nestedElements(state, el.lines));
@@ -1630,10 +1717,10 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
 function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, doctype) {
   const { options } = state;
   const out = [];
-  const title = scope ? titleOf(scope) : keywordValue(doc, 'TITLE');
+  const title = scope ? titleOf(scope) : (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'TITLE').map((k) => k.value).join(' ') || keywordValue(doc, 'TITLE'); // several #+TITLE: lines are joined
   const subtitle = !scope && options.title ? keywordValue(doc, 'SUBTITLE') : null;
   if (title && options.title) {
-    const sub = subtitle ? `<br>\n<span class="subtitle">${renderInline(state, subtitle)}</span>\n` : '';
+    const sub = subtitle ? `\n<br${closing}\n<span class="subtitle">${renderInline(state, subtitle)}</span>\n` : '';
     out.push(`<h1 class="title">${renderInline(state, title)}${sub}</h1>`);
   }
   const toc = options.toc && !scope ? tocHtml(state, options.toc) : options.toc && scope ? tocHtml(state, options.toc) : '';
@@ -1709,7 +1796,7 @@ function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, 
     preambleDiv +
     '<div id="content" class="content">\n' +
     out.join('\n') +
-    '\n</div>\n' +
+    (footnotes ? '</div>\n' : '\n</div>\n') + // Org closes the content right after the footnotes
     postamble +
     (state.usesCoderef ? `<script>\n${CODE_HIGHLIGHT_SCRIPT}</script>\n` : '') +
     '</body>\n' +

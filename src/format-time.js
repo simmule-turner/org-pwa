@@ -34,8 +34,16 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 /** @param {number} y */
 const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
-/** @param {Date} date @param {boolean} utc @returns {TimeFields} */
-function fieldsOf(date, utc) {
+/** @param {Date} date @param {boolean} utc @param {number} [shiftMinutes]  a fixed UTC offset to show the time in (Emacs's `ZONE` argument as a number of seconds) @returns {TimeFields} */
+function fieldsOf(date, utc, shiftMinutes) {
+  if (shiftMinutes !== undefined) {
+    const f = fieldsOf(new Date(date.getTime() + shiftMinutes * 60000), true);
+    const sign = shiftMinutes < 0 ? '-' : '+';
+    const abs = Math.abs(shiftMinutes);
+    const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+    const mm = abs % 60 ? String(abs % 60).padStart(2, '0') : '';
+    return { ...f, offset: shiftMinutes, zone: shiftMinutes === 0 ? 'UTC' : sign + hh + mm, epoch: Math.floor(date.getTime() / 1000) };
+  }
   const year = utc ? date.getUTCFullYear() : date.getFullYear();
   const month = utc ? date.getUTCMonth() : date.getMonth();
   const day = utc ? date.getUTCDate() : date.getDate();
@@ -87,11 +95,11 @@ function isoWeek(f) {
  * `format-time-string`.
  * @param {Date} date
  * @param {string} format
- * @param {{ utc?: boolean }} [options] `utc`: format in UTC rather than the device's time zone (Emacs's `ZONE` argument `t`).
+ * @param {{ utc?: boolean, offset?: number }} [options] `utc`: format in UTC rather than the device's time zone (Emacs's `ZONE` argument `t`); `offset`: in the zone that many minutes east of UTC.
  * @returns {string}
  */
 export function formatTimeString(date, format, options = {}) {
-  return expand(format, fieldsOf(date, !!options.utc));
+  return expand(format, fieldsOf(date, !!options.utc, options.offset));
 }
 
 /** @param {string} format @param {TimeFields} f @returns {string} */
@@ -261,7 +269,7 @@ function convert(spec, f, fl, flagged) {
     case 'y':
       return number(((f.year % 100) + 100) % 100, 2, '0', fl);
     case 'Y':
-      return number(f.year, 1, '0', fl);
+      return number(f.year, 4, '0', fl);
     case 'z':
       return offset(f.offset, fl);
     case 'Z':

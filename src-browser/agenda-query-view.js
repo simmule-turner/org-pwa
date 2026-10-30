@@ -4,7 +4,8 @@
 // sheets. The Search panel stays the quick finder and can open its query here.
 import { applyAgendaEffortView } from '../src/agenda.js';
 import { runFunctionCommand } from '../src/agenda-lisp.js';
-import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
+import { commandSections, parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
+import { agendaSkipper } from '../src/agenda-skip.js';
 import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getPropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
@@ -75,6 +76,7 @@ function queryOptions() {
     propertyInheritance: getPropertyInheritance(vars),
     sortingStrategy: vars['org-agenda-sorting-strategy'] || null,
     localVariables: vars,
+    skipEntry: agendaSkipper(vars, aggregateAgendaDocs(), { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }),
     documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
     alwaysBoolean: truthy(vars['org-agenda-search-view-always-boolean']),
     forceFullWords: truthy(vars['org-agenda-search-view-force-full-words']),
@@ -285,9 +287,23 @@ export function openAgendaCommands() {
 export function runCommand(c) {
   if (c.type === 'function') return void runFunctionCommandView(c);
   if (c.type === 'agenda') return switchToView('agenda');
+  if (c.type === 'stuck' || c.type === 'block') return void runSectionsCommandView(c);
   if (c.type === 'alltodo') return openTodoList(null);
   if (c.type === 'todo') return openTodoList(c.query);
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });
+}
+
+/** A stuck-projects or composite command: its sections (one per block) as an *Org Agenda* text, each under its own heading. @param {import('../src/agenda-commands.js').CustomCommand} c */
+async function runSectionsCommandView(c) {
+  const sections = commandSections(c, aggregateAgendaDocs(), aggregateSearchDocs(), queryOptions());
+  const lines = [];
+  for (const { command, items } of sections) {
+    lines.push(command.type === 'stuck' ? 'List of stuck projects:' : command.type === 'agenda' ? 'Agenda (open the Agenda view for this block):' : `${command.type}${command.query ? `: ${command.query}` : ''}`);
+    for (const item of items) lines.push(`  ${item.category || ''}: ${item.todo ? `${item.todo} ` : ''}${item.title}`);
+    lines.push('');
+  }
+  await createNewUnsavedDocument(lines.join('\n'), c.description || c.key, '*Org Agenda*');
+  switchToView('text');
 }
 
 /** A command that is a Lisp function: it is called with the match, and what it writes is shown in an *Org Agenda* buffer. @param {import('../src/agenda-commands.js').CustomCommand} c */

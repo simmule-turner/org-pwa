@@ -56,7 +56,7 @@ export function latexTable(el, ctx) {
   const widthArg = WIDTH_ENVS.has(env) && attrs.width ? '{' + attrs.width + '}' : '';
   // the column spec is left out for the matrix environments and, in a math table, for the ones that take a width
   const open = '\\begin{' + env + '}' + (math && WIDTH_ENVS.has(env) ? '' : widthArg + (NO_SPEC_ENV_RE.test(env) ? '' : '{' + spec + '}'));
-  const tabular = open + '\n' + body.join('\n') + '\n\\end{' + env + '}';
+  const tabular = open + '\n' + body.join('\n') + (body.length ? '\n' : '') + '\\end{' + env + '}';
   if (math) return mode === 'math' ? '\\[\n' + tabular + '\n\\]\n' : '\\(' + tabular + '\n\\)\n';
 
   const raw = attrs.caption || '';

@@ -2,7 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: archive flow.
-import { buildArchivedClone, buildRestoredClone, getArchiveLocation, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
+import { buildArchivedClone, buildRestoredClone, getArchiveLocation, endsDocument, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
 import { displayName } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
@@ -35,8 +35,9 @@ export async function archiveHeadingToLocation(heading) {
     // the copy at the target location, save -- one atomic in-memory
     // edit, no cross-file I/O risk to worry about.
     const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId, { infile: true });
+    const tailRemoved = endsDocument(S.state.doc, heading);
     removeHeading(S.state.doc, heading);
-    insertAtArchiveLocation(S.state.doc, clone, headlinePart, { sourceFileId: S.state.documentId });
+    insertAtArchiveLocation(S.state.doc, clone, headlinePart, { sourceFileId: S.state.documentId, tailRemoved });
     commitAndRender('Archived heading');
     setStatus('--- Archive complete.');
     return;

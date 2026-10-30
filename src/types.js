@@ -171,7 +171,7 @@ export {};
  *   currentCaptureTemplates: CaptureTemplate[], capturePromptValues: string[], captureShared: any, captureClipboard: string,
  *   textLanding: { startLine: number, endLine: number, lineText: string, source: string } | null,
  *   searchQuery: string, searchUseRegex: boolean, searchUseMatch: boolean, searchOptionsMenuOpen: boolean, activeQueryReplace: any,
- *   agendaViewType: string, agendaAnchorDate: Date, agendaLogMode: boolean, agendaHabitsHidden: boolean, agendaEffortPanelOpen: boolean,
+ *   agendaViewType: string, agendaAnchorDate: Date, agendaInitialSpanApplied: boolean, agendaLogMode: boolean, agendaHabitsHidden: boolean, agendaEffortPanelOpen: boolean,
  *   agendaEffortSort: string | null, agendaEffortFilter: { op: string, minutes: number | null, text: string } | null, agendaEffortMax: { minutes: number | null, text: string } | null,
  *   viewFilter: import('./agenda-filter.js').ViewFilter, agendaSeedSignature?: string, undoToastTimer: number, taskSort: string, taskKeywords?: string | null, queryView?: { kind: 'tags' | 'search', query: string, todoOnly: boolean, sortingStrategy: string | null, title: string, focusInput?: boolean },
  *   agendaShowAllDatesOverride: boolean | null, showClockDisplay: boolean, showClocktable: boolean,

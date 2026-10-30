@@ -5,33 +5,58 @@
  * except for odd cases such as a group repeated over an empty match (`\(a*\)*`).
  */
 import { signal } from './elisp-data.js';
+import { classBody } from './emacs-classes.js';
 
-const W = 'a-zA-Z0-9\\u00c0-\\u024f';
-const CLASSES = new Map([
-  ['alpha', 'a-zA-Z\\u00c0-\\u024f'], ['alnum', W], ['digit', '0-9'], ['xdigit', '0-9a-fA-F'],
-  ['upper', 'A-Z'], ['lower', 'a-z'], ['space', ' \\t\\n\\r\\f\\v'], ['blank', ' \\t'], ['punct', '!-\\/:-@\\[-`{-~'],
-  ['word', W], ['cntrl', '\\x00-\\x1f\\x7f'], ['print', ' -~\\u00a0-\\u{10ffff}'], ['graph', '!-~\\u00a1-\\u{10ffff}'],
-  ['ascii', '\\x00-\\x7f'], ['nonascii', '\\x80-\\u{10ffff}'], ['multibyte', '\\x80-\\u{10ffff}'], ['unibyte', '\\x00-\\x7f'],
-]);
-const WORD_BOUNDARY = `(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}])|(?<![\\s\\S])|(?![\\s\\S]))`;
-
-/** @type {Map<string, { source: string, groups: number, unicode: boolean }>} */
-const cache = new Map();
-
-/** The characters of a syntax class `\sC`. @param {string} k */
-function syntaxSet(k) {
-  switch (k) {
-    case '-': case ' ': return ' \\t\\n\\r\\f';
-    case 'w': return W;
-    case '_': return '_\\-+*/<>=&$%!?~^';
-    case '.': return '.,;:!?';
-    case '(': return '(\\[{';
-    case ')': return ')\\]}';
-    case '"': return '"';
-    case '\'': return '\'';
-    default: return ' ';
+/** The decoded class `name`; the tables are generated, so a missing one is a build error. @param {string} name */
+const table = (name) => /** @type {string} */ (classBody(name));
+const W = table('syntax:w');
+const SYMBOL = W + table('syntax:_');
+/** The inside of a character class for `[[:NAME:]]`, or undefined. @param {string} name */
+function posixClass(name) {
+  switch (name) {
+    case 'alpha': case 'alnum': case 'upper': case 'lower': case 'punct': case 'space': case 'blank': case 'print': case 'graph': return table(name);
+    case 'word': return W;
+    case 'digit': return '0-9';
+    case 'xdigit': return '0-9a-fA-F';
+    case 'cntrl': return '\\x00-\\x1f';
+    case 'ascii': case 'unibyte': return '\\x00-\\x7f';
+    case 'nonascii': case 'multibyte': return '\\u{80}-\\u{10ffff}';
+    default: return undefined;
   }
 }
+const WORD_BOUNDARY = `(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}])|(?<![\\s\\S])|(?![\\s\\S]))`;
+
+/** @type {Map<string, { source: string, groups: number, nums: number[], size: number }>} */
+const cache = new Map();
+
+/** The characters of a syntax class `\sC`, as the inside of a character class (an empty one matches nothing). @param {string} k */
+function syntaxSet(k) {
+  switch (k) {
+    case '-': case ' ': return table('space');
+    case 'w': return W;
+    case '_': return table('syntax:_');
+    case '.': return table('syntax:.');
+    case '(': return table('syntax:(');
+    case ')': return table('syntax:)');
+    case '"': return table('syntax:"');
+    case '\'': return table("syntax:'");
+    case '<': return '\\u{3b}';
+    case '>': return '\\u{a}';
+    case '\\': return '\\u{5c}';
+    case '$': case '/': case '|': case '!': case '@': return '';
+    default: throw signal('invalid-regexp', ['Invalid syntax designator']);
+  }
+}
+
+/** The characters of a category `\cC`. @param {string} k */
+function categorySet(k) {
+  const set = classBody(`cat:${k}`);
+  if (set === undefined) throw signal('invalid-regexp', ['Invalid category designator']);
+  return set;
+}
+
+/** A character class from a body; an empty body matches nothing, an empty negated one everything. @param {string} body @param {boolean} neg */
+const charClass = (body, neg) => (neg ? `[^${body}]` : `[${body}]`);
 
 /** Translates an Emacs regexp; `groups` counts its capture groups. @param {string} re */
 export function translate(re) {
@@ -39,6 +64,9 @@ export function translate(re) {
   if (hit) return hit;
   let out = '';
   let groups = 0;
+  /** The Emacs number of each JS capture group, and the highest number given so far. @type {number[]} */
+  const nums = [];
+  let counter = 0;
   let i = 0;
   const n = re.length;
   /** Where the last atom starts in `out` (-1: none, so a quantifier is literal). */
@@ -98,12 +126,18 @@ export function translate(re) {
           } else if (re[i] === '?' && /\d/.test(re[i + 1] || '')) {
             let j = i + 1;
             while (/\d/.test(re[j])) j++;
+            if (re[j] !== ':') throw signal('invalid-regexp', ['Invalid regular expression']);
+            const num = Number(re.slice(i + 1, j));
+            if (num === 0) throw signal('invalid-regexp', ['Invalid regular expression']);
             out += '(';
             groups++;
+            nums.push(num);
+            counter = Math.max(counter, num);
             i = j + 1;
           } else {
             out += '(';
             groups++;
+            nums.push(++counter);
           }
           atom = -1;
           quant = false;
@@ -135,11 +169,12 @@ export function translate(re) {
           quantifier(`{${body.startsWith(',') ? `0${body}` : body}}`);
           continue;
         }
-        case 'w': atomOut(`[${W}]`); continue;
-        case 'W': atomOut(`[^${W}]`); continue;
+        case 'w': atomOut(charClass(W, false)); continue;
+        case 'W': atomOut(charClass(W, true)); continue;
+        case 'c': case 'C': atomOut(charClass(categorySet(re[i++]), d === 'C')); continue;
         case 's': case 'S': {
           const k = re[i++];
-          atomOut(d === 's' ? `[${syntaxSet(k)}]` : `[^${syntaxSet(k)}]`);
+          atomOut(charClass(syntaxSet(k), d === 'S'));
           continue;
         }
         case 'b': assertion(WORD_BOUNDARY); continue;
@@ -148,14 +183,18 @@ export function translate(re) {
         case '>': assertion(`(?<=[${W}])(?![${W}])`); continue;
         case '_': {
           const k = re[i++];
-          assertion(k === '<' ? `(?<![${W}_\\-])(?=[${W}_\\-])` : `(?<=[${W}_\\-])(?![${W}_\\-])`);
+          assertion(k === '<' ? `(?<![${SYMBOL}])(?=[${SYMBOL}])` : `(?<=[${SYMBOL}])(?![${SYMBOL}])`);
           continue;
         }
         case '`': assertion('(?<![\\s\\S])'); continue;
         case "'": assertion('(?![\\s\\S])'); continue;
-        case '=': assertion(''); continue;
+        case '=': assertion('(?!)'); continue;
         default:
-          if (/[1-9]/.test(d)) atomOut(`\\${d}`);
+          if (/[1-9]/.test(d)) {
+            const at = nums.indexOf(Number(d));
+            if (Number(d) > counter || at < 0) throw signal('invalid-regexp', ['Invalid back reference']);
+            atomOut(`(?:\\${at + 1})`);
+          }
           else atomOut(d.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'));
           continue;
       }
@@ -169,6 +208,8 @@ export function translate(re) {
       }
       let body = '';
       let first = true;
+      /** @param {number} cp */
+      const hex = (cp) => `\\u{${cp.toString(16)}}`;
       for (;;) {
         if (j >= n) throw signal('invalid-regexp', ['Unmatched [ or [^']);
         const k = re[j];
@@ -176,18 +217,23 @@ export function translate(re) {
         first = false;
         if (k === '[' && re[j + 1] === ':') {
           const end = re.indexOf(':]', j + 2);
-          const name = end > 0 ? re.slice(j + 2, end) : '';
-          const cls = CLASSES.get(name);
-          if (!cls) throw signal('invalid-regexp', ['Invalid character class name']);
-          body += cls;
-          j = end + 2;
-          continue;
+          if (end > 0) {
+            const cls = posixClass(re.slice(j + 2, end));
+            if (cls === undefined) throw signal('invalid-regexp', ['Invalid character class name']);
+            body += cls;
+            j = end + 2;
+            continue;
+          }
         }
-        if (k === '\\' || k === '[' || k === ']' || k === '^') body += `\\${k}`;
-        else body += k;
-        j++;
+        const lo = /** @type {number} */ (re.codePointAt(j));
+        j += lo > 0xffff ? 2 : 1;
+        if (re[j] === '-' && j + 1 < n && re[j + 1] !== ']') {
+          const hi = /** @type {number} */ (re.codePointAt(j + 1));
+          j += 1 + (hi > 0xffff ? 2 : 1);
+          if (hi >= lo) body += `${hex(lo)}-${hex(hi)}`;
+        } else body += hex(lo);
       }
-      atomOut(`[${neg ? '^' : ''}${body}]`);
+      atomOut(charClass(body, neg));
       i = j + 1;
       continue;
     }
@@ -208,23 +254,23 @@ export function translate(re) {
       case '*': case '+': case '?':
         quantifier(c);
         break;
-      case '(': case ')': case '{': case '}': case '|': case '/':
+      case '(': case ')': case '{': case '}': case '|': case '/': case ']':
         atomOut(`\\${c}`);
         break;
       default: atomOut(c);
     }
   }
   if (stack.length) throw signal('invalid-regexp', ['Unmatched ( or \\(']);
-  const result = { source: out, groups, unicode: /\\u\{/.test(out) };
+  const result = { source: out, groups, nums, size: counter };
   cache.set(re, result);
   return result;
 }
 
 /** A JS RegExp for an Emacs regexp. @param {string} re @param {boolean} fold @param {boolean} [global] */
 export function toRegExp(re, fold, global = false) {
-  const { source, unicode } = translate(re);
+  const { source } = translate(re);
   try {
-    return new RegExp(source, `m${fold ? 'i' : ''}${global ? 'g' : ''}${unicode ? 'u' : ''}`);
+    return new RegExp(source, `mu${fold ? 'i' : ''}${global ? 'g' : ''}`);
   } catch {
     throw signal('invalid-regexp', ['Invalid regexp']);
   }

@@ -29,11 +29,7 @@ import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 import { readPriorityRange, prioritiesKeyword } from './priorities.js';
 import { parseLispTagList, parsePropertyInheritance, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
-const LOCAL_VARS_START_RE = /^#\s*Local Variables:\s*$/i;
-const LOCAL_VARS_END_RE = /^#\s*End:\s*$/i;
-const LOCAL_VAR_LINE_RE = /^#\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/;
-const FIRST_LINE_COOKIE_RE = /-\*-(.*?)-\*-/;
-const COOKIE_ENTRY_RE = /^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/;
+import { Reader } from './elisp-read.js';
 
 /** Real Emacs's OTHER, older/simpler local-variables mechanism: a
  *  "-*- var: val; var2: val2; -*-" cookie anywhere on the file's own
@@ -52,16 +48,116 @@ const COOKIE_ENTRY_RE = /^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/;
  * @param {string} text
  *  absent/malformed cookie returns {}. */
 function parseFirstLineCookie(text) {
+  /** @type {Record<string, string>} */
   const vars = {};
   if (!text) return vars;
-  const firstLine = text.split('\n', 1)[0];
-  const m = FIRST_LINE_COOKIE_RE.exec(firstLine);
-  if (!m) return vars;
-  for (const entry of m[1].split(';')) {
-    const kv = COOKIE_ENTRY_RE.exec(entry);
-    if (kv && kv[1]) /** @type {any} */ (vars)[kv[1]] = kv[2];
+  const shebang = /^(#!|'\\")/.test(text);
+  const nl1 = text.indexOf('\n');
+  const end1 = nl1 < 0 ? text.length : nl1;
+  const nl2 = nl1 < 0 ? -1 : text.indexOf('\n', nl1 + 1);
+  const bound = shebang ? (nl1 < 0 ? text.length : nl2 < 0 ? text.length : nl2) : end1;
+  const open = text.indexOf('-*-');
+  if (open < 0 || open + 3 > bound) return vars;
+  let pos = open + 3;
+  while (text[pos] === ' ' || text[pos] === '\t') pos++;
+  const beg = pos;
+  const lineEnd = (() => { const n = text.indexOf('\n', pos); return n < 0 ? text.length : n; })();
+  const close = text.indexOf('-*-', beg);
+  if (close < 0 || close + 3 > lineEnd) return vars;
+  let end = close;
+  while (end > 0 && (text[end - 1] === ' ' || text[end - 1] === '\t')) end--;
+  if (/^[ \t]*[^ \t\n\r:;]+[ \t]*-\*-/.test(text.slice(beg, close + 3))) return vars; // "-*- mode -*-"
+  const inside = text.slice(0, end);
+  pos = beg;
+  while (pos < end) {
+    VAR_RE.lastIndex = pos;
+    const m = VAR_RE.exec(inside);
+    if (!m) return {};
+    pos = VAR_RE.lastIndex;
+    try {
+      const { raw, next } = readValue(inside, pos);
+      pos = next;
+      if (m[1].toLowerCase() !== 'coding') vars[m[1].toLowerCase() === 'mode' ? 'mode' : m[1]] = raw;
+    } catch {
+      return {};
+    }
+    while (text[pos] === ' ' || text[pos] === '\t' || text[pos] === ';') pos++;
   }
   return vars;
+}
+
+/** A variable's name and its colon, as Emacs's hack-local-variable-regexp. */
+const VAR_RE = /[ \t]*([^\][;"'?()\\ \t\n]+)[ \t]*:[ \t]*/y;
+
+/** The Lisp object written at `pos` (as the text it was written with) and where it ends. @param {string} text @param {number} pos */
+function readValue(text, pos) {
+  const reader = new Reader(text, pos);
+  if (!reader.more()) throw new Error('end of file');
+  const from = reader.pos;
+  reader.read();
+  return { raw: text.slice(from, reader.pos), start: from, next: reader.pos };
+}
+
+/** @param {string} s */
+const quote = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The "Local Variables:" block as Emacs reads it (hack-local-variables--find-variables): it is looked for in the last 3000
+ * characters (or the last page), each line carries the text that precedes "Local Variables:" and the text that follows it, and
+ * the values are Lisp objects. A block that is not properly formed gives no variables.
+ * @param {string} text
+ */
+function parseBlockOnly(text) {
+  /** @type {Record<string, string>} */
+  const vars = {};
+  let from = Math.max(text.length - 3000, 0);
+  const page = text.lastIndexOf('\n\f');
+  if (page >= from) from = page;
+  const at = text.toLowerCase().indexOf('local variables:', from);
+  if (at < 0) return vars;
+  let pos = at + 'local variables:'.length;
+  while (text[pos] === ' ' || text[pos] === '\t') pos++;
+  const lineEnd = (() => { const n = text.indexOf('\n', pos); return n < 0 ? text.length : n; })();
+  const suffix = quote(text.slice(pos, lineEnd));
+  const lineStart = text.lastIndexOf('\n', at - 1) + 1;
+  const prefix = quote(text.slice(lineStart, at));
+  const start = lineEnd < text.length ? lineEnd + 1 : text.length;
+  const endRe = new RegExp('^' + prefix + '[ \\t]*End:[ \\t]*' + suffix + '$', 'im');
+  const found = endRe.exec(text.slice(start));
+  const region = found ? text.slice(start, start + found.index) : '';
+  const lines = region.replace(/\r/g, '\n').split('\n');
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  const prefixRe = new RegExp('^' + prefix);
+  const suffixRe = new RegExp(suffix + '$');
+  const stripped = [];
+  for (const line of lines) {
+    const p = prefixRe.exec(line);
+    if (!p) return vars;
+    const rest = line.slice(p[0].length);
+    const sm = suffixRe.exec(rest);
+    if (!sm) return vars;
+    stripped.push(rest.slice(0, sm.index));
+  }
+  const body = stripped.join('\n') + (stripped.length ? '\n' : '');
+  /** @type {Record<string, string>} */
+  const found2 = {};
+  let cursor = 0;
+  while (cursor < body.length) {
+    VAR_RE.lastIndex = cursor;
+    const m = VAR_RE.exec(body);
+    if (!m) return vars;
+    try {
+      const { start, next } = readValue(body, VAR_RE.lastIndex);
+      const nl = body.indexOf('\n', next);
+      const raw = body.slice(start, nl < 0 ? body.length : nl).trim(); // the rest of the line stays with the value (org-agenda-files: "a" "b")
+      const name = m[1].toLowerCase() === 'mode' ? 'mode' : m[1];
+      if (name !== 'coding' && name !== 'lexical-binding') found2[name] = raw;
+      cursor = nl < 0 ? body.length : nl + 1;
+    } catch {
+      return vars;
+    }
+  }
+  return found2;
 }
 
 /** The file's own variables: its first line, its Local Variables block, and `#+PRIORITIES:` (which sets the priority range).
@@ -74,18 +170,7 @@ export function parseLocalVariables(text) {
 function parseBlockVariables(text) {
   const vars = parseFirstLineCookie(text);
   if (!text) return vars;
-  const lines = joinContinuedLines(text);
-
-  const startIdx = lines.findIndex((l) => LOCAL_VARS_START_RE.test(l.trim()));
-  if (startIdx === -1) return vars;
-  const endIdx = lines.findIndex((l, i) => i > startIdx && LOCAL_VARS_END_RE.test(l.trim()));
-  if (endIdx === -1) return vars;
-
-  for (let i = startIdx + 1; i < endIdx; i++) {
-    const m = LOCAL_VAR_LINE_RE.exec(lines[i].trim());
-    if (m) /** @type {any} */ (vars)[m[1]] = m[2].trim();
-  }
-  return vars;
+  return Object.assign(vars, parseBlockOnly(joinContinuedLines(text).join('\n')));
 }
 
 /** Joins any line ending in a trailing backslash with the physical
@@ -173,8 +258,7 @@ export function getAgendaStartOnWeekday(vars) {
  * @param {LocalVars} vars
  *  default too, rather than producing a nonsensical negative window. */
 export function getDeadlineWarningDays(vars) {
-  const n = parseLispNumber((vars || {})['org-deadline-warning-days'], 14);
-  return n >= 0 ? n : 14;
+  return parseLispNumber((vars || {})['org-deadline-warning-days'], 14); // a negative number is used as its opposite, as Emacs does (org-get-wdays)
 }
 
 /** org-scheduled-delay-days: SCHEDULED's own equivalent to
@@ -201,8 +285,7 @@ export function getDeadlineWarningDays(vars) {
  * @param {LocalVars} vars
  *  negative delay. */
 export function getScheduledDelayDays(vars) {
-  const n = parseLispNumber((vars || {})['org-scheduled-delay-days'], 0);
-  return n >= 0 ? n : 0;
+  return parseLispNumber((vars || {})['org-scheduled-delay-days'], 0);
 }
 
 /** org-cycle-open-archived-trees: real org's default is nil (false) —
@@ -237,6 +320,8 @@ export function getHabitOptions(vars) {
     followingDays: following >= 0 ? Math.min(following, 400) : 7,
     onlyForToday: parseLispBoolean(v['org-habit-show-habits-only-for-today'], true),
     showAllToday: parseLispBoolean(v['org-habit-show-all-today'], false),
+    doneAlwaysGreen: parseLispBoolean(v['org-habit-show-done-always-green'], false),
+    scheduledPastDays: v['org-habit-scheduled-past-days'] === undefined || /^nil$/i.test(String(v['org-habit-scheduled-past-days']).trim()) ? null : parseLispNumber(v['org-habit-scheduled-past-days'], 10000),
   };
 }
 

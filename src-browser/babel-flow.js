@@ -6,7 +6,7 @@ import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { cacheHash } from '../src/babel-cache.js';
-import { headerText, existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { evalAllowed, headerText, existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
@@ -93,7 +93,7 @@ function lookupTable(name) {
  * @param {string} label
  */
 function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null), handling = 'replace') {
-  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling });
+  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling, name: block.resultsName || '' });
   // the cursor stays on the block, whose body is re-parsed by the edit
   withKeyboardFocusPreserved(heading, () => commitLines(heading, start, removeCount, insert));
   commitAndRender(label);
@@ -127,13 +127,19 @@ export async function executeSourceBlock(heading, block) {
   const all = collectDocumentBlocks(S.state.doc);
   const info = all.find((b) => b.heading === heading && b.beginIndex === block.lineIndex) || null;
   const args = info ? info.args : parseHeaderArgs(block.params);
+  if (info && info.name) block = { ...block, resultsName: info.name }; // Org writes `#+RESULTS: name` under a named block
   const spec = parseResultsSpec(args.results);
+  if (spec.file && !lisp) spec.unsupported = 'file'; // only Lisp blocks can give a file link
   if (spec.unsupported) {
     setStatus(`Unsupported :results option "${spec.unsupported}".`);
     return;
   }
   if (args.post !== undefined) {
     setStatus('Unsupported header argument :post (it calls another block with the result).');
+    return;
+  }
+  if (!evalAllowed(args)) {
+    setStatus(`Evaluation of this block is disabled (:eval ${args.eval}).`);
     return;
   }
   if (!(await confirmDocumentTrust(lisp))) return;
@@ -157,6 +163,8 @@ export async function executeSourceBlock(heading, block) {
     }
   }
 
+  const hashBody = info && !nowebAllows(args, 'eval') ? info.emacsBody : code; // what Org digests: the body (Noweb expanded) before :prologue and :epilogue
+
   // :prologue and :epilogue go around the body, as org-babel-expand-body:generic puts them; an error's line stays the body's
   let lineOffset = 0;
   if (!lisp && args.prologue !== undefined) {
@@ -169,7 +177,7 @@ export async function executeSourceBlock(heading, block) {
   /** @type {string | null} */
   let hash = null;
   if (args.cache === 'yes') {
-    hash = await cacheHash({ lang: info ? info.lang : 'js', args, vars, code });
+    hash = await cacheHash({ lang: info ? info.lang : 'js', args, vars, code: hashBody });
     if (existingResultsHash(heading.bodyLines, block) === hash) {
       setStatus('Cached: nothing has changed since the last run, so the block was not run. Delete its #+RESULTS: to run it again.');
       return;
@@ -211,12 +219,17 @@ export async function executeSourceBlock(heading, block) {
     setStatus('The document changed while the block ran; the result was not written.');
     return;
   }
+  if (lisp && !outcome.ok) {
+    // as in Emacs, an error in the Lisp stops the command and writes nothing under the block
+    setStatus(`Source block failed: ${outcome.message}`);
+    return;
+  }
   const wrap = args.wrap === undefined ? null : args.wrap;
   /** @type {string[]} */
   let lines;
   if (outcome.ok && lisp) {
     try {
-      lines = formatElispResult(/** @type {import('../src/elisp-data.js').LObj} */ (outcome.value), spec, { wrap });
+      lines = formatElispResult(/** @type {import('../src/elisp-data.js').LObj} */ (outcome.value), spec, { wrap, file: args.file === undefined ? null : args.file });
     } catch (err) {
       outcome = { ok: false, message: err.message };
       lines = formatError(String(outcome.message));

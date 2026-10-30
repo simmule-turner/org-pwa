@@ -82,8 +82,9 @@ test('returns null for garbage input', () => {
   assert.equal(parseOrgTimestamp(null), null);
 });
 
-test('rejects mismatched bracket types', () => {
-  assert.equal(parseOrgTimestamp('<2026-07-21 Tue]'), null);
+test('reads mismatched bracket types the way Emacs does: the opener alone says active', () => {
+  assert.equal(parseOrgTimestamp('<2026-07-21 Tue]').active, true);
+  assert.equal(parseOrgTimestamp('[2026-07-21 Tue>').active, false);
 });
 
 test('dateKey formats using local calendar fields', () => {

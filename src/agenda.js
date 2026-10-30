@@ -3,18 +3,18 @@
  * One entry of the agenda: a dated heading line, or a calendar line with no heading behind it (sunrise, anniversaries).
  * @typedef {{
  *   documentId: string, heading?: Heading, kind?: string, hasTime?: boolean, endDate?: Date | null, rangeDay?: number | null,
- *   rangeDays?: number | null, repeater?: string | null, todo?: string | null, priority?: string | null, tags?: string[],
+ *   rangeDays?: number | null, inactive?: boolean, scheduledAge?: number, emacsOrder?: number, tsDate?: number | null, repeater?: string | null, todo?: string | null, priority?: string | null, tags?: string[],
  *   title: string, date: Date, daysOverdue?: number, habit?: any, age?: number | null, field?: string, spouse?: string | null,
- *   weather?: boolean, samePriority?: boolean, category?: string, logNote?: string | null, diaryAt?: { file: number, startLine: number, endLine: number, lineText: string } | null,
+ *   weather?: boolean, samePriority?: boolean, category?: string, logNote?: string | null, clockStart?: Date | null, clockEnd?: Date | null, clockIssue?: string | null, logType?: 'closed' | 'clock' | 'state', logLabel?: string, fixedPriority?: number, timeOfDay?: number | null, diaryAt?: { file: number, startLine: number, endLine: number, lineText: string } | null,
  * }} AgendaItem
  * @typedef {{
- *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, todoFilter?: ((todo: string) => boolean) | null,
+ *   includeArchived?: boolean, includeCommented?: boolean, includeLogbook?: boolean, logSettings?: import('./agenda-log.js').LogSettings | null, skipEntry?: ((kind: string, documentId: string, heading: Heading) => boolean) | null, todoKeywords?: string[], todoFilter?: ((todo: string) => boolean) | null,
  *   tagFilter?: ((tags: string[]) => boolean) | null, rangeStart?: Date | null, rangeEnd?: Date | null, isDone?: ((todo: string) => boolean) | null,
  *   today?: Date, birthdayProperty?: string, contactsDocs?: { documentId: string, doc: Doc }[] | null, deadlineWarningDays?: number,
  *   scheduledDelayDays?: number, calendarLatitude?: number, calendarLongitude?: number, calendarLocationName?: string | null, calendarDateStyle?: string, diaryHebrewSabbathCandlesMinutes?: number, calendarTimeDisplayForm?: string,
  *   weatherData?: Record<string, any> | null, orgWeatherFormat?: string, orgWeatherTemperatureUnit?: string, orgWeatherSpeedUnit?: string,
- *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number } | null,
- *   diary?: import('./agenda-diary.js').DiarySource | null, keywords?: string | null,
+ *   habits?: { enabled: boolean, onlyForToday: boolean, showAllToday: boolean, precedingDays: number, followingDays: number, doneAlwaysGreen?: boolean, scheduledPastDays?: number | null } | null,
+ *   diary?: import('./agenda-diary.js').DiarySource | null, keywords?: string | null, daySettings?: import('./agenda-emacs-days.js').DaySettings | null, todoListSettings?: import('./agenda-todo-list.js').TodoListSettings | null,
  * }} AgendaOptions
  */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -35,12 +35,16 @@
  * visibility change, on manual pull-to-refresh), not this module's.
  */
 
+import { ignoredForDates, readTodoListSettings } from './agenda-todo-list.js';
+import { defaultDaySettings, dayNumberOf, dateOfDay, planningOnDay, timestampOnDay, blockTimeOnDay, headlineTime } from './agenda-emacs-days.js';
 import { isArchived } from './archive-model.js';
 import { parseOrgDuration } from './org-duration.js';
 import { isCommentedHeading } from './comment-model.js';
-import { parseOrgTimestamp, findTimestamps, parseDelay, dateKey, isSameDay } from './org-timestamp.js';
-import { allLogLines, parseLogbookEntries } from './logbook.js';
-import { habitSpec, buildHabitGraph, dayNumber } from './habit.js';
+import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from './org-timestamp.js';
+import { allLogLines } from './logbook.js';
+import { logRows, readLogSettings } from './agenda-log.js';
+import { resolveTodoSequence } from './todo-cycle.js';
+import { habitSpec, buildHabitGraph } from './habit.js';
 import { canonicalDiaryLine, findSexpTimestamps, evaluateSexpWithError, parseGeneralBodyLine, isTruthy } from './sexp-eval.js';
 import {
   parseOrgAnniversaryLine,
@@ -558,22 +562,6 @@ function stripAgeFromFormat(format) {
   return format.replace(/\s*\(\s*%[yY]\s*\)/g, '').replace(/%[yY]/g, '').replace(/\s+$/, '');
 }
 
-/** A short, readable
- *  one-line summary of a single LOGBOOK entry for agenda display. A
- *  state-change entry shows the transition itself ("from X" only when
- *  there was a previous state, matching how the LOGBOOK line itself
- *  omits it too); a bare note (not tied to any state change) is
- * @param {any} [headingTitle]
- * @param {any} [entry]
- *  labeled plainly, since there's no "->" transition to describe. */
-function formatLogbookEntryLine(headingTitle, entry) {
-  if (entry.type === 'state') {
-    const from = entry.oldState ? `${entry.oldState} \u2192 ` : '';
-    return `${headingTitle}: ${from}${entry.newState}`;
-  }
-  return `${headingTitle}: note`;
-}
-
 /**
  * Every (month, day) occurrence within [rangeStart, rangeEnd], one per
  * calendar year the range spans — a birthday/anniversary recurs every
@@ -714,6 +702,17 @@ export function stripTitleStamps(title) {
 const RANGE_RE = /(<\d{4}-\d{2}-\d{2}[^>\n]*>)--(<\d{4}-\d{2}-\d{2}[^>\n]*>)/g;
 const NO_STAMP_BLOCKS = new Set(['SRC', 'EXAMPLE', 'EXPORT', 'COMMENT']);
 
+/** Everything of a heading's own entry as Emacs searches it for dates: the title, the planning line, the property values, the log and the body. @param {Heading} heading */
+function entryText(heading) {
+  const lines = [heading.title];
+  const planning = heading.planning || { scheduled: null, deadline: null };
+  const stamps = (planning.order || ['scheduled', 'deadline']).filter((/** @type {string} */ k) => (k === 'scheduled' || k === 'deadline') && planning[k]);
+  if (stamps.length) lines.push(stamps.map((/** @type {'scheduled' | 'deadline'} */ k) => `${k.toUpperCase()}: ${planning[k]}`).join(' '));
+  for (const value of Object.values(heading.properties || {})) lines.push(String(value));
+  lines.push(...allLogLines(heading), ...(heading.bodyLines || []));
+  return lines.join('\n');
+}
+
 /**
  * The text of one heading's entry that Emacs searches for timestamps: the
  * title, the property values, the drawer lines and the body, less the lines
@@ -762,12 +761,28 @@ function getCategoryForDocument(doc, documentId) {
   return base || documentId;
 }
 
+/**
+ * The time of day an entry that has none of its own gets from its headline (org-agenda-search-headline-for-time, on by default): the
+ * `timeOfDay` the sort keys use (HHMM, whatever the hours), and the day with the time when it is a real clock time.
+ * @param {Heading} heading @param {Date} day
+ * @returns {{ timeOfDay: number, date: Date | null, endDate: Date | null } | null}
+ */
+function headlineClock(heading, day) {
+  const t = headlineTime(heading.title || '');
+  if (!t) return null;
+  const real = (/** @type {{ hour: number, minute: number }} */ c) => c.hour < 24 && c.minute < 60;
+  const at = (/** @type {{ hour: number, minute: number }} */ c) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), c.hour, c.minute);
+  return { timeOfDay: t.hour * 100 + t.minute, date: real(t) ? at(t) : null, endDate: t.end && real(t.end) ? at(t.end) : null };
+}
+
 /** @param {{ documentId: string, doc: Doc }[]} docs */
 function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
   const {
     includeArchived = false,
     includeCommented = false,
     includeLogbook = false,
+    skipEntry = null, // org-agenda-skip-function (agenda-skip.js): says whether an entry the agenda is about to list is skipped
+    logSettings: givenLogSettings = null, // log mode (agenda-log.js); includeLogbook: true is the default log mode
     todoFilter = null,
     tagFilter = null,
     rangeStart = null,
@@ -778,6 +793,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     contactsDocs = null,
     deadlineWarningDays = 14,
     scheduledDelayDays = 0,
+    daySettings: givenDaySettings = null, // the other org-agenda-skip-* / org-deadline-past-days ... settings (readDaySettings); Emacs's defaults when null
     calendarLatitude = 35.994,
     calendarLongitude = -78.8986,
     calendarLocationName = null,
@@ -792,6 +808,10 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     habits = null, // { enabled, onlyForToday, showAllToday, precedingDays, followingDays }: org-habit's agenda behaviour; null leaves habits as ordinary repeating tasks
   } = opts;
   /** @type {any[]} */ const items = [];
+  const logSettings = givenLogSettings ?? (includeLogbook ? readLogSettings(undefined, true) : null);
+  const logOnly = !!logSettings && (logSettings.mode === 'only' || logSettings.mode === 'clockcheck');
+  const daySettings = { ...(givenDaySettings || defaultDaySettings()), warningDays: deadlineWarningDays, delayDays: scheduledDelayDays };
+  /** @type {Map<any, Set<number>>} */ const stampDays = new Map();
 
   /**
    * @param {string} documentId
@@ -799,8 +819,10 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
    * @param {string} kind
    * @param {any} parsed
    * @param {boolean} headingIsDone
+   * @param {boolean} [doneState] the entry is completed (for org-agenda-skip-*-if-done)
    */
-  function addItem(documentId, heading, kind, parsed, headingIsDone) {
+  function addItem(documentId, heading, kind, parsed, headingIsDone, doneState = false) {
+    if (skipEntry && skipEntry(kind === 'timestamp' && parsed.isBlock ? 'block' : kind, documentId, heading)) return;
     // Emacs repeats a plain time stamp only when its repeater is the last thing before `>` (org-repeat-re): `<… +1d -2d>` and
     // `<… +1w/2w>` stay on their own date.  SCHEDULED and DEADLINE read their repeaters properly.
     if (kind !== 'scheduled' && kind !== 'deadline' && parsed.repeater && parsed.raw && !/ [.+]?\+\d+[hdwmy]>$/.test(parsed.raw)) parsed = { ...parsed, repeater: null };
@@ -813,76 +835,93 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       rangeDay: parsed.rangeDay || null,
       rangeDays: parsed.rangeDays || null,
       repeater: parsed.repeater,
+      ...(parsed.inactive ? { inactive: true } : {}),
       todo: heading.todo,
       priority: heading.priority,
       tags: heading.tags,
       title: heading.title,
     };
+
+    // The days of the view a SCHEDULED, DEADLINE or plain time stamp shows on, and how, are Emacs's (src/agenda-emacs-days.js).
+    if (rangeStart && rangeEnd && isDone !== null) {
+      const todayN = dayNumberOf(today);
+      const first = dayNumberOf(rangeStart);
+      const last = dayNumberOf(rangeEnd);
+      const own = dayNumberOf(parsed.date);
+      /** @type {number[]} */ let days;
+      if (!parsed.repeater) days = [own, todayN];
+      else {
+        days = [own, todayN];
+        for (let n = Math.max(first, own); n <= last; n++) days.push(n);
+      }
+      const state = heading.todo || null;
+      const planned = (/** @type {'scheduled' | 'deadline'} */ k) => {
+        const text = heading.planning && heading.planning[k];
+        const p = text ? parseOrgTimestamp(text) : null;
+        return p && p.active ? p : null;
+      };
+      const otherPlanned = kind === 'scheduled' ? planned('deadline') : kind === 'deadline' ? planned('scheduled') : null;
+      const deadlinePlanned = planned('deadline');
+      const deadlineShownOn = (/** @type {number} */ n) => !!deadlinePlanned && !headingIsDone && !!planningOnDay('deadline', deadlinePlanned, n, todayN, daySettings, { other: planned('scheduled'), state });
+      for (const n of new Set(days)) {
+        if (n < first || n > last) continue;
+        const day = dateOfDay(n);
+        if (kind === 'timestamp') {
+          if (doneState && daySettings.skipTimestampIfDone) continue;
+          if (!timestampOnDay(parsed, n, todayN, daySettings, state)) continue;
+          if (daySettings.skipTimestampIfDeadlineIsShown && !parsed.isBlock && deadlineShownOn(n)) continue;
+          if (daySettings.skipAdditionalTimestampsSameEntry && !parsed.isBlock) {
+            const key = n;
+            const shownDays = stampDays.get(heading) || new Set();
+            if (shownDays.has(key)) continue;
+            shownDays.add(key);
+            stampDays.set(heading, shownDays);
+          }
+          const fromTitle = !parsed.hasTime ? headlineClock(heading, day) : null;
+          items.push({
+            ...base,
+            emacsOrder: parsed.isBlock ? 2 : 3,
+            tsDate: parsed.isBlock ? null : parsed.repeater ? own : n,
+            date: fromTitle && fromTitle.date ? fromTitle.date : new Date(day.getFullYear(), day.getMonth(), day.getDate(), parsed.date.getHours(), parsed.date.getMinutes()),
+            ...(fromTitle ? { hasTime: !!fromTitle.date, endDate: fromTitle.endDate, timeOfDay: fromTitle.timeOfDay } : {}),
+            daysOverdue: 0,
+          });
+          continue;
+        }
+        // org-habit: a habit is listed as any scheduled entry is (with org-habit-scheduled-past-days for how long it stays), or on all of today with
+        // org-habit-show-all-today; only today unless org-habit-show-habits-only-for-today is off, and not at all when habits are hidden
+        const habit = kind === 'scheduled' && habits ? habitSpec(heading) : null;
+        if (habit && habits && (!habits.enabled || (n !== todayN && habits.onlyForToday))) continue;
+        const shows =
+          habit && habits && habits.showAllToday && n === todayN
+            ? { daysOverdue: own < todayN ? n - own : 0, showTime: n === own && parsed.hasTime, ownDay: n === own, pastScheduled: own < todayN, day: own }
+            : planningOnDay(kind === 'deadline' ? 'deadline' : 'scheduled', parsed, n, todayN, habit && habits && habits.scheduledPastDays != null ? { ...daySettings, scheduledPastDays: habits.scheduledPastDays } : daySettings, { other: otherPlanned, state, deadlineShown: !habit && kind === 'scheduled' && deadlineShownOn(n) });
+        if (!shows) continue;
+        // a completed entry is listed only on its own date, and not at all with org-agenda-skip-scheduled/deadline-if-done; never a habit
+        if (doneState && (habit || (kind === 'deadline' ? daySettings.skipDeadlineIfDone : daySettings.skipScheduledIfDone) || shows.day !== n)) continue;
+        const fromTitle = !shows.showTime && shows.ownDay ? headlineClock(heading, day) : null; // a reminder has no time of day; an entry with no time of its own takes the one in its headline
+        items.push({
+          ...base,
+          ...(habit && habits ? { habit: buildHabitGraph(heading, isDone, today, habits) } : {}),
+          hasTime: shows.showTime || !!(fromTitle && fromTitle.date),
+          ...(fromTitle ? { timeOfDay: fromTitle.timeOfDay, endDate: fromTitle.endDate } : {}),
+          date: fromTitle && fromTitle.date ? fromTitle.date : new Date(day.getFullYear(), day.getMonth(), day.getDate(), shows.showTime ? parsed.date.getHours() : 0, shows.showTime ? parsed.date.getMinutes() : 0),
+          daysOverdue: habit ? 0 : shows.daysOverdue, // Emacs leaves the "Sched. 3x:" leader off a habit's row
+          emacsOrder: kind === 'deadline' ? 0 : 1,
+          tsDate: shows.day,
+          ...(kind === 'scheduled' ? { scheduledAge: n - shows.day } : {}),
+        });
+      }
+      return;
+    }
+
+    // Without isDone nothing is carried forward and a repeating stamp is listed on every repeat in the range (the appointment scan
+    // and the calendar's dots want every occurrence, whatever today is)
     const repeater = parsed.repeater ? parseRepeater(parsed.repeater) : null;
-
-    // org-habit: one entry for the habit, on today once it is due (a future one only if org-habit-show-all-today, or on its own
-    // date when org-habit-show-habits-only-for-today is off), carrying its consistency graph. Hidden when habits are toggled off.
-    if (habits && kind === 'scheduled' && !headingIsDone && isDone && rangeStart && rangeEnd) {
-      const spec = habitSpec(heading);
-      if (spec) {
-        if (!habits.enabled) return;
-        const todayN = dayNumber(today);
-        const onDate = spec.scheduled <= todayN || habits.showAllToday ? today : habits.onlyForToday ? null : parsed.date;
-        if (!onDate) return;
-        const date = new Date(onDate.getFullYear(), onDate.getMonth(), onDate.getDate(), parsed.date.getHours(), parsed.date.getMinutes());
-        if (date < startOfDay(rangeStart) || date > endOfDay(rangeEnd)) return;
-        const graph = buildHabitGraph(heading, isDone, today, habits);
-        items.push({ ...base, date, daysOverdue: 0, habit: graph });
-        return;
-      }
-    }
-
-    // As in the Emacs agenda: a SCHEDULED or DEADLINE is on its own date, and on today (only) when it is overdue or, for a
-    // DEADLINE, inside its warning period. A SCHEDULED "-Nd" is a delay (the task is still scheduled on its date but shows
-    // only N days later, as overdue on today); a DEADLINE's "-Nd" is its warning period. Each falls back to its file-wide
-    // default (deadlineWarningDays / scheduledDelayDays) when the heading has no cookie of its own. A repeating one is
-    // overdue from its first date, however many repeats have passed, and that one entry stands in for today's repeat.
-    const carryForwardEligible = isDone !== null && !headingIsDone && (kind === 'scheduled' || kind === 'deadline');
-    /** @type {any[] | null} */
-    let carryOccurrences = null;
-    let scheduledDelay = 0;
-    if (carryForwardEligible && rangeStart && rangeEnd) {
-      const delay = parsed.delay ? parseDelay(parsed.delay.replace(/^--/, '-')) : null;
-      const delayDays = delay ? delayToDays(delay) : 0;
-      const warningDays = kind === 'deadline' ? (delay ? delayDays : deadlineWarningDays) : 0;
-      scheduledDelay = kind === 'scheduled' ? (delay ? delayDays : scheduledDelayDays) : 0;
-      carryOccurrences = emacsAgendaOccurrences(kind, parsed.date, today, rangeStart, rangeEnd, warningDays, scheduledDelay);
-    }
-
     if (repeater && rangeStart && rangeEnd) {
-      const carriedToday = carryOccurrences ? carryOccurrences.find((o) => o.daysOverdue !== 0) : null;
-      for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) {
-        if (carriedToday && isSameDay(occurrenceDate, carriedToday.date)) continue;
-        if (scheduledDelay > 0 && dayNumber(occurrenceDate) - dayNumber(parsed.date) < scheduledDelay) continue; // every repeat within the delay of the first date, as in Emacs
-        items.push({ ...base, date: occurrenceDate, daysOverdue: 0 });
-      }
-      if (carriedToday) items.push({ ...base, date: carriedToday.date, daysOverdue: carriedToday.daysOverdue });
-      return;
-    }
-
-    if (carryOccurrences) {
-      for (const { date, daysOverdue } of carryOccurrences) items.push({ ...base, date, daysOverdue });
-      return;
-    }
-
-    if (rangeStart && rangeEnd) {
-      // No repeater, no carry-forward (a plain timestamp, a done
-      // heading, or carry-forward wasn't requested via isDone): a single
-      // literal-date occurrence, filtered by range if one was given.
-      // This used to be unconditional — every non-repeating item was
-      // added regardless of what range was actually requested, relying
-      // entirely on dayView/weekView/monthView's own later re-filtering
-      // to correct it before anything reached the screen. That's
-      // backwards: a function called with a range should itself honor
-      // the range it was given.
-      if (parsed.date >= rangeStart && parsed.date <= rangeEnd) {
-        items.push({ ...base, date: parsed.date, daysOverdue: 0 });
-      }
+      for (const occurrenceDate of expandRepeats(parsed.date, repeater, rangeStart, rangeEnd)) items.push({ ...base, date: occurrenceDate, daysOverdue: 0 });
+    } else if (rangeStart && rangeEnd) {
+      if (parsed.date >= rangeStart && parsed.date <= rangeEnd) items.push({ ...base, date: parsed.date, daysOverdue: 0 });
     } else {
       items.push({ ...base, date: parsed.date, daysOverdue: 0 });
     }
@@ -927,7 +966,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       }
     }
   }
-  if (contactsTriggers.length && contactsDocs) {
+  if (contactsTriggers.length && contactsDocs && !logOnly) {
     for (const { documentId, doc } of contactsDocs) {
       walkHeadings(doc, (/** @type {any} */ heading) => {
         if (!includeArchived && isArchived(heading)) return;
@@ -938,38 +977,48 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     }
   }
 
+  /** @type {Map<any, string>} */ const categoryByHeading = new Map();
   for (const { documentId, doc } of docs) {
-    walkHeadings(doc, (/** @type {any} */ heading) => {
-      if (!includeArchived && isArchived(heading)) return;
-      if (!includeCommented && isCommentedHeading(heading)) return;
+    walkHeadings(doc, (/** @type {any} */ heading, /** @type {any[]} */ ancestors) => {
+      const ownCategory = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string' && v.trim());
+      if (ownCategory) categoryByHeading.set(heading, ownCategory.trim()); // a CATEGORY property, its own or an ancestor's, names the category of the entry
+      if (!includeArchived && [...ancestors, heading].some(isArchived)) return; // a subtree of an archived or commented heading is skipped whole
+      if (!includeCommented && [...ancestors, heading].some(isCommentedHeading)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
 
-      // LOGBOOK items are deliberately NOT gated by todoFilter -- Log
-      // mode's whole purpose is showing a heading's history even when
-      // it's now DONE, which is exactly what the main agenda call
-      // site's own todoFilter (excluding done-state headings from the
-      // normal, non-log view) would otherwise wrongly suppress here too.
-      if (includeLogbook && allLogLines(heading).length) {
-        for (const entry of parseLogbookEntries(allLogLines(heading))) {
-          if (entry.type !== 'state' && entry.type !== 'note') continue; // CLOCK entries excluded -- clocking isn't built yet, and a start/end range doesn't fit this "one item, one date" model
-          const parsed = parseOrgTimestamp(entry.timestamp);
-          if (!parsed) continue;
-          if (rangeStart && rangeEnd && (parsed.date < rangeStart || parsed.date > rangeEnd)) continue;
+      // Log mode (org-agenda-get-progress): the closed, clock and state lines of the entry on a day of the view. Not gated by todoFilter:
+      // a completed entry is what log mode is for.
+      if (logSettings && logSettings.mode) {
+        const first = rangeStart ? dayNumberOf(rangeStart) : -Infinity;
+        const last = rangeEnd ? dayNumberOf(rangeEnd) : Infinity;
+        const keywords = opts.todoKeywords || (() => { const seq = resolveTodoSequence(doc); return [...seq.todoKeywords, ...seq.doneKeywords]; })();
+        const rows = logRows(heading, logSettings, keywords, first, last);
+        for (const row of skipEntry && rows.length && skipEntry('progress', documentId, heading) ? [] : rows) {
+          const at = dateOfDay(row.day);
+          const timed = row.hour !== null && row.minute !== null;
           items.push({
             documentId,
             heading,
             kind: 'logbook',
-            hasTime: parsed.hasTime,
+            logType: row.type,
+            logLabel: row.label,
+            fixedPriority: 100000, // Emacs gives a log line this priority, above every other
+            emacsOrder: -1,
+            hasTime: timed,
             repeater: null,
             todo: heading.todo,
             priority: heading.priority,
             tags: heading.tags,
-            title: formatLogbookEntryLine(heading.title, entry),
-            logNote: entry.note || null,
-            date: parsed.date,
+            title: row.note ? `${heading.title} - ${row.note}` : heading.title,
+            logNote: null,
+            date: timed ? new Date(at.getFullYear(), at.getMonth(), at.getDate(), /** @type {number} */ (row.hour), /** @type {number} */ (row.minute)) : at,
+            endDate: timed && row.endHour !== null && row.endMinute !== null ? new Date(at.getFullYear(), at.getMonth(), at.getDate(), row.endHour, row.endMinute) : null,
+            clockStart: row.clockStart,
+            clockEnd: row.clockEnd,
             daysOverdue: 0,
           });
         }
+        if (logOnly) return;
       }
 
       if (todoFilter && !todoFilter(heading.todo)) return;
@@ -983,7 +1032,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
         const parsed = parseOrgTimestamp(raw);
         if (!parsed || !parsed.active) continue; // as in Emacs, only an active date is a reminder
         hasPlanning = true;
-        addItem(documentId, heading, kind, parsed, headingIsDone);
+        addItem(documentId, heading, kind, parsed, headingIsDone, headingIsDone);
       }
 
       // Plain active timestamps anywhere in the heading's own entry: its
@@ -1003,15 +1052,20 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
           if (!from || !to || !from.active || !to.active || startOfDay(to.date) < startOfDay(from.date)) continue;
           rest = rest.replace(m[0], ' ');
           const rangeDays = Math.round((startOfDay(to.date).getTime() - startOfDay(from.date).getTime()) / 86400000) + 1;
-          let rangeDay = 0;
-          for (let day = startOfDay(from.date); day <= startOfDay(to.date); day = addDays(day, 1)) {
-            const date = new Date(day.getFullYear(), day.getMonth(), day.getDate(), from.date.getHours(), from.date.getMinutes());
-            addItem(documentId, heading, 'timestamp', { ...from, date, endDate: null, rangeDay: ++rangeDay, rangeDays }, true);
+          const lo = rangeStart ? Math.max(dayNumberOf(from.date), dayNumberOf(rangeStart)) : dayNumberOf(from.date);
+          const hi = rangeEnd ? Math.min(dayNumberOf(to.date), dayNumberOf(rangeEnd)) : dayNumberOf(to.date);
+          for (let n = lo; n <= hi; n++) {
+            const rangeDay = n - dayNumberOf(from.date) + 1;
+            const withTime = blockTimeOnDay(from, to, n);
+            const date = withTime ?? dateOfDay(n);
+            addItem(documentId, heading, 'timestamp', { ...from, isBlock: true, repeater: null, date, hasTime: !!withTime, endDate: null, rangeDay: rangeDays > 1 ? rangeDay : null, rangeDays: rangeDays > 1 ? rangeDays : null }, true, headingIsDone);
           }
         }
+        const inactiveToo = daySettings.includeInactiveTimestamps;
+        if (inactiveToo) rest = rest.split('\n').filter((line) => !/^\s*CLOCK:/.test(line)).join('\n').replace(/\[\d{4}-\d{2}-\d{2}[^\]\n]*\]--\[\d{4}-\d{2}-\d{2}[^\]\n]*\]/g, ' '); // a clock line and an inactive date range are left out
         for (const parsed of findTimestamps(rest)) {
-          if (!parsed.active) continue;
-          addItem(documentId, heading, 'timestamp', parsed, true); // headingIsDone: true short-circuits carry-forward
+          if (!parsed.active && !(inactiveToo && !parsed.repeater)) continue;
+          addItem(documentId, heading, 'timestamp', parsed.active ? parsed : { ...parsed, inactive: true }, true, headingIsDone); // headingIsDone: true short-circuits carry-forward
         }
       }
 
@@ -1218,12 +1272,17 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     if (!categoryByDocument.has(documentId)) categoryByDocument.set(documentId, getCategoryForDocument(doc, documentId));
   }
   for (const item of items) {
-    item.category = categoryByDocument.get(item.documentId) || item.documentId;
+    item.category = (item.heading && categoryByHeading.get(item.heading)) || categoryByDocument.get(item.documentId) || item.documentId;
   }
-  if (diary && rangeStart && rangeEnd) items.push(...buildDiaryItems(diary, rangeStart, rangeEnd, opts, buildAgendaItems));
+  if (diary && rangeStart && rangeEnd && !logOnly) items.push(...buildDiaryItems(diary, rangeStart, rangeEnd, opts, buildAgendaItems));
 
-  items.sort((a, b) => a.date - b.date);
-  return items;
+  // By day, and on a day as Emacs lists them, file by file: every deadline, then every scheduled item, the date ranges, the time
+  // stamps and the sexps (its sort is stable, so the order stays when sort keys tie).
+  const fileIndex = new Map(docs.map((d, i) => [d.documentId, i]));
+  return items
+    .map((item, at) => ({ item, at, day: startOfDay(item.date).getTime() }))
+    .sort((a, b) => a.day - b.day || (fileIndex.get(a.item.documentId) ?? 0) - (fileIndex.get(b.item.documentId) ?? 0) || (a.item.emacsOrder ?? 4) - (b.item.emacsOrder ?? 4) || a.at - b.at)
+    .map((e) => e.item);
 }
 
 /**
@@ -1281,16 +1340,6 @@ function dayView(items, date = new Date()) {
  */
 function startOfDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-/** `date` shifted forward (or backward, for a negative `days`) by
- *  `days` whole calendar days -- month/year boundaries handled
- *  correctly by JS's own Date arithmetic (setting a day-of-month
- * @param {Date} date
- * @param {number} days
- *  value past the end of its month rolls over into the next one). */
-function addDays(date, days) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, date.getHours(), date.getMinutes());
 }
 
 /**
@@ -1369,6 +1418,23 @@ function monthView(items, date = new Date()) {
 }
 
 /**
+ * The days of a span (see agenda-span.js) as the day groups of a view: `ndays` days from `start`, the days without items included.
+ * @param {AgendaItem[]} items
+ * @param {Date} start
+ * @param {number} ndays
+ */
+function rangeView(items, start, ndays) {
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + ndays - 1);
+  const byKey = new Map(groupByDay(itemsInRange(items, start, end)).map((d) => [d.date, d]));
+  const allDays = [];
+  for (let i = 0; i < ndays; i++) {
+    const key = dateKey(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+    allDays.push(byKey.get(key) || { date: key, items: [] });
+  }
+  return allDays;
+}
+
+/**
  * Builds the flat list of "active" TODO-state headings across `docs` —
  * completely independent of any date or timestamp, matching real org's
  * own global TODO list (the 't' dispatcher option, distinct from 'a'
@@ -1387,20 +1453,29 @@ function monthView(items, date = new Date()) {
  * @param {{ documentId: string, doc: Doc }[]} docs
  */
 function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
-  const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null, keywords = null } = opts;
+  const { includeArchived = false, includeCommented = false, tagFilter = null, isDone = null, keywords = null, today = new Date(), deadlineWarningDays = 14, todoListSettings = null, skipEntry = null } = opts;
   // a keyword list (`WAITING|NEXT`, or `*` for every state) as org-todo-list takes it; without one, the states that are not done
   const wanted = keywords && /\S/.test(keywords) && keywords.trim() !== '*' ? new Set(keywords.split('|').map((/** @type {string} */ k) => k.trim()).filter(Boolean)) : null;
   const every = !!keywords && keywords.trim() === '*';
+  const settings = todoListSettings || readTodoListSettings({});
+  const todayN = dayNumberOf(today);
   /** @type {any[]} */ const items = [];
+  /** @type {Set<any>} */ const belowSkipped = new Set(); // headings whose subtree the list does not enter
 
   for (const { documentId, doc } of docs) {
+    const docCategory = getCategoryForDocument(doc, documentId);
     walkHeadings(doc, (/** @type {any} */ heading, /** @type {Doc['children']} */ ancestors) => {
       // a whole archived or commented tree is skipped, not only its top heading
       if (!includeArchived && [...ancestors, heading].some(isArchived)) return;
       if (!includeCommented && [...ancestors, heading].some(isCommentedHeading)) return;
+      if (ancestors.some((a) => belowSkipped.has(a))) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
       if (!heading.todo) return; // no TODO state at all -- not a task
       if (wanted ? !wanted.has(heading.todo) : !every && isDone && isDone(heading.todo)) return;
+      if (skipEntry && skipEntry('todo', documentId, heading)) return; // org-agenda-skip-function
+      if (!settings.sublevels) belowSkipped.add(heading); // org-agenda-todo-list-sublevels nil: one listed (or ignored) entry stands for its whole subtree
+      if (ignoredForDates(entryText(heading), settings, todayN, deadlineWarningDays)) return;
+      const own = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string' && v.trim());
       items.push({
         documentId,
         heading,
@@ -1408,7 +1483,8 @@ function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
         priority: heading.priority,
         tags: heading.tags,
         title: heading.title,
-        category: getCategoryForDocument(doc, documentId),
+        ...(headlineTime(heading.title || '') ? { timeOfDay: /** @type {number} */ (headlineClock(heading, today)?.timeOfDay) } : {}), // the time sort key takes a time written in the headline
+        category: own ? own.trim() : docCategory,
       });
     });
   }
@@ -1418,6 +1494,7 @@ function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
 
 export {
   UNSAVED_DOCUMENT_ID,
+  rangeView,
   itemEffortText,
   itemEffortMinutes,
   summarizeDayEffort,
@@ -1427,6 +1504,7 @@ export {
   limitItemsByEffort,
   applyAgendaEffortView,
   walkHeadings,
+  entryTimestampText,
   getCategoryForDocument,
   buildAgendaItems,
   buildTaskList,

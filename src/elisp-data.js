@@ -72,6 +72,8 @@ export class Flt {
   /** @param {number} v */
   constructor(v) {
     this.v = v;
+    /** For a NaN: whether its sign bit is clear (read from `0.0e+NaN`, or passed on from such an operand). */
+    this.pos = false;
   }
 }
 
@@ -84,6 +86,8 @@ export class Lambda {
     this.scope = scope;
     this.lexical = lexical;
     this.isMacro = false;
+    /** A library function (the Lisp prelude's): an argument-count error reports `(MIN . MAX)` as for byte-compiled code. */
+    this.compiled = false;
   }
 }
 
@@ -155,7 +159,7 @@ export function toArray(x) {
     p = p.cdr;
     if (++n > 10_000_000) throw signal('circular-list', [x]);
   }
-  if (p !== NIL) throw signal('wrong-type-argument', [intern('listp'), x]);
+  if (p !== NIL) throw signal('wrong-type-argument', [intern('listp'), p]);
   return out;
 }
 
@@ -289,8 +293,8 @@ export function formatG(x, prec) {
 }
 
 /** A float as Emacs prints it: the shortest of 15 to 17 significant digits that reads back the same, with ".0" when it looks like an integer. @param {number} x */
-export function floatToString(x) {
-  if (Number.isNaN(x)) return '-0.0e+NaN';
+export function floatToString(x, positiveNaN = false) {
+  if (Number.isNaN(x)) return positiveNaN ? '0.0e+NaN' : '-0.0e+NaN';
   if (x === Infinity) return '1.0e+INF';
   if (x === -Infinity) return '-1.0e+INF';
   let s = '';
@@ -309,7 +313,7 @@ function symbolText(name) {
   for (let i = 0; i < name.length; i++) {
     const c = name[i];
     if ('"\\;\'`,#()[]? \t\n\r\f'.includes(c) && !(c === '?' && i > 0) && !(c === '#' && i > 0)) out += '\\' + c;
-    else if (c === '.' && name.length === 1) out += '\\.';
+    else if (c === '.' && (name.length === 1 || i === 0)) out += '\\.';
     else out += c;
   }
   if (looksNumeric) out = '\\' + out;
@@ -332,12 +336,12 @@ function printTo(x, escape, out, depth) {
     return;
   }
   if (typeof x === 'number' || typeof x === 'bigint') out.push(String(x));
-  else if (x instanceof Flt) out.push(floatToString(x.v));
+  else if (x instanceof Flt) out.push(floatToString(x.v, x.pos));
   else if (typeof x === 'string') {
     if (!escape) out.push(x);
     else out.push('"' + x.replace(/["\\]/g, '\\$&') + '"');
   } else if (x instanceof Sym) {
-    if (!escape) out.push(x.name);
+    if (!escape) out.push(x.name === '' ? '##' : x.name);
     else out.push(x.interned ? symbolText(x.name) : symbolText(x.name));
   } else if (x instanceof Cons) printList(x, escape, out, depth);
   else if (Array.isArray(x)) {
@@ -350,7 +354,18 @@ function printTo(x, escape, out, depth) {
   } else if (x instanceof Lambda) printLambda(x, escape, out, depth);
   else if (x instanceof Subr) out.push(`#<subr ${x.name}>`);
   else if (x instanceof Special) out.push(`#<subr ${x.name}>`);
-  else if (x instanceof HashTable) out.push(`#s(hash-table test ${x.test})`);
+  else if (x instanceof HashTable) {
+    out.push(`#s(hash-table size ${Math.max(65, x.map.size)} test ${x.test} rehash-size 1.5 rehash-threshold 0.8125 data (`);
+    let first = true;
+    for (const [k, v] of x.map.values()) {
+      if (!first) out.push(' ');
+      first = false;
+      printTo(k, escape, out, depth + 1);
+      out.push(' ');
+      printTo(v, escape, out, depth + 1);
+    }
+    out.push('))');
+  }
   else out.push('#<marker>');
 }
 
@@ -369,13 +384,22 @@ function printLambda(f, escape, out, depth) {
   printTo(f.isMacro ? new Cons(intern('macro'), new Cons(intern('lambda'), new Cons(f.params, f.body))) : new Cons(intern(head), new Cons(f.params, f.body)), escape, out, depth + 1);
 }
 
-const QUOTES = new Map([['quote', "'"], ['function', "#'"], ['`', '`'], [',', ','], [',@', ',@']]);
+const QUOTES = new Map([['quote', "'"], ['function', "#'"], ['`', '`']]);
+/** The commas abbreviate only inside a backquote. */
+const COMMAS = new Map([[',', ','], [',@', ',@']]);
+const quoting = { backquote: 0 };
 
 /** @param {Cons} x @param {boolean} escape @param {string[]} out @param {number} depth */
 function printList(x, escape, out, depth) {
-  if (x.car instanceof Sym && x.cdr instanceof Cons && x.cdr.cdr === NIL && QUOTES.has(x.car.name)) {
-    out.push(/** @type {string} */ (QUOTES.get(x.car.name)));
-    printTo(x.cdr.car, escape, out, depth + 1);
+  if (x.car instanceof Sym && x.cdr instanceof Cons && x.cdr.cdr === NIL && (QUOTES.has(x.car.name) || (quoting.backquote > 0 && COMMAS.has(x.car.name)))) {
+    out.push(/** @type {string} */ (QUOTES.get(x.car.name) ?? COMMAS.get(x.car.name)));
+    const inside = x.car.name === '`';
+    if (inside) quoting.backquote += 1;
+    try {
+      printTo(x.cdr.car, escape, out, depth + 1);
+    } finally {
+      if (inside) quoting.backquote -= 1;
+    }
     return;
   }
   out.push('(');

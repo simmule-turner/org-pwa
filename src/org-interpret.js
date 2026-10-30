@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The text Emacs's Org export back end (ox-org) writes: the document read as Org elements and written out again in
- * Org's canonical form. Headlines have their tags aligned and lose a priority cookie, SCHEDULED/DEADLINE lines, property drawers and
+ * Org's canonical form. Headlines have their tags placed at `org-tags-column` and lose a priority cookie, SCHEDULED/DEADLINE lines, property drawers and
  * LOGBOOK drawers unless #+OPTIONS: asks for them; keywords and block markers are lower case; source and example blocks
  * are indented by two; tables are re-aligned; ordered lists are renumbered; export snippets and blocks for other back ends are dropped.
  * Compared with Emacs 29.3 / Org 9.6.15.
@@ -10,16 +10,16 @@
 /**
  * @typedef {{
  *   todoKeywords: Set<string>, todo: boolean, priority: boolean, tags: boolean, planning: boolean, properties: boolean,
- *   drawer: (name: string) => boolean, footnotes: boolean, tables?: boolean, title: boolean, author: boolean, date: boolean, email: boolean,
- *   selective?: boolean, nested?: boolean, referenced?: Set<string>,
+ *   drawer: (name: string) => boolean, footnotes: boolean, tables?: boolean, stat?: boolean, clocks?: boolean, creator?: string, abbreviations?: Map<string, string>, title: boolean, author: boolean, date: boolean, email: boolean,
+ *   selective?: boolean, nested?: boolean,
  *   cite?: { text: (c: any) => string, bibliography: string[] },
  * }} InterpretOptions
  */
 
 import { parseCitationAt } from './cite.js';
-import { layoutTable, width } from './org-table-layout.js';
-
-const TAGS_COLUMN = 77;
+import { layoutTable } from './org-table-layout.js';
+import { getTagsColumn, withTags } from './tags-column.js';
+import { expandAbbreviation } from './link-abbrev.js';
 
 /** @param {string} s */
 const isBlank = (s) => s.trim() === '';
@@ -98,8 +98,15 @@ function citations(text, write) {
 function objects(text, opts) {
   let out = opts.cite ? citations(text, opts.cite.text) : text;
   out = out.replace(/@@[A-Za-z0-9-]+:[\s\S]*?@@/g, '');
-  out = out.replace(/\[\[([^\][]+)(\]\[[^\]]*)?\]\]/g, (whole, target, desc) => (/^(?:\.{1,2}\/|\/|~\/)/.test(target) ? `[[file:${target}${desc || ''}]]` : whole));
+  out = out.replace(/\[\[((?:\\.|[^\][\\])+)(\]\[[^\]]*)?\]\]/g, (whole, raw, desc) => {
+    const target = expandAbbreviation(raw.replace(/\\([[\]])/g, '$1'), opts.abbreviations ?? new Map());
+    if (target.startsWith('doi:')) return 'https://doi.org/' + target.slice(4); // a DOI is written as its address, with no description
+    if (target.startsWith('bbdb:') && desc) return desc.slice(2); // a BBDB link is its description
+    if (/^(?:\.{1,2}\/|\/|~\/)/.test(target)) return `[[file:${target}${desc || ''}]]`;
+    return `[[${target}${desc || ''}]]`;
+  });
   out = out.replace(TIMESTAMP_RE, (_whole, a, b, spaces) => splitTimeRange(a) + (b ? '--' + splitTimeRange(b) : '') + (spaces ? spaces + spaces : ''));
+  if (opts.stat === false) out = out.replace(STAT_RE, '');
   if (!opts.footnotes) out = out.replace(/\[fn:[^\]\s]*(?::[^\]]*)?\][ \t]*/g, ''); // the blanks after a dropped reference go with it
   return out;
 }
@@ -124,7 +131,7 @@ function table(lines, opts) {
   }
   rows = rows.filter((r) => !r || !(r.some((c) => c !== '') && r.every((c) => c === '' || COOKIE_RE.test(c))));
   const data = /** @type {string[][]} */ (rows.filter(Boolean));
-  if (!data.length) return [];
+  if (!data.length) return rows.map(() => '|---|'); // a table of rules only has one empty column
   return layoutTable(rows.map((r) => (r ? r.map((c) => inline(c, opts)) : null)));
 }
 
@@ -195,6 +202,15 @@ function render(lines, opts) {
       afterTable = false;
       continue;
     }
+    // clock lines are left out unless c:t, and then written in one form
+    const clock = CLOCK_RE.exec(line);
+    if (clock) {
+      i++;
+      if (opts.clocks) out.push(`CLOCK: ${clock[1]}${clock[2] ? '--' + clock[2] : ''}${clock[3] ? ' =>  ' + clock[3] : ''}`);
+      else while (i < lines.length && isBlank(lines[i])) i++;
+      afterTable = false;
+      continue;
+    }
     // blocks
     const block = BLOCK_BEGIN_RE.exec(line);
     if (block) {
@@ -212,9 +228,11 @@ function render(lines, opts) {
           if (params.split(/\s+/)[0].toLowerCase() === 'org') out.push(...render(dedent(content), opts));
         } else if (lower === 'src' || lower === 'example') {
           const rows = content.map(untab);
+          while (rows.length && isBlank(rows[rows.length - 1])) rows.pop(); // the code ends with its last line
           const widths = rows.filter((l) => !isBlank(l)).map(indentOf);
           const min = widths.length ? Math.min(...widths) : 0;
-          out.push(`#+begin_${lower}${params ? ' ' + params : ''}`, ...rows.map((l) => (isBlank(l) ? '' : '  ' + l.slice(min))), `#+end_${lower}`);
+          const keep = /(?:^|\s)-i(?:\s|$)/.test(params); // -i keeps the code as it is
+          out.push(`#+begin_${lower}${params ? ' ' + params : ''}`, ...(keep ? content.slice(0, rows.length) : rows.map((l) => (isBlank(l) ? '' : '  ' + l.slice(min)))), `#+end_${lower}`);
         } else if (lower === 'verse') {
           out.push('#+begin_verse', ...dedent(content).map((l) => inline(l, opts)), '#+end_verse');
         } else {
@@ -240,6 +258,9 @@ function render(lines, opts) {
       const key = keyword[1];
       i++;
       if (/^ATTR_/i.test(key)) continue;
+      // an affiliated keyword goes with the export block (for another back end) it belongs to, which is not written
+      const next = i < lines.length ? BLOCK_BEGIN_RE.exec(lines[i]) : null;
+      if (/^(?:RESULTS|NAME|CAPTION|HEADERS?)(?:\[.*\])?$/i.test(key) && next && next[1].toLowerCase() === 'export' && (next[2] || '').split(/\s+/)[0].toLowerCase() !== 'org') continue;
       if (key.toUpperCase() === 'TBLFM' && afterTable) {
         out.push(`#+TBLFM: ${keyword[2]}`);
         continue;
@@ -249,7 +270,7 @@ function render(lines, opts) {
         out.push(...opts.cite.bibliography.flatMap((entry, n) => (n ? ['', entry] : [entry])));
         continue;
       }
-      out.push(`#+${key.toLowerCase()}: ${keyword[2]}`);
+      out.push(`#+${key.replace(/^[^[]*/, (k) => k.toLowerCase())}: ${keyword[2]}`);
       continue;
     }
     // drawers
@@ -283,6 +304,7 @@ function render(lines, opts) {
       const run = [];
       while (i < lines.length && /^\s*\|/.test(lines[i])) run.push(lines[i++]);
       if (opts.tables !== false) out.push(...table(run, opts));
+      else while (i < lines.length && isBlank(lines[i])) i++; // a dropped table takes its blank lines along
       afterTable = true;
       continue;
     }
@@ -305,20 +327,11 @@ function render(lines, opts) {
       i = list(lines, i, opts, out);
       continue;
     }
-    // a footnote definition nothing refers to is dropped, with the text that runs on after it
-    const note = /^\[fn:([^\]\s]+)\]/.exec(line);
-    if (note && opts.referenced && !opts.referenced.has(note[1])) {
-      i++;
-      let blanks = 0;
-      while (i < lines.length && blanks < 2 && !/^\[fn:[^\]\s]+\]/.test(lines[i])) blanks = isBlank(lines[i++]) ? blanks + 1 : 0;
-      continue;
-    }
     // a paragraph
     const start = i;
     i++;
     while (i < lines.length && !interrupts(lines[i], opts.nested)) i++;
     const text = lines.slice(start, i);
-    if (!opts.footnotes && /^\[fn:[^\]\s]+\]/.test(text[0])) continue;
     const written = dedent(text).map((l) => inline(l, opts));
     if (opts.cite && /^\[cite/.test(text[0].trimStart())) written[0] = written[0].trimStart(); // a paragraph does not begin with a blank
     out.push(...written);
@@ -378,11 +391,13 @@ function list(lines, i, opts, out) {
     } else {
       out.push(prefix + (rendered[0] ?? ''), ...indentLines(rendered.slice(1), contentIndent));
     }
+    if (rendered.length) out[out.length - 1] = out[out.length - 1].trimEnd(); // an item's contents lose their trailing blanks
     i = j;
     let k = i;
     while (k < lines.length && isBlank(lines[k])) k++;
     const next = k < lines.length ? itemMatch(lines[k], opts.nested) : null;
     if (next && indentOf(lines[k]) === base && k - i < 2) {
+      if (text === '' && rendered.length === 0) out.push(''); // an item with nothing in it is followed by a blank line
       for (; i < k; i++) out.push('');
     } else {
       break;
@@ -433,17 +448,84 @@ function prologue(body, opts, zeroth) {
   return { rest: body.slice(k), written };
 }
 
+const CLOCK_RE = /^\s*CLOCK:\s*(\[[^\]]*\])(?:--(\[[^\]]*\]))?(?:\s*=>\s*(\S+))?\s*$/;
+const STAT_RE = /\[(?:\d*%|\d*\/\d*)\]/g;
+const NOTE_RE = /^\[fn:([^\]\s:]+)\]/;
+const BLOCK_OPEN_RE = /^[ \t]*#\+begin_(\S+)/i;
+
+/**
+ * Footnote definitions taken out of a run of lines: a definition runs to the next definition, the next headline (not in these
+ * lines) or two blank lines in a row, and leaves nothing behind (ox-org writes it after the section of its first reference).
+ * @param {string[]} lines
+ * @returns {{ rest: string[], notes: { label: string, lines: string[] }[] }}
+ */
+function takeNotes(lines) {
+  /** @type {string[]} */
+  const rest = [];
+  /** @type {{ label: string, lines: string[] }[]} */
+  const notes = [];
+  let i = 0;
+  while (i < lines.length) {
+    const open = BLOCK_OPEN_RE.exec(lines[i]);
+    if (open) {
+      const close = new RegExp(`^[ \\t]*#\\+end_${escapeRe(open[1])}\\s*$`, 'i');
+      let k = i + 1;
+      while (k < lines.length && !close.test(lines[k])) k++;
+      const end = Math.min(k + 1, lines.length);
+      rest.push(...lines.slice(i, end));
+      i = end;
+      continue;
+    }
+    const note = NOTE_RE.exec(lines[i]);
+    if (!note) {
+      rest.push(lines[i++]);
+      continue;
+    }
+    const start = i;
+    i++;
+    let blanks = 0;
+    while (i < lines.length && blanks < 2 && !NOTE_RE.test(lines[i])) blanks = isBlank(lines[i++]) ? blanks + 1 : 0;
+    const block = lines.slice(start, i);
+    block[0] = block[0].slice(note[0].length).replace(/^\s+/, '');
+    while (block.length && isBlank(block[block.length - 1])) block.pop();
+    notes.push({ label: note[1], lines: block });
+  }
+  return { rest, notes };
+}
+
+/** The labels of the footnote references in a run of lines, in order, those of named inline definitions with a colon in front (literal blocks, fixed-width lines and comments hold none). @param {string[]} lines */
+function noteRefs(lines) {
+  /** @type {string[]} */
+  const labels = [];
+  let block = '';
+  for (const line of lines) {
+    if (block) {
+      if (new RegExp(`^[ \\t]*#\\+end_${escapeRe(block)}\\s*$`, 'i').test(line)) block = '';
+      continue;
+    }
+    const open = BLOCK_OPEN_RE.exec(line);
+    if (open) {
+      block = open[1];
+      continue;
+    }
+    if (/^[ \t]*(?::(?: |$)|#(?: |$))/.test(line)) continue;
+    for (const m of line.matchAll(/\[fn:([^\]\s:]+)(\]|:)/g)) labels.push(m[2] === ':' ? ':' + m[1] : m[1]);
+  }
+  return labels;
+}
+
 /** @param {string} line @param {InterpretOptions} opts */
 function headline(line, opts) {
   const m = /^(\*+)(?: (.*))?$/.exec(line);
   if (!m) return line;
-  let rest = m[2] ?? '';
+  let rest = (m[2] ?? '').trim();
   const tagMatch = /^(.*?)\s+(:[^\s:]+(?::[^\s:]+)*:)\s*$/.exec(rest);
   let tags = '';
   if (tagMatch) {
     rest = tagMatch[1];
     tags = tagMatch[2];
   }
+  if (opts.stat === false) rest = rest.replace(STAT_RE, '');
   let todo = '';
   const word = /^(\S+)(?: |$)/.exec(rest);
   if (word && opts.todoKeywords.has(word[1]) && rest.length > word[1].length) {
@@ -459,7 +541,7 @@ function headline(line, opts) {
   const left = [m[1], [opts.todo ? todo : '', opts.priority ? priority : '', rest].filter(Boolean).join(' ')].filter(Boolean).join(' ');
   const shown = opts.tags ? tags : '';
   if (!shown) return left + (left === m[1] ? ' ' : '');
-  return left + ' '.repeat(Math.max(1, TAGS_COLUMN - width(left) - width(shown))) + shown;
+  return withTags(left, shown, getTagsColumn());
 }
 
 /**
@@ -469,6 +551,14 @@ function headline(line, opts) {
  */
 export function interpretOrg(text, opts) {
   const lines = text.split('\n');
+  // #+LINK: abbreviations count wherever they stand in the file
+  /** @type {Map<string, string>} */
+  const abbreviations = new Map();
+  for (const line of lines) {
+    const link = /^#\+LINK:[ \t]+(\S+)[ \t]+(\S.*?)\s*$/i.exec(line);
+    if (link && !abbreviations.has(link[1])) abbreviations.set(link[1], link[2]);
+  }
+  opts = { ...opts, abbreviations };
   /** @type {string[][]} */
   const sections = [[]];
   /** @type {string[]} */
@@ -481,9 +571,28 @@ export function interpretOrg(text, opts) {
       sections[sections.length - 1].push(line);
     }
   }
-  const referenced = new Set();
-  for (const line of lines) for (const m of line.matchAll(/\[fn:([^\]\s:]+)/g)) if (m.index !== 0 || !/^\[fn:[^\]\s]+\]/.test(line)) referenced.add(m[1]);
-  opts = { ...opts, referenced };
+  // footnote definitions leave their place; each is written after the section where its label is first used
+  const trailing = sections.map((b) => {
+    let k = b.length;
+    while (k > 0 && isBlank(b[k - 1])) k--;
+    return b.length - k;
+  });
+  /** @type {Map<string, string[]>} */
+  const defined = new Map();
+  /** @type {string[][]} */
+  const wanted = sections.map(() => []);
+  /** @type {Set<string>} */
+  const seen = new Set();
+  sections.forEach((b, n) => {
+    const { rest, notes } = takeNotes(b);
+    for (const note of notes) if (!defined.has(note.label)) defined.set(note.label, note.lines);
+    sections[n] = rest;
+    for (const ref of noteRefs([heads[n], ...rest])) {
+      const label = ref.replace(/^:/, '');
+      if (!seen.has(label) && ref === label) wanted[n].push(label);
+      seen.add(label);
+    }
+  });
   /** @type {string[]} */
   const out = [];
   // the file's own keywords: OPTIONS first, then title, date, author and email
@@ -491,12 +600,30 @@ export function interpretOrg(text, opts) {
   const options = [];
   /** @type {Record<string, string[]>} */
   const info = { TITLE: [], DATE: [], AUTHOR: [], EMAIL: [] };
-  sections[0] = sections[0].filter((l) => {
-    const m = /^#\+(TITLE|AUTHOR|DATE|EMAIL|OPTIONS):[ \t]*(.*?)\s*$/i.exec(l);
-    if (!m) return true;
-    if (m[1].toUpperCase() === 'OPTIONS') options.push(m[2]);
-    else info[m[1].toUpperCase()].push(m[2]);
-    return false;
+  sections.forEach((b, n) => {
+    /** @type {string[]} */
+    const kept = [];
+    let block = '';
+    for (let i = 0; i < b.length; i++) {
+      const l = b[i];
+      if (block) {
+        if (new RegExp(`^[ \\t]*#\\+end_${escapeRe(block)}\\s*$`, 'i').test(l)) block = '';
+        kept.push(l);
+        continue;
+      }
+      const open = BLOCK_OPEN_RE.exec(l);
+      if (open) block = open[1];
+      const m = !open && /^#\+(TITLE|AUTHOR|DATE|EMAIL|OPTIONS|CREATOR):[ \t]*(.*?)\s*$/i.exec(l);
+      if (!m) {
+        kept.push(l);
+        continue;
+      }
+      // the keyword goes with the blank lines after it
+      while (i + 1 < b.length && isBlank(b[i + 1])) i++;
+      if (m[1].toUpperCase() === 'OPTIONS') options.push(m[2]);
+      else if (m[1].toUpperCase() !== 'CREATOR') info[m[1].toUpperCase()].push(m[2]);
+    }
+    sections[n] = kept;
   });
   if (opts.selective) {
     sections[0] = []; // with selected trees, the text before the first headline is left out
@@ -507,10 +634,36 @@ export function interpretOrg(text, opts) {
   if (opts.date && info.DATE.length) out.push(`#+date: ${info.DATE.join(' ')}`);
   if (opts.author && info.AUTHOR.length) out.push(`#+author: ${info.AUTHOR.join(' ')}`);
   if (opts.email && info.EMAIL.length) out.push(`#+email: ${info.EMAIL.join(' ')}`);
+  if (opts.creator) out.push(`#+creator: ${opts.creator}`);
+  let skipLevel = 0; // inside a headline titled "Footnotes", which Org leaves out with everything under it
   sections.forEach((body, n) => {
-    if (n > 0) out.push(headline(heads[n], opts));
+    if (n > 0) {
+      const level = /^\*+/.exec(heads[n])?.[0].length ?? 1;
+      if (skipLevel && level > skipLevel) return;
+      skipLevel = 0;
+      const title = heads[n].replace(/^\*+\s*/, '').replace(/\s+:[^\s:]+(?::[^\s:]+)*:\s*$/, '').replace(/^\S+\s+/, (w) => (opts.todoKeywords.has(w.trim()) ? '' : w));
+      if (title.trim() === 'Footnotes') {
+        skipLevel = level;
+        return;
+      }
+      out.push(headline(heads[n], opts));
+    }
     const { rest, written } = prologue(body, opts, n === 0);
-    out.push(...written, ...render(rest, opts));
+    const lines = [...written, ...render(rest, opts)];
+    if (!opts.footnotes || !wanted[n].length) {
+      out.push(...lines);
+      return;
+    }
+    let lead = 0;
+    while (lead < lines.length && lines[lead] === '') lead++;
+    let end = lines.length;
+    while (end > lead && lines[end - 1] === '') end--;
+    out.push(...lines.slice(0, end));
+    for (const label of wanted[n].filter((l) => defined.has(l))) { // a reference with no definition stays as it is (Emacs stops with an error)
+      out.push('');
+      out.push(...`[fn:${label}] ${render(/** @type {string[]} */ (defined.get(label)), opts).join('\n')}`.split('\n'));
+    }
+    out.push(...Array(trailing[n]).fill(''));
   });
   while (out.length && out[0] === '') out.shift();
   while (out.length && out[out.length - 1] === '') out.pop();

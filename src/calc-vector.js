@@ -31,6 +31,18 @@ function splitTopLevel(body) {
   let start = 0;
   for (let i = 0; i < body.length; i++) {
     const ch = body[i];
+    if (depth === 0 && ch === '[' && i > 0 && body[i - 1] === ']') { // [x][1]: elements need no comma between them
+      parts.push(body.slice(start, i));
+      start = i;
+    }
+    if (depth === 0 && /\s/.test(ch)) { // [1 2]: nor does a space
+      const before = body.slice(start, i).trimEnd().slice(-1);
+      const after = body.slice(i).trimStart()[0];
+      if (before && after && !/[-+*/^%,]/.test(before) && !/[-+*/^%,]/.test(after)) {
+        parts.push(body.slice(start, i));
+        start = i + 1;
+      }
+    }
     if (ch === '[' || ch === '(') depth++;
     else if (ch === ']' || ch === ')') depth--;
     else if (ch === ',' && depth === 0) {

@@ -4,6 +4,11 @@
  * budget and `max-lisp-eval-depth`. The data, reader, evaluator and library live in the `elisp-*.js` modules.
  */
 import './elisp-lib.js';
+import './elisp-extra.js';
+import './elisp-loop.js';
+import './elisp-pcase.js';
+import './elisp-time.js';
+import './elisp-prelude.js';
 import {
   BudgetExceeded, Cons, LispSignal, LispThrow, NIL, errorMessageString, print, signal,
 } from './elisp-data.js';

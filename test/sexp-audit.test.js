@@ -113,8 +113,9 @@ test('a block can span the new year', () => {
   assert.equal(matches('(org-block 2025 12 20 2026 1 5)', on(2026, 1, 6)), false);
 });
 
-test('a block with an impossible date matches nothing', () => {
-  assert.equal(matches('(org-block 1990 2 30 1990 7 10)', on(1990, 7, 1)), false);
+test('a block with a date past the end of its month counts it as Emacs does (Feb 30 is Mar 2); too few arguments match nothing', () => {
+  assert.equal(matches('(org-block 1990 2 30 1990 7 10)', on(1990, 7, 1)), true);
+  assert.equal(matches('(org-block 1990 2 30 1990 7 10)', on(1990, 3, 1)), false);
   assert.equal(matches('(org-block 1990 6)', on(1990, 7, 1)), false);
 });
 
@@ -233,11 +234,11 @@ test('ISO weeks run Monday to SUNDAY: a Sunday belongs to the week that began th
   assert.equal(matches('(org-class 2026 9 1 2026 12 18 0 40)', on(2026, 9, 27)), true, 'skipping week 40 does not');
 });
 
-test('a block written with its dates reversed still works, in every form (as the body-line org-block always allowed)', () => {
-  assert.equal(matches('(org-block 1990 7 10 1990 6 24)', on(1990, 7, 1)), true);
-  assert.equal(matches('(org-block 1990 7 10 1990 6 24)', on(1990, 7, 11)), false);
-  assert.deepEqual(titlesOn('* B\n%%(org-block 2026 6 5 2026 6 1) Beach\n', on(2026, 6, 3)), ['Beach']);
-  assert.deepEqual(titlesOn('* Beach <%%(org-block 2026 6 5 2026 6 1)>\n', on(2026, 6, 3)), ['Beach']);
+test('a block written with its dates reversed matches nothing, in every form, as in Emacs', () => {
+  assert.equal(matches('(org-block 1990 7 10 1990 6 24)', on(1990, 7, 1)), false);
+  assert.equal(matches('(org-block 1990 6 24 1990 7 10)', on(1990, 7, 1)), true);
+  assert.deepEqual(titlesOn('* B\n%%(org-block 2026 6 5 2026 6 1) Beach\n', on(2026, 6, 3)), []);
+  assert.deepEqual(titlesOn('* Beach <%%(org-block 2026 6 5 2026 6 1)>\n', on(2026, 6, 3)), []);
 });
 
 test("the README's own combined example: the first Monday of each month, but only within the block", () => {

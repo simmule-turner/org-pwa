@@ -219,6 +219,15 @@ function extractLatexFragments(lines) {
         continue;
       }
     }
+    if (ch === '[' && fullText[pos + 1] === '[') {
+      // the address of a bracket link is never math (`\[` and `\]` in it escape the brackets)
+      const link = LINK_RE.exec(fullText.slice(pos));
+      if (link) {
+        result += '[[' + link[1] + ']';
+        pos += 3 + link[1].length;
+        continue;
+      }
+    }
     if (ch === '$' || ch === '\\') {
       const m = matchLatexFragmentAt(fullText, pos);
       if (m) {

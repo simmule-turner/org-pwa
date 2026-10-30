@@ -40,8 +40,8 @@ test('tangle: unsafe paths are refused', () => {
   }
 });
 
-test('noweb: unresolved and circular references are errors', () => {
-  assert.throws(() => tangle('#+begin_src js :tangle a.js :noweb yes\n<<nope>>\n#+end_src\n'), /nope/);
+test('noweb: a reference that matches nothing is empty (as in Emacs); a circular one is an error', () => {
+  assert.equal(tangle('#+begin_src js :tangle a.js :noweb yes\nx <<nope>> y\n#+end_src\n').files[0].text, 'x  y\n');
   assert.throws(() => tangle('#+NAME: a\n#+begin_src js :noweb yes\n<<b>>\n#+end_src\n#+NAME: b\n#+begin_src js :noweb yes :tangle a.js\n<<a>>\n#+end_src\n'), /circle/);
 });
 

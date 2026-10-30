@@ -45,7 +45,7 @@ const compared = oracle.filter((/** @type {any} */ c) => !c.twice);
 for (const c of compared) {
   const args = parseHeaderArgs('js ' + c.header);
   const spec = parseResultsSpec(args.results);
-  if (spec.unsupported || args.post !== undefined) continue; // file output and :post are not supported; the app says so
+  if (spec.unsupported || spec.file || args.post !== undefined) continue; // file output and :post are not supported; the app says so
   test(`js ${c.header} | ${c.code}`, () => {
     const tail = c.emacs.slice(c.emacs.indexOf('#+end_src\n') + 10);
     const { spec: s, lines } = ours(c);

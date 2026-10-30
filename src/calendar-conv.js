@@ -23,14 +23,18 @@ export function lastDayOfMonth(month, year) {
 
 /** Day of the year, 1 to 366 (`calendar-day-number`). @param {CalDate} date */
 export function dayNumber([month, day, year]) {
-  let n = day;
-  for (let m = 1; m < month; m++) n += lastDayOfMonth(m, year);
+  let n = day + 31 * (month - 1);
+  if (month > 2) {
+    n -= Math.trunc((23 + 4 * month) / 10);
+    if (gregorianLeapYear(year)) n += 1;
+  }
   return n;
 }
 
 /** `calendar-absolute-from-gregorian`. @param {CalDate} date */
 export function absoluteFromGregorian(date) {
   const year = date[2];
+  if (year === 0) throw new Error('There was no year zero');
   const prior = year - 1;
   return dayNumber(date) + 365 * prior + Math.floor(prior / 4) - Math.floor(prior / 100) + Math.floor(prior / 400);
 }

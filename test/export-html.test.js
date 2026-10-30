@@ -520,7 +520,7 @@ test('lists: org-ul / org-ol with value, descriptive lists as dl, checkboxes wit
 test('a list item keeps its continuation paragraphs, sub-lists and blocks', () => {
   const out = body('* A\n1. one\n2. two\n   more\n\n   second para\n   - sub\n3. three\n   #+begin_example\n   code\n   #+end_example\n');
   assert.match(out, /<li><p>\ntwo\nmore\n<\/p>\n<p>\nsecond para\n<\/p>\n<ul class="org-ul">\n<li>sub<\/li>\n<\/ul><\/li>/);
-  assert.match(out, /<li><p>\nthree\n<\/p>\n<pre class="example">\ncode\n<\/pre><\/li>/);
+  assert.match(out, /<li><p>\nthree\n<\/p>\n<pre class="example" id="[^"]+">\ncode\n<\/pre><\/li>/);
   assert.equal((out.match(/<ol class="org-ol">/g) || []).length, 1, 'one list, not three');
 });
 
@@ -548,15 +548,15 @@ test('blocks: quote, center, verse, example, fixed-width, src with caption and l
   assert.ok(body('* A\n#+BEGIN_QUOTE\nWise words.\n#+END_QUOTE').includes('<blockquote>\n<p>\nWise words.\n</p>\n</blockquote>'));
   assert.ok(body('* A\n#+begin_center\nMid\n#+end_center').includes('<div class="org-center">\n<p>\nMid\n</p>\n</div>'));
   assert.ok(body('* A\n#+begin_verse\nRoses\n  Violets\n#+end_verse').includes('<p class="verse">\nRoses<br />\n&#xa0;&#xa0;Violets<br />\n</p>'));
-  assert.ok(body('* A\n#+begin_example\n<x>\n#+end_example').includes('<pre class="example">\n&lt;x&gt;\n</pre>'));
+  assert.ok(body('* A\n#+begin_example\n<x>\n#+end_example').includes('\n&lt;x&gt;\n</pre>') && /<pre class="example" id="[^"]+">/.test(body('* A\n#+begin_example\n<x>\n#+end_example')));
   assert.ok(body('* A\n: fixed\n:   more').includes('<pre class="example">\nfixed\n  more\n</pre>'));
   const src = body('* A\n#+CAPTION: Hello\n#+begin_src python -n\nprint(1)\n#+end_src');
-  assert.match(src, /<div class="org-src-container">\s*<label class="org-src-name"><span class="listing-number">Listing 1: <\/span>Hello<\/label><pre class="src src-python" id="listing-1"><span class="linenr">1: <\/span><span class="org-builtin">print<\/span>\(<span class="org-constant">1<\/span>\)/);
+  assert.match(src, /<div class="org-src-container">\s*<label class="org-src-name"><span class="listing-number">Listing 1: <\/span>Hello<\/label><pre class="src src-python"><span class="linenr">1: <\/span><span class="org-builtin">print<\/span>\(<span class="org-constant">1<\/span>\)/);
 });
 
 test('special blocks become divs of that class; COMMENT blocks, comments and unknown keywords vanish; HTML export passes through', () => {
   const out = body('* A\n#+begin_note\nwatch *out*\n#+end_note\n# comment\n#+begin_comment\nhidden\n#+end_comment\n#+HTML: <hr class="x">\n#+begin_export html\n<i>raw</i>\n#+end_export\n#+begin_export latex\n\\x\n#+end_export');
-  assert.match(out, /<div class="note">\s*<p>\nwatch <b>out<\/b>\n<\/p>\s*<\/div>/);
+  assert.match(out, /<div class="note" id="[^"]+">\s*<p>\nwatch <b>out<\/b>\n<\/p>\s*<\/div>/);
   const page = out.slice(out.indexOf('<div id="content"'));
   assert.ok(!page.includes('hidden') && !page.includes('comment') && !page.includes('\\x'));
   assert.ok(out.includes('<hr class="x">') && out.includes('<i>raw</i>'));
@@ -579,7 +579,7 @@ test('#+SELECT_TAGS: and #+EXCLUDE_TAGS: pick headings; tasks:nil drops TODO hea
 
 test('timestamps, inline src, macros and export snippets', () => {
   const out = body('#+MACRO: hi Hello $1\n* A\n<2026-10-11 Sun 10:00> [2026-10-11 Sun] {{{hi(you)}}} src_js{1+1} @@html:<b>x</b>@@');
-  assert.ok(out.includes('<span class="timestamp-wrapper"><span class="timestamp">&lt;2026-10-11 Sun 10:00&gt;</span></span>'));
+  assert.ok(out.includes('<span class="timestamp-wrapper"><span class="timestamp">&lt;2026-10-11 Sun 10:00&gt; </span></span>'));
   assert.ok(out.includes('Hello you'));
   assert.ok(out.includes('<code class="src src-js">1+1</code>'));
   assert.ok(out.includes('<b>x</b>'));

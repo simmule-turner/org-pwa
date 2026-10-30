@@ -40,10 +40,12 @@ test('"m" is a MONTH (30 days), not minutes -- "min" is minutes', () => {
   assert.equal(parseOrgDuration('2min'), 2);
 });
 
-test('empty is 0; surrounding whitespace is ignored', () => {
+test('empty is 0; spaces and tabs around a clock or unit duration are ignored, as in Emacs (a blank string or a padded bare number is not valid)', () => {
   assert.equal(parseOrgDuration(''), 0);
-  assert.equal(parseOrgDuration('   '), 0);
+  assert.equal(parseOrgDuration('   '), null);
   assert.equal(parseOrgDuration('  1:30  '), 90);
+  assert.equal(parseOrgDuration(' 1h\t'), 60);
+  assert.equal(parseOrgDuration(' 30'), null);
 });
 
 test('invalid input is null', () => {

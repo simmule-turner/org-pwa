@@ -25,6 +25,8 @@
  * (`noinlineimages`).
  */
 
+import { bufferKeywordValues } from './file-keywords.js';
+
 const VISIBILITY_KEYWORDS = [
   'overview',
   'content',
@@ -69,10 +71,9 @@ const DEFAULT_STARTUP_CONFIG = {
  *  must only win in the first case. */
 function parseStartupConfigRaw(doc) {
   const raw = /** @type {{ visibility: string | null, imageVisibility: string | null, logDone: string | null }} */ ({ visibility: null, imageVisibility: null, logDone: null });
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'STARTUP') continue;
-    const tokens = kw.value.trim().split(/\s+/).filter(Boolean);
-    for (const token of tokens) {
+  for (const value of bufferKeywordValues(doc, 'STARTUP', true)) {
+    for (const word of value.trim().split(/\s+/).filter(Boolean)) {
+      const token = word.toLowerCase();
       if (VISIBILITY_KEYWORDS.includes(token)) {
         raw.visibility = token;
       } else if (IMAGE_VISIBILITY_KEYWORDS.includes(token)) {

@@ -2,8 +2,8 @@
 // org-agenda-sorting-strategy: the keys that order an agenda view's rows. Emacs sorts with `(or key1 key2 ...)`: each key says
 // before (-1), after (1) or nothing (nil); the first key with an opinion decides. `category-keep` returns 1 when the categories
 // differ (leave them as they are) and nothing when they match. Pure functions over agenda items.
-import { effortSortValue } from './agenda.js';
-import { parseOrgTimestamp } from './org-timestamp.js';
+import { effortSortValue, entryTimestampText } from './agenda.js';
+import { findTimestamps, parseOrgTimestamp } from './org-timestamp.js';
 import { dayNumber } from './habit.js';
 import { priorityRank, readPriorityRange } from './priorities.js';
 
@@ -29,6 +29,15 @@ const KEY_RE = /^(timestamp|scheduled|deadline|tsia|ts|time|priority|effort|cate
  */
 export function parseSortingStrategy(raw, view) {
   if (!raw || !String(raw).trim()) return null;
+  // a list of just keys, as a custom command gives it, is the strategy of every view (its first item is a symbol, not a (view keys) group)
+  const flat = /^\s*'?\(\s*[a-z]/.exec(String(raw));
+  if (flat) {
+    return String(raw)
+      .replace(/^\s*'?\(|\)\s*$/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word === 'category-keep' || KEY_RE.test(word));
+  }
   const group = new RegExp(`\\(\\s*${view}\\b([^()]*)\\)`).exec(String(raw));
   if (!group) return null;
   return group[1]
@@ -37,17 +46,40 @@ export function parseSortingStrategy(raw, view) {
     .filter((word) => word === 'category-keep' || KEY_RE.test(word));
 }
 
-/** @param {AgendaItem} item @param {string} type  '' for any, else scheduled / deadline / timestamp
- * @returns {number | null} the day number of its timestamp of that type */
-function timestampDay(item, type) {
-  const kind = item.kind === 'scheduled' || item.kind === 'deadline' ? item.kind : item.heading ? 'timestamp' : '';
-  if (!item.kind && item.heading && !item.date) {
-    // a TODO-list row has no date of its own: read its planning line
-    const planning = item.heading.planning || {};
-    const raw = type === 'scheduled' ? planning.scheduled : type === 'deadline' ? planning.deadline : planning.deadline || planning.scheduled;
+/**
+ * The date a TODO-list (or Match, Search) row sorts by (org-agenda-entry-get-agenda-timestamp): of the first of these the strategy
+ * names, scheduled, deadline, ts, tsia, timestamp: the entry's SCHEDULED, its DEADLINE, its first active time stamp, its first
+ * inactive one, or (timestamp) the first of SCHEDULED, DEADLINE, active, inactive that it has. Only a key of that kind compares it.
+ * @param {AgendaItem} item @param {string[]} keys @param {string} type '' for any, scheduled, deadline, timestamp, timestamp_ia
+ * @returns {number | null}
+ */
+function entryStampDay(item, keys, type) {
+  const named = (/** @type {string} */ n) => keys.some((k) => k === `${n}-up` || k === `${n}-down`);
+  const selected = named('scheduled') ? 'scheduled' : named('deadline') ? 'deadline' : named('ts') ? 'timestamp' : named('tsia') ? 'timestamp_ia' : '';
+  if (!`todo ${selected}`.includes(type)) return null;
+  const planning = (item.heading && item.heading.planning) || { scheduled: null, deadline: null };
+  const stamps = item.heading ? findTimestamps(entryTimestampText(item.heading)) : [];
+  const active = stamps.find((t) => t.active);
+  const inactive = stamps.find((t) => !t.active);
+  /** @param {string | null | undefined} raw */
+  const dayOf = (raw) => {
     const ts = raw ? parseOrgTimestamp(raw) : null;
     return ts ? dayNumber(ts.date) : null;
-  }
+  };
+  if (selected === 'scheduled') return dayOf(planning.scheduled);
+  if (selected === 'deadline') return dayOf(planning.deadline);
+  if (selected === 'timestamp') return active ? dayNumber(active.date) : null;
+  if (selected === 'timestamp_ia') return inactive ? dayNumber(inactive.date) : null;
+  return dayOf(planning.scheduled) ?? dayOf(planning.deadline) ?? (active ? dayNumber(active.date) : null) ?? (inactive ? dayNumber(inactive.date) : null);
+}
+
+/** @param {AgendaItem} item @param {string} type  '' for any, else scheduled / deadline / timestamp
+ * @param {string[]} keys the keys of the strategy
+ * @returns {number | null} the day number of its timestamp of that type */
+function timestampDay(item, type, keys) {
+  const kind = item.kind === 'scheduled' || item.kind === 'deadline' ? item.kind : item.heading ? 'timestamp' : '';
+  if (!item.kind && item.heading && !item.date) return entryStampDay(item, keys, type); // a TODO-list row has no date of its own
+  if (item.tsDate !== undefined) return !type || kind === type ? item.tsDate : null; // Emacs's ts-date: the date written in the stamp, not the day listed (none on a date range)
   if (!item.date || (type && kind !== type)) return null;
   return dayNumber(item.date);
 }
@@ -77,7 +109,8 @@ export function strategyFor(raw, view) {
  */
 export function agendaComparator(keys, context = {}) {
   const range = readPriorityRange(context.localVariables);
-  const todoKeywords = context.todoKeywords || [];
+  // org-todo-keywords-1: the keywords to do, then the done ones
+  const todoKeywords = [...new Set([...(context.todoKeywords || []), ...(context.doneKeywords || [])])];
   const done = new Set(context.doneKeywords || []);
   const lateDay = 99999999;
 
@@ -87,14 +120,16 @@ export function agendaComparator(keys, context = {}) {
     const [, name, direction] = KEY_RE.exec(key) || [];
     /** @type {-1 | 1 | null} */ let up;
     if (name === 'time') {
-      const minutes = (/** @type {AgendaItem} */ i) => (i.hasTime ? i.date.getHours() * 100 + i.date.getMinutes() : 9901);
+      const minutes = (/** @type {AgendaItem} */ i) => i.timeOfDay ?? (i.hasTime ? i.date.getHours() * 100 + i.date.getMinutes() : 9901);
       up = three(minutes(a), minutes(b));
     } else if (name === 'priority') {
-      // Emacs adds to a scheduled row 99 plus the days it is overdue, and to a deadline row the days left (negative) or overdue
+      // Emacs adds to a scheduled row 99 plus the days since its date (scheduledAge, also on a repeat), and to a deadline row the days left (negative) or overdue
       const rank = (/** @type {AgendaItem} */ i) => {
+        if (i.fixedPriority !== undefined) return i.fixedPriority; // a log line
         if ((!i.heading && !i.priority) || i.samePriority) return 0; // a Search row has the same priority whatever its cookie says
+        if (i.habit && typeof i.habit.priority === 'number') return i.habit.priority; // org-habit-get-priority
         const days = i.daysOverdue || 0;
-        const bonus = i.kind === 'scheduled' ? 99 + Math.max(0, days) : i.kind === 'deadline' ? days : 0;
+        const bonus = i.kind === 'scheduled' ? 99 + (i.scheduledAge ?? Math.max(0, days)) : i.kind === 'deadline' ? days : 0;
         const own = context.lisp?.priorityOf ? context.lisp.priorityOf(i) : null;
         return (own ?? priorityRank(i.priority, range)) + bonus;
       };
@@ -126,10 +161,9 @@ export function agendaComparator(keys, context = {}) {
       const tb = title(b);
       up = ta === null && tb === null ? null : ta === null ? 1 : tb === null ? -1 : three(ta, tb);
     } else if (name === 'ts' || name === 'timestamp' || name === 'scheduled' || name === 'deadline' || name === 'tsia') {
-      if (name === 'tsia') return null; // inactive timestamps are not listed in the agenda
-      const type = name === 'ts' ? '' : name;
-      const da = timestampDay(a, type) ?? lateDay;
-      const db = timestampDay(b, type) ?? lateDay;
+      const type = name === 'timestamp' ? '' : name === 'ts' ? 'timestamp' : name === 'tsia' ? 'timestamp_ia' : name; // timestamp-up compares the stamps of every type, ts-up those of plain time stamps
+      const da = timestampDay(a, type, keys) ?? lateDay;
+      const db = timestampDay(b, type, keys) ?? lateDay;
       up = three(da, db);
     } else if (name === 'user-defined') {
       up = context.lisp?.userCompare ? context.lisp.userCompare(a, b) : null; // org-agenda-cmp-user-defined nil: no opinion
@@ -167,6 +201,6 @@ export function sortAgendaItems(items, keys, context = {}) {
     const at = files.indexOf(i.documentId);
     return at < 0 ? files.length : at;
   };
-  const type = (/** @type {AgendaItem} */ i) => (i.kind === 'deadline' ? 0 : i.kind === 'scheduled' ? 1 : 2);
+  const type = (/** @type {AgendaItem} */ i) => i.emacsOrder ?? (i.kind === 'deadline' ? 0 : i.kind === 'scheduled' ? 1 : 4);
   return [...items].sort((a, b) => file(a) - file(b) || type(a) - type(b)).sort(agendaComparator(keys, context));
 }

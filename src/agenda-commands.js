@@ -5,14 +5,19 @@
 // lambda), which is called with the match and shows what it writes. Other command types are left out of the list.
 import { datum, listItems, readLisp, stringValue, symbolName } from './lisp-read.js';
 import { buildTaskList } from './agenda.js';
+import { readTodoListSettings } from './agenda-todo-list.js';
+import { getDeadlineWarningDays } from './local-variables.js';
 import { matchViewItems, searchViewItems } from './agenda-queries.js';
+import { sortAgendaItems, strategyFor } from './agenda-sort.js';
+import { agendaSkipper } from './agenda-skip.js';
+import { readStuckSettings, stuckProjectItems } from './agenda-stuck.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
-/** @typedef {{ key: string, description: string, type: 'tags' | 'tags-todo' | 'search' | 'agenda' | 'alltodo' | 'todo' | 'function', query: string, sortingStrategy: string | null, fn?: string }} CustomCommand */
+/** @typedef {{ key: string, description: string, type: 'tags' | 'tags-todo' | 'search' | 'agenda' | 'alltodo' | 'todo' | 'stuck' | 'block' | 'function', query: string, sortingStrategy: string | null, fn?: string, settings?: Record<string, string>, blocks?: CustomCommand[] }} CustomCommand */
 
-const TYPES = /** @type {const} */ (['tags', 'tags-todo', 'search', 'agenda', 'alltodo', 'todo']);
+const TYPES = /** @type {const} */ (['tags', 'tags-todo', 'search', 'agenda', 'alltodo', 'todo', 'stuck']);
 /** Command types of Emacs that are not read; a symbol that is none of these and not in TYPES names a function. */
-const UNREAD_TYPES = ['agenda*', 'stuck', 'todo-tree', 'tags-tree', 'search-tree', 'occur-tree'];
+const UNREAD_TYPES = ['agenda*', 'todo-tree', 'tags-tree', 'search-tree', 'occur-tree'];
 
 /** The function a command's type names: a symbol, or a lambda form, as text; null for anything else. @param {Lisp | undefined} f @returns {string | null} */
 function functionOf(f) {
@@ -33,8 +38,37 @@ export function lispText(f) {
   return '(' + f.items.map(lispText).join(' ') + (f.tail ? ' . ' + lispText(f.tail) : '') + ')';
 }
 
+/** The `(variable value)` settings of a command as variable text (a list or symbol value quoted, as in a Local Variables block). @param {Lisp | undefined} f @returns {Record<string, string>} */
+function settingsOf(f) {
+  /** @type {Record<string, string>} */ const out = {};
+  for (const setting of listItems(f) || []) {
+    const pair = listItems(setting);
+    const name = pair && pair.length === 2 ? symbolName(pair[0]) : null;
+    const value = pair && name ? datum(pair[1]) : null;
+    if (!name || !value) continue;
+    out[name] = value.k === 'list' || (value.k === 'sym' && value.v !== 't' && value.v !== 'nil') ? `'${lispText(value)}` : lispText(value);
+  }
+  return out;
+}
+
+/**
+ * One command of a type that is read, from the items after its type (the match, when it takes one, then the settings).
+ * @param {string} key @param {string} description @param {string} type @param {Lisp[]} rest
+ * @returns {CustomCommand | null}
+ */
+function simpleCommand(key, description, type, rest) {
+  if (!(/** @type {readonly string[]} */ (TYPES).includes(type))) return null;
+  const query = stringValue(rest[0]);
+  if ((type === 'tags' || type === 'tags-todo' || type === 'search') && query === null) return null;
+  const takesString = type === 'tags' || type === 'tags-todo' || type === 'search' || query !== null; // todo, agenda, alltodo and stuck may leave the string out
+  const settings = settingsOf(rest[takesString ? 1 : 0]);
+  const strategy = settings['org-agenda-sorting-strategy'];
+  return { key, description, type: /** @type {CustomCommand['type']} */ (type), query: type === 'agenda' || type === 'alltodo' || type === 'stuck' ? '' : (query ?? ''), sortingStrategy: strategy ? strategy.replace(/^'/, '') : null, settings };
+}
+
 /**
  * The commands of the variable's text, which may be quoted (`'(...)`). A command of a type that is not read, or without a key, is dropped.
+ * A composite command (`("x" "Both" ((agenda "") (todo "NEXT")) (global settings))`) has its blocks.
  * @param {string | null | undefined} raw
  * @returns {CustomCommand[]}
  */
@@ -51,33 +85,27 @@ export function parseCustomCommands(raw) {
     const description = stringValue(parts[1]) ?? '';
     const type = symbolName(parts[2]);
     if (!key) continue;
+    const blockList = type === null ? listItems(parts[2]) : null;
+    if (blockList && blockList.length && blockList.every((b) => listItems(b)?.length && symbolName(listItems(b)?.[0]))) {
+      /** @type {CustomCommand[]} */ const blocks = [];
+      for (const b of blockList) {
+        const items = /** @type {Lisp[]} */ (listItems(b));
+        const block = simpleCommand(key, description, /** @type {string} */ (symbolName(items[0])), items.slice(1));
+        if (block) blocks.push(block);
+      }
+      out.push({ key, description, type: 'block', query: '', sortingStrategy: null, blocks, settings: settingsOf(parts[3]) });
+      continue;
+    }
     const fn = type && /** @type {readonly string[]} */ (TYPES).includes(type) ? null : functionOf(parts[2]);
     if (fn !== null) {
       const match = stringValue(parts[3]);
-      /** @type {string | null} */ let strategy = null;
-      for (const setting of listItems(parts[match !== null ? 4 : 3]) || []) {
-        const pair = listItems(setting);
-        if (pair && pair.length === 2 && symbolName(pair[0]) === 'org-agenda-sorting-strategy') {
-          const value = datum(pair[1]);
-          if (value) strategy = lispText(value);
-        }
-      }
-      out.push({ key, description, type: 'function', query: match ?? '', sortingStrategy: strategy, fn });
+      const settings = settingsOf(parts[match !== null ? 4 : 3]);
+      const strategy = settings['org-agenda-sorting-strategy'];
+      out.push({ key, description, type: 'function', query: match ?? '', sortingStrategy: strategy ? strategy.replace(/^'/, '') : null, fn, settings });
       continue;
     }
-    if (!type || !(/** @type {readonly string[]} */ (TYPES).includes(type))) continue;
-    const query = stringValue(parts[3]);
-    const needsQuery = type === 'tags' || type === 'tags-todo' || type === 'search' || (type === 'todo' && query !== null); // todo may leave the keywords out
-    if ((type === 'tags' || type === 'tags-todo' || type === 'search') && query === null) continue;
-    /** @type {string | null} */ let sortingStrategy = null;
-    for (const setting of listItems(parts[needsQuery ? 4 : 3]) || []) {
-      const pair = listItems(setting);
-      if (pair && pair.length === 2 && symbolName(pair[0]) === 'org-agenda-sorting-strategy') {
-        const value = datum(pair[1]);
-        if (value) sortingStrategy = lispText(value);
-      }
-    }
-    out.push({ key, description, type: /** @type {CustomCommand['type']} */ (type), query: query ?? '', sortingStrategy });
+    const command = type ? simpleCommand(key, description, type, parts.slice(3)) : null;
+    if (command) out.push(command);
   }
   return out;
 }
@@ -86,6 +114,7 @@ export function parseCustomCommands(raw) {
 function commandText(c) {
   const settings = c.sortingStrategy ? ` ((org-agenda-sorting-strategy '${c.sortingStrategy}))` : '';
   const needsQuery = c.type === 'tags' || c.type === 'tags-todo' || c.type === 'search' || c.type === 'todo';
+  if (c.type === 'block') return `(${JSON.stringify(c.key)} ${JSON.stringify(c.description)} (${(c.blocks || []).map((b) => `(${b.type} ${JSON.stringify(b.query)})`).join(' ')}))`;
   if (c.type === 'function') return `(${JSON.stringify(c.key)} ${JSON.stringify(c.description)} ${c.fn}${c.query ? ' ' + JSON.stringify(c.query) : ''}${settings})`;
   return `(${JSON.stringify(c.key)} ${JSON.stringify(c.description)} ${c.type}${needsQuery ? ' ' + JSON.stringify(c.query) : ''}${settings})`;
 }
@@ -114,19 +143,37 @@ export function withCustomCommand(raw, command) {
 }
 
 /**
- * The rows a `tags`, `tags-todo` or `search` command lists.
+ * The rows a `tags`, `tags-todo`, `search`, `todo`, `alltodo` or `stuck` command lists. The command's own settings (and `inherited`, the
+ * global settings of a composite command) go over the variables: its sorting strategy, org-agenda-skip-function, org-stuck-projects.
  * @param {CustomCommand} command
  * @param {{ documentId: string, doc: import('./types.js').Doc }[]} docs  the agenda files
  * @param {{ documentId: string, doc: import('./types.js').Doc }[]} searchDocs  the agenda files and the extra search files
  * @param {import('./agenda-queries.js').QueryOptions} options
+ * @param {Record<string, string>} [inherited]
  */
-export function commandItems(command, docs, searchDocs, options) {
-  if (command.type === 'function') return [];
-  const merged = { ...options, sortingStrategy: command.sortingStrategy ?? options.sortingStrategy };
+export function commandItems(command, docs, searchDocs, options, inherited = {}) {
+  if (command.type === 'function' || command.type === 'agenda' || command.type === 'block') return [];
+  const vars = { ...(options.localVariables || {}), ...inherited, ...(command.settings || {}) };
+  const strategy = command.sortingStrategy ?? (vars['org-agenda-sorting-strategy'] ? vars['org-agenda-sorting-strategy'].replace(/^'/, '') : null);
+  const keywords = { todoKeywords: options.todoKeywords, doneKeywords: options.doneKeywords };
+  const merged = { ...options, sortingStrategy: strategy ?? options.sortingStrategy, localVariables: vars, skipEntry: agendaSkipper(vars, docs, keywords) ?? options.skipEntry };
   if (command.type === 'search') return searchViewItems(searchDocs, command.query, merged);
-  if (command.type === 'todo') {
+  if (command.type === 'stuck') return stuckProjectItems(docs, readStuckSettings(vars['org-stuck-projects']), merged);
+  if (command.type === 'todo' || command.type === 'alltodo') {
     const done = options.doneKeywords || ['DONE'];
-    return buildTaskList(docs, { isDone: (/** @type {string} */ t) => done.includes(t), keywords: command.query, includeArchived: options.skipArchived === false, includeCommented: options.skipCommented === false });
+    const items = buildTaskList(docs, { isDone: (/** @type {string} */ t) => done.includes(t), keywords: command.type === 'todo' ? command.query : null, includeArchived: options.skipArchived === false, includeCommented: options.skipCommented === false, today: options.now || new Date(), deadlineWarningDays: getDeadlineWarningDays(vars), todoListSettings: readTodoListSettings(vars), skipEntry: merged.skipEntry });
+    return sortAgendaItems(items, strategyFor(strategy ?? options.sortingStrategy, 'todo') ?? [], { documentOrder: options.documentOrder || docs.map((d) => d.documentId), localVariables: vars, todoKeywords: options.todoKeywords, doneKeywords: options.doneKeywords });
   }
   return matchViewItems(docs, command.query, { ...merged, todoOnly: command.type === 'tags-todo' });
+}
+
+/**
+ * What a command lists, as sections: one for a simple command, one per block of a composite command (the blocks run in order, each under
+ * the global settings and its own). An `agenda` block is the built-in Agenda and has no rows here.
+ * @param {CustomCommand} command @param {Parameters<typeof commandItems>[1]} docs @param {Parameters<typeof commandItems>[2]} searchDocs @param {import('./agenda-queries.js').QueryOptions} options
+ * @returns {{ command: CustomCommand, items: ReturnType<typeof commandItems> }[]}
+ */
+export function commandSections(command, docs, searchDocs, options) {
+  if (command.type !== 'block') return [{ command, items: commandItems(command, docs, searchDocs, options) }];
+  return (command.blocks || []).map((block) => ({ command: block, items: commandItems(block, docs, searchDocs, options, command.settings || {}) }));
 }

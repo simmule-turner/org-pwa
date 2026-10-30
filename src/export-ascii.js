@@ -22,12 +22,15 @@ import { citeExportFor, dropSilentCitations } from './cite.js';
 import { removeIndentation } from './babel-blocks.js';
 import { ENTITIES } from './entities.js';
 import { getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
-import { preambleBody } from './export-html.js';
-import { expandMacrosForExport } from './export-org.js';
+import { preambleBody, parseHtmlOptions, buildFilter } from './export-html.js';
+import { resolveTodoSequence } from './todo-cycle.js';
+import { expandMacrosForExport } from './export-macros.js';
 import { radioTargetRegExp } from './targets.js';
 import { BrokenLinkSignal, brokenLinkText, parseBrokenLinks } from './broken-links.js';
 import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
 import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
+import { withBufferKeywords } from './export-keywords.js';
+import { translate } from './export-dictionary.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
@@ -131,6 +134,8 @@ export function normalizeAsciiCharset(value) {
  *   named: Map<string, Node>, targets: Map<string, Node>, ordinals: Map<Node, number>,
  *   cite: ReturnType<typeof citeExportFor> | null,
  *   tableCache: Map<Node, TableInfo>,
+ *   htmlOptions: ReturnType<typeof parseHtmlOptions>,
+ *   language: string,
  *   verse?: boolean,
  *   odt?: { plain: (text: string, I: Info) => string, snippet: string } | null,
  * }} Info
@@ -211,6 +216,8 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
     ordinals: new Map(),
     cite: null,
     tableCache: new Map(),
+    htmlOptions: parseHtmlOptions(doc),
+    language: ((doc.keywords || []).filter((k) => k.key.toUpperCase() === 'LANGUAGE').pop() || { value: 'en' }).value.trim() || 'en',
   };
 }
 
@@ -303,7 +310,8 @@ let inlineCode = [];
  * @returns {Item[]}
  */
 export function objects(text, parent, I, radio = true) {
-  const marked = text.split('\n').map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l)).join('\n');
+  if (!I.htmlOptions.stat) text = text.replace(/[ \t]*\[(?:\d*\/\d*|\d*%)\](?=[ \t]*(?:\n|$))|\[(?:\d*\/\d*|\d*%)\]/g, ''); // stat:nil leaves out statistics cookies
+  const marked = text.split('\n').map((l, i, all) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l + (i < all.length - 1 ? '\n' : ''))).join(''); // a forced break takes the line end after it with it
   const outer = inlineCode;
   inlineCode = [];
   const held = inlineCode;
@@ -431,7 +439,7 @@ function linkNode(raw, description, radio, parent, I) {
     linkType,
     raw,
     path: linkType === 'coderef' ? raw.slice(1, -1) : linkType === 'fuzzy' || linkType === 'custom-id' || linkType === 'id' ? raw.replace(/^(?:id:|#|\*)/i, '') : raw,
-    desc: description === null ? null : objects(description, parent, I, false),
+    desc: description === null ? null : objects(description, parent, I, false).map((x) => (typeof x !== 'string' && x.type === 'link' && x.desc === null && !x.contents.length ? { ...x, inDescription: true } : x)), // a link's description holds no links of its own (ASCII prints their text; other back ends build on the node)
     descRaw: description === null ? '' : description.replace(/\s+/g, ' ').trim(),
     kind: raw.startsWith('*') ? 'headline' : '',
   });
@@ -484,14 +492,14 @@ function buildElement(el, parent, I) {
       while (lines.length && /^[ \t]*CLOCK:[ \t]*\[/.test(lines[0])) lines.shift();
       if (lines.length === 0) return null;
       const node = mk('paragraph', parent);
-      node.contents = objects([lines[0].trimStart(), ...lines.slice(1)].join('\n') + '\n', node, I);
+      node.contents = objects([lines[0].replace(/^[ \t]+/, '').replace(I.odt ? /^(call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?)[ \t]+/ : /^(<<[^<>\n]+>>|call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?)[ \t]+/, '$1'), ...lines.slice(1)].join('\n') + '\n', node, I);
       return node;
     }
     case 'list': {
       const node = mk('plain-list', parent, { listType: el.listType });
       let counter = 0;
       for (const it of el.items) {
-        const item = mk('item', node, { bullet: it.bullet, checkbox: it.checkbox, counter: it.counter, postBlank: it.postBlank || 0 });
+        const item = mk('item', node, { bullet: it.bullet, checkbox: it.checkbox, counter: it.counter, postBlank: it.children.length ? it.postBlank || 0 : Math.max(1, it.postBlank || 0) }); // an item with nothing in it is followed by a blank line
         if (el.listType === 'ordered') {
           counter = it.counter !== null ? it.counter : counter + 1;
           item.itemNumber = counter;
@@ -554,7 +562,16 @@ function buildElement(el, parent, I) {
  */
 function codeNode(node, name, params, I) {
   const lines = node.lines || [];
+  /** @param {string[]} list */
+  const trailingBlanks = (list) => {
+    let n = 0;
+    while (n < list.length && list[list.length - 1 - n] === '') n++;
+    return n;
+  };
+  const blanks = trailingBlanks(lines);
   const block = unravelCode(lines, blockSwitchText(name, params));
+  // Emacs keeps the blank lines at the end of a block's code
+  if (block.lines.length) block.lines.push(...Array(Math.max(0, blanks - trailingBlanks(block.lines))).fill(''));
   node.code = { ...block, start: codeStart(I.codeCounter, block.switches, lines.length) };
   I.codeBlocks.push(node.code);
   return node;
@@ -601,11 +618,32 @@ function buildBlock(el, parent, I) {
 /** @param {Heading} h */
 const isFootnoteSection = (h) => h.title.trim() === 'Footnotes';
 
-/** Which headings are left out: COMMENT, tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), the Footnotes section. @param {Doc} doc */
+/** Which headings are left out: COMMENT, tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), not selected (`#+SELECT_TAGS:`), left out by `tasks:` or `arch:nil`, the Footnotes section. @param {Doc} doc */
 function exclusion(doc) {
-  const tags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'EXCLUDE_TAGS').map((k) => k.value).join(' ').split(/\s+/).filter(Boolean);
-  const exclude = new Set(tags.length ? tags : ['noexport']);
-  return (/** @type {Heading} */ h) => /^COMMENT(\s|$)/.test(h.title) || h.tags.some((t) => exclude.has(t)) || isFootnoteSection(h);
+  const options = parseHtmlOptions(doc);
+  const keep = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc, options, doneKeywords: resolveTodoSequence(doc).doneKeywords })));
+  return (/** @type {Heading} */ h) => !keep(h) || isFootnoteSection(h) || (options.arch === false && h.tags.includes('ARCHIVE'));
+}
+
+/**
+ * The planning line (`p:t`) and the property drawer (`prop:t`) that start a section.
+ * @param {Heading} h @param {Node} parent @param {Info} I
+ * @returns {Node[]}
+ */
+function sectionHead(h, parent, I) {
+  /** @type {Node[]} */
+  const out = [];
+  const { planning } = h;
+  if (I.withPlanning && planning && (planning.closed || planning.deadline || planning.scheduled)) {
+    const text = [planning.closed && `CLOSED: ${planning.closed}`, planning.deadline && `DEADLINE: ${planning.deadline}`, planning.scheduled && `SCHEDULED: ${planning.scheduled}`].filter(Boolean).join(' ');
+    out.push(mk('planning', parent, { value: text }));
+  }
+  const wanted = I.htmlOptions.properties;
+  if (wanted) {
+    const keys = (h.propertyOrder && h.propertyOrder.length ? h.propertyOrder : Object.keys(h.properties || {})).filter((k) => wanted === true || wanted.includes(k.toUpperCase()));
+    if (keys.length) out.push(mk('property-drawer', parent, { value: keys.map((k) => (h.properties[k] ? `${k}: ${h.properties[k]}` : `${k}:`)).join('\n') }));
+  }
+  return out;
 }
 
 /**
@@ -614,18 +652,27 @@ function exclusion(doc) {
  */
 function buildHeadlines(children, parent, I, offset, skip) {
   for (const h of children) {
-    if (skip(h)) continue;
+    if (skip(h)) {
+      if (isFootnoteSection(h)) {
+        // the definitions in a Footnotes section stay in use, though the section itself is left out
+        const holder = mk('section', parent);
+        for (const def of buildElements(parseElements(h.bodyLines || []), holder, I)) if (def.type === 'footnote-definition' && def.label) I.defs.set(def.label, def);
+      }
+      continue;
+    }
     const node = mk('headline', parent, { level: h.level + offset, heading: h, rawTitle: h.title, todo: h.todo, priority: h.priority, tags: h.tags, properties: h.properties });
     node.title = objects(h.title, node, I);
     I.headlines.push(node);
-    const lines = h.bodyLines || [];
-    const elements = parseElements(lines);
-    if (elements.length) {
+    const archived = h.tags.includes('ARCHIVE') && I.htmlOptions.arch !== true; // an archived subtree shows its headline only
+    const lines = archived ? [] : h.bodyLines || [];
+    const elements = archived ? [] : parseElements(lines);
+    const first = archived ? [] : sectionHead(h, node, I);
+    if (elements.length || first.length) {
       const section = mk('section', node);
-      section.contents = buildElements(elements, section, I);
+      section.contents = [...first.map((n) => ({ ...n, parent: section })), ...buildElements(elements, section, I)];
       node.contents.push(section);
     }
-    buildHeadlines(h.children || [], node, I, offset, skip);
+    if (!archived) buildHeadlines(h.children || [], node, I, offset, skip);
     for (const c of node.contents) if (c !== undefined) continue;
     parent.contents.push(node);
   }
@@ -756,6 +803,8 @@ function collectOrdinals(root, I) {
     if ((n.type === 'table' || n.type === 'src-block' || n.type === 'paragraph') && n.caption) {
       counts[n.type] = (counts[n.type] || 0) + 1;
       I.ordinals.set(n, counts[n.type]);
+    } else if ((n.type === 'table' || n.type === 'src-block' || n.type === 'paragraph') && n.nameKey) {
+      I.ordinals.set(n, (counts[n.type] || 0) + 1); // a named element without a caption is counted after the captioned ones before it
     }
     return false;
   });
@@ -843,7 +892,7 @@ function justifyElement(contents, n, I) {
 /** `org-ascii--box-string`. @param {string} s @param {Info} I */
 function boxString(s, I) {
   const [top, side, bottom] = I.cs.box;
-  const body = s.replace(/\n[ \t]*$/, '').replace(/^/gm, side);
+  const body = s === '' ? '' : s.replace(/\n[ \t]*$/, '').replace(/^/gm, side);
   return `${top}\n${body}\n${bottom}`;
 }
 
@@ -858,7 +907,7 @@ function codeOf(n) {
 
 /** The greater elements: their contents are normalized before they are handed on. */
 const GREATER = new Set(['org-data', 'headline', 'inlinetask', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'footnote-definition', 'table']);
-const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
+const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'planning', 'property-drawer', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
 
 /**
  * `org-export-data`: an element or object as text.
@@ -929,8 +978,10 @@ const TRANSCODERS = {
     const segments = I.cite && cite ? I.cite.formatCitation(cite) : null;
     return (segments ? citeSegments(segments, I).trim() : '') + ' '.repeat(Number(n.kind) || 0);
   },
-  link: (n, _c, I) => linkText(n, I),
-  paragraph: (n, c, I) => justifyElement(c.replace(/^[ \t]+/, ''), n, I),
+  link: (n, _c, I) => (/** @type {{ inDescription?: boolean }} */ (n).inDescription ? plainText(n.raw || '', I) : linkText(n, I)),
+  paragraph: (n, c, I) => justifyElement(I.preserveBreaks ? c.replace(/^ */gm, '') : c, n, I), // only `\n:t` strips the blanks that start the lines
+  planning: (n) => n.value || '',
+  'property-drawer': (n) => n.value || '',
   'plain-list': (_n, c, I) => (I.listMargin < 1 ? c : indentString(c, I.listMargin)),
   item: (n, c, I) => itemText(n, c, I),
   table: (n, c, I) => tableText(n, c, I),
@@ -938,7 +989,6 @@ const TRANSCODERS = {
   'table-cell': (n, c, I) => tableCellText(n, c, I),
   'src-block': (n, _c, I) => {
     const code = codeOf(n);
-    if (code === '') return '';
     const caption = buildCaption(n, I);
     return justifyElement(boxString(code, I) + (caption ? '\n' + caption : ''), n, I);
   },
@@ -1015,17 +1065,22 @@ export function ordinalOf(dest, I) {
 /** Lisp's `%s` of a number or a list of numbers. @param {number | number[]} n */
 const lispString = (n) => (Array.isArray(n) ? `(${n.join(' ')})` : String(n));
 
+/** A word the export writes for itself, in the document's language (`org-export-translate`). @param {Info} I @param {string} key @param {string} [arg] */
+const tr = (I, key, arg) => {
+  const text = translate(key, I.language, I.charsetName);
+  return arg === undefined ? text : text.replace(/%[sd]/, () => arg);
+};
+
 /** `org-ascii--describe-datum`. @param {Node} dest @param {Info} I */
 function describeDatum(dest, I) {
-  if (dest.type === 'headline') return `See section ${isNumbered(dest, I) ? (dest.number || []).join('.') : titleText(dest, I)}`;
+  if (dest.type === 'headline') return tr(I, 'See section %s', isNumbered(dest, I) ? (dest.number || []).join('.') : titleText(dest, I));
   const number = ordinalOf(dest, I);
   const enumerable = lineage(dest).find((e) => ['headline', 'paragraph', 'src-block', 'table'].includes(e.type));
-  if (enumerable && enumerable.type === 'headline') return `See section ${isNumbered(enumerable, I) ? (enumerable.number || []).join('.') : titleText(enumerable, I)}`;
-  if (number === null) return 'Unknown reference';
-  if (!enumerable) return 'Unknown reference';
-  if (enumerable.type === 'paragraph') return `See figure ${lispString(number)}`;
-  if (enumerable.type === 'src-block') return `See listing ${lispString(number)}`;
-  return `See table ${lispString(number)}`;
+  if (enumerable && enumerable.type === 'headline') return tr(I, 'See section %s', isNumbered(enumerable, I) ? (enumerable.number || []).join('.') : titleText(enumerable, I));
+  if (number === null || !enumerable) return tr(I, 'Unknown reference');
+  if (enumerable.type === 'paragraph') return tr(I, 'See figure %s', lispString(number));
+  if (enumerable.type === 'src-block') return tr(I, 'See listing %s', lispString(number));
+  return tr(I, 'See table %s', lispString(number));
 }
 
 /** A headline's title as text. @param {Node} h @param {Info} I */
@@ -1053,9 +1108,15 @@ function linkText(n, I) {
     return brokenLinkText(I.broken, n.linkType === 'fuzzy' ? n.raw || '' : n.path || '', false);
   }
   const raw = n.raw || '';
+  if (isBbdbWithText(n) && desc) return desc; // a BBDB link is its description
   if (desc === null || desc === '') return `<${raw}>`;
   return `[${desc}]` + (I.linksToNotes ? '' : ` (<${raw}>)`);
 }
+
+/** Links that get no entry in the list of links: BBDB links with a description, and DOI links with one (written as their address by the export). @param {Node} n */
+const isBbdbWithText = (n) => /^bbdb:/i.test(n.raw || '');
+const isDoiWithText = (/** @type {Node} */ n) => !!n.desc && /^https:\/\/doi\.org\//i.test(n.raw || '');
+const needsNoNote = (/** @type {Node} */ n) => (isBbdbWithText(n) && !!n.desc) || isDoiWithText(n);
 
 /**
  * The links of a headline's title and first section, or of a section, listed once each (`org-ascii--unique-links`).
@@ -1071,7 +1132,7 @@ function uniqueLinks(roots) {
     walk(item, (n) => {
       if (n.type === 'headline') return true;
       if (n.caption) for (const c of n.caption) visit(c);
-      if (n.type !== 'link') return false;
+      if (n.type !== 'link' || needsNoNote(n)) return false;
       if (!n.exported || !n.exported.trim()) return false;
       const key = `${n.raw}\u0000${n.descRaw}`;
       if (seen.has(key)) return false;
@@ -1143,6 +1204,9 @@ function headlineText(h, contents, I) {
   if (I.linksToNotes && first && first.type === 'section') {
     const links = describeLinks(uniqueLinks([...nodesOf(h.title || []), first]), width, I);
     if (links.trim()) body = (first.exported || '') + links + parts.slice(1).map((c) => c.exported || '').join('');
+  } else if (I.linksToNotes) {
+    const links = describeLinks(uniqueLinks(nodesOf(h.title || [])), width, I); // no section: the links of the title alone
+    if (links.trim()) body = links + contents;
   }
   if (rank) {
     const bullets = I.cs.bullets;
@@ -1390,8 +1454,8 @@ function tableCellText(cell, contents, I) {
 function buildCaption(n, I) {
   if (!n.caption) return null;
   const number = I.ordinals.get(n);
-  const fmt = n.type === 'table' ? 'Table' : 'Listing';
-  return fillString(`${fmt} ${number}: ${exportItems(n.caption, I)}`, currentTextWidth(n, I), 'left', I.preserveBreaks);
+  const fmt = tr(I, n.type === 'table' ? 'Table %d:' : 'Listing %d:', String(number));
+  return fillString(`${fmt} ${exportItems(n.caption, I)}`, currentTextWidth(n, I), 'left', I.preserveBreaks);
 }
 
 // ---- keywords, table of contents ------------------------------------------------------
@@ -1456,18 +1520,18 @@ function buildToc(I, n, keyword, scope) {
     const indent = (level - 1) * 3;
     return (indent ? '.'.repeat(indent - 1) + ' ' : '') + buildTitle(h, I, textWidth - indent, false, !I.withTags || I.withTags === 'not-in-toc', true);
   });
-  const title = 'Table of Contents';
+  const title = tr(I, 'Table of Contents');
   return (scope === null || scope === undefined ? title + underlineFor(title, I).replace(/^\n/, '\n') : '') + lines.join('\n');
 }
 
 /** "List of Tables" and "List of Listings". @param {'table' | 'src-block'} type @param {Node} keyword @param {Info} I */
 function listOf(type, keyword, I) {
-  const title = type === 'table' ? 'List of Tables' : 'List of Listings';
+  const title = tr(I, type === 'table' ? 'List of Tables' : 'List of Listings');
   const width = currentTextWidth(keyword, I);
   const items = [...I.ordinals.keys()].filter((e) => e.type === type);
   let count = 0;
   const lines = items.map((e) => {
-    const initial = `${type === 'table' ? 'Table' : 'Listing'} ${++count}:`;
+    const initial = tr(I, type === 'table' ? 'Table %d:' : 'Listing %d:', String(++count));
     const caption = exportItems(e.shortCaption || e.caption || [], I);
     const filled = indentString(fillString(caption, width - stringWidth(initial), 'left', I.preserveBreaks), stringWidth(initial));
     return `${initial} ${filled.trim()}`;
@@ -1534,7 +1598,7 @@ function footnoteSection(I) {
   if (!I.fnList.length) return '';
   const saved = withNotes(I, false);
   const width = I.width - I.globalMargin;
-  const title = 'Footnotes';
+  const title = tr(I, 'Footnotes');
   const entries = I.fnList.map((f) => {
     const id = `[${f.number}] `;
     let text;
@@ -1565,6 +1629,7 @@ function footnoteSection(I) {
  * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, linksToNotes?: boolean, bodyOnly?: boolean }} [options]
  */
 export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil', linksToNotes = true, bodyOnly = false } = {}) {
+  doc = withBufferKeywords(doc);
   ({ doc, scope } = foldInlineTasks(doc, scope));
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
   const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup, brokenLinks);

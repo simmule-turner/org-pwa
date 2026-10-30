@@ -25,8 +25,8 @@ export function evalMacro(name, template, args) {
   let body;
   try {
     const form = new Reader(template).read();
-    const rest = /** @type {{ cdr: { car: import('./elisp-data.js').LObj } }} */ (form).cdr;
-    body = rest.car;
+    const rest = /** @type {{ cdr: { car?: import('./elisp-data.js').LObj } }} */ (form).cdr;
+    body = rest.car ?? NIL;
   } catch {
     throw new Error(`Invalid definition for macro "${name}"`);
   }

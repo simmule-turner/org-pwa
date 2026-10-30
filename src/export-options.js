@@ -23,12 +23,42 @@
  */
 
 import { parseBrokenLinks } from './broken-links.js';
+import { bufferKeywordValues } from './file-keywords.js';
+import { Reader } from './elisp-read.js';
+import { print } from './elisp-data.js';
 
 /** @type {Record<string, any>} */
 const DEFAULT_OPTIONS = { toc: true, num: true, sup: 't', author: true, date: true, creator: false, broken: 'nil' };
 
-/** `key:value` in an #+OPTIONS: line: a value is a word or a Lisp list in parentheses (`d:(not "LOGBOOK")`), and the key may be punctuation (`\n:t`, `':t`, `::nil`). */
-const OPTION_PAIR_RE = /([^\s:]+|:):(\((?:[^()]|\([^()]*\))*\)|\S*)/g;
+/**
+ * The `key:value` pairs of an #+OPTIONS: line as org-export--parse-option-keyword reads them: a key is anything up to the next colon
+ * (blanks allowed, upper or lower case), and a value that starts right after the colon is one Lisp object read from there (`2`, `nil`,
+ * `(not "LOGBOOK")`, `:2`), returned as the text Lisp prints for it. A colon followed by a blank gives no pair.
+ * @param {string} line
+ * @returns {[string, string][]}
+ */
+function optionPairs(line) {
+  /** @type {[string, string][]} */
+  const pairs = [];
+  let pos = 0;
+  for (;;) {
+    const m = /\s*(.+?):/y;
+    m.lastIndex = pos;
+    const hit = m.exec(line);
+    if (!hit) break;
+    pos = m.lastIndex;
+    if (pos >= line.length || /\s/.test(line[pos])) continue;
+    const reader = new Reader(line, pos);
+    try {
+      const value = reader.read();
+      pairs.push([hit[1], print(value, true)]);
+      pos = reader.pos;
+    } catch {
+      break;
+    }
+  }
+  return pairs;
+}
 
 /**
  * Every key of the #+OPTIONS: lines as written (the last one wins), for the exporters that read more of them than parseExportOptions
@@ -39,9 +69,8 @@ const OPTION_PAIR_RE = /([^\s:]+|:):(\((?:[^()]|\([^()]*\))*\)|\S*)/g;
 function rawExportOptions(doc) {
   /** @type {Record<string, string>} */
   const raw = {};
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'OPTIONS') continue;
-    for (const m of kw.value.matchAll(OPTION_PAIR_RE)) if (m[2] !== '') raw[m[1]] = m[2];
+  for (const line of bufferKeywordValues(doc, 'OPTIONS')) {
+    for (const [key, value] of optionPairs(line)) raw[key] = value;
   }
   return raw;
 }
@@ -70,14 +99,12 @@ function parseExportOptions(doc, sup = 't', broken = 'nil') {
   const options = { ...DEFAULT_OPTIONS };
   options.sup = sup;
   options.broken = broken;
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'OPTIONS') continue;
-    for (const m of kw.value.matchAll(OPTION_PAIR_RE)) {
-      const [, key, value] = m;
-      if (value === '') continue;
+  for (const line of bufferKeywordValues(doc, 'OPTIONS')) {
+    for (const [rawKey, value] of optionPairs(line)) {
+      const key = rawKey.toLowerCase();
       if (key === 'toc') {
         if (value === 'nil') options.toc = false;
-        else if (/^\d+$/.test(value)) options.toc = Number(value);
+        else if (/^-?\d+$/.test(value)) options.toc = Number(value);
         else options.toc = true;
       } else if (key === 'num') {
         options.num = value !== 'nil';

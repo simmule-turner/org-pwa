@@ -24,6 +24,7 @@
  * Not yet: line numbers and references in source blocks, custom language environments, `engraved`.
  */
 
+import { withBufferKeywords } from './export-keywords.js';
 import { foldInlineTasks, inlineTaskInfo, INLINE_TASK_BLOCK } from './inline-tasks.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 import { parseElements, parseAttributes } from './org-elements.js';
@@ -36,7 +37,7 @@ import { preambleBody, parseHtmlOptions, buildFilter } from './export-html.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { NIL, intern, list as lispList, print } from './elisp-data.js';
 import { callFunction } from './agenda-lisp.js';
-import { expandMacrosForExport } from './export-org.js';
+import { expandMacrosForExport } from './export-macros.js';
 import { LATEX_ENTITIES } from './entities-latex.js';
 import { latexTable } from './latex-table.js';
 import { natbibCitation, biblatexCitation } from './latex-cite.js';
@@ -70,6 +71,7 @@ import * as bm from './export-beamer.js';
  *   localToc: Set<Heading>,
  *   anon: number,
  *   inLink: boolean,
+ *   paraAff: import('./org-elements.js').Affiliated | null,
  *   parsed: Map<string[], OrgElement[]>,
  *   codeCounter: { loc: number },
  *   codeBlocks: { lines: string[], switches: import('./code-lines.js').CodeSwitches, refs: Map<number, string>, start: number | null }[],
@@ -106,7 +108,7 @@ let S = newState();
 
 /** @returns {LatexState} */
 function newState() {
-  return { sup: 't', broken: 'nil', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined), beamer: false, withToc: undefined, snippets: [], enumDepth: 0, fnCount: 0, fnDepth: 0, inTable: 0, delayed: [], opts: parseHtmlOptions(/** @type {import('./types.js').Doc} */ (/** @type {unknown} */ ({ keywords: [], children: [] }))), raw: {}, unnumbered: new Set(), abbreviations: new Map(), inHeadline: false, done: new Set(), language: 'en' };
+  return { sup: 't', broken: 'nil', footnotes: new Map(), footnoteLabels: new Map(), footnoteRefs: new Map(), targets: new Map(), labels: new Map(), radioRe: null, processor: 'basic', cite: null, images: new Map(), imageTargets: [], current: null, base: 0, localToc: new Set(), anon: 0, inLink: false, paraAff: null, parsed: new Map(), codeCounter: newCodeCounter(), codeBlocks: [], cfg: latexConfig(undefined), beamer: false, withToc: undefined, snippets: [], enumDepth: 0, fnCount: 0, fnDepth: 0, inTable: 0, delayed: [], opts: parseHtmlOptions(/** @type {import('./types.js').Doc} */ (/** @type {unknown} */ ({ keywords: [], children: [] }))), raw: {}, unnumbered: new Set(), abbreviations: new Map(), inHeadline: false, done: new Set(), language: 'en' };
 }
 
 /** Seven hex digits from a string, the way Org's `org1a2b3c4` labels look; stable for the same input. @param {string} s */
@@ -235,6 +237,8 @@ function inline(text) {
 /** @param {string} text @returns {InlineNode[]} */
 function parseText(text) {
   const marked = text
+    .replace(/^[ \t]*call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, '') // an inline call prints nothing, and at the start of a paragraph its blanks go too
+    .replace(/\bcall_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, '')
     .split('\n')
     .map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, BREAK) : l))
     .join('\n')
@@ -349,7 +353,8 @@ function node(n) {
     case 'radio-target':
       return S.beamer ? '\\hypertarget{' + targetLabel(n.name, true) + '}{' + plain(n.name) + '}' : '\\label{' + targetLabel(n.name, true) + '}' + plain(n.name);
     case 'image':
-      return '\\begin{center}\n' + includeGraphics(n.target, {}) + '\n\\end{center}';
+      if (S.inLink) return includeGraphics(n.target, {}); // the picture of a link has no figure or centring around it
+      return pictureBlock(n.target, S.paraAff).replace(/\n$/, '');
     case 'citation':
       return citation(n);
     default:
@@ -554,7 +559,7 @@ function footnoteText(id, produce, label) {
   const outer = S.delayed;
   S.delayed = [];
   S.fnDepth++;
-  const text = produce();
+  const text = produce().replace(/^\s+/, ''); // the blanks that start a footnote's text are not kept
   S.fnDepth--;
   const inner = S.delayed;
   S.delayed = outer;
@@ -568,6 +573,13 @@ function footnoteText(id, produce, label) {
 /** @param {string | null} label @param {InlineNode[] | null} inlineDef */
 function footnoteRef(label, inlineDef) {
   if (!S.opts.footnotes) return LATEX_DROPPED; // the blanks after it go with it
+  if (inlineDef && label) {
+    const seen = S.footnoteLabels.get(label);
+    if (seen) return '\\textsuperscript{\\ref{' + seen + '}}';
+    const named = 'org' + hash7('fn:' + label);
+    S.footnoteLabels.set(label, named);
+    return footnoteText(named, () => nodes(inlineDef), (S.footnoteRefs.get(label) || 0) > 1); // a named inline footnote is labeled when a later reference needs it
+  }
   if (inlineDef) return footnoteText('org' + hash7('fn:inline' + (S.fnCount + 1)), () => nodes(inlineDef), false);
   if (label === null) return '';
   const known = S.footnoteLabels.get(label);
@@ -618,7 +630,10 @@ function element(el) {
       const parsed = parseText([el.lines[0].trimStart(), ...el.lines.slice(1)].join('\n'));
       const content = parsed.filter((x) => !(x.type === 'text' && !x.value.trim()));
       if (content.length === 1 && content[0].type === 'image') return pictureBlock(content[0].target, el.aff);
-      return preserveBreaks(nodes(parsed) + '\n');
+      S.paraAff = el.aff || null;
+      const text = nodes(parsed);
+      S.paraAff = null;
+      return preserveBreaks(text + '\n');
     }
     case 'list':
       return list(el, 1);
@@ -689,7 +704,10 @@ function namedLabel(el) {
 function prepareCode(el) {
   if (el.__code) return el.__code;
   const lines = el.lines.map((/** @type {string} */ l) => l.replace(/^(\s*),(\*|#\+)/, '$1$2'));
+  const blanks = (/** @type {string[]} */ list) => { let n = 0; while (n < list.length && list[list.length - 1 - n] === '') n++; return n; };
+  const before = blanks(lines);
   const block = unravelCode(lines, blockSwitchText(el.name, el.params));
+  if (block.lines.length) block.lines.push(...Array(Math.max(0, before - blanks(block.lines))).fill('')); // Emacs keeps the blank lines at the end of a block's code
   el.__code = { ...block, start: codeStart(S.codeCounter, block.switches, lines.length) };
   S.codeBlocks.push(el.__code);
   return el.__code;
@@ -713,7 +731,9 @@ function block(el) {
   const wrapIn = (/** @type {string} */ env, /** @type {string} */ options) => {
     const standard = el.name === 'quote' || el.name === 'center'; // the label of these goes in front, that of a special block inside it
     const label = el.aff && el.aff.name ? '\\label{' + nameLabel(el.aff.name) + '}\n' : '';
-    return (standard ? namedLabel(el) : '') + '\\begin{' + env + '}' + options + '\n' + trimEnd(elements(bodyElements(el.lines))) + (standard ? '' : label) + '\\end{' + env + '}\n';
+    const cap = el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
+    const specialCaption = cap ? '\\caption' + (cap.short ? '[' + inline(cap.short) + ']' : '') + '{' + inline(cap.text) + '}\n' : '';
+    return (standard ? namedLabel(el) : '') + '\\begin{' + env + '}' + options + '\n' + trimEnd(elements(bodyElements(el.lines))) + (standard ? '' : label + specialCaption) + '\\end{' + env + '}\n';
   };
   switch (el.name) {
     case 'src':
@@ -725,7 +745,9 @@ function block(el) {
       const coded = el.name === 'src' ? codeBlock(el, code, attrs) : null;
       if (coded !== null) return coded;
       const caption = el.name === 'src' && el.aff && el.aff.caption.length ? el.aff.caption[el.aff.caption.length - 1] : null;
-      const captionOf = caption ? '\\captionof{figure}{' + inline(caption.text) + '}\n' : '';
+      const label = el.name === 'src' && el.aff && el.aff.name && caption ? '\\label{' + nameLabel(el.aff.name, 'lst:') + '}' : '';
+      const floated = attrs.float !== undefined && attrs.float !== 'nil';
+      const captionOf = caption ? (floated ? '\\caption' : '\\captionof{figure}') + '{' + label + inline(caption.text) + '}\n' : '';
       const captionAbove = S.cfg.vars.captionAbove.has('src-block');
       return (el.name === 'example' ? namedLabel(el) : '') + (captionAbove ? captionOf : '') + verbatim(raw) + (captionAbove ? '' : captionOf);
     }
@@ -834,8 +856,8 @@ function list(el, depth) {
       const tag = inline(item.tag || '');
       if (tag || box) head += '[{' + (box && tag ? box + ' ' + tag : box || tag) + '}]';
     }
-    else if (box) head += '[{' + box + '}]';
-    const body = itemBody(children, depth, item === el.items[el.items.length - 1]) + '\n'.repeat(item.postBlank || 0);
+    else if (box) head += el.listType === 'ordered' ? '{' + box + '}' : '[{' + box + '}]'; // an ordered list's checkbox is not an option of \item
+    const body = itemBody(children, depth, item === el.items[el.items.length - 1]).replace(/[ \t]+(?=\n*$)/, '') + '\n'.repeat(item.postBlank || 0) + (item.children.length || item === el.items[el.items.length - 1] ? '' : '\n'); // an item loses the blanks that end it; an empty one is followed by a blank line
     if (head === plainHead && body.startsWith('[')) head += '\\relax'; // text that starts with a bracket is not read as the item's option
     out += head + (body.startsWith('\\begin{') ? '\n' : ' ') + body;
   }
@@ -912,16 +934,16 @@ function exclusion(doc, footnoteSection = true) {
   return (/** @type {Heading} */ h) => !keep(h) || (S.opts.arch === false && h.tags.includes('ARCHIVE')) || (footnoteSection && h.title.trim() === 'Footnotes'); // Org keeps its footnote section out of the export
 }
 
-/** @param {Heading} h */
-function headingTitle(h) {
+/** @param {Heading} h @param {boolean} [forToc]  the title as the table of contents shows it: statistics cookies in parentheses, no tags */
+function headingTitle(h, forToc = false) {
   S.inHeadline = true; // underlined text in a headline is \underline, which a section title can hold
-  const title = inline(S.opts.stat ? h.title : h.title.replace(/\[(?:\d*%|\d*\/\d*)\]/g, '')); // stat:nil drops the [1/3] cookie
+  const title = inline(S.opts.stat ? (forToc ? h.title.replace(/\[(\d*\/\d*|\d*%)\]/g, '($1)') : h.title) : h.title.replace(/\[(?:\d*%|\d*\/\d*)\]/g, '')); // stat:nil drops the [1/3] cookie
   S.inHeadline = false;
   const fn = S.cfg.headlineFunction;
   if (fn) return userHeadline(fn, h, title);
   const todo = h.todo && S.opts.todo ? '{\\bfseries\\sffamily ' + protect(h.todo) + '} ' : '';
   const priority = S.opts.pri && h.priority ? '\\framebox{\\#' + protect(h.priority) + '} ' : '';
-  const tags = h.tags.length && S.opts.tags !== false ? '\\hfill{}\\textsc{' + h.tags.map(protect).join(':') + '}' : '';
+  const tags = !forToc && h.tags.length && S.opts.tags !== false ? '\\hfill{}\\textsc{' + h.tags.map(protect).join(':') + '}' : '';
   return todo + priority + title + tags;
 }
 
@@ -976,7 +998,11 @@ function labelFor(h, ctx) {
 function section(h, ctx, base) {
   const fmt = /** @type {string} */ (sectionFormat(ctx, h.level - base, isNumbered(h, ctx, base)));
   const label = '\\label{' + labelFor(h, ctx) + '}\n';
-  return formatSection(fmt, headingTitle(h), label + headingBody(h, ctx, base));
+  const full = headingTitle(h);
+  const short = S.opts.tags === 'not-in-toc' ? headingTitle(h, true) : full;
+  // a title that reads differently in the table of contents (tags, statistics cookies) is given to the sectioning command as its optional argument
+  const withShort = isNumbered(h, ctx, base) && short !== full && !S.cfg.headlineFunction ? fmt.replace(/^(\\[A-Za-z]+)(\{%s\})/, (_m, cmd, brace) => cmd + '[' + short.replace(/%/g, '%%') + ']' + brace) : fmt;
+  return formatSection(withShort, full, label + headingBody(h, ctx, base));
 }
 
 /** The class's way to write a heading of this relative level: a format with two `%s`, or null when the class has none (the heading becomes a list item). @param {HeadingCtx} ctx @param {number} level */
@@ -998,17 +1024,25 @@ function formatSection(fmt, title, rest) {
 /** @param {Heading} h @param {HeadingCtx} ctx @param {number} base @param {boolean} [section]  false for what a Beamer frame, block or note holds (no `\stopcontents`, blank lines passed on) */
 function headingBody(h, ctx, base, section = true) {
   if (S.opts.arch === 'headline' && h.tags.includes('ARCHIVE')) return ''; // an archived tree is just its headline
-  const lines = h.bodyLines || [];
+  let lines = h.bodyLines || [];
+  if (lines.length && lines[lines.length - 1] === '' && h === lastHeading(ctx.doc)) lines = lines.slice(0, -1); // the line end that finishes the file is no blank line
   let lead = 0;
   while (lead < lines.length && !lines[lead].trim()) lead++;
   if ((h.propertyOrder || []).length || Object.values(h.planning || {}).some(Boolean)) lead = 0; // Org drops the blank line after a property drawer or planning line
   S.current = h;
   const text = headingPreface(h) + elements(parsedLines(lines));
   // a Beamer frame or block with nothing but blank lines still passes them on, after its end
-  const body = text ? '\n'.repeat(lead) + text : S.beamer && lead > 0 && lead === lines.length ? '\n'.repeat(section ? lead : lead + 1) : '';
+  const body = text ? '\n'.repeat(lead) + text : !S.beamer && lead > 0 && lead === lines.length ? '\n'.repeat(lead) : S.beamer && lead > 0 && lead === lines.length ? '\n'.repeat(section ? lead : lead + 1) : '';
   const children = headings(h.children || [], S.beamer ? { ...ctx, parents: [...ctx.parents, h] } : ctx, base);
   const stop = section && S.localToc.has(h) ? '\\stopcontents[level-' + (h.level - base) + ']\n' : '';
   return body + children + stop;
+}
+
+/** The last headline of the file, deepest last descendant of the last top-level one. @param {Doc} doc @returns {Heading | null} */
+function lastHeading(doc) {
+  let h = (doc.children || [])[(doc.children || []).length - 1] || null;
+  while (h && (h.children || []).length) h = /** @type {Heading[]} */ (h.children)[(h.children || []).length - 1];
+  return h;
 }
 
 /** `p:t` writes a headline's planning line, `prop:t` its properties (as verbatim text), before its text. @param {Heading} h */
@@ -1341,6 +1375,7 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Heading | null} [scope]
  */
 export function exportToLatex(doc, scope = null, { beamer = false, images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, header?: string, init?: string, file?: { name?: string, mtime?: Date } }} */ ({}) } = {}) {
+  doc = withBufferKeywords(doc);
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date(), defaults.file || null)); // {{{macros}}} are expanded before anything is read
   ({ doc, scope } = foldInlineTasks(doc, scope));
   if (beamer) ({ doc, scope } = withoutFinalNewline(doc, scope));

@@ -414,7 +414,28 @@ export function parseElements(lines) {
     const para = [line];
     i++;
     while (i < lines.length && !interruptsParagraph(lines[i])) para.push(lines[i++]);
-    push({ type: 'paragraph', lines: para });
+    push({ type: 'paragraph', lines: removeCommonIndentation(para) });
   }
   return out;
+}
+
+/**
+ * The lines of a paragraph without their common indentation (a tab counts to the next multiple of 8 columns), as Org reads a
+ * paragraph: "  a" over "   b" is "a" over " b".
+ * @param {string[]} lines
+ */
+function removeCommonIndentation(lines) {
+  /** @param {string} line */
+  const lead = (line) => {
+    let col = 0;
+    let k = 0;
+    for (; k < line.length && (line[k] === ' ' || line[k] === '\t'); k++) col = line[k] === '\t' ? (Math.floor(col / 8) + 1) * 8 : col + 1;
+    return { col, k };
+  };
+  const min = Math.min(...lines.map((l) => lead(l).col));
+  if (min === 0) return lines;
+  return lines.map((l) => {
+    const { col, k } = lead(l);
+    return ' '.repeat(col - min) + l.slice(k);
+  });
 }

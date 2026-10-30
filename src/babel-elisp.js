@@ -97,12 +97,17 @@ const cellsOf = (text) => text.split('\n')[0].split('|').map((c) => c.trim());
  * The lines to put under `#+RESULTS:` for what a block gave (`org-babel-execute:emacs-lisp` and `org-babel-insert-result`).
  * @param {LObj} value  the block's value, or the string it wrote with `:results output`
  * @param {ResultsSpec} spec
- * @param {{ wrap?: string | null }} [options]
+ * @param {{ wrap?: string | null, file?: string | null }} [options]
  * @returns {string[]}
  */
-export function formatElispResult(value, spec, { wrap = null } = {}) {
+export function formatElispResult(value, spec, { wrap = null, file = null } = {}) {
+  if (spec.file) {
+    // `:results file`: a link to the file :file names, else to the value itself
+    const target = file !== null && file !== undefined ? file : typeof value === 'string' ? value : print(value, false);
+    return layoutResult({ text: `[[file:${target}]]` }, { ...spec, words: new Set(['raw']) }, { wrap, lang: 'emacs-lisp' });
+  }
   const w = spec.words;
-  const literal = w.has('scalar') || w.has('verbatim') || w.has('html') || w.has('code') || w.has('pp') || ((spec.collect === 'output' || w.has('raw') || w.has('org') || w.has('drawer')) && !w.has('table'));
+  const literal = w.has('scalar') || w.has('verbatim') || (w.has('html') && !w.has('table')) || w.has('code') || w.has('pp') || ((spec.collect === 'output' || w.has('raw') || w.has('org') || w.has('drawer')) && !w.has('table'));
   /** @type {{ text: string } | { list: import('./babel.js').Item[] }} */
   let result;
   if (literal) result = { text: w.has('code') || w.has('pp') ? pretty(value) : print(value, w.has('scalar') || w.has('verbatim')) };
@@ -114,7 +119,13 @@ export function formatElispResult(value, spec, { wrap = null } = {}) {
       result = { text: print(value, false) };
     } else {
       const items = toArray(value);
-      result = { list: items.map((x) => (x instanceof Sym && x.name === 'hline' ? /** @type {never} */ (null) : itemOf(x))) };
+      // Org tabulates a list only when each element is an atom or a proper list: a dotted pair such as (a . 1) keeps it as one value
+      const dotted = items.find((x) => x instanceof Cons && !isProperList(x));
+      if (dotted instanceof Cons) {
+        if (w.has('list')) throw new Error('Wrong type argument: listp, ' + print(dotted.cdr));
+        result = { text: print(value, false) };
+      }
+      else result = { list: items.map((x) => (x instanceof Sym && x.name === 'hline' ? /** @type {never} */ (null) : itemOf(x))) };
     }
   } else if (w.has('table')) result = { list: [[print(value, false)]] };
   else result = { text: print(value, false) };

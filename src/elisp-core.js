@@ -7,7 +7,7 @@
  */
 import {
   BudgetExceeded, Cons, Flt, HashTable, LispSignal, LispThrow, Lambda, NIL, Special, Subr, Sym, T,
-  bool, conditionsOf, eql, equal, errorMessageString, intern, list, print, signal, toArray, userErrors, wrongType,
+  bool, conditionsOf, eql, equal, intern, list, print, signal, toArray, userErrors, wrongType,
 } from './elisp-data.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
@@ -235,6 +235,7 @@ function closureData(f) {
 export function applyLambda(f, args, original) {
   const { req, opt, rest } = paramInfo(f);
   if (args.length < req.length || (!rest && args.length > req.length + opt.length)) {
+    if (f.compiled) throw signal('wrong-number-of-arguments', [new Cons(req.length, rest ? intern('many') : req.length + opt.length), args.length]);
     throw signal('wrong-number-of-arguments', [f.isMacro ? new Cons(intern('macro'), new Cons(intern('lambda'), new Cons(f.params, f.body))) : f.lexical ? closureData(f) : f, args.length]);
   }
   void original;
@@ -344,7 +345,7 @@ function letForm(args, scope, star) {
       if (b.cdr instanceof Cons && b.cdr.cdr !== NIL) throw signal('error', ["`let' bindings can have only one value-form", b.car, ...toArray(b.cdr)]);
       return [b.car, evalWith(cadr(b))];
     }
-    throw wrongType('symbolp', b);
+    throw wrongType('symbolp', b instanceof Cons ? b.car : b);
   };
   /** @type {Scope | null} */
   let cur = scope;
@@ -446,7 +447,7 @@ defSpecial('defcustom', (args, scope) => {
   if (name.value === undefined) name.value = evalForm(cadr(args), scope);
   return name;
 });
-defSpecial('defgroup', () => NIL);
+defSpecial('defgroup', (args) => car(args));
 defSpecial('declare', () => NIL);
 defSpecial('interactive', () => NIL);
 defSpecial('declare-function', () => NIL);
@@ -464,7 +465,6 @@ defSpecial('defmacro', (args, scope) => {
   name.fn = m;
   return name;
 });
-defAlias('cl-defun', 'defun');
 defAlias('cl-defmacro', 'defmacro');
 defSpecial('eval-when-compile', (args, scope) => progn(args, scope));
 defSpecial('eval-and-compile', (args, scope) => progn(args, scope));
@@ -648,12 +648,14 @@ defSpecial('ignore-error', (args, scope) => {
 });
 
 defSpecial('with-demoted-errors', (args, scope) => {
+  const format = typeof car(args) === 'string';
   try {
-    return progn(cdr(args), scope);
+    return progn(format ? cdr(args) : args, scope);
   } catch (raw) {
     const e = normalizeError(raw);
     if (e instanceof LispSignal && conditionsOf(e.symbol).includes('error')) {
-      state.messages.push(`Error: ${errorMessageString(new Cons(e.symbol, e.data))}`);
+      const err = new Cons(e.symbol, e.data);
+      state.messages.push(format ? String(funcall(intern('format-message'), [car(args), err])) : `Debugger entered--Lisp error: ${print(err)}`);
       return NIL;
     }
     throw e;
@@ -709,7 +711,7 @@ defSpecial('and-let*', (args, scope) => withLetSpec(car(args), scope, (r) => (!r
 /** @typedef {{ get: () => LObj, set: (v: LObj) => void }} Place */
 
 /** @param {LObj} place @param {Scope | null} scope @returns {Place} */
-function resolvePlace(place, scope) {
+export function resolvePlace(place, scope) {
   if (place instanceof Sym) return { get: () => lookupVar(place, scope), set: (v) => void setVar(place, v, scope) };
   if (!(place instanceof Cons) || !(place.car instanceof Sym)) throw signal('error', ['Bad place', place]);
   const name = place.car.name;
@@ -816,8 +818,6 @@ const incf = (sign) => (/** @type {LObj} */ args, /** @type {Scope | null} */ sc
 };
 defSpecial('cl-incf', incf(1));
 defSpecial('cl-decf', incf(-1));
-defSpecial('incf', incf(1));
-defSpecial('decf', incf(-1));
 
 defSpecial('with-output-to-string', (args, scope) => {
   state.outputs.push([]);

@@ -42,6 +42,11 @@ function here() {
   return /** @type {HeadingContext & { ancestors: Heading[] }} */ (current);
 }
 
+/** The heading the cursor is on (an error outside `withHeading`). */
+export function currentHeading() {
+  return here();
+}
+
 /** The headings above `heading`, outermost first. @param {Doc} doc @param {Heading} heading @returns {Heading[]} */
 export function ancestorsOf(doc, heading) {
   /** @param {Heading[]} nodes @param {Heading[]} chain @returns {Heading[] | null} */

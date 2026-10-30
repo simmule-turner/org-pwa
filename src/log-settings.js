@@ -1,4 +1,5 @@
 // @ts-check
+import { bufferKeywordValues } from './file-keywords.js';
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -19,9 +20,8 @@
 export function startupLogWords(doc) {
   /** @type {{ logDone?: string, logIntoDrawer?: string, logRepeat?: string }} */
   const out = {};
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'STARTUP') continue;
-    for (const word of kw.value.trim().split(/\s+/)) Object.assign(out, wordEffect(word));
+  for (const value of bufferKeywordValues(doc, 'STARTUP', true)) {
+    for (const word of value.trim().split(/\s+/)) Object.assign(out, wordEffect(word.toLowerCase()));
   }
   return out;
 }

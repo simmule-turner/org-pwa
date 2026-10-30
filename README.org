@@ -212,7 +212,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 
 Names start with a letter and use letters, digits and ~_~. A column name wins over a parameter, and a parameter over a constant.
 
-*Dates*: a cell with an Org timestamp is a date when referenced. Subtracting dates gives days (decimals if a time is present); adding a number shifts the date and keeps its day name: ~$1 + 14~ on ~<2026-08-25>~ gives ~[2026-09-08 Tue]~. ~date($1)~ is Calc's day number (~739631~ for ~[2026-01-15]~), ~date(739631)~ turns it back, and ~date(2026, 2, 29)~ rolls over to 1 March. ~($2 - $1) * 24;%.2f~ is hours between two timestamps. ~date-to-time~ also reads ISO 8601, RFC 822 and US dates. ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~; ~time~ defaults to now and a non-zero ~utc~ formats in UTC.
+*Dates*: a cell with an Org timestamp is a date when referenced. Subtracting dates gives days (decimals if a time is present); adding a number shifts the date and keeps its day name: ~$1 + 14~ on ~<2026-08-25>~ gives ~[2026-09-08 Tue]~. ~date($1)~ is Calc's day number (~739631~ for ~[2026-01-15]~), ~date(739631)~ turns it back, and ~date(2026, 2, 29)~ rolls over to 1 March. ~($2 - $1) * 24;%.2f~ is hours between two timestamps. As in Calc, adding two dates adds their day numbers, and a date times a number stays symbolic. ~date-to-time~ also reads ISO 8601, RFC 822 and US dates. ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~; ~time~ defaults to now and a non-zero ~utc~ formats in UTC.
 
 *References*: ~$N~ is a column of the current row, ~@N$M~ a field, ~@-N~ and ~@+N~ rows relative to the target, ~@<~ ~@>~ ~$<~ ~$>~ the first and last row or column, and ~$1..$3~ or ~@1$1..@3$2~ a range (~@2..@6~ means those rows of the formula's own column). Rows count every row including the header. ~@I~, ~@II~ ... are horizontal rules (~@IIII~ is the fourth), ~@III+2~ is two rows after one, and ~vsum(@I..@II)~ covers the rows between two. The shorthand ~$M=~ skips rows before the first rule.
 
@@ -573,7 +573,7 @@ Cycling a heading to fully expanded always reveals its properties and blocks, wh
 :CUSTOM_ID: local-variables
 :END:
 
-Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cookie, and a ~# Local Variables: ... # End:~ block, conventionally at the end of the file. Both can appear in one file, and the block wins a conflict. Most variables below also have a labeled control in Settings → *Quick Settings* (see [[#settings][Settings]]) for the app-wide baseline.
+Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cookie, and a ~# Local Variables: ... # End:~ block, conventionally at the end of the file. Both can appear in one file, and the block wins a conflict. Every line of the block starts with the same prefix as the ~Local Variables:~ line; a malformed block is ignored whole. Most variables below also have a labeled control in Settings → *Quick Settings* (see [[#settings][Settings]]) for the app-wide baseline.
 
 #+BEGIN_SRC
 # -*- buffer-read-only: t; -*-
@@ -954,11 +954,11 @@ return data.map(([q, n]) => [q, n * 2]);
 
 Header arguments are inherited as in Org: ~#+PROPERTY: header-args :results output~ applies to the file, ~header-args:js~ to ~js~ blocks, and a ~:header-args:~ property to a subtree (~header-args+~ adds). A block's own arguments and ~#+HEADER:~ lines win.
 
-*Noweb*: with ~:noweb yes~, ~<<name>>~ is replaced by the block ~#+NAME: name~, by all blocks with ~:noweb-ref name~ (joined with ~:noweb-sep~), or by the text of the heading whose ~CUSTOM_ID~ is ~name~. Text before the reference on its line goes before every line of the expansion. ~:noweb~ also takes ~tangle~, ~no-export~, ~strip-export~ and ~strip-tangle~. A reference that matches nothing, or goes round in a circle, is an error.
+*Noweb*: with ~:noweb yes~, ~<<name>>~ is replaced by the block ~#+NAME: name~, by all blocks with ~:noweb-ref name~ (joined with ~:noweb-sep~), or by the text of the heading whose ~CUSTOM_ID~ is ~name~. Text before the reference on its line goes before every line of the expansion. ~:noweb~ also takes ~tangle~, ~no-export~, ~strip-export~ and ~strip-tangle~. A reference that matches nothing expands to nothing; one that goes round in a circle is an error.
 
-*Tangle*: *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~yes~ names the file after the document, ~path/file.js~ names it, ~no~ skips it. Blocks for one file are joined in order with a blank line (~:padline no~ removes it). ~:shebang~, ~:tangle-mode~, ~:comments link~, ~org~, ~both~ and ~noweb~, ~:prologue~, ~:epilogue~, ~:no-expand~ and ~:var~ (written as ~var x=3;~) work. ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip. Paths may not be absolute or climb out with ~..~.
+*Tangle*: *Tangle this file* (~org-babel-tangle~) writes the blocks with ~:tangle~ to files: ~yes~ names the file after the document, ~path/file.js~ names it, ~no~ skips it. Blocks for one file are joined in order with a blank line (~:padline no~ removes it). ~:shebang~, ~:tangle-mode~, ~:comments link~, ~org~, ~both~ and ~noweb~, ~:prologue~, ~:epilogue~, ~:no-expand~ and ~:var~ (a JavaScript block gets ~var x=3;~ lines, an emacs-lisp block is wrapped in ~let~) work. ~COMMENT~ and ~:ARCHIVE:~ subtrees are skipped. One file is saved as it is; several, or one in a folder, come as a zip. Paths may not be absolute or climb out with ~..~.
 
-*Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ are unchanged since its last run (the hash sits in ~#+RESULTS[hash]:~). Delete the results to force a run.
+*Cache*: ~:cache yes~ skips a block whose code, variables and ~:results~ are unchanged since its last run (the hash sits in ~#+RESULTS[hash]:~). Delete the results to force a run; without ~:cache yes~ an old hash stays in the results line.
 
 *Export* follows ~:exports~: ~code~ (default), ~results~, ~both~ or ~none~. Nothing is run on export; ~results~ shows what ~#+RESULTS:~ already holds.
 
@@ -1120,8 +1120,8 @@ The ~⏱~ button opens a panel, the touch version of ~effort-up~ and ~effort-dow
 
 Five kinds of entry show up; they carry forward as in org:
 
-- ~SCHEDULED:~ shows on its date and, until the heading is done, on today as overdue ("3 days overdue"), as in Emacs. A delay suffix (~SCHEDULED: <2026-01-10 Sat -2d>~) hides it on its own date and shows it on today once the delay has passed.
-- ~DEADLINE:~ shows on its date, and on today when overdue or inside its warning period ("due in 3 days"). A suffix (~DEADLINE: <2026-01-10 Sat -3d>~) sets the period; otherwise it is ~org-deadline-warning-days~ (default 14; see [[#local-variables][Local Variables]]). Overdue and upcoming entries show on today only, and a repeating one counts from its first date.
+- ~SCHEDULED:~ shows on its date and, on today as overdue ("3 days overdue") until the heading is done; a done heading shows only on its own date, and not at all with ~org-agenda-skip-scheduled-if-done~. A delay suffix (~SCHEDULED: <2026-01-10 Sat -2d>~) hides it on its own date and shows it on today once the delay has passed.
+- ~DEADLINE:~ shows on its date, and on today when overdue or inside its warning period ("due in 3 days"). A suffix (~DEADLINE: <2026-01-10 Sat -3d>~) sets the period; otherwise it is ~org-deadline-warning-days~ (default 14; see [[#local-variables][Local Variables]]). Overdue and upcoming entries show on today only, and a repeating one counts from its first date. A done heading shows only on its own date; ~org-agenda-skip-deadline-if-done~ hides it.
 - *Plain active timestamps* anywhere in a heading's entry (title, body, property values, drawers), such as ~**** Jane Doe <2000-01-01 Sat +1y>~, are listed beside its SCHEDULED or DEADLINE and never carry forward. Inactive ~[...]~ timestamps, comment lines, ~#+~ lines and source, example, export and comment blocks are ignored.
 - A *general sexp timestamp* ~<%%(sexp)>~ in the title follows the same rules; see [[#agenda-sexp-timestamps][General sexp timestamps]].
 - ~org-contacts-anniversaries~ reads yearly events (birthdays, anniversaries) from contact headings, as Emacs's org-contacts does: the headings of your [[#contacts-files][Contacts Files]] (~org-contacts-files~), else the files you are looking at. A contact's date is a property written ~YYYY-MM-DD~ with an optional description:
@@ -1149,7 +1149,7 @@ Self-contained lines anywhere in a heading's body, with no switch line needed; t
 - ~%%(org-anniversary YEAR MONTH DAY) text~: years after YEAR. In the text ~%d~ is the elapsed years and ~%s~ its ordinal suffix: ~%%(org-anniversary 2001 6 12) %d%s wedding anniversary~ shows "25th wedding anniversary" in 2026. February 29 counts as March 1 in non-leap years.
 - ~%%(org-cyclic N YEAR MONTH DAY) text~: every N days from that date.
 - ~%%(diary-float MONTH DAYNAME N [DAY] [MARK]) text~: the Nth weekday of a month. MONTH is 1 to 12, a list like ~(1 4 7 10)~, or ~t~ for every month; DAYNAME is 0 (Sunday) to 6; a negative N counts from the end. ~%%(diary-float 11 4 4) Thanksgiving~ is the 4th Thursday of November. DAY moves where scanning starts, as in Emacs.
-- ~%%(org-block Y1 M1 D1 Y2 M2 D2) text~: every day in an inclusive range, in either order.
+- ~%%(org-block Y1 M1 D1 Y2 M2 D2) text~: every day from the first date to the second, inclusive; a range written end date first matches nothing, as in Emacs.
 - Lines built from ~and~, ~or~, ~not~, ~when~, ~if~, ~cond~, ~let~, ~org-class~ or ~org-date~ use the evaluator under [[#agenda-sexp-timestamps][General sexp timestamps]]. The text after the closing parenthesis is the entry, and a string result replaces it.
 - ~%%(org-weather)~ shows current conditions and today's forecast from [[https://open-meteo.com/][Open-Meteo]] (free, no key) for ~calendar-latitude~ and ~calendar-longitude~: one entry, on today only, from the last-fetched snapshot.
 
@@ -1413,7 +1413,7 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 #+END_SRC
 
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
-- ~type~: ~item~ (a bullet), ~checkitem~ (a checkbox item), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) ~entry~ (a heading; its level follows the target) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
+- ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Emacs 9.6 inserts no box), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) ~entry~ (a heading; its level follows the target) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
 - ~olp~: the outline path to insert into, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
 - ~file~ (optional): capture into a different file (~file+olp~). A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing. Omit it to capture into the open file.
 - ~template~: the text inserted, after %-expansion. A JSON ~\n~ is a newline; a blank line after the entry is ~"...%?\n"~.
@@ -1466,7 +1466,7 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 - ~%x~ and ~%c~ are the clipboard. It is read only for a template that uses it (~%x~, ~%c~, ~%^C~ or ~%^L~), the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
 - ~%n~ is the value of ~user-full-name~ from the global variables (empty when unset). ~%k~ is the heading of the running clock and ~%K~ a link to it, ~[[file::*heading][heading]]~. ~%f~ and ~%F~ are the open file's name and full path.
 - ~%^{Prompt}~ asks a question on the in-app form. ~%^{Prompt|default}~ pre-fills an answer, and ~%^{Prompt|default|choice1|choice2}~ also lists the choices as a hint under the field (there is no dropdown). An empty answer is the default. Several prompts share one form, and cancelling discards the whole capture.
-- ~%^g~ and ~%^G~ ask for tags, written as ~work:home~, and insert ~:work:home:~. On a heading line the tags are aligned so the line ends at column 77.
+- ~%^g~ and ~%^G~ ask for tags, written as ~work:home~, and insert ~:work:home:~. On a heading line the tags are placed where ~org-tags-column~ says.
 - ~%^C~ asks for a clipboard value (pre-filled with the shared text, when there is any) and inserts it; ~%^L~ inserts it as ~[[value]]~.
 - ~%^t~, ~%^T~, ~%^u~, ~%^U~ (and ~%^{Prompt}t~ and the other letters, to name the field) are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. The date & time popup also has an *End time*, which follows the start by 30 minutes until you change it (*No end* removes it) and writes a range such as ~<2026-09-22 Tue 09:00-10:30>~: an appointment with a start and an end, exported with both. A date typed into the field (~2026-09-22~ or ~2026-09-22 14:30~) becomes a timestamp; ~T~ and ~U~ add the current time when none is given, and an empty field is now.
 - ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ (1-based) instead of asking again; tag, clipboard, timestamp and ~%?~ prompts are not counted. A number past the last prompt is an error and the capture does not run. In the JSON text the backslash must be doubled: ~%\\1~.
@@ -1757,9 +1757,9 @@ The file is read as for Beamer (frame level, sections, blocks and ~BEAMER_env~, 
 
 *** As-org
 
-Org's ~org-org-export-as-org~: a fully processed copy of the document in a new unsaved buffer, ~*Org ORG Export*~, leaving the original untouched. It resolves ~#+INCLUDE:~ lines; expands macros; leaves out COMMENT headings, ~#+EXCLUDE_TAGS:~ (~noexport~ by default) and ~#+SELECT_TAGS:~ exclusions and, with ~tasks:nil~, TODO headings; writes what ox-org writes (keywords lower case, tags aligned to column 77, source and example blocks indented by two, tables aligned, ordered lists renumbered); follows ~#+OPTIONS:~ for planning (~p:~), property drawers (~prop:~), drawers (~d:~), priorities, TODO keywords, tags, footnotes and the title lines; and shifts the top level to 1. In an Extras entry it is ~'org-org-export-as-org~.
+Org's ~org-org-export-as-org~: a fully processed copy of the document in a new unsaved buffer, ~*Org ORG Export*~, leaving the original untouched. It resolves ~#+INCLUDE:~ lines; expands macros; leaves out COMMENT headings, ~#+EXCLUDE_TAGS:~ (~noexport~ by default) and ~#+SELECT_TAGS:~ exclusions and, with ~tasks:nil~, TODO headings; writes what ox-org writes (keywords lower case, tags placed by ~org-tags-column~, source and example blocks indented by two, tables aligned, ordered lists renumbered); follows ~#+OPTIONS:~ for planning (~p:~), property drawers (~prop:~), drawers (~d:~), priorities, TODO keywords, tags, footnotes and the title lines; and shifts the top level to 1. In an Extras entry it is ~'org-org-export-as-org~.
 
-*Macros*: ~#+MACRO: name text~ with ~$1~, ~$2~ arguments, used as ~{{{name(arg1,arg2)}}}~ (~\,~ is a literal comma). Built in: ~{{{title}}}~, ~{{{author}}}~, ~{{{email}}}~, ~{{{date}}}~, ~{{{date(FORMAT)}}}~, ~{{{time(FORMAT)}}}~, ~{{{property(NAME)}}}~, ~{{{keyword(NAME)}}}~ and, in LaTeX export, ~{{{input-file}}}~ and ~{{{modification-time(FORMAT)}}}~. A macro whose text starts with ~(eval ~ runs as Lisp with ~$1~, ~$2~ ... as strings (~nil~ when not given); an error in it stops the export, as in Emacs. This works in every export.
+*Macros*: ~#+MACRO: name text~ with ~$1~, ~$2~ arguments, used as ~{{{name(arg1,arg2)}}}~ (~\,~ is a literal comma). Built in: ~{{{title}}}~, ~{{{author}}}~, ~{{{email}}}~, ~{{{date}}}~, ~{{{date(FORMAT)}}}~, ~{{{time(FORMAT)}}}~, ~{{{property(NAME)}}}~, ~{{{keyword(NAME)}}}~ ~{{{n}}}~ and ~{{{n(NAME)}}}~ (counters) and, in LaTeX export, ~{{{input-file}}}~ and ~{{{modification-time(FORMAT)}}}~. The first definition of a name wins; an undefined macro stops the export, as in Emacs. A macro whose text starts with ~(eval ~ runs as Lisp with ~$1~, ~$2~ ... as strings (~nil~ when not given); an error in it stops the export, as in Emacs. This works in every export.
 
 *** Calendar (.ics)
 
@@ -2143,7 +2143,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Inheritance* (see [[#local-variables][Local Variables]]): property inheritance is a boolean.
 
-*Tables* (see [[#table-formulas][Table formulas]]): formulas recalculate on command, not on every keystroke. Calc is not embedded: results that Calc writes as symbolic algebra or computes on dates, and Calc-only number forms such as ~0x10~, ~1_000~ and two numbers side by side (~$1$2~), can differ.
+*Tables* (see [[#table-formulas][Table formulas]]): formulas recalculate on command, not on every keystroke. Calc is not embedded: ~vvar~, ~vsdev~, ~vpvar~, ~vpsdev~ and ~vmeane~ over a vector holding a name can differ, because they need Calc's own simplifier.
 
 *Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and a sound file plays in the Android app only.
 

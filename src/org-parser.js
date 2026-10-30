@@ -53,7 +53,7 @@ const DEFAULT_DONE_KEYWORDS = ['DONE'];
 // ---- tokenizing helpers -------------------------------------------------
 
 const HEADING_RE = /^(\*+) +(.*)$/; // Org wants a space after the stars, not a tab
-const KEYWORD_RE = /^#\+([A-Za-z][A-Za-z_]*):\s?(.*)$/;
+const KEYWORD_RE = /^#\+([A-Za-z][A-Za-z_]*):(?=\s|$)\s?(.*)$/;
 const PROPERTY_DRAWER_START_RE = /^\s*:PROPERTIES:\s*$/i;
 const PROPERTY_DRAWER_END_RE = /^\s*:END:\s*$/i;
 const LOGBOOK_DRAWER_START_RE = /^\s*:LOGBOOK:\s*$/i;

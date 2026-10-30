@@ -50,7 +50,7 @@ test('%(form) in the prefix format is evaluated, with the row\'s variables', () 
 test('a Lisp function as a custom command is read, kept, and run with the match', () => {
   const text = `'(("x" "Mine" my-fn "work") ("y" "Lam" (lambda (m) (princ m)) "w" ((org-agenda-sorting-strategy '(alpha-up)))) ("z" "Stuck" stuck) ("t" "Tags" tags "a"))`;
   const cmds = parseCustomCommands(text);
-  assert.deepEqual(cmds.map((c) => [c.key, c.type, c.query]), [['x', 'function', 'work'], ['y', 'function', 'w'], ['t', 'tags', 'a']]);
+  assert.deepEqual(cmds.map((c) => [c.key, c.type, c.query]), [['x', 'function', 'work'], ['y', 'function', 'w'], ['z', 'stuck', ''], ['t', 'tags', 'a']]);
   assert.equal(cmds[0].fn, 'my-fn');
   assert.match(withCustomCommand(text, { key: 'q', description: 'd', type: 'tags', query: 'b', sortingStrategy: null }), /\("x" "Mine" my-fn "work"\)/);
   assert.deepEqual(runFunctionCommand('(lambda (m) (princ (concat "got " m)) (insert "!"))', 'work'), { ok: true, text: 'got work!' });

@@ -4,7 +4,7 @@ import { Cons, Flt, NIL, intern, list, signal } from './elisp-data.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
 
-const DELIMS = new Set(['(', ')', '[', ']', '"', "'", ';', '`', ',']);
+const DELIMS = new Set(['(', ')', '[', ']', '"', "'", ';', '`', ',', '#']);
 const isSpace = (/** @type {string} */ c) => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
 
 const NAMED_CHARS = new Map([['a', 7], ['b', 8], ['t', 9], ['n', 10], ['v', 11], ['f', 12], ['r', 13], ['e', 27], ['s', 32], ['d', 127]]);
@@ -48,6 +48,7 @@ export class Reader {
             this.pos++;
             return items;
           }
+          if (t[this.pos] === '.' && (isSpace(t[this.pos + 1] ?? ' ') || DELIMS.has(t[this.pos + 1]))) throw signal('invalid-read-syntax', ['.']);
           items.push(this.read());
         }
       }
@@ -73,10 +74,14 @@ export class Reader {
       case '"':
         this.pos++;
         return this.readString();
-      case '?':
+      case '?': {
         this.pos++;
-        return this.readChar();
-      case '#':
+        const ch = this.readChar();
+        const next = t[this.pos];
+        if (next !== undefined && !isSpace(next) && !'"\';()[]#?`,.'.includes(next)) throw signal('invalid-read-syntax', ['?']);
+        return ch;
+      }
+      case '#': {
         if (t[this.pos + 1] === "'") {
           this.pos += 2;
           return list([intern('function'), this.read()]);
@@ -90,6 +95,25 @@ export class Reader {
           const name = this.readToken();
           return intern(name.text);
         }
+        if (t[this.pos + 1] === '_') {
+          this.pos += 2;
+          return this.read();
+        }
+        if (t[this.pos + 1] === '!') {
+          while (this.pos < t.length && t[this.pos] !== '\n') this.pos++;
+          return this.read();
+        }
+        const rad = /^#(\d+)r/.exec(t.slice(this.pos, this.pos + 6));
+        if (rad) {
+          const radix = Number(rad[1]);
+          if (radix < 2 || radix > 36) throw signal('invalid-read-syntax', ['integer, radix ' + radix]);
+          this.pos += rad[0].length;
+          const tok = this.readToken().text;
+          if (!tok || ![...tok.replace(/^[-+]/, '')].every((d) => parseInt(d, 36) < radix)) throw signal('invalid-read-syntax', ['integer, radix ' + radix]);
+          const big = [...tok.replace(/^[-+]/, '')].reduce((a, d) => a * BigInt(radix) + BigInt(parseInt(d, 36)), 0n);
+          const v = tok.startsWith('-') ? -big : big;
+          return Number.isSafeInteger(Number(v)) ? Number(v) : v;
+        }
         if (/[xXoObB]/.test(t[this.pos + 1] || '')) {
           const radix = { x: 16, o: 8, b: 2 }[/** @type {'x'|'o'|'b'} */ (t[this.pos + 1].toLowerCase())];
           this.pos += 2;
@@ -99,6 +123,7 @@ export class Reader {
           return n;
         }
         throw signal('invalid-read-syntax', ['#']);
+      }
       default:
         return this.readAtom();
     }
@@ -125,7 +150,7 @@ export class Reader {
         if (t[this.pos] === close) throw signal('invalid-read-syntax', [close]);
         tail = this.read();
         if (!this.more()) throw signal('end-of-file', []);
-        if (t[this.pos] !== close) throw signal('invalid-read-syntax', ['. in wrong context']);
+        if (t[this.pos] !== close) throw signal('invalid-read-syntax', ['expected )']);
         this.pos++;
         return list(items, tail);
       }
@@ -147,6 +172,18 @@ export class Reader {
       }
       const e = t[this.pos++];
       if (e === '\n' || e === ' ') continue;
+      if (e === 's' && t[this.pos] !== '-') { out += ' '; continue; }
+      if (e === 'C' && t[this.pos] === '-') {
+        this.pos++;
+        const base = String(t[this.pos++] ?? '').codePointAt(0) ?? 0;
+        out += String.fromCodePoint(base === 63 ? 127 : base & 0x1f);
+        continue;
+      }
+      if (e === '^') {
+        const base = String(t[this.pos++] ?? '').codePointAt(0) ?? 0;
+        out += String.fromCodePoint(base === 63 ? 127 : base & 0x1f);
+        continue;
+      }
       if (e === 'x') {
         let h = '';
         while (/[0-9a-fA-F]/.test(t[this.pos] || '')) h += t[this.pos++];
@@ -240,7 +277,9 @@ export class Reader {
       const special = /^([-+]?)(\d+\.\d+)e\+(INF|NaN)$/.exec(text);
       if (special) {
         if (special[3] === 'INF') return new Flt(special[1] === '-' ? -Infinity : Infinity);
-        return new Flt(NaN);
+        const nan = new Flt(NaN);
+        nan.pos = special[1] !== '-';
+        return nan;
       }
     }
     return intern(text);

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { exportAsOrg, expandMacros, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs } from '../src/export-org.js';
+import { exportAsOrg, filterNoexportAndComments, scaleHeadingLevels } from '../src/export-org.js';
+import { expandMacros, buildMacroTable, splitMacroArgs } from '../src/export-macros.js';
 
 async function noFetch() {
   throw new Error('should not have needed to fetch anything');
@@ -81,10 +82,9 @@ test('a replacement template starting with "(eval" runs as Emacs Lisp, with $1 a
   assert.equal(result.body[0].lines[0], 'GNU/Linux');
 });
 
-test('an unrecognized macro name is left exactly as written, never an error, matching this app\u2019s own tolerant-of-the-unexpected approach elsewhere', () => {
+test('an unrecognized macro name stops the export, as in Emacs ("Undefined Org macro: nonexistent; aborting")', () => {
   const doc = parseOrg('{{{nonexistent(a,b)}}}\n');
-  const result = expandMacros(doc, new Date());
-  assert.equal(result.body[0].lines[0], '{{{nonexistent(a,b)}}}');
+  assert.throws(() => expandMacros(doc, new Date()), /^Error: Undefined Org macro: nonexistent; aborting$/);
 });
 
 test('macros expand in heading titles too, matching real org\u2019s own documented recognition areas (headlines, not just paragraphs)', () => {

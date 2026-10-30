@@ -441,12 +441,12 @@ test('insertCapture item called twice extends the same list rather than creating
 
 // ---- insertCapture: checkitem -------------------------------------------
 
-test('insertCapture checkitem adds a checkbox item, unchecked, with the checkbox syntax supplied by the type', () => {
+test('insertCapture checkitem adds a plain item, as Emacs does', () => {
   const doc = parseOrg('* Target');
   const target = doc.children[0];
   insertCapture(target, 'checkitem', 'Buy milk');
   const text = serializeOrg(doc);
-  assert.match(text, /^- \[ \] Buy milk$/m);
+  assert.match(text, /^- Buy milk$/m);
 });
 
 // ---- insertCapture: plain ------------------------------------------------
@@ -637,7 +637,7 @@ test('END TO END: Check List example, exactly as specified', () => {
   const target = resolveOlpTarget(doc, ['heading 1', 'heading n'], { now: NOW });
   const { text } = expandTemplate('%^{Item description}', { now: NOW, promptAnswers: ['Buy milk'] });
   insertCapture(target, 'checkitem', text);
-  assert.match(serializeOrg(doc), /^- \[ \] Buy milk$/m);
+  assert.match(serializeOrg(doc), /^- Buy milk$/m);
 });
 
 test('END TO END: Table Insert example with dynamic %<%Y-%m> OLP segment, exactly as specified', () => {
@@ -664,12 +664,12 @@ test('insertCapture item returns the inserted list item', () => {
   assert.equal(item.text, 'A captured note');
 });
 
-test('insertCapture checkitem returns the inserted list item, with its checkbox set', () => {
+test('insertCapture checkitem returns the inserted list item', () => {
   const doc = parseOrg('* Target');
   const target = doc.children[0];
   const item = insertCapture(target, 'checkitem', 'Buy milk');
   assert.equal(item.text, 'Buy milk');
-  assert.equal(item.checkbox, ' ');
+  assert.ok(!item.checkbox);
 });
 
 test('insertCapture plain returns the newly-created heading when the fragment produced one', () => {
@@ -814,7 +814,7 @@ test('REGRESSION: checkitem capture into a heading with existing content, then e
   const text = serializeOrg(doc);
   assert.match(text, /Existing first line\./);
   assert.match(text, /Existing second line\./);
-  assert.match(text, /- \[ \] Buy oat milk/);
+  assert.match(text, /- Buy oat milk/);
 });
 
 test('REGRESSION: three sequential item captures each get a correctly-offset lineIndex, and editing any one only affects that one line', () => {
@@ -1061,7 +1061,7 @@ test('THE FEATURE (the exact motivating example): checkitem wraps preText/postTe
   const target = doc.children[0];
   insertCapture(target, 'checkitem', 'Buy milk', false, false, '[#A] ', ' :quick:');
   insertCapture(target, 'checkitem', 'Call dentist', false, false, '[#A] ', ' :quick:');
-  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Tasks', '- [ ] [#A] Buy milk :quick:', '- [ ] [#A] Call dentist :quick:']);
+  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Tasks', '- [#A] Buy milk :quick:', '- [#A] Call dentist :quick:']);
 });
 
 test('item wraps preText/postText the same way checkitem does', () => {

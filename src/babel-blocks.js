@@ -17,7 +17,7 @@ const AFFILIATED_RE = /^\s*#\+(NAME|HEADERS?|CAPTION|ATTR_\w+|PLOT)\s*:\s*(.*)$/
  * `,*` and `,#+` at the start of a line are Org's escapes for a line that would otherwise look like markup.
  * @param {string} line
  */
-const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+)/, '$1');
+const unescapeLine = (line) => line.replace(/^(\s*),(?=\*|#\+|,[ \t]*(?:\*|#\+))/, '$1');
 
 /**
  * Removes the indentation all non-blank lines share, as Org does for a block's body.
@@ -35,6 +35,25 @@ export function normalizedBody(rawLines) {
   return removeIndentation(rawLines.map(unescapeLine)).join('\n').replace(/\s+$/, '');
 }
 
+/** A block's body exactly as Emacs hands it to Babel: comma escapes undone, the common indentation removed (a blank line
+ * loses up to as much), trailing whitespace and blank lines kept.
+ * @param {string[]} rawLines */
+function emacsBodyOf(rawLines) {
+  const lines = rawLines.map(unescapeLine);
+  const width = (/** @type {string} */ ws) => [...ws].reduce((col, ch) => (ch === '\t' ? col + 8 - (col % 8) : col + 1), 0);
+  // Emacs never removes more columns than the body has characters plus one (a quirk visible with tab-only indentation).
+  const cut = Math.min(lines.join('\n').length + 1, ...lines.filter((l) => l.trim()).map((l) => width((/^[ \t]*/.exec(l) || [''])[0])));
+  const out = removeColumns(lines);
+  // Emacs re-indents each remaining line with `indent-line-to`, which writes tabs for every full 8 columns.
+  const reindent = (/** @type {string} */ l) => {
+    const rest = l.replace(/^[ \t]*/, '');
+    const left = width((/^[ \t]*/.exec(l) || [''])[0]) - cut;
+    return '\t'.repeat(Math.floor(left / 8)) + ' '.repeat(left % 8) + rest;
+  };
+  const tabbed = lines.some((l) => l.trim() && /^[ \t]*\t/.test(l));
+  return out.map((l, n) => (lines[n].trim() ? (tabbed ? reindent(lines[n]) : l) : lines[n].slice(Math.min(lines[n].length, cut)))).join('\n');
+}
+
 /** The source blocks in `lines` (a heading's body, or the lines before the first heading):
  * @param {string[]} lines
  *  [{ beginIndex, endIndex, lang, params, name, headers, rawLines, indent }]. Blocks inside other blocks are skipped. */
@@ -42,7 +61,8 @@ export function scanSourceBlocks(lines) {
   const found = [];
   for (let i = 0; i < lines.length; i++) {
     const other = BEGIN_OTHER_RE.exec(lines[i]);
-    if (other && other[1].toLowerCase() !== 'src') {
+    // Only blocks whose contents are raw text hide a source block; a quote, center or special block holds elements.
+    if (other && /^(example|export|comment|verse)$/i.test(other[1])) {
       const end = new RegExp('^\\s*#\\+end_' + other[1] + '\\s*$', 'i');
       let j = i + 1;
       while (j < lines.length && !end.test(lines[j])) j++;
@@ -64,7 +84,7 @@ export function scanSourceBlocks(lines) {
       if (key === 'NAME' && name === null) name = a[2].trim();
       else if (key === 'HEADER' || key === 'HEADERS') headers.unshift(a[2].trim());
     }
-    found.push({ beginIndex: i, endIndex: j, lang: (m[2] || '').toLowerCase(), params: m[3] || '', name, headers, rawLines: lines.slice(i + 1, j), indent: m[1] });
+    found.push({ beginIndex: i, endIndex: j, lang: (m[2] || '').toLowerCase(), langText: m[2] || '', params: m[3] || '', name, headers, rawLines: lines.slice(i + 1, j), beginLineText: lines[i], emacsBody: emacsBodyOf(lines.slice(i + 1, j)), indent: m[1] });
     i = j;
   }
   return found;
@@ -80,7 +100,16 @@ const isComment = (heading) => isCommentedHeading(heading);
 export function preambleLines(doc) {
   const lines = (doc.bodyLines || []).slice();
   /** @param {any} [k] */
-  const keywords = (doc.keywords || []).filter((k) => /^(NAME|HEADERS?)$/i.test(k.key));
+  const keywords = (doc.keywords || []).filter((k) => /^(NAME|HEADERS?|RESULTS)$/i.test(k.key));
+  for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}:${k.value ? ' ' + k.value : ''}`);
+  return lines;
+}
+
+/** The lines before the first heading with every `#+KEY: value` line put back (preambleLines puts back only NAME and HEADER).
+ * @param {Doc} doc */
+export function fullPreambleLines(doc) {
+  const lines = (doc.bodyLines || []).slice();
+  const keywords = (doc.keywords || []).filter((k) => !k.virtual);
   for (const k of keywords.slice().reverse()) lines.splice(Math.min(k.bodyLineIndex || 0, lines.length), 0, `#+${k.key}: ${k.value}`);
   return lines;
 }

@@ -264,7 +264,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+\.?\d*(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+_[A-Za-z0-9_]*|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -423,6 +423,17 @@ function hmsText(x, isFloat) {
   return `${x < 0 ? '-' : ''}${h}@ ${m}' ${secText}"`;
 }
 
+/** Euler's gamma function (Lanczos), good to about 15 digits. @param {number} z @returns {number} */
+function gamma(z) {
+  if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  const x = z - 1;
+  let sum = c[0];
+  for (let i = 1; i < 9; i++) sum += c[i] / (x + i);
+  const t = x + 7.5;
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * sum;
+}
+
 const SCALAR_FUNCTIONS = {
   sqrt: (/** @type {any} */ x) => {
     if (x < 0) throw new Error('sqrt of a negative number has no real result');
@@ -432,10 +443,10 @@ const SCALAR_FUNCTIONS = {
     if (y === 0) throw new Error('idiv by zero');
     return Math.floor(x / y);
   },
-  floor: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.floor),
-  ceil: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.ceil),
-  round: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
-  trunc: (/** @type {any} */ x, /** @type {any} */ digits) => roundToDigits(x, digits, Math.trunc),
+  floor: (/** @type {FormulaNode} */ x, /** @type {FormulaNode} */ digits) => roundToDigits(x, digits, Math.floor),
+  ceil: (/** @type {FormulaNode} */ x, /** @type {FormulaNode} */ digits) => roundToDigits(x, digits, Math.ceil),
+  round: (/** @type {FormulaNode} */ x, /** @type {FormulaNode} */ digits) => roundToDigits(x, digits, roundHalfAwayFromZero),
+  trunc: (/** @type {FormulaNode} */ x, /** @type {FormulaNode} */ digits) => roundToDigits(x, digits, Math.trunc),
   deg: (/** @type {number} */ x) => (((isTaggedValue(x) ? /** @type {any} */ (x).days : x) * 180) / Math.PI), // radians to degrees, as in Calc
   // Calc's HMS form as it prints: 3@ 45' 0." (a non-integer argument gives a float for the seconds)
   hms: (/** @type {number} */ x) => hmsText(x, !Number.isInteger(x)),
@@ -463,13 +474,33 @@ const SCALAR_FUNCTIONS = {
     while (y) [x, y] = [y, x % y];
     return Math.abs(a * b) / x;
   },
+  float: (/** @type {number} */ x) => x,
+  frac: (/** @type {number} */ x) => {
+    if (typeof x !== 'number' || !Number.isFinite(x)) throw new Error('frac needs a number');
+    if (Number.isInteger(x)) return x;
+    let [h1, h0, k1, k0, v] = [1, 0, 0, 1, Math.abs(x)];
+    for (let i = 0; i < 40; i++) { // continued fraction, as far as the working precision tells the fraction from the float
+      const a = Math.floor(v);
+      [h1, h0] = [a * h1 + h0, h1];
+      [k1, k0] = [a * k1 + k0, k1];
+      if (Math.abs(Math.abs(x) - h1 / k1) < Math.abs(x) * 1e-10) break;
+      v = 1 / (v - a);
+    }
+    return `${x < 0 ? '-' : ''}${h1}:${k1}`;
+  },
+  perm: (/** @type {number} */ n, /** @type {number} */ k) => {
+    if (Number.isInteger(n) && Number.isInteger(k)) throw new Error('perm of integers is left to the algebra engine');
+    return gamma(n + 1) / gamma(n - k + 1);
+  },
   fact: (/** @type {number} */ n) => {
+    if (typeof n === 'number' && Number.isFinite(n) && !Number.isInteger(n)) return gamma(n + 1); // fact of a fraction is the gamma function
     if (!Number.isInteger(n) || n < 0 || n > 170) throw new Error('fact needs an integer from 0 to 170');
     let r = 1;
     for (let i = 2; i <= n; i++) r *= i;
     return r;
   },
   choose: (/** @type {number} */ n, /** @type {number} */ k) => {
+    if (Number.isFinite(n) && Number.isFinite(k) && !(Number.isInteger(n) && Number.isInteger(k))) return gamma(n + 1) / (gamma(k + 1) * gamma(n - k + 1));
     if (!Number.isInteger(n) || !Number.isInteger(k) || n < 0) throw new Error('choose needs integers');
     if (k < 0 || k > n) return 0;
     let r = 1;
@@ -477,7 +508,7 @@ const SCALAR_FUNCTIONS = {
     return Math.round(r);
   },
   // Complex-aware names (see calc-complex.js); with a real argument these are Calc's plain real answers.
-  abs: (/** @type {any} */ x) => Math.abs(x),
+  abs: (/** @type {FormulaNode} */ x) => Math.abs(x),
   // matrix and vector functions (calc-vector.js); they need a vector or matrix, which vectorScalarCall handles
   det: () => { throw new Error('det needs a square matrix'); },
   inv: (/** @type {number} */ x) => {
@@ -488,15 +519,20 @@ const SCALAR_FUNCTIONS = {
   tr: () => { throw new Error('tr needs a square matrix'); },
   cross: () => { throw new Error('cross needs two 3-element vectors'); },
   vlen: () => { throw new Error('vlen needs a vector'); },
-  re: (/** @type {any} */ x) => x,
+  re: (/** @type {FormulaNode} */ x) => x,
   im: () => 0,
-  conj: (/** @type {any} */ x) => x,
-  arg: (/** @type {any} */ x, /** @type {any} */ isDegrees) => (x < 0 ? (isDegrees ? 180 : Math.PI) : 0),
-  polar: (/** @type {any} */ x) => x,
-  rect: (/** @type {any} */ x) => x,
-  and: (/** @type {any} */ a, /** @type {any} */ b) => (isTruthyValue(a) && isTruthyValue(b) ? 1 : 0),
-  or: (/** @type {any} */ a, /** @type {any} */ b) => (isTruthyValue(a) || isTruthyValue(b) ? 1 : 0),
-  not: (/** @type {any} */ a) => (isTruthyValue(a) ? 0 : 1),
+  conj: (/** @type {FormulaNode} */ x) => x,
+  arg: (/** @type {FormulaNode} */ x, /** @type {FormulaNode} */ isDegrees) => (x < 0 ? (isDegrees ? 180 : Math.PI) : 0),
+  polar: (/** @type {FormulaNode} */ x) => x,
+  rect: (/** @type {FormulaNode} */ x) => x,
+  // and/or give one of their arguments, as Calc's land/lor do; not and xor work on the bits of a 32-bit word, lnot is the logical not
+  and: (/** @type {FormulaNode} */ a, /** @type {FormulaNode} */ b) => (isTruthyValue(a) ? b : a),
+  or: (/** @type {FormulaNode} */ a, /** @type {FormulaNode} */ b) => (isTruthyValue(a) ? a : b),
+  land: (/** @type {FormulaNode} */ a, /** @type {FormulaNode} */ b) => (isTruthyValue(a) ? b : a),
+  lor: (/** @type {FormulaNode} */ a, /** @type {FormulaNode} */ b) => (isTruthyValue(a) ? a : b),
+  lnot: (/** @type {FormulaNode} */ a) => (isTruthyValue(a) ? 0 : 1),
+  not: (/** @type {number} */ a) => (~Math.trunc(a)) >>> 0,
+  xor: (/** @type {number} */ a, /** @type {number} */ b) => (Math.trunc(a) ^ Math.trunc(b)) >>> 0,
   // Real Calc's own algebraic names -- confirmed directly against the
   // manual: "the calc-arcsin command or arcsin algebraic function",
   // never "asin". `isDegrees` (this app's own D/R mode flag, degrees
@@ -589,6 +625,7 @@ function roundHalfAwayFromZero(x) {
  */
 function roundToDigits(x, digits, roundFn) {
   const d = digits === undefined ? 0 : digits;
+  if (!Number.isInteger(d)) throw new Error('A digit count must be an integer'); // Calc leaves round(2.5, 0.5) as written
   if (d < 0) return x; // Calc 2.x leaves the value as it is for a negative digit count
   const factor = Math.pow(10, d);
   return roundFn(x * factor) / factor;
@@ -860,8 +897,10 @@ function parseExpression(tokens) {
   }
   function parseTerm() {
     let node = parseNegation();
-    while (peek() === '*') {
-      next();
+    // Calc reads two operands side by side ("$1$2", "3 4", "(1)(2)") as their product
+    const startsOperand = () => { const t = peek(); return t !== undefined && (/^[\d.@$A-Za-z_([]/.test(t)); };
+    while (peek() === '*' || startsOperand()) {
+      if (peek() === '*') next();
       node = { type: 'binop', op: '*', left: node, right: parseNegation() };
     }
     return node;
@@ -902,10 +941,10 @@ function parseExpression(tokens) {
       if (peek() === ',') {
         next();
         /** @type {any} */ const imaginary = parseExpr();
-        expect(')');
+        if (peek() !== undefined) expect(')'); // Calc supplies a missing closing parenthesis at the end of the formula
         return { type: 'complexLiteral', re: node, im: imaginary };
       }
-      expect(')');
+      if (peek() !== undefined) expect(')');
       return node;
     }
     if (tok === '[') {
@@ -925,8 +964,10 @@ function parseExpression(tokens) {
       next();
       return { type: 'string', value: unescapeStringLiteral(tok) };
     }
-    if (/^\d/.test(tok)) {
+    if (/^\d+_/.test(tok)) throw new Error('Expected "(" -- a name Calc reads as algebra');
+    if (/^\.?\d/.test(tok)) {
       next();
+      if (/^\d+$/.test(tok) && !Number.isSafeInteger(Number(tok))) return { type: 'number', value: BigInt(tok), float: false }; // an integer past 2^53 stays exact
       return { type: 'number', value: Number(tok), float: /[.eE]/.test(tok) };
     }
     if (/^[A-Za-z_]/.test(tok)) {
@@ -982,7 +1023,7 @@ function parseExpression(tokens) {
         expect('(');
         /** @type {any} */ const arg = parseExpr();
         expect(')');
-        return { type: 'stringCall', arg };
+        return { type: 'unknownCall', name: rawName, args: [arg] }; // Calc has no string(): the call stays, its argument read as Calc reads it
       }
       if (name === 'if') {
         expect('(');
@@ -1029,7 +1070,15 @@ function parseExpression(tokens) {
         return { type: 'unknownCall', name: rawName, args: unknownArgs };
       }
       if (isAggregate) {
-        /** @type {any} */ const arg = parseExpr();
+        /** @type {FormulaNode} */ let arg = parseExpr();
+        if (peek() === ',') { // vsum(a, b) sums the arguments as one vector
+          const items = [arg];
+          while (peek() === ',') {
+            next();
+            items.push(parseExpr());
+          }
+          arg = { type: 'vectorLiteral', items };
+        }
         expect(')');
         return { type: 'call', name, arg };
       }
@@ -1072,7 +1121,11 @@ function parseExpression(tokens) {
     return { type: 'ref', ref: first };
   }
 
-  const result = parseExpr();
+  let result = parseExpr();
+  if (peek() === ',') { // "1,5" outside any call is Calc's pair, shown without parentheses
+    next();
+    result = { type: 'complexLiteral', re: result, im: parseExpr(), bare: true };
+  }
   if (pos !== tokens.length) throw new Error('Unexpected trailing content in formula');
   return result;
 }
@@ -1169,9 +1222,20 @@ function readCellValue(dataRows, row, col, ctx) {
   }
   const tagged = ctx.forceNumeric ? null : parseCellTimestamp(text);
   if (tagged) return tagged;
+  const percent = ctx.forceNumeric ? null : /^\s*(\d+\.?\d*)\s*%\s*$/.exec(text); // 5% is 0.05
+  if (percent) return Number(percent[1]) / 100;
+  if (!ctx.forceNumeric && /^\s*0x[0-9a-fA-F]+\s*$/.test(text)) return 0; // Calc reads 0x10 as 0 times the name x10
+  const dayNumber = ctx.forceNumeric || ctx.durationMode ? null : /^\s*<(\d+)>\s*$/.exec(text); // <5> reaches Calc as the date form of day 5
+  if (dayNumber) return { type: 'date', days: Number(dayNumber[1]) - CALC_EPOCH_OFFSET, hasTime: false };
+  const subtraction = ctx.forceNumeric || ctx.durationMode ? null : /^\s*(\d+)-(\d+)-(\d+)\s*$/.exec(text); // Calc reads 2024-03-15 as the subtraction 2024 - 3 - 15
+  if (subtraction) return Number(subtraction[1]) - Number(subtraction[2]) - Number(subtraction[3]);
   if (!ctx.forceNumeric && text.trimStart().startsWith('[')) {
     const vector = parseVectorCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
     if (vector) return vector;
+  }
+  if (!ctx.forceNumeric && /^\s*[-+]?[\d.]+\s*,\s*[-+]?[\d.]+\s*$/.test(text)) { // org wraps a field in parentheses: 1,5 is the pair (1, 5)
+    const pair = parseComplexCell(`(${text.trim()})`, ctx.complexDomain, ctx.angleMode === 'degrees');
+    if (pair) return complexResult(pair, ctx);
   }
   if (!ctx.forceNumeric && text.trimStart().startsWith('(')) {
     const complex = parseComplexCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
@@ -1338,21 +1402,36 @@ function evaluateDateArithmetic(l, r, op) {
       const diff = Math.round((l.days - r.days) * 1e6) / 1e6; // a time of day is kept to 6 decimals
       return diff; // days, a decimal when a time of day is involved
     }
+    if (l.type === 'date' && r.type === 'date') return Number((l.days + r.days + 2 * CALC_EPOCH_OFFSET).toPrecision(12)); // two dates add as their Calc day numbers
     const combined = op === '+' ? l.days + r.days : l.days - r.days;
     const resultType = l.type === 'date' ? l.type : r.type;
     const hasTime = l.hasTime || r.hasTime;
     return resultType === 'date' ? { type: 'date', days: combined, hasTime } : { type: 'hms', days: combined };
   }
   const tagged = lTagged ? l : r;
-  const days = lTagged ? (op === '+' ? tagged.days + r : tagged.days - r) : op === '+' ? l + tagged.days : l - tagged.days;
+  let days = lTagged ? (op === '+' ? tagged.days + r : tagged.days - r) : op === '+' ? l + tagged.days : l - tagged.days;
+  if (!lTagged && op === '-' && tagged.type === 'date') days = l - tagged.days - 2 * CALC_EPOCH_OFFSET; // a number less a date is a (negative) Calc day number
   return tagged.type === 'date' ? { type: 'date', days, hasTime: tagged.hasTime || !Number.isInteger(days) } : { type: 'hms', days };
 }
+
+/** A date times, divided by or raised to a number stays an unevaluated Calc form, written as Calc writes it.
+ * @param {string} op @param {any} l @param {any} r @returns {string} */
+function dateProduct(op, l, r) {
+  const show = (/** @type {any} */ v) => (isTaggedValue(v) ? (v.type === 'date' ? formatDateValue(v) : formatHmsValue(v)) : String(v));
+  const a = show(l);
+  const b = show(r);
+  if (op === '*') return isTaggedValue(l) && !isTaggedValue(r) ? `${a} ${b}` : `${a}*${b}`;
+  if (op === '^') return `${a}^${b}`;
+  return `${a} ${op} ${b}`;
+}
+
+const CALC_EPOCH_OFFSET = 719163; // 1 Jan 1970 is day 719163 in Calc
 
 /** Calc's date(): a date turns into its day number (days since 1 January of year 1, with the time of day as a fraction), and a
  *  day number turns into a date.
  * @param {any} value */
 function calcDate(value) {
-  const EPOCH_OFFSET = 719163; // 1 Jan 1970 is day 719163 in Calc
+  const EPOCH_OFFSET = CALC_EPOCH_OFFSET;
   if (isTaggedValue(value) && value.type === 'date') return Number((value.days + EPOCH_OFFSET).toPrecision(12));
   if (typeof value === 'number' && Number.isFinite(value)) {
     return { type: 'date', days: value - EPOCH_OFFSET, hasTime: !Number.isInteger(value) };
@@ -1540,7 +1619,9 @@ function vectorScalarCall(name, argValues, ctx) {
   const a = argValues[0];
   switch (name) {
     case 'det': return vectorResult(vDet(a, D, degrees), ctx);
-    case 'inv': return vectorResult(vInv(a, D, degrees), ctx);
+    case 'inv':
+      if (typeof a === 'number' && a !== 0) return 1 / a; // inv of a plain number is its reciprocal
+      return vectorResult(vInv(a, D, degrees), ctx);
     case 'trn': return vectorResult(vTrn(a), ctx);
     case 'tr': return vectorResult(vTrace(a, D, degrees), ctx);
     case 'cross': return vectorResult(vCross(a, argValues[1], D, degrees), ctx);
@@ -1632,6 +1713,7 @@ function complexScalarCall(name, argValues, ctx) {
       /** @type {any} */ const operand = evaluateAst(node.operand, ctx);
       if (isVector(operand)) return vNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees');
       if (isComplex(operand)) return complexResult(cNeg(operand, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
+      if (isTaggedValue(operand)) return operand.type === 'date' ? { type: 'date', days: -operand.days - 2 * CALC_EPOCH_OFFSET, hasTime: operand.hasTime } : { type: 'hms', days: -operand.days };
       return isMathjsValue(operand) ? ctx.numericMode.instance.unaryMinus(operand) : -operand;
     }
     case 'not':
@@ -1639,16 +1721,33 @@ function complexScalarCall(name, argValues, ctx) {
     case 'binop': {
       if (node.op === '&&') {
         const l = evaluateAst(node.left, ctx);
-        if (!isTruthyValue(l)) return 0;
-        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+        if (!isTruthyValue(l)) return l;
+        return evaluateAst(node.right, ctx);
       }
       if (node.op === '||') {
         const l = evaluateAst(node.left, ctx);
-        if (isTruthyValue(l)) return 1;
-        return isTruthyValue(evaluateAst(node.right, ctx)) ? 1 : 0;
+        if (isTruthyValue(l)) return l;
+        return evaluateAst(node.right, ctx);
       }
       let l = evaluateAst(node.left, ctx);
       let r = evaluateAst(node.right, ctx);
+      if (typeof l === 'string' || typeof r === 'string') { // a string is a vector of character codes to Calc
+        if ((typeof l === 'string' && node.left.type !== 'string') || (typeof r === 'string' && node.right.type !== 'string')) throw new Error('Text that is not a string literal is Calc algebra');
+        const codes = (/** @type {FormulaNode} */ v) => (typeof v === 'string' ? makeVector(Array.from(v, (ch) => ch.codePointAt(0))) : v);
+        if ((typeof l === 'number' && Number.isNaN(l)) || (typeof r === 'number' && Number.isNaN(r))) {
+          if (ctx.probe) ctx.probe.nonNumeric = true;
+          return NaN;
+        }
+        if (isTaggedValue(l) || isTaggedValue(r)) { // a date is never a list of characters
+          if (node.op === '==' || node.op === '!=') return node.op === '==' ? 0 : 1;
+          throw new Error('A date and a string cannot be combined');
+        }
+        l = codes(l);
+        r = codes(r);
+      }
+      if (COMPARISON_OPS.has(node.op) && ((isTaggedValue(l) && l.type === 'date' && typeof r === 'number') || (isTaggedValue(r) && r.type === 'date' && typeof l === 'number'))) {
+        return dateProduct(node.op === '==' ? '=' : node.op, l, r); // a date against a plain number is no truth value to Calc: the comparison stays as written
+      }
       if (COMPARISON_OPS.has(node.op)) return compareValues(l, r, node.op, ctx);
       if (isVector(l) || isVector(r)) return vectorBinop(node.op, l, r, ctx);
       if (isComplex(l) || isComplex(r)) return complexBinop(node.op, l, r, ctx);
@@ -1660,6 +1759,7 @@ function complexScalarCall(name, argValues, ctx) {
       if ((node.op === '+' || node.op === '-') && (isTaggedValue(l) || isTaggedValue(r))) {
         return evaluateDateArithmetic(l, r, node.op);
       }
+      if ((isTaggedValue(l) && l.type === 'date') || (isTaggedValue(r) && r.type === 'date')) return dateProduct(node.op, l, r); // Calc leaves such a product as it is written
       if (ctx.numericMode && ctx.numericMode.kind === 'fraction' && (isMathjsValue(l) || isMathjsValue(r)) && ((typeof l === 'number' && !Number.isInteger(l)) || (typeof r === 'number' && !Number.isInteger(r)))) {
         l = isMathjsValue(l) ? l.valueOf() : l; // a float among the fractions makes the result a float
         r = isMathjsValue(r) ? r.valueOf() : r;
@@ -1720,8 +1820,10 @@ function complexScalarCall(name, argValues, ctx) {
     }
     case 'namedConstant': {
       const value = (ctx.constants || {})[node.name];
-      if (value === undefined) throw new Error(`Undefined constant "$${node.name}" -- add it to a #+CONSTANTS: line`);
-      return value;
+      const text = constantText(ctx, node.name);
+      if (value === undefined && text === undefined) throw new Error(`Undefined constant "$${node.name}" -- add it to a #+CONSTANTS: line`);
+      if (value === undefined) return evaluateAst(parseExpression(tokenize(/** @type {string} */ (text))), ctx); // Calc reads the text
+      return /[.eE]/.test(text || '') ? wrapNumericLiteral(value, ctx, true) : value;
     }
     case 'range': {
       if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(node.remote, ctx));
@@ -1757,6 +1859,11 @@ function complexScalarCall(name, argValues, ctx) {
       if (ctx.numericMode && isMathjsValue(argValues[0]) && MATHJS_SCALAR_FUNCTION_NAMES.has(node.name)) {
         return evaluateMathjsScalarCall(node.name, argValues, ctx);
       }
+      if ((node.name === 'hms' || node.name === 'time') && (isTaggedValue(argValues[0]) || ctx.durationMode)) {
+        const a = argValues[0];
+        if (isTaggedValue(a)) return node.name === 'hms' ? `hms(${a.type === 'date' ? formatDateValue(a) : formatHmsValue(a)})` : hmsText(Math.round((a.days - Math.floor(a.days)) * 86400) / 3600, false);
+        return node.name === 'hms' ? a : Math.round((a - Math.floor(a)) * 86400) / 3600; // a duration flag works on numbers
+      }
       if (TRIG_FUNCTION_NAMES.has(node.name)) return fn(argValues[0], ctx.angleMode === 'degrees');
       return fn(...argValues);
     }
@@ -1781,6 +1888,11 @@ function complexScalarCall(name, argValues, ctx) {
       }
       const argNode = node.args[0];
       let rawText;
+      if (argNode.type === 'ref' && node.name === 'date' && (ctx.durationMode || ctx.forceNumeric)) {
+        const at = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
+        const number = readCellValue(ctx.dataRows, at.row, at.col, ctx); // a flag that wants numbers reads the field as one: a timestamp is 0
+        return calcDate(typeof number === 'number' && !Number.isNaN(number) ? number : 0);
+      }
       if (argNode.type === 'ref') {
         const { row, col } = resolveRef(argNode.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
         rawText = (ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) || '';
@@ -1795,6 +1907,8 @@ function complexScalarCall(name, argValues, ctx) {
         if (stamp) return calcDate(stamp);
         const number = Number(rawText.trim());
         if (rawText.trim() !== '' && !Number.isNaN(number)) return calcDate(number);
+        const subtraction = /^\s*(\d+)-(\d+)-(\d+)\s*$/.exec(rawText); // Calc reads 2024-03-15 as the subtraction 2024 - 3 - 15
+        if (subtraction) return calcDate(Number(subtraction[1]) - Number(subtraction[2]) - Number(subtraction[3]));
         throw new Error(`date(): "${rawText.trim()}" is not a date or a day number`);
       }
       if (node.name === 'date-to-time') {
@@ -1843,8 +1957,14 @@ function complexScalarCall(name, argValues, ctx) {
       if (isTaggedValue(val)) return val.type === 'date' ? formatDateValue(val) : formatHmsValue(val);
       return String(val);
     }
-    case 'ifCall':
-      return isTruthyValue(evaluateAst(node.condition, ctx)) ? evaluateAst(node.trueExpr, ctx) : evaluateAst(node.falseExpr, ctx);
+    case 'ifCall': {
+      const condition = evaluateAst(node.condition, ctx);
+      if (typeof condition === 'number' && Number.isNaN(condition)) throw new Error('if() needs a number to test'); // text in the condition: Calc leaves the choice as written
+      if (isTaggedValue(condition) && condition.type === 'date') { // a date is no truth value to Calc: the choice stays as written
+        return `${formatDateValue(condition)} ? ${formatResult(evaluateAst(node.trueExpr, ctx))} : ${formatResult(evaluateAst(node.falseExpr, ctx))}`;
+      }
+      return isTruthyValue(condition) ? evaluateAst(node.trueExpr, ctx) : evaluateAst(node.falseExpr, ctx);
+    }
     default:
       throw new Error(`Unknown AST node type "${node.type}"`);
   }
@@ -2237,6 +2357,11 @@ function cRound(n, kind, digits) {
   const [text, exponentText] = Math.abs(n).toExponential(100).split('e');
   let all = text.replace('.', '');
   let exponent = Number(exponentText);
+  if (Math.abs(n) >= 2 ** 53 && Number.isFinite(n)) { // a large float is a whole number: all its digits are exact
+    all = BigInt(Math.abs(n)).toString();
+    exponent = all.length - 1;
+    all = all.padEnd(Math.max(all.length, kind === 'e' ? digits + 2 : exponent + 2 + digits), '0');
+  }
   if (/^0+$/.test(all)) return { digits: '0'.repeat(kind === 'e' ? digits + 1 : Math.max(1, digits + 1)), exponent: 0 };
   let keep = kind === 'e' ? digits + 1 : exponent + 1 + digits;
   if (keep < 0) return { digits: '0', exponent: -digits };
@@ -2331,6 +2456,13 @@ Sym.setNumericCall((name, args) => {
 function symbolicCell(ctx, row, col) {
   const text = String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) ?? '').trim();
   if (text === '') return ctx.emptyMode === 'nan' ? Sym.V('nan') : Sym.I(0);
+  if (/^\$\d+$/.test(text)) throw new FormatFault('Calc cannot read a stack reference in a field'); // Emacs stops the recalculation
+  const dayNumber = /^<(\d+)>$/.exec(text);
+  if (dayNumber && !ctx.symbolicStrict) return Sym.V(formatDateValue({ type: 'date', days: Number(dayNumber[1]) - CALC_EPOCH_OFFSET, hasTime: false })); // the date form of day N, shown as Calc shows it
+  if (!ctx.symbolicStrict && /^[-+]?[\d.]+\s*,\s*[-+]?[\d.]+$/.test(text)) { // org wraps a field in parentheses: 1,5 is the pair (1, 5), and (1, 0) is just 1
+    const pair = Sym.normalize(Sym.parseExpression(`(${text})`));
+    return pair.t === 'cplx' && pair.im.t === 'int' && pair.im.v === 0n ? pair.re : pair;
+  }
   // When this is the main evaluator rather than the fallback, only plain numbers qualify: dates, durations and the like are the numeric path's
   if (ctx.symbolicStrict && !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(text)) throw new Sym.SymbolicUnsupported(text);
   return Sym.parseExpression(text);
@@ -2363,12 +2495,14 @@ function symbolicForm(source, ctx) {
       }
     } else if (tok.startsWith('$')) {
       const value = (ctx.constants || {})[tok.slice(1)];
-      if (typeof value !== 'number') throw new Sym.SymbolicUnsupported(tok);
-      hold(Number.isInteger(value) ? Sym.I(value) : Sym.F(value));
+      const text = constantText(ctx, tok.slice(1));
+      if (text !== undefined && (typeof value !== 'number' || /[.eE]/.test(text))) hold(Sym.parseExpression(text)); // the text as Calc reads it
+      else if (typeof value !== 'number') throw new Sym.SymbolicUnsupported(tok);
+      else hold(Number.isInteger(value) ? Sym.I(value) : Sym.F(value));
     } else if (tok === '..') {
       out.push(tok); // inside an interval, [1 .. 5]
     } else if (tok.startsWith('"')) {
-      throw new Sym.SymbolicUnsupported(tok);
+      hold(Sym.VEC(Array.from(unescapeStringLiteral(tok), (ch) => Sym.I(/** @type {number} */ (ch.codePointAt(0)))))); // a string is its character codes
     } else {
       out.push(tok);
     }
@@ -2405,6 +2539,10 @@ function isPlainAlgebra(node, allowUnknown = false) {
   switch (node.type) {
     case 'number':
       return true;
+    case 'string':
+      return allowUnknown; // Calc reads a string as its character codes
+    case 'namedConstant':
+      return allowUnknown; // a constant whose text is a name stays a symbol
     case 'ref':
     case 'range':
       return !node.remote;
@@ -2416,9 +2554,9 @@ function isPlainAlgebra(node, allowUnknown = false) {
     case 'binop':
       return isPlainAlgebra(node.left, allowUnknown) && isPlainAlgebra(node.right, allowUnknown);
     case 'call':
-      return ['vsum', 'vmean', 'vcount', 'vprod', 'vmin', 'vmax', 'vmedian', 'vvar', 'vpvar', 'vsdev', 'vpsdev'].includes(node.name) && isPlainAlgebra(node.arg, allowUnknown);
+      return ['vsum', 'vmean', 'vcount', 'vprod', 'vmin', 'vmax', 'vmedian', 'vvar', 'vpvar', 'vsdev', 'vpsdev', 'vflat'].includes(node.name) && isPlainAlgebra(node.arg, allowUnknown);
     case 'scalarCall':
-      return node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
+      return node.name !== 'uconv' && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'unknownCall':
       return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'dateCall':
@@ -2449,6 +2587,7 @@ function symbolicOutcome(source, ctx, strict = false) {
     }
     return { kind: 'text', text: Sym.show(form) };
   } catch (err) {
+    if (err instanceof FormatFault) throw err;
     if (err instanceof Sym.SymbolicSyntaxError && (!strict || err.definite)) return { kind: 'text', text: '#ERROR' };
     return null;
   } finally {
@@ -2521,7 +2660,7 @@ function charCodeVector(text) {
 }
 
 /** Names whose result is a whole number even from a float argument. */
-const INTEGER_RESULT_FUNCTIONS = new Set(['floor', 'ceil', 'round', 'trunc', 'idiv', 'ceiling']);
+const INTEGER_RESULT_FUNCTIONS = new Set(['floor', 'ceil', 'round', 'trunc', 'idiv', 'ceiling', 'sign', 'arg']);
 
 /** Calc keeps a float a float even when it is whole, so 3.0*2 shows 6. and 3*2 shows 6. This asks whether the value
  *  of `node` is a float: a literal or cell holding a decimal point or exponent, or any operation on one.
@@ -2546,8 +2685,14 @@ function exprIsFloat(node, ctx) {
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
       return cellTextIsFloat(ctx.dataRows, row, col);
     }
+    case 'namedConstant': {
+      const text = constantText(ctx, node.name);
+      if (text === undefined) return false;
+      return /^[-+]?(?:\d+\.\d*|\.\d+|\d+[eE])/.test(text) || (Number.isNaN(Number(text)) && exprIsFloat(parseExpression(tokenize(text)), ctx));
+    }
+    case 'vectorLiteral': return node.items.some((/** @type {FormulaNode} */ item) => exprIsFloat(item, ctx));
     case 'dateCall': {
-      if (node.name !== 'date' || node.args.length !== 1) return false;
+      if (node.name !== 'date' || node.args.length !== 1 || ctx.forceNumeric || ctx.durationMode) return false;
       const arg = node.args[0];
       if (arg.type === 'number') return arg.float === true;
       if (arg.type !== 'ref') return false;
@@ -2569,6 +2714,7 @@ function exprIsFloat(node, ctx) {
       return false;
     }
     case 'scalarCall':
+      if (node.name === 'float' || node.name === 'rad' || node.name === 'deg') return true; // these always give a float
       return !INTEGER_RESULT_FUNCTIONS.has(node.name) && node.args.some((/** @type {object} */ a) => exprIsFloat(a, ctx));
     default: return false;
   }
@@ -2861,11 +3007,15 @@ function formatAsFraction(n, mixedNumber) {
 function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = false) {
   if (typeof value === 'string') return value;
   if (typeof value === 'bigint') {
-    if (!mode.duration && !mode.fraction && !mode.format) return value.toString();
+    if (!mode.duration && !mode.fraction) return value.toString();
     value = Number(value);
   }
   if (isComplex(value) || isVector(value)) return formatCalcValue(value, complexDomain, { spec: mode.format, applySpec: applyFormatSpec });
-  if (isTaggedValue(value)) return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
+  if (isTaggedValue(value)) {
+    if (mode.duration) throw new FormatFault('A duration format needs a number'); // a date is no duration: Emacs stops
+    if (mode.forceNumeric) throw new Error('The N flag needs a number');
+    return value.type === 'date' ? formatDateValue(value) : formatHmsValue(value);
+  }
   if (isMathjsValue(value) && value.isBigNumber) {
     if (!mode.duration) {
       const asInteger = value.isInteger() && !isFloat;
@@ -2879,6 +3029,11 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = fal
   if (mode.fraction) return typeof value === 'number' ? formatResult(value, isFloat) : formatAsFraction(value, mode.mixedNumber);
   if (mode.format) return applyFormatSpec(value, mode.format, isFloat, mode.precision ?? 12);
   return mode.precision !== null && typeof value === 'number' && (isFloat || !Number.isInteger(value)) ? calcFloatString(value, 'float', 8, mode.precision) : formatResult(value, isFloat);
+}
+
+/** The text a #+CONSTANTS: name was written as. @param {{ constants?: any }} ctx @param {string} name @returns {string | undefined} */
+function constantText(ctx, name) {
+  return ctx.constants && ctx.constants.$texts ? ctx.constants.$texts[name] : undefined;
 }
 
 /** Extracts and parses every #+CONSTANTS: line in `doc` into a single
@@ -2897,15 +3052,19 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = fal
  *  multi-entry configuration (org-agenda-files and similar). */
 export function parseTableConstants(doc) {
   const constants = {};
+  /** @type {Record<string, string>} */ const texts = {}; // what each constant was written as: Calc reads that text, so 1.5 is a float and x a name
+  Object.defineProperty(constants, '$texts', { value: texts, enumerable: false });
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'CONSTANTS') continue;
     for (const pair of kw.value.trim().split(/\s+/)) {
       const eq = pair.indexOf('=');
       if (eq === -1) continue;
       const name = pair.slice(0, eq);
-      const value = Number(pair.slice(eq + 1));
-      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || Number.isNaN(value)) continue;
-      /** @type {any} */ (constants)[name] = value;
+      const text = pair.slice(eq + 1);
+      const value = Number(text);
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) continue;
+      texts[name] = text;
+      if (!Number.isNaN(value)) /** @type {any} */ (constants)[name] = value;
     }
   }
   return constants;
@@ -3111,6 +3270,8 @@ export function recalculateTable(table, options = {}) {
       /** @param {string} text */
       const store = (text) => {
         // Org runs the result through `format` with what is left of the flags; an error is shown as it is
+        const bigDigits = mode.printfFormat && /^-?\d{16,}$/.test(text) ? /^%\.(\d+)f$/.exec(mode.printfFormat) : null; // an integer too long for a float keeps its digits
+        if (bigDigits) return void (dataRows[row - 1].cells[col - 1] = text + (Number(bigDigits[1]) > 0 ? '.' + '0'.repeat(Number(bigDigits[1])) : ''));
         dataRows[row - 1].cells[col - 1] = mode.printfFormat && text !== '#ERROR' ? (({ n, isFloat }) => emacsFormat(mode.printfFormat, n, isFloat))(stringToNumber(text)) : text;
       };
       /** @param {any} outcome @returns {boolean} */
@@ -3133,7 +3294,7 @@ export function recalculateTable(table, options = {}) {
         }
         const value = evaluateAst(expr, cellCtx);
         if ((probe.nonNumeric || isNanValue(value)) && canFallBack && !mode.forceNumeric && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
-        store(typeof value === 'string' && (expr.type === 'string' || expr.type === 'ifCall') ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, cellCtx)));
+        store(expr.bare ? String(formatFinalValue(value, mode, hourZeroPad, complexDomain)).replace(/^\((.*)\)$/, '$1') : typeof value === 'string' && (expr.type === 'string' || (expr.type === 'ifCall' && !/^[[<][^\]>]*[\]>] \? .* : /.test(value))) ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, cellCtx)));
       } catch (err) {
         if (err instanceof FormatFault) throw err;
         if (err instanceof DivisionByZero && mode.duration) throw new FormatFault('Division by zero in a duration formula'); // the unevaluated quotient is no duration: Emacs stops

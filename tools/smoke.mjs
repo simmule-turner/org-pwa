@@ -1085,7 +1085,7 @@ check('agenda and TODO rows: filter chips, long-press action sheet, swipe right 
   const { context, page, errors } = await freshPage();
   const today = orgToday();
   const repeating = today.replace('>', ' ++14d>');
-  await newDocument(page, ['#+TODO: TODO | DONE', '* Plan', `** TODO Pay rent :home:\nSCHEDULED: ${today}`, `** TODO Call dentist :work:\nSCHEDULED: ${today}`, `** TODO Water plants :home:\nSCHEDULED: ${repeating}`, '** TODO Someday garage', ''].join('\n'));
+  await newDocument(page, ['#+TODO: TODO | DONE', '* Plan', `** TODO Pay rent :home:\nSCHEDULED: ${today}`, `** TODO Call dentist :work:\nSCHEDULED: ${today}`, `** TODO Water plants :home:\nSCHEDULED: ${repeating}`, '** TODO Someday garage', '', '# Local Variables:', '# org-agenda-skip-scheduled-if-done: t', '# End:', ''].join('\n')); // as in Emacs, a completed task stays on its own day unless this is set
   await viewMenu(page, 'Agenda');
   await page.waitForSelector('[data-view-filter]');
   const rowOf = (title) => page.locator('[data-swipe-row], .menu-list-item').filter({ hasText: title }).first();
@@ -5809,10 +5809,12 @@ check('Emacs Lisp blocks run by default: values, tables, :var from a named table
     await waitForStatus(page, n === 3 ? 'Source block failed' : n === 4 ? 'Source block failed' : 'Ran in');
   }
   const text = await documentText(page);
-  for (const want of [': 42', '| Q1 | 20 |', '| Q2 | 40 |', ': onetwo', ': Error: Wrong type argument: listp, 5', 'too many steps']) {
+  for (const want of [': 42', '| Q1 | 20 |', '| Q2 | 40 |', ': onetwo']) {
     expect(text.includes(want), `result ${want} in:\n${text}`);
   }
-  expect((text.match(/#\+RESULTS:/g) || []).length === 5, `five RESULTS lines: ${text}`);
+  // as in Emacs, a Lisp error (or the step limit) stops the command and writes nothing under the block
+  expect(!text.includes('Wrong type argument') && !text.includes('too many steps'), `an error writes no result: ${text}`);
+  expect((text.match(/#\+RESULTS:/g) || []).length === 3, `three RESULTS lines: ${text}`);
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

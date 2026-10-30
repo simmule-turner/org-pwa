@@ -523,8 +523,12 @@ function resolveArchiveFileId(filePart, currentFileId) {
  * @param {Heading} heading
  */
 function getArchiveLocation(doc, heading) {
-  const ownArchive = getProperty(heading, 'ARCHIVE');
-  if (ownArchive) return ownArchive;
+  // the nearest heading that has an ARCHIVE property decides, as org-entry-get with inheritance finds it
+  const chain = [...(findAncestorPath(doc, heading) || []).reverse()];
+  for (const h of [heading, ...chain]) {
+    const own = getProperty(h, 'ARCHIVE');
+    if (own) return own;
+  }
   /** @param {any} [k] */
   const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'ARCHIVE');
   if (kw) return kw.value;
@@ -586,10 +590,13 @@ function blankArchiveTargetHeading(title, level) {
  * @param {any} targetDoc
  * @param {Heading} extractedHeading
  * @param {string} headlinePart
- * @param {{ sourceFileId?: string, targetFileId?: string, created?: boolean }} [options] where the subtree comes from, the file it goes to, and whether that file is new
+ * @param {{ sourceFileId?: string, targetFileId?: string, created?: boolean, tailRemoved?: boolean }} [options] where the subtree comes from, the file it goes to, and whether that file is new, and whether the removed subtree ended the file
  */
 function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart, options = {}) {
-  const { sourceFileId = '', targetFileId = '', created = false } = options;
+  const { sourceFileId = '', targetFileId = '', created = false, tailRemoved = false } = options;
+  // the file's final line break travels with the entry: inside the file it is no blank line
+  const entryTail = lastOwner(extractedHeading);
+  if (entryTail.bodyLines[entryTail.bodyLines.length - 1] === '') entryTail.bodyLines.pop();
   const sourceName = String(sourceFileId).split('/').pop() || '';
   // %s is the name of the file the subtree comes from, in the heading as it is in the file part
   const trimmedPath = String(headlinePart || '').split('%s').join(sourceName).trim();
@@ -601,9 +608,15 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart, opti
     targetDoc.bodyLines = head.bodyLines;
     targetDoc.body = head.body;
   }
+  if (!created && !/\.org$/.test(targetFileId) && targetFileId !== sourceFileId && isEmptyDoc(targetDoc) && (targetDoc.bodyLines || []).join('') === '' && targetDoc.bodyLines.length <= 1) {
+    // a file that exists but holds nothing gets the mode line too, when its name does not end in .org
+    targetDoc.bodyLines = ['#    -*- mode: org -*-', '', ''];
+  }
   if (!trimmedPath) {
-    endWithNewline(lastOwner(targetDoc));
-    return appendToArchive(targetDoc, extractedHeading);
+    dropEndMarker(targetDoc, tailRemoved);
+    appendToArchive(targetDoc, extractedHeading);
+    keepEndMarker(targetDoc, extractedHeading);
+    return targetDoc;
   }
   const starMatch = /^(\*+)\s*/.exec(trimmedPath);
   const targetLevel = starMatch ? starMatch[1].length : 1;
@@ -616,15 +629,35 @@ function insertAtArchiveLocation(targetDoc, extractedHeading, headlinePart, opti
     owner.bodyLines.push('');
   } else {
     // a heading that is not there yet goes at the end, a blank line before it and one after it
-    endWithNewline(lastOwner(targetDoc));
+    // Emacs adds the blank line at the end of the file before the entry leaves it, so a subtree that ended the file takes it along
+    if (!tailRemoved) endWithNewline(lastOwner(targetDoc));
+    else dropEndMarker(targetDoc, true);
     target = blankArchiveTargetHeading(targetTitle, targetLevel);
     target.bodyLines = [''];
     targetDoc.children.push(target);
   }
   shiftLevels(extractedHeading, target.level + 1);
   target.children.push(extractedHeading);
+  keepEndMarker(targetDoc, extractedHeading);
   target.collapsed = false; // otherwise the just-archived item vanishes from view immediately -- same reasoning demoteHeading itself already applies
   return targetDoc;
+}
+
+/** The line break that ends the file stays at the end of the file after an entry arrives there. @param {Doc} doc @param {Heading} entry */
+function keepEndMarker(doc, entry) {
+  const end = lastOwner(doc);
+  if (end === lastOwner(entry) && end.bodyLines[end.bodyLines.length - 1] !== '') end.bodyLines.push('');
+}
+
+/** When the subtree that ended the file has left, the line break that ended the file was its own. @param {Doc} doc @param {boolean} tailRemoved */
+function dropEndMarker(doc, tailRemoved) {
+  const end = lastOwner(doc);
+  if (tailRemoved && end.bodyLines[end.bodyLines.length - 1] === '') end.bodyLines.pop();
+}
+
+/** Whether the subtree of `heading` ends the file. @param {Doc} doc @param {Heading} heading */
+function endsDocument(doc, heading) {
+  return lastOwner(heading) === lastOwner(doc);
 }
 
 /**
@@ -714,5 +747,6 @@ export {
   resolveArchiveFileId,
   getArchiveLocation,
   insertAtArchiveLocation,
+  endsDocument,
   appendRefiled,
 };

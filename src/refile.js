@@ -121,6 +121,7 @@ function parseOneEntry(entryText) {
 
     if (key === 'level' || key === 'maxlevel') {
       if (!/^\d+$/.test(value)) return { error: `${key}= needs a whole number, not "${value}"` };
+      if (key === 'maxlevel' && Number(value) < 1) return { error: `maxlevel=${value} isn't valid: Emacs builds an empty heading pattern from it (Invalid content of \\{\\})` };
       criteria.push({ kind: /** @type {'level' | 'maxlevel'} */ (key), n: Number(value) });
     } else if (key === 'tag') {
       criteria.push({ kind: 'tag', name: value });
@@ -234,7 +235,7 @@ function resolveEntryFileIds(entry, currentFileId, agendaFilesConfig) {
 function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesConfig, excludeHeading = null) {
   const excludeSet = excludeHeading ? collectSubtreeHeadings(excludeHeading) : null;
   /** @type {any[]} */ const candidates = [];
-  const seen = new Set(); // documentId + heading identity, since the same file can appear via more than one entry
+  const seen = new WeakSet(); // headings already offered, since the same file can appear via more than one entry
 
   for (const entry of targetsSpec) {
     const fileIds = resolveEntryFileIds(entry, currentFileId, agendaFilesConfig);
@@ -254,16 +255,16 @@ function getRefileCandidates(targetsSpec, docsById, currentFileId, agendaFilesCo
  * @param {string} documentId
  * @param {Set<Heading> | null} excludeSet
  * @param {RefileTarget[]} candidates
- * @param {Set<string>} seen
+ * @param {WeakSet<object>} seen
  */
 function walkForCandidates(headings, outlinePath, entry, documentId, excludeSet, candidates, seen) {
   for (const heading of headings) {
     const matches = headingMatchesCriteria(heading, entry.criteria);
     const path = [...outlinePath, heading.title];
     if (matches && !(excludeSet && excludeSet.has(heading))) {
-      const key = documentId + '\u0000' + path.join('\u0000');
-      if (!seen.has(key)) {
-        seen.add(key);
+      // the same heading reached by two entries is offered once; two headings with one name are two targets, as in Emacs
+      if (!seen.has(heading)) {
+        seen.add(heading);
         candidates.push({ documentId, heading, outlinePath: path });
       }
     }

@@ -22,13 +22,18 @@
  * single-timestamp parser should decide on its own.
  */
 
-// A whole timestamp: the date, then whatever sits between it and the closing bracket, split into words below. The weekday is
-// optional, as in Emacs, and a repeater and a warning may come in either order after the time.
-const TIMESTAMP_RE = /^([<[])(\d{4})-(\d{2})-(\d{2})((?:[ \t]+[^\s>\]]+)*)[ \t]*([>\]])$/;
-const WEEKDAY_WORD = /^[^\]+0-9>\s-]+$/; // Emacs: anything but a digit, "+", "-", a bracket or a space
-const TIME_WORD = /^(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?$/;
-const REPEATER_WORD = /^(?:\+\+|\.\+|\+)\d+[hdwmy](?:\/\d+[hdwmy])?$/; // an optional /N<unit> is org-habit's \"no later than\" range, as in .+2d/4d
-const WARNING_WORD = /^--?\d+[hdwmy]$/;
+// A whole timestamp as org-element reads it: the date, then (after one space) anything but a closing bracket, then a closer. The two brackets
+// need not match -- the opener alone says active or inactive -- and everything after the date is read loosely, as below.
+const TIMESTAMP_RE = /^([<[])(\d{4})-(\d{2})-(\d{2})((?: [^\]>\n]*?)?)[\]>]$/;
+// org-parse-time-string: after the date, an optional weekday (anything but a digit, "+", "-", a bracket or a space), then " H:MM"
+const CLOCK_RE = /^(?: +[^\]+0-9>\n -]+)? +(\d{1,2}):(\d{2})/;
+const RANGE_RE = /[012]?[0-9]:[0-5][0-9]-([012]?[0-9]):([0-5][0-9])/;
+// the repeater and the warning are found anywhere in the text, in either order (a habit's "/4d" range stays with its repeater)
+const REPEATER_RE = /([.+]?\+)(\d+)([hdwmy])(\/\d+[hdwmy])?/i;
+const WARNING_RE = /(-)?-(\d+)([hdwmy])/i;
+// Emacs matches the unit without regard to case, then takes anything but a lower-case h, d, w or m for years
+/** @param {string} unit */
+const unitOf = (unit) => ('hdwm'.includes(unit) ? unit : 'y');
 
 // The same opening and closing, not anchored to the whole string and marked global, for finding timestamps embedded anywhere in a
 // larger string (a heading title, a line of body text); each hit is then read by parseOrgTimestamp, which decides if it is one.
@@ -40,40 +45,30 @@ const TIMESTAMP_SCAN_RE = /[<[]\d{4}-\d{2}-\d{2}[^<>[\]\n]*[>\]]/g;
  */
 function parseOrgTimestamp(raw) {
   if (!raw) return null;
-  const m = TIMESTAMP_RE.exec(raw.trim());
+  const m = TIMESTAMP_RE.exec(raw);
   if (!m) return null;
 
-  const [, open, y, mo, d, rest, close] = m;
-  if (open === '<' && close !== '>') return null;
-  if (open === '[' && close !== ']') return null;
+  const [text, open, y, mo, d, rest] = m;
+  const clock = CLOCK_RE.exec(rest);
+  const range = RANGE_RE.exec(rest);
+  const rep = REPEATER_RE.exec(text);
+  const warn = WARNING_RE.exec(text);
+  const repeater = rep ? `${rep[1]}${rep[2]}${unitOf(rep[3])}${rep[4] || ''}` : null;
+  const delay = warn ? `${warn[1] ? '--' : '-'}${warn[2]}${unitOf(warn[3])}` : null;
 
-  const words = rest.split(/[ \t]+/).filter(Boolean);
-  if (words.length > 0 && WEEKDAY_WORD.test(words[0])) words.shift();
-  let h;
-  let min;
-  let endH;
-  let endMin;
-  /** @type {string | null} */
-  let repeater = null;
-  /** @type {string | null} */
-  let delay = null;
-  for (const word of words) {
-    // Emacs takes the time only ahead of the repeater and the warning (a later one is read but ignored)
-    const time = TIME_WORD.exec(word);
-    if (time) {
-      if (h === undefined && repeater === null && delay === null) [, h, min, endH, endMin] = time;
-    } else if (REPEATER_WORD.test(word) && repeater === null) repeater = word;
-    else if (WARNING_WORD.test(word) && delay === null) delay = word;
-    else return null;
-  }
-
-  const hasTime = h !== undefined;
-  const date = new Date(Number(y), Number(mo) - 1, Number(d), hasTime ? Number(h) : 0, hasTime ? Number(min) : 0);
+  const hasTime = clock !== null;
+  /** @param {number} h @param {number} min */
+  const at = (h, min) => {
+    const date = new Date(2000, Number(mo) - 1, Number(d), h, min);
+    date.setFullYear(Number(y));
+    return date;
+  };
+  const date = at(hasTime ? Number(clock[1]) : 0, hasTime ? Number(clock[2]) : 0);
   // A time RANGE (08:00-09:00) is always within the same calendar day as
   // the start -- real org's own syntax for a range spanning multiple
   // days is two separate timestamps joined by "--", a different
   // construct entirely, not this single-timestamp form.
-  const endDate = hasTime && endH !== undefined ? new Date(Number(y), Number(mo) - 1, Number(d), Number(endH), Number(endMin)) : null;
+  const endDate = hasTime && range ? at(Number(range[1]), Number(range[2])) : null;
 
   return {
     active: open === '<',

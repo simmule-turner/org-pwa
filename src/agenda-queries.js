@@ -14,7 +14,8 @@ import { effectivePropertyValue, searchDocumentsByMatchQuery } from './search.js
 /** @typedef {{ skipArchived?: boolean, skipCommented?: boolean, doneKeywords?: string[], todoKeywords?: string[], todoOnly?: boolean,
  *   tagInheritance?: import('./tag-inheritance.js').TagInheritance, propertyInheritance?: import('./tag-inheritance.js').PropertyInheritance, tagGroups?: Map<string, string[]>, now?: Date,
  *   sortingStrategy?: string | null, localVariables?: Record<string, string>, documentOrder?: string[],
- *   alwaysBoolean?: boolean, forceFullWords?: boolean, maxLevel?: number }} QueryOptions */
+ *   alwaysBoolean?: boolean, forceFullWords?: boolean, maxLevel?: number,
+ *   skipEntry?: ((kind: string, documentId: string, heading: Heading) => boolean) | null }} QueryOptions */
 
 /** @param {Heading} heading @param {QueryOptions} options */
 const skipped = (heading, options) => (options.skipArchived !== false && isArchived(heading)) || (options.skipCommented !== false && isCommentedHeading(heading));
@@ -71,7 +72,23 @@ export function matchViewItems(docs, query, options = {}) {
     tagGroups: options.tagGroups,
     now: options.now,
   });
+  // org-agenda-skip-function is called at every heading the scan passes, in file order, before the match is tried
+  /** @type {Set<Heading>} */ const skippedByFunction = new Set();
+  if (options.skipEntry) {
+    for (const { documentId, doc } of docs) {
+      /** @param {Heading[]} nodes */
+      const walk = (nodes) => {
+        for (const h of nodes || []) {
+          if (h.type !== 'heading') continue;
+          if (!(options.todoOnly && !(h.todo && !done.has(h.todo))) && options.skipEntry && options.skipEntry('tags', documentId, h)) skippedByFunction.add(h);
+          walk(h.children);
+        }
+      };
+      walk(doc.children);
+    }
+  }
   const kept = hits.filter((hit) => {
+    if (skippedByFunction.has(hit.heading)) return false;
     if (options.todoOnly && !(hit.heading.todo && !done.has(hit.heading.todo))) return false;
     return ![hit.heading, ...(hit.ancestors || [])].some((h) => skipped(h, options));
   });

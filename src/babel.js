@@ -60,7 +60,7 @@ const FORMAT_WORDS = new Set(['table', 'vector', 'list', 'scalar', 'verbatim', '
  * `:results` words -> { collect, words, handling, silent, unsupported }.  `collect` is `value` (the default) or `output`;
  * `words` holds the format words given (table, list, scalar, verbatim, raw, html, latex, org, code, pp, drawer -- Org keeps
  * them all, so `table raw` is both); `handling` is replace (the default), append or prepend; `silent` is set by `silent`
- * and `none`.  `file`, `link` and `graphics` write a file and are not supported, and neither is a word Org does not know.
+ * and `none`.  `file` (a link to the file `:file` names, or to the value) is handled by the Lisp runner only; `link` and `graphics` write a file and are not supported, and neither is a word Org does not know.
  * @param {string} value
  */
 export function parseResultsSpec(value) {
@@ -70,10 +70,12 @@ export function parseResultsSpec(value) {
     handling: /** @type {'replace' | 'append' | 'prepend'} */ ('replace'),
     silent: false,
     unsupported: /** @type {string | null} */ (null),
+    file: false,
   };
   for (const word of String(value || '').trim().toLowerCase().split(/\s+/).filter(Boolean)) {
     if (COLLECT_WORDS.has(word)) spec.collect = /** @type {'value' | 'output'} */ (word);
     else if (FORMAT_WORDS.has(word)) spec.words.add(word === 'vector' ? 'table' : word);
+    else if (word === 'file') spec.file = true;
     else if (word === 'silent' || word === 'none') spec.silent = true;
     else if (word === 'append' || word === 'prepend' || word === 'replace') {
       spec.handling = word;
@@ -408,24 +410,55 @@ export function resultsEnd(lines, at) {
  * @param {string[]} bodyLines
  * @param {any} block
  * @param {string[]} resultLines
- *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`. */
-export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null), handling = 'replace' } = {}) {
+ *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`;
+ *  `name` is the block's `#+NAME:`, which Org writes after `#+RESULTS:`. */
+export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null), handling = 'replace', name = '' } = {}) {
   const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
   /** @param {string} l */
   const pad = (l) => (l === '' ? l : indent + l);
   const blockEnd = block.lineIndex + block.lineCount;
-  let j = blockEnd;
-  while (j < bodyLines.length && bodyLines[j].trim() === '') j++;
-  if (j < bodyLines.length && RESULTS_LINE_RE.test(bodyLines[j])) {
-    const end = resultsEnd(bodyLines, j);
-    if (handling === 'append') return { start: end, removeCount: 0, insert: resultLines.map(pad) };
-    if (handling === 'prepend') return { start: j + 1, removeCount: 0, insert: resultLines.map(pad) };
-    return { start: j, removeCount: end - j, insert: [bodyLines[j].replace(/^(\s*#\+RESULTS)(?:\[[^\]]*\])?:/i, hash ? `$1[${hash}]:` : '$1:'), ...resultLines.map(pad)] };
+  const label = name ? ' ' + name : '';
+  // A named block owns the `#+RESULTS: name` line (here: in this section); an unnamed one the unnamed `#+RESULTS:` right after it.
+  let j = -1;
+  if (name) {
+    for (let i = 0; i < bodyLines.length; i++) {
+      const m = /^\s*#\+RESULTS(?:\[[^\]]*\])?:[ \t]*(.*?)\s*$/i.exec(bodyLines[i]);
+      if (m && m[1].toLowerCase() === name.toLowerCase()) {
+        j = i;
+        break;
+      }
+    }
+  } else {
+    let k = blockEnd;
+    while (k < bodyLines.length && bodyLines[k].trim() === '') k++;
+    if (k < bodyLines.length && RESULTS_LINE_RE.test(bodyLines[k]) && /^\s*#\+RESULTS(?:\[[^\]]*\])?:\s*$/i.test(bodyLines[k])) j = k;
   }
-  const insert = ['', pad(hash ? `#+RESULTS[${hash}]:` : '#+RESULTS:'), ...resultLines.map(pad)];
+  if (j >= 0) {
+    const end = resultsEnd(bodyLines, j);
+    if (handling === 'append') {
+      const old = bodyLines.slice(j + 1, end);
+      const isRow = (/** @type {string} */ l) => /^\s*\|/.test(l);
+      if (old.length && old.every(isRow) && resultLines.length && resultLines.every(isRow)) {
+        // two tables become one, realigned as Org's table code does
+        const rows = [...old, ...resultLines].map((l) => (/^\s*\|-/.test(l) ? null : l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())));
+        return { start: j + 1, removeCount: end - j - 1, insert: layoutTable(rows).map(pad) };
+      }
+      return { start: end, removeCount: 0, insert: resultLines.map(pad) };
+    }
+    if (handling === 'prepend') return { start: j + 1, removeCount: 0, insert: resultLines.map(pad) };
+    // without :cache yes the old `[hash]` stays on the line, as in Emacs
+    return { start: j, removeCount: end - j, insert: [bodyLines[j].replace(/^(\s*#\+RESULTS)(\[[^\]]*\])?:/i, hash ? `$1[${hash}]:` : '$1$2:'), ...resultLines.map(pad)] };
+  }
+  const insert = ['', pad((hash ? `#+RESULTS[${hash}]:` : '#+RESULTS:') + label), ...resultLines.map(pad)];
   if (blockEnd < bodyLines.length && bodyLines[blockEnd].trim() !== '') insert.push('');
   return { start: blockEnd, removeCount: 0, insert };
 }
+
+/**
+ * Whether the block's `:eval` allows running it by hand: `never` and `no` do not (Org's org-babel-check-evaluate).
+ * @param {Record<string, any>} args
+ */
+export const evalAllowed = (args) => !['never', 'no'].includes(String(args.eval || '').trim());
 
 /**
  * The hash in the `#+RESULTS[hash]:` line that follows the block, or null.

@@ -45,259 +45,15 @@
 import { expandIncludes } from './export-include.js';
 import { shiftLevels } from './archive-model.js';
 import { parseBody } from './body-parser.js';
-import { formatTime } from './capture-template.js';
-import { parseOrgTimestamp } from './org-timestamp.js';
 import { serializeOrg } from './org-parser.js';
 import { buildFilter, parseHtmlOptions } from './export-html.js';
 import { rawExportOptions } from './export-options.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { interpretOrg } from './org-interpret.js';
+import { withBufferKeywords } from './export-keywords.js';
 import { citeExportFor } from './cite.js';
-import { evalMacro, isEvalTemplate } from './macro-eval.js';
+import { expandMacros } from './export-macros.js';
 import { parseInline } from './inline-markup.js';
-
-const MACRO_USE_RE = /\{\{\{([a-zA-Z][-a-zA-Z0-9_]*)(\(([^)]*)\))?\}\}\}/g;
-
-/** Splits a macro reference's own raw argument text on commas, the
- *  way real org itself does -- honoring `\,` as an escaped, literal
- *  comma within one argument (so an argument can itself contain a
- *  comma without being split apart), rather than naively splitting on
- *  every comma regardless of escaping. Each argument is trimmed, the
- *  same as real org's own actual behavior. An empty (or undefined,
- * @param {any} [argsStr]
- *  meaning "no parentheses at all") argument list returns []. */
-function splitMacroArgs(argsStr) {
-  if (argsStr === undefined || argsStr === '') return [];
-  const args = [];
-  let current = '';
-  for (let i = 0; i < argsStr.length; i++) {
-    if (argsStr[i] === '\\' && argsStr[i + 1] === ',') {
-      current += ',';
-      i++;
-    } else if (argsStr[i] === ',') {
-      args.push(current.trim());
-      current = '';
-    } else {
-      current += argsStr[i];
-    }
-  }
-  args.push(current.trim());
-  return args;
-}
-
-/** Every #+MACRO: definition in `doc`'s own keywords, as a plain
- *  { name: replacementText } table -- doesn't evaluate anything yet,
- *  just collects the raw definitions for expandMacrosInText below to
- *  actually apply. A malformed definition (no name, or a name that
- *  isn't a real identifier) is silently skipped, the same
- *  tolerant-of-the-unexpected approach this app's own other
- * @param {Doc} doc
- *  "recognized subset" parsers already take elsewhere. */
-function buildMacroTable(doc) {
-  const macros = {};
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'MACRO') continue;
-    const m = /^\s*([a-zA-Z][-a-zA-Z0-9_]*)\s+([\s\S]*)$/.exec(kw.value);
-    if (m) /** @type {any} */ (macros)[m[1]] = m[2];
-  }
-  return macros;
-}
-
-/** Every value of a NAME keyword in `doc`, space-joined -- the
- *  {{{keyword(NAME)}}} macro's own real, documented behavior exactly
- *  ("collects all values from NAME keywords throughout the buffer,
- *  separated with white space"). {{{title}}}/{{{author}}}/{{{email}}}
- *  are real org's own documented shortcuts for keyword(TITLE)/
- *  keyword(AUTHOR)/keyword(EMAIL) respectively -- not separately
- *  implemented, just called through this same function with those
- * @param {Doc} doc
- * @param {string} name
- *  three names. */
-function keywordValues(doc, name) {
-  return (doc.keywords || [])
-    .filter((k) => k.key.toUpperCase() === name.toUpperCase())
-    .map((k) => k.value)
-    .join(' ');
-}
-
-/** The {{{n}}} counters, by name; they start over for each export. @type {Map<string, number>} */
-let counters = new Map();
-/** The heading whose text is being expanded (for {{{property}}}) and the file's name and modification time (for {{{input-file}}} and {{{modification-time}}}). @type {{ heading: Heading | null, file: { name?: string, mtime?: Date } | null }} */
-const here = { heading: null, file: null };
-
-/** @param {Doc} doc @returns {Heading[]} */
-function allHeadings(doc) {
-  /** @type {Heading[]} */ const out = [];
-  /** @param {Heading[]} list */
-  const walk = (list) => list.forEach((h) => (out.push(h), walk(h.children || [])));
-  walk(doc.children || []);
-  return out;
-}
-
-/** {{{property(NAME)}}}: the property in the heading holding the macro (its own drawer only, as Org reads it); a second argument names another heading (by its title, or #custom-id). @param {Doc} doc @param {string[]} args */
-function propertyValue(doc, args) {
-  /** @type {Heading | null | undefined} */ let heading = here.heading;
-  if (args[1]) {
-    const search = args[1].trim().replace(/^\*/, '');
-    const all = allHeadings(doc);
-    heading = search.startsWith('#') ? all.find((h) => h.properties?.CUSTOM_ID === search.slice(1)) : all.find((h) => h.title.trim().toLowerCase() === search.toLowerCase()) || all.find((h) => h.title.toLowerCase().includes(search.toLowerCase()));
-  }
-  const value = heading?.properties?.[(args[0] || '').trim()] ?? heading?.properties?.[(args[0] || '').trim().toUpperCase()];
-  return value === undefined ? '' : String(value);
-}
-
-/** Expands every {{{macro}}} reference in `text` against `macros`
- *  (see buildMacroTable) and `doc`'s own keywords, using `now` for
- *  the {{{time(...)}}} macro's own current-time value. An unrecognized
- *  macro name is left exactly as written, the same
- *  tolerant-of-the-unexpected approach every other "recognized
- *  subset" parser in this app already takes -- never an error, never
- * @param {string} text
- * @param {any} macros
- * @param {Doc} doc
- * @param {Date} now
- * @param {number} [depth]
- * @returns {string}
- *  silently dropped. */
-function expandMacrosInText(text, macros, doc, now, depth = 0) {
-  return text.replace(MACRO_USE_RE, (whole, /** @type {string} */ name, _paren, argsStr) => {
-    const args = splitMacroArgs(argsStr);
-    if (name === 'title') return keywordValues(doc, 'TITLE');
-    if (name === 'author') return keywordValues(doc, 'AUTHOR');
-    if (name === 'email') return keywordValues(doc, 'EMAIL');
-    if (name === 'date') {
-      const raw = keywordValues(doc, 'DATE');
-      // FORMAT only actually applies when DATE is a single real
-      // timestamp -- real org's own documented restriction. A raw
-      // value that doesn't parse as one (plain text, or simply
-      // absent) means FORMAT has no effect; the raw value passes
-      // through unformatted instead, rather than silently
-      // substituting today's date for something the person never
-      // asked to have replaced.
-      if (args[0] && raw) {
-        const parsed = parseOrgTimestamp(raw);
-        if (parsed) return formatTime(parsed.date, args[0]);
-      }
-      return raw;
-    }
-    if (name === 'n') {
-      // {{{n(NAME)}}} counts up from 1 for each NAME; a second argument of `-` repeats the last number and a number starts over there
-      const key = args[0] || '';
-      const action = args[1];
-      let value = counters.get(key) || 0;
-      if (action !== '-') value = action !== undefined && /^\d+$/.test(action) ? Number(action) : value + 1;
-      counters.set(key, value);
-      return String(value);
-    }
-    if (name === 'time') return formatTime(now, args[0] || '%Y-%m-%d');
-    if (name === 'keyword') return keywordValues(doc, args[0] || '');
-    if (name === 'property' && !(name in macros)) return propertyValue(doc, args);
-    if (name === 'input-file' && here.file?.name !== undefined && !(name in macros)) return here.file.name;
-    if (name === 'modification-time' && here.file?.mtime && !(name in macros)) return formatTime(here.file.mtime, args[0] || '%Y-%m-%d');
-    if (name in macros) {
-      const template = macros[name];
-      if (isEvalTemplate(template)) return evalMacro(name, template, args); // a template that starts with (eval ...) runs as Lisp
-      const filled = template.replace(/\$(\d+)/g, (/** @type {any} */ _, /** @type {any} */ n) => args[Number(n) - 1] ?? '');
-      return depth < 20 ? expandMacrosInText(filled, macros, doc, now, depth + 1) : filled; // a macro may use others
-    }
-    return whole;
-  });
-}
-
-/** `=verbatim=` and `~code~` spans: a macro written inside one is text, not a macro. */
-const CODE_SPAN_RE = /(^|[\s\-({'"])([=~])([^\s=~]|[^\s=~].*?[^\s=~])\2(?=$|[\s\-.,;:!?')}\]"])/g;
-/** Blocks whose lines are never searched for macros, as in Org (source, example, export and comment blocks, and `: ` lines). */
-const MACRO_FREE_BLOCK_RE = /^\s*#\+(begin|end)_(src|example|export|comment)\b/i;
-
-/**
- * Expands the macros of body lines, leaving those inside code spans, source/example/export/comment blocks and fixed-width lines alone.
- * @param {string[]} lines @param {(text: string) => string} expand
- */
-function expandBodyLines(lines, expand) {
-  let inBlock = false;
-  return lines.map((line) => {
-    const fence = MACRO_FREE_BLOCK_RE.exec(line);
-    if (fence) {
-      inBlock = fence[1].toLowerCase() === 'begin';
-      return line;
-    }
-    if (inBlock || /^\s*:(\s|$)/.test(line) || !line.includes('{{{')) return line;
-    let out = '';
-    let last = 0;
-    for (const m of line.matchAll(CODE_SPAN_RE)) {
-      const start = (m.index || 0) + m[1].length;
-      out += expand(line.slice(last, start)) + line.slice(start, (m.index || 0) + m[0].length);
-      last = (m.index || 0) + m[0].length;
-    }
-    return out + expand(line.slice(last));
-  });
-}
-
-/** Applies expandMacrosInText across every real text line in `doc`
- *  (the document's own preamble bodyLines, and every heading's own
- *  title plus bodyLines, recursively) -- matching real org's own
- *  documented recognition areas (paragraphs, headlines, table cells,
- *  lists; verse blocks are plain body lines here too) -- then
- *  reparses each changed body so the expanded text is reflected
- *  structurally, not just as raw strings nothing else sees. Returns a
- * @param {Doc} doc
- * @param {Date} now
- * @param {{ name?: string, mtime?: Date } | null} [file]
- *  new doc; the input is never mutated. */
-function expandMacros(doc, now, file = null) {
-  counters = new Map();
-  here.heading = null;
-  here.file = file;
-  const macros = buildMacroTable(doc);
-  const expand = (/** @type {string} */ text) => expandMacrosInText(text, macros, doc, now);
-  const newBodyLines = expandBodyLines(doc.bodyLines || [], expand);
-
-  /** @param {Heading} heading
-   *  @returns {any} */
-  function walk(heading) {
-    here.heading = heading;
-    const newTitle = expandMacrosInText(heading.title, macros, doc, now);
-    const newLines = expandBodyLines(heading.bodyLines || [], expand);
-    return {
-      ...heading,
-      title: newTitle,
-      bodyLines: newLines,
-      body: parseBody(newLines),
-      children: (heading.children || []).map(walk),
-    };
-  }
-
-  return {
-    ...doc,
-    bodyLines: newBodyLines,
-    body: parseBody(newBodyLines),
-    children: (doc.children || []).map(walk),
-  };
-}
-
-/**
- * The document with its {{{macros}}} expanded, for the exporters that read parsed text (ASCII, ODT), and the heading
- * to export in that copy. A document that uses no macro is returned as it is.
- * @param {Doc} doc @param {any} scope  the heading being exported, or null for the whole document @param {Date} now @param {{ name?: string, mtime?: Date } | null} [file]  the file's name and modification time, for {{{input-file}}} and {{{modification-time}}}
- * @returns {{ doc: Doc, scope: any }}
- */
-function expandMacrosForExport(doc, scope, now, file = null) {
-  /** @param {Heading[]} headings @returns {boolean} */
-  const uses = (headings) => headings.some((h) => h.title.includes('{{{') || (h.bodyLines || []).some((l) => l.includes('{{{')) || uses(h.children || []));
-  if (!(doc.bodyLines || []).some((l) => l.includes('{{{')) && !uses(doc.children || [])) return { doc, scope };
-  const expanded = expandMacros(doc, now, file);
-  if (!scope) return { doc: expanded, scope };
-  /** @param {any[]} from @param {any[]} to @returns {any} the heading in `to` at the place `scope` has in `from` */
-  const counterpart = (from, to) => {
-    for (let i = 0; i < from.length; i++) {
-      if (from[i] === scope) return to[i];
-      const inner = counterpart(from[i].children || [], to[i].children || []);
-      if (inner) return inner;
-    }
-    return null;
-  };
-  return { doc: expanded, scope: counterpart(doc.children || [], expanded.children || []) || scope };
-}
 
 const RAW_COMMENT_LINE_RE = /^\s*#(?!\+)(\s|$)/; // a real org "# " comment line -- NOT a "#+KEYWORD:" line, which starts "#+" instead
 
@@ -415,8 +171,14 @@ async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel, keepComm
 function pruneHeadings(doc) {
   const sequences = resolveTodoSequences(doc);
   const keep = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc, options: parseHtmlOptions(doc), doneKeywords: sequences.flatMap((q) => q.doneKeywords) })));
+  const arch = parseHtmlOptions(doc).arch;
   /** @param {Heading} h @returns {Heading | null} */
-  const walk = (h) => (keep(h) ? { ...h, children: (h.children || []).map(walk).filter((c) => c !== null) } : null);
+  const walk = (h) => {
+    if (!keep(h)) return null;
+    if (!(h.tags || []).includes('ARCHIVE') || arch === true) return { ...h, children: (h.children || []).map(walk).filter((c) => c !== null) };
+    // arch:headline (the default) writes just the headline of an archived tree; arch:nil leaves it out
+    return arch === false ? null : { ...h, children: [], bodyLines: [], body: [], raw: undefined, planning: { scheduled: null, deadline: null, closed: null }, properties: {} };
+  };
   return { ...doc, children: (doc.children || []).map(walk).filter((c) => c !== null) };
 }
 
@@ -427,6 +189,7 @@ function pruneHeadings(doc) {
  * @returns {Promise<string>}
  */
 async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
+  doc = withBufferKeywords(doc, false);
   const processed = pruneHeadings(await exportAsOrg(doc, fetchPath, parseOrgFn, { ...options, keepComments: true }));
   const raw = rawExportOptions(processed);
   /** @param {string} key @param {boolean} dflt */
@@ -456,6 +219,9 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
     drawer,
     footnotes: flag('f', true),
     tables: flag('|', true),
+    stat: flag('stat', true),
+    clocks: flag('c', false),
+    creator: flag('creator', false) ? (processed.keywords || []).filter((k) => k.key.toUpperCase() === 'CREATOR').map((k) => k.value.trim()).pop() || 'Org Mode PWA' : undefined,
     title: flag('title', true),
     author: flag('author', true),
     date: flag('date', true),
@@ -464,4 +230,4 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
   });
 }
 
-export { exportOrgText, exportAsOrg, expandMacros, expandMacrosForExport, filterNoexportAndComments, scaleHeadingLevels, buildMacroTable, splitMacroArgs };
+export { exportOrgText, exportAsOrg, filterNoexportAndComments, scaleHeadingLevels };

@@ -8,6 +8,8 @@ import { expandTemplate, scanPrompts } from '../src/capture-template.js';
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/capture-expand-oracle.json', import.meta.url), 'utf8'));
 
 // Cases that rely on Emacs facilities the app does not have: %? is a prompt here, and Emacs reads %^{..}p, %(..), %[..] itself.
+// Reported deviation (chosen: app behavior): %? is the cursor position in the Emacs capture buffer, and with :immediate-finish the batch run leaves
+// the characters "%?" in the text; the app asks for the text to put there, so the answer replaces it.
 const APP_DIFFERS = new Set(['%?', '* %?', '- %?\n  more', 'a %? b', '* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?']);
 
 function context() {
@@ -36,7 +38,7 @@ test('a template expands to what Emacs inserts', () => {
   try {
     const wrong = [];
     for (const c of oracle.cases) {
-      if (APP_DIFFERS.has(c.template)) continue;
+      const reported = APP_DIFFERS.has(c.template);
       const ctx = context();
       let got;
       try {
@@ -45,7 +47,9 @@ test('a template expands to what Emacs inserts', () => {
         got = 'ERROR';
       }
       const want = c.emacs.startsWith('ERROR') ? 'ERROR' : c.emacs;
-      if (got !== want) wrong.push({ template: c.template, got, want });
+      if (reported) {
+        if (got === want) wrong.push({ template: c.template, got, want, note: 'reported deviation no longer differs: remove it' });
+      } else if (got !== want) wrong.push({ template: c.template, got, want });
     }
     assert.equal(wrong.length, 0, JSON.stringify(wrong, null, 1));
   } finally {

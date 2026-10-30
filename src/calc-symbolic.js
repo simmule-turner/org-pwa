@@ -753,7 +753,7 @@ function comparison(f, a, b, ...more) {
   if (more.length) return nAryEquation(f, [a, b, ...more]);
   if (a.t === 'cplx' || b.t === 'cplx') return O(f, a, b); // complex numbers have no order: the comparison stays as written
   if (isVec(a) || isVec(b)) {
-    if (f === 'eq' || f === 'neq') throw new SymbolicUnsupported('vector equality');
+    if ((f === 'eq' || f === 'neq') && (isVec(a) ? isVec(b) : isNum(a)) && (isVec(b) ? isVec(a) : isNum(b))) throw new SymbolicUnsupported('vector equality'); // a name against a vector stays an equation
     return O(f, a, b); // Calc does not order vectors: the comparison stays as written
   }
   const res = compare(a, b);
@@ -1037,6 +1037,7 @@ function apply(form, args) {
       return neg(args[0]);
     case '%':
     case 'idiv': {
+      if (args.length !== 2) return O('idiv', ...args);
       const r = numericIntegerOp(form.f === '%' ? '%' : '\\', args[0], args[1]);
       return r ?? O(form.f, args[0], args[1]);
     }
@@ -1120,7 +1121,11 @@ export function callFunction(name, args) {
       if (vec) return O('vmean', args[0]);
       break;
     case 'vcount':
+    case 'vlen':
       if (vec) return I(vec.length);
+      break;
+    case 'vflat':
+      if (vec) return VEC(vec.flatMap((/** @type {Form} */ x) => (isVec(x) ? x.items : [x])));
       break;
     case 'vmax':
     case 'vmin':
@@ -1133,6 +1138,7 @@ export function callFunction(name, args) {
     case 'vsdev':
     case 'vpsdev':
       if (vec && vec.length === 0) return O(name, args[0]);
+      if (vec && name !== 'vmedian' && vec.some((/** @type {Form} */ x) => x.t === 'var' && x.name === 'nan')) return V('nan'); // an empty field read as nan spoils the statistic
       if (vec && hooks.strict) throw new SymbolicUnsupported(name);
       if (vec && vec.every(isNum) && name === 'vmedian') {
         const sorted = [...vec].sort((x, y) => toNumber(x) - toNumber(y));
@@ -1143,6 +1149,7 @@ export function callFunction(name, args) {
       break;
     case 'max':
     case 'min':
+      if (args.length === 2 && ((isNum(args[0]) && args[1].t === 'var' && args[1].name === 'nan') || (isNum(args[1]) && args[0].t === 'var' && args[0].name === 'nan'))) return V('nan');
       if (args.length === 2 && isNum(args[0]) && isNum(args[1])) {
         const pickFirst = name === 'max' ? toNumber(args[0]) >= toNumber(args[1]) : toNumber(args[0]) <= toNumber(args[1]);
         return pickFirst ? args[0] : args[1];
@@ -1225,6 +1232,9 @@ function lex(text) {
     } else if ((m = /^\d+:\d+(?::\d+)?/.exec(rest))) {
       out.push({ kind: 'frac', text: m[0] });
       i += m[0].length;
+    } else if ((m = /^\d+_(?:\d+|[A-Za-z_][A-Za-z0-9_']*)(?:_[A-Za-z0-9_']*)?/.exec(rest))) { // 1_0 is a name; the digits after the underscore are read as a number (1_000 is 1_0)
+      out.push({ kind: 'id', text: m[0].replace(/_(\d+)/g, (_all, d) => `_${Number(d)}`) });
+      i += m[0].length;
     } else if ((m = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest))) {
       out.push({ kind: 'num', text: m[0] });
       i += m[0].length;
@@ -1273,6 +1283,7 @@ export function parseExpression(text) {
     if (!isOpTok(s)) throw new SymbolicSyntaxError(`expected ${s}`);
     pos++;
   };
+  let juxtaposition = true; // false inside [ ]: there, side by side means separate elements
   /** Does the next token start an operand, so that juxtaposition means multiplication? */
   const startsOperand = () => {
     const t = peek();
@@ -1312,7 +1323,10 @@ export function parseExpression(text) {
       return V(t.text);
     }
     if (t.text === '(') {
+      const outerJuxtaposition = juxtaposition;
+      juxtaposition = true;
       const inner = expr(0);
+      juxtaposition = outerJuxtaposition;
       if (isOpTok('..')) {
         pos++;
         const hi = isOpTok(')') || isOpTok(']') ? V('inf') : expr(0);
@@ -1332,6 +1346,8 @@ export function parseExpression(text) {
     }
     if (t.text === '[') {
       /** @type {Form[]} */ const items = [];
+      const outerJuxtaposition = juxtaposition;
+      juxtaposition = false; // inside a vector, elements follow one another without a comma: [1 2] and [[x][1]]
       if (!isOpTok(']')) {
         for (;;) {
           items.push(expr(0));
@@ -1346,9 +1362,11 @@ export function parseExpression(text) {
             return { t: 'intv', mask: closed ? 3 : 2, lo: items[0], hi };
           }
           if (isOpTok(',')) pos++;
+          else if (!isOpTok(']') && startsOperand()) continue;
           else break;
         }
       }
+      juxtaposition = outerJuxtaposition;
       expect(']');
       return VEC(items);
     }
@@ -1393,7 +1411,7 @@ export function parseExpression(text) {
         chain = COMPLEMENT[info.f] && COMPLEMENT[left.f] ? left : null;
         continue;
       }
-      if (startsOperand() && 196 >= minPrec) {
+      if (juxtaposition && startsOperand() && 196 >= minPrec) {
         const right = expr(195);
         left = O('*', left, right);
         continue;

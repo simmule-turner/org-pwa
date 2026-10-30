@@ -11,6 +11,12 @@
  * with nothing, which hides typos.
  */
 import { serializeOrg } from './org-parser.js';
+import { runElisp } from './babel-elisp.js';
+import { parseResultsSpec } from './babel.js';
+import { print } from './elisp-data.js';
+
+/** @param {string} text */
+const literalValue = (text) => (/^-?\d+(\.\d+)?$/.test(text) ? Number(text) : /^"[\s\S]*"$/.test(text) ? text.slice(1, -1) : text);
 
 // `<<`, a non-blank character, optionally more text ending in a non-blank character, `>>`; the text before the
 // reference on its line is captured too.
@@ -39,6 +45,10 @@ export function nowebAllows(args, context) {
  * @param {string} text
  */
 export const stripReferences = (text) => text.replace(BARE_REF_RE, '');
+
+/** The body as Emacs hands it to Noweb: trailing whitespace and blank lines kept (`emacsBody`), where blocks have it.
+ * @param {{ body: string, emacsBody?: string }} block */
+const bodyText = (block) => (typeof block.emacsBody === 'string' ? block.emacsBody : block.body);
 
 /** @param {Record<string, string> | null} [args] */
 const isStrip = (args) => String((args && args.noweb) || '').split(/\s+/).includes('strip-tangle');
@@ -89,14 +99,15 @@ export function expandNoweb(doc, blocks, block, { context = 'eval', wrapChunk = 
   /**
    * @param {any} [target]
    * @param {any} [stack]
+   * @returns {string}
    */
   const expandBlock = (target, stack) => {
     if (stack.includes(target)) throw new Error(`The references ${[...stack, target].map((b) => '<<' + (b.name || b.args['noweb-ref'] || 'this block') + '>>').join(' -> ')} go around in a circle`);
     if (stack.length >= MAX_DEPTH) throw new Error('References nest more than ' + MAX_DEPTH + ' levels deep');
-    if (context === 'tangle' && stack.length === 0 && isStrip(target.args)) return target.body.replace(BARE_REF_RE, '');
+    if (context === 'tangle' && stack.length === 0 && isStrip(target.args)) return bodyText(target).replace(BARE_REF_RE, '');
     const usePrefix = !target.args['noweb-prefix'] || !/^(no|nil)$/i.test(target.args['noweb-prefix']);
-    return target.body.replace(REF_RE, (/** @type {any} */ whole, /** @type {string} */ prefix, /** @type {any} */ ref, /** @type {any} */ id) => {
-      if (/\(.*\)/.test(id)) throw new Error(`<<${id}>>: running a block from a reference is not supported`);
+    return bodyText(target).replace(REF_RE, (/** @type {any} */ whole, /** @type {string} */ prefix, /** @type {any} */ ref, /** @type {any} */ id) => {
+      if (/\(.*\)\s*$/.test(id)) return prefix + callBlock(id);
       const wrap = wrapChunk && context === 'tangle' && target.args.comments === 'noweb' ? (/** @type {any} */ b, /** @type {string} */ text) => wrapChunk(b, text, target) : null;
       const expansion = resolve(id, [...stack, target], wrap);
       const text = usePrefix ? expansion.split(/[\n\r]/).join('\n' + prefix) : expansion;
@@ -106,15 +117,18 @@ export function expandNoweb(doc, blocks, block, { context = 'eval', wrapChunk = 
   /**
    * @param {any} [b]
    * @param {any} [stack]
+   * @returns {string}
    */
-  const bodyOf = (b, stack) => (nowebAllows(b.args, 'eval') ? expandBlock(b, stack) : b.body);
+  const bodyOf = (b, stack) => (nowebAllows(b.args, 'eval') ? expandBlock(b, stack) : bodyText(b));
   /**
    * @param {string} id
    * @param {any} [stack]
    * @param {any} [wrap]
+   * @returns {string}
    */
   const resolve = (id, stack, wrap) => {
-    /** @param {any} [b] */
+    /** @param {any} [b]
+     * @returns {string} */
     const chunk = (b) => (wrap ? wrap(b, bodyOf(b, stack)) : bodyOf(b, stack));
     const heading = findHeadingByCustomId(blocks, /** @type {Doc} */ (doc), id);
     if (heading) return headingText(heading);
@@ -129,7 +143,30 @@ export function expandNoweb(doc, blocks, block, { context = 'eval', wrapChunk = 
       });
       return out;
     }
-    throw new Error(`Cannot resolve <<${id}>>: no block is named ${id}, none has :noweb-ref ${id}, and no heading has CUSTOM_ID ${id}`);
+    return ''; // as in Emacs, a reference that matches nothing becomes nothing
+  };
+  /**
+   * `<<name(args)>>`: runs the named block (Lisp only) with the arguments given to its :var variables, in order, and inserts what it returns.
+   * @param {string} id
+   * @returns {string}
+   */
+  const callBlock = (id) => {
+    const m = /^([^(]*)\((.*)\)\s*$/.exec(id) || [];
+    const target = blocks.find((b) => b.name === m[1] && !b.commented);
+    if (!target) throw new Error(`Reference \`${m[1]}' not found in this buffer`);
+    if (target.lang !== 'emacs-lisp' && target.lang !== 'elisp') throw new Error(`<<${id}>>: only Emacs Lisp blocks can be run from a reference`);
+    const names = (target.args.var || []).map((/** @type {string} */ v) => v.split('=')[0]);
+    const given = m[2].trim() === '' ? [] : m[2].split(',').map((a) => a.trim());
+    if (given.length > names.length) throw new Error(`Variable "${given[names.length]}" must be assigned a default value`);
+    /** @type {Record<string, unknown>} */ const vars = {};
+    for (const spec of target.args.var || []) {
+      const eq = spec.indexOf('=');
+      vars[spec.slice(0, eq)] = literalValue(spec.slice(eq + 1));
+    }
+    given.forEach((a, i) => (vars[names[i]] = literalValue(a)));
+    const run = runElisp({ code: bodyText(target), vars, spec: parseResultsSpec('replace') });
+    if (!run.ok) throw new Error(run.message);
+    return typeof run.value === 'string' ? run.value : print(run.value, false);
   };
   return expandBlock(block, []);
 }

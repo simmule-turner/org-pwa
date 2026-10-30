@@ -309,7 +309,7 @@ export function renderCapturePromptForm() {
   }
   updatePreview();
 
-  /** @type {any[]} */ const promptInputs = [];
+  /** @type {HTMLInputElement[]} */ const promptInputs = [];
   prompts.forEach((p, i) => {
     const field = document.createElement('div');
     field.style.marginBottom = '10px';
@@ -399,7 +399,7 @@ export function renderCapturePromptForm() {
 
 /**
  * @param {import('../src/types.js').CaptureTemplate} template
- * @param {any} [answers]
+ * @param {string[]} [answers]
  */
 export async function runCaptureWithAnswers(template, answers) {
   if (S.currentView === 'text') {
@@ -453,7 +453,14 @@ export async function runCaptureWithAnswers(template, answers) {
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (doc) => {
-        const target = (template.olp || []).length ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template) }) : doc; // no path: the file's top level
+        /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
+        let target;
+        try {
+          target = (template.olp || []).length ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true }) : doc; // no path: the file's top level
+        } catch (err) {
+          setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
+          return null;
+        }
         const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
         const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { ...templateContext(), now, promptAnswers: answers, tableRowNumber });
         fileCapture(doc, target, template.type, text.replace(/\n$/, ''), template.prepend, template.omitEmptyEntries, preText, postText, placeOptions(template, doc)); // the newline that ends an expansion is the line's own
@@ -471,7 +478,15 @@ export async function runCaptureWithAnswers(template, answers) {
     return;
   }
 
-  const target = (template.olp || []).length ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template) }) : S.state.doc; // no path: the file's top level
+  /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
+  let target;
+  try {
+    target = (template.olp || []).length ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true }) : S.state.doc; // no path: the file's top level
+  } catch (err) {
+    setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
+    renderCapturePanel();
+    return;
+  }
 
   const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
 
