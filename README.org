@@ -190,6 +190,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 | ~sin~, ~cos~, ~tan~, ~arcsin~, ~arccos~, ~arctan~ | Degrees by default (flags ~D~ and ~R~); Calc's names, not ~asin~ |
 | ~ln~, ~log10~, ~log(x, base)~, ~exp~, ~exp10~ | Logarithms (~log(x)~ is natural) and powers of e and 10 |
 | ~pi~, ~inf~ | Constants written bare |
+| ~2#101~, ~16#ff~, ~1e3~ | Numbers in a base from 2 to 36 and in scientific notation, in a field or a formula |
 | ~$name~ | A constant from ~#+CONSTANTS:~, or a named column, parameter or field |
 | ~vsum~, ~vmean~, ~vcount~, ~vmin~, ~vmax~, ~vmedian~ | Aggregates of a range; ~vcount~ counts non-blank cells |
 | ~vvar~, ~vpvar~, ~vsdev~, ~vpsdev~ | Sample and population variance and standard deviation |
@@ -492,6 +493,7 @@ Two variables control it, set in Global or Local Variables or in Settings → Qu
 - ~[[target][description]]~ links render as tappable text. A backslash escapes a bracket inside the target (~[[a\]b]]~ is the target ~a]b~).
 - *Bare URLs* link too, typed in a sentence or wrapped as ~<https://example.com>~. The schemes are Org's link types (~org-link-types~) and ~github~, ~webdav~ and ~local~, so ~10:30~ is never a link. A URL ends at its last letter, digit, slash or closing parenthesis (a final period stays outside); wrap it in ~<...>~ or ~[[...]]~ to end it differently. ~doi:10.1145/1327452.1327492~ opens ~https://doi.org/...~.
 - *Internal links* go to a heading by title (~[[*Some Heading]]~), by ~CUSTOM_ID~ (~[[#my-id]]~, case ignored) or by bare text (~[[some words]]~), expanding the ancestors and scrolling to the target. Bare text finds, in order, a ~<<some words>>~ target, a ~#+NAME: some words~ line, then a heading with those words. Set a ~CUSTOM_ID~ in the general editor (see [[#editing-your-outline][Editing your outline]]).
+- *Help links*: ~[[help:name]]~ opens this Help at the line that documents ~name~ (a setting, a command or a function), or says there is no help for it. ~shell:~, ~elisp:~ and ~news:~ links are not run.
 - *Link abbreviations*: ~#+LINK: gh https://github.com/%s~ lets ~[[gh:org/repo]]~ stand for the full address. The first ~%s~ in the value becomes the text after the colon, else the first ~%h~ becomes that text percent-encoded, else the text is added to the end.
 - *ID links*: ~[[id:3f2a-…][Meeting notes]]~ go to the heading with that ~:ID:~ property wherever it now lives. Tapping one looks in the open file, the other tabs, your [[#agenda-files][Agenda Files]], then files you opened or saved here before (like ~org-id-locations~); the back arrow comes back. *Copy link to heading* (~org-store-link~, ~C-c l~) puts ~[[id:…][Title]]~ on the clipboard, adding an ~:ID:~ first if needed; *Add ID to heading* (~org-id-get-create~) only adds it; *Find links to this heading* searches this file and your Agenda Files.
 - *Targets*: ~<<name>>~ is a spot a link can go to. The same words in triple angle brackets, ~<<<name>>>~, make a *radio target*: every plain use of those words in the file (any case, whole words) becomes a link to it. Code blocks are not read. HTML and LaTeX export turn targets into anchors and links.
@@ -942,7 +944,7 @@ return data.map(([q, n]) => [q, n * 2]);
 #+END_SRC
 
 - ~:results~: ~value~ (default, what the block ~return~s) or ~output~ (the ~console.log~ lines), with ~table~, ~list~, ~scalar~, ~verbatim~, ~raw~, ~org~, ~html~, ~latex~, ~code~, ~pp~, ~drawer~ or ~silent~, and ~replace~, ~append~ or ~prepend~. Results are laid out as ~org-babel-insert-result~ does: a list of lists is a table, a list a bullet list, a scalar a ~: ~ line, and ten or more lines an example block.
-- ~:var name=value~: a number, a quoted string, a quoted list such as ~'(1 2 3)~, or the ~#+NAME:~ of a table, which arrives as an array of rows. ~name[1,2]~ picks a cell and ~name[0:1,*]~ a range. ~:colnames yes~ drops the first row, ~:rownames yes~ the first column, ~:hlines yes~ keeps the rules (the script sees ~"hline"~).
+- ~:var name=value~: a number, a quoted string, a quoted list such as ~'(1 2 3)~, or the name (~#+NAME:~) of a table, a list, a result or a source block, found anywhere in the file; a table arrives as an array of rows, and a block is run first (an ~emacs-lisp~ block; ~name(n=4)~ or ~name(4)~ gives its variables). ~name[1,2]~ picks a cell and ~name[0:1,*]~ a range. ~:colnames yes~ drops the first row, ~:rownames yes~ the first column, ~:hlines yes~ keeps the rules (the script sees ~"hline"~).
 - ~:prologue~ and ~:epilogue~: text before and after the code when it runs or is tangled.
 - ~:timeout N~: seconds, 5 by default, 60 at most.
 - ~:wrap NAME~: wraps the result in a ~#+begin_NAME~ block.

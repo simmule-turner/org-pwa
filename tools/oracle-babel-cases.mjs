@@ -367,6 +367,56 @@ function execDoc() {
   return `${props}* H\n${head}${table}${noweb}${name}#+begin_src emacs-lisp${a ? ' ' + a : ''}${extra}\n${hostBody}\n#+end_src${existing}${tail}\n`;
 }
 
+
+// ---- :var references: tables, lists, results and source blocks, anywhere in the text ------------------------------------------
+
+const REF_SRC = (name, body, args = '') => `#+NAME: ${name}\n#+begin_src emacs-lisp${args ? ' ' + args : ''}\n${body}\n#+end_src\n`;
+const REF_USE = (varSpec, body = 'x') => `#+begin_src emacs-lisp :var ${varSpec}\n${body}\n#+end_src\n`;
+export const REF_DOCS = [
+  '* A\n#+NAME: t\n| 1 | 2 |\n* B\n' + REF_USE('x=t'),
+  '* A\n' + REF_SRC('ten', '(* 2 5)') + '* B\n' + REF_USE('x=ten', '(+ x 1)'),
+  REF_SRC('ten', '(* 2 5)') + '\n#+RESULTS: ten\n: 99\n\n' + REF_USE('x=ten', '(+ x 1)'),
+  '#+NAME: r\n#+RESULTS:\n: 5\n\n' + REF_USE('x=r', '(+ x 1)'),
+  '#+NAME: l\n- a\n- b\n\n' + REF_USE('x=l'),
+  '#+NAME: l\n- 1\n- 2\n- three\n\n' + REF_USE('x=l'),
+  '#+NAME: l\n1. 4\n2. 5\n\n' + REF_USE('x=l', '(apply (function +) x)'),
+  REF_SRC('f', '(* n 3)', ':var n=1') + '\n' + REF_USE('x=f(n=4)'),
+  REF_SRC('f', '(* n 3)', ':var n=1') + '\n' + REF_USE('x=f(5)'),
+  REF_SRC('f', '(* n 3)', ':var n=1') + '\n' + REF_USE('x=f()'),
+  REF_SRC('f', '(* n 3)', ':var n=1') + '\n' + REF_USE('x=f'),
+  REF_SRC('f', '(list a b)', ':var a=1 :var b=2') + '\n' + REF_USE('x=f(10,20)'),
+  REF_SRC('f', '(list a b)', ':var a=1 :var b=2') + '\n' + REF_USE('x=f(b=7)'),
+  REF_SRC('f', '(list a b)', ':var a=1 :var b=2') + '\n' + REF_USE('x=f(1,2,3)'),
+  REF_SRC('f', '(list a b)', ':var a=1 :var b=2') + '\n' + REF_USE('x=f(b=3, a=4)'),
+  REF_SRC('f', '(list a b)', ':var a=1 :var b=2') + '\n' + REF_USE('x=f("s", \'(1 2))'),
+  '#+NAME: tbl\n| 5 | 6 |\n\n' + REF_SRC('f', '(apply (function +) (car n))', ':var n=0') + '\n' + REF_USE('x=f(tbl)'),
+  '#+NAME: t\n| 1 | 2 |\n\n' + REF_SRC('t', '7') + '\n' + REF_USE('x=t'),
+  REF_SRC('t', '7') + '\n#+NAME: t\n| 1 | 2 |\n\n' + REF_USE('x=t'),
+  '#+NAME: t\n| a | b |\n|---+---|\n| 1 | 2 |\n\n' + REF_USE('x=t'),
+  '#+NAME: t\n| a | b |\n|---+---|\n| 1 | 2 |\n\n' + REF_USE('x=t :colnames no'),
+  '#+NAME: t\n| a | b |\n|---+---|\n| 1 | 2 |\n\n' + REF_USE('x=t[1,0]'),
+  REF_USE('x=t[0,1]') .replace(/$/, '') + '\n#+NAME: t\n| 1 | 2 |\n',
+  REF_SRC('ten', '(list (list 1 2) (list 3 4))') + '\n' + REF_USE('x=ten[1]'),
+  REF_SRC('ten', '(list (list 1 2) (list 3 4))') + '\n' + REF_USE('x=ten[1,0]'),
+  REF_SRC('ten', '(princ "hi")', ':results output') + '\n' + REF_USE('x=ten'),
+  REF_SRC('ten', '(* 2.0 5)') + '\n' + REF_USE('x=ten', '(+ x 1)'),
+  REF_SRC('ten', "'(1 2 nil)") + '\n' + REF_USE('x=ten'),
+  REF_SRC('ten', '(vector 1 2)') + '\n' + REF_USE('x=ten'),
+  REF_SRC('ten', '"text"') + '\n' + REF_USE('x=ten', '(concat x "!")'),
+  REF_SRC('ten', '(error "boom")') + '\n' + REF_USE('x=ten'),
+  REF_SRC('a', '(+ 1 1)') + REF_SRC('b', '(* a 10)', ':var a=a') + '\n' + REF_USE('x=b'),
+  REF_SRC('a', '(+ 1 b)', ':var b=a') + '\n' + REF_USE('x=a'),
+  REF_USE('x=nope'),
+  REF_USE('x=nope(1)'),
+  REF_USE('x=nope[1]'),
+  '#+NAME: p\nJust a paragraph.\n\n' + REF_USE('x=p'),
+  '#+NAME: p\n#+begin_example\ntext\n#+end_example\n\n' + REF_USE('x=p'),
+  REF_SRC('ten', '(* 2 5)', ':results silent') + '\n' + REF_USE('x=ten'),
+  REF_SRC('ten', '(* 2 5)', ':var n=3') + '\n' + REF_USE('x=ten(n=n)'),
+  '* H\n:PROPERTIES:\n:header-args:emacs-lisp: :var k=5\n:END:\n' + REF_SRC('ten', '(* k 2)') + '\n' + REF_USE('x=ten'),
+  REF_SRC('ten', '(* 2 5)') + '\n' + REF_USE('x=ten y=ten', '(list x y)').replace(' y=ten', ' :var y=ten'),
+];
+
 export function buildCases() {
   const cases = [];
   // header arguments and their inheritance, over generated documents
@@ -393,6 +443,11 @@ export function buildCases() {
   // an emacs-lisp block run once (the last block of the text)
   for (let i = 0; i < 500; i++) {
     const text = execDoc();
+    cases.push({ kind: 'exec', text, index: (text.match(/#\+begin_src/gi) || []).length - 1 });
+  }
+  // :var references
+  for (const doc of REF_DOCS) {
+    const text = doc.startsWith('*') ? doc : '* H\n' + doc;
     cases.push({ kind: 'exec', text, index: (text.match(/#\+begin_src/gi) || []).length - 1 });
   }
   return cases;

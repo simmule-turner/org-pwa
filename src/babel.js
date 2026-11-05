@@ -97,7 +97,7 @@ export function timeoutMs(args) {
 
 // ---- :var -------------------------------------------------------------------
 
-const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[^\s,[]+(?:\[[^\]]*\])?)/g;
+const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[A-Za-z_][\w.-]*\((?:[^()"]|"(?:[^"\\]|\\.)*"|\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))*\)(?:\[[^\]]*\])?|[^\s,[]+(?:\[[^\]]*\])?)/g;
 
 /**
  * A `:prologue` / `:epilogue` value as Org reads it: text in double quotes is a Lisp string (`\n`, `\"` and `\\` escapes),
@@ -117,7 +117,7 @@ export const HLINE = Symbol('hline');
  * A table cell as a value: numbers become numbers (`org-babel--string-to-number`), everything else stays text.
  * @param {string} text
  */
-function cellValue(text) {
+export function cellValue(text) {
   const t = text.trim();
   return t !== '' && /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t) ? Number(t) : t;
 }
@@ -226,9 +226,9 @@ export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
   for (const spec of varSpecs || []) {
     const text = String(spec);
     let matched = 0;
-    VAR_ASSIGN_RE.lastIndex = 0;
+    const assignment = new RegExp(VAR_ASSIGN_RE.source, 'g'); // its own state: a reference can run a block that resolves variables
     let m;
-    while ((m = VAR_ASSIGN_RE.exec(text)) !== null) {
+    while ((m = assignment.exec(text)) !== null) {
       matched++;
       const [, name, raw] = m;
       if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(raw)) vars[name] = Number(raw);
@@ -237,16 +237,18 @@ export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
       else if (raw.startsWith("'(")) vars[name] = readQuotedList(raw);
       else {
         // a name is looked up first, as Org resolves a reference; only a name nothing has is read as a word
-        const ref = /\[(.*)\]/.exec(raw);
-        const tableName = ref ? raw.slice(0, ref.index) : raw;
-        const rows = lookupTable ? lookupTable(tableName) : null;
-        if (rows) {
-          const picked = ref ? indexList(ref[1], rows) : rows;
+        const parts = /^([^()[\]]+)(?:\(([\s\S]*)\))?(?:\[(.*)\])?$/.exec(raw);
+        const tableName = parts ? parts[1] : raw;
+        const found = lookupTable ? lookupTable(tableName, parts?.[2]) : null;
+        if (Array.isArray(found)) {
+          const picked = parts?.[3] !== undefined ? indexList(parts[3], found) : found;
           vars[name] = scriptValue(shapeTable(picked, tableOptions));
+        } else if (found) {
+          vars[name] = parts?.[3] !== undefined && Array.isArray(found.value) ? indexList(parts[3], found.value) : found.value;
         } else if (raw === 'true' || raw === 't') vars[name] = true;
         else if (raw === 'false') vars[name] = false;
         else if (raw === 'nil' || raw === 'null') vars[name] = null;
-        else throw new Error(`:var ${name}=${raw}: no table named "${tableName}"`);
+        else throw new Error(`Reference \`${tableName}' not found in this buffer`);
       }
     }
     if (!matched && text.trim()) throw new Error(`:var ${text.trim()}: expected name=value`);

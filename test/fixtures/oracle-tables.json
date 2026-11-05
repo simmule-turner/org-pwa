@@ -142,6 +142,54 @@
    "emacs": "| 1 | 2 | 0 |\n| 3 | 4 | 0 |\n| 5 | 6 | 0 |\n#+TBLFM: $3=0x10"
   },
   {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=16#ff",
+   "emacs": "| 1 | 2 | 255 |\n| 3 | 4 | 255 |\n| 5 | 6 | 255 |\n#+TBLFM: $3=16#ff"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=2#101+1",
+   "emacs": "| 1 | 2 | 6 |\n| 3 | 4 | 6 |\n| 5 | 6 | 6 |\n#+TBLFM: $3=2#101+1"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=8#17",
+   "emacs": "| 1 | 2 | 15 |\n| 3 | 4 | 15 |\n| 5 | 6 | 15 |\n#+TBLFM: $3=8#17"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=16#FF*2",
+   "emacs": "| 1 | 2 | 510 |\n| 3 | 4 | 510 |\n| 5 | 6 | 510 |\n#+TBLFM: $3=16#FF*2"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=-16#ff",
+   "emacs": "| 1 | 2 | -255 |\n| 3 | 4 | -255 |\n| 5 | 6 | -255 |\n#+TBLFM: $3=-16#ff"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=16#1.8+1",
+   "emacs": "| 1 | 2 | 2.5 |\n| 3 | 4 | 2.5 |\n| 5 | 6 | 2.5 |\n#+TBLFM: $3=16#1.8+1"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=2#1.1",
+   "emacs": "| 1 | 2 | 1.5 |\n| 3 | 4 | 1.5 |\n| 5 | 6 | 1.5 |\n#+TBLFM: $3=2#1.1"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=2#102",
+   "emacs": "| 1 | 2 | #ERROR |\n| 3 | 4 | #ERROR |\n| 5 | 6 | #ERROR |\n#+TBLFM: $3=2#102"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=37#1",
+   "emacs": "| 1 | 2 | #ERROR |\n| 3 | 4 | #ERROR |\n| 5 | 6 | #ERROR |\n#+TBLFM: $3=37#1"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=1#1",
+   "emacs": "| 1 | 2 | #ERROR |\n| 3 | 4 | #ERROR |\n| 5 | 6 | #ERROR |\n#+TBLFM: $3=1#1"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=36#zz",
+   "emacs": "| 1 | 2 | 1295 |\n| 3 | 4 | 1295 |\n| 5 | 6 | 1295 |\n#+TBLFM: $3=36#zz"
+  },
+  {
+   "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=$1*2#11",
+   "emacs": "| 1 | 2 |  3 |\n| 3 | 4 |  9 |\n| 5 | 6 | 15 |\n#+TBLFM: $3=$1*2#11"
+  },
+  {
    "org": "| 1 | 2 |  |\n| 3 | 4 |  |\n| 5 | 6 |  |\n#+TBLFM: $3=1,5",
    "emacs": "| 1 | 2 | 1, 5 |\n| 3 | 4 | 1, 5 |\n| 5 | 6 | 1, 5 |\n#+TBLFM: $3=1,5"
   },
@@ -9158,6 +9206,26 @@
    "emacs": "| 0x10 | 16 | string(0) |\n#+TBLFM: $3=string($1)"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=string($1)",
+   "emacs": "| 16#ff | 2 | string(255) |\n#+TBLFM: $3=string($1)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=string($1)",
+   "emacs": "| 2#101 | 2 | string(5) |\n#+TBLFM: $3=string($1)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=string($1)",
+   "emacs": "| 8#17 | 1 | string(15) |\n#+TBLFM: $3=string($1)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=string($1)",
+   "emacs": "| 16#1.8 | 2 | string(1.5) |\n#+TBLFM: $3=string($1)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=string($1)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=string($1)"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=string($1)",
    "emacs": "| 1,000 | 2 | string(1) |\n#+TBLFM: $3=string($1)"
   },
@@ -9204,6 +9272,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=string($1)+1",
    "emacs": "| 0x10 | 16 | string(0) + 1 |\n#+TBLFM: $3=string($1)+1"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=string($1)+1",
+   "emacs": "| 16#ff | 2 | string(255) + 1 |\n#+TBLFM: $3=string($1)+1"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=string($1)+1",
+   "emacs": "| 2#101 | 2 | string(5) + 1 |\n#+TBLFM: $3=string($1)+1"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=string($1)+1",
+   "emacs": "| 8#17 | 1 | string(15) + 1 |\n#+TBLFM: $3=string($1)+1"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=string($1)+1",
+   "emacs": "| 16#1.8 | 2 | string(1.5) + 1 |\n#+TBLFM: $3=string($1)+1"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=string($1)+1",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=string($1)+1"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=string($1)+1",
@@ -9254,6 +9342,26 @@
    "emacs": "| 0x10 | 16 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
+   "emacs": "| 16#ff | 2 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
+   "emacs": "| 2#101 | 2 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
+   "emacs": "| 8#17 | 1 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
+   "emacs": "| 16#1.8 | 2 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
+   "emacs": "| 2#102 | 2 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=\"a\"+\"b\"",
    "emacs": "| 1,000 | 2 | [195] |\n#+TBLFM: $3=\"a\"+\"b\""
   },
@@ -9300,6 +9408,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=$1 == \"x\"",
    "emacs": "| 0x10 | 16 | 0 |\n#+TBLFM: $3=$1 == \"x\""
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=$1 == \"x\"",
+   "emacs": "| 16#ff | 2 | 0 |\n#+TBLFM: $3=$1 == \"x\""
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=$1 == \"x\"",
+   "emacs": "| 2#101 | 2 | 0 |\n#+TBLFM: $3=$1 == \"x\""
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=$1 == \"x\"",
+   "emacs": "| 8#17 | 1 | 0 |\n#+TBLFM: $3=$1 == \"x\""
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=$1 == \"x\"",
+   "emacs": "| 16#1.8 | 2 | 0 |\n#+TBLFM: $3=$1 == \"x\""
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=$1 == \"x\"",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=$1 == \"x\""
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=$1 == \"x\"",
@@ -9350,6 +9478,26 @@
    "emacs": "| 0x10 | 16 | string(0) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=string($1) == \"x\"",
+   "emacs": "| 16#ff | 2 | string(255) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=string($1) == \"x\"",
+   "emacs": "| 2#101 | 2 | string(5) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=string($1) == \"x\"",
+   "emacs": "| 8#17 | 1 | string(15) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=string($1) == \"x\"",
+   "emacs": "| 16#1.8 | 2 | string(1.5) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=string($1) == \"x\"",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=string($1) == \"x\""
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=string($1) == \"x\"",
    "emacs": "| 1,000 | 2 | string(1) = [120] |\n#+TBLFM: $3=string($1) == \"x\""
   },
@@ -9396,6 +9544,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=string($1)==string($2)",
    "emacs": "| 0x10 | 16 | string(0) = string(16) |\n#+TBLFM: $3=string($1)==string($2)"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=string($1)==string($2)",
+   "emacs": "| 16#ff | 2 | string(255) = string(2) |\n#+TBLFM: $3=string($1)==string($2)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=string($1)==string($2)",
+   "emacs": "| 2#101 | 2 | string(5) = string(2) |\n#+TBLFM: $3=string($1)==string($2)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=string($1)==string($2)",
+   "emacs": "| 8#17 | 1 | string(15) = string(1) |\n#+TBLFM: $3=string($1)==string($2)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=string($1)==string($2)",
+   "emacs": "| 16#1.8 | 2 | string(1.5) = string(2) |\n#+TBLFM: $3=string($1)==string($2)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=string($1)==string($2)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=string($1)==string($2)"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=string($1)==string($2)",
@@ -9446,6 +9614,26 @@
    "emacs": "| 0x10 | 16 | len(0) |\n#+TBLFM: $3=len($1)"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=len($1)",
+   "emacs": "| 16#ff | 2 | len(255) |\n#+TBLFM: $3=len($1)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=len($1)",
+   "emacs": "| 2#101 | 2 | len(5) |\n#+TBLFM: $3=len($1)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=len($1)",
+   "emacs": "| 8#17 | 1 | len(15) |\n#+TBLFM: $3=len($1)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=len($1)",
+   "emacs": "| 16#1.8 | 2 | len(1.5) |\n#+TBLFM: $3=len($1)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=len($1)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=len($1)"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=len($1)",
    "emacs": "| 1,000 | 2 | len(1) |\n#+TBLFM: $3=len($1)"
   },
@@ -9492,6 +9680,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=concat($1,$2)",
    "emacs": "| 0x10 | 16 | concat(0, 16) |\n#+TBLFM: $3=concat($1,$2)"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=concat($1,$2)",
+   "emacs": "| 16#ff | 2 | concat(255, 2) |\n#+TBLFM: $3=concat($1,$2)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=concat($1,$2)",
+   "emacs": "| 2#101 | 2 | concat(5, 2) |\n#+TBLFM: $3=concat($1,$2)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=concat($1,$2)",
+   "emacs": "| 8#17 | 1 | concat(15, 1) |\n#+TBLFM: $3=concat($1,$2)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=concat($1,$2)",
+   "emacs": "| 16#1.8 | 2 | concat(1.5, 2) |\n#+TBLFM: $3=concat($1,$2)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=concat($1,$2)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=concat($1,$2)"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=concat($1,$2)",
@@ -9542,6 +9750,26 @@
    "emacs": "| 0x10 | 16 | upper(0) |\n#+TBLFM: $3=upper($1)"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=upper($1)",
+   "emacs": "| 16#ff | 2 | upper(255) |\n#+TBLFM: $3=upper($1)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=upper($1)",
+   "emacs": "| 2#101 | 2 | upper(5) |\n#+TBLFM: $3=upper($1)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=upper($1)",
+   "emacs": "| 8#17 | 1 | upper(15) |\n#+TBLFM: $3=upper($1)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=upper($1)",
+   "emacs": "| 16#1.8 | 2 | upper(1.5) |\n#+TBLFM: $3=upper($1)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=upper($1)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=upper($1)"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=upper($1)",
    "emacs": "| 1,000 | 2 | upper(1) |\n#+TBLFM: $3=upper($1)"
   },
@@ -9588,6 +9816,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=lower($1)",
    "emacs": "| 0x10 | 16 | lower(0) |\n#+TBLFM: $3=lower($1)"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=lower($1)",
+   "emacs": "| 16#ff | 2 | lower(255) |\n#+TBLFM: $3=lower($1)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=lower($1)",
+   "emacs": "| 2#101 | 2 | lower(5) |\n#+TBLFM: $3=lower($1)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=lower($1)",
+   "emacs": "| 8#17 | 1 | lower(15) |\n#+TBLFM: $3=lower($1)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=lower($1)",
+   "emacs": "| 16#1.8 | 2 | lower(1.5) |\n#+TBLFM: $3=lower($1)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=lower($1)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=lower($1)"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=lower($1)",
@@ -9638,6 +9886,26 @@
    "emacs": "| 0x10 | 16 | [0] |\n#+TBLFM: $3=vec($1)"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=vec($1)",
+   "emacs": "| 16#ff | 2 | [255] |\n#+TBLFM: $3=vec($1)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=vec($1)",
+   "emacs": "| 2#101 | 2 | [5] |\n#+TBLFM: $3=vec($1)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=vec($1)",
+   "emacs": "| 8#17 | 1 | [15] |\n#+TBLFM: $3=vec($1)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=vec($1)",
+   "emacs": "| 16#1.8 | 2 | [1.5] |\n#+TBLFM: $3=vec($1)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=vec($1)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=vec($1)"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=vec($1)",
    "emacs": "| 1,000 | 2 | [1] |\n#+TBLFM: $3=vec($1)"
   },
@@ -9684,6 +9952,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=$1+1",
    "emacs": "| 0x10 | 16 | 1 |\n#+TBLFM: $3=$1+1"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=$1+1",
+   "emacs": "| 16#ff | 2 | 256 |\n#+TBLFM: $3=$1+1"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=$1+1",
+   "emacs": "| 2#101 | 2 | 6 |\n#+TBLFM: $3=$1+1"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=$1+1",
+   "emacs": "| 8#17 | 1 | 16 |\n#+TBLFM: $3=$1+1"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=$1+1",
+   "emacs": "| 16#1.8 | 2 | 2.5 |\n#+TBLFM: $3=$1+1"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=$1+1",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=$1+1"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=$1+1",
@@ -9734,6 +10022,26 @@
    "emacs": "| 0x10 | 16 | 0 |\n#+TBLFM: $3=$1*2"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=$1*2",
+   "emacs": "| 16#ff | 2 | 510 |\n#+TBLFM: $3=$1*2"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=$1*2",
+   "emacs": "| 2#101 | 2 | 10 |\n#+TBLFM: $3=$1*2"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=$1*2",
+   "emacs": "| 8#17 | 1 | 30 |\n#+TBLFM: $3=$1*2"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=$1*2",
+   "emacs": "| 16#1.8 | 2 | 3. |\n#+TBLFM: $3=$1*2"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=$1*2",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=$1*2"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=$1*2",
    "emacs": "| 1,000 | 2 | 2 |\n#+TBLFM: $3=$1*2"
   },
@@ -9780,6 +10088,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=$1 == 1",
    "emacs": "| 0x10 | 16 | 0 |\n#+TBLFM: $3=$1 == 1"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=$1 == 1",
+   "emacs": "| 16#ff | 2 | 0 |\n#+TBLFM: $3=$1 == 1"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=$1 == 1",
+   "emacs": "| 2#101 | 2 | 0 |\n#+TBLFM: $3=$1 == 1"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=$1 == 1",
+   "emacs": "| 8#17 | 1 | 0 |\n#+TBLFM: $3=$1 == 1"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=$1 == 1",
+   "emacs": "| 16#1.8 | 2 | 0 |\n#+TBLFM: $3=$1 == 1"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=$1 == 1",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=$1 == 1"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=$1 == 1",
@@ -9830,6 +10158,26 @@
    "emacs": "| 0x10 | 16 | 0 |\n#+TBLFM: $3=$1 == $2"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=$1 == $2",
+   "emacs": "| 16#ff | 2 | 0 |\n#+TBLFM: $3=$1 == $2"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=$1 == $2",
+   "emacs": "| 2#101 | 2 | 0 |\n#+TBLFM: $3=$1 == $2"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=$1 == $2",
+   "emacs": "| 8#17 | 1 | 0 |\n#+TBLFM: $3=$1 == $2"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=$1 == $2",
+   "emacs": "| 16#1.8 | 2 | 0 |\n#+TBLFM: $3=$1 == $2"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=$1 == $2",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=$1 == $2"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=$1 == $2",
    "emacs": "| 1,000 | 2 | 0 |\n#+TBLFM: $3=$1 == $2"
   },
@@ -9878,6 +10226,26 @@
    "emacs": "| 0x10 | 16 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
   },
   {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
+   "emacs": "| 16#ff | 2 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
+   "emacs": "| 2#101 | 2 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
+   "emacs": "| 8#17 | 1 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
+   "emacs": "| 16#1.8 | 2 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
+  },
+  {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)",
    "emacs": "| 1,000 | 2 | 2 |\n#+TBLFM: $3=if($1 == \"x\", 1, 2)"
   },
@@ -9924,6 +10292,26 @@
   {
    "org": "| 0x10 | 16 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
    "emacs": "| 0x10 | 16 | string(0) = [120] ? 1 : 2 |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 16#ff | 2 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
+   "emacs": "| 16#ff | 2 | string(255) = [120] ? 1 : 2 |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 2#101 | 2 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
+   "emacs": "| 2#101 | 2 | string(5) = [120] ? 1 : 2 |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 8#17 | 1 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
+   "emacs": "| 8#17 | 1 | string(15) = [120] ? 1 : 2 |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 16#1.8 | 2 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
+   "emacs": "| 16#1.8 | 2 | string(1.5) = [120] ? 1 : 2 |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
+  },
+  {
+   "org": "| 2#102 | 2 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",
+   "emacs": "| 2#102 | 2 | #ERROR |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)"
   },
   {
    "org": "| 1,000 | 2 |  |\n#+TBLFM: $3=if(string($1) == \"x\", 1, 2)",

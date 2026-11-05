@@ -16,4 +16,19 @@ export const SECTIONS = [
     prose: 'Formulas do not run in the order written. Org sorts them by their target, and runs column formulas row by row before field formulas, so a formula sees the results of the ones that sort before it. Here =$3= is written first but runs after =$2=.',
     input: '| Base | Doubled | Plus ten |\n|------+---------+----------|\n|    3 |         |          |\n|    8 |         |          |\n#+TBLFM: $3=$2+10::$2=$1*2\n',
   },
+  {
+    heading: 'Dates in Calc formulas',
+    prose: 'A date or time stamp in a formula is a number of days, so the difference of two dates is a number of days, and a date plus a number is a date.',
+    input: '| Start            | End              | Days | Due (+30)        |\n|------------------+------------------+------+------------------|\n| <2026-10-01 Thu> | <2026-10-15 Thu> |      |                  |\n| <2026-11-02 Mon> | <2026-12-25 Fri> |      |                  |\n#+TBLFM: $3=$2-$1::$4=$1+30\n',
+  },
+  {
+    heading: 'Number literals',
+    prose: 'Calc reads =2#101= as binary, =16#ff= as base 16, =8#17= as octal and =1e3= as a power of ten. Each field in the last row is the field above it plus one.',
+    input: '| a    | b     | c     | d    |\n|------+-------+-------+------|\n| 8#17 | 2#101 | 16#ff | 1e3  |\n|      |       |       |      |\n#+TBLFM: @3$1=@2$1+1::@3$2=@2$2+1::@3$3=@2$3+1::@3$4=@2$4+1\n',
+  },
+  {
+    heading: 'Writing two values side by side',
+    prose: 'In Calc a number written next to a variable or a parenthesis multiplies, so =2$1= is twice the first column and =3($1+1)= is three times one more than it.',
+    input: '| x | 2x | sum |\n|---+----+-----|\n| 5 |    |     |\n| 7 |    |     |\n#+TBLFM: $2=2$1;N::$3=3($1+1);N\n',
+  },
 ];

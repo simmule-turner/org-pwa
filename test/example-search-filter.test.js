@@ -71,7 +71,7 @@ test('search-filter.org: a filter finds what its Match query finds in Emacs', ()
 
 test('search-filter.org: replace changes what Emacs changes', () => {
   const blocks = [...section('Replace').matchAll(/Replace the (text|regexp) =(.+?)= with =(.+?)=:\n#\+BEGIN_SRC org\n([\s\S]*?)#\+END_SRC/g)];
-  assert.equal(blocks.length, 4);
+  assert.equal(blocks.length, 7);
   for (const [, kind, from, to, body] of blocks) {
     const doc = parseOrg(sample);
     const re = buildQueryReplacePattern(from, kind === 'regexp');

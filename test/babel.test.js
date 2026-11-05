@@ -72,7 +72,7 @@ test(':var values and named tables', () => {
     e: 's',
     f: null,
   });
-  assert.throws(() => resolveVars(['x=missing'], lookup), /no table named "missing"/);
+  assert.throws(() => resolveVars(['x=missing'], lookup), /Reference `missing. not found in this buffer/);
   assert.throws(() => resolveVars(['junk'], lookup), /expected name=value/);
   assert.deepEqual(resolveVars(['c=sales'], lookup, { hlines: 'yes', colnames: 'no' }).c, [['q', 'n'], 'hline', ['Q1', 10], ['Q2', 2.5]]);
   assert.deepEqual(resolveVars(['c=sales[2,1]', "l='(1 \"a b\" (3))"], lookup), { c: 10, l: [1, 'a b', [3]] });

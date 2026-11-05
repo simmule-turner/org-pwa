@@ -1,11 +1,11 @@
 #+TITLE: Clock tables
 #+STARTUP: showall
 
-A cookbook for =#+BEGIN: clocktable=. In Emacs, =C-c C-c= on a block writes the table under it. In the app, *Clock* in the TODO view shows the same table read-only for a date range and a =maxlevel=. The table under each block here is what Emacs 29.3 (Org 9.6.15) wrote, and the app's table is the same, apart from the time in the caption, which is when it was made. The last section says where the two differ.
+A cookbook for =#+BEGIN: clocktable=. In Emacs, =C-c C-c= on a block writes the table under it. In the app, *Clock* in the TODO view shows the same table read-only for a date range and any of the parameters in the *Parameters* field. The table under each block here is what Emacs 29.3 (Org 9.6.15) wrote, and the app's table is the same, apart from the time in the caption, which is when it was made. The last section says where the two differ.
 
 * Projects
 ** Website
-*** Design
+*** Design :ui:
 :LOGBOOK:
 CLOCK: [2026-08-03 Mon 09:00]--[2026-08-03 Mon 11:30] =>  2:30
 CLOCK: [2026-08-04 Tue 14:00]--[2026-08-04 Tue 15:15] =>  1:15
@@ -14,7 +14,7 @@ CLOCK: [2026-08-04 Tue 14:00]--[2026-08-04 Tue 15:15] =>  1:15
 :LOGBOOK:
 CLOCK: [2026-08-04 Tue 09:00]--[2026-08-04 Tue 12:00] =>  3:00
 :END:
-** Taxes
+** Taxes :money:
 :LOGBOOK:
 CLOCK: [2026-08-05 Wed 10:00]--[2026-08-05 Wed 10:45] =>  0:45
 :END:
@@ -23,7 +23,7 @@ CLOCK: [2026-08-05 Wed 10:00]--[2026-08-05 Wed 10:45] =>  0:45
 =:tstart= is included and =:tend= is not. A parent row includes its children.
 
 #+BEGIN: clocktable :maxlevel 2 :scope file :tstart "2026-08-03" :tend "2026-08-10"
-#+CAPTION: Clock summary at [2026-10-22 Thu 22:47]
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30]
 | Headline     | Time   |      |
 |--------------+--------+------|
 | *Total time* | *7:30* |      |
@@ -35,7 +35,7 @@ CLOCK: [2026-08-05 Wed 10:00]--[2026-08-05 Wed 10:45] =>  0:45
 
 * Only the first day, all levels
 #+BEGIN: clocktable :maxlevel 4 :scope file :tstart "2026-08-04" :tend "2026-08-05"
-#+CAPTION: Clock summary at [2026-10-22 Thu 22:47]
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30]
 | Headline     | Time   |      |      |
 |--------------+--------+------+------|
 | *Total time* | *4:15* |      |      |
@@ -46,7 +46,83 @@ CLOCK: [2026-08-05 Wed 10:00]--[2026-08-05 Wed 10:45] =>  0:45
 | \_    Build  |        |      | 3:00 |
 #+END:
 
+* A block: a whole month
+=:block 2026-08= is the month; =2026-W32= is a week and =2026-08-04= a day. =today=, =thisweek= and =lastmonth= work too.
+
+#+BEGIN: clocktable :maxlevel 2 :scope file :block 2026-08
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30], for August 2026.
+| Headline     | Time   |      |
+|--------------+--------+------|
+| *Total time* | *7:30* |      |
+|--------------+--------+------|
+| Projects     | 7:30   |      |
+| \_  Website  |        | 6:45 |
+| \_  Taxes    |        | 0:45 |
+#+END:
+
+* A step: one table per week
+=:step week= with a range writes a table for each week, headed by its dates.
+
+#+BEGIN: clocktable :maxlevel 2 :scope file :tstart "2026-08-03" :tend "2026-08-17" :step week
+
+Weekly report starting on: [2026-08-03 Mon]
+| Headline     | Time   |      |
+|--------------+--------+------|
+| *Total time* | *7:30* |      |
+|--------------+--------+------|
+| Projects     | 7:30   |      |
+| \_  Website  |        | 6:45 |
+| \_  Taxes    |        | 0:45 |
+
+Weekly report starting on: [2026-08-10 Mon]
+| Headline     | Time   |
+|--------------+--------|
+| *Total time* | *0:00* |
+#+END:
+
+* Only headings with a tag
+=:match= takes a tag match, as in the Agenda.
+
+#+BEGIN: clocktable :maxlevel 4 :scope file :block 2026-08 :match "money|ui"
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30], for August 2026.
+| Headline     | Time   |      |      |
+|--------------+--------+------+------|
+| *Total time* | *4:30* |      |      |
+|--------------+--------+------+------|
+| Projects     | 4:30   |      |      |
+| \_  Website  |        | 3:45 |      |
+| \_    Design |        |      | 3:45 |
+| \_  Taxes    |        | 0:45 |      |
+#+END:
+
+* Percent of the total
+=:formula %= adds a column with each row's share of the total.
+
+#+BEGIN: clocktable :maxlevel 2 :scope file :block 2026-08 :formula %
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30], for August 2026.
+| Headline     | Time   |      |     % |
+|--------------+--------+------+-------|
+| *Total time* | *7:30* |      | 100.0 |
+|--------------+--------+------+-------|
+| Projects     | 7:30   |      | 100.0 |
+| \_  Website  |        | 6:45 |  90.0 |
+| \_  Taxes    |        | 0:45 |  10.0 |
+#+END:
+
+* Links and a compact table
+=:link t= makes the headlines links to the headings; =:compact t= puts all the times in one column.
+
+#+BEGIN: clocktable :maxlevel 2 :scope file :block 2026-08 :link t :compact t
+#+CAPTION: Clock summary at [2026-10-11 Sun 16:30], for August 2026.
+| Headline     |   Time |
+|--------------+--------|
+| *Total time* | *7:30* |
+|--------------+--------|
+| [[file:/home/me/org/clock-tables.org::*Projects][Projects]]     |   7:30 |
+| \_  [[file:/home/me/org/clock-tables.org::*Website][Website]]  |   6:45 |
+| \_  [[file:/home/me/org/clock-tables.org::*Taxes][Taxes]]    |   0:45 |
+#+END:
+
 * Where the app differs from Emacs
-- The app does not write the table into the file: it shows it in the TODO view. Open this file, pick *Clock*, and give the dates and the level above.
-- Only =:maxlevel=, =:tstart=, =:tend= and the whole file (=:scope file=) are read. =:block=, =:step=, =:formula=, =:match=, =:link=, =:compact=, =:narrow=, =:tcolumns= and =:wstart= are not.
+- The app does not write the table into the file: it shows it in the TODO view. Open this file, pick *Clock*, and give the dates and the parameters.
 - The caption time is the time of the update, as Emacs writes it.

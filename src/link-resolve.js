@@ -1,7 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
-/** @typedef {{ type: 'external', url: string } | { type: 'heading', heading: Heading } | { type: 'id', id: string } | { type: 'attachment', target: string } | { type: 'file', scheme: string, path: string, inFileTarget: string | null, byId?: string } | { type: 'unresolved', target: string }} LinkResolution */
+/** @typedef {{ type: 'external', url: string } | { type: 'heading', heading: Heading } | { type: 'id', id: string } | { type: 'attachment', target: string } | { type: 'help', name: string } | { type: 'file', scheme: string, path: string, inFileTarget: string | null, byId?: string } | { type: 'unresolved', target: string }} LinkResolution */
 /**
  * Resolves what an org link target actually points to, given a document.
  * Pure and DOM-free — the UI layer decides what to *do* with a resolution
@@ -551,6 +551,7 @@ export function splitFileLinkTarget(pathAndTarget) {
 export function resolveLinkTarget(doc, rawTarget) {
   const target = String(rawTarget); // blanks around it count, as in Org
 
+  if (/^help:/i.test(target)) return { type: 'help', name: target.replace(/^help:/i, '').trim() }; // opens the app's Help
   if (isDoi(target)) {
     return { type: 'external', url: doiToUrl(target) };
   }

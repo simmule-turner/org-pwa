@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { updateAllStatisticsCookies } from '../src/checkbox-cookie.js';
-import { computeClocktable, renderClocktable } from '../src/clocktable.js';
+import { buildClockReport } from '../src/clock-report.js';
 
 const read = (name) => readFileSync(new URL('../examples/' + name, import.meta.url), 'utf8');
 
@@ -20,21 +20,25 @@ test('every clock table in clock-tables.org is what the app writes', () => {
   const text = read('clock-tables.org');
   const doc = parseOrg(text);
   const lines = text.split('\n');
-  let checked = 0;
-  lines.forEach((line, i) => {
-    const m = /^#\+BEGIN: clocktable (.*)$/.exec(line);
-    if (!m) return;
-    const params = m[1];
-    const maxlevel = Number(/:maxlevel (\d+)/.exec(params)?.[1] ?? 2);
-    const tstart = /:tstart "([^"]*)"/.exec(params)?.[1];
-    const tend = /:tend "([^"]*)"/.exec(params)?.[1];
-    const end = lines.indexOf('#+END:', i);
-    const emacs = lines.slice(i, end + 1).join('\n').replace(/Clock summary at \[[^\]]*\]/, 'Clock summary at [X]');
-    const ours = renderClocktable(computeClocktable(doc, tstart, tend, maxlevel), tstart, tend, new Date(2000, 0, 1), maxlevel).replace(/Clock summary at \[[^\]]*\]/, 'Clock summary at [X]');
-    assert.equal(ours.trimEnd(), emacs.trimEnd());
-    checked++;
-  });
-  assert.equal(checked, 2);
+  const saved = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    let checked = 0;
+    lines.forEach((line, i) => {
+      const m = /^#\+BEGIN: clocktable (.*)$/.exec(line);
+      if (!m) return;
+      const end = lines.indexOf('#+END:', i);
+      const emacs = lines.slice(i, end + 1).join('\n');
+      const files = [{ name: 'clock-tables.org', path: '/home/me/org/clock-tables.org', doc }];
+      const ours = buildClockReport({ files, params: m[1], now: new Date(2026, 9, 11, 16, 30) });
+      assert.equal(ours.trimEnd(), emacs.trimEnd(), m[1]);
+      checked++;
+    });
+    assert.equal(checked, 7);
+  } finally {
+    if (saved === undefined) delete process.env.TZ;
+    else process.env.TZ = saved;
+  }
 });
 
 test('icalendar.ics is what the app exports from icalendar.org', async () => {

@@ -146,7 +146,6 @@ Restore the heading =File taxes= from the archive file.
 ${block('Before, notes.org_archive', archived)}
 ${block('After, restored', restored)}
 * Where the app differs from Emacs
-- *Tag column*: Emacs aligns the tags of a heading it writes to column 77; the app writes one space before them.
 - *Restoring* is the app's own command; Org 9.6 has no =org-unarchive-subtree=. It puts the subtree back under the heading named by =ARCHIVE_OLPATH=, at the level that gives, without the stamps and without the tags it took on from its parents.
 `;
   fs.writeFileSync(new URL('../examples/archive-refile.org', import.meta.url), out);

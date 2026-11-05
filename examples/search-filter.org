@@ -113,5 +113,29 @@ Replace the text =colour= with =color=:
 + ** Color palette for slides
 #+END_SRC
 
+Replace the text =budget= with =plan=:
+#+BEGIN_SRC org
+- Needs wifi, no ethernet port. Budget 800.
++ Needs wifi, no ethernet port. Plan 800.
+- ** TODO [#B] Fix the budget :urgent:
++ ** TODO [#B] Fix the plan :urgent:
+#+END_SRC
+
+Replace the regexp =[0-9]+= with =<\&>=:
+#+BEGIN_SRC org
+- Needs wifi, no ethernet port. Budget 800.
++ Needs wifi, no ethernet port. Budget <800>.
+- Review the Q4 plan.
++ Review the Q<4> plan.
+- Version 2.1 (draft) {final} aa
++ Version <2>.<1> (draft) {final} aa
+#+END_SRC
+
+Replace the regexp =aa= with =a\\a=:
+#+BEGIN_SRC org
+- Version 2.1 (draft) {final} aa
++ Version 2.1 (draft) {final} a\a
+#+END_SRC
+
 * Where the app differs from Emacs
 - *Where it replaces*: Emacs changes any text; the app leaves tags, TODO states, priorities, properties, planning and blocks alone (see the README).

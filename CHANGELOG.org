@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v645 — Examples refreshed, Help links, Babel references
+The examples were regenerated from Emacs 29.3: clock tables (block, step, match, formula, link, compact), table date arithmetic and number literals, replace cases, and a new Emacs Lisp Babel file. Fixed along the way: base literals such as =16#ff= in tables, and =:var= can now name a table, list, result or block anywhere in the file, run a named block with arguments, and stops with Emacs's error when the name is missing. New: =[[help:name]]= links open Help at the entry for that setting or command.
+Verified: the example tests in three time zones and the related Babel, table and link checks.
+
 * v644 — Checked against Emacs, part two
 The rest of the app was run through Emacs 29.3 with defaults, empty input and error cases, and now matches. Fixed: agenda days, spans, skip settings and the habit graph; calendars, durations and timestamps; capture and archive blank lines and errors; source-block header arguments, noweb and tangle; export footnotes, links, captions and translated strings; the Lisp interpreter, macros and file-local variables. Table formulas now follow Calc for literals and dates. New: stuck projects, log mode and clock-check match Emacs.
 Verified: about 40,000 Emacs comparisons and the related checks for each area.

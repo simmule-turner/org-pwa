@@ -3,38 +3,39 @@
 
 One file per feature. Open one in the app, try it, and compare with the text already in the file. Where a file holds results (a table, a clock report, a calendar file, a list of matches), they are what Emacs 29.3 (Org 9.6.15) produced, and a test in this project checks that the app produces the same. The last section of a file lists where the app differs from Emacs; a file with no such section has none.
 
-| File                      | Feature                                              | Checked against Emacs          |
-|---------------------------+------------------------------------------------------+--------------------------------|
-| outline-basics.org        | keywords, priorities, tags, properties, checkboxes   | read the same way              |
-| table-formulas.org        | =#+TBLFM:= formulas, ranges, parameters, Calc        | results from Emacs             |
-| cookies.org               | =[/]= and =[%]= cookies on lists and headings        | org-update-statistics-cookies  |
-| todo-states.org           | what a TODO state change writes: repeats, =CLOSED:=, log items | org-todo                       |
-| editing.org               | promote, demote and move headings; list items and checkboxes; table rows, columns and cells | org-promote-subtree, org-meta-return, org-table-* |
-| clock-tables.org          | =#+BEGIN: clocktable= reports                        | org-update-all-dblocks         |
-| match-queries.org         | tag, property and TODO queries (=C-c / m=)           | org-map-entries                |
-| babel-js.org              | =js= blocks: results, =:var=, =:wrap=, =:prologue=   | ob-js, run in Emacs            |
-| icalendar.org             | calendar (.ics) export; =icalendar.ics= is the output | org-icalendar-export-to-ics    |
-| diary.org                 | the diary: date forms, Lisp entries, and when to use it instead of a calendar; =diary= is the file | diary-list-entries             |
-| god-mode.org              | god-mode keys to try, and the rules behind them      | god-mode.el's rules            |
-| inline-latex.org          | math in the inline, display and environment forms    | KaTeX; rules from Org          |
-| holidays.org              | holiday groups and flags, switching entries on and off, adding your own, every entry with a description link | list-holidays                  |
-| calendar.org              | a month, holidays and events built from =js= blocks  | app only                       |
-| sunrise-sunset.org        | Noweb and tangling into an init script               | app only                       |
-| agenda-settings.org       | custom commands, prefix formats with =%(form)=, sort keys, Lisp functions as settings | org-agenda, org-agenda-format-item |
-| habits.org                | the habit strip: colors, ranges, repeaters           | org-habit                      |
-| export-latex.org          | macros including =(eval ..)=, headline function, classes, =#+ATTR_LATEX= | org-export-as 'latex           |
-| citations.org             | citations and the reference list                     | org-cite                       |
-| lisp-init.org             | what the Lisp init reads and how it evaluates        | Emacs Lisp                     |
-| plots.org                 | =#+PLOT:= options and the data they draw             | org-plot                       |
-| archive-refile.org        | archive locations, properties left behind, refile    | org-archive-subtree, org-refile |
-| logging.org               | per-keyword logging, =:LOGBOOK:=, repeats            | org-todo, org-log-*            |
-| search-filter.org         | filter tokens, regex and Match search, replace       | org-search-view, query-replace |
-| attachments.org           | attachment folders, =ATTACH_DIR=, =attachment:= links | org-attach                     |
-| capture-templates.org     | capture templates written in Lisp: targets, blank lines, table rows | org-capture                    |
-| capture-vcard.org         | a capture template that files a contact              | app only                       |
-| contacts-vcard.org        | contacts exported as vCards (flat)                   | app only                       |
-| contacts-vcard-tree.org   | contacts exported as vCards (tree)                   | app only                       |
-| beamer-demo.org           | a Beamer presentation                                | export compared with Emacs     |
+| File                    | Feature                                                                                                      | Checked against Emacs                             |
+|-------------------------+--------------------------------------------------------------------------------------------------------------+---------------------------------------------------|
+| agenda-settings.org     | custom commands, prefix formats with =%(form)=, sort keys, Lisp functions as settings                        | org-agenda, org-agenda-format-item                |
+| archive-refile.org      | archive locations, properties left behind, refile                                                            | org-archive-subtree, org-refile                   |
+| attachments.org         | attachment folders, =ATTACH_DIR=, =attachment:= links                                                        | org-attach                                        |
+| babel-elisp.org         | =emacs-lisp= blocks: results, header arguments from the outline, =:var= references, =:noweb=, =:wrap=        | ob-emacs-lisp, run in Emacs                       |
+| babel-js.org            | =js= blocks: results, =:var=, =:wrap=, =:prologue=                                                           | ob-js, run in Emacs                               |
+| beamer-demo.org         | a Beamer presentation                                                                                        | export compared with Emacs                        |
+| calendar.org            | a month, holidays and events built from =js= blocks                                                          | app only                                          |
+| capture-templates.org   | capture templates written in Lisp: targets, blank lines, table rows                                          | org-capture                                       |
+| capture-vcard.org       | a capture template that files a contact                                                                      | app only                                          |
+| citations.org           | citations and the reference list                                                                             | org-cite                                          |
+| clock-tables.org        | =#+BEGIN: clocktable= reports: =:block=, =:step=, =:match=, =:formula=, =:link=, =:compact=                  | org-update-all-dblocks                            |
+| contacts-vcard-tree.org | contacts exported as vCards (tree)                                                                           | app only                                          |
+| contacts-vcard.org      | contacts exported as vCards (flat)                                                                           | app only                                          |
+| cookies.org             | =[/]= and =[%]= cookies on lists and headings                                                                | org-update-statistics-cookies                     |
+| diary.org               | the diary: date forms, Lisp entries, and when to use it instead of a calendar; =diary= is the file           | diary-list-entries                                |
+| editing.org             | promote, demote and move headings; list items and checkboxes; table rows, columns and cells                  | org-promote-subtree, org-meta-return, org-table-* |
+| export-latex.org        | macros including =(eval ..)=, headline function, classes, =#+ATTR_LATEX=                                     | org-export-as 'latex                              |
+| god-mode.org            | god-mode keys to try, and the rules behind them                                                              | god-mode.el's rules                               |
+| habits.org              | the habit strip: colors, ranges, repeaters                                                                   | org-habit                                         |
+| holidays.org            | holiday groups and flags, switching entries on and off, adding your own, every entry with a description link | list-holidays                                     |
+| icalendar.org           | calendar (.ics) export; =icalendar.ics= is the output                                                        | org-icalendar-export-to-ics                       |
+| inline-latex.org        | math in the inline, display and environment forms                                                            | KaTeX; rules from Org                             |
+| lisp-init.org           | what the Lisp init reads and how it evaluates                                                                | Emacs Lisp                                        |
+| logging.org             | per-keyword logging, =:LOGBOOK:=, repeats                                                                    | org-todo, org-log-*                               |
+| match-queries.org       | tag, property and TODO queries (=C-c / m=)                                                                   | org-map-entries                                   |
+| outline-basics.org      | keywords, priorities, tags, properties, checkboxes                                                           | read the same way                                 |
+| plots.org               | =#+PLOT:= options and the data they draw                                                                     | org-plot                                          |
+| search-filter.org       | filter tokens, regex and Match search, replace with =\1=, =\&= and case rules                                | org-search-view, query-replace                    |
+| sunrise-sunset.org      | sunrise and sunset from a shared =js= block with Noweb                                                       | app only                                          |
+| table-formulas.org      | =#+TBLFM:= formulas, ranges, parameters, dates, number literals, Calc                                        | results from Emacs                                |
+| todo-states.org         | what a TODO state change writes: repeats, =CLOSED:=, log items                                               | org-todo                                          |
 
 * How a result is checked
 =tools/gen-*-oracle.mjs= run Emacs in batch mode and write what it produced; the matching test under =test/= holds the app to it. The files here were made the same way: written, run in Emacs, and the output kept. =test/babel-example.test.js= and =test/examples-emacs.test.js= run them in the app.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v644';
+const CACHE_NAME = 'org-pwa-shell-v645';
 
 const SHELL_FILES = [
   './',
@@ -46,6 +46,7 @@ const SHELL_FILES = [
   './src/agenda-lisp.js',
   './src/calendar-lisp.js',
   './src/babel-elisp.js',
+  './src/babel-ref.js',
   './src/lisp-init.js',
   './src/elisp.js',
   './src/elisp-data.js',
@@ -170,6 +171,7 @@ const SHELL_FILES = [
   './src/logbook.js',
   './src/heading-edit.js',
   './src/tags-column.js',
+  './src/help-lookup.js',
   './src/agenda-stuck.js',
   './src/agenda-skip.js',
   './src/agenda-log.js',

@@ -12,6 +12,7 @@ import { afterDocumentLoaded } from './documents-io.js';
 import { viewMenuBtn, viewMenuPanel } from './dom.js';
 import { commitTextModeIfActive, setStatus } from './editing.js';
 import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
+import { lookupHelp } from '../src/help-lookup.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton } from './ui-widgets.js';
@@ -164,4 +165,48 @@ export async function openDocsAtHeading(anchorId) {
   if (resolution.type !== 'heading') return; // an unresolvable anchor is a documentation bug, not something to surface as a runtime error
 
   navigateToHeading(resolution.heading, { pushToBackStack: false, revealOwnBody: true });
+}
+
+/** Opens Help at the first place that documents NAME (a `[[help:NAME]]` link); Help opens at the top, with a status line, when nothing does.
+ * @param {string} name */
+export async function openHelpLink(name) {
+  S.navigationBackStack.push({
+    view: S.currentView,
+    settingsOpen: S.settingsOpen,
+    documentId: S.state.documentId,
+    storageKind: S.state.storageKind,
+    scrollTop: scrollContainer().scrollTop,
+  });
+  if (S.navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) S.navigationBackStack.shift();
+  syncNavBackButtonVisibility();
+  await openOrSwitchToHelp();
+  if (!S.state.doc || S.state.documentId !== HELP_DOCUMENT_ID) return;
+  let hit = null;
+  try {
+    const response = await fetch('./README.org');
+    if (response.ok) hit = lookupHelp(await response.text(), name);
+  } catch {
+    // offline: Help is already open from the cache
+  }
+  /** @type {import('../src/types.js').Heading | null} */
+  let target = null;
+  if (hit && hit.headingIndex >= 0) {
+    let n = -1;
+    /** @param {import('../src/types.js').Heading[]} list
+     *  @returns {import('../src/types.js').Heading | null} */
+    const walk = (list) => {
+      for (const h of list) {
+        if (++n === hit.headingIndex) return h;
+        const found = walk(h.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    target = walk(S.state.doc.children);
+  }
+  if (target) navigateToHeading(target, { pushToBackStack: false, revealOwnBody: true });
+  else {
+    setStatus('No help for ' + name);
+    render();
+  }
 }

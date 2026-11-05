@@ -93,7 +93,6 @@ const KNOWN_LINK_DEVIATIONS = /** @type {Record<string, string>} */ ({
   'news:comp.emacs': 'chosen: cannot work in the app',
   'shell:ls': 'chosen: cannot work in the app',
   'elisp:(foo)': 'chosen: cannot work in the app',
-  'help:org-mode': 'chosen: cannot work in the app (the app has no describe-function or describe-variable to open)',
   'shell:': 'chosen: cannot work in the app',
   'elisp:': 'chosen: cannot work in the app',
 });

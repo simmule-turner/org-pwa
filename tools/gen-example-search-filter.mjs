@@ -58,6 +58,9 @@ export const REPLACES = [
   ['Fix the \\(.*\\)$', 'Repair the \\1', true],
   ['\\([0-9]+\\)\\.\\([0-9]+\\)', '\\2.\\1', true],
   ['colour', 'color', false],
+  ['budget', 'plan', false],
+  ['[0-9]+', '<\\&>', true],
+  ['aa', 'a\\\\a', true],
 ];
 
 const el = `

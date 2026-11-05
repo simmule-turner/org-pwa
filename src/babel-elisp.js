@@ -21,6 +21,7 @@ export function isElispBlock(block) {
 function toLisp(v) {
   if (v === null || v === undefined || v === false) return NIL;
   if (v === true) return T;
+  if (v instanceof Flt) return v;
   if (typeof v === 'number') return Number.isInteger(v) ? v : new Flt(v);
   if (typeof v === 'string') return v === 'hline' ? new Sym('hline') : v;
   if (Array.isArray(v)) return v.reduceRight((tail, x) => new Cons(toLisp(x), tail), /** @type {LObj} */ (NIL));

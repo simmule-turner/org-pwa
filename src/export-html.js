@@ -785,7 +785,7 @@ function linkHtml(state, node) {
     const internal = internalLinkLabel(state, target);
     if (internal !== null) return `<a href="${escapeAttr(linkHref(state, target))}">${internal}</a>`;
     const isFile = /^file(?:\+(?:sys|emacs))?:/i.test(target) || /^(?:\.{0,2}\/|\/)/.test(target);
-    const display = /^(https?|ftp):/i.test(target) ? escapeHtml(target.replace(/ /g, '%20')) : /^(mailto):/i.test(target) ? escapeHtml(target) : isFile ? escapeHtml(linkHref(state, target).replace(/#.*$/, '')) : /^doi:/i.test(target) ? escapeHtml(linkHref(state, target)) : escapeHtml(target); // a link without text shows its encoded address
+    const display = /^(https?|ftp):/i.test(target) ? escapeHtml(target.replace(/ /g, '%20')) : /^(mailto):/i.test(target) ? escapeHtml(target) : isFile ? escapeHtml(linkHref(state, target).replace(/#.*$/, '')) : /^doi:/i.test(target) ? escapeHtml(linkHref(state, target)) : escapeHtml(target.replace(/^help:/i, '')); // a link without text shows its encoded address
     return `<a href="${escapeAttr(linkHref(state, target))}">${display}</a>`;
   }
   // a description that is itself an image link shows the picture inside the link

@@ -1215,6 +1215,25 @@ function mentionsConstant(a) {
 // Reading cell text as Calc algebra (calc-aent.el)
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/** The decimal text of a Calc radix literal such as `16#ff` or `2#1.1`; an invalid digit or base is a syntax error.
+ * @param {number} base @param {string} whole @param {string | undefined} fraction @returns {string} */
+export function radixLiteral(base, whole, fraction) {
+  if (base < 2 || base > 36) throw new SymbolicSyntaxError(`bad radix ${base}`);
+  const digit = (/** @type {string} */ c) => parseInt(c, 36);
+  const all = whole + (fraction ?? '');
+  if ([...all].some((c) => digit(c) >= base)) throw new SymbolicSyntaxError(`bad digit in ${base}#${all}`);
+  const big = BigInt(base);
+  let value = 0n;
+  for (const c of whole) value = value * big + BigInt(digit(c));
+  if (fraction === undefined) return value.toString();
+  let num = 0n;
+  let den = 1n;
+  for (const c of fraction) { num = num * big + BigInt(digit(c)); den *= big; }
+  const scaled = (value * den + num) * 10n ** 24n / den; // 24 decimals is more than Calc keeps
+  const text = scaled.toString().padStart(25, '0');
+  return `${text.slice(0, -24)}.${text.slice(-24).replace(/0+$/, '')}`.replace(/\.$/, '.');
+}
+
 /** @typedef {{ kind: 'num' | 'frac' | 'id' | 'op', text: string }} Tok */
 
 /** @param {string} text @returns {Tok[]} */
@@ -1234,6 +1253,9 @@ function lex(text) {
       i += m[0].length;
     } else if ((m = /^\d+_(?:\d+|[A-Za-z_][A-Za-z0-9_']*)(?:_[A-Za-z0-9_']*)?/.exec(rest))) { // 1_0 is a name; the digits after the underscore are read as a number (1_000 is 1_0)
       out.push({ kind: 'id', text: m[0].replace(/_(\d+)/g, (_all, d) => `_${Number(d)}`) });
+      i += m[0].length;
+    } else if ((m = /^(\d+)#([0-9A-Za-z]+)(?:\.([0-9A-Za-z]*))?/.exec(rest))) { // 16#ff: a number in base 2 to 36, with an optional fraction
+      out.push({ kind: 'num', text: radixLiteral(Number(m[1]), m[2], m[3]) });
       i += m[0].length;
     } else if ((m = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest))) {
       out.push({ kind: 'num', text: m[0] });

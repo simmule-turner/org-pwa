@@ -264,7 +264,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+_[A-Za-z0-9_]*|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+#[0-9A-Za-z]+(?:\.[0-9A-Za-z]*)?|\d+_[A-Za-z0-9_]*|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -320,7 +320,8 @@ function tokenize(expr, fractions = false) {
     if (!m || m.index !== pos) {
       throw new Error(`Unrecognized character in formula at position ${pos}: "${expr.slice(pos, pos + 1)}"`);
     }
-    tokens.push(m[1]);
+    const radix = /^(\d+)#([0-9A-Za-z]+)(?:\.([0-9A-Za-z]*))?$/.exec(m[1]); // 16#ff is a number in that base
+    tokens.push(radix ? Sym.radixLiteral(Number(radix[1]), radix[2], radix[3]) : m[1]);
     pos = TOKEN_RE.lastIndex;
   }
   return tokens;
@@ -1225,6 +1226,14 @@ function readCellValue(dataRows, row, col, ctx) {
   const percent = ctx.forceNumeric ? null : /^\s*(\d+\.?\d*)\s*%\s*$/.exec(text); // 5% is 0.05
   if (percent) return Number(percent[1]) / 100;
   if (!ctx.forceNumeric && /^\s*0x[0-9a-fA-F]+\s*$/.test(text)) return 0; // Calc reads 0x10 as 0 times the name x10
+  const radix = ctx.forceNumeric ? null : /^\s*([-+]?)(\d+)#([0-9A-Za-z]+)(?:\.([0-9A-Za-z]*))?\s*$/.exec(text); // 16#ff is a number in base 16
+  if (radix) {
+    try {
+      return (radix[1] === '-' ? -1 : 1) * Number(Sym.radixLiteral(Number(radix[2]), radix[3], radix[4]));
+    } catch (err) {
+      if (!(err instanceof Sym.SymbolicSyntaxError)) throw err;
+    }
+  }
   const dayNumber = ctx.forceNumeric || ctx.durationMode ? null : /^\s*<(\d+)>\s*$/.exec(text); // <5> reaches Calc as the date form of day 5
   if (dayNumber) return { type: 'date', days: Number(dayNumber[1]) - CALC_EPOCH_OFFSET, hasTime: false };
   const subtraction = ctx.forceNumeric || ctx.durationMode ? null : /^\s*(\d+)-(\d+)-(\d+)\s*$/.exec(text); // Calc reads 2024-03-15 as the subtraction 2024 - 3 - 15
@@ -2723,7 +2732,7 @@ function exprIsFloat(node, ctx) {
 /** @param {{cells: string[]}[]} dataRows @param {number} row @param {number} col */
 function cellTextIsFloat(dataRows, row, col) {
   const text = String((dataRows[row - 1] && dataRows[row - 1].cells[col - 1]) || '').trim();
-  return /^[-+]?(\d+\.\d*|\.\d+|\d+(\.\d*)?[eE][-+]?\d+)$/.test(text);
+  return /^[-+]?(\d+\.\d*|\.\d+|\d+(\.\d*)?[eE][-+]?\d+|\d+#[0-9A-Za-z]+\.[0-9A-Za-z]*)$/.test(text);
 }
 
 /** @param {any} [n] @param {boolean} [isFloat] a whole number that came from a float shows a trailing "." */

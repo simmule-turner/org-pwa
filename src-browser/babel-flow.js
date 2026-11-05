@@ -6,15 +6,16 @@ import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { cacheHash } from '../src/babel-cache.js';
-import { evalAllowed, headerText, existingResultsHash, findNamedTable, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { evalAllowed, headerText, existingResultsHash, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
+import { plainVariables, referenceLookup } from '../src/babel-ref.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
 import { formatElispResult, isElispBlock, runElisp } from '../src/babel-elisp.js';
 import { S } from './app-state.js';
 import { runJavaScript } from './babel-run.js';
 import { confirmDialog } from './dialogs.js';
-import { allHeadingsInOrder, stripCommaEscapeApp } from './doc-helpers.js';
+import { stripCommaEscapeApp } from './doc-helpers.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { withKeyboardFocusPreserved } from './keyboard-focus.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
@@ -75,15 +76,6 @@ function visibleVariables() {
     if (typeof value === 'string' && !SECRET_NAME_RE.test(name)) /** @type {any} */ (out)[name] = value;
   }
   return out;
-}
-
-/** @param {string} name */
-function lookupTable(name) {
-  for (const { heading } of allHeadingsInOrder(S.state.doc)) {
-    const rows = findNamedTable(heading.bodyLines || [], name);
-    if (rows) return rows;
-  }
-  return null;
 }
 
 /**
@@ -147,11 +139,12 @@ export async function executeSourceBlock(heading, block) {
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
   try {
-    vars = resolveVars(args.var, lookupTable, { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines });
+    vars = resolveVars(args.var, referenceLookup(S.state.doc, all), { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines });
   } catch (err) {
-    writeResults(heading, block, formatError(err.message), 'Executed source block');
+    setStatus(`Source block failed: ${err.message}`); // as in Emacs, the error stops the command and writes nothing
     return;
   }
+  if (!lisp) vars = plainVariables(vars);
 
   let code = block.lines.map(stripCommaEscapeApp).join('\n');
   if (info && nowebAllows(args, 'eval')) {

@@ -62,9 +62,7 @@ cases.forEach((c, i) => {
 });
 out += `
 * Where the app differs from Emacs
-- Emacs re-aligns a heading's tags to =org-tags-column= when its state changes; the app leaves their spacing as it is.
 - =org-log-reschedule=, =org-log-redeadline= and =org-log-refile= are not applied.
-- A drawer name other than =LOGBOOK= in =org-log-into-drawer= is written as =LOGBOOK=.
 - A note (=@=, =lognotedone=, =lognoterepeat=) is asked for in a panel after the state has changed; skipping it writes no item.
 `;
 fs.writeFileSync('examples/todo-states.org', out);
