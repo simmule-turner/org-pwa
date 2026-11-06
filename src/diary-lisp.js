@@ -6,7 +6,7 @@
  */
 import { BudgetExceeded, Cons, Flt, LispSignal, NIL, Special, Sym, T, intern, list, print, signal, toArray, wrongType } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
-import { defSpecial, defun, evalForm, funcall, resetRun, state, withDynamic } from './elisp-core.js';
+import { defSpecial, defun, evalPlain as evalForm, funcallPlain as funcall, resetRun, state, withDynamic } from './elisp-core.js';
 import { describeFailure } from './elisp.js';
 import { DEFAULT_TIME_DISPLAY_FORM } from './local-variables.js';
 import { startOfDay } from './agenda.js';

@@ -146,3 +146,27 @@ add(safe('(number-to-string 1.0)'), safe('(number-to-string 10000000000000000000
   for (const t of times) add(safe(`(float-time ${t})`), safe(`(decode-time ${t} t)`), safe(`(decode-time ${t} 3600)`));
   add(safe('(format-time-string 1 0 t)'), safe('(format-time-string "%Y" "x" t)'), safe('(format-time-string "%Y" 0 t t)'), safe('(format-time-string)'), safe('(encode-time)'), safe('(encode-time 1 2 3)'), safe('(encode-time "a" 0 0 1 1 2020 t)'), safe('(encode-time 0 0 0 1 1 2020 (quote x))'), safe('(float-time "x")'), safe('(float-time (list 1))'), safe('(decode-time 0 (quote x))'));
 }
+
+// ---- string identity: two strings are `eq` only when they are the same object
+add(
+  '(eq "a" "a")', '(eql "a" "a")', '(equal "a" "a")', '(eq "" "")', '(eql "" "")',
+  '(let ((s "a")) (eq s s))', '(let ((s "a")) (eql s s))', '(let ((s "a")) (list (eq s s) (eq s (copy-sequence s)) (equal s (copy-sequence s))))',
+  '(let ((s "abc")) (eq s (concat s)))', '(let ((s "abc")) (eq s (substring s 0)))', '(let ((s "abc")) (eq s (identity s)))',
+  '(let ((s "abc")) (eq s (car (list s))))', '(let ((s "abc") (v (vector "abc"))) (list (eq s (aref v 0)) (eq (aref v 0) (aref v 0))))',
+  '(eq (symbol-name (quote abc)) (symbol-name (quote abc)))', '(eq (symbol-name (quote abc)) "abc")', '(equal (symbol-name (quote abc)) "abc")',
+  '(let ((a (format "%s" 1)) (b (format "%s" 1))) (list (eq a b) (equal a b) (eq a a)))', '(eq (format "x") (format "x"))',
+  '(let ((s "a")) (memq s (list "a" s "b")))', '(let ((s "a")) (length (memq s (list "a" s "b"))))', '(memq "a" (list "a" "b"))', '(member "a" (list "a" "b"))', '(memql "a" (list "a"))',
+  '(let ((s "a")) (assq s (list (cons "a" 1) (cons s 2))))', '(assq "a" (list (cons "a" 1)))', '(assoc "a" (list (cons "a" 1)))', '(rassq "a" (list (cons 1 "a")))',
+  '(let ((s "a")) (delq s (list "a" s "b")))', '(let ((s "a")) (remq s (list "a" s "b")))', '(remove "a" (list "a" "b" "a"))', '(delete "a" (list "a" "b" "a"))',
+  '(let ((s "a") (l nil)) (cl-pushnew s l) (cl-pushnew s l) (cl-pushnew "a" l) (length l))',
+  '(let ((s "a")) (cl-case s ("a" 1) (t 2)))', '(cl-case "a" ("a" 1) (t 2))',
+  '(let ((s "a")) (pcase s ("a" 1) (_ 2)))', '(let ((s "a")) (cl-position s (list "a" s)))', '(let ((s "a")) (cl-find s (list "a" s) :test (function eq)))',
+  '(let ((s "a") (h (make-hash-table :test (quote eq)))) (puthash s 1 h) (list (gethash s h) (gethash "a" h)))',
+  '(let ((s "a") (h (make-hash-table))) (puthash s 1 h) (list (gethash s h) (gethash "a" h)))',
+  '(let ((s "a") (h (make-hash-table :test (quote equal)))) (puthash s 1 h) (list (gethash s h) (gethash "a" h)))',
+  '(let ((s "a")) (plist-get (list "a" 1 s 2) s))', '(plist-get (list "a" 1) "a")', '(let ((s "a")) (alist-get s (list (cons "a" 1) (cons s 2)) nil nil (function eq)))',
+  '(let ((s "a")) (eq s (let ((x s)) x)))', '(let* ((s "a") (f (lambda () s))) (eq (funcall f) (funcall f)))', '(let ((l (list "a"))) (eq (car l) (car l)))',
+  '(let ((s "a")) (eq s (prog1 s 1)))', '(let ((s "a")) (eq s (if t s)))', '(eq (upcase "a") (upcase "a"))', '(let ((s "A")) (eq s (upcase s)))',
+  '(eq (string-trim "a") "a")', '(eq (concat "a") "a")', '(eq (car (split-string "a b")) "a")', '(eq (number-to-string 1) "1")',
+  '(let ((s "a")) (list (eq s s) (eq s "a") (equal s "a") (string= s "a") (string-equal s "a")))',
+);

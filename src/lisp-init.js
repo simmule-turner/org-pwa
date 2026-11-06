@@ -4,9 +4,9 @@
  * and the variables it leaves set are handed to the features that read them (holidays, capture templates, LaTeX, ODT styles,
  * inline tasks, agenda commands, and the settings themselves).
  */
-import { Cons, Flt, NIL, Sym, T, allSymbols, intern, list, toArray } from './elisp-data.js';
+import { Cons, Flt, NIL, Sym, T, allSymbols, intern, list, toArray, unboxDeep } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
-import { evalForm, resetRun, state } from './elisp-core.js';
+import { evalPlain as evalForm, resetRun, state } from './elisp-core.js';
 import { describeFailure } from './elisp.js';
 
 /** @typedef {import('./lisp-read.js').Lisp} Lisp */
@@ -103,9 +103,9 @@ export function runInit(text, initial, aliases = {}) {
     }
     for (const s of allSymbols()) {
       if (s.value === undefined || s.constant || before.get(s) === s.value) continue;
-      const value = fromObject(s.value);
+      const value = fromObject(unboxDeep(s.value));
       out.set(s.name, value);
-      raw.set(s.name, s.value);
+      raw.set(s.name, unboxDeep(s.value));
       const real = aliases[s.name];
       if (real) out.set(real, value);
     }

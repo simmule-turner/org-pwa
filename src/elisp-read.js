@@ -1,6 +1,6 @@
 // @ts-check
 /** The Lisp reader (`read`, `read-from-string`): text to Lisp objects, with Emacs's syntax errors. */
-import { Cons, Flt, NIL, intern, list, signal } from './elisp-data.js';
+import { Cons, Flt, NIL, box, intern, list, signal } from './elisp-data.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
 
@@ -15,6 +15,8 @@ export class Reader {
   constructor(text, pos = 0) {
     this.text = text;
     this.pos = pos;
+    /** Strings read become objects with an identity of their own (what `eq` compares). */
+    this.boxStrings = false;
   }
 
   /** Skips blanks and comments; true while there is more text. */
@@ -73,7 +75,7 @@ export class Reader {
         return list([intern(','), this.read()]);
       case '"':
         this.pos++;
-        return this.readString();
+        return this.boxStrings ? box(this.readString()) : this.readString();
       case '?': {
         this.pos++;
         const ch = this.readChar();

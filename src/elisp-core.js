@@ -7,7 +7,7 @@
  */
 import {
   BudgetExceeded, Cons, Flt, HashTable, LispSignal, LispThrow, Lambda, NIL, Special, Subr, Sym, T,
-  bool, conditionsOf, eql, equal, intern, list, print, signal, toArray, userErrors, wrongType,
+  bool, box, conditionsOf, eql, equal, intern, list, print, signal, isStr, toArray, unbox, unboxDeep, userErrors, wrongType,
 } from './elisp-data.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
@@ -156,11 +156,37 @@ function checkSpecialArity(fn, args) {
   if (n < fn.min || (fn.max >= 0 && n > fn.max)) throw signal('wrong-number-of-arguments', [intern(fn.name), n]);
 }
 
+/**
+ * Functions that keep a string argument as the very object they were given (they store it, return it or compare it with `eq`);
+ * every other function reads the text of a string argument and makes a new string of its own result.
+ */
+const KEEP_STRING_IDENTITY = new Set([
+  'list', 'cons', 'setcar', 'setcdr', 'aset', 'vector', 'make-vector', 'make-list', 'identity', 'eq', 'eql', 'equal', 'memq', 'memql', 'member',
+  'assq', 'assoc', 'rassq', 'rassoc', 'delq', 'remq', 'plist-get', 'plist-put', 'plist-member', 'alist-get', 'assoc-default',
+  'gethash', 'puthash', 'remhash', 'set', 'put', 'add-to-list', 'cl-adjoin', 'cl-member', 'cl-find', 'cl-position', 'cl-count', 'cl-remove',
+  'cl-delete', 'cl-assoc', 'cl-rassoc', 'apply', 'funcall', 'throw', 'signal', 'symbol-name', 'ignore', 'always', 'seq-contains-p', 'seq-position',
+  'cl-getf', 'cl-list*', 'list*',
+]);
+
+/** @param {Subr} fn @param {LObj[]} args */
+function callSubr(fn, args) {
+  if (KEEP_STRING_IDENTITY.has(fn.name)) return fn.fn(args);
+  let plain = args;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] instanceof String) {
+      if (plain === args) plain = args.slice();
+      plain[i] = unbox(args[i]);
+    }
+  }
+  const out = fn.fn(plain);
+  return typeof out === 'string' ? box(out) : out;
+}
+
 /** Calls the callable `fn` (already resolved) with evaluated `args`. @param {LObj} fn @param {LObj[]} args @param {LObj} original */
 function callFn(fn, args, original) {
   if (fn instanceof Subr) {
     if (args.length < fn.min || (fn.max >= 0 && args.length > fn.max)) throw signal('wrong-number-of-arguments', [original instanceof Sym ? original : fn, args.length]);
-    return fn.fn(args);
+    return callSubr(fn, args);
   }
   if (fn instanceof Lambda) return applyLambda(fn, args, original);
   if (fn instanceof Cons && fn.car === intern('lambda')) return applyLambda(makeLambda(fn.cdr, null), args, original);
@@ -418,7 +444,10 @@ defSpecial('cl-pushnew', (args, scope) => {
   if (!(place instanceof Sym)) throw wrongType('symbolp', place);
   const x = evalForm(car(args), scope);
   const current = lookupVar(place, scope);
-  if (toArray(current).some((e) => eql(e, x))) return current;
+  const rest = toArray(cdr(cdr(args)));
+  const ti = rest.findIndex((e) => e === intern(':test'));
+  const test = ti >= 0 && rest[ti + 1] !== undefined ? evalForm(rest[ti + 1], scope) : NIL;
+  if (toArray(current).some((e) => (test === NIL ? eql(e, x) : funcall(test, [x, e]) !== NIL))) return current;
   const updated = new Cons(x, current);
   setVar(place, updated, scope);
   return updated;
@@ -648,7 +677,7 @@ defSpecial('ignore-error', (args, scope) => {
 });
 
 defSpecial('with-demoted-errors', (args, scope) => {
-  const format = typeof car(args) === 'string';
+  const format = isStr(car(args));
   try {
     return progn(format ? cdr(args) : args, scope);
   } catch (raw) {
@@ -932,3 +961,13 @@ export function defineError(name, message, parents) {
 }
 
 export { Flt, HashTable, bool, equal, print };
+
+/** `evalForm` for the app's own code: strings in the value are plain text. @param {LObj} form @param {Scope | null} scope */
+export function evalPlain(form, scope) {
+  return unboxDeep(evalForm(form, scope));
+}
+
+/** `funcall` for the app's own code: strings in the value are plain text. @param {LObj} fn @param {LObj[]} args */
+export function funcallPlain(fn, args) {
+  return unboxDeep(funcall(fn, args));
+}

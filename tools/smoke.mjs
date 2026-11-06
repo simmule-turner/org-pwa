@@ -7113,6 +7113,38 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await context.close();
 });
 
+check('help: links: [[help:org-todo]] opens Help at the entry that documents it, and a name nothing documents says so in the status line', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '* Notes\n[[help:org-todo][todo help]]\n');
+  await page.locator('#outline a', { hasText: 'todo help' }).first().click();
+  await waitForModeline(page, 'Help');
+  const expected = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { lookupHelp } = await import('/src/help-lookup.js');
+    const hit = lookupHelp(await (await fetch('./README.org')).text(), 'org-todo');
+    if (!hit || hit.headingIndex < 0) return null;
+    let n = -1;
+    const walk = (list) => {
+      for (const h of list) {
+        if (++n === hit.headingIndex) return h.title;
+        const found = walk(h.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    return walk(S.state.doc.children);
+  });
+  expect(expected, 'README has an entry for org-todo');
+  expect((await page.locator('#outline').innerText()).includes(expected), `the Help outline shows the entry "${expected}"`);
+  await page.evaluate(async () => {
+    const { openHelpLink } = await import('/src-browser/views.js');
+    await openHelpLink('no-such-thing-xyz');
+  });
+  await waitForStatus(page, 'No help for no-such-thing-xyz');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('id: links: a link to a heading with that :ID: goes to it in another open tab or in an Agenda File, says so when nothing has it, and Copy link to heading makes the :ID: and the link', async () => {
   dav.reset({
     'a.org': ['* Source', '[[id:AAA-111][to B]] and [[id:ZZZ-999][far away]] and [[id:nope-000][nowhere]]', '# Local Variables:', '# org-agenda-files: webdav:c.org', '# End:', ''].join('\n'),

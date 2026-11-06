@@ -1,6 +1,6 @@
 // @ts-check
 /** `pcase` and its relatives, `cl-letf`, and macro expansion of the built-in `when` / `unless`. */
-import { Cons, Flt, NIL, Sym, T, equal, intern, list, toArray } from './elisp-data.js';
+import { Cons, Flt, NIL, Sym, T, equal, intern, isStr, list, toArray } from './elisp-data.js';
 import { defSpecial, defun, evalForm, funcall, progn, resolvePlace } from './elisp-core.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
@@ -28,7 +28,7 @@ function match(pattern, value, binds, scope) {
     binds.push([pattern, value]);
     return true;
   }
-  if (typeof pattern === 'string' || typeof pattern === 'number' || typeof pattern === 'bigint' || pattern instanceof Flt) return equal(pattern, value);
+  if (isStr(pattern) || typeof pattern === 'number' || typeof pattern === 'bigint' || pattern instanceof Flt) return equal(pattern, value);
   if (!(pattern instanceof Cons)) return false;
   const head = pattern.car instanceof Sym ? pattern.car.name : '';
   switch (head) {

@@ -2,7 +2,7 @@
 /** The built-in functions of the Lisp interpreter: numbers, lists, strings, vectors, hash tables, output, errors, `format`. */
 import {
   Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
-  allSymbols, bool, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, list, print, signal, toArray, userErrors, wrongType,
+  allSymbols, bool, box, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, isStr, list, print, signal, toArray, userErrors, wrongType,
 } from './elisp-data.js';
 import { Reader, readFromString } from './elisp-read.js';
 import { regexpQuote, toRegExp, translate } from './elisp-regex.js';
@@ -54,7 +54,7 @@ const flt = (v, ...inputs) => {
 };
 /** @param {LObj} x @returns {string} */
 function str(x) {
-  if (typeof x === 'string') return x;
+  if (isStr(x)) return x.valueOf();
   throw wrongType('stringp', x);
 }
 /** @param {LObj} x @returns {Sym} */
@@ -617,7 +617,7 @@ const memberWith = (same) => (/** @type {LObj} */ x, /** @type {LObj} */ l) => {
   return NIL;
 };
 /** @param {LObj} a @param {LObj} b */
-const eqSame = (a, b) => (typeof a === 'string' ? typeof b === 'string' && a === '' && b === '' : a === b || (isInt(a) && isInt(b) && a == b));
+const eqSame = (a, b) => (isStr(a) ? isStr(b) && (a === b || (a.valueOf() === '' && b.valueOf() === '')) : a === b || (isInt(a) && isInt(b) && a == b));
 defun('memq', 2, 2, ([x, l]) => memberWith(eqSame)(x, l));
 defun('memql', 2, 2, ([x, l]) => memberWith(eql)(x, l));
 defun('member', 2, 2, ([x, l]) => memberWith(equal)(x, l));
@@ -730,7 +730,7 @@ defun('mapcan', 2, 2, ([f, s]) => funcall(intern('nconc'), mapSeq(f, s)));
 defun('mapconcat', 1, 3, ([f, s, sep]) => {
   const parts = seqToArray(s === undefined ? NIL : s).map((e) => {
     const r = funcall(f, [e]);
-    return typeof r === 'string' ? r : concatPiece(r);
+    return concatPiece(r);
   });
   return parts.join(sep === undefined || sep === NIL ? '' : str(sep));
 });
@@ -870,13 +870,21 @@ defun('cl-position', 2, -1, ([x, s]) => {
   const i = seqToArray(s).findIndex((y) => eql(x, y));
   return i < 0 ? NIL : i;
 });
-defun('cl-member', 2, -1, ([x, l]) => memberWith(eql)(x, l));
-defun('cl-remove-duplicates', 1, -1, ([s]) => {
+/** The equality named by a `:test` keyword among `rest` (`eql` without one). @param {LObj[]} rest @returns {(a: LObj, b: LObj) => boolean} */
+export function keywordTest(rest) {
+  const i = rest.indexOf(intern(':test'));
+  if (i < 0 || rest[i + 1] === undefined || rest[i + 1] === NIL) return eql;
+  const f = rest[i + 1];
+  return (a, b) => funcall(f, [a, b]) !== NIL;
+}
+defun('cl-member', 2, -1, ([x, l, ...rest]) => memberWith(keywordTest(rest))(x, l));
+defun('cl-remove-duplicates', 1, -1, ([s, ...rest]) => {
   /** @type {LObj[]} */
   const out = [];
   const items = seqToArray(s);
+  const same = keywordTest(rest);
   items.forEach((x, i) => {
-    if (!items.slice(i + 1).some((y) => eql(x, y))) out.push(x);
+    if (!items.slice(i + 1).some((y) => same(x, y))) out.push(x);
   });
   return list(out);
 });
@@ -935,7 +943,8 @@ const idOf = (o) => {
 function hashKey(h, k) {
   if (typeof k === 'number' || typeof k === 'bigint') return `n${k}`;
   if (k instanceof Flt) return h.test === 'eq' ? `f${idOf(k)}` : `f${Object.is(k.v, -0) ? '-0' : k.v}`;
-  if (typeof k === 'string') return h.test === 'equal' || h.test === 'eql' || h.test === 'eq' ? `s${k}` : `s${k}`;
+  if (k instanceof String) return h.test === 'equal' || k.valueOf() === '' ? `s${k.valueOf()}` : `o${idOf(k)}`;
+  if (typeof k === 'string') return `s${k}`;
   if (k instanceof Sym) return `y${k.interned ? k.name : idOf(k)}${k.interned ? '' : '#'}`;
   if (h.test === 'equal') return `e${print(k)}`;
   return `o${idOf(/** @type {object} */ (k))}`;
@@ -970,7 +979,14 @@ defun('copy-hash-table', 1, 1, ([h]) => {
 
 // ---- symbols and functions ----------------------------------------------------------------------
 
-defun('symbol-name', 1, 1, ([s]) => sym(s).name);
+/** @type {WeakMap<Sym, LObj>} */
+const symbolNames = new WeakMap();
+defun('symbol-name', 1, 1, ([s]) => {
+  const y = sym(s);
+  let name = symbolNames.get(y);
+  if (name === undefined || String(name) !== y.name) symbolNames.set(y, (name = box(y.name)));
+  return name;
+});
 defun('intern', 1, 2, ([s]) => intern(str(s)));
 defun('intern-soft', 1, 2, ([s]) => (typeof s === 'string' ? (allSymbols().find((x) => x.name === s) ?? NIL) : s));
 defun('make-symbol', 1, 1, ([s]) => new Sym(str(s), false));
@@ -1149,7 +1165,7 @@ defvarGlobal('system-type', intern('gnu/linux'));
 
 /** One argument of `concat`. @param {LObj} x */
 function concatPiece(x) {
-  if (typeof x === 'string') return x;
+  if (isStr(x)) return x.valueOf();
   if (x === NIL) return '';
   if (x instanceof Cons || Array.isArray(x)) return String.fromCodePoint(...seqToArray(x).map((c) => Number(int(c, 'characterp'))));
   throw wrongType('sequencep', x);
@@ -1217,7 +1233,7 @@ defun('string-replace', 3, 3, ([from, to, s]) => {
 });
 /** One element of `string-join`, as `concat` takes it: a string, nil, or a list or vector of characters. @param {LObj} x @returns {string} */
 function joinPart(x) {
-  if (typeof x === 'string') return x;
+  if (isStr(x)) return x.valueOf();
   if (x === NIL) return '';
   if (x instanceof Cons || Array.isArray(x)) return (Array.isArray(x) ? x : toArray(x)).map((c) => (typeof c === 'number' && c >= 0 ? String.fromCodePoint(c) : (() => { throw wrongType('characterp', c); })())).join('');
   throw wrongType('sequencep', x);

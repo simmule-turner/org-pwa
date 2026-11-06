@@ -9,23 +9,26 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DAY, INTRO, SAMPLE, SCENARIOS } from './agenda-settings-cases.mjs';
+import { DAY, INTRO, SAMPLE, SCENARIOS, WEEK } from './agenda-settings-cases.mjs';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agenda-settings-'));
 const sample = path.join(dir, 'agenda-settings.org');
-fs.writeFileSync(sample, '#+CATEGORY: work\n#+TODO: TODO NEXT | DONE\n' + SAMPLE);
+const header = '#+CATEGORY: work\n#+TODO: TODO NEXT | DONE\n';
+fs.writeFileSync(sample, header + SAMPLE);
+const weekSample = path.join(dir, 'week.org');
+fs.writeFileSync(weekSample, header + WEEK);
 
 const el = `
 (require 'org-agenda) (require 'json)
 (setq org-agenda-files (list (getenv "SAMPLE")) org-agenda-use-time-grid nil org-agenda-tags-column 0
       org-agenda-window-setup 'current-window org-agenda-sticky nil inhibit-message t)
-(defun rows ()
+(defun rows (&optional headers)
   (let (r)
     (with-current-buffer "*Org Agenda*"
       (save-excursion
         (goto-char (point-min))
         (while (not (eobp))
-          (when (get-text-property (point) 'org-hd-marker)
+          (when (or (get-text-property (point) 'org-hd-marker) (and headers (get-text-property (point) 'org-agenda-date-header)))
             (push (string-trim-right (buffer-substring-no-properties (line-beginning-position) (line-end-position))) r))
           (forward-line 1))))
     (nreverse r)))
@@ -33,7 +36,9 @@ const el = `
   (dolist (form (cdr (assq 'setq c))) (eval (car (read-from-string form)) t))
   (ignore-errors (org-agenda-list nil "${DAY}" 'day)) (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*")) ; the first run of a session leaves the deadlines out
   (let ((kind (cdr (assq 'kind c))))
-    (cond ((equal kind "agenda") (condition-case e (progn (org-agenda-list nil "${DAY}" 'day) (princ (json-encode (vconcat (rows)))))
+    (cond ((equal kind "stuck") (org-agenda-list-stuck-projects) (princ (json-encode (vconcat (rows)))))
+          ((and (equal kind "agenda") (cdr (assq 'span c))) (org-agenda-list nil (let ((a (cdr (assq 'startArg c)))) (and (not (equal a "")) a))) (princ (json-encode (vconcat (rows t)))))
+          ((equal kind "agenda") (condition-case e (progn (org-agenda-list nil "${DAY}" 'day) (princ (json-encode (vconcat (rows)))))
                                    (error (princ (json-encode (vector (error-message-string e)))))))
           ((equal kind "search") (org-search-view nil (cdr (assq 'query c))) (princ (json-encode (vconcat (rows)))))
           ((equal kind "match") (org-tags-view nil (cdr (assq 'query c))) (princ (json-encode (vconcat (rows)))))
@@ -47,10 +52,15 @@ fs.writeFileSync(elFile, el);
 const setqForms = (c) => Object.entries(c.vars).map(([name, value]) => `(setq ${name} ${value})`);
 
 const out = [INTRO.trimEnd(), '', SAMPLE.trimEnd()];
+let weekShown = false;
 for (const c of SCENARIOS) {
-  const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, TZ: 'America/New_York', SAMPLE: sample, CASE: JSON.stringify({ ...c, setq: setqForms(c) }) }, encoding: 'utf8', input: '' });
+  const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, TZ: 'America/New_York', SAMPLE: c.sample === 'week' ? weekSample : sample, CASE: JSON.stringify({ ...c, startArg: c.vars['org-agenda-start-day'] ? '' : DAY, setq: setqForms(c) }) }, encoding: 'utf8', input: '' });
   if (r.status !== 0) throw new Error(`${c.id}\n${r.stderr}`);
   const rows = JSON.parse(r.stdout.slice(r.stdout.indexOf('[')));
+  if (c.sample === 'week' && !weekShown) {
+    weekShown = true;
+    out.push('', '* A week of entries', 'The scenarios from here on use a second sample: the week of Monday 15 March 2027, and two projects for the stuck view. Its entries are in the block below.', '', '#+begin_src org', ...WEEK.trimEnd().split('\n'), '#+end_src');
+  }
   out.push('', `* ${c.title}`, c.text, '');
   const forms = setqForms(c);
   if (forms.length) out.push('#+begin_src emacs-lisp', ...forms, '#+end_src', '');

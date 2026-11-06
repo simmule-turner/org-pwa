@@ -6,7 +6,6 @@
 
 /** @type {Known[]} */
 export const KNOWN = [
-  { chosen: false, reason: 'Strings are values here, so `eql` on two equal strings is true; Emacs compares the string objects.', match: /^\(let \(\(l \(list "a"\)\)\) \(cl-pushnew "a" l\) l\)$|^\(cl-case "a" \("a" 1\)/ },
   { chosen: false, reason: 'The last digit of `atan` with two arguments and of `expt` with a negative exponent differs between the JavaScript engine and the C library.', match: /^\((atan -3 -2|atan 2\.5 3|atan -2\.5 3|expt 7 -2)\)$/ },
   { chosen: true, reason: 'Every feature counts as loaded, so the body of `with-eval-after-load` / `eval-after-load` runs at once (Emacs waits for the feature).', match: /^\((with-eval-after-load|eval-after-load) \(quote zz-feat/ },
   { chosen: true, reason: '`special-variable-p` is true only for variables the app defines, not for every Emacs built-in variable such as `load-path`.', match: /^\(special-variable-p \(quote load-path\)\)$/ },

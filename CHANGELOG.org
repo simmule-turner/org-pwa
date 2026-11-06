@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v647 — Lisp strings have identity
+In the Emacs Lisp interpreter two separately made strings that look alike are no longer =eq= or =eql=, while the same string is, and =equal= still compares text, as in Emacs. This fixes =cl-pushnew=, =memq=, =assq=, =delq= and hash lookups on strings, and =:test= is honored by =cl-pushnew=, =cl-member= and =cl-remove-duplicates=.
+Verified: about 50 new string-identity comparisons against Emacs 29.3 and the Lisp checks.
+
+* v646 — Agenda settings examples
+The agenda-settings example now shows week spans, the start day, skipping done items, log mode and stuck projects, each checked against Emacs 29.3 row by row. A new browser check clicks a =[[help:org-todo]]= link and confirms Help opens at that entry, and that an unknown name says there is no help for it.
+Verified: the example test in three time zones and the help-link browser check.
+
 * v645 — Examples refreshed, Help links, Babel references
 The examples were regenerated from Emacs 29.3: clock tables (block, step, match, formula, link, compact), table date arithmetic and number literals, replace cases, and a new Emacs Lisp Babel file. Fixed along the way: base literals such as =16#ff= in tables, and =:var= can now name a table, list, result or block anywhere in the file, run a named block with arguments, and stops with Emacs's error when the name is missing. New: =[[help:name]]= links open Help at the entry for that setting or command.
 Verified: the example tests in three time zones and the related Babel, table and link checks.

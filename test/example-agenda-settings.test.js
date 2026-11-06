@@ -8,15 +8,22 @@ import { formatAgendaPrefix, agendaPrefixFormat, agendaClockText } from '../src/
 import { PrefixFormError, agendaLisp, headlineOf, prefixEvaluator, runFunctionCommand } from '../src/agenda-lisp.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { SCENARIOS } from '../tools/agenda-settings-cases.mjs';
+import { SCENARIOS, WEEK } from '../tools/agenda-settings-cases.mjs';
+import { parseSpan, readAgendaStartDay, spanRange } from '../src/agenda-span.js';
+import { readStuckSettings, stuckProjectItems } from '../src/agenda-stuck.js';
+import { agendaSkipper } from '../src/agenda-skip.js';
+import { readLogSettings } from '../src/agenda-log.js';
+import { readDaySettings } from '../src/agenda-emacs-days.js';
 
 // examples/agenda-settings.org shows the rows Emacs 29.3 gave for each scenario (tools/gen-agenda-settings-example.mjs). The app, given the
 // same settings, must give the same rows.
 const text = fs.readFileSync(new URL('../examples/agenda-settings.org', import.meta.url), 'utf8');
 const documentId = 'agenda-settings.org';
-const doc = parseOrg(text);
+const doc = parseOrg(text.slice(0, text.indexOf('\n* A week of entries'))); // the first sample, without the week's entries below it
 const docs = [{ documentId, doc }];
 const sequence = resolveTodoSequence(doc, ['TODO', 'DONE']);
+const weekDoc = parseOrg('#+CATEGORY: work\n#+TODO: TODO NEXT | DONE\n' + WEEK);
+const weekDocs = [{ documentId, doc: weekDoc }];
 const keywords = { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords };
 
 /** What the example file holds under `#+NAME: id`. @param {string} id */
@@ -32,19 +39,65 @@ const headline = (item) => headlineOf(item).replace(/\s*<\d{4}-\d\d-\d\d[^>]*>/g
 const flat = (row) => row.replace(/ +/g, ' ').trim();
 
 /** The prefix org-agenda-prefix-format gives a row (the Agenda's own rowPrefix, without the page). @param {import('../src/agenda.js').AgendaItem} item @param {Record<string, string>} vars @param {'agenda' | 'tags' | 'search'} view */
-function prefix(item, vars, view) {
+function prefix(item, vars, view, scope = docs) {
   const format = agendaPrefixFormat(vars['org-agenda-prefix-format']?.replace(/^'/, ''), view === 'agenda' ? 'agenda' : view) ?? (view === 'agenda' ? '  %-12:c%?-12t% s' : '  %-12:c');
   const time = item.hasTime ? agendaClockText(item.date, item.endDate ?? null) : '';
-  const scheduling = item.kind === 'scheduled' ? 'Scheduled:' : item.kind === 'deadline' ? 'Deadline:' : '';
+  const scheduling = item.logLabel ? item.logLabel : item.kind === 'scheduled' ? 'Scheduled:' : item.kind === 'deadline' ? 'Deadline:' : '';
   const effort = item.heading ? (item.heading.properties?.Effort ?? '') : '';
   const fields = { category: item.category ?? '', time, scheduling, effort, level: ' ', breadcrumbs: '' };
-  const evaluate = format.includes('%(') ? prefixEvaluator(item, docs, { category: fields.category, time, extra: scheduling, level: fields.level, effort, tag: (item.tags || []).join(':'), breadcrumbs: '', 'category-icon': '' }, keywords) : undefined;
+  const evaluate = format.includes('%(') ? prefixEvaluator(item, scope, { category: fields.category, time, extra: scheduling, level: fields.level, effort, tag: (item.tags || []).join(':'), breadcrumbs: '', 'category-icon': '' }, keywords) : undefined;
   return formatAgendaPrefix(format, fields, evaluate);
+}
+
+/** Emacs's day heading: "Monday     15 March 2027", and " W11" on a Monday. @param {Date} day */
+function dayHeading(day) {
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const week = day.getDay() === 1 ? ` W${String(isoWeek(day)).padStart(2, '0')}` : '';
+  return `${names[day.getDay()]} ${day.getDate()} ${months[day.getMonth()]} ${day.getFullYear()}${week}`;
+}
+/** The ISO week number. @param {Date} date */
+function isoWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  return Math.ceil(((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
 }
 
 for (const c of SCENARIOS) {
   test(`agenda-settings.org: ${c.title}`, () => {
     const vars = c.vars;
+    if (c.kind === 'stuck') {
+      const items = stuckProjectItems(weekDocs, readStuckSettings(vars['org-stuck-projects']), { ...keywords, now: new Date(2027, 2, 15) });
+      assert.deepEqual(items.map((item) => flat(prefix(item, vars, 'tags', weekDocs) + ' ' + headline(item))), shown(c.id).map(flat));
+      return;
+    }
+    if (c.span) {
+      const weekSequence = resolveTodoSequence(weekDoc, ['TODO', 'DONE']);
+      const today = new Date(2027, 2, 15);
+      const startDay = readAgendaStartDay(vars, today) ?? today;
+      const range = spanRange(parseSpan(vars['org-agenda-span']) ?? 'day', startDay, vars['org-agenda-start-on-weekday'] === 'nil' ? null : Number(vars['org-agenda-start-on-weekday'] ?? 1));
+      const last = new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate() + range.ndays - 1, 23, 59);
+      const logSettings = readLogSettings(vars);
+      const items = buildAgendaItems(weekDocs, {
+        today,
+        rangeStart: new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate()),
+        rangeEnd: last,
+        isDone: (/** @type {string} */ todo) => weekSequence.doneKeywords.includes(todo),
+        daySettings: readDaySettings(vars),
+        skipEntry: agendaSkipper(vars, weekDocs, { todoKeywords: weekSequence.todoKeywords, doneKeywords: weekSequence.doneKeywords }),
+        logSettings,
+      });
+      const keys = strategyFor(vars['org-agenda-sorting-strategy'], 'agenda') ?? [];
+      /** @type {string[]} */
+      const rows = [];
+      for (let i = 0; i < range.ndays; i++) {
+        const day = new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate() + i);
+        rows.push(dayHeading(day));
+        for (const item of sortAgendaItems(itemsForDate(items, day), keys, { documentOrder: [documentId], ...keywords })) rows.push(prefix(item, vars, 'agenda', weekDocs) + ' ' + headline(item));
+      }
+      assert.deepEqual(rows.map(flat), shown(c.id).map(flat));
+      return;
+    }
     if (c.kind === 'function') {
       const r = runFunctionCommand(/** @type {string} */ (c.fn), /** @type {string} */ (c.match));
       assert.ok(r.ok);

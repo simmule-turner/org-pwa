@@ -6,7 +6,7 @@
  * a vector a JS array, `nil` and `t` the symbols of those names, a list a chain of `Cons`.
  */
 
-/** @typedef {Sym | Cons | Flt | number | bigint | string | LObj[] | Lambda | Subr | Special | HashTable | Marker} LObj  any Lisp object */
+/** @typedef {Sym | Cons | Flt | number | bigint | string | String | LObj[] | Lambda | Subr | Special | HashTable | Marker} LObj  any Lisp object */
 /** @typedef {{ vars: Map<Sym, LObj>, parent: Scope | null }} Scope  a lexical scope */
 
 /** A symbol. `value` is its global (dynamic) value; `fn` its function cell. */
@@ -252,17 +252,53 @@ export function conditionsOf(symbol) {
 
 // ---- equality -----------------------------------------------------------------------------------
 
+/** A Lisp string is a JS string, or a `String` object when it must keep its identity (`eq`): a literal, or a string a function made. @param {unknown} x @returns {x is string | String} */
+export function isStr(x) {
+  return typeof x === 'string' || x instanceof String;
+}
+
+/** The text of a Lisp string; anything else comes back as it is. @param {LObj} x @returns {LObj} */
+export function unbox(x) {
+  return x instanceof String ? x.valueOf() : x;
+}
+
+/** A value with every string in it made plain text, for the app's own code (a copy when something inside changes). @param {LObj} x @param {Set<object>} [seen] @returns {LObj} */
+export function unboxDeep(x, seen = new Set()) {
+  if (x instanceof String) return x.valueOf();
+  if (typeof x !== 'object' || x === null || seen.has(x)) return x;
+  if (x instanceof Cons) {
+    seen.add(x);
+    const car = unboxDeep(x.car, seen);
+    const cdr = unboxDeep(x.cdr, seen);
+    seen.delete(x);
+    return car === x.car && cdr === x.cdr ? x : new Cons(car, cdr);
+  }
+  if (Array.isArray(x)) {
+    seen.add(x);
+    const items = x.map((e) => unboxDeep(e, seen));
+    seen.delete(x);
+    return items.every((e, i) => e === x[i]) ? x : items;
+  }
+  return x;
+}
+
+/** A string with an identity of its own. @param {string} s @returns {LObj} */
+export function box(s) {
+  return /** @type {LObj} */ (/** @type {unknown} */ (new String(s)));
+}
+
 /** `eql`. @param {LObj} a @param {LObj} b */
 export function eql(a, b) {
   if (a === b) return true;
   if (a instanceof Flt && b instanceof Flt) return Object.is(a.v, b.v);
-  return false;
+  return isStr(a) && isStr(b) && a.valueOf() === '' && b.valueOf() === '';
 }
 
 /** `equal`. @param {LObj} a @param {LObj} b @returns {boolean} */
 export function equal(a, b) {
   for (;;) {
     if (eql(a, b)) return true;
+    if (isStr(a) && isStr(b)) return a.valueOf() === b.valueOf();
     if (a instanceof Cons && b instanceof Cons) {
       if (!equal(a.car, b.car)) return false;
       a = a.cdr;
@@ -337,9 +373,10 @@ function printTo(x, escape, out, depth) {
   }
   if (typeof x === 'number' || typeof x === 'bigint') out.push(String(x));
   else if (x instanceof Flt) out.push(floatToString(x.v, x.pos));
-  else if (typeof x === 'string') {
-    if (!escape) out.push(x);
-    else out.push('"' + x.replace(/["\\]/g, '\\$&') + '"');
+  else if (isStr(x)) {
+    const text = x.valueOf();
+    if (!escape) out.push(text);
+    else out.push('"' + text.replace(/["\\]/g, '\\$&') + '"');
   } else if (x instanceof Sym) {
     if (!escape) out.push(x.name === '' ? '##' : x.name);
     else out.push(x.interned ? symbolText(x.name) : symbolText(x.name));
@@ -442,8 +479,8 @@ export function errorMessageString(err) {
   const tail = data instanceof Cons ? safeArray(data.cdr) : [];
   let out = '';
   let sep = ': ';
-  if (typeof errmsg !== 'string') out += 'peculiar error';
-  else if (errmsg.length) out += errmsg;
+  if (!isStr(errmsg)) out += 'peculiar error';
+  else if (errmsg.length) out += errmsg.valueOf();
   else sep = '';
   const princIt = sym === intern('end-of-file') || sym === intern('user-error');
   tail.forEach((item, i) => {

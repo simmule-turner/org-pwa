@@ -6,7 +6,7 @@
  */
 import { NIL, intern, print } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
-import { evalForm, withDynamic } from './elisp-core.js';
+import { evalPlain as evalForm, withDynamic } from './elisp-core.js';
 import { describeFailure } from './elisp.js';
 import { withContext } from './diary-lisp.js';
 

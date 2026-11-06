@@ -8,7 +8,7 @@ export const INTRO = `#+TITLE: Agenda settings
 #+CATEGORY: work
 #+TODO: TODO NEXT | DONE
 
-Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, and a Lisp function as a command. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
+Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, a Lisp function as a command, how many days show and where they start, finished entries, the log and stuck projects. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
 `;
 
 export const SAMPLE = `* TODO [#A] Alpha deploy :ops:
@@ -29,6 +29,23 @@ DEADLINE: <2027-03-15 Mon>
 :WEIGHT: 2
 :END:
 * TODO [#B] Delta call <2027-03-15 Mon 11:00>
+`;
+
+/** The second sample, for the scenarios over several days: the week of Monday 15 March 2027, and two projects for the stuck view. */
+export const WEEK = `* TODO Plan sprint
+SCHEDULED: <2027-03-15 Mon>
+* DONE Ship release
+CLOSED: [2027-03-16 Tue 08:30]
+SCHEDULED: <2027-03-16 Tue>
+* TODO Write report
+SCHEDULED: <2027-03-17 Wed 10:00>
+* TODO Dentist <2027-03-19 Fri 15:00>
+* TODO Review budget
+SCHEDULED: <2027-03-20 Sat>
+* Website :project:
+** NEXT Draft copy
+* Garden :project:
+** TODO Buy seeds
 `;
 
 const DEFAULT_PREFIX = '"  %-12:c%?-12t% s"';
@@ -126,5 +143,49 @@ export const SCENARIOS = [
     match: 'ops',
     fn: '(lambda (match) (princ (format "Report for %s\\n" match)) (princ "second line\\n") "a result that is not shown")',
     vars: {},
+  },
+  {
+    id: 'span-week',
+    sample: 'week',
+    title: 'The days shown: org-agenda-span',
+    text: "=org-agenda-span= is the number of days the Agenda shows: =day=, =week=, =month=, =year= (a symbol) or a number. A week starts on the day of =org-agenda-start-on-weekday= (1 is Monday; =nil= starts today). Each day has a heading, and the first day of a week carries the week number.",
+    kind: 'agenda',
+    span: true,
+    vars: { 'org-agenda-span': "'week", 'org-agenda-start-on-weekday': '1' },
+  },
+  {
+    id: 'start-day',
+    sample: 'week',
+    title: 'Where the days start: org-agenda-start-day',
+    text: "=org-agenda-start-day= is the first day shown: a date, or an offset from today such as =\"+1d\"=. With a number of days as the span, the Agenda begins there and does not look for a weekday.",
+    kind: 'agenda',
+    span: true,
+    vars: { 'org-agenda-span': '3', 'org-agenda-start-day': '"2027-03-17"' },
+  },
+  {
+    id: 'skip-done',
+    sample: 'week',
+    title: 'Hiding finished entries',
+    text: '=org-agenda-skip-scheduled-if-done= leaves out an entry that is done even though it still has a scheduled date; =org-agenda-skip-deadline-if-done= does the same for deadlines. Emacs also lists the scheduled date of a done entry as a plain timestamp, which =org-agenda-skip-timestamp-if-done= leaves out. With both set, Ship release is no longer listed on Tuesday.',
+    kind: 'agenda',
+    span: true,
+    vars: { 'org-agenda-span': "'week", 'org-agenda-start-on-weekday': '1', 'org-agenda-skip-scheduled-if-done': 't', 'org-agenda-skip-timestamp-if-done': 't' },
+  },
+  {
+    id: 'log-mode',
+    sample: 'week',
+    title: 'The log: closed entries',
+    text: '=org-agenda-start-with-log-mode= adds the entries the log records. With =t= every kind is shown: when an entry was closed, state changes and clocked time. Here Ship release shows when it was closed.',
+    kind: 'agenda',
+    span: true,
+    vars: { 'org-agenda-span': "'week", 'org-agenda-start-on-weekday': '1', 'org-agenda-start-with-log-mode': 't' },
+  },
+  {
+    id: 'stuck',
+    sample: 'week',
+    title: 'Stuck projects',
+    text: '=org-stuck-projects= says what a project is and what makes it not stuck: a matcher for the projects, TODO keywords or tags a next action carries, and a regular expression. A project with none of those under it is stuck. Website has a NEXT entry, Garden does not.',
+    kind: 'stuck',
+    vars: { 'org-stuck-projects': `'("+LEVEL=1+project" ("NEXT") nil "")` },
   },
 ];

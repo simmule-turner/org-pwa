@@ -7,7 +7,7 @@
  */
 import { Cons, NIL, Sym, intern, print } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
-import { evalForm, funcall, state, withDynamic } from './elisp-core.js';
+import { evalPlain as evalForm, funcallPlain as funcall, state, withDynamic } from './elisp-core.js';
 import { defun } from './elisp-core.js';
 import { describeFailure } from './elisp.js';
 import { withContext } from './diary-lisp.js';

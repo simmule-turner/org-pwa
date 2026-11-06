@@ -14,7 +14,7 @@ export const KNOWN_DEVIATIONS = [
   },
   {
     id: 'org-crlf',
-    reason: 'the app reads a file with CRLF line ends as LF; Emacs keeps the carriage returns in its output',
+    reason: 'chosen: app behavior -- the app reads a file with CRLF line ends as LF and writes the file back in its own style (a Windows file is not rewritten); Emacs decodes such a file the same way, so its carriage returns appear only when text is given to the exporter with them still in it',
     matches: ({ backend, name }) => backend === 'orgx' && name === 'doc-crlf',
   },
 ];

@@ -10,14 +10,14 @@ import './elisp-pcase.js';
 import './elisp-time.js';
 import './elisp-prelude.js';
 import {
-  BudgetExceeded, Cons, LispSignal, LispThrow, NIL, errorMessageString, print, signal,
+  BudgetExceeded, Cons, LispSignal, LispThrow, NIL, errorMessageString, print, signal, unboxDeep,
 } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
 import { evalForm, normalizeError, resetRun, state, topScope } from './elisp-core.js';
 
 export * from './elisp-data.js';
 export { Reader, readAll, readFromString } from './elisp-read.js';
-export { defAlias, defSpecial, defun, evalForm, funcall, progn, resetRun, state, topScope, withDynamic } from './elisp-core.js';
+export { defAlias, defSpecial, defun, evalForm, evalPlain, funcall, funcallPlain, progn, resetRun, state, topScope, withDynamic } from './elisp-core.js';
 export { format } from './elisp-lib.js';
 
 /**
@@ -56,8 +56,9 @@ export function run(text, options = {}) {
   let value = NIL;
   try {
     const reader = new Reader(text);
+    reader.boxStrings = true;
     while (reader.more()) value = evalForm(reader.read(), scope);
-    return { ok: true, value, output: state.outputs[0].join(''), messages: state.messages };
+    return { ok: true, value: unboxDeep(value), output: state.outputs[0].join(''), messages: state.messages };
   } catch (raw) {
     const { message, kind } = describeFailure(raw);
     const e = normalizeError(raw);

@@ -5,7 +5,7 @@
  * `displayed-month` and `displayed-year` bound, so `if`, `let`, `mapcar` and the user's own functions work in a holiday list.
  */
 import { Cons, NIL, T, intern, list, signal, toArray, wrongType } from './elisp-data.js';
-import { defun, evalForm, withDynamic } from './elisp-core.js';
+import { defun, evalPlain as evalForm, withDynamic } from './elisp-core.js';
 import { fromObject } from './lisp-init.js';
 import { describeFailure } from './elisp.js';
 import {
