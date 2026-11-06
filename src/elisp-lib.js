@@ -6,6 +6,7 @@ import {
 } from './elisp-data.js';
 import { Reader, readFromString } from './elisp-read.js';
 import { regexpQuote, toRegExp, translate } from './elisp-regex.js';
+import { guardFor, guardedSearch } from './regex-guard.js';
 import {
   defAlias, defineError, defun, defvarGlobal, emit, evalForm, funcall, nthcdr, state, topScope,
 } from './elisp-core.js';
@@ -214,7 +215,7 @@ defun('expt', 2, 2, ([x, y]) => {
     if (y === 0 || y === 0n) return 1;
     if (x === 0 || x === 1 || x === 0n || x === 1n) return x;
     if (x === -1 || x === -1n) return BigInt(y) % 2n === 0n ? 1 : -1;
-    if (y > 4_000_000) throw signal('overflow-error', []);
+    if (y > 4_000_000 || BigInt(x).toString(16).length * 4 * Number(y) > 2 ** 27) throw signal('overflow-error', []);
     return normInt(BigInt(x) ** BigInt(y));
   }
   return flt(num(x, 'numberp') ** num(y, 'numberp'), x, y);
@@ -414,9 +415,15 @@ defun('setcdr', 2, 2, ([c, v]) => {
 });
 defun('list', 0, -1, (a) => list(a));
 /** A non-negative count, or the `wholenump` error. @param {LObj} n */
-function count(n) {
+function count(n, max = 2 ** 24) {
   if (typeof n !== 'number' || n < 0) throw wrongType('wholenump', n);
-  if (n > 2 ** 30) throw signal('error', ['Memory exhausted']);
+  if (n > max) throw signal('error', ['Memory exhausted']);
+  return n;
+}
+
+/** Refuses a string longer than the interpreter can hold. @param {number} n */
+function room(n) {
+  if (n > 2 ** 27) throw signal('error', ['Memory exhausted']);
   return n;
 }
 defun('make-list', 2, 2, ([n, x]) => list(Array(count(n)).fill(x)));
@@ -602,7 +609,10 @@ defun('number-sequence', 1, 3, ([from, to, step]) => {
   const f = num(from);
   const t = num(to);
   const anyFloat = from instanceof Flt || to instanceof Flt || step instanceof Flt;
-  for (let i = 0, v = f; s > 0 ? v <= t : v >= t; i++, v = f + i * s) out.push(i === 0 ? from : anyFloat ? flt(v) : v);
+  for (let i = 0, v = f; s > 0 ? v <= t : v >= t; i++, v = f + i * s) {
+    if (i > 2 ** 24) throw signal('error', ['Memory exhausted']);
+    out.push(i === 0 ? from : anyFloat ? flt(v) : v);
+  }
   return list(out);
 });
 
@@ -1173,7 +1183,7 @@ function concatPiece(x) {
 defun('concat', 0, -1, (a) => a.map(concatPiece).join(''));
 defun('string', 0, -1, (a) => String.fromCodePoint(...a.map((c) => Number(int(c, 'characterp')))));
 defun('make-string', 2, 3, ([n, c]) => {
-  const k = count(n);
+  const k = count(n, 2 ** 27);
   if (typeof c !== 'number' || c < 0 || c > 0x10ffff) throw wrongType('characterp', c);
   return String.fromCodePoint(c).repeat(k);
 });
@@ -1243,7 +1253,7 @@ defun('string-reverse', 1, 1, ([s]) => chars(str(s)).reverse().join(''));
 defun('string-width', 1, 3, ([s]) => chars(str(s)).reduce((n, c) => n + charWidth(/** @type {number} */ (c.codePointAt(0))), 0));
 defun('string-pad', 2, 4, ([s, n, pad, start]) => {
   const p = pad === undefined || pad === NIL ? ' ' : String.fromCodePoint(Number(pad));
-  const missing = Math.max(0, Number(n) - chars(str(s)).length);
+  const missing = room(Math.max(0, Number(n) - chars(str(s)).length));
   return start !== undefined && start !== NIL ? p.repeat(missing) + str(s) : str(s) + p.repeat(missing);
 });
 defun('string-chop-newline', 1, 1, ([s]) => str(s).replace(/\n$/, ''));
@@ -1289,6 +1299,26 @@ const foldCase = () => (intern('case-fold-search').value ?? T) !== NIL;
 /** Searches `s` from `start`; sets the match data. @param {string} re @param {string} s @param {number} start @param {boolean} setData */
 function search(re, s, start, setData) {
   const rx = toRegExp(re, foldCase(), true);
+  const guard = guardFor(rx.source, rx.flags);
+  if (guard) {
+    // a pattern that can backtrack without end runs in the step-limited matcher
+    const hit = guardedSearch(guard, s, start);
+    if (!hit) return null;
+    if (setData) {
+      const { groups, nums, size } = translate(re);
+      /** @type {(number | null)[]} */
+      const md = [hit.index, hit.end];
+      while (md.length < (size + 1) * 2) md.push(null);
+      for (let g = 1; g <= groups; g++) {
+        const from = hit.caps[g * 2];
+        md[nums[g - 1] * 2] = from >= 0 ? from : null;
+        md[nums[g - 1] * 2 + 1] = from >= 0 ? hit.caps[g * 2 + 1] : null;
+      }
+      state.matchData = md;
+      state.matchString = s;
+    }
+    return hit.index;
+  }
   rx.lastIndex = start;
   const m = rx.exec(s);
   if (!m) return null;
@@ -1621,7 +1651,7 @@ export function format(fmt, args) {
         throw signal('error', [`Invalid format operation %${conv}`]);
     }
     const len = chars(sign + body).length;
-    const w = width ? Number(width) : 0;
+    const w = room(width ? Number(width) : 0);
     if (len < w) {
       if (left) body = sign + body + ' '.repeat(w - len);
       else if (zero && numeric) body = sign + '0'.repeat(w - len) + body;

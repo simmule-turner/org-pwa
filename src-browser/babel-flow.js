@@ -12,6 +12,8 @@ import { plainVariables, referenceLookup } from '../src/babel-ref.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
 import { formatElispResult, isElispBlock, runElisp } from '../src/babel-elisp.js';
+import { trustDigest } from '../src/babel-trust.js';
+import { serializeOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
 import { runJavaScript } from './babel-run.js';
 import { confirmDialog } from './dialogs.js';
@@ -21,7 +23,8 @@ import { withKeyboardFocusPreserved } from './keyboard-focus.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { authorizeBlock, createServices, documentOwner } from './extension-services.js';
 
-const TRUSTED_DOCUMENTS_KEY = 'org-pwa-babel-documents';
+// each answer is kept with a digest of the document's executable parts (src/babel-trust.js); the earlier list of bare ids is not read
+const TRUSTED_DOCUMENTS_KEY = 'org-pwa-babel-trust';
 const MAX_TRUSTED_DOCUMENTS = 200;
 const SECRET_NAME_RE = /token|password|secret|credential|auth|key/i;
 
@@ -39,18 +42,19 @@ export function babelLispEnabled() {
 function trustedDocuments() {
   try {
     const list = JSON.parse(localStorage.getItem(TRUSTED_DOCUMENTS_KEY) || '[]');
-    return Array.isArray(list) ? list : [];
+    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === 'string' && typeof e.digest === 'string') : [];
   } catch (e) {
     return [];
   }
 }
 
-/** Asks once per document on this device, as Emacs's org-confirm-babel-evaluate does. An
- *  unsaved document is asked every time. */
+/** Asks once per document on this device, as Emacs's org-confirm-babel-evaluate does, and again when the document's code changes.
+ *  An unsaved document is asked every time. */
 async function confirmDocumentTrust(lisp = false) {
   const id = S.state.documentId || '';
   const savedId = id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? id : '';
-  if (savedId && trustedDocuments().includes(savedId)) return true;
+  const digest = savedId ? await trustDigest(serializeOrg(S.state.doc)) : '';
+  if (savedId && trustedDocuments().some((e) => e.id === savedId && e.digest === digest)) return true;
   const ok = await confirmDialog(
     lisp
       ? 'Run Emacs Lisp from this document? It runs in the app\'s own interpreter, with no access to your files, accounts or the network. Run only code you trust.'
@@ -59,7 +63,7 @@ async function confirmDocumentTrust(lisp = false) {
   );
   if (ok && savedId) {
     try {
-      localStorage.setItem(TRUSTED_DOCUMENTS_KEY, JSON.stringify([...trustedDocuments().filter((x) => x !== savedId), savedId].slice(-MAX_TRUSTED_DOCUMENTS)));
+      localStorage.setItem(TRUSTED_DOCUMENTS_KEY, JSON.stringify([...trustedDocuments().filter((e) => e.id !== savedId), { id: savedId, digest }].slice(-MAX_TRUSTED_DOCUMENTS)));
     } catch (e) {
       /* not remembered; asked again next time */
     }

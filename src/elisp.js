@@ -24,6 +24,7 @@ export { format } from './elisp-lib.js';
  * @typedef {object} RunOptions
  * @property {boolean} [lexical]  lexical binding (default true); false is Emacs's plain `eval`
  * @property {number} [budget]  the step budget
+ * @property {number} [timeLimitMs]  the time limit in milliseconds (default 5000)
  * @property {number} [baseDepth]  evaluation depth already in use when the program starts (default 20, what `emacs --batch --eval` uses)
  */
 
@@ -49,7 +50,7 @@ export function describeFailure(raw) {
 
 /** Reads and evaluates every form of `text`. @param {string} text @param {RunOptions} [options] @returns {RunResult} */
 export function run(text, options = {}) {
-  resetRun({ budget: options.budget });
+  resetRun({ budget: options.budget, timeLimitMs: options.timeLimitMs });
   state.depth = options.baseDepth ?? 20;
   const scope = options.lexical === false ? null : topScope();
   /** @type {import('./elisp-data.js').LObj} */

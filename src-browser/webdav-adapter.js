@@ -1,6 +1,8 @@
 // @ts-check
 /** @typedef {import('../src/types.js').WebdavConfig} WebdavConfig */
 import { writeConflict } from '../src/sync-engine.js';
+import { assertSafeStoragePath } from '../src/storage-path.js';
+import { decodeUtf8Strict } from '../src/utf8.js';
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -84,6 +86,7 @@ function base64ToArrayBuffer(base64) {
  * @param {string} path
  */
 function fileUrl(config, path) {
+  assertSafeStoragePath(path);
   const base = config.baseUrl.replace(/\/+$/, '');
   const cleanPath = encodePath(path.replace(/^\/+/, ''));
   return `${base}/${cleanPath}`;
@@ -221,7 +224,7 @@ export function createWebdavAdapter(getConfig) {
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(webdavErrorMessage(res));
-    const content = await res.text();
+    const content = decodeUtf8Strict(await res.arrayBuffer(), fileId);
     const hash = res.headers.get('ETag') || null;
     return { content, hash };
   }
@@ -372,6 +375,7 @@ export function createWebdavAdapter(getConfig) {
       if (relative === normalizedQueriedPath) continue; // this was the queried directory itself, not a child -- must compare against the actual queried path, not just check for emptiness, since a subdirectory's self-reference isn't empty after stripping the base path
       if (!relative) continue; // defensive: an unexpected genuinely-empty entry, not a real child either way
       const name = relative.split('/').pop();
+      if (!name || name === '.' || name === '..' || relative.split('/').some((part) => part === '.' || part === '..' || part === '') || /[\\\u0000-\u001f\u007f]/.test(relative)) continue; // a hostile server listing cannot name a file outside the folder
       results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file' });
     }
     return results.sort((/** @type {any} */ a, b) => {

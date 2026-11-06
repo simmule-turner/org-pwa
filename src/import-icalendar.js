@@ -29,6 +29,7 @@
  * bookkeeping ones (DTSTAMP, SEQUENCE, X-... and the like) and VALARM blocks are skipped silently.
  */
 import { formatOrgTimestamp } from './org-timestamp.js';
+import { oneLine, propertyText, bodyLines } from './import-safe.js';
 
 const SILENT = new Set(['DTSTAMP', 'CREATED', 'LAST-MODIFIED', 'SEQUENCE', 'TRANSP', 'CLASS', 'PRODID', 'VERSION', 'CALSCALE', 'METHOD', 'COLOR', 'PERCENT-COMPLETE', 'PRIORITY']);
 const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -297,7 +298,7 @@ function headingFor(component, options) {
   const { zone, onUnmappedProperty, onRecurrenceKept, onUnknownTimeZone } = options;
   const props = component.props;
   const isTodo = component.type === 'VTODO';
-  const summary = textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ') || '(no title)';
+  const summary = oneLine(textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ')) || '(no title)';
   /** @param {string} name */
   const dateOf = (name) => {
     const prop = props.find((/** @type {any} */ p) => p.name === name);
@@ -329,13 +330,13 @@ function headingFor(component, options) {
 
   const properties = [];
   const uid = textOf(props, 'UID');
-  if (uid) properties.push(['UID', uid]);
-  const location = textOf(props, 'LOCATION').replace(/\s*\n\s*/g, ', ');
+  if (uid) properties.push(['UID', propertyText(uid)]);
+  const location = propertyText(textOf(props, 'LOCATION').replace(/\s*\n\s*/g, ', '));
   if (location) properties.push(['LOCATION', location]);
   const url = textOf(props, 'URL');
-  if (url) properties.push(['URL', url]);
+  if (url) properties.push(['URL', propertyText(url)]);
   if (/^CANCELLED$/i.test(textOf(props, 'STATUS'))) properties.push(['STATUS', 'CANCELLED']);
-  if (kept.RRULE) properties.push(['RRULE', kept.RRULE]);
+  if (kept.RRULE) properties.push(['RRULE', propertyText(kept.RRULE)]);
 
   const handled = new Set(['SUMMARY', 'DTSTART', 'DTEND', 'DUE', 'DURATION', 'RRULE', 'UID', 'LOCATION', 'URL', 'STATUS', 'CATEGORIES', 'DESCRIPTION', 'COMPLETED']);
   if (onUnmappedProperty) {
@@ -348,7 +349,7 @@ function headingFor(component, options) {
   const tags = tagsFrom(props);
   const tagText = tags.length ? ` :${tags.join(':')}:` : '';
   const description = textOf(props, 'DESCRIPTION');
-  const body = description ? description.split('\n').map((line) => (line.trim() ? `  ${line.replace(/\s+$/, '')}` : '')) : [];
+  const body = description ? bodyLines(description).map((line) => (line.trim() ? `  ${line.replace(/\s+$/, '')}` : '')) : [];
   while (body.length && body[body.length - 1] === '') body.pop();
 
   const lines = [];

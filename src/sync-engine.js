@@ -65,18 +65,33 @@ async function setSyncMeta(kvAdapter, documentId, meta) {
 /** @typedef {{ documentId: string, kvAdapter: KvAdapter, diskAdapter: DiskAdapter, resolveConflict?: ConflictResolver | Function }} SyncArgs */
 
 /**
- * A minimal, dependency-free hash for conflict detection — this only needs
- * to detect "did the content change since we last synced", not resist
- * tampering, so a fast non-cryptographic hash is the right tool.
+ * A dependency-free 64-bit hash for conflict detection: "did the content change since we last synced". It is the FNV-1a hash
+ * the app always used (the first 8 hex digits, so values saved earlier still match) followed by a second, independently
+ * seeded 32-bit hash, so two different texts almost never share a value. It is not meant to resist tampering.
  * @param {string} content
  */
 function contentHash(content) {
-  let h = 0x811c9dc5;
+  let a = 0x811c9dc5;
+  let b = 0x9747b28c;
   for (let i = 0; i < content.length; i++) {
-    h ^= content.charCodeAt(i);
-    h = (h * 0x01000193) >>> 0;
+    const c = content.charCodeAt(i);
+    a ^= c;
+    a = (a * 0x01000193) >>> 0; // exactly as the 32-bit hash always computed it, so earlier values still match
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+    b = (b ^ (b >>> 15)) >>> 0;
   }
-  return h.toString(16).padStart(8, '0');
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
+}
+
+/** Whether two content hashes name the same text. A hash saved before the hash grew to 16 digits has 8, and matches when it is
+ * the start of the longer one.
+ * @param {string | null | undefined} x
+ * @param {string | null | undefined} y */
+function sameHash(x, y) {
+  if (x == null || y == null) return x === y;
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length === 8 && long.length === 16 && long.startsWith(short);
 }
 
 const SYNC_RESULT = {
@@ -146,7 +161,7 @@ async function syncOnce({ documentId, kvAdapter, diskAdapter, resolveConflict })
   // the text last synced, when kept, decides exactly; otherwise the hash does
   const lastSyncedText = meta && typeof meta.baseContent === 'string' ? meta.baseContent : null;
   const diskChangedSinceSync =
-    diskEntry !== null && (lastSyncedText !== null ? diskEntry.content !== lastSyncedText : !meta || meta.lastSyncedHash !== diskEntry.hash);
+    diskEntry !== null && (lastSyncedText !== null ? diskEntry.content !== lastSyncedText : !meta || !sameHash(meta.lastSyncedHash, diskEntry.hash));
 
   if (diskChangedSinceSync) {
     if (!resolveConflict) {
@@ -229,11 +244,12 @@ function matchesExpected(expect, current) {
   if (!expect) return true;
   if (!expect.exists) return current === null;
   if (current === null) return false;
-  return current.hash === expect.hash || contentHash(toLf(current.content)) === expect.hash;
+  return sameHash(current.hash, expect.hash) || sameHash(contentHash(toLf(current.content)), expect.hash);
 }
 
 export {
   matchesExpected,
+  sameHash,
   SYNC_RESULT,
   contentHash,
   syncDocument,

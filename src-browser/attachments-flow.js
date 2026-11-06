@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
-import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink } from '../src/attach.js';
+import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink, hasUnsafeAttachmentId, isSafeAttachmentId, isSafeAttachmentName } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
@@ -172,11 +172,22 @@ export async function attachFromUrl(heading) {
 async function listFolder(dir) {
   try {
     const entries = await activeDiskAdapter().list(dir);
-    return entries.filter((/** @type {any} */ entry) => entry.type === 'file').map((/** @type {any} */ entry) => entry.name).sort((/** @type {any} */ a, /** @type {any} */ b) => a.localeCompare(b));
+    return entries.filter((/** @type {any} */ entry) => entry.type === 'file' && isSafeAttachmentName(entry.name) && !String(entry.name).includes('/')).map((/** @type {any} */ entry) => entry.name).sort((/** @type {any} */ a, /** @type {any} */ b) => a.localeCompare(b));
   } catch {
     return null;
   }
 }
+
+/** Why an attachment cannot be resolved, for the status line: a name or ID that would leave the attachment folder, or no folder at all.
+ * @param {Heading | null} heading
+ * @param {string} filename */
+function unresolvedAttachmentMessage(heading, filename) {
+  if (!isSafeAttachmentName(filename)) return `"${filename}" is not a valid attachment name.`;
+  if (heading && hasUnsafeAttachmentId(heading)) return unsafeIdMessage();
+  return "Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.";
+}
+
+const unsafeIdMessage = () => 'This heading\u2019s :ID: contains a path separator or ".." and cannot name an attachment folder.';
 
 /** @param {string} what */
 const unavailable = (what) =>
@@ -224,6 +235,11 @@ export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
     return null;
   }
   if (tooBig && tooBig.warn && !(await confirmDialog(tooBig.warn, { confirmLabel: 'Attach', danger: false }))) return null;
+  if (hasUnsafeAttachmentId(heading)) {
+    setStatus(unsafeIdMessage());
+    render();
+    return null;
+  }
   setStatus('Uploading attachment\u2026');
   render();
 
@@ -305,7 +321,7 @@ export async function resolveAndReadAttachment(target, heading) {
   }
   const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, target, S.state.documentId, inherit());
   if (!resolvedPath) {
-    setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
+    setStatus(unresolvedAttachmentMessage(heading, filename));
     render();
     return null;
   }
@@ -403,7 +419,7 @@ export async function deleteAttachment(heading, filename) {
   }
   const resolvedPath = resolveAttachmentTarget(S.state.doc, heading, `attachment:${filename}`, S.state.documentId, inherit());
   if (!resolvedPath) {
-    setStatus("Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.");
+    setStatus(unresolvedAttachmentMessage(heading, filename));
     render();
     return;
   }
@@ -587,6 +603,11 @@ export async function unsetAttachmentDirectory(heading) {
         text: 'Move them to the ID folder',
         onClick: async () => {
           let id = getProperty(heading, 'ID');
+          if (id && !isSafeAttachmentId(id)) {
+            setStatus(unsafeIdMessage());
+            render();
+            return;
+          }
           if (!id) {
             id = generateAttachmentId();
             setProperty(heading, 'ID', id);
@@ -667,6 +688,11 @@ async function transferAttachments(heading, fromDir, names, method) {
   const move = method === 'move';
   const target = await pickHeading(`${move ? 'Move' : 'Copy'} ${names.length} attachment${names.length === 1 ? '' : 's'} to which heading?`, heading);
   if (!target) return;
+  if (hasUnsafeAttachmentId(target)) {
+    setStatus(unsafeIdMessage());
+    render();
+    return;
+  }
   let toDir = ownAttachmentDirectory(target, S.state.documentId);
   const createdId = !toDir;
   if (!toDir) {

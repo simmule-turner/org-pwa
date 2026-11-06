@@ -6,6 +6,7 @@
 // up in this folder. adapters.js falls back to it, so everything that reads or writes a local file gets this at once.
 import { S } from './app-state.js';
 import { platform } from './platform.js';
+import { decodeUtf8Strict } from '../src/utf8.js';
 
 /** Whether the platform keeps such a folder and one has been chosen. */
 export function folderAvailable() {
@@ -21,12 +22,13 @@ function textToBase64(text) {
   return btoa(binary);
 }
 
-/** @param {string} base64 */
-function base64ToText(base64) {
+/** @param {string} base64
+ * @param {string} [name] */
+function base64ToText(base64, name) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new TextDecoder('utf-8').decode(bytes);
+  return decodeUtf8Strict(bytes, name);
 }
 
 /** `{ content, hash }` for the file at `path` in the folder, or null if it is not there. (The adapter wrapper in adapters.js
@@ -34,7 +36,7 @@ function base64ToText(base64) {
  *  derives the real hash and normalizes line endings, so the hash is left empty here.) */
 export async function readFolderText(path) {
   const result = await platform.attachments.adapter.readBinary(path);
-  return result ? { content: base64ToText(result.base64), hash: '' } : null;
+  return result ? { content: base64ToText(result.base64, path), hash: '' } : null;
 }
 
 /**

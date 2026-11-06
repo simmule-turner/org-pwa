@@ -988,6 +988,8 @@ Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the I
 
 *Links in the body*: Settings → Attachments chooses whether attaching also adds an ~[[attachment:name]]~ link: for pictures, audio and video (default), always, or never. A link to a picture shows it inline, audio gets a play button, and tapping a link does what *Open* does.
 
+*Names*: an ~:ID:~ or an ~attachment:~ name stays inside the heading's folder, so one with ~..~, a backslash or a control character is refused (a name may include sub-folders such as ~attachment:scans/a.png~). Attaching a file named ~..~, ~.git~ or ~CON~ saves it under a safe name.
+
 *Requirements*: GitHub or WebDAV must be connected; the [[#android-app][Android app]] keeps a local file's attachments in the org-pwa folder you choose once. A file over 25MB asks first, and GitHub refuses over 95MB (use WebDAV for long videos).
 
 -----
@@ -1608,6 +1610,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 - *Revert Buffer* (palette, ~revert-buffer~) reads the open file again and drops the buffer's unsaved changes, after asking if there are any. *Undo* brings them back.
 - *Capture, Refile, Archive and Replace edit buffers, not files*: an entry sent to another file goes into that file's tab (opened in the background if needed), modified until you save. Nothing is written behind your back, and modified buffers are kept on the device.
 - *Line endings* are kept: a CRLF file is saved back with CRLF.
+- *Encoding*: files are read as UTF-8. A file that is not valid UTF-8 (a Latin-1 file, say) is not opened, because saving it would damage it; convert it first.
 - *Save As* may pick another backend; an existing file asks before it is replaced, and again if someone else saved it meanwhile.
 - A file with unsaved local edits asks to *resume* or *discard* them when opened. *Settings → Pending Local Changes* lists every file with unsynced edits.
 - *Conflicts*: if the stored version changed since the last sync, Save merges the two where it safely can and asks only about the parts that clash (see [[#offline-behavior-and-sync][Offline behavior and sync]]).
@@ -2153,7 +2156,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Babel*: ~emacs-lisp~ and ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
 
-*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use.
+*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. A web address is fetched only after you allow it: *Load once*, *Always load from this address* or *Never* (the same goes for a ~#+BIBLIOGRAPHY:~ address).
 
 *Citations* (see [[#citations][Citations]]): LaTeX export honors ~natbib~ and ~biblatex~; every other export uses the ~basic~ processor, so ~csl~ is exported as ~basic~ and ~note~ styles print as ~text~. Set the processor per file with ~#+CITE_EXPORT:~.
 

@@ -16,6 +16,7 @@
  */
 
 import { contentHash } from '../src/sync-engine.js';
+import { decodeUtf8Strict } from '../src/utf8.js';
 
 /** @param {string} fileId */
 function handleKey(fileId) {
@@ -116,7 +117,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
         throw new Error(`Permission denied reading "${documentId}"`);
       }
       const file = await handle.getFile();
-      const content = await file.text();
+      const content = decodeUtf8Strict(await file.arrayBuffer(), documentId);
       return { content, hash: contentHash(content) };
     },
 

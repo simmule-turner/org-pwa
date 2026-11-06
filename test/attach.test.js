@@ -103,8 +103,8 @@ test('formatAttachmentLink produces an attachment: link WITH the filename as its
 
 // ---- sanitizeAttachmentFilename ---------------------------------------------------
 
-test('sanitizeAttachmentFilename replaces the path separator and keeps every other character', () => {
-  assert.equal(sanitizeAttachmentFilename('my/photo\\file:name?.jpg'), 'my_photo\\file:name?.jpg'); // only the path separator; Emacs keeps the rest of a name as it is
+test('sanitizeAttachmentFilename replaces path separators and keeps every other character', () => {
+  assert.equal(sanitizeAttachmentFilename('my/photo\\file:name?.jpg'), 'my_photo_file:name?.jpg'); // slash and backslash; Emacs keeps the rest of a name as it is
 });
 
 test('sanitizeAttachmentFilename trims surrounding whitespace', () => {

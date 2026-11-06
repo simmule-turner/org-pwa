@@ -6,16 +6,23 @@ import { cacheSetupFile, missingSetupFiles, refreshSetupKeywords, setupFilePaths
 import { resolveImagePath } from '../src/link-resolve.js';
 import { diskAdapterFor } from './external-sync.js';
 import { kv } from './singletons.js';
+import { mayFetchRemote } from './remote-gate.js';
+import { setStatus } from './editing.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 
 const kvKey = (/** @type {string} */ path) => 'setupfile:' + path;
 
 /** The text of a file the document refers to: from where the document lives, or a URL; the copy kept last time when that fails.
- * @param {string} path @param {string} documentId @param {string | null} storageKind @param {(path: string) => string} [keptAs]
+ * A web address is fetched only when the person has allowed that address (the first time, they are asked).
+ * @param {string} path @param {string} documentId @param {string | null} storageKind @param {(path: string) => string} [keptAs] @param {string} [what]
  * @returns {Promise<string | null>} */
-export async function fetchOne(path, documentId, storageKind, keptAs = kvKey) {
+export async function fetchOne(path, documentId, storageKind, keptAs = kvKey, what = 'a setup file') {
   try {
     if (/^https?:\/\//i.test(path)) {
+      if (!(await mayFetchRemote(path, what))) {
+        setStatus(`Not loaded: ${path} (not allowed to fetch it)`);
+        return null;
+      }
       const res = await fetch(path);
       if (res.ok) return await res.text();
     } else {

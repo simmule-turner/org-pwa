@@ -316,6 +316,10 @@ export async function openFileLink(resolution, containingHeading = null) {
   };
 
   const resolvedPath = resolveImagePath(resolution.path, S.state.documentId);
+  if (!resolvedPath) {
+    setStatus(`Can't open "${resolution.path}": the path leaves the folder this file is stored in.`);
+    return;
+  }
   await openRemotePath(resolvedPath, kind, adapter, label);
 
   // openRemotePath catches and reports its own errors via setStatus

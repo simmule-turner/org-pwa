@@ -66,7 +66,7 @@ export function renderImageNode(node, heading = null) {
       // ancestor chain carrying an :ID: at all -- nothing to resolve
       // against (a hand-written or otherwise-orphaned attachment:
       // link, not one this app's own Attach action produced).
-      return imagePlaceholder(node.target, 'no :ID: found to resolve this attachment against');
+      return imagePlaceholder(node.target, isAttachment ? 'no :ID: found to resolve this attachment against, or the name is not valid' : 'the path leaves the folder this file is stored in');
     }
     const cacheKey = S.state.storageKind + ':' + resolvedPath;
 

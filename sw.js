@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v647';
+const CACHE_NAME = 'org-pwa-shell-v649';
 
 const SHELL_FILES = [
   './',
@@ -47,6 +47,11 @@ const SHELL_FILES = [
   './src/calendar-lisp.js',
   './src/babel-elisp.js',
   './src/babel-ref.js',
+  './src/babel-trust.js',
+  './src/regex-guard.js',
+  './src/storage-path.js',
+  './src/utf8.js',
+  './src/remote-resources.js',
   './src/lisp-init.js',
   './src/elisp.js',
   './src/elisp-data.js',
@@ -202,6 +207,7 @@ const SHELL_FILES = [
   './src/footnotes.js',
   './src-browser/bibliography.js',
   './src-browser/footnotes-ui.js',
+  './src-browser/remote-gate.js',
   './src-browser/setupfile.js',
   './src/export-links.js',
   './src/export-odt.js',
@@ -231,6 +237,7 @@ const SHELL_FILES = [
   './src/export-icalendar.js',
   './src/export-vcard.js',
   './src/import-icalendar.js',
+  './src/import-safe.js',
   './src/import-vcard.js',
   './src/undo-history.js',
   './src/secret-box.js',

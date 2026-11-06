@@ -24,6 +24,7 @@ function textResponse(status, body, headers = {}) {
     status,
     ok: status >= 200 && status < 300,
     text: async () => body,
+    arrayBuffer: async () => new TextEncoder().encode(body).buffer,
     headers: { get: (name) => headerMap.get(name) || null },
   };
 }

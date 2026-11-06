@@ -79,7 +79,7 @@ function dataUrlBytes(url) {
  *  done. */
 export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
-  const baseName = rawName.replace(/[\\/:*?"<>|]/g, '_').trim() || 'export';
+  const baseName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').replace(/[. ]+$/, '').trim() || 'export';
   if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));

@@ -32,6 +32,30 @@ function generateAttachmentId() {
   return crypto.randomUUID();
 }
 
+/** Whether `id` can name an attachment folder: no "/", "\\", ".." or control characters, so a heading's ID can never make the folder
+ * climb out of the data folder. Org itself uses the ID as written; the app refuses the ones that are not plain names.
+ * @param {string | undefined | null} id */
+function isSafeAttachmentId(id) {
+  const text = String(id || '').trim();
+  return !/[/\\\u0000-\u001f\u007f]/.test(text) && !text.includes('..');
+}
+
+/** Whether a heading has an ID that cannot name an attachment folder (see isSafeAttachmentId).
+ * @param {Heading} heading */
+function hasUnsafeAttachmentId(heading) {
+  const id = getProperty(heading, 'ID');
+  return !!id && !isSafeAttachmentId(id);
+}
+
+/** Whether `name` (the part after `attachment:`, or a file name) stays inside the attachment folder: parts separated by "/" that
+ * are not empty, "." or "..", and no backslash or control character.
+ * @param {string | undefined | null} name */
+function isSafeAttachmentName(name) {
+  const text = String(name || '');
+  if (!text || /[\\\u0000-\u001f\u007f]/.test(text)) return false;
+  return text.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
+}
+
 /** Splits `id` into { prefix, rest } -- the first 2 characters as a
  *  short directory prefix, everything else as the subdirectory under
  *  it, inspired by real org-attach's own id-to-path convention:
@@ -44,6 +68,7 @@ function generateAttachmentId() {
  * @param {string} id
  *  rather than silently producing a nonsensical empty `rest`. */
 function splitAttachmentId(id) {
+  if (!isSafeAttachmentId(id)) throw new Error('splitAttachmentId: id may not contain a path separator, "..", or control characters');
   const trimmed = String(id || '').trim();
   if (trimmed.length < 3) throw new Error('splitAttachmentId: id must be at least 3 characters');
   return { prefix: trimmed.slice(0, 2), rest: trimmed.slice(2) };
@@ -96,6 +121,7 @@ function attachmentDirFromProperty(value, documentId) {
  * @param {string} documentId
  *  inherited here; link-resolve.js walks up the ancestors). */
 function ownAttachmentDirectory(heading, documentId) {
+  if (hasUnsafeAttachmentId(heading)) return null;
   const dirProperty = getProperty(heading, 'DIR');
   if (dirProperty) {
     const fromProperty = attachmentDirFromProperty(dirProperty, documentId);
@@ -210,9 +236,10 @@ function formatAttachmentLink(filename) {
  * @param {string} name
  *  name), rather than producing an empty path segment. */
 function sanitizeAttachmentFilename(name) {
-  const cleaned = String(name || '')
-    .replace(/[/\0]/g, '_')
-    .trim();
+  let cleaned = String(name || '')
+    .replace(/[/\\\u0000-\u001f\u007f]/g, '_')
+    .replace(/^[\s.]+|[\s.]+$/g, '');
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i.test(cleaned)) cleaned = `_${cleaned}`; // a reserved device name on Windows
   return cleaned || 'attachment';
 }
 
@@ -449,6 +476,9 @@ export {
   attachmentPath,
   formatAttachmentLink,
   sanitizeAttachmentFilename,
+  isSafeAttachmentId,
+  isSafeAttachmentName,
+  hasUnsafeAttachmentId,
   listAttachments,
   removeAttachmentLink,
   disambiguateAttachmentFilename,

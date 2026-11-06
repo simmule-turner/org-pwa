@@ -7,7 +7,7 @@ import { getBufferReadOnly, getCycleOpenArchivedTrees, parseLocalVariables } fro
 import { planConflict, resolveSegments } from '../src/merge3.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
-import { getSyncMeta, setSyncMeta } from '../src/sync-engine.js';
+import { getSyncMeta, sameHash, setSyncMeta } from '../src/sync-engine.js';
 import { pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
@@ -74,7 +74,7 @@ export async function checkForExternalChange() {
     // still ask.
     const fresh = await activeDiskAdapter().read(S.state.documentId, { prompt: false });
     if (!fresh) return;
-    if (fresh.hash !== meta.lastSyncedHash && fresh.hash !== S.externalChangeDismissedHash) {
+    if (!sameHash(fresh.hash, meta.lastSyncedHash) && fresh.hash !== S.externalChangeDismissedHash) {
       showExternalChangeBanner(fresh.hash);
     }
   } catch {

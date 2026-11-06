@@ -37,7 +37,7 @@
  */
 
 import { findAncestorPath, getProperty } from './archive-model.js';
-import { ownAttachmentDirectory } from './attach.js';
+import { isSafeAttachmentName, ownAttachmentDirectory } from './attach.js';
 import { findDedicatedTargetHeading } from './targets.js';
 
 // Org's http:, https: and ftp: links, with or without the slashes; any other scheme:// is a text search, as in Org
@@ -109,11 +109,27 @@ export function fileLinkScheme(target) {
 export function resolveImagePath(target, currentDocumentId) {
   let path = target.replace(/^(file:|github:|webdav:|local:)/i, '');
   path = path.replace(/^\.\//, '');
-  if (path.startsWith('/')) return path.slice(1);
-  if (path.includes('/') || !currentDocumentId) return path;
+  if (path.startsWith('/')) return normalizeStoragePath(path.slice(1));
+  if (path.includes('/') || !currentDocumentId) return normalizeStoragePath(path);
   const lastSlash = currentDocumentId.lastIndexOf('/');
   const dir = lastSlash === -1 ? '' : currentDocumentId.slice(0, lastSlash + 1);
-  return dir + path;
+  return normalizeStoragePath(dir + path);
+}
+
+/** A storage path with its "." and ".." parts worked out, so a link cannot climb above the root of the repo or folder. A path that
+ * would climb out of the root, or that has a backslash or control character, gives "" (nothing to open).
+ * @param {string} path */
+export function normalizeStoragePath(path) {
+  if (/[\\\u0000-\u001f\u007f]/.test(path)) return '';
+  /** @type {string[]} */ const out = [];
+  for (const part of path.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') {
+      if (!out.length) return '';
+      out.pop();
+    } else out.push(part);
+  }
+  return out.join('/');
 }
 
 /**
@@ -150,6 +166,7 @@ export function resolveImagePath(target, currentDocumentId) {
  */
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId, inherit = false) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
+  if (!isSafeAttachmentName(filename)) return null; // a name that climbs out of the folder, or has a backslash or control character
   const dir = resolveAttachmentDirectory(doc, heading, documentId, inherit);
   return dir ? `${dir}/${filename}` : null;
 }

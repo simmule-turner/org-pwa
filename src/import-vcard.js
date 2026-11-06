@@ -1,4 +1,5 @@
 // @ts-check
+import { oneLine, propertyText, blockLines } from './import-safe.js';
 /** @typedef {{ value: string, type?: string | null, label: string | null, raw?: string | null }} ContactEntry */
 /** @typedef {{ fn: string | null, n: string | null, emails: ContactEntry[], tels: ContactEntry[], adrs: ContactEntry[], urls: ContactEntry[], nickname: string | null, note: string | null, bday: string | null, anniversary: string | null, spouse: string | null, org: string | null, jobTitle: string | null, photo: string | null, categories: string[], categoriesRaw: string | null }} Contact */
 /** Parses vCard 3.0/4.0 text (one or more BEGIN:VCARD...END:VCARD
@@ -502,7 +503,7 @@ function normalizeBday(raw) {
  * @param {string} text
  *  heading's own title. */
 function forHeadingTitle(text) {
-  return text.replace(/\r?\n/g, ' ').trim();
+  return oneLine(text);
 }
 
 /** THE FIX: the same newline problem forHeadingTitle solves for
@@ -521,7 +522,7 @@ function forHeadingTitle(text) {
  * @param {string} text
  *  components) reads as an unbroken run-on otherwise. */
 function forPropertyValue(text) {
-  return text.replace(/\r?\n/g, ' ; ').trim();
+  return propertyText(text);
 }
 
 const TEL_TYPE_TO_TREE_FIELDTYPE = { WORK: 'phone-work', HOME: 'phone-home', CELL: 'cell' };
@@ -617,7 +618,7 @@ function buildFlatOrgFromContact(contact) {
     propertyLines.push(`:URL: ${contact.urls[0].value}`);
     if (contact.urls[0].label) propertyLines.push(`:URL_LABEL: ${forPropertyValue(contact.urls[0].label)}`);
   }
-  if (contact.photo) propertyLines.push(`:PHOTO: ${contact.photo}`);
+  if (contact.photo) propertyLines.push(`:PHOTO: ${forPropertyValue(contact.photo)}`);
   if (contact.note) propertyLines.push(`:NOTE: ${forPropertyValue(contact.note)}`);
   if (contact.bday) {
     const normalized = normalizeBday(contact.bday);
@@ -712,12 +713,12 @@ function buildTreeOrgFromContact(contact) {
     }
     if (forceBlock || value.includes('\n')) {
       const label = /** @type {Record<string, string>} */ (FIELDTYPE_LABELS)[fieldType] || fieldType;
-      lines.push(`** ${label}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...value.split('\n'), '#+END_VERSE');
+      lines.push(`** ${label}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...blockLines(value), '#+END_VERSE');
     } else if (extraBlockText) {
       // Both a real, single-line title AND a separate body block --
       // an address with its own structured value as well as a
       // distinct label, neither one discarded for the other.
-      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...extraBlockText.split('\n'), '#+END_VERSE');
+      lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', ...propLines, ':END:', '#+BEGIN_VERSE', ...blockLines(extraBlockText), '#+END_VERSE');
     } else {
       lines.push(`** ${forHeadingTitle(value)}`, ':PROPERTIES:', ...propLines, ':END:');
     }
@@ -733,7 +734,7 @@ function buildTreeOrgFromContact(contact) {
   for (const url of contact.urls) field(url.value, 'url', false, null, { LABEL: url.label });
   if (contact.photo) {
     if (contact.photo.startsWith('data:')) {
-      lines.push('** Photo', ':PROPERTIES:', ':FIELDTYPE: photo', `:DATA: ${contact.photo}`, ':END:');
+      lines.push('** Photo', ':PROPERTIES:', ':FIELDTYPE: photo', `:DATA: ${forPropertyValue(contact.photo)}`, ':END:');
     } else {
       field(contact.photo, 'photo');
     }

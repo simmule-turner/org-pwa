@@ -1,6 +1,8 @@
 // @ts-check
 /** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
 import { writeConflict } from '../src/sync-engine.js';
+import { assertSafeStoragePath } from '../src/storage-path.js';
+import { decodeUtf8Strict } from '../src/utf8.js';
 /**
  * GitHub-backed storage adapter, using GitHub's REST Contents API directly
  * from the browser — no server component. This is exactly how GitHub's API
@@ -41,12 +43,13 @@ function utf8ToBase64(str) {
   return btoa(binary);
 }
 
-/** @param {string} base64 */
-function base64ToUtf8(base64) {
+/** @param {string} base64
+ * @param {string} [name]  the file's name, for the error when it is not valid UTF-8 */
+function base64ToUtf8(base64, name) {
   const binary = atob(base64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new TextDecoder('utf-8').decode(bytes);
+  return decodeUtf8Strict(bytes, name);
 }
 
 /** URL-encodes each path segment separately, preserving the "/"
@@ -71,6 +74,7 @@ function encodeGithubPath(path) {
  * @param {string} path
  */
 function contentsUrl(config, path) {
+  assertSafeStoragePath(path);
   return `${API_BASE}/repos/${config.owner}/${config.repo}/contents/${encodeGithubPath(path)}`;
 }
 
@@ -160,7 +164,7 @@ export function createGithubAdapter(getConfig) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
     const content = body.encoding === 'none' ? await fetchBlobContent(config, body.sha) : body.content;
-    return { content: base64ToUtf8(content), hash: body.sha };
+    return { content: base64ToUtf8(content, fileId), hash: body.sha };
   }
 
   /** Reads `fileId` as binary content (base64-encoded), for an image or
@@ -295,7 +299,7 @@ export function createGithubAdapter(getConfig) {
     const body = await res.json();
     const entries = Array.isArray(body) ? body : [body]; // a single file at this exact path is a valid (if unusual) thing to "list"
     return entries
-      .filter((e) => e.type === 'file' || e.type === 'dir')
+      .filter((e) => (e.type === 'file' || e.type === 'dir') && typeof e.name === 'string' && e.name !== '' && e.name !== '.' && e.name !== '..' && !/[/\\\u0000-\u001f\u007f]/.test(e.name)) // a name from the API cannot climb out of the folder
       .map((e) => ({ name: e.name, path: e.path, type: e.type }))
       .sort((a, b) => {
         if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;

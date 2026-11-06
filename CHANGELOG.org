@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v649 — Safer imports, attachments and sync
+A second security review closed the ways a shared file could reach outside itself. Imported contacts and calendar events can no longer plant source blocks or headings. Attachment IDs, attachment link names and =..= in file links can no longer climb out of the attachment folder or the configured repository or server folder. Remote =#+SETUPFILE= and =#+BIBLIOGRAPHY= files ask before loading. A file that is not valid UTF-8 is refused instead of being saved back damaged, and sync conflicts use a stronger hash. Tangle and download names reject control characters and Windows reserved names.
+Verified: new tests for each case and the related attachment, conflict and WebDAV checks.
+
+* v648 — Safer code blocks
+A security review found ways a shared document could freeze or crash the tab once you allow its Emacs Lisp to run. A regexp that backtracks without end now stops with Emacs's "Stack overflow in regexp matcher", huge allocations such as =make-list= signal "Memory exhausted", and a run that goes past five seconds stops with the loop message. Your answer to "Run code?" is now tied to the document's code, so if a synced file's code changes you are asked again; each saved document asks once more after this update.
+Verified: new tests for each case, and the Lisp and JavaScript block checks.
+
 * v647 — Lisp strings have identity
 In the Emacs Lisp interpreter two separately made strings that look alike are no longer =eq= or =eql=, while the same string is, and =equal= still compares text, as in Emacs. This fixes =cl-pushnew=, =memq=, =assq=, =delq= and hash lookups on strings, and =:test= is honored by =cl-pushnew=, =cl-member= and =cl-remove-duplicates=.
 Verified: about 50 new string-identity comparisons against Emacs 29.3 and the Lisp checks.

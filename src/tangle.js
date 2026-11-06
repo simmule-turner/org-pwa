@@ -126,9 +126,15 @@ export function interpretFileMode(value) {
   return null;
 }
 
+/** Whether a path segment cannot be a file name everywhere: control characters, a trailing dot or space, or a name Windows reserves (CON, NUL, COM1 ...).
+ * @param {string} segment */
+function badSegment(segment) {
+  return /[\u0000-\u001f\u007f]/.test(segment) || (/[. ]$/.test(segment) && segment !== '.') || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(segment);
+}
+
 /** @param {string} path */
 function checkTargetPath(path) {
-  if (!path || path.startsWith('/') || /^[A-Za-z]:/.test(path) || path.startsWith('~') || path.split('/').includes('..') || path.includes('\\')) {
+  if (!path || path.startsWith('/') || /^[A-Za-z]:/.test(path) || path.startsWith('~') || path.split('/').includes('..') || path.includes('\\') || path.split('/').some((part) => badSegment(part))) {
     throw new Error(`Cannot tangle to "${path}": a path must be relative and stay inside the folder (no /, ~ or ..)`);
   }
   return path.replace(/\/{2,}/g, '/').replace(/^\.\//, '');

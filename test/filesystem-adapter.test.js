@@ -10,7 +10,7 @@ function fakeHandle({ state, answer = 'granted', content = '* One\n' }) {
     calls,
     queryPermission: async () => { calls.query += 1; return state.value; },
     requestPermission: async () => { calls.request += 1; state.value = answer; return answer; },
-    getFile: async () => ({ text: async () => content }),
+    getFile: async () => ({ text: async () => content, arrayBuffer: async () => new TextEncoder().encode(content).buffer }),
     createWritable: async () => ({ write: async (c) => calls.writes.push(c), close: async () => {} }),
   };
 }

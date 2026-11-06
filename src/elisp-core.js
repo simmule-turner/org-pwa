@@ -13,10 +13,18 @@ import {
 /** @typedef {import('./elisp-data.js').LObj} LObj */
 /** @typedef {import('./elisp-data.js').Scope} Scope */
 
+/** Counts one evaluation step; stops a runaway loop by its step count or, every 256 steps, by the clock. */
+export function tick() {
+  if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+  if ((state.steps & 255) === 0 && performance.now() > state.deadline) throw new BudgetExceeded('time limit');
+}
+
 /** The run state shared by the evaluator and the library. */
 export const state = {
   steps: 0,
   budget: 1_000_000,
+  /** When the run must stop (performance.now() milliseconds, a clock that only moves forward): the step budget counts Lisp steps, not the cost of one. */
+  deadline: Infinity,
   depth: 0,
   /** @type {string[][]} */
   outputs: [[]],
@@ -117,7 +125,7 @@ function resolveFn(fn, original) {
 export function evalForm(form, scope) {
   if (form instanceof Sym) return lookupVar(form, scope);
   if (!(form instanceof Cons)) return form;
-  if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+  tick();
   const limit = /** @type {number} */ (typeof maxDepthSym.value === 'number' ? maxDepthSym.value : 1600);
   if (++state.depth > limit) {
     const d = state.depth;
@@ -202,7 +210,7 @@ export function funcall(fn, args) {
   const f = resolveFn(fn, fn);
   if (f instanceof Special) throw signal('invalid-function', [f]);
   if (f instanceof Lambda && f.isMacro) throw signal('invalid-function', [f]);
-  if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+  tick();
   const limit = /** @type {number} */ (typeof maxDepthSym.value === 'number' ? maxDepthSym.value : 1600);
   if (++state.depth > limit) {
     const d = state.depth;
@@ -512,7 +520,7 @@ defSpecial('while', (args, scope) => {
   const test = car(args);
   const body = cdr(args);
   while (evalForm(test, scope) !== NIL) {
-    if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+    tick();
     progn(body, scope);
   }
   return NIL;
@@ -530,7 +538,7 @@ defSpecial('dolist', (args, scope) => {
   const old = name.value;
   try {
     while (p instanceof Cons) {
-      if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+      tick();
       if (dynamic) {
         name.value = p.car;
         progn(body, scope);
@@ -561,7 +569,7 @@ defSpecial('dotimes', (args, scope) => {
   const old = name.value;
   try {
     for (let i = 0; i < count; i++) {
-      if (++state.steps > state.budget) throw new BudgetExceeded('step limit');
+      tick();
       if (dynamic) {
         name.value = i;
         progn(body, scope);
@@ -930,10 +938,11 @@ for (const [name, min, max] of /** @type {[string, number, number][]} */ ([
 
 // ---- running ------------------------------------------------------------------------------------
 
-/** Resets the per-run state. @param {{ budget?: number }} [options] */
+/** Resets the per-run state. @param {{ budget?: number, timeLimitMs?: number }} [options] */
 export function resetRun(options = {}) {
   state.steps = 0;
   state.budget = options.budget ?? 1_000_000;
+  state.deadline = performance.now() + (options.timeLimitMs ?? 5000);
   state.depth = 0;
   state.outputs = [[]];
   state.messages = [];
