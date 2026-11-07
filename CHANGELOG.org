@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v651 — Faster big files
+Large documents open and edit much faster. Above 400 headings (Settings: windowing threshold, 0 turns it off) the outline and the Agenda draw only the rows near the screen, so a 1 MB file opens in about half a second instead of over two, and folding, editing and the Agenda no longer lag. Jumps to a heading scroll straight there. Typing in Text view on large files is also quicker. The browser's own Find sees only drawn rows; the app's search covers everything.
+Verified: new windowing tests and the fold, drag, search, undo, narrow, agenda, capture, clock, link, refile and Text view checks.
+
 * v650 — Size limits and safer saves
 Large files now ask first. An Org file over 500 KB asks "Open anyway?" and one over 2 MB is refused, an image over 3 MB shows a Load placeholder, an attachment over 20 MB asks and one over 95 MB is refused, and remote fetches time out after 30 seconds; Settings has a Size limits section for all of them. Two windows saving the same file now queue instead of overwriting each other. A file that is not valid UTF-8 opens read-only, with Convert to UTF-8 to fix it. Regexps that backtrack slowly on long text stop with an error.
 Verified: new tests for each case and the related open, conflict and attachment checks.

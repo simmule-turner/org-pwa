@@ -8226,6 +8226,197 @@ check('size limits: a large image shows a Load placeholder', async () => {
   await context.close();
 });
 
+
+// ---- row windowing -------------------------------------------------------
+
+/** A long outline: every tenth heading is a parent with nine children, each with a line of body text. */
+function longOutline(count) {
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(`${i % 10 === 0 ? '*' : '**'} Heading ${i}`, `Body text of heading ${i}.`);
+  return out.join('\n') + '\n';
+}
+
+check('windowing: a 5000-heading document opens quickly, scrolls, folds, searches, drags and undoes', async () => {
+  dav.reset({ 'long.org': longOutline(5000) });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  const opened = Date.now();
+  await openDav(page, 'long.org');
+  const openMs = Date.now() - opened;
+  const model = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const count = (list) => list.reduce((n, h) => n + 1 + count(h.children || []), 0);
+    return count(S.state.doc.children);
+  });
+  const drawn = () => page.locator('#outline .row').count();
+  const scrollTo = async (fraction) => {
+    await page.evaluate(async (f) => {
+      const { scrollContainer } = await import('/src-browser/chrome.js');
+      const el = scrollContainer();
+      el.scrollTop = f === 1 ? el.scrollHeight : f * el.scrollHeight;
+    }, fraction);
+    await page.waitForTimeout(250);
+  };
+  const firstTitle = () => page.evaluate(() => {
+    const top = document.getElementById('topBar').getBoundingClientRect().bottom;
+    for (const t of document.querySelectorAll('#outline .heading-title')) if (t.getBoundingClientRect().bottom > top) return t.textContent.trim();
+    return '';
+  });
+  expect((await model()) === 5000, `the model holds all 5000 headings: ${await model()}`);
+  const rows = await drawn();
+  expect(openMs < 15000, `opens in ${openMs} ms`);
+  expect(rows > 5 && rows < 300, `only the rows near the screen are drawn: ${rows}`);
+  expect((await firstTitle()) === 'Heading 0', `opens at the top: ${await firstTitle()}`);
+  expect((await page.locator('#outline [aria-hidden="true"][data-window-spacer]').count()) >= 1, 'spacers stand in for the rest, hidden from assistive technology');
+
+  // scrolling draws the rows that arrive and drops the ones that left; the count stays small
+  await scrollTo(0.5);
+  const mid = await firstTitle();
+  const midNumber = Number((mid.match(/Heading (\d+)/) || [])[1]);
+  expect(midNumber > 1500 && midNumber < 3500, `the middle of the document is drawn: ${mid}`);
+  expect((await drawn()) < 300, `still few rows: ${await drawn()}`);
+  // a click on a middle row focuses that very heading
+  await page.locator('#outline .heading-title', { hasText: new RegExp(`^\\s*${mid}\\s*$`) }).first().click();
+  await page.waitForTimeout(150);
+  const clicked = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.keyboardFocusedHeading ? S.keyboardFocusedHeading.title : ''; });
+  expect(clicked === mid, `clicking a middle row focuses that heading: ${clicked} vs ${mid}`);
+
+  // the end, then the start
+  await scrollTo(1);
+  const last = await page.evaluate(() => [...document.querySelectorAll('#outline .heading-title')].pop().textContent.trim());
+  expect(last === 'Heading 4999', `the last heading is drawn at the end: ${last}`);
+  await scrollTo(0);
+  expect((await firstTitle()) === 'Heading 0', `back at the top: ${await firstTitle()}`);
+
+  // focus stays on the same heading after scrolling away and back
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { setKeyboardFocusToHeading } = await import('/src-browser/keyboard-focus.js');
+    const { render } = await import('/src-browser/render.js');
+    setKeyboardFocusToHeading(S.state.doc.children[0].children[2]);
+    render();
+  });
+  await scrollTo(0.8);
+  expect((await page.locator('#keyboard-focused-row').count()) === 1, 'the focused heading stays drawn however far off screen');
+  await scrollTo(0);
+  expect((await page.locator('#keyboard-focused-row').innerText()).includes('Heading 3'), `and it is still Heading 3: ${await page.locator('#keyboard-focused-row').innerText()}`);
+
+  // search to heading 4000: the jump draws the row and puts it on screen
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { navigateToHeading } = await import('/src-browser/navigation.js');
+    const find = (list) => { for (const h of list) { if (h.title === 'Heading 4000') return h; const f = find(h.children || []); if (f) return f; } return null; };
+    navigateToHeading(find(S.state.doc.children));
+  });
+  await page.waitForTimeout(1500);
+  const landed = await page.locator('#outline .heading-title', { hasText: /^\s*Heading 4000\s*$/ }).first().evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= innerHeight;
+  });
+  const jd = await page.evaluate(async () => { const { scrollContainer } = await import('/src-browser/chrome.js'); const el = scrollContainer(); const t = [...document.querySelectorAll('#outline .heading-title')].map((x) => x.textContent.trim()); return { st: el.scrollTop, sh: el.scrollHeight, ih: innerHeight, first: t[0], last: t[t.length - 1], n: t.length }; });
+  expect(landed, `a jump to Heading 4000 leaves it on screen ${JSON.stringify(jd)}`);
+  expect((await drawn()) < 300, `still few rows after the jump: ${await drawn()}`);
+
+  // folding a parent far from the start
+  await scrollTo(0);
+  await page.locator('#outline .fold-btn').first().click();
+  await page.waitForTimeout(300);
+  const afterFold = await page.evaluate(async () => {
+    const { flattenVisibleRows } = await import('/src/outline-view-model.js');
+    const { S } = await import('/src-browser/app-state.js');
+    return flattenVisibleRows(S.state.doc).length;
+  });
+  expect(afterFold < 10000 - 8, `folding Heading 0 hides its children: ${afterFold} rows`);
+  await page.locator('#outline .fold-btn').first().click();
+  await page.waitForTimeout(300);
+
+  // move a heading down, then undo
+  const titles = () => page.evaluate(() => [...document.querySelectorAll('#outline .heading-title')].filter((t) => { const r = t.getBoundingClientRect(); return r.top > 150 && r.bottom < innerHeight; }).slice(0, 4).map((x) => x.textContent.trim()).join(','));
+  await scrollTo(0.5);
+  const before = await titles();
+  await page.evaluate(async () => {
+    const { setKeyboardFocusToHeading } = await import('/src-browser/keyboard-focus.js');
+    const { S } = await import('/src-browser/app-state.js');
+    const { render } = await import('/src-browser/render.js');
+    const top = [...document.querySelectorAll('#outline .heading-title')].find((t) => t.getBoundingClientRect().top > 150);
+    const title = top.textContent.trim();
+    const find = (list) => { for (const h of list) { if (h.title === title) return h; const f = find(h.children || []); if (f) return f; } return null; };
+    setKeyboardFocusToHeading(find(S.state.doc.children));
+    render();
+  });
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.waitForTimeout(300);
+  expect((await titles()) !== before, `moving a heading down changes the order: ${await titles()}`);
+  await page.evaluate(async () => { const { performUndo } = await import('/src-browser/editing.js'); performUndo(); });
+  await page.waitForTimeout(400);
+  expect((await titles()) === before, `undo puts it back: ${await titles()} vs ${before}`);
+  // a drag with the grip, in the middle of the document, lands in a gap between drawn rows
+  await scrollTo(0.5);
+  const dragTitles = await page.evaluate(() => [...document.querySelectorAll('#outline .row')].filter((r) => r.querySelector('.heading-grip') && r.getBoundingClientRect().top > 200).slice(0, 4).map((r) => r.querySelector('.heading-title').textContent.trim()));
+  const grip = await page.locator('#outline .row', { has: page.locator('.heading-title', { hasText: new RegExp(`^\\s*${dragTitles[0]}\\s*$`) }) }).first().locator('.heading-grip').boundingBox();
+  const target = await page.locator('#outline .heading-title', { hasText: new RegExp(`^\\s*${dragTitles[2]}\\s*$`) }).first().boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2 - 4, grip.y + 24, { steps: 3 });
+  await page.mouse.move(grip.x + grip.width / 2, target.y + target.height + 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const order = await page.evaluate(async (a) => {
+    const { S } = await import('/src-browser/app-state.js');
+    const all = []; const walk = (l) => l.forEach((h) => { all.push(h.title); walk(h.children || []); }); walk(S.state.doc.children);
+    return all.indexOf(a);
+  }, dragTitles[0]);
+  const originalIndex = Number(dragTitles[0].replace('Heading ', ''));
+  expect(order !== originalIndex, `dragging a heading in the middle of a windowed outline moves it: ${dragTitles[0]} is now at ${order}`);
+  await page.evaluate(async () => { const { performUndo } = await import('/src-browser/editing.js'); performUndo(); });
+  await page.waitForTimeout(300);
+  expect((await drawn()) < 300, `still few rows after the edit: ${await drawn()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('windowing: threshold 0 renders every row as before', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '#+STARTUP: showall\n' + longOutline(600) + '\n# Local Variables:\n# org-xx-windowing-threshold: 0\n# End:\n');
+  await page.waitForTimeout(500);
+  const state = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { flattenVisibleRows } = await import('/src/outline-view-model.js');
+    return { rows: document.getElementById('outline').children.length, model: flattenVisibleRows(S.state.doc).length, spacers: document.querySelectorAll('[data-window-spacer]').length, vars: S.state.localVariables['org-xx-windowing-threshold'] };
+  });
+  expect(state.vars === '0' && state.rows === state.model && state.spacers === 0, `every row is drawn and there are no spacers: ${JSON.stringify(state)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('windowing: a long agenda draws only the rows near the screen, and j/k walk through all of them', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const doc = Array.from({ length: 900 }, (_, i) => `* TODO Task ${i}\nSCHEDULED: <${today}>\n`).join('');
+  dav.reset({ 'busy.org': doc });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'busy.org');
+  await viewMenu(page, 'Agenda');
+  await page.locator('[data-agenda-row]').first().waitFor({ timeout: 15000 });
+  const drawn = () => page.locator('[data-agenda-row]').count();
+  expect((await drawn()) > 3 && (await drawn()) < 300, `only the rows near the screen are drawn: ${await drawn()}`);
+  expect((await page.locator('[data-window-spacer][aria-hidden="true"]').count()) >= 1, 'with hidden spacers for the rest');
+  await page.evaluate(async () => { const { scrollContainer } = await import('/src-browser/chrome.js'); const el = scrollContainer(); el.scrollTop = el.scrollHeight; });
+  await page.waitForTimeout(400);
+  const lastText = await page.locator('[data-agenda-row]').last().innerText();
+  expect(lastText.includes('Task 899') || lastText.includes('Task 8'), `the end of the list is drawn after scrolling: ${lastText.slice(0, 40)}`);
+  await page.evaluate(async () => { const { scrollContainer } = await import('/src-browser/chrome.js'); scrollContainer().scrollTop = 0; });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  for (let i = 0; i < 3; i++) await page.keyboard.press('n');
+  const focused = await page.locator('.agenda-row-focused').evaluateAll((rows) => rows.map((r) => r.innerText));
+  expect(focused.length === 1, `n focuses one row: ${JSON.stringify(focused)}`);
+  await page.keyboard.press('p');
+  const after = await page.locator('.agenda-row-focused').evaluateAll((rows) => rows.map((r) => r.innerText));
+  expect(after.length === 1 && after[0] !== focused[0], `p moves it back: ${JSON.stringify(after)}`);
+  expect((await drawn()) < 300, `still few rows: ${await drawn()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
 // SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long

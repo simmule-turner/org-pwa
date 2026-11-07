@@ -617,6 +617,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-text-line-numbers', label: 'Text view: show line numbers', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-wrap', label: 'Text view: wrap long lines', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
+  { key: 'org-xx-windowing-threshold', label: 'Long lists: draw only the rows on screen above this many rows (0 = always draw every row)', section: 'Editing', type: 'number', default: 400, min: 0, max: 100000, step: 50, helpAnchor: '#long-lists' },
   { key: 'org-xx-lisp-init', label: 'Lisp init (settings, holiday-* lists, capture templates)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
   { key: 'org-agenda-sorting-strategy', label: 'Agenda row order, per view (default: ((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep)))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
   { key: 'org-agenda-custom-commands', label: 'Agenda commands (saved queries: (("w" "Urgent work" tags "work+urgent")))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-commands' },

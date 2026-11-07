@@ -727,6 +727,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-text-line-numbers~ | ~t~ | (own) Whether the Text view shows line numbers |
 | ~org-xx-text-wrap~ | ~nil~ | (own) ~t~ wraps long lines in the Text view; ~nil~ scrolls them sideways |
+| ~org-xx-windowing-threshold~ | ~400~ | (own) Above this many rows an outline or agenda draws only the rows near the screen; ~0~ always draws every row |
 
 Any other ~# key: value~ line is parsed and ignored, so new variables can be added later without changing the format.
 
@@ -1937,6 +1938,13 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 *What this isn't*: the merge works on lines, not org structure. A subtree moved on one side and edited on the other is an ordinary clash, and two sides that each add the same new heading in different places keep both. A clean automatic merge is still worth a glance; that is what the undo step is for.
 
 -----
+
+*** Long lists
+:PROPERTIES:
+:CUSTOM_ID: long-lists
+:END:
+
+An outline or agenda with more than 400 rows draws only the rows near the screen, plus a couple of screens either side; the rest are blank space of the same height, so scrolling, folding, search, links, the back button, moving and dragging headings work as in a short file. ~org-xx-windowing-threshold~ (Settings → Editing) sets the row count, and ~0~ draws every row. Your browser's own Find (Ctrl-F) sees only the rows drawn, and so does Find on the Agenda; the app's Search looks through the whole file. Windowing is off while ~display-line-numbers-mode~ is on, and the Text view is not affected.
 
 *** Size limits
 :PROPERTIES:

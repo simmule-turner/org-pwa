@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v650';
+const CACHE_NAME = 'org-pwa-shell-v651';
 
 const SHELL_FILES = [
   './',
@@ -249,6 +249,7 @@ const SHELL_FILES = [
   './src/startup-config.js',
   './src/webm-track-detect.js',
   './src/scroll-util.js',
+  './src/window-math.js',
   './src/table-formula.js',
   './src/types.js',
   './src/settings-layout.js',
@@ -355,6 +356,7 @@ const SHELL_FILES = [
   './src-browser/tabs.js',
   './src-browser/todo-workflow.js',
   './src-browser/views.js',
+  './src-browser/windowing.js',
   './src-browser/weather-flow.js',
   './src-browser/appt-flow.js',
   './src-browser/field-groups.js',

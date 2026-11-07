@@ -17,6 +17,12 @@ const STEP_PX = 28; // how far sideways the finger moves per level -- wider than
 const EDGE_PX = 56;
 const LINE_COLOR = '#1f6feb';
 const rowInfo = new WeakMap(); // heading row element -> { node, row }
+const dragging = /** @type {{ node: Heading | null }} */ ({ node: null }); // the heading being dragged: a windowed outline keeps its row drawn
+
+/** The heading whose grip is being dragged, or null. */
+export function draggedHeading() {
+  return dragging.node;
+}
 
 const GRIP_SVG =
   '<svg aria-hidden="true" width="12" height="16" viewBox="0 0 14 18" fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></svg>';
@@ -59,6 +65,20 @@ function scrollParent(el) {
   return document.scrollingElement || document.documentElement;
 }
 
+/** The grip is built once and copied for each heading: a long outline makes hundreds of them on every render. */
+const gripProto = /** @type {{ el: HTMLButtonElement | null }} */ ({ el: null });
+function gripPrototype() {
+  if (gripProto.el) return gripProto.el;
+  const grip = document.createElement('button');
+  grip.type = 'button';
+  grip.className = 'heading-grip';
+  grip.innerHTML = GRIP_SVG;
+  grip.style.cssText =
+    'flex:none;width:20px;align-self:stretch;min-height:24px;padding:0;border:0;background:transparent;color:var(--fg);opacity:0.4;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;';
+  gripProto.el = grip;
+  return grip;
+}
+
 /**
  * Builds the grip for a heading row and registers the row as a drop target.
  * @param {HTMLDivElement} rowEl
@@ -67,13 +87,8 @@ function scrollParent(el) {
  */
 export function attachHeadingGrip(rowEl, row, side = 'right') {
   rowInfo.set(rowEl, { node: row.node, row });
-  const grip = document.createElement('button');
-  grip.type = 'button';
-  grip.className = 'heading-grip';
+  const grip = /** @type {HTMLButtonElement} */ (gripPrototype().cloneNode(true));
   grip.setAttribute('aria-label', `Drag ${row.node.title || 'heading'} to move it`);
-  grip.innerHTML = GRIP_SVG;
-  grip.style.cssText =
-    'flex:none;width:20px;align-self:stretch;min-height:24px;padding:0;border:0;background:transparent;color:var(--fg);opacity:0.4;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;';
   if (side === 'right') grip.style.margin = '0 2px 0 4px'; // clear of the screen edge, where a system back gesture starts
   grip.addEventListener('pointerdown', (e) => beginDrag(e, grip, rowEl, row.node, side));
   return grip;
@@ -130,6 +145,7 @@ function beginDrag(e, grip, rowEl, node, side) {
 
   function start() {
     started = true;
+    dragging.node = node;
     ghost = document.createElement('div');
     const below = countDescendants(node);
     ghost.textContent = (node.title || '(untitled)') + (below ? `  + ${below} below` : '');
@@ -254,6 +270,7 @@ function beginDrag(e, grip, rowEl, node, side) {
   }
 
   function cleanup() {
+    dragging.node = null;
     cancelAnimationFrame(scrollTimer);
     clearIndicator();
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);

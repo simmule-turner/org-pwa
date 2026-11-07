@@ -987,6 +987,13 @@ export function getTextWrap(vars) {
   return parseLispBoolean((vars || {})['org-xx-text-wrap'], false);
 }
 
+/** org-xx-windowing-threshold: this app's own variable. A long outline or agenda draws only the rows near the screen once it has more rows than this; 0 never does. Default 400.
+ * @param {LocalVars} vars */
+export function getWindowingThreshold(vars) {
+  const n = Math.round(parseLispNumber((vars || {})['org-xx-windowing-threshold'], 400));
+  return Math.max(0, Math.min(1000000, n));
+}
+
 /** org-xx-text-font-size: this app's own variable. The Text view's text size in pixels, 9 to 28. Default 13.
  * @param {LocalVars} vars */
 export function getTextFontSize(vars) {

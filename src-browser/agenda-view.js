@@ -38,6 +38,9 @@ import { seedAgendaDefaults } from './agenda-seed.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { ancestorTitles, appendTagChips } from './tag-display.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
+import { agendaRowIsFocused, markAgendaItemKey } from './agenda-row-focus.js';
+import { getWindowingThreshold } from '../src/local-variables.js';
+import { destroyWindow, mountWindow } from './windowing.js';
 import { platform } from './platform.js';
 import { openHabitHistory } from './habit-history.js';
 import { agendaSexpOptions } from './agenda-settings.js';
@@ -773,25 +776,38 @@ export function renderAgendaView() {
     return row;
   }
 
+  /** The rows in order, not yet built: each is made when it is drawn.
+   * @type {import('./windowing.js').WindowItem[]} */
+  const entries = [];
+  /** @param {object} key @param {() => HTMLElement} build @param {'heading' | 'body'} kind */
+  function add(key, build, kind) {
+    entries.push({ key, build, kind });
+  }
+  /** @param {import('../src/agenda.js').AgendaItem} item */
+  function addItem(item) {
+    markAgendaItemKey(item);
+    add(item, () => buildAgendaItemRow(item), 'body');
+  }
+
   /** @param {import('../src/agenda.js').AgendaItem[]} dayItems */
   function renderDayViewTimeline(dayItems) {
     const untimed = dayItems.filter((/** @type {any} */ i) => !i.hasTime);
     const timed = dayItems.filter((/** @type {any} */ i) => i.hasTime).sort((/** @type {any} */ a, /** @type {any} */ b) => a.date - b.date);
 
     for (const item of untimed) {
-      container.appendChild(buildAgendaItemRow(item));
+      addItem(item);
     }
 
     let timedIdx = 0;
     for (const hour of AGENDA_GRID_HOURS) {
       while (timedIdx < timed.length && timed[timedIdx].date.getHours() < hour) {
-        container.appendChild(buildAgendaItemRow(timed[timedIdx]));
+        addItem(timed[timedIdx]);
         timedIdx++;
       }
-      container.appendChild(buildAgendaGridLineRow(hour));
+      add({}, () => buildAgendaGridLineRow(hour), 'body');
     }
     while (timedIdx < timed.length) {
-      container.appendChild(buildAgendaItemRow(timed[timedIdx]));
+      addItem(timed[timedIdx]);
       timedIdx++;
     }
   }
@@ -801,13 +817,13 @@ export function renderAgendaView() {
     const dayDate = new Date(wy, wm - 1, wd);
     const isStartOfWeek = dayDate.getDay() === getAgendaStartOnWeekday(S.state.localVariables);
     const showWeekNumber = S.agendaViewType === 'day' || isStartOfWeek;
-    container.appendChild(buildDayHeaderRow(day.date, showWeekNumber, day.items));
+    add({}, () => buildDayHeaderRow(day.date, showWeekNumber, day.items), 'heading');
 
     if (S.agendaViewType === 'day') {
       renderDayViewTimeline(day.items);
     } else {
       for (const item of day.items) {
-        container.appendChild(buildAgendaItemRow(item));
+        addItem(item);
       }
     }
   }
@@ -815,6 +831,14 @@ export function renderAgendaView() {
   container.style.touchAction = 'pan-y';
   attachAgendaSwipeNav(container);
   outlineEl.appendChild(container);
+  // A long agenda draws only the rows near the screen (see windowing.js); a short one is built in full, as always.
+  const threshold = getWindowingThreshold(/** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {}));
+  if (threshold > 0 && entries.length > threshold) {
+    mountWindow(container, entries, { forced: () => entries.filter((entry) => agendaRowIsFocused(entry.key)).map((entry) => entry.key) });
+  } else {
+    destroyWindow();
+    for (const entry of entries) container.appendChild(entry.build());
+  }
 }
 
 export function buildClocktableSection() {

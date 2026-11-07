@@ -209,6 +209,13 @@ function row(extra = '') {
   return el;
 }
 
+/** @param {Array<{ cls?: string, text: string }>} a @param {Array<{ cls?: string, text: string }>} b */
+function sameSegs(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i].text !== b[i].text || a[i].cls !== b[i].cls) return false;
+  return true;
+}
+
 /**
  * Builds the editor around `textarea`.
  * @param {object} o
@@ -234,8 +241,8 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   textarea.classList.add('te-input');
   wrap.append(gutter, back, textarea);
 
-  /** @type {{ text: string | null }} */
-  const drawn = { text: null };
+  /** @type {{ text: string | null, lines: Array<Array<{ cls?: string, text: string }>> | null }} */
+  const drawn = { text: null, lines: null };
   const vars = () => /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
 
   /** Line numbers show when the Text view's own setting says so, or when `display-line-numbers-mode` is on. */
@@ -294,8 +301,9 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     if (text === drawn.text) return;
     drawn.text = text;
     const lines = highlight(kind, text);
-    const frag = document.createDocumentFragment();
-    for (const segs of lines) {
+    const prev = drawn.lines;
+    drawn.lines = lines;
+    const makeLine = (/** @type {Array<{ cls?: string, text: string }>} */ segs) => {
       const ln = document.createElement('div');
       ln.className = 'te-ln';
       if (segs.length === 0) ln.appendChild(document.createTextNode('​'));
@@ -307,9 +315,25 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
           ln.appendChild(span);
         } else ln.appendChild(document.createTextNode(seg.text));
       }
-      frag.appendChild(ln);
+      return ln;
+    };
+    if (prev && prev.length === back.children.length) {
+      // Typing changes a line or two: keep the rows around them as they are and rebuild only the ones between
+      let head = 0;
+      const max = Math.min(prev.length, lines.length);
+      while (head < max && sameSegs(prev[head], lines[head])) head++;
+      let tail = 0;
+      while (tail < max - head && sameSegs(prev[prev.length - 1 - tail], lines[lines.length - 1 - tail])) tail++;
+      const kids = Array.from(back.children);
+      const fresh = lines.slice(head, lines.length - tail).map(makeLine);
+      const after = tail ? kids[prev.length - tail] : null;
+      for (let i = head; i < prev.length - tail; i++) kids[i].remove();
+      for (const ln of fresh) back.insertBefore(ln, after);
+    } else {
+      const frag = document.createDocumentFragment();
+      for (const segs of lines) frag.appendChild(makeLine(segs));
+      back.replaceChildren(frag);
     }
-    back.replaceChildren(frag);
     const digits = Math.max(2, String(lines.length).length);
     renumber();
     if (!compact && showNumbers() && wrap.style.getPropertyValue('--te-gutter') !== `calc(${digits}ch + 12px)`) layout();
@@ -327,6 +351,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   }
   refreshers.set(textarea, () => {
     drawn.text = null;
+    drawn.lines = null;
     draw();
   });
   textarea.addEventListener('input', schedule);

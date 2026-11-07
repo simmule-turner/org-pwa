@@ -6,6 +6,7 @@ import { S, isAgendaFamilyView } from './app-state.js';
 import { canChangeItem, choosePriority, chooseState, openRowActions } from './agenda-actions.js';
 import { outlineEl } from './dom.js';
 import { setStatus } from './editing.js';
+import { ensureRowRendered, windowItemKeys } from './windowing.js';
 
 /** @typedef {import('../src/agenda.js').AgendaItem} AgendaItem */
 const ROW = '[data-agenda-row]';
@@ -25,6 +26,19 @@ export function registerAgendaRow(row, item) {
 
 /** @param {AgendaItem} item @returns {object} */
 const keyOf = (item) => item.heading || item;
+
+/** The keys of the rows that are items (not day headers or grid lines): what the movement keys step through in a windowed agenda. */
+const itemKeys = new WeakSet();
+
+/** @param {object} key */
+export function markAgendaItemKey(key) {
+  itemKeys.add(key);
+}
+
+/** True when the row made for `key` is the focused one: a windowed agenda keeps that row drawn. @param {object} key */
+export function agendaRowIsFocused(key) {
+  return focus.key !== null && itemKeys.has(key) && keyOf(/** @type {AgendaItem} */ (key)) === focus.key;
+}
 
 /** @returns {HTMLElement[]} */
 function rows() {
@@ -60,6 +74,16 @@ function focusedRow() {
 
 /** @param {number} delta */
 function moveFocus(delta) {
+  const keys = windowItemKeys(); // a windowed agenda has drawn only some rows: step through all of them, drawing the one reached
+  if (keys) {
+    const items = keys.filter((k) => itemKeys.has(k));
+    if (items.length === 0) return;
+    const now = items.findIndex((k) => keyOf(/** @type {AgendaItem} */ (k)) === focus.key);
+    const target = items[now < 0 ? (delta > 0 ? 0 : items.length - 1) : Math.max(0, Math.min(items.length - 1, now + delta))];
+    const drawn = ensureRowRendered(target); // the drawn element may wrap the row (swipe actions)
+    focusAgendaRow(drawn && /** @type {HTMLElement | null} */ (drawn.matches(ROW) ? drawn : drawn.querySelector(ROW)));
+    return;
+  }
   const all = rows();
   if (all.length === 0) return;
   const at = all.findIndex((row) => row.classList.contains(FOCUSED));
@@ -74,7 +98,7 @@ export function handleAgendaRowKey(e) {
   if (!isAgendaFamilyView(S.currentView) || e.altKey || e.metaKey || e.ctrlKey) return false;
   const step = { j: 1, n: 1, ArrowDown: 1, k: -1, p: -1, ArrowUp: -1 }[/** @type {'j'} */ (e.key)];
   if (step && !e.shiftKey) {
-    if (rows().length === 0) return false;
+    if (rows().length === 0 && !windowItemKeys()) return false;
     e.preventDefault();
     moveFocus(step);
     return true;

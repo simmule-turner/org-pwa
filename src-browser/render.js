@@ -3,7 +3,7 @@
 import { findContainer } from '../src/archive-model.js';
 import { findHeadingLineNumber, headingLineIndex, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
 import { beginRowMarks, finalizeMarks, nextMark, startMarks } from './line-marks.js';
-import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden } from '../src/local-variables.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden, getWindowingThreshold } from '../src/local-variables.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
@@ -30,6 +30,8 @@ import { isDiaryDocument } from './diary-file-load.js';
 import { diaryToolsRow } from './diary-flow.js';
 import { buildTextEditor, landInTextView } from './text-view.js';
 import { scheduleBibliography } from './bibliography.js';
+import { draggedHeading } from './heading-drag.js';
+import { destroyWindow, mountWindow } from './windowing.js';
 
 export function render() {
   noteUpdateOnce('first screen drawn');
@@ -67,6 +69,8 @@ export function render() {
 
   maybeRestoreNarrowState();
   maybeRestoreSparseNarrow();
+
+  if (S.currentView !== 'org') destroyWindow();
 
   if (S.currentView === 'text') {
     const existingTextarea = document.getElementById('document-text-edit-input');
@@ -252,17 +256,35 @@ export function render() {
   // thing into the live container in one operation, instead of clearing
   // outlineEl and appendChild-ing each row directly onto an already
   // on-screen, already-laid-out element.
-  const fragment = document.createDocumentFragment();
   const numbering = displayLineNumbering(finalVisibleRows);
-  for (const row of finalVisibleRows) {
-    if (numbering) numbering.before(row);
-    const el = renderRow(row, todoSequence);
-    if (numbering) numbering.after(el, row);
-    fragment.appendChild(el);
+  // A long outline draws only the rows near the screen (windowing.js); line numbers are counted across all rows in one pass, so they
+  // keep the full list.
+  const threshold = getWindowingThreshold(/** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {}));
+  if (!numbering && threshold > 0 && finalVisibleRows.length > threshold) {
+    outlineEl.innerHTML = '';
+    mountWindow(
+      outlineEl,
+      finalVisibleRows.map((row) => ({
+        key: rowObject(row),
+        build: () => renderRow(row, todoSequence),
+        kind: row.rowType === 'heading' ? 'heading' : 'body',
+        lines: row.rowType === 'heading' || row.rowType === 'list-item' ? 1 : /** @type {{ lineCount?: number }} */ (row.node).lineCount,
+      })),
+      { forced: outlineForcedRows },
+    );
+  } else {
+    destroyWindow();
+    const fragment = document.createDocumentFragment();
+    for (const row of finalVisibleRows) {
+      if (numbering) numbering.before(row);
+      const el = renderRow(row, todoSequence);
+      if (numbering) numbering.after(el, row);
+      fragment.appendChild(el);
+    }
+    if (numbering) numbering.finish();
+    outlineEl.innerHTML = '';
+    outlineEl.appendChild(fragment);
   }
-  if (numbering) numbering.finish();
-  outlineEl.innerHTML = '';
-  outlineEl.appendChild(fragment);
 
   if (S.narrowedHeading) {
     const banner = document.createElement('div');
@@ -322,6 +344,31 @@ export function render() {
       }
     });
   }
+}
+
+/** The object a row stands for: the list item, or the heading, paragraph, table or block node.
+ * @param {import('../src/types.js').OutlineRow} row */
+function rowObject(row) {
+  return row.rowType === 'list-item' ? row.item : row.node;
+}
+
+/** The rows a windowed outline keeps drawn however far they are off screen: the focused one, any being edited or dragged, the one with
+ * its menu open, and the narrowed root. */
+function outlineForcedRows() {
+  const body = S.keyboardFocusedBodyRow;
+  return [
+    S.keyboardFocusedHeading,
+    body && (body.rowType === 'list-item' ? body.item : /** @type {{ node: object }} */ (/** @type {unknown} */ (body)).node),
+    S.editingHeading,
+    S.editingCell && S.editingCell.table,
+    S.editingParagraph && S.editingParagraph.paragraph,
+    S.editingListItem && S.editingListItem.item,
+    S.editingHeadingText,
+    S.editingGeneral,
+    S.actionMenuFor,
+    S.narrowedHeading,
+    draggedHeading(),
+  ];
 }
 
 /**

@@ -15,6 +15,7 @@ import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { renderSettingsView } from './settings-view.js';
 import { agendaFilesCache, searchExtraFilesCache } from './singletons.js';
+import { ensureRowRendered, windowingActive } from './windowing.js';
 import { isWideLayout } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 
@@ -28,8 +29,9 @@ export function toggleActionMenu(node) {
   requestAnimationFrame(() => {
     const rows = flattenVisibleRows(S.state.doc);
     const idx = rows.findIndex((r) => (r.rowType === 'list-item' ? r.item === node : r.node === node));
-    if (idx === -1 || !outlineEl.children[idx]) return;
-    outlineEl.children[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const el = ensureRowRendered(node) || outlineEl.children[idx]; // a long outline draws only the rows near the screen
+    if (idx === -1 || !el) return;
+    el.scrollIntoView({ behavior: windowingActive() ? 'auto' : 'smooth', block: 'nearest' });
   });
 }
 
@@ -74,9 +76,10 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
   requestAnimationFrame(() => {
     const rows = flattenVisibleRows(S.state.doc);
     const idx = rows.findIndex((r) => (r.rowType === 'list-item' ? r.item === targetNode : r.node === targetNode));
-    if (idx === -1 || !outlineEl.children[idx]) return;
-    const el = outlineEl.children[idx];
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const el = ensureRowRendered(targetNode) || outlineEl.children[idx]; // drawn first when the outline is windowed
+    if (idx === -1 || !el) return;
+    // a windowed outline jumps at once: a long smooth scroll would be cut short by the scroll corrections as rows are drawn
+    el.scrollIntoView({ behavior: windowingActive() ? 'auto' : 'smooth', block: 'center' });
     const original = /** @type {HTMLElement} */ (el).style.backgroundColor;
     /** @type {HTMLElement} */ (el).style.transition = 'background-color 1.2s';
     /** @type {HTMLElement} */ (el).style.backgroundColor = 'rgba(255,214,0,0.45)';
