@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { checkSize, formatSize } from './size-limits.js';
 /**
  * Attachments -- this app's own extension, inspired by real org-mode's
  * own org-attach (there's no exact equivalent to match against
@@ -40,11 +41,12 @@ function isSafeAttachmentId(id) {
   return !/[/\\\u0000-\u001f\u007f]/.test(text) && !text.includes('..');
 }
 
-/** Whether a heading has an ID that cannot name an attachment folder (see isSafeAttachmentId).
+/** Whether a heading has an ID that cannot name an attachment folder: not a plain name (see isSafeAttachmentId), or shorter than the
+ * 3 characters the folder path needs (its first 2 are a folder of their own).
  * @param {Heading} heading */
 function hasUnsafeAttachmentId(heading) {
   const id = getProperty(heading, 'ID');
-  return !!id && !isSafeAttachmentId(id);
+  return !!id && (!isSafeAttachmentId(id) || id.trim().length < 3);
 }
 
 /** Whether `name` (the part after `attachment:`, or a file name) stays inside the attachment folder: parts separated by "/" that
@@ -164,16 +166,19 @@ function prefersInAppCamera(userAgent, maxTouchPoints) {
 
 const MB = 1024 * 1024;
 
-/** Whether a file is too big to attach, or big enough to confirm first. `base64Length` is the encoded size; `backend` is the
- *  storage kind. GitHub's contents API takes up to 100MB; anything over 25MB (a long video) is worth a confirmation anywhere,
- *  since it is held in memory and uploaded in one go. Returns { refuse } or { warn } (each a sentence), or null.
+/** Whether a file is too big to attach, or big enough to confirm first, by the attachment size limits (Settings > Sync and
+ *  storage > Size limits). `base64Length` is the encoded size; `backend` is the storage kind. GitHub's contents API takes up
+ *  to 100MB, so a GitHub file is refused over 95MB whatever the limit. A large file is held in memory and uploaded in one go.
+ *  Returns { refuse } or { warn } (each a sentence), or null.
  * @param {number} base64Length
- * @param {string | null} backend */
-function attachmentSizeCheck(base64Length, backend) {
-  const megabytes = (base64Length * 3) / 4 / MB;
-  const size = `${megabytes.toFixed(megabytes < 10 ? 1 : 0)}MB`;
-  if (backend === 'github' && megabytes > 95) return { refuse: `This file is ${size}; GitHub accepts up to 100MB per file. Use WebDAV for files this large, or a shorter clip.` };
-  if (megabytes > 25) return { warn: `This file is ${size}. It is held in memory and uploaded in one go, which can be slow and use mobile data. Attach it?` };
+ * @param {string | null} backend
+ * @param {import('./size-limits.js').SizeLimits} [limits] */
+function attachmentSizeCheck(base64Length, backend, limits) {
+  const bytes = Math.floor((base64Length * 3) / 4);
+  if (backend === 'github' && bytes > 95 * MB) return { refuse: `This file is ${formatSize(bytes)}; GitHub accepts up to 100MB per file. Use WebDAV for files this large, or a shorter clip.` };
+  const verdict = checkSize('attachment', bytes, limits);
+  if (verdict.ok === false) return { refuse: verdict.message };
+  if (verdict.ok === 'warn') return { warn: `This file is ${formatSize(bytes)}. It is held in memory and uploaded in one go, which can be slow and use mobile data. Attach it?` };
   return null;
 }
 

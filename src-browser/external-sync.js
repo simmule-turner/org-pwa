@@ -7,6 +7,7 @@ import { getBufferReadOnly, getCycleOpenArchivedTrees, parseLocalVariables } fro
 import { planConflict, resolveSegments } from '../src/merge3.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
+import { isNonUtf8 } from '../src/utf8.js';
 import { getSyncMeta, sameHash, setSyncMeta } from '../src/sync-engine.js';
 import { pushSnapshot } from '../src/undo-history.js';
 import { filesystemAdapter, githubAdapter, inputFileAdapter, webdavAdapter } from './adapters.js';
@@ -38,7 +39,7 @@ export async function reloadCurrentDocumentFromDisk() {
   const rawLocalVars = parseLocalVariables(serializeOrg(S.state.doc));
   S.state.startupConfig = resolveEffectiveStartupConfig(S.state.doc, rawLocalVars, S.globalVariables);
   S.state.localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
-  S.isBufferReadOnly = getBufferReadOnly(S.state.localVariables);
+  S.isBufferReadOnly = getBufferReadOnly(S.state.localVariables) || isNonUtf8(S.state.documentId);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
   S.currentContextHeading = null;

@@ -230,6 +230,11 @@ export function renderQuickSettingField(field) {
         defaultValue: field.default,
         onSave: async (/** @type {any} */ newValue) => {
           const trimmed = normalizeSmartQuotes(newValue).trim();
+          const problem = trimmed !== '' && typeof field.validate === 'function' ? field.validate(trimmed) : null;
+          if (problem) {
+            setStatus(problem); // a value the field cannot use is not saved
+            return;
+          }
           await commitGlobalVariableChange(field.key, trimmed === field.default || trimmed === '' ? null : trimmed);
           setStatus(`${field.label} updated.`);
           renderSettingsView();

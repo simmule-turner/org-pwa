@@ -13,7 +13,7 @@ import {
 } from '../src/attach.js';
 import { normalizeStoragePath, resolveAttachmentTarget, resolveImagePath } from '../src/link-resolve.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
-import { decodeUtf8Strict } from '../src/utf8.js';
+import { decodeUtf8Strict, isNonUtf8 } from '../src/utf8.js';
 import { contentHash, matchesExpected, sameHash } from '../src/sync-engine.js';
 import { createGithubAdapter } from '../src-browser/github-adapter.js';
 import { createWebdavAdapter, fileUrl } from '../src-browser/webdav-adapter.js';
@@ -140,7 +140,7 @@ test('a listing from a server cannot name a file outside the folder', async () =
   );
 });
 
-test('a file that is not valid UTF-8 is refused on read, so a save cannot write replacement characters over it', async () => {
+test('a file that is not valid UTF-8 opens with U+FFFD but cannot be written until it is converted', async () => {
   const latin1 = new Uint8Array([0x63, 0x61, 0x66, 0xe9]); // "café" in Latin-1
   assert.throws(() => decodeUtf8Strict(latin1, 'notes.org'), /not valid UTF-8/);
   assert.equal(decodeUtf8Strict(new TextEncoder().encode('café 日本 🙂')), 'café 日本 🙂');
@@ -148,14 +148,19 @@ test('a file that is not valid UTF-8 is refused on read, so a save cannot write 
   const github = createGithubAdapter(() => ({ token: 't', owner: 'me', repo: 'notes', branch: 'main' }));
   await withFetchLog(
     () => ({ status: 200, ok: true, json: async () => ({ content: Buffer.from(latin1).toString('base64'), sha: 'abc', encoding: 'base64' }) }),
-    async () => await assert.rejects(github.read('notes.org'), /not valid UTF-8/)
+    async (calls) => {
+      assert.equal((await github.read('gh-notes.org')).content, 'caf\ufffd');
+      assert.equal(isNonUtf8('gh-notes.org'), true);
+      await assert.rejects(github.write('gh-notes.org', 'text'), /not valid UTF-8/);
+      assert.equal(calls.filter((c) => c.startsWith('PUT')).length, 0);
+    }
   );
   const dav = createWebdavAdapter(() => ({ baseUrl: 'https://dav.example/shared/me', username: 'u', password: 'p' }));
   await withFetchLog(
     () => ({ status: 200, ok: true, arrayBuffer: async () => latin1.buffer, text: async () => 'caf�', headers: { get: () => '"e1"' } }),
     async (calls) => {
-      await assert.rejects(dav.read('notes.org'), /not valid UTF-8/);
-      await assert.rejects(dav.write('notes.org', 'text')); // a save reads the file first and stops there
+      assert.equal((await dav.read('notes.org')).content, 'caf\ufffd');
+      await assert.rejects(dav.write('notes.org', 'text'), /not valid UTF-8/);
       assert.equal(calls.filter((c) => c.startsWith('PUT')).length, 0);
     }
   );

@@ -1,4 +1,4 @@
-# Builds the native Android shell (a debug APK) around the PWA. Runs on demand (Actions -> native-android -> Run workflow),
+# Builds the native Android shell around the PWA: a release APK when a signing key is configured, otherwise a debug APK. Runs on demand (Actions -> native-android -> Run workflow),
 # on a tag like native-v0.1.0, and whenever something under native/ changes. The APK is attached to the run as an artifact.
 name: native-android
 
@@ -67,7 +67,10 @@ jobs:
             echo "mode=one-off" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build the debug APK
+      # A release build needs the stable key (an unsigned release APK cannot be installed), so without the secrets the build is
+      # a debug one, signed with Android's one-off debug key.
+      - name: Build the APK
+        id: build
         working-directory: native/android
         env:
           ORGPWA_KEYSTORE_PASSWORD: ${{ secrets.ORGPWA_KEYSTORE_PASSWORD }}
@@ -75,12 +78,18 @@ jobs:
           ORGPWA_KEY_PASSWORD: ${{ secrets.ORGPWA_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          if [ "${{ steps.signing.outputs.mode }}" = "stable" ]; then
+            ./gradlew assembleRelease -x lintVitalRelease --no-daemon --stacktrace
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            ./gradlew assembleDebug --no-daemon --stacktrace
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+          fi
 
       # The certificate's fingerprint is not secret. Two builds that show the same one can update each other.
       - name: Show which key signed the APK
         run: |
-          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          apk=android/app/build/outputs/apk/${{ steps.build.outputs.variant }}/app-${{ steps.build.outputs.variant }}.apk
           apksigner=$(ls "${ANDROID_HOME:-/nonexistent}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
           {
             echo "### Signing"
@@ -100,8 +109,8 @@ jobs:
           web="${web#org-pwa-shell-}"   # the web version is stored as org-pwa-shell-vNNN; the file name only needs vNNN
           suffix=""
           if [ "${{ steps.signing.outputs.mode }}" = "one-off" ]; then suffix="-one-off-key"; fi
-          name="org-pwa-shell-${shell}-${web}-debug${suffix}.apk"
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$name"
+          name="org-pwa-shell-${shell}-${web}-${{ steps.build.outputs.variant }}${suffix}.apk"
+          cp android/app/build/outputs/apk/${{ steps.build.outputs.variant }}/app-${{ steps.build.outputs.variant }}.apk "$name"
           sha256sum "$name"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 

@@ -8,29 +8,36 @@ import { diskAdapterFor } from './external-sync.js';
 import { kv } from './singletons.js';
 import { mayFetchRemote } from './remote-gate.js';
 import { setStatus } from './editing.js';
+import { fetchWithTimeout, readLimited } from './limited-fetch.js';
+import { SizeLimitError, getSizeLimits } from '../src/size-limits.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 
 const kvKey = (/** @type {string} */ path) => 'setupfile:' + path;
 
 /** The text of a file the document refers to: from where the document lives, or a URL; the copy kept last time when that fails.
  * A web address is fetched only when the person has allowed that address (the first time, they are asked).
- * @param {string} path @param {string} documentId @param {string | null} storageKind @param {(path: string) => string} [keptAs] @param {string} [what]
+ * A file over the size limit for its `kind` is not loaded (the person is told), and the copy kept last time is used.
+ * @param {string} path @param {string} documentId @param {string | null} storageKind @param {(path: string) => string} [keptAs] @param {string} [what] @param {'setupfile' | 'bibliography'} [kind]
  * @returns {Promise<string | null>} */
-export async function fetchOne(path, documentId, storageKind, keptAs = kvKey, what = 'a setup file') {
+export async function fetchOne(path, documentId, storageKind, keptAs = kvKey, what = 'a setup file', kind = /** @type {'setupfile' | 'bibliography'} */ ('setupfile')) {
   try {
     if (/^https?:\/\//i.test(path)) {
       if (!(await mayFetchRemote(path, what))) {
         setStatus(`Not loaded: ${path} (not allowed to fetch it)`);
         return null;
       }
-      const res = await fetch(path);
-      if (res.ok) return await res.text();
+      const res = await fetchWithTimeout(path);
+      if (res.ok) {
+        const bytes = await readLimited(res, { maxBytes: getSizeLimits()[kind].max, kind, name: path });
+        return new TextDecoder().decode(bytes);
+      }
     } else {
-      const entry = await diskAdapterFor(storageKind).read(resolveImagePath(path, documentId));
+      const entry = await diskAdapterFor(storageKind).read(resolveImagePath(path, documentId), { sizeKind: kind });
       if (entry && typeof entry.content === 'string') return entry.content;
     }
-  } catch {
-    // unreachable right now: fall back to the copy kept from last time
+  } catch (error) {
+    if (error instanceof SizeLimitError) setStatus(`Not loaded: ${error.message}`);
+    // otherwise unreachable right now: fall back to the copy kept from last time
   }
   try {
     const saved = await kv.get(keptAs(path));

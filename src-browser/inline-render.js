@@ -24,6 +24,7 @@ import { navigateToHeading } from './navigation.js';
 import { imagePlaceholder, renderLatexNode } from './render-helpers.js';
 import { render } from './render.js';
 import { imageDataUrlCache } from './singletons.js';
+import { base64Bytes, formatSize, getSizeLimits } from '../src/size-limits.js';
 
 /** org-use-property-inheritance: whether a heading may use a parent's attachment folder. */
 const inherit = () => getUsePropertyInheritance(S.state.localVariables);
@@ -89,11 +90,18 @@ export function renderImageNode(node, heading = null) {
     img.style.background = 'var(--surface)';
 
     const adapter = activeDiskAdapter();
+    const imageMax = getSizeLimits().image.max;
+    // a picture over the image limit is not downloaded or decoded: the adapter says how big it is instead (`tooLarge`)
     adapter
-      .readBinary(resolvedPath)
+      .readBinary(resolvedPath, imageMax > 0 ? { maxBytes: imageMax } : undefined)
       .then((/** @type {any} */ result) => {
         if (!result) {
           img.replaceWith(imagePlaceholder(node.target, 'not found'));
+          return;
+        }
+        const bytes = result.tooLarge ? result.bytes : base64Bytes(result.base64);
+        if (imageMax > 0 && bytes > imageMax) {
+          img.replaceWith(largeImagePlaceholder(node.target, resolvedPath, cacheKey, bytes));
           return;
         }
         const dataUrl = `data:${guessImageMimeType(resolvedPath)};base64,${result.base64}`;
@@ -113,6 +121,46 @@ export function renderImageNode(node, heading = null) {
   // default) or this is a local/relative path on a backend that can't
   // read an arbitrary path without a fresh picker gesture.
   return imagePlaceholder(node.target);
+}
+
+/** What stands in for a picture over the image size limit: its size and a Load action, which reads it whatever its size
+ * (up to the attachment limit) and shows it.
+ * @param {string} target @param {string} resolvedPath @param {string} cacheKey @param {number} bytes */
+function largeImagePlaceholder(target, resolvedPath, cacheKey, bytes) {
+  const box = document.createElement('span');
+  box.setAttribute('data-large-image', '1');
+  box.style.color = 'var(--text-muted, #888)';
+  box.style.fontStyle = 'italic';
+  box.append(`[image: ${target} \u2014 ${formatSize(bytes)}, over the ${formatSize(getSizeLimits().image.max)} limit for inline images] `);
+  const load = document.createElement('a');
+  load.href = '#';
+  load.textContent = 'Load';
+  load.style.color = 'var(--accent)';
+  load.setAttribute(INLINE_LINK_ATTR, '1');
+  load.onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    load.textContent = 'Loading\u2026';
+    try {
+      const result = await activeDiskAdapter().readBinary(resolvedPath);
+      if (!result || result.tooLarge) throw new Error(result ? 'too large to load' : 'not found');
+      const dataUrl = `data:${guessImageMimeType(resolvedPath)};base64,${result.base64}`;
+      imageDataUrlCache.set(cacheKey, dataUrl);
+      const img = document.createElement('img');
+      img.alt = target;
+      img.src = dataUrl;
+      img.style.maxWidth = '100%';
+      img.style.display = 'block';
+      img.style.margin = '4px 0';
+      img.style.borderRadius = '4px';
+      box.replaceWith(img);
+    } catch (err) {
+      load.textContent = 'Load';
+      setStatus(`Could not load "${target}": ${err.message}`);
+    }
+  };
+  box.append(load);
+  return box;
 }
 
 /** @param {{ target: string, description?: string }} node

@@ -34,7 +34,21 @@
   }
 
   // A native error as the page expects it: a cancelled picker is an error named AbortError, like the browser's own.
+  // A refusal for size arrives as "too large:<bytes>: <sentence>" (<bytes> is -1 when the native side could not tell); the page gets
+  // an Error "too large: <sentence>" with the size in `bytes` (when known).
+  function tooLargeOf(error) {
+    var message = error && error.message ? error.message : String(error);
+    var match = /^too large:(-?\d+): ([\s\S]*)$/.exec(message);
+    if (!match) return null;
+    var result = new Error('too large: ' + match[2]);
+    result.tooLarge = true;
+    if (Number(match[1]) >= 0) result.bytes = Number(match[1]);
+    return result;
+  }
+
   function failure(error) {
+    var large = tooLargeOf(error);
+    if (large) return large;
     var message = error && error.message ? error.message : String(error);
     var result = error instanceof Error ? error : new Error(message);
     if (message === 'cancelled') result.name = 'AbortError';
@@ -47,6 +61,16 @@
   function plugin(name) {
     var plugins = capacitor && capacitor.Plugins;
     return plugins && Object.prototype.hasOwnProperty.call(plugins, name) ? plugins[name] : null;
+  }
+
+  // `maxBytes` goes to the native side only when it is a positive number (the native side never goes above 100 MB either way);
+  // `with` adds it to a call's arguments. A refusal from the native side starts "too large:" and reaches the page as an Error.
+  function limited(args, maxBytes) {
+    if (typeof maxBytes === 'number' && maxBytes > 0 && isFinite(maxBytes)) args.maxBytes = Math.floor(maxBytes);
+    return args;
+  }
+  function rejected(error) {
+    throw failure(error);
   }
 
   function listen(source, event, handler) {
@@ -268,15 +292,26 @@
             }
           );
         },
-        readBinary: function (path) {
-          return attachments.read({ path: path }).then(function (result) {
-            return result.found === false ? null : { base64: result.base64 };
-          });
+        // options: { maxBytes? } (a plain number is accepted too). A file over maxBytes resolves { tooLarge: true, bytes } without its
+        // data; with no maxBytes, the 100 MB hard cap rejects with an Error whose message starts "too large:".
+        readBinary: function (path, options) {
+          var maxBytes = typeof options === 'number' ? options : options && options.maxBytes;
+          var limit = typeof maxBytes === 'number' && maxBytes > 0 && isFinite(maxBytes);
+          return attachments.read(limited({ path: path }, maxBytes)).then(
+            function (result) {
+              return result.found === false ? null : { base64: result.base64 };
+            },
+            function (error) {
+              var large = tooLargeOf(error);
+              if (large && limit) return { tooLarge: true, bytes: large.bytes };
+              throw failure(error);
+            }
+          );
         },
-        writeBinary: function (path, base64) {
-          return attachments.write({ path: path, base64: base64 }).then(function () {
+        writeBinary: function (path, base64, maxBytes) {
+          return attachments.write(limited({ path: path, base64: base64 }, maxBytes)).then(function () {
             return {};
-          });
+          }, rejected);
         },
         delete: function (path) {
           return attachments.remove({ path: path }).then(function () {});
@@ -310,9 +345,9 @@
       },
       read: function (id, options) {
         var open = function () {
-          return localFiles.read({ name: id }).then(function (result) {
+          return localFiles.read(limited({ name: id }, options && options.maxBytes)).then(function (result) {
             return result.found === false ? null : { content: result.content, hash: '' };
-          });
+          }, rejected);
         };
         // a background check reads only what is already allowed, and never asks
         if (options && options.prompt === false) {
@@ -322,10 +357,10 @@
         }
         return open();
       },
-      write: function (id, content) {
-        return localFiles.write({ name: id, content: content }).then(function () {
+      write: function (id, content, options) {
+        return localFiles.write(limited({ name: id, content: content }, options && options.maxBytes)).then(function () {
           return { hash: '' };
-        });
+        }, rejected);
       },
       exists: function (id) {
         return localFiles.exists({ name: id }).then(function (result) {
@@ -377,19 +412,19 @@
       });
     };
     // Shows a file (an attachment) in another app; the caller waits for this, so a phone with no app for it can say so.
-    platform.viewFile = function (blob, name) {
+    platform.viewFile = function (blob, name, options) {
       return toBase64(blob)
         .then(function (base64) {
-          return localFiles.viewFile({ name: name, mime: blob.type || '', base64: base64 });
+          return localFiles.viewFile(limited({ name: name, mime: blob.type || '', base64: base64 }, options && options.maxBytes));
         })
-        .then(function () {});
+        .then(function () {}, rejected);
     };
     // Attaching: Android's chooser, with the camera apps beside the files (LocalFilesPlugin.pickAttachment). Whatever is chosen
     // waits in the app's cache and is read from there through the local web server, so a long video never crosses the bridge as
     // one huge string. Resolves { name, type, base64 }; backing out is an AbortError.
     // `options.keep` (org-attach-method mv or ln) asks for the document picker instead, and the file's `uri` comes back with it.
     platform.pickFile = function (kind, options) {
-      return localFiles.pickAttachment({ mode: kind === 'photo' || kind === 'video' ? kind : '', keep: !!(options && options.keep) }).then(
+      return localFiles.pickAttachment(limited({ mode: kind === 'photo' || kind === 'video' ? kind : '', keep: !!(options && options.keep) }, options && options.maxBytes)).then(
         function (picked) {
           return fetch(capacitor.convertFileSrc(picked.path))
             .then(function (response) {
@@ -411,14 +446,14 @@
     };
 
     // Resolves { where } (Downloads, on current Android), or null if the person backed out; a failure rejects, and the app says so.
-    platform.saveFile = function (name, content, mime) {
+    platform.saveFile = function (name, content, mime, options) {
       return toBase64(content)
         .then(function (base64) {
-          return localFiles.saveFile({ name: name, mime: mime || '', base64: base64 });
+          return localFiles.saveFile(limited({ name: name, mime: mime || '', base64: base64 }, options && options.maxBytes));
         })
         .then(function (result) {
           return result && result.saved === false ? null : { where: (result && result.where) || 'your device' };
-        });
+        }, rejected);
     };
   }
 })();

@@ -5,6 +5,7 @@
 // is read or written.
 import { detectLineEnding, fromLf, toLf } from '../src/line-endings.js';
 import { contentHash } from '../src/sync-engine.js';
+import { assertWithinLimit, utf8Length } from '../src/size-limits.js';
 
 /** @param {string} documentId */
 const eolKey = (documentId) => 'lineEnding:' + documentId;
@@ -51,6 +52,10 @@ export function withLineEndings(adapter, kvAdapter, { contentDerivedHash = false
     async read(documentId, /** @type {any[]} */ ...rest) {
       const result = await adapter.read(documentId, ...rest);
       if (!result || typeof result.content !== 'string') return result;
+      // every text file the app reads passes here: one over the limit for its kind (an Org file unless the caller says
+      // `{ sizeKind }`) is refused before it is parsed or shown
+      const kind = rest[0] && typeof rest[0] === 'object' && rest[0].sizeKind ? rest[0].sizeKind : 'orgFile';
+      assertWithinLimit(kind, utf8Length(result.content), documentId);
       await remember(kvAdapter, documentId, detectLineEnding(result.content));
       const content = toLf(result.content);
       return contentDerivedHash ? { ...result, content, hash: contentHash(content) } : { ...result, content };

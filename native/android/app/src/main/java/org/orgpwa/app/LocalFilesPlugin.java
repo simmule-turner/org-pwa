@@ -106,10 +106,14 @@ public class LocalFilesPlugin extends Plugin {
         call.resolve(out);
     }
 
-    /** Reads a file by name. Resolves { found: false } for a name that was never opened here, else { found, content }. */
+    /**
+     * Reads a file by name. Resolves { found: false } for a name that was never opened here, else { found, content }.
+     * `maxBytes` (optional, never above 100 MB) is the largest file to read; a larger one rejects "too large: ...".
+     */
     @PluginMethod
     public void read(PluginCall call) {
         String name = call.getString("name");
+        long cap = Limits.cap(call);
         Uri uri = uriFor(name);
         JSObject out = new JSObject();
         if (uri == null) {
@@ -117,24 +121,29 @@ public class LocalFilesPlugin extends Plugin {
             call.resolve(out);
             return;
         }
-        try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
+        ContentResolver resolver = getContext().getContentResolver();
+        long size = Limits.sizeOf(resolver, uri);
+        if (size > cap) {
+            call.reject(Limits.tooLarge(size, cap));
+            return;
+        }
+        try (InputStream in = resolver.openInputStream(uri)) {
             if (in == null) {
                 call.reject("Could not open " + name);
                 return;
             }
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            byte[] chunk = new byte[16384];
-            int n;
-            while ((n = in.read(chunk)) != -1) buffer.write(chunk, 0, n);
+            ByteArrayOutputStream buffer = Limits.readAll(in, cap, size);
             out.put("found", true);
             out.put("content", new String(buffer.toByteArray(), StandardCharsets.UTF_8));
             call.resolve(out);
+        } catch (Limits.TooLargeException e) {
+            call.reject(e.getMessage());
         } catch (IOException | SecurityException e) {
             call.reject("Could not read " + name + ": " + e.getMessage());
         }
     }
 
-    /** Replaces the contents of a file opened here. */
+    /** Replaces the contents of a file opened here. `maxBytes` (optional, never above 100 MB) is the largest text to write. */
     @PluginMethod
     public void write(PluginCall call) {
         String name = call.getString("name");
@@ -144,12 +153,22 @@ public class LocalFilesPlugin extends Plugin {
             call.reject("No file named " + name + " has been opened on this device.");
             return;
         }
+        long cap = Limits.cap(call);
+        if (content.length() > cap) { // every character is at least one byte
+            call.reject(Limits.tooLarge(content.length(), cap));
+            return;
+        }
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > cap) {
+            call.reject(Limits.tooLarge(bytes.length, cap));
+            return;
+        }
         try (OutputStream out = getContext().getContentResolver().openOutputStream(uri, "wt")) {
             if (out == null) {
                 call.reject("Could not open " + name + " for writing");
                 return;
             }
-            out.write(content.getBytes(StandardCharsets.UTF_8));
+            out.write(bytes);
             call.resolve();
         } catch (IOException | SecurityException e) {
             call.reject("Could not write " + name + ": " + e.getMessage());
@@ -196,6 +215,12 @@ public class LocalFilesPlugin extends Plugin {
      */
     @PluginMethod
     public void saveFile(PluginCall call) {
+        long cap = Limits.cap(call);
+        long size = Limits.decodedLength(call.getString("base64"));
+        if (size > cap) {
+            call.reject(Limits.tooLarge(size, cap));
+            return;
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             saveToDownloads(call);
             return;
@@ -218,7 +243,7 @@ public class LocalFilesPlugin extends Plugin {
         }
         ContentResolver resolver = getContext().getContentResolver();
         ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, safeFileName(name));
         // a more specific type can make MediaStore add its own extension to the name; this keeps it exactly as given
         values.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream");
         values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
@@ -288,6 +313,12 @@ public class LocalFilesPlugin extends Plugin {
             call.reject("Nothing to open");
             return;
         }
+        long cap = Limits.cap(call);
+        long size = Limits.decodedLength(encoded);
+        if (size > cap) {
+            call.reject(Limits.tooLarge(size, cap));
+            return;
+        }
         try {
             File directory = new File(getContext().getCacheDir(), "opened");
             if (!directory.isDirectory() && !directory.mkdirs()) {
@@ -296,7 +327,7 @@ public class LocalFilesPlugin extends Plugin {
             }
             File[] earlier = directory.listFiles();
             if (earlier != null) for (File old : earlier) old.delete(); // files opened this way before are not needed again
-            File file = new File(directory, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+            File file = new File(directory, safeFileName(name));
             try (OutputStream out = new FileOutputStream(file)) {
                 out.write(Base64.decode(encoded, Base64.DEFAULT));
             }
@@ -409,8 +440,15 @@ public class LocalFilesPlugin extends Plugin {
         JSObject out = new JSObject();
         // A camera app writes to the file it was given, and some also return that file's address. The file it was given wins:
         // copying it onto itself would empty it.
+        long cap = Limits.cap(call);
         File made = photoTarget != null && photoTarget.length() > 0 ? photoTarget : videoTarget != null && videoTarget.length() > 0 ? videoTarget : null;
         if (made != null) {
+            long madeSize = made.length();
+            if (madeSize > cap) {
+                made.delete();
+                call.reject(Limits.tooLarge(madeSize, cap));
+                return;
+            }
             out.put("path", made.getAbsolutePath());
             out.put("name", made.getName());
             out.put("type", made == photoTarget ? "image/jpeg" : "video/mp4");
@@ -423,6 +461,11 @@ public class LocalFilesPlugin extends Plugin {
             call.reject("Nothing was captured");
             return;
         }
+        long pickedSize = Limits.sizeOf(getContext().getContentResolver(), picked);
+        if (pickedSize > cap) { // refused before access to it is kept
+            call.reject(Limits.tooLarge(pickedSize, cap));
+            return;
+        }
         String name = displayName(picked);
         String type = getContext().getContentResolver().getType(picked);
         if (keep) {
@@ -432,6 +475,7 @@ public class LocalFilesPlugin extends Plugin {
             try {
                 getContext().getContentResolver().takePersistableUriPermission(kept, flags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
                 out.put("uri", picked.toString());
+                KeptPicks.add(picked.toString()); // the only addresses removeSource and link accept
             } catch (SecurityException | IllegalArgumentException e) {
                 // no lasting access: the page gets the file but no uri, and attaches a copy
             }
@@ -441,13 +485,16 @@ public class LocalFilesPlugin extends Plugin {
             call.reject("Could not prepare a place for the file");
             return;
         }
-        File copy = new File(directory, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+        File copy = new File(directory, safeFileName(name));
         try (InputStream in = getContext().getContentResolver().openInputStream(picked); OutputStream copyOut = new FileOutputStream(copy)) {
             if (in == null) throw new IOException("the file could not be opened");
-            byte[] chunk = new byte[65536];
-            int n;
-            while ((n = in.read(chunk)) != -1) copyOut.write(chunk, 0, n);
+            Limits.copy(in, copyOut, cap); // counts as it goes, for a provider that did not say how large the file is
+        } catch (Limits.TooLargeException e) {
+            copy.delete();
+            call.reject(e.getMessage());
+            return;
         } catch (IOException | SecurityException e) {
+            copy.delete();
             call.reject("Could not read " + name + ": " + e.getMessage());
             return;
         }
@@ -461,6 +508,16 @@ public class LocalFilesPlugin extends Plugin {
     private File capturesDirectory() {
         File directory = new File(getContext().getCacheDir(), "captures");
         return directory.isDirectory() || directory.mkdirs() ? directory : null;
+    }
+
+    /**
+     * A name that is safe to use as a file name in the app's cache or in Downloads: separators, the characters Windows reserves
+     * and control characters become "_", and a name that is then empty or only dots becomes "attachment".
+     */
+    static String safeFileName(String name) {
+        String cleaned = name == null ? "" : name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+        if (cleaned.isEmpty() || cleaned.matches("\\.+")) return "attachment";
+        return cleaned;
     }
 
     private Uri uriFor(String name) {

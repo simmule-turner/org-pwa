@@ -7,8 +7,8 @@ Android project. This first version is a "hello world": the app, inside a native
 ## Build the APK (no Android Studio needed)
 
 1. On GitHub: **Actions → native-android → Run workflow**. It builds on a free Linux runner.
-2. When it finishes, download the artifact `org-pwa-shell-<shell>-<web>-debug.apk` from the run page and unzip it. (Without
-   a signing key of your own it ends `-debug-one-off-key.apk`: see *Keeping your data across updates*.)
+2. When it finishes, download the artifact `org-pwa-shell-<shell>-<web>-release.apk` from the run page and unzip it. (Without
+   a signing key of your own the build is a debug one and ends `-debug-one-off-key.apk`: see *Keeping your data across updates*.)
 3. Install it on the phone (allow installs from the app you open it with, or `adb install -r <file>.apk`).
 
 If the build fails, open the "Show the toolchain" step first: it prints the Java, Node and Android SDK the runner has.

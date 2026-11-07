@@ -9,6 +9,8 @@ import { withLineEndings } from './line-endings-adapter.js';
 import { ensureConnectionsUnlocked, leaseConnections } from './connection-protection.js';
 import { currentGithub, currentWebdav } from './connection-vault.js';
 import { kv } from './singletons.js';
+import { forgetNonUtf8, refuseNonUtf8Write } from '../src/utf8.js';
+import { announceSaved, openSavedChannel, withSaveLock } from '../src/save-lock.js';
 import { createWebdavAdapter } from './webdav-adapter.js';
 
 // Every adapter is wrapped so the app only sees "\n" text and a file keeps its own line endings (see line-endings-adapter.js).
@@ -55,9 +57,32 @@ const localFileAdapter = {
   delete: (/** @type {any[]} */ ...args) => platform.attachments.adapter.delete(...args),
   list: (/** @type {any[]} */ ...args) => platform.attachments.adapter.list(...args),
 };
-export const filesystemAdapter = withLineEndings(localFileAdapter, kv, { contentDerivedHash: true });
+/** Every window of the app writes through the same channel: a save holds the file's lock (see syncDocument), and once it has
+ * written, the other windows are told, so one with that file open can offer to reload or merge (saved-elsewhere.js). */
+export const savedChannel = openSavedChannel();
 
-export const inputFileAdapter = withLineEndings(createInputFileAdapter(kv), kv, { contentDerivedHash: true });
+/** @template {{ write: (id: string, ...rest: never[]) => Promise<{ hash?: string | null } | undefined | null> }} T
+ * @param {T} adapter
+ * @param {string} backend */
+function savedTogether(adapter, backend) {
+  return {
+    ...adapter,
+    backend,
+    /** @template R @param {string} id @param {() => Promise<R>} work @returns {Promise<R>} */
+    lock: (id, work) => withSaveLock(backend, id, work),
+    async write(/** @type {string} */ id, /** @type {never[]} */ ...rest) {
+      refuseNonUtf8Write(id); // the text read here has U+FFFD where the file has other bytes: saving it would damage the file
+      const written = await adapter.write(id, ...rest);
+      forgetNonUtf8(id);
+      announceSaved(savedChannel, { backend, id, hash: written && typeof written.hash === 'string' ? written.hash : null });
+      return written;
+    },
+  };
+}
+
+export const filesystemAdapter = savedTogether(withLineEndings(localFileAdapter, kv, { contentDerivedHash: true }), 'filesystem');
+
+export const inputFileAdapter = savedTogether(withLineEndings(createInputFileAdapter(kv), kv, { contentDerivedHash: true }), 'input');
 
 /** The adapter with every call waiting for the connections to be unlocked: with a passphrase on, the first use in a session asks for it.
  * @template {object} T
@@ -82,6 +107,6 @@ function afterUnlock(adapter) {
   return /** @type {T} */ (out);
 }
 
-export const githubAdapter = withLineEndings(afterUnlock(createGithubAdapter(currentGithub)), kv);
+export const githubAdapter = savedTogether(withLineEndings(afterUnlock(createGithubAdapter(currentGithub)), kv), 'github');
 
-export const webdavAdapter = withLineEndings(afterUnlock(createWebdavAdapter(currentWebdav)), kv);
+export const webdavAdapter = savedTogether(withLineEndings(afterUnlock(createWebdavAdapter(currentWebdav)), kv), 'webdav');

@@ -125,9 +125,12 @@ async function syncDocument({ documentId, kvAdapter, diskAdapter, resolveConflic
   // A write that finds the file changed since the read below (another device saved in between) says so with a
   // WriteConflictError; the whole comparison then runs again against what is there now, so the person is asked
   // about it instead of the other save being overwritten.
+  // an adapter may provide `lock(documentId, work)`: the read, the comparison and the write then happen one save at a time, across windows
+  const own = /** @type {{ lock?: (id: string, work: () => Promise<unknown>) => Promise<unknown> }} */ (/** @type {unknown} */ (diskAdapter)).lock;
+  const locked = /** @type {(id: string, work: () => ReturnType<typeof syncOnce>) => ReturnType<typeof syncOnce>} */ (own ?? ((_id, work) => work()));
   for (let attempt = 0; ; attempt++) {
     try {
-      return await syncOnce({ documentId, kvAdapter, diskAdapter, resolveConflict });
+      return await locked(documentId, () => syncOnce({ documentId, kvAdapter, diskAdapter, resolveConflict }));
     } catch (err) {
       if (!isWriteConflict(err) || attempt >= 2) throw err;
     }

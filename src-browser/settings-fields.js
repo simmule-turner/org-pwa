@@ -6,6 +6,7 @@ import { tokenizeMenuAliasValue } from '../src/menu-alias.js';
 import { DEFAULT_ORG_WEATHER_FORMAT } from '../src/org-weather.js';
 import { VISIBILITY_KEYWORDS } from '../src/startup-config.js';
 import { getBabelJs } from '../src/local-variables.js';
+import { DEFAULT_SIZE_LIMITS, FETCH_TIMEOUT_KEY, SIZE_KINDS, formatSize, validateSizeSetting, validateTimeoutSetting } from '../src/size-limits.js';
 
 /**
  * Quick Settings: one entry per Global/Local Variable this app knows
@@ -632,4 +633,31 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'diary-list-entries-hook', label: 'Diary hook (diary-include-other-diary-files, diary-sort-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
   { key: 'diary-nongregorian-listing-hook', label: 'Hebrew, Islamic and Bahá\u2019í entries (diary-hebrew-list-entries, diary-islamic-list-entries, diary-bahai-list-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
   { key: 'diary-date-forms', label: 'Diary date forms (Lisp list)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  ...sizeLimitFields(),
 ];
+
+/** The Size limits cards: a warn and a refuse size for each kind of file that has them, and the timeout of a download.
+ * @returns {QuickSettingField[]} */
+function sizeLimitFields() {
+  /** @type {QuickSettingField[]} */ const fields = [];
+  /** @type {[import('../src/size-limits.js').SizeKind, string][]} */
+  const kinds = [
+    ['orgFile', 'Org file'],
+    ['image', 'Inline image'],
+    ['attachment', 'Attachment'],
+    ['bibliography', 'Bibliography file'],
+    ['setupfile', '#+SETUPFILE'],
+    ['include', '#+INCLUDE file'],
+  ];
+  for (const [kind, name] of kinds) {
+    const info = SIZE_KINDS[kind];
+    const limit = DEFAULT_SIZE_LIMITS[kind];
+    if (info.warnKey && 'warn' in limit && limit.warn) {
+      fields.push({ key: info.warnKey, label: `${name}: ask before ${kind === 'attachment' ? 'attaching' : 'opening'} above (off = never ask)`, section: 'Size limits', type: 'text', default: formatSize(limit.warn).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
+    }
+    const refuse = kind === 'image' ? 'show inline up to (a larger one waits for a tap on Load)' : 'refuse above (off = no limit)';
+    fields.push({ key: info.key, label: `${name}: ${refuse}`, section: 'Size limits', type: 'text', default: formatSize(limit.max).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
+  }
+  fields.push({ key: FETCH_TIMEOUT_KEY, label: 'Download timeout in seconds (off = none)', section: 'Size limits', type: 'text', default: String(DEFAULT_SIZE_LIMITS.fetchTimeoutSeconds), validate: validateTimeoutSetting, helpAnchor: '#size-limits' });
+  return fields;
+}

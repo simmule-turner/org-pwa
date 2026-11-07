@@ -1,8 +1,10 @@
 // @ts-check
 /** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
+import { fetchWithTimeout } from './limited-fetch.js';
+import { assertWithinCeiling, assertWithinLimit } from '../src/size-limits.js';
 import { writeConflict } from '../src/sync-engine.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
-import { decodeUtf8Strict } from '../src/utf8.js';
+import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
 /**
  * GitHub-backed storage adapter, using GitHub's REST Contents API directly
  * from the browser — no server component. This is exactly how GitHub's API
@@ -49,7 +51,7 @@ function base64ToUtf8(base64, name) {
   const binary = atob(base64.replace(/\n/g, ''));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return decodeUtf8Strict(bytes, name);
+  return decodeText(bytes, name);
 }
 
 /** URL-encodes each path segment separately, preserving the "/"
@@ -138,7 +140,7 @@ async function githubErrorMessage(res) {
  *  was actually taken. */
 async function fetchBlobContent(config, sha) {
   const url = `${API_BASE}/repos/${config.owner}/${config.repo}/git/blobs/${sha}`;
-  const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
+  const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
   if (!res.ok) throw new Error(await githubErrorMessage(res));
   const blob = await res.json();
   return blob.content;
@@ -156,13 +158,14 @@ export function createGithubAdapter(getConfig) {
   async function readImpl(fileId) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
-    const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
+    const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const body = await res.json();
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
+    if (typeof body.size === 'number') assertWithinCeiling(body.size, fileId); // before the file is downloaded or decoded
     const content = body.encoding === 'none' ? await fetchBlobContent(config, body.sha) : body.content;
     return { content: base64ToUtf8(content, fileId), hash: body.sha };
   }
@@ -177,16 +180,19 @@ export function createGithubAdapter(getConfig) {
    *  ordinary camera photo easily exceeds that, not an edge case).
    * @param {string} fileId
    *  Returns null for a 404, matching readImpl's convention. */
-  async function readBinaryImpl(fileId) {
+  async function readBinaryImpl(fileId, /** @type {{ maxBytes?: number }} */ options = {}) {
     const config = requireConfig(getConfig);
     const url = contentsUrl(config, fileId) + '?ref=' + encodeURIComponent(config.branch || 'main');
-    const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
+    const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
     const body = await res.json();
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
+    // `maxBytes`: the caller does not want a file over this size (a picture to show inline); GitHub says how big it is before any of it is downloaded
+    if ((options?.maxBytes ?? 0) > 0 && typeof body.size === 'number' && body.size > (options?.maxBytes ?? 0)) return { tooLarge: true, bytes: body.size, hash: body.sha };
+    if (!((options?.maxBytes ?? 0) > 0) && typeof body.size === 'number') assertWithinLimit('attachment', body.size, fileId); // otherwise the attachment limit applies
     const content = body.encoding === 'none' ? await fetchBlobContent(config, body.sha) : body.content;
     return { base64: content.replace(/\n/g, ''), hash: body.sha };
   }
@@ -198,6 +204,7 @@ export function createGithubAdapter(getConfig) {
    *  uses its sha, so a commit made since then is refused (a WriteConflictError) instead of silently replaced
    */
   async function writeImpl(fileId, content, options = {}) {
+    refuseNonUtf8Write(fileId); // read-only until converted (src/utf8.js)
     const config = requireConfig(getConfig);
     // GitHub requires the current sha to update an existing file (so it
     // can refuse to silently clobber a newer commit); a brand new file

@@ -5,6 +5,8 @@
 /** @typedef {import('../src/types.js').DiskAdapter} DiskAdapter */
 /** @typedef {Extract<import('../src/link-resolve.js').LinkResolution, { type: 'file' }>} FileLinkResolution */
 // Extracted from app.js: documents io.
+import { NOT_UTF8_STATUS, isNonUtf8 } from '../src/utf8.js';
+import { askingBeforeLargeRead } from './size-confirm.js';
 import { forState } from './connection-vault.js';
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -54,6 +56,12 @@ export function suggestedSaveAsName(fallback) {
   return S.state.documentId && S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? fallback : S.state.documentId || fallback;
 }
 
+/** What to say once a file is open: the file is only readable, said so, if its bytes were not valid UTF-8.
+ * @param {string} message */
+function openedStatus(message) {
+  return isNonUtf8(S.state.documentId) ? NOT_UTF8_STATUS : message;
+}
+
 /** Common finish-up after any successful open/create, regardless of which
  * @param {string} documentId
  * @param {Doc} doc
@@ -80,7 +88,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   const archiveVisibility = getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(doc, startupConfig, archiveVisibility);
   S.state = { documentId, doc, startupConfig, storageKind: storageKind ?? null, localVariables };
-  S.isBufferReadOnly = getBufferReadOnly(localVariables);
+  S.isBufferReadOnly = getBufferReadOnly(localVariables) || isNonUtf8(documentId);
   if (!plainText) void rememberIds(doc, storageKind, documentId);
   syncAgendaFilesConfig();
   syncContactsFilesConfig();
@@ -166,12 +174,12 @@ export async function openFromFilesystem() {
     const { doc } = await openDocument({
       documentId,
       kvAdapter: kv,
-      diskAdapter: filesystemAdapter,
+      diskAdapter: askingBeforeLargeRead(filesystemAdapter),
       preferCache,
     });
     await afterDocumentLoaded(documentId, doc, 'filesystem', preferCache);
     if (preferCache) render();
-    setStatus(preferCache ? 'Resumed your unsaved local version \u2014 remember to Save it.' : 'Opened.');
+    setStatus(openedStatus(preferCache ? 'Resumed your unsaved local version \u2014 remember to Save it.' : 'Opened.'));
   } catch (err) {
     if (err.name !== 'AbortError') setStatus('Could not open file: ' + err.message);
   }
@@ -188,15 +196,17 @@ export async function openFromImport() {
     const { doc } = await openDocument({
       documentId: fileId,
       kvAdapter: kv,
-      diskAdapter: inputFileAdapter,
+      diskAdapter: askingBeforeLargeRead(inputFileAdapter),
       preferCache,
     });
     await afterDocumentLoaded(fileId, doc, 'input', preferCache);
     if (preferCache) render();
     setStatus(
-      preferCache
-        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
-        : 'Imported. Use Save to download your changes \u2014 there\u2019s no live link back to the original file on this platform.'
+      openedStatus(
+        preferCache
+          ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+          : 'Imported. Use Save to download your changes \u2014 there\u2019s no live link back to the original file on this platform.'
+      )
     );
   } catch (err) {
     setStatus('Could not import file: ' + err.message);
@@ -223,17 +233,19 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
     const { doc, source } = await openDocument({
       documentId: path,
       kvAdapter: kv,
-      diskAdapter,
+      diskAdapter: askingBeforeLargeRead(diskAdapter),
       preferCache,
     });
     await afterDocumentLoaded(path, doc, kind, preferCache);
     if (preferCache) render();
     setStatus(
-      preferCache
-        ? 'Resumed your unsaved local version \u2014 remember to Save it.'
-        : source === 'new'
-          ? `"${path}" doesn't exist yet \u2014 opened as a new empty file.`
-          : `Opened from ${label}.`
+      openedStatus(
+        preferCache
+          ? 'Resumed your unsaved local version \u2014 remember to Save it.'
+          : source === 'new'
+            ? `"${path}" doesn't exist yet \u2014 opened as a new empty file.`
+            : `Opened from ${label}.`
+      )
     );
   } catch (err) {
     setStatus(`Could not open from ${label}: ` + err.message);

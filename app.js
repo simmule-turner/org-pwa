@@ -48,6 +48,7 @@ import { anyOverlayPanelOpen, closeAllOverlayPanels, renderModeline, syncContent
 import { confirmDialog } from './src-browser/dialogs.js';
 import { afterDocumentLoaded, saveCurrent } from './src-browser/documents-io.js';
 import { commitAndRender, setStatus } from './src-browser/editing.js';
+import { listenForSavedElsewhere } from './src-browser/saved-elsewhere.js';
 import { checkForExternalChange, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './src-browser/external-sync.js';
 import { renderFileMenu } from './src-browser/file-menu.js';
 import { closeFloatingKeyboard, noteKeydownDelivered, renderFloatingKeyboard, syncKeyboardToggle, textViewInput, withArmedShift } from './src-browser/floating-keyboard.js';
@@ -1313,6 +1314,8 @@ externalChangeDismissBtn.addEventListener('click', () => {
 // while this tab sat in the background would otherwise go unnoticed for
 // however much longer the person keeps working here. Best-effort (see
 // checkForExternalChange's own doc comment) -- never blocks anything.
+listenForSavedElsewhere(); // a save in another window of the app
+
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     checkForExternalChange();

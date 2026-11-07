@@ -336,13 +336,13 @@ test('generateCaptureFilename: dated, with the camera file\u2019s own extension,
   assert.equal(generateCaptureFilename('photo', '', '', at), 'photo-2026-10-08-221503.jpg');
 });
 
-test('attachmentSizeCheck: fine when small, a confirmation over 25MB, a refusal over 95MB on GitHub only', () => {
+test('attachmentSizeCheck: fine when small, a confirmation over the 20MB limit, a refusal over 95MB', () => {
   const chars = (megabytes) => Math.ceil((megabytes * 1024 * 1024 * 4) / 3);
   assert.equal(attachmentSizeCheck(chars(5), 'github'), null);
-  assert.match(attachmentSizeCheck(chars(30), 'webdav').warn, /30MB/);
-  assert.match(attachmentSizeCheck(chars(30), 'github').warn, /30MB/);
+  assert.match(attachmentSizeCheck(chars(30), 'webdav').warn, /30 MB/);
+  assert.match(attachmentSizeCheck(chars(30), 'github').warn, /30 MB/);
   assert.match(attachmentSizeCheck(chars(96), 'github').refuse, /100MB/);
-  assert.match(attachmentSizeCheck(chars(96), 'webdav').warn, /96MB/);
+  assert.match(attachmentSizeCheck(chars(96), 'webdav').refuse, /96 MB/);
 });
 
 test('prefersInAppCamera: ChromeOS and desktop yes; Android, iPhone, iPad (even as a Mac) no', () => {

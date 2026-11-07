@@ -2,6 +2,8 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
+import { fetchWithTimeout, readLimited } from './limited-fetch.js';
+import { getSizeLimits } from '../src/size-limits.js';
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink, hasUnsafeAttachmentId, isSafeAttachmentId, isSafeAttachmentName } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
@@ -153,9 +155,10 @@ export async function attachFromUrl(heading) {
   setStatus('Downloading\u2026');
   render();
   try {
-    const response = await fetch(url.trim());
+    const response = await fetchWithTimeout(url.trim());
     if (!response.ok) throw new Error(`the server answered ${response.status}`);
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    // stops the download once it is over the attachment limit, rather than after the whole file is in memory
+    const bytes = await readLimited(response, { maxBytes: getSizeLimits().attachment.max, kind: 'attachment', name: fileNameFromUrl(url.trim()) });
     let binary = '';
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     await uploadAttachmentToHeading(heading, { name: fileNameFromUrl(url.trim()), type: response.headers.get('content-type') || undefined, base64: btoa(binary) });
@@ -187,7 +190,7 @@ function unresolvedAttachmentMessage(heading, filename) {
   return "Can't resolve this attachment \u2014 no heading in its own ancestor chain has an :ID: property.";
 }
 
-const unsafeIdMessage = () => 'This heading\u2019s :ID: contains a path separator or ".." and cannot name an attachment folder.';
+const unsafeIdMessage = () => 'This heading\u2019s :ID: contains a path separator or "..", or is shorter than 3 characters, and cannot name an attachment folder.';
 
 /** @param {string} what */
 const unavailable = (what) =>

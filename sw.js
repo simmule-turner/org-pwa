@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v649';
+const CACHE_NAME = 'org-pwa-shell-v650';
 
 const SHELL_FILES = [
   './',
@@ -49,8 +49,10 @@ const SHELL_FILES = [
   './src/babel-ref.js',
   './src/babel-trust.js',
   './src/regex-guard.js',
+  './src/save-lock.js',
   './src/storage-path.js',
   './src/utf8.js',
+  './src/size-limits.js',
   './src/remote-resources.js',
   './src/lisp-init.js',
   './src/elisp.js',
@@ -315,6 +317,8 @@ const SHELL_FILES = [
   './src-browser/local-folder.js',
   './src-browser/platform.js',
   './src-browser/line-endings-adapter.js',
+  './src-browser/limited-fetch.js',
+  './src-browser/size-confirm.js',
   './src-browser/floating-keyboard.js',
   './src-browser/god-mode-hints.js',
   './src-browser/heading-commands.js',
@@ -363,7 +367,9 @@ const SHELL_FILES = [
   './src-browser/display-info.js',
   './src-browser/key-log.js',
   './src-browser/update-log.js',
+  './src-browser/saved-elsewhere.js',
   './src-browser/sync-helpers.js',
+  './src-browser/utf8-convert.js',
   './src-browser/render-helpers.js',
   './src-browser/indexeddb-adapter.js',
   './src-browser/filesystem-adapter.js',

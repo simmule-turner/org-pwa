@@ -197,37 +197,129 @@ function runaway(node) {
   }
 }
 
-/** @type {Map<string, { root: Node, groups: number } | null>} */
+/** Whether a node is a repetition without an upper bound of one character (`.*`, `[a-z]*`, `\\s+`, `a*`). @param {Node} node @returns {node is Extract<Node, { t: 'rep' }>} */
+function unboundedChar(node) {
+  return node.t === 'rep' && node.max === Infinity && node.node.t === 'atom' && node.node.wide;
+}
+
+/** The characters of a simple atom (a literal, or a bracket expression of plain characters and ranges, written as the translator
+ * writes them: `\\u{61}-\\u{7a}` or a bare character), or null when unknown. @param {string} text @returns {Set<number> | null} */
+function charsOf(text) {
+  const bracket = text.startsWith('[') && text.endsWith(']');
+  if (bracket && text[1] === '^') return null;
+  const body = bracket ? text.slice(1, -1) : text;
+  /** @type {(number | '-')[]} */ const tokens = [];
+  for (const m of body.matchAll(/\\u\{([0-9a-fA-F]+)\}|\\(.)|(.)/gsu)) {
+    if (m[1] !== undefined) tokens.push(parseInt(m[1], 16));
+    else if (m[2] !== undefined) {
+      if (/[a-zA-Z0-9]/.test(m[2])) return null; // a class such as \d or \w: unknown
+      tokens.push(m[2].codePointAt(0) ?? 0);
+    } else tokens.push(bracket && m[3] === '-' ? '-' : (m[3] ?? '').codePointAt(0) ?? 0);
+  }
+  if (!bracket && tokens.length !== 1) return null;
+  const set = new Set();
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t === '-') {
+      set.add(45);
+      continue;
+    }
+    if (tokens[i + 1] === '-' && typeof tokens[i + 2] === 'number') {
+      const to = /** @type {number} */ (tokens[i + 2]);
+      if (t > to || to - t > 0x3000) return null;
+      for (let c = t; c <= to; c++) set.add(c);
+      i += 2;
+    } else set.add(t);
+  }
+  return set;
+}
+
+/** Whether two one-character repetitions can match the same character: unless both are plain sets that share nothing, they are taken to overlap. @param {Extract<Node, { t: 'rep' }>} a @param {Extract<Node, { t: 'rep' }>} b */
+function overlap(a, b) {
+  const x = charsOf(/** @type {Extract<Node, { t: 'atom' }>} */ (a.node).text);
+  const y = charsOf(/** @type {Extract<Node, { t: 'atom' }>} */ (b.node).text);
+  if (!x || !y) return true;
+  for (const c of x) if (y.has(c)) return true;
+  return false;
+}
+
+/** The unbounded one-character repetition an item is (or holds alone, in a group), else null. @param {Node} node @returns {Extract<Node, { t: 'rep' }> | null} */
+function asUnbounded(node) {
+  if (unboundedChar(node)) return node;
+  if (node.t === 'group') return asUnbounded(node.node);
+  if (node.t === 'seq' && node.items.length === 1) return asUnbounded(node.items[0]);
+  return null;
+}
+
+/** Whether some sequence has two unbounded one-character repetitions side by side that can match the same characters (`.*.*x`):
+ * polynomial work on a failing match, which a long input turns into a stall. @param {Node} node @returns {boolean} */
+function polynomial(node) {
+  switch (node.t) {
+    case 'seq': {
+      /** @type {Extract<Node, { t: 'rep' }> | null} */
+      let previous = null;
+      for (const item of node.items) {
+        const rep = asUnbounded(item);
+        if (rep) {
+          if (previous && overlap(previous, rep)) return true;
+          previous = rep;
+        } else {
+          previous = null;
+          if (polynomial(item)) return true;
+        }
+      }
+      return false;
+    }
+    case 'group': return polynomial(node.node);
+    case 'rep': return polynomial(node.node);
+    case 'alt': return node.branches.some(polynomial);
+    default: return false;
+  }
+}
+
+/** Input shorter than this always uses the native engine, which is fast enough for polynomial patterns. */
+const POLY_MIN_INPUT = 2000;
+/** The budget for a polynomial pattern: more than STEP_LIMIT, because a legitimate quadratic match on a few thousand characters is real work. */
+const POLY_LIMIT = 10_000_000;
+
+/** @typedef {{ root: Node, groups: number, limit?: number }} Guard */
+/** @type {Map<string, { root: Node, groups: number, kind: 'runaway' | 'poly' | null }>} */
 const parsed = new Map();
 
 /**
- * The parsed pattern when it can backtrack without end, else null (use the native engine).
- * @param {string} source @param {string} flags
+ * The parsed pattern when it can backtrack without end (or, for an input over POLY_MIN_INPUT characters, in polynomial time),
+ * else null (use the native engine).
+ * @param {string} source @param {string} flags @param {number} [inputLength]
+ * @returns {Guard | null}
  */
-export function guardFor(source, flags) {
+export function guardFor(source, flags, inputLength = 0) {
   const key = `${flags}/${source}`;
-  if (parsed.has(key)) return parsed.get(key) ?? null;
-  /** @type {{ root: Node, groups: number } | null} */
-  let result = null;
-  try {
-    const p = parse(source, flags);
-    if (runaway(p.root)) result = p;
-  } catch (e) {
-    if (!(e instanceof Unsupported)) throw e;
+  let entry = parsed.get(key);
+  if (!entry) {
+    entry = { root: { t: 'seq', items: [] }, groups: 0, kind: null };
+    try {
+      const p = parse(source, flags);
+      entry = { root: p.root, groups: p.groups, kind: runaway(p.root) ? 'runaway' : polynomial(p.root) ? 'poly' : null };
+    } catch (e) {
+      if (!(e instanceof Unsupported)) throw e;
+    }
+    parsed.set(key, entry);
   }
-  parsed.set(key, result);
-  return result;
+  if (entry.kind === 'runaway') return entry;
+  if (entry.kind === 'poly' && inputLength > POLY_MIN_INPUT) return { root: entry.root, groups: entry.groups, limit: POLY_LIMIT };
+  return null;
 }
 
 /**
  * Searches `s` from `start` with JavaScript's matching rules.
- * @param {{ root: Node, groups: number }} pattern @param {string} s @param {number} start
+ * @param {Guard} pattern @param {string} s @param {number} start
  * @returns {{ index: number, end: number, caps: number[] } | null}
  */
 export function guardedSearch(pattern, s, start) {
   let steps = 0;
+  const limit = pattern.limit ?? STEP_LIMIT;
   const tick = () => {
-    if (++steps > STEP_LIMIT) throw new Overflow();
+    if (++steps > limit) throw new Overflow();
   };
   /** The length of the atom's match at `pos`, or -1. @param {Extract<Node, { t: 'atom' }>} a @param {number} pos */
   const test = (a, pos) => {

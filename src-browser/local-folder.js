@@ -6,7 +6,8 @@
 // up in this folder. adapters.js falls back to it, so everything that reads or writes a local file gets this at once.
 import { S } from './app-state.js';
 import { platform } from './platform.js';
-import { decodeUtf8Strict } from '../src/utf8.js';
+import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
+import { assertWithinCeiling, base64Bytes, textCeiling } from '../src/size-limits.js';
 
 /** Whether the platform keeps such a folder and one has been chosen. */
 export function folderAvailable() {
@@ -28,14 +29,17 @@ function base64ToText(base64, name) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return decodeUtf8Strict(bytes, name);
+  return decodeText(bytes, name);
 }
 
 /** `{ content, hash }` for the file at `path` in the folder, or null if it is not there. (The adapter wrapper in adapters.js
  * @param {string} path
  *  derives the real hash and normalizes line endings, so the hash is left empty here.) */
 export async function readFolderText(path) {
-  const result = await platform.attachments.adapter.readBinary(path);
+  const ceiling = textCeiling();
+  const result = await platform.attachments.adapter.readBinary(path, ceiling > 0 ? { maxBytes: ceiling } : undefined);
+  if (result && result.tooLarge) assertWithinCeiling(result.bytes, path); // the folder says how big it is without sending it
+  if (result && ceiling > 0) assertWithinCeiling(base64Bytes(result.base64), path); // an adapter that ignores maxBytes
   return result ? { content: base64ToText(result.base64, path), hash: '' } : null;
 }
 
@@ -45,6 +49,7 @@ export async function readFolderText(path) {
  * @param {string} content
  */
 export async function writeFolderText(path, content) {
+  refuseNonUtf8Write(path); // read-only until converted (src/utf8.js)
   await platform.attachments.adapter.writeBinary(path, textToBase64(content));
   return { hash: '' };
 }

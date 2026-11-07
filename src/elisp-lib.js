@@ -1299,9 +1299,9 @@ const foldCase = () => (intern('case-fold-search').value ?? T) !== NIL;
 /** Searches `s` from `start`; sets the match data. @param {string} re @param {string} s @param {number} start @param {boolean} setData */
 function search(re, s, start, setData) {
   const rx = toRegExp(re, foldCase(), true);
-  const guard = guardFor(rx.source, rx.flags);
+  const guard = guardFor(rx.source, rx.flags, s.length);
   if (guard) {
-    // a pattern that can backtrack without end runs in the step-limited matcher
+    // a pattern that can backtrack without end (or, on a long input, in polynomial time) runs in the step-limited matcher
     const hit = guardedSearch(guard, s, start);
     if (!hit) return null;
     if (setData) {

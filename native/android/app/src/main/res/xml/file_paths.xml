@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The only folders a content:// address can reach: the two the app writes to for handing a file to another app (a camera
+     capture, a file opened in a viewer). Both are in the cache, which the system may clear. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <cache-path name="captures" path="captures/" />
+    <cache-path name="opened" path="opened/" />
 </paths>

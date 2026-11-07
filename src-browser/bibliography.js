@@ -30,7 +30,7 @@ export async function prefetchBibliography(doc, documentId, storageKind, { again
     const id = documentId + '\n' + path;
     if (!again && tried.has(id)) continue;
     tried.add(id);
-    const text = await fetchOne(path, documentId, storageKind, kvKey, 'a bibliography');
+    const text = await fetchOne(path, documentId, storageKind, kvKey, 'a bibliography', 'bibliography');
     if (text == null) continue;
     cacheBibliography(path, text);
     got = true;

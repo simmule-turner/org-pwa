@@ -708,12 +708,21 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
+| ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~off~ waits as long as the browser does; also Settings → Sync and storage → Size limits |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
 | ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX and Beamer exports: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export), and the ~org-beamer-*~ variables (see Beamer); Settings → Export → LaTeX sets it |
 | ~org-xx-lisp-init~ | unset | (own) Emacs Lisp run like an init file: ~setq~ of any setting in this table, the ~holiday-*~ lists, capture templates, LaTeX and ODT styles, ~(load "github:file.el")~ to read more from a file (see [[#lisp-init][Lisp init]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
+| ~org-xx-size-limit-attachment~ | ~95MB~ | (own) Refuse an attachment above this size (GitHub refuses above 95MB whatever this is); ~off~ sets no limit; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-attachment-warn~ | ~20MB~ | (own) Ask before attaching a file above this size; ~off~ never asks; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-bibliography~ | ~5MB~ | (own) Refuse a ~#+BIBLIOGRAPHY:~ file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-image~ | ~3MB~ | (own) An inline image above this size shows its size and a *Load* link instead; ~off~ shows every image; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-include~ | ~2MB~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-org-file~ | ~2MB~ | (own) Refuse to open an Org file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-org-file-warn~ | ~500KB~ | (own) Ask before opening an Org file above this size; ~off~ never asks; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-setupfile~ | ~1MB~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-text-line-numbers~ | ~t~ | (own) Whether the Text view shows line numbers |
@@ -990,7 +999,7 @@ Each heading's files live in ~data/<first 2 characters of its ID>/<rest of the I
 
 *Names*: an ~:ID:~ or an ~attachment:~ name stays inside the heading's folder, so one with ~..~, a backslash or a control character is refused (a name may include sub-folders such as ~attachment:scans/a.png~). Attaching a file named ~..~, ~.git~ or ~CON~ saves it under a safe name.
 
-*Requirements*: GitHub or WebDAV must be connected; the [[#android-app][Android app]] keeps a local file's attachments in the org-pwa folder you choose once. A file over 25MB asks first, and GitHub refuses over 95MB (use WebDAV for long videos).
+*Requirements*: GitHub or WebDAV must be connected; the [[#android-app][Android app]] keeps a local file's attachments in the org-pwa folder you choose once. A file over 20MB asks first and one over 95MB is refused (use WebDAV for long videos); see [[#size-limits][Size limits]].
 
 -----
 
@@ -1610,7 +1619,7 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 - *Revert Buffer* (palette, ~revert-buffer~) reads the open file again and drops the buffer's unsaved changes, after asking if there are any. *Undo* brings them back.
 - *Capture, Refile, Archive and Replace edit buffers, not files*: an entry sent to another file goes into that file's tab (opened in the background if needed), modified until you save. Nothing is written behind your back, and modified buffers are kept on the device.
 - *Line endings* are kept: a CRLF file is saved back with CRLF.
-- *Encoding*: files are read as UTF-8. A file that is not valid UTF-8 (a Latin-1 file, say) is not opened, because saving it would damage it; convert it first.
+- *Encoding*: files are read as UTF-8. A file that is not valid UTF-8 (a Latin-1 file, say) opens read-only, with the odd bytes shown as ~�~, and cannot be saved, so it is not damaged. *Convert to UTF-8…* (command palette) asks which encoding it is in (Latin-1, UTF-16, or another name), makes the buffer editable, and the next save writes UTF-8.
 - *Save As* may pick another backend; an existing file asks before it is replaced, and again if someone else saved it meanwhile.
 - A file with unsaved local edits asks to *resume* or *discard* them when opened. *Settings → Pending Local Changes* lists every file with unsynced edits.
 - *Conflicts*: if the stored version changed since the last sync, Save merges the two where it safely can and asks only about the parts that clash (see [[#offline-behavior-and-sync][Offline behavior and sync]]).
@@ -1921,11 +1930,20 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 - *Both sides changed the same lines*, or adjacent lines with no unchanged line between them (the same place, as in git and GNU diff3): a dialog lists each such region with your version and the other one. Choose *Yours*, *Other* or *Both* (yours, then theirs) for each, or *All yours* or *All other* for every region at once. *Apply* stays disabled until every region has a decision, and everything outside the regions is already combined. *Cancel*, Escape or tapping outside changes nothing: the other version is untouched, your edits stay unsaved, and the next Save raises the same conflict.
 - *No common ancestor is known* (a file last synced by a version that didn't keep one, until its next open or save), or the two versions are too different to compare by lines: every difference, or the whole file as one choice, is shown for you to decide.
 
+*Two windows of the app*: saves of one file take turns, so they never interleave. When one window saves a file that another has open, the other reloads it if it has no unsaved edits, and otherwise shows the same banner.
+
 *The banner's Merge* does the same without waiting for Save. It combines your unsaved edits with the version now stored, asks about clashing regions in the same dialog, and applies the result as an ordinary, undoable, still-unsaved edit. The other version becomes the new baseline, so the Save that follows is a plain write. With no unsaved changes Merge just reloads, and a read-only buffer can't be merged into (make it writable first).
 
 *What this isn't*: the merge works on lines, not org structure. A subtree moved on one side and edited on the other is an ordinary clash, and two sides that each add the same new heading in different places keep both. A clean automatic merge is still worth a glance; that is what the undo step is for.
 
 -----
+
+*** Size limits
+:PROPERTIES:
+:CUSTOM_ID: size-limits
+:END:
+
+A large file can make the app slow, so each kind has a size at which it asks and one at which it refuses; *Settings → Sync and storage → Size limits* changes them, and ~off~ removes a limit. An Org file above 500KB asks "This is large and may be slow. Open anyway?" and above 2MB is not opened; the same limit applies to a file read for the Agenda, a refile or a capture. A picture above 3MB is not shown inline: it appears as its size with a *Load* link. An attachment above 20MB asks before it is attached, and above 95MB is refused. Bibliography, ~#+SETUPFILE:~ and ~#+INCLUDE:~ files above their limits are skipped, and the app says so. A download that has not started answering after 30 seconds stops with a message. Pasting into the Text view and pictures linked from a web address are not limited.
 
 ** Platform support
 :PROPERTIES:

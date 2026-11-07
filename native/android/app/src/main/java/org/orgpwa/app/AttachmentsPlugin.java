@@ -1,6 +1,7 @@
 package org.orgpwa.app;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -8,6 +9,7 @@ import android.content.UriPermission;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.util.Base64;
+import android.util.Base64OutputStream;
 import androidx.activity.result.ActivityResult;
 import androidx.documentfile.provider.DocumentFile;
 import com.getcapacitor.JSArray;
@@ -88,10 +90,14 @@ public class AttachmentsPlugin extends Plugin {
         call.resolve(out);
     }
 
-    /** Reads a file by its path inside the folder. Resolves { found: false } if it is not there, else { found, base64 }. */
+    /**
+     * Reads a file by its path inside the folder. Resolves { found: false } if it is not there, else { found, base64 }.
+     * `maxBytes` (optional, never above 100 MB) is the largest file to read; a larger one rejects "too large: ...".
+     */
     @PluginMethod
     public void read(PluginCall call) {
         String path = call.getString("path");
+        long cap = Limits.cap(call);
         Uri linked = linkedUri(path);
         DocumentFile file = linked == null ? locate(path, false) : null;
         JSObject out = new JSObject();
@@ -100,31 +106,54 @@ public class AttachmentsPlugin extends Plugin {
             call.resolve(out);
             return;
         }
-        try (InputStream in = getContext().getContentResolver().openInputStream(linked != null ? linked : file.getUri())) {
+        ContentResolver resolver = getContext().getContentResolver();
+        Uri source = linked != null ? linked : file.getUri();
+        long size = linked != null ? Limits.sizeOf(resolver, linked) : file.length();
+        if (size > cap) {
+            call.reject(Limits.tooLarge(size, cap));
+            return;
+        }
+        try (InputStream in = resolver.openInputStream(source)) {
             if (in == null) {
                 out.put("found", false);
                 call.resolve(out);
                 return;
             }
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            byte[] chunk = new byte[65536];
-            int n;
-            while ((n = in.read(chunk)) != -1) buffer.write(chunk, 0, n);
+            // encoded as it is read, so the file's bytes and its base64 text are not both held at once
+            ByteArrayOutputStream encoded = new ByteArrayOutputStream(size > 0 ? (int) Math.min(size * 4 / 3 + 16, cap * 4 / 3 + 16) : 8192);
+            try (Base64OutputStream base64 = new Base64OutputStream(encoded, Base64.NO_WRAP)) {
+                Limits.copy(in, base64, cap);
+            }
             out.put("found", true);
-            out.put("base64", Base64.encodeToString(buffer.toByteArray(), Base64.NO_WRAP));
+            out.put("base64", encoded.toString("US-ASCII"));
             call.resolve(out);
+        } catch (Limits.TooLargeException e) {
+            call.reject(e.getMessage());
         } catch (IOException | SecurityException e) {
             call.reject("Could not read " + path + ": " + e.getMessage());
         }
     }
 
-    /** Writes a file (`base64` is its bytes) at a path inside the folder, making the folders on the way and replacing any earlier copy. */
+    /**
+     * Writes a file (`base64` is its bytes) at a path inside the folder, making the folders on the way and replacing any earlier copy.
+     * `maxBytes` (optional, never above 100 MB) is the largest file to write; a larger one rejects "too large: ...".
+     */
     @PluginMethod
     public void write(PluginCall call) {
         String path = call.getString("path");
         String encoded = call.getString("base64");
         if (encoded == null) {
             call.reject("Nothing to write");
+            return;
+        }
+        long cap = Limits.cap(call);
+        long size = Limits.decodedLength(encoded);
+        if (size > cap) {
+            call.reject(Limits.tooLarge(size, cap));
+            return;
+        }
+        if (!isPlainPath(path)) {
+            call.reject("Could not create " + path + " in the attachments folder: not a plain relative path.");
             return;
         }
         setLink(path, null); // a file written here replaces a link kept at the same path
@@ -170,9 +199,14 @@ public class AttachmentsPlugin extends Plugin {
     /** The names of the files in a folder by its path inside the chosen folder. Resolves { names }, empty if there is no such folder. */
     @PluginMethod
     public void list(PluginCall call) {
-        DocumentFile folder = locate(call.getString("path"), false);
         JSObject out = new JSObject();
         JSArray names = new JSArray();
+        if (!isPlainPath(call.getString("path"))) {
+            out.put("names", names);
+            call.resolve(out);
+            return;
+        }
+        DocumentFile folder = locate(call.getString("path"), false);
         if (folder != null && folder.isDirectory()) {
             for (DocumentFile child : folder.listFiles()) {
                 String name = child.getName();
@@ -193,17 +227,26 @@ public class AttachmentsPlugin extends Plugin {
     /**
      * org-attach-method ln: keeps a link at a path inside the folder to a file the person picked (`uri`, from pickAttachment with
      * keep), instead of a copy. read, exists, list and remove then treat the path as a file. The file must still be readable
-     * later, so access to it has to have been kept.
+     * later, so access to it has to have been kept. Only a file picked this way in this run of the app can be linked, and
+     * never one inside the attachments folder itself.
      */
     @PluginMethod
     public void link(PluginCall call) {
         String path = call.getString("path");
         String uri = call.getString("uri");
-        if (path == null || path.isEmpty() || uri == null || path.contains("..")) {
+        if (uri == null || !isPlainPath(path)) {
             call.reject("Nothing to link");
             return;
         }
+        if (!KeptPicks.contains(uri)) {
+            call.reject("That file was not picked to be linked.");
+            return;
+        }
         Uri target = Uri.parse(uri);
+        if (insideTree(target)) {
+            call.reject("That file is inside the attachments folder, so it cannot be linked.");
+            return;
+        }
         boolean readable = false;
         for (UriPermission permission : getContext().getContentResolver().getPersistedUriPermissions()) {
             if (permission.getUri().equals(target) && permission.isReadPermission()) readable = true;
@@ -216,17 +259,31 @@ public class AttachmentsPlugin extends Plugin {
         call.resolve();
     }
 
-    /** org-attach-method mv: deletes the file the person picked, once its copy is attached. Rejects if Android refuses. */
+    /**
+     * org-attach-method mv: deletes the file the person picked, once its copy is attached. Only a file picked for a move in
+     * this run of the app, with write access kept, can be deleted. Rejects if Android refuses.
+     */
     @PluginMethod
     public void removeSource(PluginCall call) {
         String uri = call.getString("uri");
-        if (uri == null) {
-            call.reject("Nothing to delete");
+        if (uri == null || !KeptPicks.contains(uri)) {
+            call.reject("That file was not picked for a move.");
+            return;
+        }
+        Uri target = Uri.parse(uri);
+        boolean writable = false;
+        for (UriPermission permission : getContext().getContentResolver().getPersistedUriPermissions()) {
+            if (permission.getUri().equals(target) && permission.isWritePermission()) writable = true;
+        }
+        if (!writable) {
+            call.reject("Android did not keep write access to that file, so it cannot be deleted.");
             return;
         }
         try {
-            if (DocumentsContract.deleteDocument(getContext().getContentResolver(), Uri.parse(uri))) call.resolve();
-            else call.reject("The app that holds that file did not delete it.");
+            if (DocumentsContract.deleteDocument(getContext().getContentResolver(), target)) {
+                KeptPicks.remove(uri);
+                call.resolve();
+            } else call.reject("The app that holds that file did not delete it.");
         } catch (SecurityException | java.io.FileNotFoundException | IllegalArgumentException e) {
             call.reject("Could not delete the original: " + (e.getMessage() == null ? "not allowed" : e.getMessage()));
         }
@@ -244,7 +301,7 @@ public class AttachmentsPlugin extends Plugin {
     }
 
     private Uri linkedUri(String path) {
-        String uri = path == null ? null : links().optString(path, null);
+        String uri = !isPlainPath(path) ? null : links().optString(path, null);
         return uri == null || uri.isEmpty() ? null : Uri.parse(uri);
     }
 
@@ -284,12 +341,12 @@ public class AttachmentsPlugin extends Plugin {
     private DocumentFile locate(String path, boolean create) {
         Uri tree = treeUri();
         if (tree == null || path == null || path.isEmpty() || !hasPermission(tree)) return null;
+        if (!isPlainPath(path)) return null;
         DocumentFile current = DocumentFile.fromTreeUri(getContext(), tree);
         if (current == null) return null;
         String[] parts = path.split("/");
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
-            if (part.isEmpty() || part.equals(".") || part.equals("..")) return null;
             boolean last = i == parts.length - 1;
             DocumentFile next = current.findFile(part);
             if (next == null) {
@@ -300,5 +357,36 @@ public class AttachmentsPlugin extends Plugin {
             current = next;
         }
         return current;
+    }
+
+    /**
+     * Whether `path` is a plain relative path inside the folder: parts separated by "/", none of them empty (so no leading or
+     * trailing "/" and no "//"), "." or "..", and no backslash or control character anywhere.
+     */
+    static boolean isPlainPath(String path) {
+        if (path == null || path.isEmpty()) return false;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (c == '\\' || c < 0x20 || c == 0x7f) return false;
+        }
+        for (String part : path.split("/", -1)) {
+            if (part.isEmpty() || part.equals(".") || part.equals("..")) return false;
+        }
+        return true;
+    }
+
+    /** Whether a document address is the chosen attachments folder or something inside it. Cannot tell: counts as inside. */
+    private boolean insideTree(Uri target) {
+        Uri tree = treeUri();
+        if (tree == null) return false;
+        try {
+            if (!DocumentsContract.isDocumentUri(getContext(), target)) return false;
+            if (!java.util.Objects.equals(tree.getAuthority(), target.getAuthority())) return false;
+            String parent = DocumentsContract.getTreeDocumentId(tree);
+            String child = DocumentsContract.getDocumentId(target);
+            return child.equals(parent) || child.startsWith(parent.endsWith("/") ? parent : parent + "/");
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
     }
 }

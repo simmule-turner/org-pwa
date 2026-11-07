@@ -329,6 +329,12 @@ async function openDav(page, name) {
   await page.waitForTimeout(300);
 }
 
+/** Starts opening a WebDAV file without waiting for it to open (a question may come first). */
+async function startOpeningDav(page, name) {
+  await fileMenu(page, 'Open', 'WebDAV');
+  await page.locator('#fileScreenBox').getByText(name, { exact: false }).first().click(); // the list, not the tab of a file already open
+}
+
 async function replaceInDocument(page, from, to) {
   const text = await documentText(page);
   if (!text.includes(from)) throw new Error(`document has no "${from}" to replace`);
@@ -7248,6 +7254,116 @@ check('setupfile: #+SETUPFILE: brings in the keywords of another file (a TODO se
   await context.close();
 });
 
+check('conflict: a save in one window reloads another window with no unsaved edits, and shows the changed-elsewhere banner in one with unsaved edits', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const second = await context.newPage();
+  await second.goto(`${main.base}/index.html`, { waitUntil: 'load' });
+  await waitForModeline(second, 'notes.org'); // the file is restored here as well
+  await replaceInDocument(page, 'body 1', 'body 1 from window one');
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  await second.waitForFunction(() => document.getElementById('outline').innerText.includes('from window one'), null, { timeout: 8000 });
+  expect((await second.locator('#externalChangeBanner').isVisible()) === false, 'no banner where nothing was unsaved');
+  // now the second window has unsaved edits of its own
+  await replaceInDocument(second, 'body 4', 'body 4 unsaved in window two');
+  await replaceInDocument(page, 'body 2', 'body 2 from window one');
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  await second.locator('#externalChangeBanner').waitFor({ state: 'visible', timeout: 8000 });
+  expect((await documentText(second)).includes('unsaved in window two'), 'the unsaved edit is still there');
+  await context.close();
+});
+
+check('remote setupfile asks before loading: nothing is requested until Load once, and Never is remembered', async () => {
+  const url = 'https://example.test/x.org';
+  dav.reset({ 'a.org': `#+SETUPFILE: ${url}\n* WAIT Pending thing\n` });
+  const { context, page, errors } = await freshPage(main, { withDav: true, bypassCSP: true });
+  const requested = [];
+  await context.route('https://example.test/**', (route) => {
+    requested.push(route.request().url());
+    return route.fulfill({ status: 200, contentType: 'text/plain', headers: { 'access-control-allow-origin': '*' }, body: '#+TODO: WAIT | GONE\n' });
+  });
+  const keptAnswer = () =>
+    page.evaluate(async (key) => {
+      const { kv } = await import('/src-browser/singletons.js');
+      const entry = await kv.get(key);
+      return entry ? entry.value : null;
+    }, `remote-ok:${url}`);
+  await startOpeningDav(page, 'a.org'); // the file opens once the question is answered
+  await page.getByRole('button', { name: 'Never load from this address' }).waitFor({ timeout: 8000 });
+  await page.getByText('asks to load a setup file from https://example.test/x.org').waitFor({ timeout: 3000 }); // the question names the address
+  await page.waitForTimeout(500);
+  expect(requested.length === 0, `nothing is requested before the answer: ${requested}`);
+  await page.getByRole('button', { name: 'Never load from this address' }).click();
+  await waitForModeline(page, 'a.org');
+  await page.waitForTimeout(800);
+  expect(requested.length === 0, `Never requests nothing: ${requested}`);
+  expect((await keptAnswer()) === 'never', `Never is kept: ${await keptAnswer()}`);
+  // a later visit (the file is restored as an open tab) does not ask again, and still requests nothing
+  await page.reload({ waitUntil: 'load' });
+  await waitForModeline(page, 'a.org');
+  await page.waitForTimeout(800);
+  expect((await page.getByRole('button', { name: 'Load once' }).count()) === 0, 'no second question after Never');
+  expect(requested.length === 0, `still nothing requested after reopening: ${requested}`);
+  // forgetting the answer brings the question back, and Load once fetches the file and applies its keywords
+  await page.evaluate(async (key) => (await import('/src-browser/singletons.js')).kv.delete(key), `remote-ok:${url}`);
+  await page.reload({ waitUntil: 'load' }); // the restored tab asks again
+  await page.getByRole('button', { name: 'Load once' }).click();
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('WAIT'), null, { timeout: 8000 });
+  expect(requested.length === 1, `Load once requests it once: ${requested}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('non-UTF-8 file opens read-only: the odd bytes show as U+FFFD, a save is refused, and Convert to UTF-8 makes it editable and the next save writes UTF-8', async () => {
+  const latin1 = Buffer.concat([Buffer.from('* Caf'), Buffer.from([0xe9]), Buffer.from(' menu\nbody\n')]);
+  dav.reset({ 'l.org': latin1 });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'l.org');
+  await waitForStatus(page, 'Not valid UTF-8: opened read-only so it is not damaged.');
+  const state = () =>
+    page.evaluate(async () => {
+      const { S } = await import('/src-browser/app-state.js');
+      const { serializeOrg } = await import('/src/org-parser.js');
+      return { readOnly: S.isBufferReadOnly, text: serializeOrg(S.state.doc) };
+    });
+  const opened = await state();
+  expect(opened.readOnly && opened.text.includes('Caf\ufffd menu'), `read-only, with U+FFFD for the odd byte: ${JSON.stringify(opened)}`);
+  // a save is refused, and the file on the server keeps its bytes
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.isBufferReadOnly = false; // even with the flag forced off, the adapter refuses the write
+    const { saveCurrent } = await import('/src-browser/documents-io.js');
+    S.isDirty = true;
+    await saveCurrent();
+  });
+  await waitForStatus(page, 'not valid UTF-8');
+  expect(!dav.requests.some((r) => r.startsWith('PUT l.org')), `no PUT reached the server: ${dav.requests}`);
+  expect(Buffer.compare(dav.get('l.org'), latin1) === 0, 'the file on the server is unchanged');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.isBufferReadOnly = true;
+  });
+  // Convert to UTF-8…
+  await openPalette(page);
+  await page.keyboard.type('convert to utf');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Latin-1 / windows-1252' }).click();
+  await page.getByRole('button', { name: 'Convert', exact: true }).click();
+  await waitForStatus(page, 'the next save writes UTF-8');
+  const converted = await state();
+  expect(!converted.readOnly && converted.text.includes('Café menu'), `editable and decoded as Latin-1: ${JSON.stringify(converted)}`);
+  await replaceInDocument(page, 'body', 'body edited');
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  const onServer = Buffer.from(dav.get('l.org')).toString('utf8');
+  expect(onServer.includes('Café menu') && onServer.includes('body edited') && !onServer.includes('\ufffd'), `the server has UTF-8 text: ${JSON.stringify(onServer)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('cite: a citation shows as written with tappable keys, a tap shows the entry, and the HTML export has the bibliography from the .bib file beside the document', async () => {
   dav.reset({
     'a.org': '#+BIBLIOGRAPHY: refs.bib\n#+CITE_EXPORT: basic\n* Notes\nSee [cite:@knuth84] and [cite:@nobody].\n\n#+PRINT_BIBLIOGRAPHY:\n',
@@ -8055,6 +8171,57 @@ check('examples: inline-latex.org renders its math, god-mode.org and diary.org o
     await page.waitForTimeout(500);
     expect((await page.locator('body').innerText()).includes(name === 'diary.org' ? 'Diary or calendar?' : 'Start and stop'), `${name} opens`);
   }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('size limits: a large org file asks, a huge one is refused', async () => {
+  const section = (n) => `* Section ${n}\nbody of section ${n} ${'x'.repeat(40)}\n`;
+  const sized = (bytes) => { let text = ''; for (let n = 0; text.length < bytes; n++) text += section(n); return text; };
+  dav.reset({ 'small.org': '* Small\n', 'large.org': sized(600 * 1024), 'huge.org': sized(2.2 * 1024 * 1024) });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  const modeline = () => page.evaluate(() => document.getElementById('modeline').innerText);
+  const status = () => page.locator('#minibuffer').innerText();
+  const pickDav = async (name) => { await fileMenu(page, 'Open', 'WebDAV'); await page.getByText(name, { exact: false }).first().click(); };
+  // a large file asks; declining leaves the previous document as it was
+  await pickDav('small.org');
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('small.org'), null, { timeout: 8000 });
+  await pickDav('large.org');
+  await page.getByText('This is large and may be slow. Open anyway?', { exact: false }).waitFor({ timeout: 15000 });
+  await page.locator('.ui-overlay').getByText('Cancel', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('was not opened'), null, { timeout: 8000 });
+  expect((await modeline()).includes('small.org') && !(await modeline()).includes('large.org'), `declining keeps the open document: ${await modeline()}`);
+  // accepting opens it
+  await pickDav('large.org');
+  await page.getByText('Open anyway?', { exact: false }).waitFor({ timeout: 15000 });
+  await page.locator('.ui-overlay').getByText('Open', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('large.org'), null, { timeout: 30000 });
+  // a huge one is refused without a question, and the app still works
+  await pickDav('huge.org');
+  await page.waitForFunction(() => /over the 2 MB limit/.test(document.getElementById('minibuffer').innerText), null, { timeout: 30000 });
+  expect(!(await modeline()).includes('huge.org'), `the huge file is not opened: ${await modeline()}`);
+  expect((await status()).includes('Size limits'), `the refusal says where to change the limit: ${await status()}`);
+  expect((await page.getByText('Open anyway?').count()) === 0, 'a refused file asks nothing');
+  await page.locator('#tabBar > div', { hasText: 'small.org' }).first().click(); // the app still switches buffers
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('small.org'), null, { timeout: 8000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('size limits: a large image shows a Load placeholder', async () => {
+  dav.reset({ 'pics.org': '#+STARTUP: inlineimages\n* Pictures\n[[./small.png]]\n\n[[./big.png]]\n', 'small.png': 'a'.repeat(1000), 'big.png': 'a'.repeat(3.5 * 1024 * 1024) });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  await openDav(page, 'pics.org');
+  await page.locator('[data-large-image]').waitFor({ timeout: 15000 });
+  const text = await page.locator('[data-large-image]').innerText();
+  expect(/big\.png/.test(text) && /3\.5 MB/.test(text) && /3 MB limit/.test(text) && /Load/.test(text), `the placeholder names the picture and its size: ${text}`);
+  expect((await page.locator('img[alt="./small.png"]').count()) === 1, 'the small picture is shown inline');
+  expect((await page.locator('img[alt="./big.png"]').count()) === 0, 'the large picture is not shown until asked');
+  await page.locator('[data-large-image] a', { hasText: 'Load' }).click();
+  await page.locator('img[alt="./big.png"]').waitFor({ timeout: 15000 });
+  expect((await page.locator('[data-large-image]').count()) === 0, 'the placeholder is replaced by the picture');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

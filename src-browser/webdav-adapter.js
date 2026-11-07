@@ -2,7 +2,9 @@
 /** @typedef {import('../src/types.js').WebdavConfig} WebdavConfig */
 import { writeConflict } from '../src/sync-engine.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
-import { decodeUtf8Strict } from '../src/utf8.js';
+import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
+import { SizeLimitError, getSizeLimits, textCeiling } from '../src/size-limits.js';
+import { fetchWithTimeout, readLimited } from './limited-fetch.js';
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -108,7 +110,8 @@ function requireConfig(getConfig) {
  *  that gives no hint about what's actually wrong. */
 async function fetchWithHint(url, opts) {
   try {
-    return await fetch(url, opts);
+    // a GET waits at most the configured time for the server to answer; an upload (PUT) has no total time limit
+    return opts && opts.method === 'GET' ? await fetchWithTimeout(url, opts) : await fetch(url, opts);
   } catch (err) {
     throw new Error(
       'Could not reach the WebDAV server. This is often a CORS configuration issue on the ' +
@@ -224,7 +227,9 @@ export function createWebdavAdapter(getConfig) {
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(webdavErrorMessage(res));
-    const content = decodeUtf8Strict(await res.arrayBuffer(), fileId);
+    // stops the download once it is over the largest size any text file may be
+    const bytes = await readLimited(res, { maxBytes: textCeiling(), kind: 'orgFile', name: fileId });
+    const content = decodeText(bytes.buffer, fileId);
     const hash = res.headers.get('ETag') || null;
     return { content, hash };
   }
@@ -234,7 +239,7 @@ export function createWebdavAdapter(getConfig) {
    *  decoding, which would corrupt binary data. Returns null for a 404,
    * @param {string} fileId
    *  matching readImpl's own "not found" convention. */
-  async function readBinaryImpl(fileId) {
+  async function readBinaryImpl(fileId, /** @type {{ maxBytes?: number }} */ options = {}) {
     const config = requireConfig(getConfig);
     const res = await fetchWithHint(fileUrl(config, fileId), {
       method: 'GET',
@@ -243,8 +248,17 @@ export function createWebdavAdapter(getConfig) {
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(webdavErrorMessage(res));
-    const buffer = await res.arrayBuffer();
-    return { base64: arrayBufferToBase64(buffer), hash: res.headers.get('ETag') || null };
+    // `maxBytes`: the caller does not want a file over this size (a picture to show inline). Without it the attachment limit applies.
+    const wanted = options?.maxBytes ?? 0;
+    const maxBytes = wanted > 0 ? wanted : getSizeLimits().attachment.max;
+    let bytes;
+    try {
+      bytes = await readLimited(res, { maxBytes, kind: wanted > 0 ? 'image' : 'attachment', name: fileId });
+    } catch (error) {
+      if (error instanceof SizeLimitError && wanted > 0) return { tooLarge: true, bytes: error.bytes, hash: res.headers.get('ETag') || null };
+      throw error;
+    }
+    return { base64: arrayBufferToBase64(/** @type {ArrayBuffer} */ (bytes.buffer)), hash: res.headers.get('ETag') || null };
   }
 
   /**
@@ -254,6 +268,7 @@ export function createWebdavAdapter(getConfig) {
    *  use it, so a save made since then is refused (a WriteConflictError) instead of silently replaced
    */
   async function writeImpl(fileId, content, options = {}) {
+    refuseNonUtf8Write(fileId); // read-only until converted (src/utf8.js)
     const config = requireConfig(getConfig);
     const expect = options && options.expect;
     const existing = expect ? (expect.exists ? { hash: expect.hash } : null) : await readImpl(fileId);

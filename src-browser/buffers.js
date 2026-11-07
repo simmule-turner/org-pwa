@@ -5,6 +5,7 @@
 // behind the person's back. A file with no tab yet is loaded into a background tab first, as find-file-noselect does. The
 // tab shows the modified mark until it is saved, and Save Some Buffers (C-x s) offers to save each modified one. Revert Buffer
 // throws a buffer's changes away and reads the file again.
+import { isNonUtf8 } from '../src/utf8.js';
 import { markDocumentOpen, saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -158,7 +159,7 @@ async function editNewBuffer(fileId, options) {
   const rawLocalVars = parseLocalVariables(serializeOrg(doc));
   const startupConfig = resolveEffectiveStartupConfig(doc, rawLocalVars, S.globalVariables);
   const localVariables = mergeGlobalAndLocalVariables(S.globalVariables, rawLocalVars);
-  const readOnly = getBufferReadOnly(localVariables);
+  const readOnly = getBufferReadOnly(localVariables) || isNonUtf8(fileId);
   if (readOnly) return readOnlyRefusal(fileId, label);
   applyStartupVisibility(doc, startupConfig, getCycleOpenArchivedTrees(localVariables) ? 'noarchived' : 'archived');
   const openedText = serializeOrg(doc);

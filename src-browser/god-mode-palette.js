@@ -2,6 +2,8 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').PaletteCommand} PaletteCommand */
 // Extracted from app.js: god mode palette.
+import { isNonUtf8 } from '../src/utf8.js';
+import { convertToUtf8 } from './utf8-convert.js';
 import { redoSettings, undoSettings } from './settings-history.js';
 import { findAncestorPath, isRestorable } from '../src/archive-model.js';
 import { computeNonCollidingKeys } from '../src/capture-template.js';
@@ -401,7 +403,7 @@ export const GOD_MODE_ACTIONS = {
 export function reconcileReadOnlyAfterReparse(previousVars, newVars) {
   const before = getBufferReadOnly(previousVars);
   const after = getBufferReadOnly(newVars);
-  if (before !== after) S.isBufferReadOnly = after;
+  if (before !== after) S.isBufferReadOnly = after || isNonUtf8(S.state.documentId);
 }
 
 /** Toggles buffer-read-only, per real Emacs's own actual C-x C-q --
@@ -410,6 +412,10 @@ export function reconcileReadOnlyAfterReparse(previousVars, newVars) {
  *  other's own logic. */
 export function toggleBufferReadOnly() {
   if (!S.state.doc) return;
+  if (S.isBufferReadOnly && isNonUtf8(S.state.documentId)) {
+    setStatus('Not valid UTF-8: this buffer stays read-only. Use Convert to UTF-8\u2026 to edit it.');
+    return;
+  }
   if (!S.isBufferReadOnly) commitTextModeIfActive(); // capture any pending Text-view edit while still writable -- once toggled on, the commit path would correctly (but too late) refuse it
   S.isBufferReadOnly = !S.isBufferReadOnly;
   setStatus(S.isBufferReadOnly ? 'Buffer is read-only now.' : 'Buffer is writable now.');
@@ -420,7 +426,8 @@ export function toggleBufferReadOnly() {
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
   heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
-  writable: () => (S.isBufferReadOnly ? 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)' : null),
+  nonUtf8: () => (isNonUtf8(S.state.documentId) ? null : 'this file is already UTF-8, or was not read as text'),
+  writable: () => (S.isBufferReadOnly ? (isNonUtf8(S.state.documentId) ? 'the file is not valid UTF-8 \u2014 run Convert to UTF-8\u2026' : 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)') : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
   modifiedBuffers: () => (modifiedFileBuffers().length ? null : '(No files need saving)'),
   narrowed: () => (S.narrowedHeading ? null : 'nothing is narrowed'),
@@ -588,6 +595,7 @@ export function paletteCommandList() {
     },
     { id: 'settings-undo', label: 'Undo settings change', group: 'App', run: () => undoSettings() },
     { id: 'settings-redo', label: 'Redo settings change', group: 'App', run: () => redoSettings() },
+    { id: 'convert-utf8', label: 'Convert to UTF-8\u2026', orgName: 'revert-buffer-with-coding-system', group: 'Document', keywords: ['encoding', 'latin-1', 'latin1', 'windows-1252', 'utf-16', 'decode', 'read-only', 'characters'], needs: ['doc', 'nonUtf8'], run: () => convertToUtf8() },
     { id: 'read-only', label: 'Toggle read-only', orgName: 'read-only-mode', keys: 'C-x C-q', group: 'Document', needs: ['doc'], run: chord('C-x C-q') },
     { id: 'capture', label: 'Capture', orgName: 'org-capture', keys: 'C-c c', group: 'Document', run: chord('C-c c') },
 

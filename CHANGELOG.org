@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v650 — Size limits and safer saves
+Large files now ask first. An Org file over 500 KB asks "Open anyway?" and one over 2 MB is refused, an image over 3 MB shows a Load placeholder, an attachment over 20 MB asks and one over 95 MB is refused, and remote fetches time out after 30 seconds; Settings has a Size limits section for all of them. Two windows saving the same file now queue instead of overwriting each other. A file that is not valid UTF-8 opens read-only, with Convert to UTF-8 to fix it. Regexps that backtrack slowly on long text stop with an error.
+Verified: new tests for each case and the related open, conflict and attachment checks.
+
 * v649 — Safer imports, attachments and sync
 A second security review closed the ways a shared file could reach outside itself. Imported contacts and calendar events can no longer plant source blocks or headings. Attachment IDs, attachment link names and =..= in file links can no longer climb out of the attachment folder or the configured repository or server folder. Remote =#+SETUPFILE= and =#+BIBLIOGRAPHY= files ask before loading. A file that is not valid UTF-8 is refused instead of being saved back damaged, and sync conflicts use a stronger hash. Tangle and download names reject control characters and Windows reserved names.
 Verified: new tests for each case and the related attachment, conflict and WebDAV checks.

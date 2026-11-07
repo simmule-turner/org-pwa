@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 import { setTagsColumn, tagsColumnOf } from './tags-column.js';
+import { setSizeLimits, sizeLimitsOf } from './size-limits.js';
 /**
  * "Global Variables" -- an app-wide, cross-file settings mechanism
  * (configured in Settings, not embedded in any particular .org file)
@@ -106,5 +107,6 @@ export function serializeGlobalVariables(vars) {
 export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   const merged = { ...(globalVars || {}), ...(localVars || {}) };
   setTagsColumn(tagsColumnOf(merged)); // headings written again put their tags where org-tags-column says
+  setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused
   return merged;
 }

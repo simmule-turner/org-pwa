@@ -14,5 +14,8 @@ android {
         debug {
             signingConfig signingConfigs.orgpwa
         }
+        release {
+            signingConfig signingConfigs.orgpwa
+        }
     }
 }

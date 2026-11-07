@@ -38,6 +38,7 @@ import { render } from './render.js';
 import { agendaFilesCache, contactsFilesCache } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton, menuDivItem } from './ui-widgets.js';
 import { saveOut } from './save-out.js';
+import { SizeLimitError } from '../src/size-limits.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
  *  docs for the full directive syntax this feeds into) against this
@@ -54,10 +55,16 @@ import { saveOut } from './save-out.js';
 export async function resolveIncludePath(path) {
   const colonIndex = path.indexOf(':');
   const scheme = colonIndex === -1 ? null : path.slice(0, colonIndex);
-  if (scheme === 'github') return githubAdapter.read(path.slice(colonIndex + 1));
-  if (scheme === 'webdav') return webdavAdapter.read(path.slice(colonIndex + 1));
-  if (scheme === 'local') return filesystemAdapter.read(path.slice(colonIndex + 1)); // opened here earlier, or in the org-pwa folder
-  return activeDiskAdapter().read(path);
+  const options = { sizeKind: 'include' }; // a file over the #+INCLUDE size limit is skipped, and the person is told
+  try {
+    if (scheme === 'github') return await githubAdapter.read(path.slice(colonIndex + 1), options);
+    if (scheme === 'webdav') return await webdavAdapter.read(path.slice(colonIndex + 1), options);
+    if (scheme === 'local') return await filesystemAdapter.read(path.slice(colonIndex + 1), options); // opened here earlier, or in the org-pwa folder
+    return await activeDiskAdapter().read(path, options);
+  } catch (error) {
+    if (error instanceof SizeLimitError) setStatus(`Not included: ${error.message}`);
+    throw error;
+  }
 }
 
 /** The bytes of a `data:` URL, or null.
