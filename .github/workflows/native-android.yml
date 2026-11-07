@@ -1,9 +1,14 @@
-# Builds the native Android shell (a debug APK) around the PWA. Runs on demand (Actions -> native-android -> Run workflow),
+# Builds the native Android shell around the PWA: a release APK when a signing key is configured, otherwise a debug APK. Runs on demand (Actions -> native-android -> Run workflow),
 # on a tag like native-v0.1.0, and whenever something under native/ changes. The APK is attached to the run as an artifact.
 name: native-android
 
 on:
   workflow_dispatch:
+    inputs:
+      allow_one_off:
+        description: 'Build a debug APK with a one-off key if the signing secrets are missing (it cannot update an installed app)'
+        type: boolean
+        default: false
   push:
     tags: ['native-v*']
     paths: ['native/**', '.github/workflows/native-android.yml']
@@ -57,17 +62,36 @@ jobs:
         id: signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ORGPWA_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ORGPWA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ORGPWA_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ORGPWA_KEY_PASSWORD }}
+          ALLOW_ONE_OFF: ${{ inputs.allow_one_off }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing ORGPWA_KEYSTORE_BASE64"
+          [ -n "$STORE_PW" ] || missing="$missing ORGPWA_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || missing="$missing ORGPWA_KEY_ALIAS"
+          [ -n "$KEY_PW" ] || missing="$missing ORGPWA_KEY_PASSWORD"
+          if [ -z "$missing" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orgpwa.keystore"
+            if ! keytool -list -keystore "$RUNNER_TEMP/orgpwa.keystore" -storepass "$STORE_PW" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+              echo "::error title=Signing key does not open::The keystore, its password or the alias is wrong. Check ORGPWA_KEYSTORE_BASE64, ORGPWA_KEYSTORE_PASSWORD and ORGPWA_KEY_ALIAS."
+              exit 1
+            fi
             echo "ORGPWA_KEYSTORE=$RUNNER_TEMP/orgpwa.keystore" >> "$GITHUB_ENV"
             echo "mode=stable" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice title=No signing key configured::This APK is signed with a one-off key, so Android will not install it over an earlier build. See native/README.md, Keeping your data across updates."
+          elif [ "$ALLOW_ONE_OFF" = "true" ]; then
+            echo "::warning title=One-off key::Missing secrets:$missing. This debug APK cannot be installed over an earlier build."
             echo "mode=one-off" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error title=Signing secrets missing::Missing repository secrets:$missing. They must be Repository secrets (Settings > Secrets and variables > Actions), not Environment secrets, and the names must match exactly. See native/README.md, Keeping your data across updates. To build a throwaway debug APK anyway, run the workflow by hand with allow_one_off ticked."
+            exit 1
           fi
 
-      - name: Build the debug APK
+      # A release build needs the stable key (an unsigned release APK cannot be installed), so without the secrets the build is
+      # a debug one, signed with Android's one-off debug key.
+      - name: Build the APK
+        id: build
         working-directory: native/android
         env:
           ORGPWA_KEYSTORE_PASSWORD: ${{ secrets.ORGPWA_KEYSTORE_PASSWORD }}
@@ -75,12 +99,18 @@ jobs:
           ORGPWA_KEY_PASSWORD: ${{ secrets.ORGPWA_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          if [ "${{ steps.signing.outputs.mode }}" = "stable" ]; then
+            ./gradlew assembleRelease -x lintVitalRelease --no-daemon --stacktrace
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            ./gradlew assembleDebug --no-daemon --stacktrace
+            echo "variant=debug" >> "$GITHUB_OUTPUT"
+          fi
 
       # The certificate's fingerprint is not secret. Two builds that show the same one can update each other.
       - name: Show which key signed the APK
         run: |
-          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          apk=android/app/build/outputs/apk/${{ steps.build.outputs.variant }}/app-${{ steps.build.outputs.variant }}.apk
           apksigner=$(ls "${ANDROID_HOME:-/nonexistent}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
           {
             echo "### Signing"
@@ -100,8 +130,8 @@ jobs:
           web="${web#org-pwa-shell-}"   # the web version is stored as org-pwa-shell-vNNN; the file name only needs vNNN
           suffix=""
           if [ "${{ steps.signing.outputs.mode }}" = "one-off" ]; then suffix="-one-off-key"; fi
-          name="org-pwa-shell-${shell}-${web}-debug${suffix}.apk"
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$name"
+          name="org-pwa-shell-${shell}-${web}-${{ steps.build.outputs.variant }}${suffix}.apk"
+          cp android/app/build/outputs/apk/${{ steps.build.outputs.variant }}/app-${{ steps.build.outputs.variant }}.apk "$name"
           sha256sum "$name"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
