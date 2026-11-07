@@ -25,6 +25,10 @@
 
 set -e
 
+# The mathjs version this build is made from. It is written on the first line of the output, so the version of the shipped file can be
+# read (and audited) without rebuilding. Change it here, run the script, and commit the result.
+MATHJS_VERSION="15.2.0"
+
 OUT_DIR="$(cd "$(dirname "$0")/.." && pwd)/src/vendor/mathjs"
 
 SCRATCH=$(mktemp -d)
@@ -32,7 +36,7 @@ echo "Building in scratch directory: $SCRATCH"
 
 cd "$SCRATCH"
 npm init -y --silent > /dev/null
-npm install --silent mathjs esbuild
+npm install --silent "mathjs@$MATHJS_VERSION" esbuild
 
 cat > entry.js << 'ENTRY_EOF'
 export {
@@ -69,7 +73,7 @@ export {
 } from 'mathjs';
 ENTRY_EOF
 
-npx esbuild entry.js --bundle --minify --format=esm --outfile=mathjs-custom.min.js
+npx esbuild entry.js --bundle --minify --format=esm --banner:js="/* mathjs $MATHJS_VERSION, custom build (tools/build-mathjs-vendor.sh) */" --outfile=mathjs-custom.min.js
 
 mkdir -p "$OUT_DIR"
 cp mathjs-custom.min.js "$OUT_DIR/mathjs-custom.min.js"

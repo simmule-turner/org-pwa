@@ -41,6 +41,14 @@ export function savedElsewhere(message, open) {
   return open.dirty ? 'conflict' : 'reload';
 }
 
+/** Whether a save must first ask: another window of the app saved this file while this one has edits of its own that the other
+ *  save does not contain, and the person has not yet merged, reloaded or chosen to overwrite. Like Emacs asking before it saves a
+ *  file that changed on disk.
+ * @param {{ pending: boolean, dirty: boolean }} tab */
+export function needsSaveChoice(tab) {
+  return tab.pending && tab.dirty;
+}
+
 /** @typedef {{ postMessage: (m: unknown) => void, close: () => void, onmessage: ((e: { data: unknown }) => void) | null }} Channel */
 
 /** @param {(name: string) => Channel} [make] */

@@ -64,7 +64,7 @@ test('ordinary patterns keep the native engine', () => {
 
 test('a huge allocation is refused instead of crashing the tab', () => {
   for (const src of ['(make-list 1000000000 1)', '(make-vector 1000000000 1)', '(make-string 400000000 ?a)', '(number-sequence 1 100000000)', '(string-pad "a" 1000000000)', '(format "%1000000000d" 1)']) {
-    assert.deepEqual(lisp(src), { ok: false, error: 'Memory exhausted', kind: 'error' }, src);
+    assert.deepEqual(lisp(src), { ok: false, error: 'Memory exhausted--use C-x s then exit and restart Emacs', kind: 'error' }, src);
   }
   assert.equal(lisp('(length (make-list 100000 0))').value, '100000');
 });
@@ -76,7 +76,7 @@ test('a huge power is refused', () => {
 
 test('a long computation that stays inside the step budget still stops on the clock', { timeout: 10_000 }, () => {
   const t0 = Date.now();
-  const r = lisp('(let ((f 1) (i 1)) (while (< i 200000) (setq f (* f i) i (1+ i))) (length (number-to-string f)))', { timeLimitMs: 300, budget: 50_000_000 });
+  const r = lisp('(let ((s "") (i 0)) (while (< i 400000) (setq s (concat s "x") i (1+ i))) (length s))', { timeLimitMs: 300, budget: 50_000_000 });
   assert.equal(r.ok, false);
   assert.equal(r.kind, 'budget');
   assert.ok(Date.now() - t0 < 3000);
@@ -84,4 +84,15 @@ test('a long computation that stays inside the step budget still stops on the cl
 
 test('quick programs are not affected by the clock', () => {
   assert.deepEqual(lisp('(let ((s 0) (i 0)) (while (< i 20000) (setq s (+ s i) i (1+ i))) s)'), { ok: true, value: '199990000' });
+});
+
+test('a number of more than integer-width bits (65536) is an overflow-error, as in Emacs 29.3', () => {
+  // each line was run in GNU Emacs 29.3: the first of each pair is fine, the second signals (overflow-error)
+  assert.equal(lisp('(expt 2 65535)').ok, true);
+  assert.deepEqual(lisp('(expt 2 65536)'), { ok: false, error: lisp('(expt 2 65536)').error, kind: 'error' });
+  assert.match(String(lisp('(expt 2 65536)').error), /Arithmetic overflow error/);
+  assert.equal(lisp('(ash 1 65535)').ok, true);
+  assert.match(String(lisp('(ash 1 70000)').error), /Arithmetic overflow error/);
+  assert.match(String(lisp('(let ((a (expt 2 40000))) (* a a))').error), /Arithmetic overflow error/);
+  assert.match(String(lisp('(expt 3 100000)').error), /Arithmetic overflow error/);
 });

@@ -3,6 +3,7 @@
 // Extracted from app.js: render helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { isAudioFilename } from '../src/attach.js';
+import { readJsonCapped } from './limited-fetch.js';
 import { IMAGE_EXT_RE } from '../src/inline-markup.js';
 import { guessAudioMimeType, guessImageMimeType, guessViewableMimeType } from '../src/link-resolve.js';
 import { renderMathHtml } from '../src/math-render.js';
@@ -51,8 +52,9 @@ export async function fetchWeatherData(latitude, longitude) {
   if (!response.ok) throw new Error(`Weather request failed: HTTP ${response.status}`);
   let json;
   try {
-    json = await response.json();
-  } catch {
+    json = await readJsonCapped(response, 1024 * 1024, 'The weather answer');
+  } catch (err) {
+    if (err instanceof Error && !(err instanceof SyntaxError)) throw err; // too large
     throw new Error('Weather response was not valid JSON.');
   }
   if (!json.current || !json.current_units || !json.daily) {

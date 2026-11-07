@@ -37,3 +37,10 @@ Put this in the Lisp init (~org-xx-lisp-init~). Each template is the form Emacs 
 (add-to-list 'org-capture-templates
   '("n" "Note" plain (file "inbox.org") "* %?"))
 #+END_SRC
+
+* Under today's date
+=file+olp+datetree= files a capture under the year, the month and the day, making the headings it needs; =:tree-type week= or =:tree-type month= chooses the week or month tree, and =:prepend t= puts the entry first. =file+datetree= and =file+weektree= are the older names. =capture-datetree.org= shows each with the file before and after.
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("d" "Journal" entry (file+olp+datetree "journal.org" "Journal") "* %?"))
+#+END_SRC

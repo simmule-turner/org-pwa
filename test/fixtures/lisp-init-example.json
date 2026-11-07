@@ -139,6 +139,22 @@
    }
   },
   {
+   "heading": "Capture templates",
+   "prose": "=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows beside the templates in Settings. A template with the same key as one in Settings replaces it. The same forms work in a file read with =(load \"github:init.el\")=.",
+   "init": "(setq org-capture-templates nil)\n(add-to-list 'org-capture-templates\n  '(\"w\" \"Web page or text\" plain (file+headline \"inbox.org\" \"Inbox\") \"* %a\"))\n(add-to-list 'org-capture-templates\n  '(\"j\" \"Journal\" entry (file+olp+datetree \"journal.org\") \"* %?\"))",
+   "show": [
+    "(mapcar (function car) org-capture-templates)",
+    "(nth 1 (car org-capture-templates))"
+   ],
+   "emacs": {
+    "shown": [
+     "(\"j\" \"w\")",
+     "\"Journal\""
+    ],
+    "errors": []
+   }
+  },
+  {
    "heading": "When a form fails",
    "prose": "A form that fails shows Emacs's message in the status line, and the forms after it still run.",
    "init": "(setq before 1)\n(car 5)\n(no-such-function 1)\n(setq after 2)",

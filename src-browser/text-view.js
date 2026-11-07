@@ -11,7 +11,8 @@ import { locateDiaryEntry } from '../src/diary-entry.js';
 import { highlight } from '../src/text-syntax.js';
 import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
-import { promptText } from './dialogs.js';
+import { checkPaste, utf8Length } from '../src/size-limits.js';
+import { confirmDialog, promptText } from './dialogs.js';
 import { scrollContainer } from './chrome.js';
 import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
 import { setStatus } from './editing.js';
@@ -355,6 +356,22 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     draw();
   });
   textarea.addEventListener('input', schedule);
+  // A paste that would make the file larger than the app opens is refused, and one past the warn size asks first (typing is not limited)
+  textarea.addEventListener('paste', (e) => {
+    const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    if (!text) return;
+    const { selectionStart: a, selectionEnd: b, value } = textarea;
+    const verdict = checkPaste(utf8Length(value), utf8Length(value.slice(a, b)), utf8Length(text), S.state ? S.state.documentId || '' : '');
+    if (verdict.ok === true) return;
+    e.preventDefault();
+    if (verdict.ok === false) {
+      setStatus(verdict.message);
+      return;
+    }
+    void confirmDialog(verdict.message, { confirmLabel: 'Paste', danger: false }).then((yes) => {
+      if (yes) applyTextEdit(textarea, { from: a, to: b, insert: text, selStart: a + text.length, selEnd: a + text.length });
+    });
+  });
   textarea.addEventListener('scroll', sync, { passive: true });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => layout()).observe(wrap);
 

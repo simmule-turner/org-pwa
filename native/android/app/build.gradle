@@ -7,8 +7,8 @@ android {
         applicationId "org.orgpwa.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "0.7.9"
+        versionCode 16
+        versionName "0.7.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -37,6 +37,7 @@ dependencies {
     implementation "androidx.core:core:$androidxCoreVersion"
     implementation "androidx.documentfile:documentfile:1.0.1" // DocumentFile, for AttachmentsPlugin
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion" // WebViewFeature, for MainActivity
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

@@ -34,6 +34,7 @@ import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
 import { commitLines, fixTableFormulas, serializeTable } from './body-edit.js';
 import { findLists, listAt, renumber } from './list-edit.js';
 import { parseBody } from './body-parser.js';
+import { endCreated, findOrCreateDatetree } from './capture-datetree.js';
 
 // ---- %<FORMAT> (format-time-string) ---------------------------------------
 
@@ -405,9 +406,11 @@ function expandCaptureText(preText, template, postText, context = {}) {
  * see runExtraMenuEntry in app.js.
  * `unique` (default false): when true, two sibling headings of one title are an error ("Heading not unique on level N: TITLE"), as in
  * Emacs's file+olp; false takes the first.
- * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean }} [options]
+ * `datetree` (file+olp+datetree): after the path, the day (or month, or week and day) heading for `now` is found or created under it,
+ * and that heading is the target; `treeType` is Org's :tree-type, week or month. Nothing is created where `allowCreate` is false.
+ * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean, datetree?: boolean, treeType?: string }} [options]
  */
-function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false, datetree = false, treeType } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
@@ -429,6 +432,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
     siblings = found.children;
   }
 
+  if (datetree) return allowCreate ? findOrCreateDatetree(doc, found, at, treeType) : null;
   return found;
 }
 
@@ -544,7 +548,7 @@ function stripEmptyProperties(heading) {
 /** @typedef {import('./types.js').Heading | import('./types.js').Doc} Host a heading, or a file's top level */
 /** @typedef {import('./types.js').Table} Table */
 /** The blank lines around filed text, the table row to use, whether a new table gets a header, and `recalculate`, which works out a table's #+TBLFM after a row is added.
- *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
+ *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, blankBeforeTable?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
 const BLANK = (/** @type {string} */ l) => l.trim() === '';
 const ITEM_START_RE = /^[ \t]*(?:[-+]|\d+[.)])(?:[ \t]|$)/;
 
@@ -801,8 +805,9 @@ function placeTableLine(target, text, prepend, pre, post, opts) {
   /** @type {import('./types.js').TableRow[]} */
   const rows = opts.tableHeader === false ? [{ type: 'row', cells }] : [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
   const tableLines = serializeTable({ type: 'table', rows, tblfm: null, lineIndex: 0, lineCount: 0 }, true);
-  const start = host.bodyLines.length;
-  commit(host, start, 0, tableLines);
+  const lead = opts.blankBeforeTable && !pre ? [''] : []; // org's one blank line before the table of a day it has just made
+  const start = host.bodyLines.length + lead.length;
+  commit(host, start - lead.length, 0, [...lead, ...tableLines]);
   const end = start + tableLines.length;
   // preText and postText (this app's own) go directly beside the new table, once
   if (post) {
@@ -868,6 +873,8 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
  * @param {string} [expandedPreText] @param {string} [expandedPostText] @param {Parameters<typeof insertCapture>[7]} [opts]
  */
 function fileCapture(doc, target, type, expandedText, prepend, omitEmptyEntries, expandedPreText, expandedPostText, opts) {
+  // org starts the table of a new date-tree day, the last in its month with more of the file after it, one line down
+  if (type === 'table-line' && endCreated.delete(target)) opts = { ...opts, blankBeforeTable: true };
   const ends = (/** @type {Host} */ node) => node.bodyLines.length > 0 && node.bodyLines[node.bodyLines.length - 1] === '';
   const newline = ends(lastNodeOf(doc));
   if (newline) {

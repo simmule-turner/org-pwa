@@ -5,6 +5,7 @@
 /** @typedef {{ text: string, key?: string, disabled?: boolean, onClick: () => any }} ChoiceButton */
 import { getHeadingText, setHeadingText } from '../src/body-edit.js';
 import { addMinutesToTime, formatOrgTimestamp } from '../src/org-timestamp.js';
+import { assertWithinLimit } from '../src/size-limits.js';
 import { S } from './app-state.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
 import { scrollContainer } from './chrome.js';
@@ -917,6 +918,12 @@ export function pickBinaryFiles(capture, accept, multiple = true) {
       if (input.parentNode) input.parentNode.removeChild(input);
       if (chosen.length === 0) {
         reject(new Error('No file selected'));
+        return;
+      }
+      try {
+        for (const file of chosen) assertWithinLimit('attachment', file.size, file.name); // the size is known before any of it is read
+      } catch (err) {
+        reject(err);
         return;
       }
       setStatus('Reading file\u2026');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchWithTimeout, readLimited, refuseByContentLength } from '../src-browser/limited-fetch.js';
+import { fetchWithTimeout, readJsonCapped, readLimited, readTextCapped, refuseByContentLength } from '../src-browser/limited-fetch.js';
 import { SizeLimitError } from '../src/size-limits.js';
 
 /** A fake streaming Response: `chunks` are delivered one per read, `gaps` (ms) delay each, `length` is the Content-Length header. */
@@ -89,4 +89,19 @@ test('fetchWithTimeout does not cut a response off once it has started, and 0 me
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test('readTextCapped reads an answer under the cap and names the answer when it is over', async () => {
+  assert.equal(await readTextCapped(fakeResponse([bytes(3)]), 10, 'The listing'), 'AAA');
+  await assert.rejects(readTextCapped(fakeResponse([bytes(8), bytes(8)]), 10, 'The listing'), /The listing is larger than 10 bytes, so it was not read\./);
+  const r = fakeResponse([bytes(8), bytes(8)]);
+  await assert.rejects(readTextCapped(r, 10, 'x'));
+  assert.equal(r.cancelled, true, 'the download is stopped');
+});
+
+test('readJsonCapped parses an answer under the cap, refuses one over it, and passes bad JSON on as a SyntaxError', async () => {
+  const json = (text) => fakeResponse([new TextEncoder().encode(text)]);
+  assert.deepEqual(await readJsonCapped(json('{"a":1}'), 100, 'x'), { a: 1 });
+  await assert.rejects(readJsonCapped(json('{"a":"' + 'b'.repeat(50) + '"}'), 10, 'GitHub\'s answer'), /GitHub's answer is larger than/);
+  await assert.rejects(readJsonCapped(json('not json'), 100, 'x'), SyntaxError);
 });

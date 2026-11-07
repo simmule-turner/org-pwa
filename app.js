@@ -209,6 +209,7 @@ S.searchExtraFilesCacheLoadedFor = null;
 S.contactsFilesCacheLoadedFor = null;
 
 S.externalChangeCheckInFlight = false;
+S.savedElsewherePending = false;
 
 // The specific disk hash a Dismiss applied to, so a genuinely NEWER
 // external change (a different hash) still gets surfaced rather than

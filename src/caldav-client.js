@@ -94,8 +94,8 @@ function errorForResponse(response, what, /** @type {any} */ { noun, Noun }) {
   return new CaldavError('server', `The ${noun} server answered ${status}${response.statusText ? ' ' + response.statusText : ''} (${what}).`, status);
 }
 
-/** @param {{ url: string, username?: string, password?: string, kind?: string, fetch?: (url: string, init: any) => Promise<any>, timeoutMs?: number }} options */
-function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (target, init) => globalThis.fetch(target, init), timeoutMs = 20000 }) {
+/** @param {{ url: string, username?: string, password?: string, kind?: string, fetch?: (url: string, init: any) => Promise<any>, timeoutMs?: number, readText?: (response: any) => Promise<string> }} options */
+function createCaldavClient({ url, username, password, kind = 'calendar', fetch: fetchImpl = (target, init) => globalThis.fetch(target, init), timeoutMs = 20000, readText = (response) => response.text() }) {
   const what = /** @type {any} */ (KINDS)[kind] || KINDS.calendar;
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
@@ -139,7 +139,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
         body: '<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><getetag/></prop></propfind>',
       });
       if (response.status !== 207 && !response.ok) throw errorForResponse(response, `listing the ${what.noun}`, what);
-      return icsNamesFromHrefs(parseHrefs(await response.text()), what.extension);
+      return icsNamesFromHrefs(parseHrefs(await readText(response)), what.extension);
     },
     /** Whether the address and credentials work. Throws a CaldavError if not. */
     async check() {

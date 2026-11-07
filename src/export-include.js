@@ -25,6 +25,7 @@
 
 import { shiftLevels } from './archive-model.js';
 import { parseBody } from './body-parser.js';
+import { formatSize, getSizeLimits, utf8Length } from './size-limits.js';
 
 /** Parses one #+INCLUDE: keyword's own value (everything after
  *  "#+INCLUDE:") into `{ path, blockType, language, lines, minlevel }`
@@ -119,8 +120,9 @@ const INCLUDE_LINE_RE = /^\s*#\+INCLUDE:\s?(.*)$/i;
  * @param {any} fetchPath
  * @param {any} parseOrgFn
  * @param {null} defaultMinlevel
+ * @param {IncludeBudget} budget
  *  does. */
-async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel) {
+async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel, budget) {
   let result;
   try {
     result = await fetchPath(directive.path);
@@ -128,6 +130,15 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
     return null;
   }
   if (!result || typeof result.content !== 'string') return null;
+  // Each file has its own size limit (where it is read); this one bounds all of them together, so many #+INCLUDE lines
+  // cannot add up to a document larger than the app would open.
+  const bytes = utf8Length(result.content);
+  if (budget.max > 0 && budget.used + bytes > budget.max) {
+    if (!budget.warned) budget.onSkip?.(`Not included: "${directive.path}" would take the included files past ${formatSize(budget.max)} in all. Change the Org file limit in Settings > Sync and storage > Size limits.`);
+    budget.warned = true;
+    return null;
+  }
+  budget.used += bytes;
 
   const rawLines = applyLineRange(result.content.split('\n'), directive.lines);
 
@@ -164,7 +175,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
  *  incidental artifact of real org's own internal merging. */
-/** @returns {Promise<any>} */ async function expandHeadingIncludes(/** @type {any} */ heading, /** @type {any} */ fetchPath, /** @type {any} */ parseOrgFn) {
+/** @returns {Promise<any>} */ async function expandHeadingIncludes(/** @type {any} */ heading, /** @type {any} */ fetchPath, /** @type {any} */ parseOrgFn, /** @type {IncludeBudget} */ budget) {
   const newBodyLines = [];
   const prependedChildren = [];
   for (const line of heading.bodyLines || []) {
@@ -178,7 +189,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
       newBodyLines.push(line); // doesn't even look like a valid directive -- leave the line as plain text rather than silently eating it
       continue;
     }
-    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, heading.level + 1);
+    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, heading.level + 1, budget);
     if (!resolved) continue; // unreachable/failed -- the #+INCLUDE line itself is still dropped, matching the document-level case's own "skip silently" behavior
     if (resolved.headings) prependedChildren.push(...resolved.headings);
     else newBodyLines.push(...(resolved.bodyLines || []));
@@ -186,7 +197,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
 
   const expandedChildren = [];
   for (const child of heading.children || []) {
-    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn));
+    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn, budget));
   }
 
   return {
@@ -244,13 +255,20 @@ function hasAnyInclude(doc) {
   })(doc.children);
 }
 
+/** @typedef {{ max: number, used: number, warned: boolean, onSkip?: (message: string) => void }} IncludeBudget */
+
 /**
+ * `options.maxTotalBytes`: the most all the included files may add up to (default: the Org file limit; 0 for no limit); an
+ * include that would go past it is left out, and `options.onSkip` is told once.
  * @param {Doc} doc
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
+ * @param {{ maxTotalBytes?: number, onSkip?: (message: string) => void }} [options]
  */
-async function expandIncludes(doc, fetchPath, parseOrgFn) {
+async function expandIncludes(doc, fetchPath, parseOrgFn, options = {}) {
   if (!hasAnyInclude(doc)) return doc;
+  /** @type {IncludeBudget} */
+  const budget = { max: options.maxTotalBytes ?? getSizeLimits().orgFile.max, used: 0, warned: false, onSkip: options.onSkip };
 
   /** @param {any} [k] */
   const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
@@ -261,7 +279,7 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
   for (const kw of includeKeywords) {
     const directive = parseIncludeDirective(kw.value);
     if (!directive) continue;
-    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, null);
+    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, null, budget);
     if (!resolved) continue;
     if (resolved.headings) prependedHeadings.push(...resolved.headings);
     else appendedBodyLines.push(...(resolved.bodyLines || []));
@@ -269,7 +287,7 @@ async function expandIncludes(doc, fetchPath, parseOrgFn) {
 
   const expandedChildren = [];
   for (const child of doc.children || []) {
-    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn));
+    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn, budget));
   }
 
   const newBodyLines = [...(doc.bodyLines || []), ...appendedBodyLines];

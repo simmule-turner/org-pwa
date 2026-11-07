@@ -113,6 +113,14 @@ export const externalChangeReloadBtn = byId('externalChangeReloadBtn');
 
 export const externalChangeDismissBtn = byId('externalChangeDismissBtn');
 
+export const nonUtf8Banner = byId('nonUtf8Banner');
+
+export const nonUtf8Text = byId('nonUtf8Text');
+
+export const nonUtf8ConvertBtn = byId('nonUtf8ConvertBtn');
+
+export const nonUtf8DismissBtn = byId('nonUtf8DismissBtn');
+
 export const moreBtn = byId('moreBtn');
 
 export const morePanel = byId('morePanel');

@@ -55,7 +55,7 @@ export async function readLimited(response, { maxBytes = 0, kind = 'orgFile', na
   refuseByContentLength(response, maxBytes, kind, name);
   const body = response.body;
   if (!body || typeof body.getReader !== 'function') {
-    const whole = new Uint8Array(await response.arrayBuffer());
+    const whole = typeof response.arrayBuffer === 'function' ? new Uint8Array(await response.arrayBuffer()) : new TextEncoder().encode(await response.text()); // text() only: stand-ins in tests
     if (maxBytes > 0 && whole.length > maxBytes) throw tooLarge(kind, whole.length, maxBytes, name);
     return whole;
   }
@@ -100,3 +100,32 @@ function tooLarge(kind, bytes, max, name, atLeast = false) {
   const size = atLeast ? `more than ${formatSize(max)}` : formatSize(bytes);
   return new SizeLimitError(`${what} is ${size}, over the ${formatSize(max)} limit. Change the limit in Settings > Sync and storage > Size limits.`, kind, bytes);
 }
+
+/**
+ * The text of an answer whose size has no setting of its own (a server's listing, a weather answer, GitHub's replies): read in
+ * pieces and cut off past `maxBytes`, with a message that does not point at the size settings.
+ * @param {Response} response
+ * @param {number} maxBytes
+ * @param {string} what  how the message names the answer, e.g. 'The calendar listing'
+ * @returns {Promise<string>}
+ */
+export async function readTextCapped(response, maxBytes, what) {
+  try {
+    return new TextDecoder().decode(await readLimited(response, { maxBytes, kind: 'orgFile', name: '' }));
+  } catch (error) {
+    if (error instanceof SizeLimitError) throw new Error(`${what} is larger than ${formatSize(maxBytes)}, so it was not read.`);
+    throw error;
+  }
+}
+
+/** Like readTextCapped, parsed as JSON.
+ * @param {Response} response @param {number} maxBytes @param {string} what
+ * @returns {Promise<any>} */
+export async function readJsonCapped(response, maxBytes, what) {
+  // Minimal stand-ins (tests) that can only answer json(): nothing streams, so there is nothing to cap.
+  if (!response.body && typeof response.arrayBuffer !== 'function' && typeof response.text !== 'function') return response.json();
+  return JSON.parse(await readTextCapped(response, maxBytes, what));
+}
+
+/** The most a server's directory listing, or a GitHub reply that is not a file's content, may be. */
+export const REPLY_CAP_BYTES = 32 * 1024 * 1024;

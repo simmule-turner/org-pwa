@@ -458,6 +458,13 @@
         <button id="externalChangeDismissBtn" style="background: transparent; color: white; border: 1px solid white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Dismiss</button>
       </span>
     </div>
+    <div id="nonUtf8Banner" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 12px; background: #a86a00; color: white; font-size: 13px;">
+      <span id="nonUtf8Text">This file is not valid UTF-8, so it is open read-only.</span>
+      <span style="display: flex; gap: 6px; flex-shrink: 0;">
+        <button id="nonUtf8ConvertBtn" style="background: white; color: #a86a00; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Convert to UTF-8…</button>
+        <button id="nonUtf8DismissBtn" style="background: transparent; color: white; border: 1px solid white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;">Dismiss</button>
+      </span>
+    </div>
     <div id="searchPanel" class="panel" style="display: none;"></div>
     <!-- Kept in the DOM so their existing click handlers and disabled-state
          logic stay completely untouched -- the command palette and god-mode

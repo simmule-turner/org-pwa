@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: attachments flow.
 import { fetchWithTimeout, readLimited } from './limited-fetch.js';
-import { getSizeLimits } from '../src/size-limits.js';
+import { formatSize, getSizeLimits } from '../src/size-limits.js';
 import { deleteProperty, getProperty, setProperty } from '../src/archive-model.js';
 import { attachMethod, fileNameFromUrl, planAttachTransfer, addAttachTag, attachmentSizeCheck, attachmentDir, prefersInAppCamera, attachmentDirFromProperty, ownAttachmentDirectory, formatAttachmentLink, generateAttachmentId, removeAttachmentLink, removeAttachTag, sanitizeAttachmentFilename, shouldInsertAttachmentLink, hasUnsafeAttachmentId, isSafeAttachmentId, isSafeAttachmentName } from '../src/attach.js';
 import { parseBody } from '../src/body-parser.js';
@@ -311,8 +311,9 @@ export async function uploadAttachmentToHeading(heading, picked, opts = {}) {
  *  of these three failure cases (and their own explanatory messages)
  * @param {any} target
  * @param {Heading | null} heading
+ * @param {string} [action]  what the question calls it when the file is large: Open or Download
  *  a second time. */
-export async function resolveAndReadAttachment(target, heading) {
+export async function resolveAndReadAttachment(target, heading, action = 'Open') {
   const filename = target.replace(/^attachment:/i, '');
   if (!attachmentsAvailable()) {
     setStatus(
@@ -330,7 +331,18 @@ export async function resolveAndReadAttachment(target, heading) {
   }
   try {
     const adapter = activeDiskAdapter();
-    const result = await adapter.readBinary(resolvedPath);
+    // Over the ask size the adapter says so without sending the file (`tooLarge`); the person is asked before it is downloaded
+    const askAbove = getSizeLimits().attachment.warn || 0;
+    let result = await adapter.readBinary(resolvedPath, askAbove > 0 ? { maxBytes: askAbove } : undefined);
+    if (result && result.tooLarge) {
+      const yes = await confirmDialog(`"${filename}" is over ${formatSize(askAbove)}. It is held in memory and can be slow and use mobile data. ${action} anyway?`, { confirmLabel: action, danger: false });
+      if (!yes) {
+        setStatus(`Did not ${action.toLowerCase()} "${filename}".`);
+        render();
+        return null;
+      }
+      result = await adapter.readBinary(resolvedPath); // the refuse limit still applies
+    }
     if (!result) {
       setStatus(`Attachment "${filename}" not found at ${resolvedPath}.`);
       render();
@@ -353,7 +365,7 @@ export async function resolveAndReadAttachment(target, heading) {
 export async function saveAttachmentLink(target, heading) {
   setStatus('Downloading attachment\u2026');
   render();
-  const attachment = await resolveAndReadAttachment(target, heading);
+  const attachment = await resolveAndReadAttachment(target, heading, 'Download');
   if (!attachment) return;
   const { filename, resolvedPath, result } = attachment;
   saveOut(filename, base64ToArrayBuffer(result.base64), guessAnyAttachmentMimeType(resolvedPath));

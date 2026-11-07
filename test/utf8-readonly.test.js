@@ -47,3 +47,27 @@ test('UTF-16 and other labels work; unknown labels and files not waiting are err
   assert.ok(ENCODING_CHOICES.some((c) => c.label === 'windows-1252') && ENCODING_CHOICES.some((c) => c.label.startsWith('utf-16')));
   for (const { label } of ENCODING_CHOICES) assert.doesNotThrow(() => new TextDecoder(label), label);
 });
+
+// ---- the Convert to UTF-8 banner ------------------------------------------------------------
+
+import { nonUtf8BannerVisible, dismissNonUtf8Banner, reopenNonUtf8Banner, shouldShowNonUtf8Banner } from '../src/utf8.js';
+
+test('the banner shows for a file that is not valid UTF-8 until it is dismissed, converted or closed', () => {
+  const none = new Set();
+  assert.equal(nonUtf8BannerVisible({ documentId: 'a.org', notUtf8: true, dismissed: none }), true);
+  assert.equal(nonUtf8BannerVisible({ documentId: 'a.org', notUtf8: true, dismissed: new Set(['a.org']) }), false, 'dismissed');
+  assert.equal(nonUtf8BannerVisible({ documentId: 'b.org', notUtf8: true, dismissed: new Set(['a.org']) }), true, 'dismissed for another file only');
+  assert.equal(nonUtf8BannerVisible({ documentId: 'a.org', notUtf8: false, dismissed: none }), false, 'valid UTF-8 or converted');
+  assert.equal(nonUtf8BannerVisible({ documentId: null, notUtf8: true, dismissed: none }), false, 'no document is open');
+});
+
+test('dismissing the banner lasts until the file is opened again', () => {
+  decodeText(new Uint8Array([0x2a, 0x20, 0xe9]), 'banner.org');
+  assert.equal(shouldShowNonUtf8Banner('banner.org'), true);
+  dismissNonUtf8Banner('banner.org');
+  assert.equal(shouldShowNonUtf8Banner('banner.org'), false);
+  reopenNonUtf8Banner('banner.org');
+  assert.equal(shouldShowNonUtf8Banner('banner.org'), true);
+  forgetNonUtf8('banner.org');
+  assert.equal(shouldShowNonUtf8Banner('banner.org'), false, 'a saved (now UTF-8) file has no banner');
+});

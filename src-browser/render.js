@@ -16,6 +16,7 @@ import { S } from './app-state.js';
 import { noteKeyLog } from './key-log.js';
 import { noteUpdateOnce } from './update-log.js';
 import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js';
+import { syncNonUtf8Banner } from './non-utf8-banner.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
 import { applyPendingCursorPosition, textViewBelongsToActive, textViewDocs, textViewOwner } from './editing.js';
@@ -45,6 +46,7 @@ export function render() {
   syncExtraMenuButtonVisibility();
   renderMinibuffer();
   renderModeline();
+  syncNonUtf8Banner();
   syncContentOffset();
   renderFloatingKeyboard(); // after syncContentOffset: it positions itself against the mode line that call just placed
   renderGodModeHints(); // the card listing where a half-typed god-mode sequence can lead

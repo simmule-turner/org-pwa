@@ -1,0 +1,332 @@
+#+TITLE: Capture into a date tree
+#+STARTUP: showall
+
+A cookbook for journals. Each section shows the file before, the template, and the file after org-capture files it. The results are what Emacs 29.3 (Org 9.6.15) produced, and a test holds the app to them. The template is written the way it goes in the Lisp init (=org-xx-lisp-init=), and in the Capture Templates setting as JSON.
+
+* A new day tree
+A file+olp+datetree target files under the year, the month and the day of the capture. Headings that are not there yet are made: the year, the month with its name, and the day with its weekday. Here the file is empty.
+
+Captured on 2026-11-07 Saturday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* Walked the dog"))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+,* 2026
+,** 2026-11 November
+,*** 2026-11-07 Saturday
+,**** Walked the dog
+#+END_SRC
+
+* Into a tree that is there
+The year and the month are found. The new day goes after the days already in the month, in date order.
+
+Captured on 2026-11-07 Saturday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* Walked the dog"))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+,**** Called Mom
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+,**** Called Mom
+,*** 2026-11-07 Saturday
+,**** Walked the dog
+#+END_SRC
+
+* The newest entry first
+=:prepend t= puts the entry at the top of its day instead of the end.
+
+Captured on 2026-11-05 Thursday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* Walked the dog" :prepend t))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "prepend": true,
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+,**** Called Mom
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+,**** Walked the dog
+,**** Called Mom
+#+END_SRC
+
+* Under a heading
+Headings after the file name say where the tree goes: it is made under =Journal=, and the rest of the file is left alone.
+
+Captured on 2026-11-07 Saturday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org" "Journal") "* Walked the dog"))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [
+    "Journal"
+  ],
+  "datetree": true,
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,* Journal
+,* Archive
+old notes
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,* Journal
+,** 2026
+,*** 2026-11 November
+,**** 2026-11-07 Saturday
+,***** Walked the dog
+,* Archive
+old notes
+#+END_SRC
+
+* A list item in the day
+A template of type =item= (or =checkitem=, =plain=) goes in the body of the day heading.
+
+Captured on 2026-11-05 Thursday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("b" "Bought" item (file+olp+datetree "journal.org") "Bought milk"))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "b",
+  "description": "Bought",
+  "type": "item",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "template": "Bought milk"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+- Called Mom
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** 2026-11-05 Thursday
+- Called Mom
+- Bought milk
+#+END_SRC
+
+* A week tree
+=:tree-type week= keeps the days of an ISO week under a heading for the week. 2024-12-30 is a Monday in the first week of 2025, so it goes under the year 2025.
+
+Captured on 2024-12-30 Monday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* Walked the dog" :tree-type week))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "treeType": "week",
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+,* 2025
+,** 2025-W01
+,*** 2024-12-30 Monday
+,**** Walked the dog
+#+END_SRC
+
+* A month tree
+=:tree-type month= has no heading for the day: the entry goes under the month.
+
+Captured on 2026-11-07 Saturday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* Walked the dog" :tree-type month))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "j",
+  "description": "Journal",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "treeType": "month",
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** Earlier
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,* 2026
+,** 2026-11 November
+,*** Earlier
+,*** Walked the dog
+#+END_SRC
+
+* The older names
+=file+datetree= is the same as =file+olp+datetree= with no headings, and =file+weektree= is the same with =:tree-type week=.
+
+Captured on 2026-11-07 Saturday.
+
+Template, in the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("w" "Weekly" entry (file+weektree "journal.org") "* Walked the dog"))
+#+END_SRC
+
+The same template in Capture Templates:
+#+BEGIN_SRC json
+{
+  "key": "w",
+  "description": "Weekly",
+  "type": "entry",
+  "file": "journal.org",
+  "olp": [],
+  "datetree": true,
+  "treeType": "week",
+  "template": "* Walked the dog"
+}
+#+END_SRC
+
+Before, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+#+END_SRC
+
+After, journal.org:
+#+BEGIN_SRC org
+,#+TITLE: Journal
+,* 2026
+,** 2026-W45
+,*** 2026-11-07 Saturday
+,**** Walked the dog
+#+END_SRC
+
+* Where the app differs from Emacs
+=:time-prompt t= (asking for the date) is not read, and neither is =file+olp+datetree= with =:tree-type= given as a function or a list of levels: those need Org 9.8, and a message says so when the Capture list opens. The app leaves the end of a file as it was, where Emacs adds a final newline to a file that lacked one.

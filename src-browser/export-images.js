@@ -3,6 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Pictures for HTML export: a standalone page has nowhere to find `[[file:pic.png]]`, so every picture this app can
 // read (GitHub and WebDAV files, attachments) is embedded as a data URL. Anything else keeps its link.
+import { base64Bytes, getSizeLimits } from '../src/size-limits.js';
 import { guessImageMimeType, isExternalUrl, resolveAttachmentTarget, resolveImagePath } from '../src/link-resolve.js';
 import { S } from './app-state.js';
 import { attachmentsAvailable } from './attachments-store.js';
@@ -52,8 +53,10 @@ export async function collectExportImages(doc, scope = /** @type {any} */ (null)
             const key = S.state.storageKind + ':' + path;
             if (imageDataUrlCache.has(key)) return images.set(target, imageDataUrlCache.get(key));
             try {
-              const result = await activeDiskAdapter().readBinary(path);
-              if (result) {
+              const imageMax = getSizeLimits().image.max;
+              const result = await activeDiskAdapter().readBinary(path, imageMax > 0 ? { maxBytes: imageMax } : undefined);
+              // a picture over the image limit keeps its link, as it does on screen (an adapter that ignores maxBytes is caught by the second test)
+              if (result && !result.tooLarge && !(imageMax > 0 && base64Bytes(result.base64) > imageMax)) {
                 const url = `data:${guessImageMimeType(path)};base64,${result.base64}`;
                 imageDataUrlCache.set(key, url);
                 images.set(target, url);

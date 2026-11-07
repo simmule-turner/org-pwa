@@ -7,6 +7,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v655 — Safer saves and fewer loose ends
+After "saved elsewhere", Save now asks Merge, Overwrite or Cancel instead of silently replacing the other window's save. Calendar, CalDAV and WebDAV replies are size-capped, a failed local-file write leaves the original untouched, and picking a different file with the name of an open one is refused. Lisp integers past Emacs's =integer-width= now overflow like Emacs, and the vendored mathjs version is recorded.
+Verified: new tests for each item; the saved-elsewhere, conflict and UTF-8 checks.
+
+* v654 — Safer large files and a UTF-8 banner
+More of the size limits now apply before anything is read: a picked local file is checked by its size first, an existing attachment asks before downloading above 20 MB, pasting into Text view asks or refuses at the Org file limits, and #+INCLUDE files together cannot grow a document past the limit. Exported images and the clock sound follow the image limit. A file that is not valid UTF-8 now shows a banner with Convert to UTF-8… so you can fix it in one tap.
+Verified: new tests for each limit and the related attachment, Text view and encoding checks.
+
+* v653 — Date-tree examples
+New examples show capture into a date tree (day, week and month trees, with Emacs 29.3's results) and capture templates written in the Lisp init, so you can copy a working template instead of guessing the syntax.
+Verified: the example tests in three time zones.
+
+* v652 — Capture from your init file, and date trees
+Capture templates you define in an init file pulled in with =(load …)= now appear in the Capture list, as they do in Emacs. Templates can also file under a date tree with =file+olp+datetree=, =file+datetree= or =file+weektree= (day, week or month trees), creating the year, month and day headings when missing, and the Settings JSON has matching fields. The Android app (0.7.9) is hardened: size limits on files and attachments, no cloud backup of its data, and safer attachment moves and links.
+Verified: 662 date-tree cases compared with Emacs 29.3, plus the capture and Lisp init checks.
+
 * v651 — Faster big files
 Large documents open and edit much faster. Above 400 headings (Settings: windowing threshold, 0 turns it off) the outline and the Agenda draw only the rows near the screen, so a 1 MB file opens in about half a second instead of over two, and folding, editing and the Agenda no longer lag. Jumps to a heading scroll straight there. Typing in Text view on large files is also quicker. The browser's own Find sees only drawn rows; the app's search covers everything.
 Verified: new windowing tests and the fold, drag, search, undo, narrow, agenda, capture, clock, link, refile and Text view checks.

@@ -34,7 +34,21 @@ function num(x, pred = 'number-or-marker-p') {
   throw wrongType(pred, x);
 }
 /** @param {bigint} b @returns {number | bigint} */
-const normInt = (b) => (b >= BigInt(Number.MIN_SAFE_INTEGER) && b <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(b) : b);
+const normInt = (b) => {
+  if (b >= BigInt(Number.MIN_SAFE_INTEGER) && b <= BigInt(Number.MAX_SAFE_INTEGER)) return Number(b);
+  if (bitLength(b) > integerWidth()) throw signal('overflow-error', []); // as Emacs does past `integer-width` bits
+  return b;
+};
+const integerWidthSym = intern('integer-width');
+integerWidthSym.value = 65536;
+integerWidthSym.special = true;
+/** `integer-width`: the most bits a bignum may have (Emacs's default is 65536). */
+const integerWidth = () => (typeof integerWidthSym.value === 'number' ? integerWidthSym.value : 65536);
+/** @param {bigint} b  the number of bits in |b| */
+function bitLength(b) {
+  const hex = (b < 0n ? -b : b).toString(16);
+  return (hex.length - 1) * 4 + (32 - Math.clz32(parseInt(hex[0], 16)));
+}
 /** @param {LObj} x @param {string} [pred] @returns {number | bigint} */
 function int(x, pred = 'integerp') {
   if (isInt(x)) return /** @type {number | bigint} */ (x);
@@ -417,13 +431,13 @@ defun('list', 0, -1, (a) => list(a));
 /** A non-negative count, or the `wholenump` error. @param {LObj} n */
 function count(n, max = 2 ** 24) {
   if (typeof n !== 'number' || n < 0) throw wrongType('wholenump', n);
-  if (n > max) throw signal('error', ['Memory exhausted']);
+  if (n > max) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
   return n;
 }
 
 /** Refuses a string longer than the interpreter can hold. @param {number} n */
 function room(n) {
-  if (n > 2 ** 27) throw signal('error', ['Memory exhausted']);
+  if (n > 2 ** 27) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
   return n;
 }
 defun('make-list', 2, 2, ([n, x]) => list(Array(count(n)).fill(x)));
@@ -610,7 +624,7 @@ defun('number-sequence', 1, 3, ([from, to, step]) => {
   const t = num(to);
   const anyFloat = from instanceof Flt || to instanceof Flt || step instanceof Flt;
   for (let i = 0, v = f; s > 0 ? v <= t : v >= t; i++, v = f + i * s) {
-    if (i > 2 ** 24) throw signal('error', ['Memory exhausted']);
+    if (i > 2 ** 24) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
     out.push(i === 0 ? from : anyFloat ? flt(v) : v);
   }
   return list(out);

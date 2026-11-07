@@ -157,6 +157,25 @@ Values:
   => "PLAN"
 #+end_example
 
+* Capture templates
+=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows beside the templates in Settings. A template with the same key as one in Settings replaces it. The same forms work in a file read with =(load "github:init.el")=.
+
+#+begin_src emacs-lisp
+(setq org-capture-templates nil)
+(add-to-list 'org-capture-templates
+  '("w" "Web page or text" plain (file+headline "inbox.org" "Inbox") "* %a"))
+(add-to-list 'org-capture-templates
+  '("j" "Journal" entry (file+olp+datetree "journal.org") "* %?"))
+#+end_src
+
+Values:
+#+begin_example
+(mapcar (function car) org-capture-templates)
+  => ("j" "w")
+(nth 1 (car org-capture-templates))
+  => "Journal"
+#+end_example
+
 * When a form fails
 A form that fails shows Emacs's message in the status line, and the forms after it still run.
 
@@ -182,7 +201,7 @@ Symbol's function definition is void: no-such-function
 #+end_example
 
 * Reading more from a file
-=(load "github:file.el")= reads another file as part of the init, and the Agenda's *Refresh* reads it again. Emacs loads a file of your disk instead.
+=(load "github:file.el")= reads another file as part of the init, and the Agenda's *Refresh* reads it again. Emacs loads a file of your disk instead. Capture templates set in that file are in the Capture list too.
 
 * Where the app differs from Emacs
 The init runs on the app's own interpreter, which has the common functions and the Org read-only functions, not all of Emacs. A function it lacks fails with Emacs's message for a void function. A program that never ends stops with a message.

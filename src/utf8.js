@@ -68,6 +68,32 @@ export function isNonUtf8(id) {
   return !!entry && !entry.converted;
 }
 
+/** The files whose "not valid UTF-8" banner was dismissed since they were last opened. */
+const dismissedBanners = new Set();
+
+/**
+ * Whether the "Convert to UTF-8" banner shows: for a file that is not valid UTF-8 and has not been converted, until it is dismissed.
+ * @param {{ documentId: string | null | undefined, notUtf8: boolean, dismissed: ReadonlySet<string> }} state
+ */
+export function nonUtf8BannerVisible({ documentId, notUtf8, dismissed }) {
+  return !!documentId && notUtf8 && !dismissed.has(documentId);
+}
+
+/** @param {string | null | undefined} id */
+export function shouldShowNonUtf8Banner(id) {
+  return nonUtf8BannerVisible({ documentId: id, notUtf8: isNonUtf8(id), dismissed: dismissedBanners });
+}
+
+/** The banner is hidden for this file until it is opened again. @param {string} id */
+export function dismissNonUtf8Banner(id) {
+  dismissedBanners.add(id);
+}
+
+/** The file was opened (again): its banner can show. @param {string | null | undefined} id */
+export function reopenNonUtf8Banner(id) {
+  if (id) dismissedBanners.delete(id);
+}
+
 /** Throws if a save of this file would write the U+FFFD text over its original bytes.
  * @param {string} id */
 export function refuseNonUtf8Write(id) {

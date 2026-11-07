@@ -27,7 +27,7 @@ if (!version && !checkOnly) {
 }
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'native']);
-const DOCS = new Set(['sw.js', 'src-browser/version.js', 'README.org', 'CHANGELOG.org', 'test/testing.org', '.green-hash']);
+const DOCS = new Set(['sw.js', 'src-browser/version.js', 'README.org', 'CHANGELOG.org', 'ROADMAP.org', 'test/testing.org', '.green-hash']);
 function files(dir = '.') {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const rel = path.join(dir, e.name).replace(/^\.\//, '');

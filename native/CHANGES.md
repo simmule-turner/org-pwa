@@ -1,4 +1,6 @@
-# Native hardening (shell 0.7.9, for web v650 and later)
+# Native hardening (shell 0.7.10, for web v650 and later)
+
+- **0.7.10.** `MainActivity.java` removes `CapacitorHttpAndroidInterface` and `CapacitorCookiesAndroidInterface` after the bridge is built (the app uses neither plugin, and Capacitor's script only uses them when present), so the sandbox page for source blocks no longer gets them. On a WebView that cannot do the main-frame-only message listener (`WEB_MESSAGE_LISTENER`) the app shows "needs a newer Android System WebView" instead of running on the bridge every frame can reach. `build.gradle` adds `androidx.webkit` directly (for `WebViewFeature`). The workflow's actions are pinned to commit SHAs. Not compiled here (no Android SDK).
 
 - **Size caps.** `Limits.java` (new). Every read, write, copy, view, save and pick takes an optional `maxBytes`; nothing goes above 100 MB. Over the cap, the call rejects with "too large: X is over the limit of Y" before the bytes move (size known), or while copying (size unknown). Partial copies are deleted.
 - **Attachments.** Streaming base64 on read. `link` and `removeSource` accept only an address the picker handed out (`KeptPicks.java`, new) and, for `link`, only outside the picked tree. Paths with `..`, `.`, empty parts, backslashes or control characters are refused (`isPlainPath`).

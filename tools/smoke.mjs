@@ -3700,6 +3700,62 @@ check('capture from outside: a share URL runs the named template with the shared
   await context.close();
 });
 
+check('capture: a template from a loaded init file is offered', async () => {
+  dav.reset({ 'notes.org': SAMPLE, 'init.el': `(add-to-list 'org-capture-templates '("l" "From the loaded file" plain (file "") "* Loaded"))\n` });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    const { encodeLispString } = await import('/src/export-defaults.js');
+    await commitGlobalVariableChange('org-xx-lisp-init', encodeLispString('(load "webdav:init.el")'));
+  });
+  await page.waitForFunction(async () => (await import('/src-browser/lisp-init-text.js')).initText.text.includes('From the loaded file'), null, { timeout: 8000 });
+  const found = await page.evaluate(async () => {
+    const { getAllCaptureTemplates } = await import('/src-browser/capture-templates.js');
+    const { kv } = await import('/src-browser/singletons.js');
+    return (await getAllCaptureTemplates(kv)).map((t) => t.key + ':' + t.description);
+  });
+  expect(found.includes('l:From the loaded file'), `the template in the loaded file is among the templates: ${JSON.stringify(found)}`);
+  // a fresh start, where the file is read from this device's copy while the Capture list is being asked for
+  await page.goto(`${main.base}/index.html?title=T&text=x`, { waitUntil: 'load' });
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 6000 });
+  expect((await page.locator('#capturePanel').innerText()).includes('From the loaded file'), `and the Capture list shows it after a restart: ${JSON.stringify((await page.locator('#capturePanel').innerText()).slice(0, 200))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check("capture: a datetree template files under today's year, month and day", async () => {
+  dav.reset({ 'journal.org': '* Journal\n', 'other.org': '* Other\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  const templates = [{ key: 'd', description: 'Dated', type: 'entry', olp: ['Journal'], datetree: true, template: '* Dated note', emptyLines: 0 }];
+  await page.evaluate((json) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('org-pwa');
+    open.onsuccess = () => {
+      const db = open.result;
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(json, 'settings:captureTemplates');
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+    open.onerror = () => reject(open.error);
+  }), JSON.stringify(templates));
+  await openDav(page, 'journal.org');
+  await page.goto(`${main.base}/index.html?capture=d`, { waitUntil: 'load' });
+  let text = '';
+  for (let n = 0; n < 40 && !text.includes('Dated note'); n++) {
+    await page.waitForTimeout(250);
+    text = (await bufferText(page, 'journal.org')) || '';
+  }
+  const want = await page.evaluate(async () => {
+    const { formatTimeString } = await import('/src/format-time.js');
+    const now = new Date();
+    return `* Journal\n** ${formatTimeString(now, '%Y')}\n*** ${formatTimeString(now, '%Y-%m %B')}\n**** ${formatTimeString(now, '%Y-%m-%d %A')}\n***** Dated note`;
+  });
+  expect(text.startsWith(want), `the note sits under today's year, month and day: ${JSON.stringify(text)} wanted ${JSON.stringify(want)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture from outside: %x takes the clipboard (read only for a template that uses it), and a refused clipboard leaves %x empty but still captures, saying why', async () => {
   const seed = (page, templates) => page.evaluate((json) => new Promise((resolve, reject) => {
     const open = indexedDB.open('org-pwa');
@@ -7276,6 +7332,41 @@ check('conflict: a save in one window reloads another window with no unsaved edi
   await context.close();
 });
 
+check('saved elsewhere: saving asks Merge or Overwrite, Cancel and Escape save nothing, Overwrite replaces the other save', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const second = await context.newPage();
+  await second.goto(`${main.base}/index.html`, { waitUntil: 'load' });
+  await waitForModeline(second, 'notes.org');
+  await replaceInDocument(second, 'body 4', 'body 4 unsaved in window two');
+  await replaceInDocument(page, 'body 2', 'body 2 from window one');
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'Saved');
+  await second.locator('#externalChangeBanner').waitFor({ state: 'visible', timeout: 8000 });
+  const onServer = dav.get('notes.org');
+  await second.locator('#externalChangeDismissBtn').click(); // hiding the banner does not settle the question
+  await fileMenu(second, 'Save');
+  await second.getByRole('button', { name: 'Overwrite' }).waitFor({ timeout: 5000 });
+  await second.getByRole('button', { name: 'Cancel' }).click();
+  await waitForStatus(second, 'Save cancelled');
+  expect(dav.get('notes.org') === onServer, 'Cancel wrote nothing');
+  await fileMenu(second, 'Save');
+  await second.getByRole('button', { name: 'Merge' }).waitFor({ timeout: 5000 });
+  await second.keyboard.press('Escape');
+  await waitForStatus(second, 'Save cancelled');
+  expect(dav.get('notes.org') === onServer, 'Escape wrote nothing');
+  await fileMenu(second, 'Save');
+  await second.getByRole('button', { name: 'Overwrite' }).click();
+  await waitForStatus(second, 'Saved');
+  expect(dav.get('notes.org').includes('unsaved in window two') && !dav.get('notes.org').includes('from window one'), 'Overwrite replaced the other save');
+  await replaceInDocument(second, 'body 3', 'body 3 more');
+  await fileMenu(second, 'Save');
+  await waitForStatus(second, 'Saved');
+  expect((await second.getByRole('button', { name: 'Overwrite' }).count()) === 0, 'no question once settled');
+  await context.close();
+});
+
 check('remote setupfile asks before loading: nothing is requested until Load once, and Never is remembered', async () => {
   const url = 'https://example.test/x.org';
   dav.reset({ 'a.org': `#+SETUPFILE: ${url}\n* WAIT Pending thing\n` });
@@ -7360,6 +7451,35 @@ check('non-UTF-8 file opens read-only: the odd bytes show as U+FFFD, a save is r
   await waitForStatus(page, 'Saved');
   const onServer = Buffer.from(dav.get('l.org')).toString('utf8');
   expect(onServer.includes('Café menu') && onServer.includes('body edited') && !onServer.includes('\ufffd'), `the server has UTF-8 text: ${JSON.stringify(onServer)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('utf-8: a non-UTF-8 file shows a Convert to UTF-8 banner', async () => {
+  const latin1 = Buffer.concat([Buffer.from('* Caf'), Buffer.from([0xe9]), Buffer.from(' menu\nbody\n')]);
+  dav.reset({ 'l.org': latin1 });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'l.org');
+  await waitForStatus(page, 'Not valid UTF-8: opened read-only so it is not damaged.');
+  const banner = () => page.evaluate(() => ({ shown: getComputedStyle(document.getElementById('nonUtf8Banner')).display !== 'none', text: document.getElementById('nonUtf8Text').textContent || '' }));
+  const shown = await banner();
+  expect(shown.shown && shown.text === '"l.org" is not valid UTF-8, so it is open read-only.', `the banner shows with the file name: ${JSON.stringify(shown)}`);
+  // Dismiss hides it, and the status-line message and the palette entry stay
+  await page.click('#nonUtf8DismissBtn');
+  expect(!(await banner()).shown, 'Dismiss hides the banner');
+  // Convert to UTF-8… from the banner hides it once the file is converted
+  await page.evaluate(async () => {
+    const { reopenNonUtf8Banner } = await import('/src/utf8.js');
+    const { render } = await import('/src-browser/render.js');
+    reopenNonUtf8Banner('l.org');
+    render();
+  });
+  expect((await banner()).shown, 'the banner shows again once the file is opened again');
+  await page.click('#nonUtf8ConvertBtn');
+  await page.getByRole('button', { name: 'Latin-1 / windows-1252' }).click();
+  await page.getByRole('button', { name: 'Convert', exact: true }).click();
+  await waitForStatus(page, 'the next save writes UTF-8');
+  expect(!(await banner()).shown, 'the banner is gone after the conversion');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -8205,6 +8325,76 @@ check('size limits: a large org file asks, a huge one is refused', async () => {
   expect((await page.getByText('Open anyway?').count()) === 0, 'a refused file asks nothing');
   await page.locator('#tabBar > div', { hasText: 'small.org' }).first().click(); // the app still switches buffers
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('small.org'), null, { timeout: 8000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('size limits: opening a large attachment asks first, and declining opens nothing', async () => {
+  dav.reset({ 'notes.org': '* Report\n:PROPERTIES:\n:ID: att-large-1\n:END:\n[[attachment:doc.pdf]]\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  const stored = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { resolveAttachmentTarget } = await import('/src/link-resolve.js');
+    return resolveAttachmentTarget(S.state.doc, S.state.doc.children[0], 'attachment:doc.pdf', S.state.documentId);
+  });
+  dav.set(stored, '%PDF-1.4 ' + 'x'.repeat(5000));
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const { setSizeLimits, sizeLimitsOf } = await import('/src/size-limits.js');
+    setSizeLimits(sizeLimitsOf({ 'org-xx-size-limit-attachment-warn': '1KB' })); // ask above 1 KB
+    window.__viewed = [];
+    installPlatform({ viewFile: async (blob, name) => { window.__viewed.push(name); } });
+  });
+  const open = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachmentLink } = await import('/src-browser/attachments-flow.js');
+    await openAttachmentLink('attachment:doc.pdf', S.state.doc.children[0]);
+  });
+  const asked = open();
+  await page.getByText('"doc.pdf" is over 1 KB', { exact: false }).waitFor({ timeout: 10000 });
+  await page.locator('.ui-overlay').getByText('Cancel', { exact: true }).click();
+  await asked;
+  expect((await page.locator('#minibuffer').innerText()).includes('Did not open "doc.pdf"'), `declining says so: ${await page.locator('#minibuffer').innerText()}`);
+  expect((await page.evaluate(() => window.__viewed)).length === 0, 'declining hands nothing to the platform');
+  const again = open();
+  await page.getByText('"doc.pdf" is over 1 KB', { exact: false }).waitFor({ timeout: 10000 });
+  await page.locator('.ui-overlay').getByText('Open', { exact: true }).click();
+  await again;
+  expect((await page.evaluate(() => window.__viewed)).join() === 'doc.pdf', 'accepting opens it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('size limits: pasting a huge text into Text view is refused, and a large one asks first', async () => {
+  dav.reset({ 'p.org': '* Small\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'p.org');
+  await page.evaluate(async () => {
+    const { setSizeLimits, sizeLimitsOf } = await import('/src/size-limits.js');
+    setSizeLimits(sizeLimitsOf({ 'org-xx-size-limit-org-file': '3KB', 'org-xx-size-limit-org-file-warn': '1KB' }));
+  });
+  await viewMenu(page, 'Text');
+  const paste = (text) => page.evaluate((t) => {
+    const area = document.getElementById('document-text-edit-input');
+    area.focus();
+    area.setSelectionRange(area.value.length, area.value.length);
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    area.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+  const value = () => page.locator('#document-text-edit-input').inputValue();
+  await paste('y'.repeat(5000)); // over the 3 KB limit: refused, nothing is pasted
+  await page.waitForFunction(() => /over the 3 KB limit/.test(document.getElementById('minibuffer').innerText), null, { timeout: 8000 });
+  expect((await value()) === '* Small\n', 'nothing was pasted');
+  await paste('z'.repeat(1500)); // between 1 KB and 3 KB: asks
+  await page.getByText('Paste anyway?', { exact: false }).waitFor({ timeout: 8000 });
+  await page.locator('.ui-overlay').getByText('Cancel', { exact: true }).click();
+  expect((await value()) === '* Small\n', 'declining pastes nothing');
+  await paste('z'.repeat(1500));
+  await page.getByText('Paste anyway?', { exact: false }).waitFor({ timeout: 8000 });
+  await page.locator('.ui-overlay').getByText('Paste', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('document-text-edit-input').value.length > 1500, null, { timeout: 8000 });
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

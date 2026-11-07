@@ -4,7 +4,7 @@ import { writeConflict } from '../src/sync-engine.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
 import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
 import { SizeLimitError, getSizeLimits, textCeiling } from '../src/size-limits.js';
-import { fetchWithTimeout, readLimited } from './limited-fetch.js';
+import { REPLY_CAP_BYTES, fetchWithTimeout, readLimited, readTextCapped } from './limited-fetch.js';
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -111,7 +111,7 @@ function requireConfig(getConfig) {
 async function fetchWithHint(url, opts) {
   try {
     // a GET waits at most the configured time for the server to answer; an upload (PUT) has no total time limit
-    return opts && opts.method === 'GET' ? await fetchWithTimeout(url, opts) : await fetch(url, opts);
+    return opts && (opts.method === 'GET' || opts.method === 'PROPFIND') ? await fetchWithTimeout(url, opts) : await fetch(url, opts);
   } catch (err) {
     throw new Error(
       'Could not reach the WebDAV server. This is often a CORS configuration issue on the ' +
@@ -377,7 +377,7 @@ export function createWebdavAdapter(getConfig) {
     });
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(webdavErrorMessage(res));
-    const xml = await res.text();
+    const xml = await readTextCapped(res, REPLY_CAP_BYTES, 'The directory listing');
     const entries = parsePropfindResponse(xml);
     const basePath = baseUrlPath(config);
     const normalizedQueriedPath = path.replace(/^\/+|\/+$/g, '');

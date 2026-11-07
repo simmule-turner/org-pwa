@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v651';
+const CACHE_NAME = 'org-pwa-shell-v655';
 
 const SHELL_FILES = [
   './',
@@ -99,6 +99,7 @@ const SHELL_FILES = [
   './src/contacts-mirror.js',
   './src/capture-shared.js',
   './src/capture-lisp.js',
+  './src/capture-datetree.js',
   './src/capture-template.js',
   './src/format-time.js',
   './src/js-inspect.js',
@@ -282,6 +283,7 @@ const SHELL_FILES = [
   './src-browser/find-in-view.js',
   './src-browser/diary-file-load.js',
   './src-browser/lisp-init-load.js',
+  './src-browser/lisp-init-text.js',
   './src-browser/lisp-settings.js',
   './src-browser/diary-flow.js',
   './src-browser/diary-sheets.js',
@@ -371,6 +373,7 @@ const SHELL_FILES = [
   './src-browser/update-log.js',
   './src-browser/saved-elsewhere.js',
   './src-browser/sync-helpers.js',
+  './src-browser/non-utf8-banner.js',
   './src-browser/utf8-convert.js',
   './src-browser/render-helpers.js',
   './src-browser/indexeddb-adapter.js',

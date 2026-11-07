@@ -256,3 +256,28 @@ test('THE FIX: a document with genuinely no #+INCLUDE anywhere (root OR any head
   const expanded = await expandIncludes(doc, mkFetcher({}), parseOrg);
   assert.equal(expanded, doc);
 });
+
+// ---- the total of all included files --------------------------------------------
+
+test('many includes past the total limit are left out, and the first skip is reported once', async () => {
+  const doc = parseOrg('#+INCLUDE: "a.org"\n#+INCLUDE: "a.org"\n#+INCLUDE: "a.org"\n\n* Mine\n');
+  const notes = [];
+  const fetchPath = async () => ({ content: '* Part\n' + 'x'.repeat(100) + '\n' });
+  const out = await expandIncludes(doc, fetchPath, parseOrg, { maxTotalBytes: 250, onSkip: (m) => notes.push(m) });
+  assert.equal(out.children.filter((h) => h.title === 'Part').length, 2, 'two fit in 250 bytes, the third does not');
+  assert.equal(notes.length, 1);
+  assert.match(notes[0], /past 250 bytes in all/);
+});
+
+test('a total limit of 0 means no limit', async () => {
+  const doc = parseOrg('#+INCLUDE: "a.org"\n#+INCLUDE: "a.org"\n\n* Mine\n');
+  const fetchPath = async () => ({ content: '* Part\n' + 'x'.repeat(100) + '\n' });
+  const out = await expandIncludes(doc, fetchPath, parseOrg, { maxTotalBytes: 0 });
+  assert.equal(out.children.filter((h) => h.title === 'Part').length, 2);
+});
+
+test('by default the total is the Org file limit, so a few small includes are unaffected', async () => {
+  const doc = parseOrg('#+INCLUDE: "a.org"\n\n* Mine\n');
+  const out = await expandIncludes(doc, async () => ({ content: '* Part\nsmall\n' }), parseOrg);
+  assert.equal(out.children.filter((h) => h.title === 'Part').length, 1);
+});

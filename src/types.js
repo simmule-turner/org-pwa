@@ -64,7 +64,7 @@
 
 /** One entry of the command palette. @typedef {{ id: string, label: string, orgName?: string, keys?: string, group?: string, keywords?: string[], needs?: string[], run: (target?: object | null) => any, [k: string]: any }} PaletteCommand */
 
-/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, [k: string]: any }} CaptureTemplate */
+/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, datetree?: boolean, treeType?: string, [k: string]: any }} CaptureTemplate */
 
 /**
  * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).
@@ -158,7 +158,7 @@ export {};
  *   captureShortcutsResult: { ok: true, sent: number, reply: string | null } | { ok: false, error: string } | null, attachmentsFolder: string | null,
  *   agendaFilesConfig: string[], globalVariablesText: string, globalVariables: Record<string, any>, agendaFilesCacheLoadedFor: string | null,
  *   contactsFilesConfig: string[], searchExtraFilesConfig: string[], searchExtraFilesCacheLoadedFor: string | null, contactsFilesCacheLoadedFor: string | null,
- *   externalChangeCheckInFlight: boolean, externalChangeDismissedHash: string | null, externalChangeShownForHash: string | null,
+ *   externalChangeCheckInFlight: boolean, externalChangeDismissedHash: string | null, externalChangeShownForHash: string | null, savedElsewherePending: boolean,
  *   paletteRecentIds: string[] | null,
  *   fileMenuOpen: boolean, moreMenuStep: string | null, fileScreen: any, settingsOpen: boolean, searchOpen: boolean,
  *   confirmDialogOpen: boolean, captureOpen: boolean, extraMenuOpen: boolean, moreOpen: boolean, viewMenuOpen: boolean,

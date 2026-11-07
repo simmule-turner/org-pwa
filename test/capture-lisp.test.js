@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { captureTemplatesFromLisp, mergeCaptureTemplates } from '../src/capture-lisp.js';
 import { insertCapture, resolveOlpTarget } from '../src/capture-template.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
+import { expandLoads } from '../src/lisp-load.js';
 
 const INIT = `
 (setq org-capture-templates
@@ -26,7 +27,7 @@ test('templates written in Lisp become the template objects the JSON form uses',
 test('add-to-list puts a template first, and a group heading or a template that cannot be read is reported or skipped', () => {
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates '(("w" "Work") ("wt" "Task" entry (file+headline "w.org" "Tasks") "* TODO %?" :empty-lines 1)
-                                  ("d" "Dated" entry (file+datetree "d.org") "* %?")
+                                  ("d" "Dated" entry (file+datetree+prompt "d.org") "* %?")
                                   ("f" "Fn" entry (function my-fn) "* %?")))
     (add-to-list 'org-capture-templates '("n" "Note" plain (file "inbox.org") "* %?"))`);
   assert.deepEqual(templates.map((t) => t.key), ['n', 'wt']);
@@ -34,7 +35,7 @@ test('add-to-list puts a template first, and a group heading or a template that 
   assert.deepEqual(templates[1].olp, ['Tasks']);
   assert.equal(notes.length, 2);
   assert.equal(templates[1].emptyLines, 1);
-  assert.match(notes.join(' '), /"d" is left out.*file\+datetree/);
+  assert.match(notes.join(' '), /"d" is left out.*file\+datetree\+prompt/);
   assert.match(notes.join(' '), /"f" is left out/);
 });
 
@@ -61,4 +62,23 @@ test('blank lines, the table row and the header are read from their keywords', (
         ("b" "Bad" entry (file "b.org") "* %?" :empty-lines "x" :table-line-pos 3)))`);
   assert.deepEqual(templates[0], { key: 't', description: 'Row', type: 'table-line', olp: ['Log'], template: '| @# | %U |', file: 't.org', emptyLines: 1, emptyLinesBefore: 2, emptyLinesAfter: 0, tableLinePos: 'I+1', tableHeader: false });
   assert.deepEqual(notes, ['Capture template "b": :empty-lines needs a whole number and is ignored.', 'Capture template "b": :table-line-pos needs a string and is ignored.']);
+});
+
+test('a template written in a file the init loads is read, and one in the init itself wins over it', async () => {
+  const files = { 'github:init.el': `(add-to-list 'org-capture-templates '("w" "From file" plain (file "a.org") "file"))\n(add-to-list 'org-capture-templates '("x" "Also from file" plain (file "a.org") "x"))` };
+  const { text } = await expandLoads(`(load "github:init.el")\n(add-to-list 'org-capture-templates '("x" "In the init" plain (file "b.org") "init"))`, async (spec) => files[spec]);
+  const { templates, notes } = captureTemplatesFromLisp(text);
+  assert.deepEqual(notes, []);
+  assert.deepEqual(templates.map((t) => [t.key, t.description]), [['x', 'In the init'], ['x', 'Also from file'], ['w', 'From file']]);
+  assert.deepEqual(mergeCaptureTemplates([], templates).filter((t) => t.key === 'x').map((t) => t.description), ['In the init', 'Also from file']);
+});
+
+test('file+olp+datetree and the older file+datetree and file+weektree read as a date tree target, :tree-type week or month choose the tree', () => {
+  const { templates, notes } = captureTemplatesFromLisp(`
+    (setq org-capture-templates '(("a" "A" entry (file+olp+datetree "j.org" "Journal" "Sub") "* %?" :tree-type week)
+      ("b" "B" entry (file+datetree "j.org") "* %?") ("c" "C" item (file+weektree "j.org" "X") "x")
+      ("d" "D" entry (file+olp+datetree "j.org") "* %?" :tree-type month) ("e" "E" entry (file+olp+datetree "j.org") "* %?" :tree-type (month day))))`);
+  assert.deepEqual(templates.map((t) => [t.key, t.olp, t.datetree, t.treeType]), [['a', ['Journal', 'Sub'], true, 'week'], ['b', [], true, undefined], ['c', ['X'], true, 'week'], ['d', [], true, 'month'], ['e', [], true, undefined]]);
+  assert.equal(notes.length, 1);
+  assert.match(notes[0], /"e".*Org 9\.8/);
 });

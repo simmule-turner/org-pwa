@@ -2,6 +2,7 @@
 // Extracted from app.js: ui widgets. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { enhanceMenu } from './containers.js';
+import { assertWithinCeiling } from '../src/size-limits.js';
 import { resolveMenuOrder } from '../src/menu-alias.js';
 
 // Matches index.html's own @media (min-width: 900px) breakpoint exactly
@@ -655,6 +656,7 @@ export function pickTextFile(accept) {
         return;
       }
       try {
+        assertWithinCeiling(file.size, file.name); // before any of it is read
         resolve(await file.text());
       } catch (err) {
         reject(err);

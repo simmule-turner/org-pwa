@@ -16,6 +16,7 @@
  */
 
 import { contentHash } from '../src/sync-engine.js';
+import { assertWithinCeiling } from '../src/size-limits.js';
 import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
 
 /** @param {string} fileId */
@@ -44,9 +45,12 @@ async function verifyPermission(handle, mode, { prompt = true } = {}) {
  * under its own filename as documentId. Must be called from a user
  * gesture (click handler) — the File System Access API requires that.
  * Returns the documentId to use with openDocument/saveAndSync.
+ * A file is known by its name, so a different file with the name of one that is open (`inUse(name)`) is refused: taking
+ * its place would send the open tab's next save to the wrong file.
  * @param {KvAdapter} kvAdapter
+ * @param {{ inUse?: (name: string) => boolean }} [options]
  */
-export async function pickAndRegisterFile(kvAdapter) {
+export async function pickAndRegisterFile(kvAdapter, { inUse } = {}) {
   // No `types` filter here, deliberately: an earlier attempt used
   // accept: {'*/*': ['.org']} specifically to work around Android's
   // Storage Access Framework filtering by MIME type rather than
@@ -60,6 +64,10 @@ export async function pickAndRegisterFile(kvAdapter) {
   // would in any other file-picking context on the platform.
   const [handle] = await window.showOpenFilePicker();
   const documentId = handle.name;
+  const known = inUse && inUse(documentId) ? await kvAdapter.get(handleKey(documentId)) : null;
+  if (known && known.value && typeof known.value.isSameEntry === 'function' && !(await known.value.isSameEntry(handle).catch(() => true))) {
+    throw new Error(`A different file named "${documentId}" is already open. Close that tab first, or rename one of the files.`);
+  }
   await kvAdapter.set(handleKey(documentId), handle);
   return documentId;
 }
@@ -117,6 +125,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
         throw new Error(`Permission denied reading "${documentId}"`);
       }
       const file = await handle.getFile();
+      assertWithinCeiling(file.size, documentId); // before any of it is read
       const content = decodeText(await file.arrayBuffer(), documentId);
       return { content, hash: contentHash(content) };
     },
@@ -136,8 +145,13 @@ export function createFileSystemAccessAdapter(kvAdapter) {
       const ok = await verifyPermission(handle, 'readwrite');
       if (!ok) throw new Error(`Permission denied writing "${documentId}"`);
       const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
+      try {
+        await writable.write(content);
+        await writable.close(); // the browser swaps the new content in only now, so a failed write leaves the file as it was
+      } catch (error) {
+        if (typeof writable.abort === 'function') await writable.abort().catch(() => {}); // and the half-written copy is thrown away
+        throw error;
+      }
       return { hash: contentHash(content) };
     },
 

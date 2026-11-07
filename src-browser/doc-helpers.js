@@ -270,9 +270,12 @@ export function validateCaptureTemplates(parsed) {
     if (typeof t.key !== 'string' || t.key.length === 0) return `${label}: "key" must be a non-empty string`;
     if (typeof t.description !== 'string') return `${label}: "description" must be a string`;
     if (!CAPTURE_TYPES.includes(t.type)) return `${label}: "type" must be one of ${CAPTURE_TYPES.join(', ')}`;
-    if (!Array.isArray(t.olp) || t.olp.length === 0 || !t.olp.every((/** @type {any} */ s) => typeof s === 'string')) {
+    if (!Array.isArray(t.olp) || (t.olp.length === 0 && !t.datetree) || !t.olp.every((/** @type {any} */ s) => typeof s === 'string')) {
       return `${label}: "olp" must be a non-empty array of strings`;
     }
+    if ('datetree' in t && typeof t.datetree !== 'boolean') return `${label}: "datetree" must be true or false if present`;
+    if ('treeType' in t && !['day', 'week', 'month'].includes(t.treeType)) return `${label}: "treeType" must be "day", "week" or "month" if present`;
+    if ('treeType' in t && !t.datetree) return `${label}: "treeType" needs "datetree": true`;
     if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
     if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
     if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;

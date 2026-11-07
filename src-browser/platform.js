@@ -7,7 +7,7 @@
 //   name               'web' by default; a shell says what it is
 //   localFiles         files on the device: the person picks one to open, or names a new one to save, and the app
 //                      keeps a way back to it. supported() -- whether this platform can do that at all;
-//                      pickOpen(kv) / pickNew(kv, suggestedName) -- ask the person, remember the choice in `kv`, and
+//                      pickOpen(kv, { inUse }) / pickNew(kv, suggestedName) -- ask the person, remember the choice in `kv`, and
 //                      return the document id; adapter -- { read, write, exists, access } for those files
 //   saveFile           saveFile(name, content, mimeType): hand a file to the person (a download, in a browser). May return a
 //                      promise: resolving { where } says where it went (a shell may put it straight into a folder), or null

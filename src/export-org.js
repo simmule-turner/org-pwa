@@ -152,11 +152,11 @@ function scaleHeadingLevels(doc, minlevel) {
  * export from an unrelated concurrent edit -- see this session's own
  * "safe copy" step (a) -- but nothing in here itself touches the
  * object it's given.
- * @param {Doc} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number, keepComments?: boolean }} [options]
+ * @param {Doc} doc @param {any} fetchPath @param {any} parseOrgFn @param {{ now?: Date, minlevel?: number, keepComments?: boolean, onSkip?: (message: string) => void }} [options]
  */
-async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel, keepComments = false } = {}) {
+async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel, keepComments = false, onSkip } = {}) {
   const resolvedNow = now instanceof Date ? now : new Date();
-  let result = await expandIncludes(doc, fetchPath, parseOrgFn);
+  let result = await expandIncludes(doc, fetchPath, parseOrgFn, { onSkip });
   result = expandMacros(result, resolvedNow);
   if (!keepComments) result = filterNoexportAndComments(result);
   result = scaleHeadingLevels(result, minlevel);
@@ -185,7 +185,7 @@ function pruneHeadings(doc) {
 /**
  * What Emacs's `org-org-export-as-org` writes for `doc`: the document after includes, macros and the export filters, in Org's
  * canonical form (see org-interpret.js).
- * @param {Doc} doc @param {Parameters<typeof expandIncludes>[1]} fetchPath @param {Parameters<typeof expandIncludes>[2]} parseOrgFn @param {{ now?: Date, minlevel?: number }} [options]
+ * @param {Doc} doc @param {Parameters<typeof expandIncludes>[1]} fetchPath @param {Parameters<typeof expandIncludes>[2]} parseOrgFn @param {{ now?: Date, minlevel?: number, onSkip?: (message: string) => void }} [options]
  * @returns {Promise<string>}
  */
 async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {

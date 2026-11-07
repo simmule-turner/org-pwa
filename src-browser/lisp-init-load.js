@@ -12,6 +12,7 @@ import { readSpec } from './diary-file-load.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
 import { kv } from './singletons.js';
+import { initText } from './lisp-init-text.js';
 
 const CACHE_PREFIX = 'org-xx-lisp-load:';
 const latest = { generation: 0 };
@@ -66,6 +67,9 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
   const text = lispStringValue(raw) || raw || '';
   const loads = findLoads(text);
   const mine = ++latest.generation;
+  initText.raw = text;
+  initText.text = text;
+  initText.ready = Promise.resolve();
   if (!loads.length) {
     layerSettings(vars, text);
     applyHolidayVariables(vars);
@@ -73,12 +77,13 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
     return;
   }
   // at once: the files as they were last read on this device, if any; then the files as they are now
-  expandLoads(text, async (spec) => {
+  initText.ready = expandLoads(text, async (spec) => {
     const old = await cached(spec);
     if (old === null) throw new Error('not read yet');
     return old;
   }).then(({ text: first }) => {
     if (mine !== latest.generation) return;
+    initText.text = first;
     const changed = layerSettings(vars, first);
     applyHolidayVariables({ ...vars, 'org-xx-lisp-init': first });
     if (changed && hooks.afterSettingsChange) hooks.afterSettingsChange();
@@ -95,6 +100,7 @@ export function applyLispInit(vars, { prompt = false, say = false } = {}) {
     }
   }).then(({ text: full, errors, specs }) => {
     if (mine !== latest.generation) return;
+    initText.text = full;
     const changed = layerSettings(vars, full);
     applyHolidayVariables({ ...vars, 'org-xx-lisp-init': full });
     if (changed && hooks.afterSettingsChange) hooks.afterSettingsChange();

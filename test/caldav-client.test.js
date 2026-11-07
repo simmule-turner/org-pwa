@@ -183,3 +183,10 @@ test('a CardDAV client\u2019s check asks about the address book, and says so whe
   assert.ok(e.message.startsWith('Address book not found.'));
 });
 
+
+test('list reads the answer through the readText option when one is given (the app caps its size there)', async () => {
+  const body = '<multistatus xmlns="DAV:"><response><href>/radicale/me/cal/orgpwa-a.ics</href></response></multistatus>';
+  const f = fakeFetch(() => ({ status: 207, body }));
+  assert.deepEqual(await client(f, { readText: async () => body }).list(), ['orgpwa-a.ics']);
+  await assert.rejects(client(f, { readText: async () => { throw new Error('The calendar listing is larger than 32 MB, so it was not read.'); } }).list(), /larger than 32 MB/);
+});

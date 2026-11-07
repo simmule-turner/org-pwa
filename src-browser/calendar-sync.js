@@ -2,6 +2,7 @@
 // Mirrors the agenda to a CalDAV calendar (Radicale, Nextcloud, ...), one way, so the items View -> Agenda shows
 // also appear in the phone's own calendar app, with its alarms. What to send is src/calendar-mirror.js, the requests
 // are src/caldav-client.js; this is the part that knows about settings, the agenda files, state and the status line.
+import { REPLY_CAP_BYTES, readTextCapped } from './limited-fetch.js';
 import { buildCalendarResources, isOurResource, nextSyncState, planCalendarSync } from '../src/calendar-mirror.js';
 import { createCaldavClient, runLimited } from '../src/caldav-client.js';
 import { getContactsBirthdayProperty } from '../src/local-variables.js';
@@ -69,7 +70,7 @@ async function runCalendarSync({ manual, rebuild, report }) {
   S.calendarSyncRunning = true;
   try {
     if (manual) setStatus('Syncing the agenda to the calendar\u2026');
-    const client = createCaldavClient({ url: config.url, username: config.username, password: config.password });
+    const client = createCaldavClient({ url: config.url, username: config.username, password: config.password, readText: (response) => readTextCapped(response, REPLY_CAP_BYTES, "The calendar's listing") });
     await client.check(); // one cheap request that gives a clear answer for a wrong address or password
 
     await waitForAgendaFilesLoaded();

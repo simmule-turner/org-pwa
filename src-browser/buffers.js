@@ -211,6 +211,7 @@ async function editNewBuffer(fileId, options) {
     lastGlobalFoldState: 'showeverything',
     externalChangeDismissedHash: null,
     externalChangeShownForHash: null,
+    savedElsewherePending: false,
     activeQueryReplace: null,
   };
   S.documentSessions.push(session);

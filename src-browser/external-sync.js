@@ -46,6 +46,7 @@ export async function reloadCurrentDocumentFromDisk() {
   const archiveVisibility = getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived';
   applyStartupVisibility(S.state.doc, S.state.startupConfig, archiveVisibility);
   S.isDirty = false;
+  S.savedElsewherePending = false;
   S.lastSavedText = serializeOrg(S.state.doc);
   hideExternalChangeBanner();
   render();
@@ -434,6 +435,7 @@ export async function mergeExternalChange() {
       S.history = pushSnapshot(S.history, mergedText, 'Merged with changes from elsewhere');
       restoreFromHistory();
     }
+    S.savedElsewherePending = false;
     hideExternalChangeBanner();
     setStatus('Merged with the changes made elsewhere \u2014 Save to keep them.');
   } catch (err) {

@@ -56,7 +56,7 @@ for (const c of cases) {
   if (c.emacs.errors.length) text += `Messages:\n#+begin_example\n${c.emacs.errors.join('\n')}\n#+end_example\n\n`;
 }
 text += `* Reading more from a file
-=(load "github:file.el")= reads another file as part of the init, and the Agenda's *Refresh* reads it again. Emacs loads a file of your disk instead.
+=(load "github:file.el")= reads another file as part of the init, and the Agenda's *Refresh* reads it again. Emacs loads a file of your disk instead. Capture templates set in that file are in the Capture list too.
 
 * Where the app differs from Emacs
 The init runs on the app's own interpreter, which has the common functions and the Org read-only functions, not all of Emacs. A function it lacks fails with Emacs's message for a void function. A program that never ends stops with a message.

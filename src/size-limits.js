@@ -205,3 +205,20 @@ export function base64Bytes(base64) {
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
   return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
 }
+
+/**
+ * What to do with a paste: `removedBytes` of the text are replaced by `pastedBytes`, in a file now `currentBytes`. The result is
+ * checked as an Org file would be on opening: `{ ok: true }`, `{ ok: 'warn', message }` (ask first) or `{ ok: false, message }`.
+ * @param {number} currentBytes
+ * @param {number} removedBytes
+ * @param {number} pastedBytes
+ * @param {string} [name]
+ * @param {SizeLimits} [limits]
+ * @returns {{ ok: true } | { ok: 'warn', message: string } | { ok: false, message: string }}
+ */
+export function checkPaste(currentBytes, removedBytes, pastedBytes, name = '', limits = current.limits) {
+  const total = Math.max(0, currentBytes - removedBytes) + pastedBytes;
+  const verdict = checkSize('orgFile', total, limits, name);
+  if (verdict.ok === 'warn') return { ok: 'warn', message: `Pasting makes ${name ? `"${name}"` : 'this file'} ${formatSize(total)}. That is large and may be slow. Paste anyway?` };
+  return verdict;
+}

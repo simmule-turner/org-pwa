@@ -16,7 +16,7 @@ const TYPES = new Set(['entry', 'item', 'checkitem', 'table-line', 'plain']);
 /** Keywords that only change how Emacs shows the capture buffer; nothing to do here. */
 const QUIET = new Set([':immediate-finish', ':unnarrowed', ':kill-buffer', ':jump-to-captured', ':no-save', ':hook', ':before-finalize', ':after-finalize', ':prepare-finalize']);
 /** Keywords that have no effect here. */
-const UNSUPPORTED = new Set([':clock-in', ':clock-keep', ':clock-resume', ':tree-type', ':refile-targets', ':time-prompt', ':ignore-this-entry', ':template-file']);
+const UNSUPPORTED = new Set([':clock-in', ':clock-keep', ':clock-resume', ':refile-targets', ':time-prompt', ':ignore-this-entry', ':template-file']);
 /** Emacs keywords that take a count of blank lines or a position, with the field they set. */
 const EMACS_OPTIONS = /** @type {Record<string, [string, 'count' | 'string']>} */ ({
   ':empty-lines': ['emptyLines', 'count'],
@@ -34,9 +34,9 @@ const APP_OPTIONS = /** @type {Record<string, [string, 'boolean' | 'string']>} *
 });
 
 /**
- * Where a template files: `{ file, olp }`, or a reason it cannot be read.
+ * Where a template files: `{ file, olp }` (with `datetree` for file+olp+datetree), or a reason it cannot be read.
  * @param {Lisp | undefined} target
- * @returns {{ file: string, olp: string[] } | string}
+ * @returns {{ file: string, olp: string[], datetree?: boolean, treeType?: string } | string}
  */
 function readTarget(target) {
   const items = listItems(target);
@@ -52,7 +52,13 @@ function readTarget(target) {
     const path = items.slice(2).map(stringValue);
     return path.length && path.every((s) => s !== null) ? { file, olp: /** @type {string[]} */ (path) } : 'file+olp needs headings as strings';
   }
-  return `the target ${head} is not supported (use file, file+headline or file+olp)`;
+  if (head === 'file+olp+datetree' || head === 'file+datetree' || head === 'file+weektree') {
+    // the last two are Org's older names, which it changes into the first (with :tree-type week for a week tree)
+    const path = items.slice(2).map(stringValue);
+    if (!path.every((s) => s !== null)) return `${head} needs headings as strings`;
+    return { file, olp: /** @type {string[]} */ (path), datetree: true, ...(head === 'file+weektree' ? { treeType: 'week' } : {}) };
+  }
+  return `the target ${head} is not supported (use file, file+headline, file+olp or file+olp+datetree)`;
 }
 
 /**
@@ -74,17 +80,25 @@ function readEntry(entry, notes) {
   if (typeof target === 'string') return say(target), null;
   const text = stringValue(items[4]);
   if (text === null) return say('the template must be a string'), null;
-  if (target.olp.length === 0 && type !== 'entry' && type !== 'plain') return say(`a ${type} needs a heading to go under (use file+headline or file+olp)`), null;
+  if (target.olp.length === 0 && !target.datetree && type !== 'entry' && type !== 'plain') return say(`a ${type} needs a heading to go under (use file+headline or file+olp)`), null;
 
   /** @type {CaptureTemplate} */
   const out = { key, description, type, olp: target.olp, template: text };
   if (target.file) out.file = target.file;
+  if (target.datetree) out.datetree = true;
+  if (target.treeType) out.treeType = target.treeType;
   const props = items.slice(5);
   for (let i = 0; i < props.length; i += 2) {
     const name = symbolName(props[i]);
     const value = props[i + 1];
     if (!name || !name.startsWith(':')) continue;
     if (name === ':prepend') out.prepend = !isNil(value);
+    else if (name === ':tree-type') {
+      const kind = symbolName(value);
+      if (!target.datetree) notes.push(`Capture template "${key}": :tree-type has no effect without a file+olp+datetree target.`);
+      else if (kind === 'week' || kind === 'month') out.treeType = target.treeType || kind;
+      else if (!kind) notes.push(`Capture template "${key}": :tree-type as a list or a function is an Org 9.8 feature and is not supported; the day tree is used.`);
+    }
     else if (APP_OPTIONS[name]) {
       const [field, kind] = APP_OPTIONS[name];
       out[field] = kind === 'string' ? (stringValue(value) ?? '') : !isNil(value);

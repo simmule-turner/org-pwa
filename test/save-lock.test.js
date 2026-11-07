@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { announceSaved, isSavedMessage, openSavedChannel, saveLockName, savedElsewhere, withSaveLock, SAVED_CHANNEL } from '../src/save-lock.js';
+import { announceSaved, isSavedMessage, openSavedChannel, saveLockName, savedElsewhere, needsSaveChoice, withSaveLock, SAVED_CHANNEL } from '../src/save-lock.js';
 import { syncDocument } from '../src/sync-engine.js';
 
 /** A Web Locks stand-in: one holder at a time per name, in the order asked. */
@@ -91,4 +91,11 @@ test('the channel carries the announcement, and a broken one is harmless', () =>
   assert.equal(openSavedChannel(() => { throw new Error('none'); }), null);
   announceSaved(null, { backend: 'x', id: 'y', hash: null });
   announceSaved({ postMessage() { throw new Error('closed'); } }, { backend: 'x', id: 'y', hash: null });
+});
+
+test('a save asks first only when another window saved and this tab has edits of its own', () => {
+  assert.equal(needsSaveChoice({ pending: true, dirty: true }), true);
+  assert.equal(needsSaveChoice({ pending: true, dirty: false }), false); // nothing of ours to lose
+  assert.equal(needsSaveChoice({ pending: false, dirty: true }), false); // nothing saved elsewhere
+  assert.equal(needsSaveChoice({ pending: false, dirty: false }), false);
 });

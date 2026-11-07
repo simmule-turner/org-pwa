@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createFileSystemAccessAdapter } from '../src-browser/filesystem-adapter.js';
+import { createFileSystemAccessAdapter, pickAndRegisterFile } from '../src-browser/filesystem-adapter.js';
 
 // A stand-in for a FileSystemFileHandle that records which permission calls were made.
 // `state` is what queryPermission reports; requestPermission is what shows the browser's prompt.
@@ -78,4 +78,47 @@ test('access() reports what the browser allows without ever asking: none, prompt
 
 test('a "denied" answer also reads as needing permission again, not as missing', async () => {
   assert.equal(await adapterFor(fakeHandle({ state: { value: 'denied' } })).access('a.org'), 'prompt');
+});
+
+test('a write that fails is aborted, so the browser throws away the half-written copy and the file stays as it was', async () => {
+  const log = [];
+  const handle = {
+    queryPermission: async () => 'granted',
+    createWritable: async () => ({
+      write: async () => { throw new Error('disk full'); },
+      close: async () => log.push('close'),
+      abort: async () => log.push('abort'),
+    }),
+  };
+  const kv = { get: async () => ({ value: handle }) };
+  await assert.rejects(createFileSystemAccessAdapter(kv).write('a.org', '* One\n'), /disk full/);
+  assert.deepEqual(log, ['abort']);
+});
+
+function pickerFor(handle) {
+  globalThis.window = { showOpenFilePicker: async () => [handle] };
+}
+
+test('picking a different file with the name of one that is open is refused, and the open file keeps its handle', async () => {
+  const open = { name: 'notes.org', isSameEntry: async () => false };
+  const other = { name: 'notes.org', isSameEntry: async () => false };
+  const store = new Map([['filehandle:notes.org', open]]);
+  const kv = { get: async (k) => (store.has(k) ? { value: store.get(k) } : null), set: async (k, v) => store.set(k, v) };
+  pickerFor(other);
+  await assert.rejects(pickAndRegisterFile(kv, { inUse: (name) => name === 'notes.org' }), /A different file named "notes.org" is already open/);
+  assert.equal(store.get('filehandle:notes.org'), open);
+  // nothing open under that name: the new file simply takes the name
+  assert.equal(await pickAndRegisterFile(kv, { inUse: () => false }), 'notes.org');
+  assert.equal(store.get('filehandle:notes.org'), other);
+  delete globalThis.window;
+});
+
+test('picking the same file again, or any file when nothing asks, is fine', async () => {
+  const handle = { name: 'a.org', isSameEntry: async () => true };
+  const store = new Map([['filehandle:a.org', handle]]);
+  const kv = { get: async (k) => (store.has(k) ? { value: store.get(k) } : null), set: async (k, v) => store.set(k, v) };
+  pickerFor(handle);
+  assert.equal(await pickAndRegisterFile(kv, { inUse: () => true }), 'a.org');
+  assert.equal(await pickAndRegisterFile(kv), 'a.org');
+  delete globalThis.window;
 });

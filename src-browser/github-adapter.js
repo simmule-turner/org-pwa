@@ -1,7 +1,7 @@
 // @ts-check
 /** @typedef {import('../src/types.js').GithubConfig} GithubConfig */
-import { fetchWithTimeout } from './limited-fetch.js';
-import { assertWithinCeiling, assertWithinLimit } from '../src/size-limits.js';
+import { REPLY_CAP_BYTES, fetchWithTimeout, readJsonCapped } from './limited-fetch.js';
+import { assertWithinCeiling, assertWithinLimit, getSizeLimits } from '../src/size-limits.js';
 import { writeConflict } from '../src/sync-engine.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
 import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
@@ -142,7 +142,8 @@ async function fetchBlobContent(config, sha) {
   const url = `${API_BASE}/repos/${config.owner}/${config.repo}/git/blobs/${sha}`;
   const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
   if (!res.ok) throw new Error(await githubErrorMessage(res));
-  const blob = await res.json();
+  const attachmentMax = getSizeLimits().attachment.max;
+  const blob = await readJsonCapped(res, attachmentMax > 0 ? Math.ceil((attachmentMax * 4) / 3) + 1024 * 1024 : 0, "GitHub's answer");
   return blob.content;
 }
 
@@ -161,7 +162,7 @@ export function createGithubAdapter(getConfig) {
     const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
-    const body = await res.json();
+    const body = await readJsonCapped(res, REPLY_CAP_BYTES, "GitHub's answer");
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
@@ -186,7 +187,7 @@ export function createGithubAdapter(getConfig) {
     const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(await githubErrorMessage(res));
-    const body = await res.json();
+    const body = await readJsonCapped(res, REPLY_CAP_BYTES, "GitHub's answer");
     if (Array.isArray(body)) {
       throw new Error(`"${fileId}" is a directory in this repo, not a file.`);
     }
@@ -303,7 +304,7 @@ export function createGithubAdapter(getConfig) {
     const res = await fetch(url, { headers: authHeaders(config), cache: 'no-store' });
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(await githubErrorMessage(res));
-    const body = await res.json();
+    const body = await readJsonCapped(res, REPLY_CAP_BYTES, "GitHub's listing");
     const entries = Array.isArray(body) ? body : [body]; // a single file at this exact path is a valid (if unusual) thing to "list"
     return entries
       .filter((e) => (e.type === 'file' || e.type === 'dir') && typeof e.name === 'string' && e.name !== '' && e.name !== '.' && e.name !== '..' && !/[/\\\u0000-\u001f\u007f]/.test(e.name)) // a name from the API cannot climb out of the folder

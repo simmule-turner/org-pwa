@@ -38,7 +38,7 @@ import { render } from './render.js';
 import { agendaFilesCache, contactsFilesCache } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, menuButton, menuDivItem } from './ui-widgets.js';
 import { saveOut } from './save-out.js';
-import { SizeLimitError } from '../src/size-limits.js';
+import { SizeLimitError, assertWithinCeiling } from '../src/size-limits.js';
 
 /** Resolves a raw #+INCLUDE: path (see src/export-include.js's own
  *  docs for the full directive syntax this feeds into) against this
@@ -89,7 +89,7 @@ export async function performExport(format, scope) {
   const baseName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').replace(/[. ]+$/, '').trim() || 'export';
   if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
-    const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg));
+    const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus }));
     try {
     if (format === 'ascii') {
       saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
@@ -221,7 +221,7 @@ export async function performOrgOrgExport() {
   setStatus('Exporting\u2026');
   let text;
   try {
-    text = await exportOrgText(prepareBabelExport(S.state.doc), resolveIncludePath, parseOrg, { minlevel: 1 });
+    text = await exportOrgText(prepareBabelExport(S.state.doc), resolveIncludePath, parseOrg, { minlevel: 1, onSkip: setStatus });
   } catch (err) {
     setStatus(`Couldn't export: ${err.message}`);
     render();
@@ -701,6 +701,7 @@ export function renderImportFlow() {
     if (!file) return;
     let fileText;
     try {
+      assertWithinCeiling(file.size, file.name); // before any of it is read
       fileText = await file.text();
     } catch (err) {
       setStatus(`Could not read "${file.name}": ${err.message}`);

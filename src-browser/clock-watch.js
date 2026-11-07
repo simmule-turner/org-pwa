@@ -6,6 +6,7 @@
 import { clockCancel, clockInSwitchingTasks, currentClockSessionMinutes, runningClockStartMs } from '../src/clock.js';
 import { getProperty } from '../src/archive-model.js';
 import { effortReached, idleLimitMinutes, idlePrompt, reminderText, resolveIdleClock, soundFileName, soundKind } from '../src/clock-reminder.js';
+import { base64Bytes, getSizeLimits } from '../src/size-limits.js';
 import { guessAudioMimeType } from '../src/link-resolve.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { formatOrgTimestamp } from '../src/org-timestamp.js';
@@ -48,8 +49,10 @@ export async function playClockSound(raw) {
   const name = soundFileName(raw);
   if (name !== null && platform.attachments.supported() && platform.attachments.adapter) {
     try {
-      const file = await platform.attachments.adapter.readBinary(name);
-      if (file && file.base64) {
+      // a sound is a small file: the image size limit applies (a longer one falls back to the beep)
+      const soundMax = getSizeLimits().image.max;
+      const file = await platform.attachments.adapter.readBinary(name, soundMax > 0 ? { maxBytes: soundMax } : undefined);
+      if (file && !file.tooLarge && file.base64 && !(soundMax > 0 && base64Bytes(file.base64) > soundMax)) {
         await new Audio(`data:${guessAudioMimeType(name)};base64,${file.base64}`).play();
         return;
       }

@@ -23,6 +23,7 @@
  * need zero changes to work with it.
  */
 
+import { assertWithinCeiling } from '../src/size-limits.js';
 import { contentHash, matchesExpected, writeConflict } from '../src/sync-engine.js';
 
 /** @param {string} fileId */
@@ -58,6 +59,7 @@ export function pickAndImportFile(kvAdapter, accept = '.org') {
         return;
       }
       try {
+        assertWithinCeiling(file.size, file.name); // before any of it is read
         const content = await file.text();
         const fileId = file.name;
         await kvAdapter.set(importedFileKey(fileId), content);

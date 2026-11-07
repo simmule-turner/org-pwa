@@ -3,6 +3,7 @@
 // contacts also appear in the phone's own contacts app. The twin of calendar-sync.js: what to send is
 // src/contacts-mirror.js, the requests are src/caldav-client.js (createCarddavClient); this is the part that knows about
 // settings, the contacts files, state and the status line. It signs in with the calendar's username and password.
+import { REPLY_CAP_BYTES, readTextCapped } from './limited-fetch.js';
 import { withConnections } from './connection-protection.js';
 import { createCarddavClient, runLimited } from '../src/caldav-client.js';
 import { buildContactResources, isOurContactResource, nextContactsSyncState, planContactsSync } from '../src/contacts-mirror.js';
@@ -70,7 +71,7 @@ async function runContactsSync({ manual, rebuild, report }) {
       if (manual) report('Nothing to sync: no contacts files are set (org-contacts-files).');
       return;
     }
-    const client = createCarddavClient({ url: config.url, username: config.username, password: config.password });
+    const client = createCarddavClient({ url: config.url, username: config.username, password: config.password, readText: (/** @type {Response} */ response) => readTextCapped(response, REPLY_CAP_BYTES, "The address book's listing") });
     await client.check(); // one cheap request that gives a clear answer for a wrong address or password
 
     await ensureContactsFilesLoadedAndWait();

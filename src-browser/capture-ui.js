@@ -190,7 +190,7 @@ export async function peekTableAlreadyExists(template) {
   }
   if (!doc) return null;
 
-  const target = resolveOlpTarget(doc, template.olp || [], { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false });
+  const target = resolveOlpTarget(doc, template.olp || [], { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false, datetree: !!template.datetree, treeType: template.treeType });
   if (!target) return false; // the heading path itself doesn't exist yet -- definitely no table under it either
   const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
   return !!existingTable;
@@ -456,7 +456,7 @@ export async function runCaptureWithAnswers(template, answers) {
         /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
         let target;
         try {
-          target = (template.olp || []).length ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true }) : doc; // no path: the file's top level
+          target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true, datetree: !!template.datetree, treeType: template.treeType }) : doc; // no path: the file's top level
         } catch (err) {
           setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
           return null;
@@ -481,7 +481,7 @@ export async function runCaptureWithAnswers(template, answers) {
   /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
   let target;
   try {
-    target = (template.olp || []).length ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true }) : S.state.doc; // no path: the file's top level
+    target = (template.olp || []).length || template.datetree ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true, datetree: !!template.datetree, treeType: template.treeType }) : S.state.doc; // no path: the file's top level
   } catch (err) {
     setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
     renderCapturePanel();
@@ -504,11 +504,11 @@ export async function runCaptureWithAnswers(template, answers) {
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');
-  const shown = (template.olp || []).length ? target : placed && 'level' in placed ? placed : null;
+  const shown = (template.olp || []).length || template.datetree ? target : placed && 'level' in placed ? placed : null;
   if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
   setStatus('Captured.');
   afterSuccessfulCapture();
-  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: (template.olp || []).length ? target : null });
+  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: (template.olp || []).length || template.datetree ? target : null });
 }
 
 /** What a template says about how its text is filed: the blank lines around it, the table row, and the sums of a table it joins.

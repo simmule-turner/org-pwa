@@ -5,6 +5,7 @@ import { captureTemplatesFromLisp, mergeCaptureTemplates } from '../src/capture-
 import { lispStringValue } from '../src/export-defaults.js';
 import { S } from './app-state.js';
 import { getCaptureTemplates } from './settings.js';
+import { initText } from './lisp-init-text.js';
 
 /** What the last call left out or ignored, for the status line. @type {string[]} */
 export let captureLispNotes = [];
@@ -13,7 +14,10 @@ export let captureLispNotes = [];
 export async function getAllCaptureTemplates(kvAdapter) {
   const json = await getCaptureTemplates(kvAdapter);
   const raw = (S.globalVariables || {})['org-xx-lisp-init'];
-  const text = lispStringValue(raw) || (typeof raw === 'string' ? raw : '');
+  const own = lispStringValue(raw) || (typeof raw === 'string' ? raw : '');
+  // the init with its (load ...) files in, as last read on this device; the setting's own text when that has not been made from this one yet
+  if (initText.raw === own) await initText.ready;
+  const text = initText.raw === own ? initText.text : own;
   if (!/org-capture-templates/.test(text)) {
     captureLispNotes = [];
     return json;

@@ -5,7 +5,7 @@
 /** @typedef {import('../src/types.js').DiskAdapter} DiskAdapter */
 /** @typedef {Extract<import('../src/link-resolve.js').LinkResolution, { type: 'file' }>} FileLinkResolution */
 // Extracted from app.js: documents io.
-import { NOT_UTF8_STATUS, isNonUtf8 } from '../src/utf8.js';
+import { NOT_UTF8_STATUS, isNonUtf8, reopenNonUtf8Banner } from '../src/utf8.js';
 import { askingBeforeLargeRead } from './size-confirm.js';
 import { forState } from './connection-vault.js';
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
@@ -33,7 +33,9 @@ import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { captureBtn, moreBtn, searchBtn, searchMenuBtn, viewMenuBtn } from './dom.js';
 import { commitTextModeIfActive, persistHistoryInBackground, setStatus } from './editing.js';
-import { activeDiskAdapter, conflictResolverFor, diskAdapterFor, hideExternalChangeBanner, reloadCurrentDocumentFromDisk } from './external-sync.js';
+import { activeDiskAdapter, conflictResolverFor, diskAdapterFor, hideExternalChangeBanner, mergeExternalChange, reloadCurrentDocumentFromDisk } from './external-sync.js';
+import { askSavedElsewhereChoice } from './saved-elsewhere.js';
+import { needsSaveChoice } from '../src/save-lock.js';
 import { closeFileMenu } from './file-menu.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { pickAndImportFile } from './input-file-adapter.js';
@@ -78,7 +80,9 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
     if (!alreadyOpenTab) S.activeTabId = S.nextTabId++;
   }
   S.externalChangeDismissedHash = null;
+  S.savedElsewherePending = false;
   hideExternalChangeBanner();
+  reopenNonUtf8Banner(documentId);
   // A plain text file (a diary, notes.txt) is only text: no #+ keywords, no Local Variables, no SETUPFILE
   const plainText = isPlainTextFile(documentId, storageKind ?? null);
   if (!plainText) doc = await prefetchSetupFiles(doc, documentId, storageKind ?? null); // #+SETUPFILE: keywords, before anything reads them
@@ -159,6 +163,12 @@ export async function createNewUnsavedDocument(rawText = '', statusMessage = /**
   render();
 }
 
+/** Whether a tab here has the document `name` open (files from the picker are known by their names).
+ * @param {string} name */
+function isDocumentOpen(name) {
+  return S.state.documentId === name || S.documentSessions.some((/** @type {TabSession} */ x) => x.state && x.state.documentId === name);
+}
+
 export async function openFromFilesystem() {
   if (commitTextModeIfActive()) render();
   if (!platform.localFiles.supported()) {
@@ -166,7 +176,7 @@ export async function openFromFilesystem() {
     return;
   }
   try {
-    const documentId = await platform.localFiles.pickOpen(kv);
+    const documentId = await platform.localFiles.pickOpen(kv, { inUse: isDocumentOpen });
     const { preferCache } = await resolvePendingChangeChoice(documentId);
     await markDocumentOpen(kv, documentId);
     setStatus('Opening\u2026');
@@ -375,6 +385,7 @@ const savesInFlight = /** @type {Set<number>} */ (new Set());
  * @param {number} tabId @param {string} text */
 function markTabSaved(tabId, text) {
   if (S.activeTabId === tabId) {
+    S.savedElsewherePending = false;
     S.lastSavedText = text;
     S.isDirty = serializeOrg(S.state.doc) !== text;
     render();
@@ -382,6 +393,7 @@ function markTabSaved(tabId, text) {
   }
   const session = S.documentSessions.find((/** @type {TabSession} */ x) => x.tabId === tabId);
   if (!session) return; // closed while it saved
+  session.savedElsewherePending = false;
   session.lastSavedText = text;
   session.isDirty = !session.state || !session.state.doc || serializeOrg(session.state.doc) !== text;
   renderTabBar();
@@ -391,6 +403,34 @@ function markTabSaved(tabId, text) {
  * @returns {Promise<boolean>} */
 export function saveCurrent() {
   return saveTab(S.activeTabId);
+}
+
+/** Before a save: if another window of the app saved this file while this tab has edits of its own, asks Merge, Overwrite or
+ *  Cancel. Merge combines the two and leaves the Save to the person; Overwrite goes ahead; Cancel (or Escape) saves nothing.
+ * @param {number} tabId
+ * @param {TabSession | null | undefined} session  the tab's session when it is not the one on screen
+ * @returns {Promise<boolean>} whether the save should go ahead */
+async function settleSavedElsewhere(tabId, session) {
+  const onScreen = tabId === S.activeTabId;
+  const pending = onScreen ? S.savedElsewherePending : !!(session && session.savedElsewherePending);
+  const dirty = onScreen ? S.isDirty : !!(session && session.isDirty);
+  if (!needsSaveChoice({ pending, dirty })) return true;
+  const documentId = onScreen ? S.state.documentId : session && session.state.documentId;
+  const choice = await askSavedElsewhereChoice(String(documentId));
+  if (choice === 'cancel') {
+    setStatus("Save cancelled \u2014 the other window's save is untouched and your edits are still here.");
+    return false;
+  }
+  if (choice === 'merge') {
+    if (!onScreen) switchToTab(tabId);
+    await mergeExternalChange();
+    return false;
+  }
+  if (onScreen) {
+    S.savedElsewherePending = false;
+    hideExternalChangeBanner();
+  } else if (session) session.savedElsewherePending = false;
+  return true;
 }
 
 /** Saves one tab -- the one on screen or a background one, which is saved where it is, without being switched to. Everything
@@ -407,6 +447,7 @@ export async function saveTab(tabId) {
     setStatus('Already saving this buffer\u2026');
     return false;
   }
+  if (!(await settleSavedElsewhere(tabId, session))) return false;
   savesInFlight.add(tabId);
   const { documentId, doc, storageKind } = state;
   setStatus('Saving\u2026');

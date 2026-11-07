@@ -8,6 +8,7 @@ import { S } from './app-state.js';
 import { platform } from './platform.js';
 import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
 import { assertWithinCeiling, base64Bytes, textCeiling } from '../src/size-limits.js';
+import { assertSafeStoragePath } from '../src/storage-path.js';
 
 /** Whether the platform keeps such a folder and one has been chosen. */
 export function folderAvailable() {
@@ -36,6 +37,7 @@ function base64ToText(base64, name) {
  * @param {string} path
  *  derives the real hash and normalizes line endings, so the hash is left empty here.) */
 export async function readFolderText(path) {
+  assertSafeStoragePath(path); // a name can never leave the folder
   const ceiling = textCeiling();
   const result = await platform.attachments.adapter.readBinary(path, ceiling > 0 ? { maxBytes: ceiling } : undefined);
   if (result && result.tooLarge) assertWithinCeiling(result.bytes, path); // the folder says how big it is without sending it
@@ -49,6 +51,7 @@ export async function readFolderText(path) {
  * @param {string} content
  */
 export async function writeFolderText(path, content) {
+  assertSafeStoragePath(path); // a name can never leave the folder
   refuseNonUtf8Write(path); // read-only until converted (src/utf8.js)
   await platform.attachments.adapter.writeBinary(path, textToBase64(content));
   return { hash: '' };
@@ -56,6 +59,7 @@ export async function writeFolderText(path, content) {
 
 /** @param {string} path */
 export async function folderFileExists(path) {
+  assertSafeStoragePath(path);
   const adapter = platform.attachments.adapter;
   return adapter.exists ? !!(await adapter.exists(path)) : !!(await adapter.readBinary(path));
 }

@@ -51,6 +51,7 @@ export function snapshotCurrentSessionValues() {
     lastGlobalFoldState: S.lastGlobalFoldState,
     externalChangeDismissedHash: S.externalChangeDismissedHash,
     externalChangeShownForHash: S.externalChangeShownForHash,
+    savedElsewherePending: S.savedElsewherePending,
     activeQueryReplace: S.activeQueryReplace,
   };
 }
@@ -87,6 +88,7 @@ export function applySessionSnapshotValues(snap) {
   S.lastGlobalFoldState = snap.lastGlobalFoldState;
   S.externalChangeDismissedHash = snap.externalChangeDismissedHash;
   S.externalChangeShownForHash = snap.externalChangeShownForHash;
+  S.savedElsewherePending = !!snap.savedElsewherePending;
   S.activeQueryReplace = snap.activeQueryReplace;
 }
 
