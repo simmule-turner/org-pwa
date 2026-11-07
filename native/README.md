@@ -71,6 +71,14 @@ You do this once, on any computer with a JDK (Android Studio includes one):
   `* Test <2026-10-08 Thu 14:35>`). A system notification should arrive 10 minutes before it, **with the app closed**;
   tapping it opens that day in the Agenda. Without **Exact timing** (the button under it) Android may be a few minutes
   late. `npm run sync` (the workflow does this) picks the plugin up; nothing else changes in the Android project.
+- **Hardening (0.7.9):** none of this changes how the app looks; check that nothing broke and that the limits hold.
+  - *Backup off:* Settings > Apps > org-pwa > Storage shows no backup; after a reinstall the app starts empty (documents come back only from your sync backend or local files).
+  - *Size limits:* attach a file bigger than the Attachment limit (Settings > Limits) from the picker: it is refused with a "too large" message, nothing is left in the app's cache, and a file under the limit still attaches. Open a local `.org` file bigger than the Org file limit: you are asked, not frozen. Try a 100 MB+ file: refused before it loads.
+  - *Attachments:* attach with copy, then with move and link (`org-attach-method`). Move deletes the original only after you agree. Link keeps the file in place and opens it later. Open an attachment in another app, and a file whose name has odd characters or `..`.
+  - *Local files:* open, edit, save and reopen from the recent list a file in `Documents/org-pwa`, one on another storage provider (Drive, SD card), and one inside a picked folder. Save As to Downloads; a name with slashes or odd characters is cleaned, not rejected.
+  - *Sharing:* share text, a link and a photo into org-pwa. View a file from an attachment (the other app can open it); then confirm another app cannot open anything else of ours.
+  - *Reminders:* the agenda notification test above still arrives with the app closed.
+  - *Release build:* the CI run produces a signed release APK (the stable key keeps your data on update) and installs over 0.7.8 without losing data.
 - **Moving and linking attachments (0.7.8):** with `org-attach-method` set to `mv` or `ln` (or *Attach and move*, *Attach a link*), *Attach* opens Android's document picker, with no camera entries. A move deletes the original after the copy is attached and the person agrees; a link keeps the picked file where it is and reads it through the stored link (`AttachmentsPlugin.link` and `removeSource`, `LocalFilesPlugin.pickAttachment` with `keep`). To test: attach a PDF with `ln`, close the app, open the attachment; attach another with `mv` and confirm the original is gone from Files.
 - **Swiping a reminder away (0.7.7):** with a reminder showing, swipe it out of the shade. The appointment's later reminders
   should not arrive (even with the app closed), and tapping one does the same. `npm run sync` patches the plugin's dismiss

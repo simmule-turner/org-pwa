@@ -4,6 +4,11 @@ name: native-android
 
 on:
   workflow_dispatch:
+    inputs:
+      allow_one_off:
+        description: 'Build a debug APK with a one-off key if the signing secrets are missing (it cannot update an installed app)'
+        type: boolean
+        default: false
   push:
     tags: ['native-v*']
     paths: ['native/**', '.github/workflows/native-android.yml']
@@ -57,14 +62,30 @@ jobs:
         id: signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ORGPWA_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ORGPWA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ORGPWA_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ORGPWA_KEY_PASSWORD }}
+          ALLOW_ONE_OFF: ${{ inputs.allow_one_off }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          missing=""
+          [ -n "$KEYSTORE_BASE64" ] || missing="$missing ORGPWA_KEYSTORE_BASE64"
+          [ -n "$STORE_PW" ] || missing="$missing ORGPWA_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ] || missing="$missing ORGPWA_KEY_ALIAS"
+          [ -n "$KEY_PW" ] || missing="$missing ORGPWA_KEY_PASSWORD"
+          if [ -z "$missing" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orgpwa.keystore"
+            if ! keytool -list -keystore "$RUNNER_TEMP/orgpwa.keystore" -storepass "$STORE_PW" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+              echo "::error title=Signing key does not open::The keystore, its password or the alias is wrong. Check ORGPWA_KEYSTORE_BASE64, ORGPWA_KEYSTORE_PASSWORD and ORGPWA_KEY_ALIAS."
+              exit 1
+            fi
             echo "ORGPWA_KEYSTORE=$RUNNER_TEMP/orgpwa.keystore" >> "$GITHUB_ENV"
             echo "mode=stable" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice title=No signing key configured::This APK is signed with a one-off key, so Android will not install it over an earlier build. See native/README.md, Keeping your data across updates."
+          elif [ "$ALLOW_ONE_OFF" = "true" ]; then
+            echo "::warning title=One-off key::Missing secrets:$missing. This debug APK cannot be installed over an earlier build."
             echo "mode=one-off" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error title=Signing secrets missing::Missing repository secrets:$missing. They must be Repository secrets (Settings > Secrets and variables > Actions), not Environment secrets, and the names must match exactly. See native/README.md, Keeping your data across updates. To build a throwaway debug APK anyway, run the workflow by hand with allow_one_off ticked."
+            exit 1
           fi
 
       # A release build needs the stable key (an unsigned release APK cannot be installed), so without the secrets the build is
