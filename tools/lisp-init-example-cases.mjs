@@ -48,7 +48,7 @@ export const SECTIONS = [
   },
   {
     heading: 'A capture template',
-    prose: 'Templates are read as Emacs reads them and appear beside the JSON ones. See =capture-templates.org=.',
+    prose: 'Templates are read as Emacs reads them and are what the Capture list shows. See =capture-templates.org=.',
     init: `(setq org-capture-templates
       '(("t" "Todo" entry (file+headline "gtd.org" "Tasks")
          "* TODO %?\\n  %i")))`,
@@ -72,7 +72,7 @@ export const SECTIONS = [
   },
   {
     heading: 'Capture templates',
-    prose: '=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows beside the templates in Settings. A template with the same key as one in Settings replaces it. The same forms work in a file read with =(load "github:init.el")=.',
+    prose: '=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows. The same forms work in a file read with =(load "github:init.el")=.',
     init: `(setq org-capture-templates nil)
 (add-to-list 'org-capture-templates
   '("w" "Web page or text" plain (file+headline "inbox.org" "Inbox") "* %a"))

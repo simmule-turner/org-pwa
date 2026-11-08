@@ -166,6 +166,7 @@ test('THE EXACT REQUEST: buildWeatherApiUrl matches the exact URL structure and 
   assert.equal(url.searchParams.get('latitude'), '35.95');
   assert.equal(url.searchParams.get('longitude'), '-78.86');
   assert.equal(url.searchParams.get('daily'), 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min');
+  assert.equal(url.searchParams.get('hourly'), 'temperature_2m');
   assert.equal(url.searchParams.get('current'), 'temperature_2m,weather_code,relative_humidity_2m,surface_pressure,wind_speed_10m');
   assert.equal(url.searchParams.get('timezone'), 'auto');
   assert.equal(url.searchParams.get('forecast_days'), '1');
@@ -178,4 +179,14 @@ test('buildWeatherApiUrl reflects whatever latitude/longitude it\u2019s given, n
   const url = new URL(buildWeatherApiUrl(51.5, -0.13));
   assert.equal(url.searchParams.get('latitude'), '51.5');
   assert.equal(url.searchParams.get('longitude'), '-0.13');
+});
+
+test('%main gives the weather group, and the four times of day give today\u2019s temperature at 6, 12, 18 and 0 o\u2019clock in the unit chosen', async () => {
+  const { weatherGroup } = await import('../src/org-weather.js');
+  assert.deepEqual([0, 1, 2, 3, 45, 53, 63, 81, 73, 86, 95, 99].map(weatherGroup), ['Clear', 'Clear', 'Clouds', 'Clouds', 'Fog', 'Drizzle', 'Rain', 'Rain', 'Snow', 'Snow', 'Thunderstorm', 'Thunderstorm']);
+  const data = { ...SAMPLE_DATA, temperatureMorning: 68, temperatureDay: 86, temperatureEvening: 77, temperatureNight: 59 };
+  assert.equal(formatWeatherLine('%main: %tmorn/%tday/%teve/%tnight%tu', data, '\u00b0F', 'mph'), 'Clouds: 68/86/77/59\u00b0F');
+  assert.equal(formatWeatherLine('%tmorn/%tnight%tu', data, '\u00b0C', 'mph'), '20/15\u00b0C');
+  // a snapshot taken before these were fetched leaves them blank rather than showing NaN
+  assert.equal(formatWeatherLine('[%tmorn]', SAMPLE_DATA, '\u00b0F', 'mph'), '[]');
 });

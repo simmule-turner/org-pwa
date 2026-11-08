@@ -20,6 +20,7 @@ import {
   getOrgTableDurationHourZeroPadding,
   getAgendaFilesVar,
   parseAgendaFilesVar,
+  fileListProblem,
   findDuplicateAgendaFiles,
   getCycleOpenArchivedTrees,
   getAgendaShowAllDates,
@@ -227,7 +228,7 @@ test('getUsePropertyInheritance can be turned on', () => {
 // ---- getRefileTargets ------------------------------------------------------
 
 test('getRefileTargets returns the raw string value unchanged', () => {
-  assert.equal(getRefileTargets({ 'org-refile-targets': 'current maxlevel=3' }), 'current maxlevel=3');
+  assert.equal(getRefileTargets({ 'org-refile-targets': '((nil :maxlevel . 3))' }), '((nil :maxlevel . 3))');
 });
 
 test('getRefileTargets returns an empty string when unset, not undefined', () => {
@@ -416,26 +417,34 @@ test('getAgendaFilesVar returns the raw semicolon-separated string as-is', () =>
 
 // ---- parseAgendaFilesVar -------------------------------------------------------
 
-test('parseAgendaFilesVar parses semicolon-separated github:/webdav: entries', () => {
-  assert.deepEqual(parseAgendaFilesVar('github:contacts.org;webdav:notes/todo.org'), ['github:contacts.org', 'webdav:notes/todo.org']);
+test('parseAgendaFilesVar reads the Emacs list of github:/webdav: names, with or without the quote', () => {
+  assert.deepEqual(parseAgendaFilesVar('("github:contacts.org" "webdav:notes/todo.org")'), ['github:contacts.org', 'webdav:notes/todo.org']);
+  assert.deepEqual(parseAgendaFilesVar("'(\"github:a.org\")"), ['github:a.org']);
 });
 
-test('parseAgendaFilesVar returns an empty array for an empty or unset value', () => {
+test('parseAgendaFilesVar returns an empty array for an empty or unset value, and for nil', () => {
   assert.deepEqual(parseAgendaFilesVar(''), []);
   assert.deepEqual(parseAgendaFilesVar(null), []);
   assert.deepEqual(parseAgendaFilesVar(undefined), []);
+  assert.deepEqual(parseAgendaFilesVar('nil'), []);
+  assert.deepEqual(parseAgendaFilesVar('()'), []);
 });
 
 test('parseAgendaFilesVar drops an entry with no recognized scheme, keeping the rest', () => {
-  assert.deepEqual(parseAgendaFilesVar('github:a.org;not-a-real-scheme:b.org;webdav:c.org'), ['github:a.org', 'webdav:c.org']);
+  assert.deepEqual(parseAgendaFilesVar('("github:a.org" "not-a-real-scheme:b.org" "webdav:c.org")'), ['github:a.org', 'webdav:c.org']);
 });
 
 test('parseAgendaFilesVar drops an entry with an empty path', () => {
-  assert.deepEqual(parseAgendaFilesVar('github:;webdav:c.org'), ['webdav:c.org']);
+  assert.deepEqual(parseAgendaFilesVar('("github:" "webdav:c.org")'), ['webdav:c.org']);
 });
 
-test('parseAgendaFilesVar trims whitespace around each entry', () => {
-  assert.deepEqual(parseAgendaFilesVar('  github:a.org ; webdav:b.org  '), ['github:a.org', 'webdav:b.org']);
+test('the old semicolon text is not a list: it reads as nothing, and fileListProblem says why', () => {
+  assert.deepEqual(parseAgendaFilesVar('github:a.org;webdav:b.org'), []);
+  assert.match(fileListProblem('github:a.org;webdav:b.org') || '', /must be a list of file names/);
+  assert.equal(fileListProblem('("github:a.org")'), null);
+  assert.equal(fileListProblem(''), null);
+  assert.equal(fileListProblem('nil'), null);
+  assert.match(fileListProblem('("github:a.org" "x.org")') || '', /not a file name starting with/);
 });
 
 // ---- THE EXACT REQUEST: a file-local org-agenda-files override --------------
@@ -445,13 +454,13 @@ test('THE EXACT REQUEST: a document\u2019s own "# Local Variables:" org-agenda-f
     '* TODO Something',
     '',
     '# Local Variables:',
-    '# org-agenda-files: github:contacts.org;github:journal.org',
+    '# org-agenda-files: ("github:contacts.org" "github:journal.org")',
     '# End:',
   ].join('\n');
   const rawLocalVars = parseLocalVariables(orgText);
   const globalVariables = { 'org-agenda-files': 'github:old-global-value.org' };
   const merged = mergeGlobalAndLocalVariables(globalVariables, rawLocalVars);
-  assert.equal(getAgendaFilesVar(merged), 'github:contacts.org;github:journal.org');
+  assert.equal(getAgendaFilesVar(merged), '("github:contacts.org" "github:journal.org")');
   assert.deepEqual(parseAgendaFilesVar(getAgendaFilesVar(merged)), ['github:contacts.org', 'github:journal.org']);
 });
 
@@ -538,11 +547,11 @@ test('getGodModeButton: a document\u2019s own Local Variables line overrides the
 });
 
 test('parseAgendaFilesVar accepts local: entries (a file opened on this device) next to github: and webdav:', () => {
-  assert.deepEqual(parseAgendaFilesVar('github:a.org; local:notes.org ;webdav:b/c.org'), ['github:a.org', 'local:notes.org', 'webdav:b/c.org']);
+  assert.deepEqual(parseAgendaFilesVar('("github:a.org" "local:notes.org" "webdav:b/c.org")'), ['github:a.org', 'local:notes.org', 'webdav:b/c.org']);
 });
 
 test('parseAgendaFilesVar still drops a local: entry with no name, and any other scheme', () => {
-  assert.deepEqual(parseAgendaFilesVar('local:;file:x.org;ftp:y.org;local:ok.org'), ['local:ok.org']);
+  assert.deepEqual(parseAgendaFilesVar('("local:" "file:x.org" "ftp:y.org" "local:ok.org")'), ['local:ok.org']);
 });
 
 // ---- findDuplicateAgendaFiles ---------------------------------------------------
@@ -561,10 +570,10 @@ test('the same entry written twice is not a conflict, and an empty list has none
   assert.equal(findDuplicateAgendaFiles([]).size, 0);
 });
 
-test('org-agenda-text-search-extra-files is read like the other file lists, and parses with the same scheme:path syntax', () => {
+test('org-agenda-text-search-extra-files is read like the other file lists, and parses the same way', () => {
   assert.equal(getSearchExtraFilesVar({}), '');
   assert.equal(getSearchExtraFilesVar(undefined), '');
-  const raw = getSearchExtraFilesVar({ 'org-agenda-text-search-extra-files': 'github:notes/ref.org;webdav:archive/2024.org;local:scratch.org' });
+  const raw = getSearchExtraFilesVar({ 'org-agenda-text-search-extra-files': '("github:notes/ref.org" "webdav:archive/2024.org" "local:scratch.org")' });
   assert.deepEqual(parseAgendaFilesVar(raw), ['github:notes/ref.org', 'webdav:archive/2024.org', 'local:scratch.org']);
   assert.equal(getAgendaFilesVar({ 'org-agenda-text-search-extra-files': 'github:a.org' }), '', 'it is a variable of its own: it does not add to the agenda files');
 });

@@ -73,6 +73,11 @@ export async function fetchWeatherData(latitude, longitude) {
     apparentTemperatureMin: json.daily.apparent_temperature_min[0],
     apparentTemperatureMax: json.daily.apparent_temperature_max[0],
     windSpeed: json.current.wind_speed_10m,
+    // today's temperature at 06:00, 12:00, 18:00 and 00:00 (the hourly list starts at midnight)
+    temperatureMorning: json.hourly?.temperature_2m?.[6],
+    temperatureDay: json.hourly?.temperature_2m?.[12],
+    temperatureEvening: json.hourly?.temperature_2m?.[18],
+    temperatureNight: json.hourly?.temperature_2m?.[0],
   };
 }
 

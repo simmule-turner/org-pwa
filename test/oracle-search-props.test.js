@@ -168,7 +168,7 @@ test('the allowed effort values are the ones org-property-get-allowed-values ans
     holds(`allowed|${i}|${JSON.stringify(c.org)}${c.global ? ' global ' + c.global : ''}`, () => {
       const doc = parseOrg(c.org);
       const headings = [...headingIndex(doc).keys()];
-      const ask = () => getAllowedEffortValues({ doc, heading: headings[c.heading - 1], globalProperties: c.global ? `Effort_ALL: ${c.global}` : '' });
+      const ask = () => getAllowedEffortValues({ doc, heading: headings[c.heading - 1], globalProperties: c.global ? `(("Effort_ALL" . ${JSON.stringify(c.global)}))` : '' });
       if (c.emacs.error) assert.throws(ask, { message: c.emacs.error });
       else assert.deepEqual(ask(), c.emacs.ok);
     });

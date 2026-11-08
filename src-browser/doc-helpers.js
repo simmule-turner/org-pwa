@@ -254,33 +254,3 @@ export function buildQueryReplacePattern(query, useRegex) {
   return new RegExp(escaped, flags);
 }
 
-/**
- * Runs one capture template end to end, given `answers` already
- * gathered for its %^{...} AND %? prompts (by the in-app prompt form,
- * or an empty array if the template has none): resolves its
- * (file+olp ...) target (creating any missing heading along the way),
- * computes @# if this is a table-line capture, expands the template
- * (with every prompt's answer, %? included, already substituted
- * directly into the text — see scanPrompts/expandTemplate), inserts
- * it, and navigates to the target heading.
- *
- * Afterward: a template with at least one prompt loops back to a
- * FRESH copy of its own form rather than the template list — the
- * "multiple entries" feature, for templates that are naturally
- * captured several times in a row (a journal line, a tracking row).
- * A template with no prompts at all returns to the template list,
- * since there's nothing left to fill in for a repeat.
- */
-/** Which value controls where an auto-created OLP heading lands among
- *  its own siblings, for a given template -- table-line has its own
- *  dedicated prependHeading field, since row placement (prepend) and
- *  heading placement are genuinely independent decisions for it
- *  (newest section first, but chronological rows within it is a
- *  common, sensible combination); item/checkitem/plain reuse the same
- *  prepend value for both, since for those three "where does the
- *  container heading go" and "where does the content go" are the same
- * @param {CaptureTemplate} template
- *  decision applied at two tree levels, not two independent ones. */
-export function getOlpPrepend(template) {
-  return template.type === 'table-line' ? !!template.prependHeading : !!template.prepend;
-}

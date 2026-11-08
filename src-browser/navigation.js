@@ -43,8 +43,8 @@ export function syncNavBackButtonVisibility() {
   navBackBtn.style.display = S.navigationBackStack.length > 0 ? 'flex' : 'none';
 }
 
-/** @param {Heading} heading */
-export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true } = {}) {
+/** @param {Heading} heading @param {{ revealOwnBody?: boolean, targetNode?: object, pushToBackStack?: boolean, within?: ((rowEl: HTMLElement) => HTMLElement | null) | null }} [options] `within`: the part of the row to scroll to */
+export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true, within = null } = {}) {
   if (pushToBackStack) {
     S.navigationBackStack.push({
       view: S.currentView,
@@ -73,11 +73,21 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
   }
   render();
 
+  scrollNodeIntoView(targetNode, within);
+}
+
+/**
+ * After the next frame, scrolls the row drawn for `targetNode` to the middle of the screen and flashes it. `within` picks a part of
+ * that row to show instead (the line of a table), given the row's element.
+ * @param {object} targetNode @param {((rowEl: HTMLElement) => HTMLElement | null) | null} [within]
+ */
+export function scrollNodeIntoView(targetNode, within = null) {
   requestAnimationFrame(() => {
     const rows = flattenVisibleRows(S.state.doc);
     const idx = rows.findIndex((r) => (r.rowType === 'list-item' ? r.item === targetNode : r.node === targetNode));
-    const el = ensureRowRendered(targetNode) || outlineEl.children[idx]; // drawn first when the outline is windowed
-    if (idx === -1 || !el) return;
+    const rowEl = ensureRowRendered(targetNode) || outlineEl.children[idx]; // drawn first when the outline is windowed
+    if (idx === -1 || !rowEl) return;
+    const el = (within && within(/** @type {HTMLElement} */ (rowEl))) || rowEl;
     // a windowed outline jumps at once: a long smooth scroll would be cut short by the scroll corrections as rows are drawn
     el.scrollIntoView({ behavior: windowingActive() ? 'auto' : 'smooth', block: 'center' });
     const original = /** @type {HTMLElement} */ (el).style.backgroundColor;

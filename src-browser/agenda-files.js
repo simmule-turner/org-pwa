@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: agenda files.
 import { collectContactsTriggers } from '../src/agenda.js';
-import { findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSearchExtraFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
+import { fileListProblem, findDuplicateAgendaFiles, getAgendaFilesVar, getContactsFilesVar, getSearchExtraFilesVar, parseAgendaFilesVar } from '../src/local-variables.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { rememberIds } from './id-locations.js';
@@ -12,9 +12,24 @@ import { applyLispInit } from './lisp-init-load.js';
 import { S, isAgendaFamilyView } from './app-state.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
+import { setStatus } from './editing.js';
 import { renderSearchPanel } from './search-ui.js';
 import { renderSettingsView } from './settings-view.js';
 import { agendaFilesCache, contactsFilesCache, searchExtraFilesCache } from './singletons.js';
+
+/** The values already reported as not being a list of file names, so a setting that stays wrong is said once. */
+const reportedFileLists = new Set();
+
+/** `text` as it is, after saying (once) that the variable is not a list of file names, as Emacs takes it.
+ * @param {string} name @param {string} text */
+function warnIfNotList(name, text) {
+  const problem = fileListProblem(text);
+  if (problem && !reportedFileLists.has(name + text)) {
+    reportedFileLists.add(name + text);
+    setStatus(`${name} ${problem}.`);
+  }
+  return text;
+}
 
 /** Recomputes agendaFilesConfig from whichever variable set is
  *  actually authoritative right now: state.localVariables (already
@@ -52,7 +67,7 @@ import { agendaFilesCache, contactsFilesCache, searchExtraFilesCache } from './s
  *  automatic (an explicit Refresh remains the way to force a genuinely
  *  fresh fetch of something already cached). */
 export function syncAgendaFilesConfig() {
-  S.agendaFilesConfig = parseAgendaFilesVar(getAgendaFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables));
+  S.agendaFilesConfig = parseAgendaFilesVar(warnIfNotList('org-agenda-files', getAgendaFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables)));
   ensureAgendaFilesLoaded();
   ensureDiaryLoaded(); // the diary file is read from the same variables, when org-agenda-include-diary is on
 }
@@ -279,7 +294,7 @@ export function aggregateAgendaDocs({ writable = false } = {}) {
  *  local-override handling as syncAgendaFilesConfig above. Call this
  *  at every one of that function's own call sites. */
 export function syncContactsFilesConfig() {
-  S.contactsFilesConfig = parseAgendaFilesVar(getContactsFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables));
+  S.contactsFilesConfig = parseAgendaFilesVar(warnIfNotList('org-contacts-files', getContactsFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables)));
 }
 
 /** Kicks off a fetch for every configured contacts file not already
@@ -339,7 +354,7 @@ export function ensureContactsFilesLoaded() {
 /** Recomputes searchExtraFilesConfig from whichever variable set is authoritative right now (the open file's own, else the
  *  global ones), like syncContactsFilesConfig. */
 export function syncSearchExtraFilesConfig() {
-  S.searchExtraFilesConfig = parseAgendaFilesVar(getSearchExtraFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables));
+  S.searchExtraFilesConfig = parseAgendaFilesVar(warnIfNotList('org-agenda-text-search-extra-files', getSearchExtraFilesVar(S.state.doc ? S.state.localVariables : S.globalVariables)));
 }
 
 /** Kicks off a fetch for every configured extra file not already cached (or loading), fire-and-forget like

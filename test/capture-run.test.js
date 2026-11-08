@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { captureTemplatesFromLisp } from '../src/capture-lisp.js';
-import { captureInto } from '../src/capture-run.js';
+import { bodyNodeAt, captureInto, revealAtLine } from '../src/capture-run.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 
 const NOW = new Date(2026, 10, 7, 18, 30);
@@ -14,7 +14,7 @@ function run(init, before, o = {}) {
   assert.deepEqual(notes, []);
   const doc = file(before);
   const results = [];
-  for (let i = 0; i < (o.runs ?? 1); i++) results.push(captureInto(doc, templates[o.template ?? 0], { now: NOW, answers: o.answers ?? [], context: {}, preText: '', postText: '', place: () => ({}) }));
+  for (let i = 0; i < (o.runs ?? 1); i++) results.push(captureInto(doc, templates[o.template ?? 0], { now: NOW, answers: o.answers ?? [], context: {}, place: () => ({}) }));
   return { doc, text: serializeOrg(doc), results };
 }
 
@@ -92,26 +92,6 @@ test('an error in a :prepare-finalize function shows its message and files nothi
   assert.match(result.message, /No good 7/);
 });
 
-test('the vCard function and the omitEmptyEntries option file the same document', () => {
-  const sec = readFileSync(new URL('../examples/capture-functions.org', import.meta.url), 'utf8').split(/^\* /m).find((s) => s.startsWith('Contact without'));
-  assert.ok(sec);
-  const init = /#\+BEGIN_SRC emacs-lisp\n([\s\S]*?)#\+END_SRC/.exec(sec)?.[1] ?? '';
-  const { templates } = captureTemplatesFromLisp(init);
-  const lispTemplate = templates[0];
-  assert.ok(lispTemplate.prepareFinalize?.length);
-  const json = { key: 'v', description: 'vCard', type: 'plain', olp: ['New'], file: 'contacts.org', omitEmptyEntries: true, template: lispTemplate.template };
-  const answers = ['Ann', 'Lee', '', 'ann@x.org', '555-1', '', '', 'Troy', 'NY', '', '', '', '', ''];
-  const fill = (/** @type {any} */ template) => {
-    const doc = file('* New\n** existing\n');
-    const r = captureInto(doc, template, { now: NOW, answers, context: {}, preText: '', postText: '', place: () => ({}) });
-    assert.ok(r.ok, r.ok ? '' : r.message);
-    return serializeOrg(doc);
-  };
-  const viaLisp = fill(lispTemplate);
-  assert.match(viaLisp, /\*\* Ann Lee\nBEGIN:VCARD/);
-  assert.equal(fill(json), viaLisp);
-});
-
 test('an error in the Lisp init that sets the templates is a note, shown when the Capture list opens', () => {
   const { templates, notes } = captureTemplatesFromLisp(`(setq org-capture-templates (list (car (quote ())) (nosuchfunction 1)))`);
   assert.deepEqual(templates, []);
@@ -130,4 +110,98 @@ test('the keywords: a target function, :prepare-finalize and the finalize keywor
   assert.equal(templates[1].targetFunction, '(lambda nil (goto-char 1))');
   assert.equal(notes.length, 1);
   assert.match(notes[0], /:before-finalize/);
+});
+
+/** The reveal of the one capture a template makes into `before`. @param {string} template the template line @param {string} before */
+function revealed(template, before) {
+  const r = run(`(setq org-capture-templates '(${template}))`, before);
+  const result = r.results[0];
+  assert.ok(result.ok);
+  return { reveal: result.ok ? result.reveal : null, doc: r.doc };
+}
+
+test('reveal: a table row is the table, the heading that holds it and the index of the new row', () => {
+  const { reveal, doc } = revealed(`("t" "T" table-line (file+olp "f.org" "A") "| new |")`, '* A\n| a |\n| b |\n* B\n');
+  assert.ok(reveal);
+  assert.equal(reveal.heading, doc.children[0]);
+  assert.equal(reveal.node, doc.children[0].body?.[0]);
+  assert.equal(reveal.row, 2);
+});
+
+test('reveal: a table made new has its row last; a table with a header rule counts the rule', () => {
+  const { reveal, doc } = revealed(`("t" "T" table-line (file+olp "f.org" "A") "| new |")`, '* A\ntext\n* B\n');
+  assert.ok(reveal);
+  assert.equal(reveal.heading, doc.children[0]);
+  assert.equal(reveal.row, 2); // the empty header, the rule, the row
+});
+
+test('reveal: an item is the list item, wherever in the file the list is', () => {
+  const { reveal, doc } = revealed(`("i" "I" item (file+olp "f.org" "A") "new")`, '* A\n- one\n- two\n');
+  assert.ok(reveal);
+  assert.equal(reveal.heading, doc.children[0]);
+  assert.equal(/** @type {any} */ (reveal.node).text, 'new');
+  assert.equal(reveal.row, null);
+});
+
+test('reveal: an entry is the new heading itself, the first when it is put first', () => {
+  const { reveal, doc } = revealed(`("e" "E" entry (file+olp "f.org" "A") "** new" :prepend t)`, '* A\n** old\n');
+  assert.ok(reveal);
+  assert.equal(reveal.node, doc.children[0].children[0]);
+  assert.equal(reveal.heading, reveal.node);
+});
+
+test('reveal: plain text is the block it landed in; text that is a heading is that heading', () => {
+  const plain = revealed(`("p" "P" plain (file+olp "f.org" "A") "words" :empty-lines 1)`, '* A\ntext\n');
+  assert.ok(plain.reveal);
+  assert.equal(plain.reveal.heading, plain.doc.children[0]);
+  assert.match(/** @type {any} */ (plain.reveal.node).lines.join(), /words/);
+  const heading = revealed(`("p" "P" plain (file+olp "f.org" "A") "** sub")`, '* A\ntext\n');
+  assert.equal(heading.reveal?.node, heading.doc.children[0].children[0]);
+});
+
+test('reveal: plain text put by a target function is found by its line, in a heading or in the text of the file', () => {
+  const fn = (/** @type {string} */ to) => `(lambda () (goto-char (point-min)) ${to})`;
+  const inHeading = revealed(`("p" "P" plain (function ${fn('(re-search-forward "^\\\\* B") (beginning-of-line)')}) "words\\n")`, '* A\n* B\ntext\n');
+  assert.ok(inHeading.reveal);
+  assert.equal(inHeading.reveal.heading, inHeading.doc.children[0]); // put before "* B": the end of A's text
+  assert.match(/** @type {any} */ (inHeading.reveal.node).lines.join(), /words/);
+  const inFile = revealed(`("p" "P" plain (function ${fn('')}) "words\\n")`, 'intro\n* A\n');
+  assert.ok(inFile.reveal);
+  assert.equal(inFile.reveal.heading, null);
+  const asHeading = revealed(`("p" "P" plain (function ${fn('(re-search-forward "^\\\\* B") (beginning-of-line)')}) "* C\\n")`, '* A\n* B\ntext\n');
+  assert.equal(asHeading.reveal?.node, asHeading.doc.children[1]);
+});
+
+test('bodyNodeAt and revealAtLine: a list gives its item; a line past the text gives nothing', () => {
+  const doc = file('* A\nlead\n- x\n- y\n');
+  assert.equal(/** @type {any} */ (bodyNodeAt(doc.children[0], 2)).text, 'y');
+  assert.equal(bodyNodeAt(doc.children[0], 9), null);
+  assert.equal(revealAtLine(doc, 99), null);
+  assert.equal(revealAtLine(doc, 0)?.node, doc.children[0]);
+});
+
+test(':jump-to-captured t is read into the template and is not reported as unknown', async () => {
+  const { captureTemplatesFromLisp } = await import('../src/capture-lisp.js');
+  const on = captureTemplatesFromLisp(`(setq org-capture-templates '(("a" "A" entry (file "f.org") "* x" :jump-to-captured t) ("b" "B" entry (file "f.org") "* y" :jump-to-captured nil) ("c" "C" entry (file "f.org") "* z")))`);
+  assert.deepEqual(on.notes, []);
+  assert.deepEqual(on.templates.map((t) => t.jumpToCaptured), [true, false, undefined]);
+});
+
+test('the two contact templates of examples/capture-vcard.org file what the guide shows', async () => {
+  const { scanPrompts } = await import('../src/capture-template.js');
+  const text = readFileSync(new URL('../examples/capture-vcard.org', import.meta.url), 'utf8');
+  const sources = [...text.matchAll(/#\+begin_src emacs-lisp\n([\s\S]*?)#\+end_src/g)].map((m) => m[1]);
+  const shown = [...text.matchAll(/#\+begin_example\n([\s\S]*?)#\+end_example/g)].map((m) => m[1].replace(/^,\*/gm, '*'));
+  const collapse = (/** @type {string} */ t) => t.split('\n').map((l) => l.replace(/ +/g, ' ').trimEnd()).join('\n').trim();
+  const answersFor = (/** @type {string} */ init, /** @type {string[]} */ given) => {
+    const { templates } = captureTemplatesFromLisp(init);
+    const asked = scanPrompts(templates[0].template).length;
+    return given.concat(Array(asked - given.length).fill(''));
+  };
+  const first = run(sources[0], '* New\n', { answers: answersFor(sources[0], ['Ada Lovelace', 'friends', 'ada@example.org', '+1 555 0100', '1815-12-10']) });
+  assert.ok(first.results[0].ok);
+  assert.equal(collapse(first.text), collapse('* New\n' + shown[0]));
+  const second = run(sources[1], '* New\n', { answers: answersFor(sources[1], ['Grace', 'Hopper', 'navy', 'grace@example.org', '', '+1 555 0123', '', '', '', '', '', '1906-12-09', 'Pioneer', 'US Navy', 'Rear Admiral']) });
+  assert.ok(second.results[0].ok);
+  assert.equal(collapse(second.text), collapse('* New\n' + shown[2]));
 });

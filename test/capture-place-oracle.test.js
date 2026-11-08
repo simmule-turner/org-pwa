@@ -17,7 +17,7 @@ const squeeze = (/** @type {string} */ s) => s.replace(/ +\|/g, '|').replace(/\|
 function file(c) {
   const doc = parseOrg(c.init);
   const target = c.olp.length ? resolveOlpTarget(doc, c.olp, { allowCreate: false }) : doc;
-  fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, false, '', '', { ...c.opts, recalculate: (t) => recalculateTable(t, {}) });
+  fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, { ...c.opts, recalculate: (t) => recalculateTable(t, {}) });
   return serializeOrg(doc);
 }
 
@@ -46,8 +46,7 @@ test('a row joins a table aligned as Emacs aligns it', () => {
 test('the number a template gets for @# is the row’s line in the table, a header row counted', () => {
   const none = parseOrg('* Tr');
   assert.equal(plannedTableRow(none.children[0]), 2);
-  assert.equal(plannedTableRow(none.children[0], false, { tableHeader: false }), 1);
-  const some = parseOrg('* Tr\n| h | h |\n|---+---|\n| x | y |\n| z | w |');
+    const some = parseOrg('* Tr\n| h | h |\n|---+---|\n| x | y |\n| z | w |');
   assert.equal(plannedTableRow(some.children[0]), 4);
   assert.equal(plannedTableRow(some.children[0], true), 2);
   assert.equal(plannedTableRow(some.children[0], false, { tableLinePos: 'I-1' }), 2);
@@ -55,5 +54,5 @@ test('the number a template gets for @# is the row’s line in the table, a head
 
 test('a :table-line-pos that names a rule the table lacks is refused', () => {
   const doc = parseOrg('* Tr\n| x | y |');
-  assert.throws(() => fileCapture(doc, doc.children[0], 'table-line', '| a | b |', false, false, '', '', { tableLinePos: 'I+1' }), /Invalid table line specification "I\+1"/);
+  assert.throws(() => fileCapture(doc, doc.children[0], 'table-line', '| a | b |', false, { tableLinePos: 'I+1' }), /Invalid table line specification "I\+1"/);
 });

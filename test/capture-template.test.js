@@ -6,7 +6,6 @@ import {
   formatTime,
   scanPrompts,
   expandTemplate as expandWithNewline,
-  expandCaptureText as expandCaptureWithNewline,
   resolveOlpTarget,
   mergeFragmentInto,
   insertCapture,
@@ -16,15 +15,9 @@ import {
   computeNonCollidingKeys,
 } from '../src/capture-template.js';
 
-const NOHEAD = { tableHeader: false }; // the table a capture makes, without Emacs's empty header row
-
 // These tests look at the text itself, so the single newline that ends every expansion is dropped here;
 // capture-expand-oracle.test.js holds the whole result, newline included, to Emacs.
 const expandTemplate = (/** @type {any} */ t, /** @type {any} */ c) => ({ text: expandWithNewline(t, c).text.replace(/\n$/, '') });
-const expandCaptureText = (/** @type {any} */ a, /** @type {any} */ b, /** @type {any} */ c, /** @type {any} */ d) => {
-  const r = expandCaptureWithNewline(a, b, c, d);
-  return { ...r, text: r.text.replace(/\n$/, '') };
-};
 
 const NOW = new Date(2026, 6, 24, 14, 30, 5); // July 24 2026, 14:30:05, a Friday
 
@@ -315,18 +308,6 @@ test('resolveOlpTarget creates only the missing tail of a partially-existing pat
   assert.equal(target.title, 'heading n');
 });
 
-test('THE EXACT TABLE EXAMPLE: a %<%Y-%m> OLP segment expands to a plain, literal heading title', () => {
-  const doc = parseOrg('* heading 1');
-  const target = resolveOlpTarget(doc, ['heading 1', '%<%Y-%m>'], { now: NOW });
-  assert.equal(target.title, '2026-07'); // not the literal string "%<%Y-%m>"
-});
-
-test('resolveOlpTarget leaves a plain (non-%<...>-wrapped) segment completely literal', () => {
-  const doc = parseOrg('');
-  const target = resolveOlpTarget(doc, ['100% Done'], { now: NOW }); // contains a literal % that isn't a %<...> wrapper
-  assert.equal(target.title, '100% Done');
-});
-
 // ---- resolveOlpTarget: prepend -----------------------------------------------
 
 test('resolveOlpTarget prepend: a new top-level heading lands before existing siblings', () => {
@@ -467,94 +448,6 @@ test('insertCapture plain with no heading syntax at all falls back to body conte
   assert.equal(target.children.length, 0);
 });
 
-// ---- insertCapture: omitEmptyEntries --------------------------------------
-
-test('THE FEATURE: omitEmptyEntries strips a property whose own expanded value came out empty, per direct request', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Jordan Rivera\n:PROPERTIES:\n:EMAIL:     jordan@example.com\n:CELL:      \n:END:\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.equal(contact.properties.EMAIL, 'jordan@example.com');
-  assert.equal('CELL' in contact.properties, false);
-  assert.equal(contact.propertyOrder.includes('CELL'), false);
-});
-
-test('omitEmptyEntries off (the default) leaves an empty property in place, matching existing behavior exactly', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Jordan Rivera\n:PROPERTIES:\n:EMAIL:     jordan@example.com\n:CELL:      \n:END:\n';
-  insertCapture(target, 'plain', template);
-  const contact = target.children[0];
-  assert.equal(contact.properties.CELL, '');
-});
-
-test('omitEmptyEntries treats a whitespace-only value the same as a truly empty one', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Jordan Rivera\n:PROPERTIES:\n:NOTE:      \t \n:END:\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.equal('NOTE' in contact.properties, false);
-});
-
-test('omitEmptyEntries recurses into every sub-heading a plain-type capture produces, not just the top one', () => {
-  const doc = parseOrg('* Root');
-  const target = doc.children[0];
-  const template = '* Alice\n:PROPERTIES:\n:EMAIL: alice@example.com\n:END:\n** Work\n:PROPERTIES:\n:PHONE:  \n:END:\n';
-  insertCapture(target, 'plain', template, false, true);
-  const alice = target.children[0];
-  const work = alice.children[0];
-  assert.equal('PHONE' in work.properties, false);
-});
-
-test('THE FIX: omitEmptyEntries also strips an empty plain-body "KEY:value" line, per direct follow-up report -- a template that puts its own fields directly in the body text (raw vCard content, not a :PROPERTIES: drawer) previously had nothing stripped at all', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Simmule Turner\nBEGIN:VCARD\nVERSION:3.0\nFN:Simmule Turner\nEMAIL:\nTEL;TYPE=cell:\nEND:VCARD\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Simmule Turner', 'END:VCARD']);
-});
-
-test('omitEmptyEntries treats a multi-field vCard line (ADR, N) as empty when every field within it is blank, even though its own structural semicolons remain', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Simmule Turner\nBEGIN:VCARD\nADR;TYPE=home:;;;;;;\nN:Turner;Simmule;;;\nEND:VCARD\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'N:Turner;Simmule;;;', 'END:VCARD']);
-});
-
-test('omitEmptyEntries leaves a non-empty plain-body line completely alone, matching real content correctly (not just detecting emptiness)', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Alice\nBEGIN:VCARD\nEMAIL:alice@example.com\nEND:VCARD\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'EMAIL:alice@example.com', 'END:VCARD']);
-});
-
-test('THE FIX: omitEmptyEntries strips an entirely empty trailing tag ("Title ::") from the heading title, per direct follow-up report -- real org tag syntax needs at least one real tag between the colons, so an empty one was never recognized as a tag list at all and stayed as literal title text', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  insertCapture(target, 'plain', '* Simmule Turner ::\nSome body\n', false, true);
-  const contact = target.children[0];
-  assert.equal(contact.title, 'Simmule Turner');
-  assert.deepEqual(contact.tags, []);
-});
-
-test('a real, filled-in tag survives omitEmptyEntries untouched, alongside an empty body line stripped from the same capture', () => {
-  const doc = parseOrg('* Contacts');
-  const target = doc.children[0];
-  const template = '* Jordan Rivera :Work:\nBEGIN:VCARD\nEMAIL:jordan@example.com\nNOTE:\nEND:VCARD\n';
-  insertCapture(target, 'plain', template, false, true);
-  const contact = target.children[0];
-  assert.equal(contact.title, 'Jordan Rivera');
-  assert.deepEqual(contact.tags, ['Work']);
-  assert.deepEqual(contact.bodyLines, ['BEGIN:VCARD', 'EMAIL:jordan@example.com', 'END:VCARD']);
-});
-
 // ---- insertCapture: table-line -- THE BUG THIS FOUND AND FIXED ---------
 
 test('a table-line capture with no table to join makes one with an empty header row and a rule, as Emacs does', () => {
@@ -564,43 +457,33 @@ test('a table-line capture with no table to join makes one with an empty header 
   assert.equal(serializeOrg(doc), '* Target\n|   |       |       |\n|---+-------+-------|\n| 1 | first | 45.00 |');
 });
 
-test('tableHeader false makes the table of just the captured row', () => {
-  const doc = parseOrg('* Target');
-  const target = doc.children[0];
-  insertCapture(target, 'table-line', '| 1 | 2026-09-04 | 1200 |', false, false, '', '', NOHEAD);
-  const reparsed = parseOrg(serializeOrg(doc));
-  const table = reparsed.children[0].body.find((n) => n.type === 'table');
-  assert.equal(table.rows.length, 1);
-  assert.equal(table.rows[0].type, 'row');
-});
-
 test('THE BUG THIS FOUND AND FIXED: a second table-line capture into that same newly-created (rule-free) table still appends cleanly, in both append and prepend order', () => {
   const doc = parseOrg('* Target');
   const target = doc.children[0];
-  insertCapture(target, 'table-line', '| 1 | 2026-09-04 |', false, false, '', '', NOHEAD);
-  insertCapture(target, 'table-line', '| 2 | 2026-09-05 |', false, false, '', '', NOHEAD);
+  insertCapture(target, 'table-line', '| 1 | 2026-09-04 |');
+  insertCapture(target, 'table-line', '| 2 | 2026-09-05 |');
   let reparsed = parseOrg(serializeOrg(doc));
   let table = reparsed.children[0].body.find((n) => n.type === 'table');
-  assert.deepEqual(table.rows.map((r) => r.cells), [['1', '2026-09-04'], ['2', '2026-09-05']]);
+  assert.deepEqual(table.rows.filter((r) => r.type === 'row').slice(1).map((r) => r.cells), [['1', '2026-09-04'], ['2', '2026-09-05']]); // after the empty header row
 
   const doc2 = parseOrg('* Target');
   const target2 = doc2.children[0];
-  insertCapture(target2, 'table-line', '| 1 | 2026-09-04 |', true, false, '', '', NOHEAD);
-  insertCapture(target2, 'table-line', '| 2 | 2026-09-05 |', true, false, '', '', NOHEAD);
+  insertCapture(target2, 'table-line', '| 1 | 2026-09-04 |', true);
+  insertCapture(target2, 'table-line', '| 2 | 2026-09-05 |', true);
   reparsed = parseOrg(serializeOrg(doc2));
   table = reparsed.children[0].body.find((n) => n.type === 'table');
-  assert.deepEqual(table.rows.map((r) => r.cells), [['2', '2026-09-05'], ['1', '2026-09-04']]);
+  assert.deepEqual(table.rows.filter((r) => r.type === 'row').slice(1).map((r) => r.cells), [['2', '2026-09-05'], ['1', '2026-09-04']]);
 });
 
 test('THE BUG THIS FOUND AND FIXED: three sequential table-line captures produce three clean rows, not garbled/duplicated ones', () => {
   const doc = parseOrg('* Target');
   const target = doc.children[0];
-  insertCapture(target, 'table-line', '| 1 | first | 45.00 |', false, false, '', '', NOHEAD);
-  insertCapture(target, 'table-line', '| 2 | second | 32.50 |', false, false, '', '', NOHEAD);
-  insertCapture(target, 'table-line', '| 3 | third | 4.50 |', false, false, '', '', NOHEAD);
+  insertCapture(target, 'table-line', '| 1 | first | 45.00 |');
+  insertCapture(target, 'table-line', '| 2 | second | 32.50 |');
+  insertCapture(target, 'table-line', '| 3 | third | 4.50 |');
 
   const text = serializeOrg(doc);
-  const dataLines = text.split('\n').filter((l) => l.startsWith('|') && !l.includes('---')).map((l) => l.replace(/ +/g, ' ')); // the table is aligned
+  const dataLines = text.split('\n').filter((l) => l.startsWith('|') && !l.includes('---') && l.replace(/[| ]/g, '') !== '').map((l) => l.replace(/ +/g, ' ')); // the table is aligned
   assert.equal(dataLines.length, 3); // not 5+ garbled/duplicated rows
   assert.equal(dataLines[0], '| 1 | first | 45.00 |');
   assert.equal(dataLines[1], '| 2 | second | 32.50 |');
@@ -611,11 +494,11 @@ test('insertCapture table-line: each cell is set correctly, not just the first o
   const doc = parseOrg('* Target');
   const target = doc.children[0];
   for (let i = 1; i <= 5; i++) {
-    insertCapture(target, 'table-line', `| ${i} | item ${i} | ${i}.00 |`, false, false, '', '', NOHEAD);
+    insertCapture(target, 'table-line', `| ${i} | item ${i} | ${i}.00 |`);
   }
   const reparsed = parseOrg(serializeOrg(doc));
   const table = reparsed.children[0].body.find((n) => n.type === 'table');
-  const dataRows = table.rows.filter((r) => r.type === 'row');
+  const dataRows = table.rows.filter((r) => r.type === 'row').slice(1); // after the empty header row
   assert.equal(dataRows.length, 5);
   for (let i = 0; i < 5; i++) {
     assert.deepEqual(dataRows[i].cells, [String(i + 1), `item ${i + 1}`, `${i + 1}.00`]);
@@ -638,21 +521,6 @@ test('END TO END: Check List example, exactly as specified', () => {
   const { text } = expandTemplate('%^{Item description}', { now: NOW, promptAnswers: ['Buy milk'] });
   insertCapture(target, 'checkitem', text);
   assert.match(serializeOrg(doc), /^- Buy milk$/m);
-});
-
-test('END TO END: Table Insert example with dynamic %<%Y-%m> OLP segment, exactly as specified', () => {
-  const doc = parseOrg('* heading 1');
-  const target = resolveOlpTarget(doc, ['heading 1', '%<%Y-%m>'], { now: NOW });
-  assert.equal(target.title, '2026-07');
-  const { text } = expandTemplate('| @# | %U | %^{Description} | %^{Amount} |', {
-    now: NOW,
-    promptAnswers: ['Bought groceries', '45.00'],
-    tableRowNumber: 1,
-  });
-  insertCapture(target, 'table-line', text);
-  const result = serializeOrg(doc);
-  assert.match(result, /\*\* 2026-07/);
-  assert.match(result, /\| 1 \| \[2026-07-24 Fri 14:30\] \| Bought groceries \| 45\.00 \|/);
 });
 
 // ---- insertCapture return values (used by the UI for cursor positioning) --
@@ -765,9 +633,9 @@ test('prepend table-line, WITH a header row followed by a rule: new row lands ri
 
 test('prepend table-line, brand-new table (none exists yet): prepend has nothing to prepend relative to, behaves the same as append', () => {
   const doc = parseOrg('* H\n');
-  const withPrepend = insertCapture(doc.children[0], 'table-line', '| x | y |', true, false, '', '', NOHEAD);
+  const withPrepend = insertCapture(doc.children[0], 'table-line', '| x | y |', true);
   assert.equal(withPrepend.type, 'table');
-  assert.deepEqual(withPrepend.rows[0].cells, ['x', 'y']);
+  assert.deepEqual(withPrepend.rows[withPrepend.rows.length - 1].cells, ['x', 'y']);
 });
 
 test('prepend table-line: returns the table containing the prepended row', () => {
@@ -850,11 +718,11 @@ test('REGRESSION: plain capture producing body-only content (no heading) into a 
 test('REGRESSION: table-line capture into a heading with existing content preserves it when a captured cell is later edited', () => {
   const doc = parseOrg('* Target\nExisting note before the table.');
   const target = doc.children[0];
-  insertCapture(target, 'table-line', '| 1 | first |', false, false, '', '', NOHEAD);
-  insertCapture(target, 'table-line', '| 2 | second |', false, false, '', '', NOHEAD);
+  insertCapture(target, 'table-line', '| 1 | first |');
+  insertCapture(target, 'table-line', '| 2 | second |');
   const table = target.body.find((n) => n.type === 'table');
   const dataRowIndices = table.rows.map((r, i) => (r.type === 'row' ? i : -1)).filter((i) => i !== -1);
-  setTableCell(target, table, dataRowIndices[1], 1, 'EDITED');
+  setTableCell(target, table, dataRowIndices[2], 1, 'EDITED');
   const text = serializeOrg(doc);
   assert.match(text, /Existing note before the table\./);
   assert.match(text, /\| 1 +\| first +\|/);
@@ -971,115 +839,6 @@ test('computeNonCollidingKeys: empty list returns an empty map', () => {
   assert.equal(computeNonCollidingKeys([], (i) => i.key).size, 0);
 });
 
-// ---- preText/postText: expandCaptureText -----------------------------
-
-test('THE FEATURE: expandCaptureText numbers prompts continuously across preText, template, and postText -- a %^{...} in preText is prompt #1, not restarted at 0 for each piece', () => {
-  const result = expandCaptureText('#+PLOT: title:"%^{Title}"', '| %^{Week} | %^{Amount} |', 'note: %\\1', {
-    promptAnswers: ['Weekly Expenses', '1', '42.5'],
-  });
-  assert.equal(result.preText, '#+PLOT: title:"Weekly Expenses"');
-  assert.equal(result.text, '| 1 | 42.5 |');
-  assert.equal(result.postText, 'note: Weekly Expenses'); // %\1 correctly reaches back into preText's own answer
-});
-
-test('expandCaptureText with no preText/postText matches a bare expandTemplate call exactly', () => {
-  const bare = expandTemplate('| %^{Week} |', { promptAnswers: ['3'] });
-  const combined = expandCaptureText('', '| %^{Week} |', '', { promptAnswers: ['3'] });
-  assert.equal(combined.text, bare.text);
-  assert.equal(combined.preText, '');
-  assert.equal(combined.postText, '');
-});
-
-test('expandCaptureText passes tableRowNumber (@#) through to every piece, not just the main template', () => {
-  const result = expandCaptureText('row @#', 'main @#', 'end @#', { tableRowNumber: 5 });
-  assert.equal(result.preText, 'row 5');
-  assert.equal(result.text, 'main 5');
-  assert.equal(result.postText, 'end 5');
-});
-
-// ---- preText/postText: insertCapture, table-line (once-only) ---------
-
-test('THE FEATURE (the exact motivating example): the first table-line capture for a target with no existing table inserts preText, the table, and postText, with the header/hline from preText merging into the SAME table as the first row', () => {
-  const doc = parseOrg('* Expenses');
-  const target = doc.children[0];
-  insertCapture(
-    target,
-    'table-line',
-    '| 1 | 42.5 |',
-    false,
-    false,
-    '#+PLOT: title:"Weekly Expenses" ind:1 type:2d with:lines\n| Week | Amount |\n|------+--------|',
-    '#+TBLFM: $2=$2;%.2f',
-    NOHEAD
-  );
-  const lines = serializeOrg(doc).split('\n');
-  assert.deepEqual(lines, [
-    '* Expenses',
-    '#+PLOT: title:"Weekly Expenses" ind:1 type:2d with:lines',
-    '| Week | Amount |',
-    '|------+--------|',
-    '| 1 | 42.5 |',
-    '#+TBLFM: $2=$2;%.2f',
-  ]);
-  // Confirms the header+hline genuinely merged into ONE table with the
-  // data row (not left as separate, disconnected content): exactly one
-  // table node, holding all of header/rule/data.
-  assert.equal(target.body.filter((n) => n.type === 'table').length, 1);
-  assert.equal(target.body[0].plot, 'title:"Weekly Expenses" ind:1 type:2d with:lines');
-  assert.equal(target.body[0].tblfm, '$2=$2;%.2f');
-});
-
-test('THE FEATURE: a second table-line capture into the SAME target (table already exists) adds only a row -- preText/postText are never repeated', () => {
-  const doc = parseOrg('* Expenses');
-  const target = doc.children[0];
-  insertCapture(target, 'table-line', '| 1 | 42.5 |', false, false, '#+PLOT: title:"X" ind:1', '#+TBLFM: $2=$2;%.2f', NOHEAD);
-  insertCapture(target, 'table-line', '| 2 | 18.0 |', false, false, '#+PLOT: title:"X" ind:1', '#+TBLFM: $2=$2;%.2f', NOHEAD);
-  const lines = serializeOrg(doc).split('\n');
-  assert.deepEqual(lines, ['* Expenses', '#+PLOT: title:"X" ind:1', '| 1 | 42.5 |', '| 2 | 18.0 |', '#+TBLFM: $2=$2;%.2f']);
-  assert.equal(lines.filter((l) => l.startsWith('#+PLOT:')).length, 1);
-  assert.equal(lines.filter((l) => l.startsWith('#+TBLFM:')).length, 1);
-});
-
-test('table-line preText/postText do nothing at all when omitted -- matches the exact prior behavior for a template with no preText/postText fields', () => {
-  const doc = parseOrg('* T');
-  const target = doc.children[0];
-  insertCapture(target, 'table-line', '| a | b |', false, false, '', '', NOHEAD);
-  assert.deepEqual(serializeOrg(doc).split('\n'), ['* T', '| a | b |']);
-});
-
-test('a blank-line separator is still added between preText and unrelated content that already precedes it, even though there\u2019s no separator between preText and the table itself', () => {
-  const doc = parseOrg('* T\nSome existing paragraph.');
-  const target = doc.children[0];
-  insertCapture(target, 'table-line', '| a |', false, false, '#+TITLE: X', '', NOHEAD);
-  assert.deepEqual(serializeOrg(doc).split('\n'), ['* T', 'Some existing paragraph.', '', '#+TITLE: X', '| a |']);
-});
-
-// ---- preText/postText: insertCapture, item/checkitem/plain (every time) --
-
-test('THE FEATURE (the exact motivating example): checkitem wraps preText/postText around EVERY invocation, not just the first', () => {
-  const doc = parseOrg('* Tasks');
-  const target = doc.children[0];
-  insertCapture(target, 'checkitem', 'Buy milk', false, false, '[#A] ', ' :quick:');
-  insertCapture(target, 'checkitem', 'Call dentist', false, false, '[#A] ', ' :quick:');
-  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Tasks', '- [#A] Buy milk :quick:', '- [#A] Call dentist :quick:']);
-});
-
-test('item wraps preText/postText the same way checkitem does', () => {
-  const doc = parseOrg('* Notes');
-  const target = doc.children[0];
-  insertCapture(target, 'item', 'apples', false, false, 'Buy: ', ' (urgent)');
-  assert.deepEqual(serializeOrg(doc).split('\n'), ['* Notes', '- Buy: apples (urgent)']);
-});
-
-test('plain concatenates preText + expandedText + postText directly, then parses the combined result as one fragment', () => {
-  const doc = parseOrg('* Meetings\n');
-  const target = doc.children[0];
-  insertCapture(target, 'plain', '* Standup\nDiscussed X.\n', false, false, '', 'Filed under #+standup\n');
-  const lines = serializeOrg(doc).split('\n');
-  assert.ok(lines.includes('Filed under #+standup'));
-  assert.ok(lines.includes('** Standup')); // nested one level under target (level 1), matching mergeFragmentInto's own level-offset behavior
-});
-
 // ---- %^t/%^T/%^u/%^U -- interactive timestamp prompts ------------------
 
 test('THE FEATURE: scanPrompts recognizes %^t/%^T/%^u/%^U, each with the correct active/hasTime discriminator for the capture form\u2019s own date/time-picker button', () => {
@@ -1160,11 +919,6 @@ test('%%i is a percent sign followed by the shared text, as in Emacs, where %% i
 test('the new tokens are not prompts: they add no question to a template\u2019s form', () => {
   assert.equal(scanPrompts('* %i\n%a\n%x').length, 0);
   assert.equal(scanPrompts('* %^{Title}\n%i').length, 1);
-});
-
-test('they work in preText and postText too, expanded together with the template', () => {
-  const r = expandCaptureText('pre %i\n', 'body %a', '\npost %x', { now, shared: SHARED, clipboard: 'clip' });
-  assert.deepEqual([r.preText, r.text, r.postText], ['pre First line\npre Second line\n', 'body [[https://example.com/a][Example page]]', '\npost clip']);
 });
 
 // ---- local: ---------------------------------------------------------------------------------------

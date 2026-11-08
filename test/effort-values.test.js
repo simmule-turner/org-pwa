@@ -13,12 +13,14 @@ test('parseEffortValues: any org-duration form is fine; anything else is skipped
   assert.deepEqual(parseEffortValues(null), []);
 });
 
-test('parseGlobalProperties: NAME: value entries, case-insensitive names, first one wins', () => {
-  const p = parseGlobalProperties('Effort_ALL: 0:10 0:30; OTHER: x y ; effort_all: 9:00');
+test('parseGlobalProperties: the alist Emacs takes, case-insensitive names, first one wins, a leading quote allowed', () => {
+  const p = parseGlobalProperties('(("Effort_ALL" . "0:10 0:30") ("OTHER" . " x y ") ("effort_all" . "9:00"))');
   assert.equal(p.effort_all, '0:10 0:30');
   assert.equal(p.other, 'x y');
+  assert.equal(parseGlobalProperties("'((\"Effort_ALL\" . \"1:00\"))").effort_all, '1:00');
   assert.deepEqual(parseGlobalProperties(''), {});
   assert.deepEqual(parseGlobalProperties('no colon here'), {});
+  assert.deepEqual(parseGlobalProperties('Effort_ALL: 0:10 0:30'), {}, 'the old text form is not read');
 });
 
 const doc = (text) => parseOrg(text);
@@ -41,7 +43,7 @@ test('the property name is matched case-insensitively, and other #+PROPERTY line
 
 test('the global setting applies when nothing more specific does', () => {
   const d = doc('* A\n');
-  assert.deepEqual(getAllowedEffortValues({ doc: d, heading: d.children[0], globalProperties: 'Effort_ALL: 0:10 1:00' }), ['0:10', '1:00']);
+  assert.deepEqual(getAllowedEffortValues({ doc: d, heading: d.children[0], globalProperties: '(("Effort_ALL" . "0:10 1:00"))' }), ['0:10', '1:00']);
 });
 
 test('precedence: heading > ancestor > file > global', () => {
@@ -51,7 +53,7 @@ test('precedence: heading > ancestor > file > global', () => {
   const parent = d.children[0];
   const [child, plain] = parent.children;
   const own = child.children[0];
-  const g = 'Effort_ALL: 5:00';
+  const g = '(("Effort_ALL" . "5:00"))';
   assert.deepEqual(getAllowedEffortValues({ doc: d, heading: own, globalProperties: g }), ['9:00'], "the heading's own");
   assert.deepEqual(getAllowedEffortValues({ doc: d, heading: child, globalProperties: g }), ['2:00', '3:00'], "inherited from the parent");
   assert.deepEqual(getAllowedEffortValues({ doc: d, heading: plain, globalProperties: g }), ['2:00', '3:00']);
@@ -115,7 +117,7 @@ test('Effort_ALL+ alone is a list, and at one level the + follows the base which
 });
 
 test('the global setting is the base only when the file says nothing about Effort_ALL', () => {
-  const global = 'Effort_ALL: 0:05 0:15';
+  const global = '(("Effort_ALL" . "0:05 0:15"))';
   assert.deepEqual(allowed(`* A\n${P('Effort_ALL+', '9:00')}`, 'A', global), ['0:05', '0:15', '9:00']);
   assert.deepEqual(allowed('#+PROPERTY: Effort_ALL+ 0:20\n* A\n', 'A', global), ['0:20']);
 });

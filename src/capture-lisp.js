@@ -15,9 +15,9 @@ import { print } from './elisp-data.js';
 
 const TYPES = new Set(['entry', 'item', 'checkitem', 'table-line', 'plain']);
 /** Keywords that only change how Emacs shows the capture buffer; nothing to do here. */
-const QUIET = new Set([':immediate-finish', ':unnarrowed', ':kill-buffer', ':jump-to-captured', ':no-save', ':hook']);
+const QUIET = new Set([':immediate-finish', ':unnarrowed', ':kill-buffer', ':no-save', ':hook']);
 /** Keywords that have no effect here. */
-const UNSUPPORTED = new Set([':before-finalize', ':after-finalize', ':clock-in', ':clock-keep', ':clock-resume', ':refile-targets', ':time-prompt', ':ignore-this-entry', ':template-file']);
+const UNSUPPORTED = new Set([':before-finalize', ':after-finalize', ':clock-in', ':clock-keep', ':clock-resume', ':refile-targets', ':time-prompt']);
 /** Emacs keywords that take a count of blank lines or a position, with the field they set. */
 const EMACS_OPTIONS = /** @type {Record<string, [string, 'count' | 'string']>} */ ({
   ':empty-lines': ['emptyLines', 'count'],
@@ -25,15 +25,6 @@ const EMACS_OPTIONS = /** @type {Record<string, [string, 'count' | 'string']>} *
   ':empty-lines-after': ['emptyLinesAfter', 'count'],
   ':table-line-pos': ['tableLinePos', 'string'],
 });
-/** App options with no Emacs name, written as keywords after the template. */
-const APP_OPTIONS = /** @type {Record<string, [string, 'boolean' | 'string']>} */ ({
-  ':omit-empty-entries': ['omitEmptyEntries', 'boolean'],
-  ':prepend-heading': ['prependHeading', 'boolean'],
-  ':table-header': ['tableHeader', 'boolean'],
-  ':pre-text': ['preText', 'string'],
-  ':post-text': ['postText', 'string'],
-});
-
 /**
  * A function the way a template names it, as text the capture can run again: a symbol's name, or the `(lambda ...)` form as written.
  * @param {Lisp | undefined} f
@@ -133,6 +124,7 @@ function readEntry(entry, notes) {
     const value = props[i + 1];
     if (!name || !name.startsWith(':')) continue;
     if (name === ':prepend') out.prepend = !isNil(value);
+    else if (name === ':jump-to-captured') out.jumpToCaptured = !isNil(value);
     else if (name === ':prepare-finalize') {
       const fns = functionTexts(value);
       if (fns === null) notes.push(`Capture template "${key}": :prepare-finalize needs a function or a list of functions and is ignored.`);
@@ -144,10 +136,7 @@ function readEntry(entry, notes) {
       else if (kind === 'week' || kind === 'month') out.treeType = target.treeType || kind;
       else if (!kind) notes.push(`Capture template "${key}": :tree-type as a list or a function is an Org 9.8 feature and is not supported; the day tree is used.`);
     }
-    else if (APP_OPTIONS[name]) {
-      const [field, kind] = APP_OPTIONS[name];
-      out[field] = kind === 'string' ? (stringValue(value) ?? '') : !isNil(value);
-    } else if (EMACS_OPTIONS[name]) {
+    else if (EMACS_OPTIONS[name]) {
       const [field, kind] = EMACS_OPTIONS[name];
       if (kind === 'count') {
         if (value && value.k === 'num' && Number.isInteger(value.v) && value.v >= 0) out[field] = value.v;

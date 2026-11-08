@@ -579,19 +579,6 @@ S.extraMenuOpen = false;
 // glitches); an in-app form sidesteps that entirely, being just an
 // ordinary part of this app's own layout.
 S.capturePromptTemplate = null;
-// Whether this capture's own preText/postText prompts were left off the
-// currently-open form -- set once when the form opens (see
-// peekTableAlreadyExists/openCapturePrompt below) and reused unchanged at
-// commit time, never re-derived: the peek is a best-effort hint for the
-// form's own shape only, and doing it twice risks the two disagreeing
-// (e.g. if the underlying cache changed in between), which would corrupt
-// which answer maps to which prompt token. The actual table-exists-or-not
-// STRUCTURAL decision (does insertCapture create a new table or just add a
-// row) is always separately, freshly determined at insertion time from the
-// real, just-loaded document -- this flag only ever affects which prompts
-// were asked and how the combined text was built for expansion, never
-// whether preText/postText actually get inserted.
-S.capturePromptSkipPrePost = false;
 // True while a capture triggered by the extras (☰) menu is in progress
 // -- that flow already knows exactly which template to use, so once
 // it completes (success or cancel) the capture panel should close

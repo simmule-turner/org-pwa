@@ -7,21 +7,27 @@ import { expandLoads } from '../src/lisp-load.js';
 
 const INIT = `
 (setq org-capture-templates
-  '(("a" "Appointment" entry (file+olp "github:calendar.org" "%<%Y>") "* %^{Description} %^T\\n%?"
-     :prepend t :omit-empty-entries t)
+  '(("a" "Appointment" entry (file+olp "github:calendar.org" "Calendar") "* %^{Description} %^T\\n%?"
+     :prepend t)
     ("j" "Journal" item
-     (file+olp "github:home.org" "Journal" "%<%Y-%m %b>" "%<%Y-%m-%d>") "%<%H:%M> - %?" :prepend t)
-    ("t" "Tracking" table-line (file+olp "home.org" "Tracking" "%<%Y-%m>")
-     "| @# | %<%Y-%m-%d> | %<%H%M> ||" :prepend-heading t
-     :pre-text "#+PLOT: title:\\"T\\"" :post-text "#+TBLFM: $4=1")))
+     (file+olp "github:home.org" "Journal" "Log") "%<%H:%M> - %?" :prepend t)
+    ("t" "Tracking" table-line (file+olp "home.org" "Tracking")
+     "| @# | %<%Y-%m-%d> | %<%H%M> ||")))
 `;
 
-test('templates written in Lisp become the template objects the JSON form uses', () => {
+test('templates written in Lisp become the template objects the app runs', () => {
   const { templates, notes } = captureTemplatesFromLisp(INIT);
   assert.deepEqual(notes, []);
-  assert.deepEqual(templates[0], { key: 'a', description: 'Appointment', type: 'entry', olp: ['%<%Y>'], template: '* %^{Description} %^T\n%?', file: 'github:calendar.org', prepend: true, omitEmptyEntries: true });
-  assert.deepEqual(templates[1], { key: 'j', description: 'Journal', type: 'item', olp: ['Journal', '%<%Y-%m %b>', '%<%Y-%m-%d>'], template: '%<%H:%M> - %?', file: 'github:home.org', prepend: true });
-  assert.deepEqual(templates[2], { key: 't', description: 'Tracking', type: 'table-line', olp: ['Tracking', '%<%Y-%m>'], template: '| @# | %<%Y-%m-%d> | %<%H%M> ||', file: 'home.org', prependHeading: true, preText: '#+PLOT: title:"T"', postText: '#+TBLFM: $4=1' });
+  assert.deepEqual(templates[0], { key: 'a', description: 'Appointment', type: 'entry', olp: ['Calendar'], template: '* %^{Description} %^T\n%?', file: 'github:calendar.org', prepend: true });
+  assert.deepEqual(templates[1], { key: 'j', description: 'Journal', type: 'item', olp: ['Journal', 'Log'], template: '%<%H:%M> - %?', file: 'github:home.org', prepend: true });
+  assert.deepEqual(templates[2], { key: 't', description: 'Tracking', type: 'table-line', olp: ['Tracking'], template: '| @# | %<%Y-%m-%d> | %<%H%M> ||', file: 'home.org' });
+});
+
+test('keywords that only this app once had are reported as unknown, not carried out', () => {
+  const { templates, notes } = captureTemplatesFromLisp(`(setq org-capture-templates '(("a" "A" entry (file "a.org") "* x" :omit-empty-entries t :prepend-heading t :table-header nil :pre-text "p" :post-text "q")))`);
+  assert.equal(templates.length, 1);
+  assert.deepEqual(Object.keys(templates[0]).sort(), ['description', 'file', 'key', 'olp', 'template', 'type']);
+  assert.deepEqual(notes.map((n) => n.replace(/^.*": /, '')), [':omit-empty-entries is not known and has no effect.', ':prepend-heading is not known and has no effect.', ':table-header is not known and has no effect.', ':pre-text is not known and has no effect.', ':post-text is not known and has no effect.']);
 });
 
 test('add-to-list puts a template first, and a group heading or a template that cannot be read is reported or skipped', () => {
@@ -49,13 +55,13 @@ test('an entry goes under its heading, or at the file’s top level when the tar
   assert.equal(serializeOrg(top), '* One\n* Two');
 });
 
-test('blank lines, the table row and the header are read from their keywords', () => {
+test('blank lines and the table row are read from their keywords', () => {
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates
       '(("t" "Row" table-line (file+headline "t.org" "Log") "| @# | %U |"
-         :empty-lines 1 :empty-lines-before 2 :empty-lines-after 0 :table-line-pos "I+1" :table-header nil :immediate-finish t)
+         :empty-lines 1 :empty-lines-before 2 :empty-lines-after 0 :table-line-pos "I+1" :immediate-finish t)
         ("b" "Bad" entry (file "b.org") "* %?" :empty-lines "x" :table-line-pos 3)))`);
-  assert.deepEqual(templates[0], { key: 't', description: 'Row', type: 'table-line', olp: ['Log'], template: '| @# | %U |', file: 't.org', emptyLines: 1, emptyLinesBefore: 2, emptyLinesAfter: 0, tableLinePos: 'I+1', tableHeader: false });
+  assert.deepEqual(templates[0], { key: 't', description: 'Row', type: 'table-line', olp: ['Log'], template: '| @# | %U |', file: 't.org', emptyLines: 1, emptyLinesBefore: 2, emptyLinesAfter: 0, tableLinePos: 'I+1' });
   assert.deepEqual(notes, ['Capture template "b": :empty-lines needs a whole number and is ignored.', 'Capture template "b": :table-line-pos needs a string and is ignored.']);
 });
 

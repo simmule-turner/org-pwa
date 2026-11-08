@@ -90,7 +90,7 @@
   },
   {
    "heading": "A capture template",
-   "prose": "Templates are read as Emacs reads them and appear beside the JSON ones. See =capture-templates.org=.",
+   "prose": "Templates are read as Emacs reads them and are what the Capture list shows. See =capture-templates.org=.",
    "init": "(setq org-capture-templates\n      '((\"t\" \"Todo\" entry (file+headline \"gtd.org\" \"Tasks\")\n         \"* TODO %?\\n  %i\")))",
    "show": [
     "org-capture-templates",
@@ -140,7 +140,7 @@
   },
   {
    "heading": "Capture templates",
-   "prose": "=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows beside the templates in Settings. A template with the same key as one in Settings replaces it. The same forms work in a file read with =(load \"github:init.el\")=.",
+   "prose": "=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows. The same forms work in a file read with =(load \"github:init.el\")=.",
    "init": "(setq org-capture-templates nil)\n(add-to-list 'org-capture-templates\n  '(\"w\" \"Web page or text\" plain (file+headline \"inbox.org\" \"Inbox\") \"* %a\"))\n(add-to-list 'org-capture-templates\n  '(\"j\" \"Journal\" entry (file+olp+datetree \"journal.org\") \"* %?\"))",
    "show": [
     "(mapcar (function car) org-capture-templates)",

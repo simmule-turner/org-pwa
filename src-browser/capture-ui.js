@@ -1,22 +1,20 @@
 // @ts-check
 // Extracted from app.js: capture ui.
-import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
+import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandTemplate, getCaptureFileScheme, resolveCaptureFileId, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { captureInto } from '../src/capture-run.js';
-import { parseOrg } from '../src/org-parser.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
 import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
 import { tableUserCall } from './extension-flow.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { openTimestampPickerPopup, showModalOverlay } from './dialogs.js';
-import { getOlpPrepend } from './doc-helpers.js';
 import { capturePanel, capturePanelBox } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
-import { activeDiskAdapter } from './external-sync.js';
-import { navigateToHeading } from './navigation.js';
+import { findAncestorPath } from '../src/archive-model.js';
+import { navigateToHeading, scrollNodeIntoView } from './navigation.js';
+import { switchToTab } from './tabs.js';
 import { captureLispNotes, getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
-import { agendaFilesCache } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { openDocsAtHeading, switchToView } from './views.js';
 import { platform } from './platform.js';
@@ -151,76 +149,13 @@ export async function renderCapturePanel() {
   capturePanelBox.appendChild(closeRow);
 }
 
-/** For a table-line template with preText/postText defined, determines
- *  whether a table already exists at its own resolved target -- and
- *  so whether preText/postText (and their own %^{...} prompts) will
- *  actually be used this capture, or discarded. Returns:
- *    true  -- a table already exists there; preText/postText won't be
- *             used, so their own prompts shouldn't be asked
- *    false -- no table there yet (or the OLP path itself doesn't
- *             exist yet either); preText/postText WILL be used
- *    null  -- couldn't be determined without a real network fetch (a
- *             different file that isn't already the open document, an
- *             already-loaded agenda file, or a local file) -- callers
- *             should treat this the same as false (ask every prompt,
- *             so nothing's silently skipped) rather than block the
- *             capture form on I/O just to decide its own shape
- *
- *  Only ever resolves the target from what's ALREADY resident in
- *  memory or a fast local-disk read -- never triggers a fetch of a
- *  remote file that isn't already cached. Uses resolveOlpTarget's own
- *  allowCreate: false, which leaves the document completely untouched
- *  on a missing path rather than creating anything speculatively --
- *  this is purely a peek, not a real capture, so nothing should be
- * @param {import('../src/types.js').CaptureTemplate} template
- *  left behind even if the person then cancels. */
-export async function peekTableAlreadyExists(template) {
-  const targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
-
-  let doc;
-  // a file open in another tab is that tab's buffer, which may hold a table captured into it and not saved yet
-  const openTab = S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === targetFileId && s.state.storageKind === S.state.storageKind);
-  if (targetFileId === S.state.documentId) {
-    doc = S.state.doc;
-  } else if (openTab) {
-    doc = openTab.state.doc;
-  } else if (S.state.storageKind === 'filesystem' || S.state.storageKind === 'input') {
-    try {
-      const existing = await activeDiskAdapter().read(targetFileId);
-      if (!existing) return null; // doesn't exist yet at all -- can't peek an OLP path in a document that isn't there; fall back to asking
-      doc = parseOrg(existing.content);
-    } catch {
-      return null;
-    }
-  } else {
-    const entry = Array.from(agendaFilesCache.values()).find((e) => e.documentId === targetFileId && !e.readOnly); // not a read-only local file that happens to share the name
-    doc = entry && entry.doc; // undefined if not cached, or cached as {error}/{loading} rather than {doc}
-  }
-  if (!doc) return null;
-
-  const target = resolveOlpTarget(doc, template.olp || [], { now: new Date(), prepend: getOlpPrepend(template), allowCreate: false, datetree: !!template.datetree, treeType: template.treeType });
-  if (!target) return false; // the heading path itself doesn't exist yet -- definitely no table under it either
-  const existingTable = [...target.body].reverse().find((n) => n.type === 'table');
-  return !!existingTable;
-}
-
 /** Opens the given template: straight to capturing it if it has no
  *  %^{Prompt} placeholders to fill in, otherwise shows the in-app
- *  prompt form first. For a table-line template with preText/postText,
- *  first peeks (see peekTableAlreadyExists) whether a table already
- *  exists at the target, so a form-only-used-once prompt isn't asked
- *  on every subsequent capture when that can be determined cheaply;
- *  the decision is captured once, in capturePromptSkipPrePost, and
- * @param {import('../src/types.js').CaptureTemplate} template
- *  reused unchanged through to the actual commit. */
+ *  prompt form first.
+ * @param {import('../src/types.js').CaptureTemplate} template */
 export async function openCapturePrompt(template) {
   await readClipboardIfUsed(template); // first, while the tap that chose the template still counts as a gesture
-  const hasPrePost = template.type === 'table-line' && (template.preText || template.postText);
-  const skipPrePost = hasPrePost ? (await peekTableAlreadyExists(template)) === true : false;
-  S.capturePromptSkipPrePost = skipPrePost;
-
-  const scanText = skipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
-  const prompts = scanPrompts(scanText, templateContext());
+  const prompts = scanPrompts(template.template, templateContext());
   if (prompts.length === 0) {
     runCaptureWithAnswers(template, []);
     return;
@@ -258,7 +193,7 @@ function usesClipboardToken(text) {
  *  leaves them empty and says so, so the capture still goes ahead. */
 async function readClipboardIfUsed(template) {
   S.captureClipboard = '';
-  if (!usesClipboardToken((template.preText || '') + template.template + (template.postText || ''))) return;
+  if (!usesClipboardToken(template.template)) return;
   try {
     S.captureClipboard = await platform.clipboard.readText();
   } catch {
@@ -272,8 +207,7 @@ async function readClipboardIfUsed(template) {
  *  message text used to fold in), Capture/Cancel at the bottom. */
 export function renderCapturePromptForm() {
   const template = /** @type {import('../src/types.js').CaptureTemplate} */ (S.capturePromptTemplate);
-  const scanText = S.capturePromptSkipPrePost ? template.template : (template.preText || '') + template.template + (template.postText || '');
-  const prompts = scanPrompts(scanText, templateContext());
+  const prompts = scanPrompts(template.template, templateContext());
   const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
 
   const heading = document.createElement('div');
@@ -305,12 +239,7 @@ export function renderCapturePromptForm() {
   function updatePreview() {
     const context = { ...templateContext(), now: previewNow, promptAnswers: S.capturePromptValues };
     try {
-      if (S.capturePromptSkipPrePost) {
-        preview.textContent = expandTemplate(template.template, context).text;
-      } else {
-        const { preText, text, postText } = expandCaptureText(template.preText, template.template, template.postText, context);
-        preview.textContent = template.type === 'table-line' ? [preText, text.replace(/\n$/, ''), postText].filter(Boolean).join('\n') : preText + text + postText;
-      }
+      preview.textContent = expandTemplate(template.template, context).text;
     } catch (err) {
       preview.textContent = /** @type {Error} */ (err).message;
     }
@@ -418,18 +347,6 @@ export async function runCaptureWithAnswers(template, answers) {
   }
 
   const now = new Date();
-  // capturePromptSkipPrePost is the SAME decision openCapturePrompt used
-  // to build the prompt list `answers` was collected against -- reused
-  // here unchanged (never re-derived) so promptAnswers indices stay
-  // correctly aligned with what was actually asked. When true, preText/
-  // postText are passed as empty strings to expandCaptureText below --
-  // NOT omitted from insertCapture entirely, since insertCapture itself
-  // always freshly re-checks whether a table already exists regardless
-  // of what the peek guessed, and correctly ignores empty pre/post text
-  // either way.
-  const preTextSrc = S.capturePromptSkipPrePost ? '' : template.preText || '';
-  const postTextSrc = S.capturePromptSkipPrePost ? '' : template.postText || '';
-
   const rawFile = String(template.file || '').trim();
   if (rawFile) {
     const { scheme } = getCaptureFileScheme(rawFile);
@@ -456,16 +373,18 @@ export async function runCaptureWithAnswers(template, answers) {
     // real org-capture's own behavior of not switching your current
     // buffer just because a template's target is elsewhere.
     setStatus(`Capturing to ${targetFileId}\u2026`);
+    /** @type {any} */ let captured = null;
     const { ok } = await writeToOtherFile(targetFileId, {
       label: 'capture',
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (doc) => {
-        const result = captureInto(doc, template, { now, answers, context: templateContext(), preText: preTextSrc, postText: postTextSrc, place: (d) => placeOptions(template, d) });
+        const result = captureInto(doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d) });
         if (!result.ok) {
           setStatus(result.message);
           return null;
         }
+        captured = result;
         return true;
       },
     });
@@ -475,27 +394,56 @@ export async function runCaptureWithAnswers(template, answers) {
     }
 
     setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.`);
+    if (template.jumpToCaptured && captured) {
+      // :jump-to-captured t visits the other file's buffer, as Emacs does
+      const tab = S.documentSessions.find((/** @type {any} */ x) => x.state && x.state.documentId === targetFileId);
+      if (tab) {
+        switchToTab(tab.tabId);
+        showCaptured(template, captured);
+      }
+    }
     afterSuccessfulCapture();
     emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: false });
     return;
   }
 
-  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), preText: preTextSrc, postText: postTextSrc, place: (d) => placeOptions(template, d) });
+  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d) });
   if (!result.ok) {
     setStatus(result.message);
     renderCapturePanel();
     return;
   }
-  const { target, placed } = result;
+  const { target } = result;
   commitAndRender(`Captured: ${template.description}`);
 
-  switchToView('org');
   const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
-  const shown = hasTarget && 'level' in target ? target : placed && 'level' in placed ? placed : null;
-  if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
+  // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry
+  if (template.jumpToCaptured) showCaptured(template, result);
   setStatus('Captured.');
   afterSuccessfulCapture();
   emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: hasTarget && 'level' in target ? target : null });
+}
+
+/** Goes to what a capture just filed (:jump-to-captured t): the headings above it are opened and it is scrolled to, a table row included.
+ * @param {import('../src/types.js').CaptureTemplate} template
+ * @param {{ target: any, placed: any, reveal: any }} result */
+function showCaptured(template, result) {
+  const { target, placed, reveal } = result;
+  switchToView('org');
+  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
+  const shown = hasTarget && 'level' in target ? target : placed && 'level' in placed ? placed : null;
+  if (reveal) {
+    if (reveal.heading) {
+      for (const ancestor of findAncestorPath(S.state.doc, reveal.heading) || []) ancestor.collapsed = false;
+      reveal.heading.collapsed = false;
+    }
+    const table = /** @type {import('../src/types.js').Table} */ (/** @type {unknown} */ (reveal.node));
+    const line = reveal.row === null ? -1 : table.rows.slice(0, reveal.row).filter((r) => r.type === 'row').length;
+    const within = reveal.row === null ? null : (/** @type {HTMLElement} */ rowEl) => /** @type {HTMLElement | undefined} */ (rowEl.querySelectorAll('tr')[line]) ?? null;
+    const heading = /** @type {import('../src/types.js').Heading | null} */ (shown ?? reveal.heading);
+    if (heading) navigateToHeading(heading, { revealOwnBody: true, targetNode: reveal.node, within });
+    else scrollNodeIntoView(reveal.node, within);
+  } else if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
 }
 
 /** What a template says about how its text is filed: the blank lines around it, the table row, and the sums of a table it joins.
@@ -506,7 +454,6 @@ function placeOptions(template, doc) {
     emptyLinesBefore: template.emptyLinesBefore,
     emptyLinesAfter: template.emptyLinesAfter,
     tableLinePos: template.tableLinePos,
-    tableHeader: template.tableHeader,
     recalculate: (/** @type {import('../src/types.js').Table} */ table) => {
       try {
         return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(doc), tables: parseNamedTables(doc), userCall: tableUserCall });

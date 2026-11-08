@@ -1,6 +1,6 @@
 // @ts-check
 // Extracted from app.js: menus.
-import { resolveOlpTarget } from '../src/capture-template.js';
+import { formatTime, resolveOlpTarget } from '../src/capture-template.js';
 import { parseExtraMenu } from '../src/extra-menu.js';
 import { getExtraMenu, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
@@ -73,13 +73,22 @@ export function renderExtraMenuContent() {
   }
 }
 
+/** The heading names of a menu entry, with a name written "%<FORMAT>" replaced by the current time in that format.
+ * @param {string[]} headers */
+function expandMenuHeaders(headers) {
+  const now = new Date();
+  return headers.map((h) => {
+    const wrapped = /^%<(.*)>$/.exec(h);
+    return wrapped ? formatTime(now, wrapped[1]) : h;
+  });
+}
+
 /** Executes a selected extras-menu entry, dispatched by type:
  *  - capture: runs the matching capture template by key, exactly as
  *    if it had been picked from the regular Capture menu itself.
- *  - olp: resolves (and creates, if needed -- the same
- *    resolveOlpTarget capture templates themselves already use,
- *    including its own %<FORMAT> expansion) the target heading, then
- *    navigates to it.
+ *  - olp: finds the target heading (a heading written as "%<FORMAT>"
+ *    stands for the current time in that format, such as the month),
+ *    then navigates to it.
  *  - function: runs the command palette command with that real
  *    Emacs/Org function name (findPaletteCommandByOrgName), or says the
  *    name is not a recognized function.
@@ -107,7 +116,7 @@ export async function runExtraMenuEntry(entry) {
 
   if (entry.type === 'olp') {
     if (!S.state.doc) return;
-    const target = resolveOlpTarget(S.state.doc, entry.headers, { now: new Date(), allowCreate: false });
+    const target = resolveOlpTarget(S.state.doc, expandMenuHeaders(entry.headers), { allowCreate: false });
     if (!target) {
       setStatus(`"${entry.headers.join(' / ')}" doesn't exist yet \u2014 nothing was created.`);
       render();

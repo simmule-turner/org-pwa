@@ -52,12 +52,12 @@ test('initial values are what the program starts from', () => {
   assert.deepEqual(vars.get('org-modules').items.map((x) => x.v), ['org-habit', 'org-id']);
 });
 
-test('org-agenda-files set from Lisp becomes the semicolon list the box holds', () => {
+test('org-agenda-files set from Lisp becomes the list the box holds, as Emacs prints it', () => {
   const { values, errors } = settingsFromInit(`(setq org-agenda-files '("github:home.org"
                          "github:journal.org"
                          "github:calendar.org"))`, {});
   assert.deepEqual(errors, []);
-  assert.equal(values['org-agenda-files'], 'github:home.org;github:journal.org;github:calendar.org');
+  assert.equal(values['org-agenda-files'], '("github:home.org" "github:journal.org" "github:calendar.org")');
 });
 
 test('settings of every kind take their value from Lisp', () => {
@@ -96,6 +96,6 @@ test('a value that does not fit its setting is reported', () => {
   assert.match(errors[0], /org-deadline-warning-days/);
 });
 
-test('boxText for a list setting that is not made of strings', () => {
-  assert.equal(boxText(field('org-agenda-files'), { k: 'list', items: [{ k: 'num', v: 1 }] }), null);
+test('nil for a file list is an empty box', () => {
+  assert.equal(boxText(field('org-agenda-files'), { k: 'sym', v: 'nil' }), '');
 });

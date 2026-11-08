@@ -30,6 +30,7 @@ import { readPriorityRange, prioritiesKeyword } from './priorities.js';
 import { parseLispTagList, parsePropertyInheritance, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 import { Reader } from './elisp-read.js';
+import { readLisp, listItems, stringValue } from './lisp-read.js';
 
 /** Real Emacs's OTHER, older/simpler local-variables mechanism: a
  *  "-*- var: val; var2: val2; -*-" cookie anywhere on the file's own
@@ -444,18 +445,15 @@ export function getAgendaFilesVar(vars) {
 /** org-contacts-files: real org-contacts.el's own exact variable name
  *  -- the files org-contacts-export-as-vcard (and any other contacts-
  *  aware feature) scans across for contact headings, beyond whichever
- *  file is currently open. Same "scheme:path;scheme:path" syntax as
- *  org-agenda-files above -- parsed with that same module's own
- *  parseAgendaFilesVar directly rather than a second, near-identical
- *  parser, since the shape is genuinely identical even though the two
- *  variables serve different purposes (contacts vs agenda scanning)
+ *  file is currently open. A list of file names, like org-agenda-files
+ *  (parseAgendaFilesVar reads both)
  * @param {LocalVars} vars
  *  and are deliberately configured independently. */
 export function getContactsFilesVar(vars) {
   return (vars || {})['org-contacts-files'] || '';
 }
 
-/** org-agenda-text-search-extra-files: more files for TEXT SEARCH only, in the same scheme:path syntax as org-agenda-files (parse it
+/** org-agenda-text-search-extra-files: more files for TEXT SEARCH only, as a list of file names like org-agenda-files (parse it
  *  with parseAgendaFilesVar). As in Emacs, they are searched in addition to the agenda files and are not part of the agenda, TODO
  * @param {LocalVars} vars
  *  or tag views, which is what makes them useful for notes that should be findable but not scheduled. */
@@ -463,15 +461,6 @@ export function getSearchExtraFilesVar(vars) {
   return (vars || {})['org-agenda-text-search-extra-files'] || '';
 }
 
-/** Parses org-agenda-files' own raw string value (semicolon-separated
- *  "scheme:path" entries) into a validated array of just the entries
- *  that actually look like a real, recognized backend reference --
- *  "github:path", "webdav:path" or "local:name.org" (a file already
- *  opened on this device with File -> Open -> Local file), non-empty
- *  path required. An entry
- *  with no recognized scheme, or an empty path, is silently dropped
- *  rather than causing the whole list to fail -- one malformed entry
- *  shouldn't take down every other, valid one alongside it. */
 /** Agenda files are identified by their path alone (a file from GitHub, WebDAV or this device is "notes.org"
  *  whichever it came from), so two entries with the same path would be the same file to everything that looks
  *  one up, and one would silently vanish. This finds them: returns a Map from each LATER entry that repeats an
@@ -491,19 +480,34 @@ export function findDuplicateAgendaFiles(keys) {
   return duplicates;
 }
 
-/** @param {string} text */
+/** Whether `entry` names a file on a backend the app reads: "github:path", "webdav:path" or "local:name.org" (a file opened on this
+ *  device with File → Open → Local file), with a path.
+ * @param {string} entry */
+export function isFileKey(entry) {
+  const colonIndex = entry.indexOf(':');
+  if (colonIndex === -1) return false;
+  const scheme = entry.slice(0, colonIndex);
+  return (scheme === 'github' || scheme === 'webdav' || scheme === 'local') && entry.length > colonIndex + 1;
+}
+
+/** The files of org-agenda-files, org-contacts-files or org-agenda-text-search-extra-files, written as in Emacs, a list of file names:
+ *  `("github:notes.org" "webdav:work/todo.org")`, with or without the leading quote. A name with no recognized scheme is dropped, so
+ *  one bad entry doesn't take the others down. @param {string | null | undefined} text */
 export function parseAgendaFilesVar(text) {
-  const entries = (text || '')
-    .split(';')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-  return entries.filter((entry) => {
-    const colonIndex = entry.indexOf(':');
-    if (colonIndex === -1) return false;
-    const scheme = entry.slice(0, colonIndex);
-    const path = entry.slice(colonIndex + 1);
-    return (scheme === 'github' || scheme === 'webdav' || scheme === 'local') && path.length > 0;
-  });
+  const form = readLisp(String(text || '').trim().replace(/^'/, ''))[0];
+  const items = form ? listItems(form) : null;
+  return items ? /** @type {string[]} */ (items.map(stringValue).filter((entry) => entry !== null && isFileKey(entry))) : [];
+}
+
+/** Why a file-list value reads as nothing, or null when it is empty or a list of names.
+ *  @param {string | null | undefined} text */
+export function fileListProblem(text) {
+  const t = String(text || '').trim().replace(/^'/, '');
+  if (!t || t === 'nil' || t === '()') return null;
+  const items = listItems(readLisp(t)[0]);
+  if (!items) return 'must be a list of file names, such as ("github:notes.org" "webdav:work.org")';
+  const bad = items.filter((f) => stringValue(f) === null || !isFileKey(/** @type {string} */ (stringValue(f))));
+  return bad.length ? 'has an entry that is not a file name starting with github:, webdav: or local:' : null;
 }
 
 /** org-xx-extra-menu: this app's own extension (not a real org-mode
@@ -910,7 +914,7 @@ function parseLispString(raw, fallback) {
  * @param {LocalVars} vars */
 export function getDiaryFile(vars) {
   const v = parseLispString((vars || {})['diary-file'], '');
-  return parseAgendaFilesVar(v)[0] || '';
+  return isFileKey(v) ? v : '';
 }
 
 /** diary-abbreviated-year-flag: a two-digit year in a diary date means the year with those last digits. Default t.

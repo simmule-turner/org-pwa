@@ -12,13 +12,21 @@ A guided example: add a capture template that files a new contact, fill its form
 * New
 
 * Template 1: contact with properties
-Asks for a name, a tag, an email, a mobile number and a birthday. =:omit-empty-entries t= leaves out any property you left blank.
+Asks for a name, a tag, an email, a mobile number and a birthday. =:prepare-finalize= names a function that runs on the text once the form is filled in; this one leaves out any property you left blank, and an empty tag.
 
 #+begin_src emacs-lisp
+(defun my-drop-empty-properties ()
+  "Drop the properties left blank, and an empty trailing tag."
+  (goto-char (point-min))
+  (when (re-search-forward "[ \t]+:+[ \t]*$" (line-end-position) t)
+    (replace-match ""))
+  (goto-char (point-min))
+  (flush-lines "^:[A-Za-z_-]+:[ \t]+$"))
+
 (add-to-list 'org-capture-templates
  '("p" "Contact (properties)" entry (file+olp "contacts.org" "New")
    "* %^{Name} :%^{Tag}:\n:PROPERTIES:\n:EMAIL: %^{Email}\n:CELL: %^{Mobile}\n:BIRTHDAY: %^{Birthday (YYYY-MM-DD)}\n:END:\n%?"
-   :omit-empty-entries t))
+   :prepare-finalize my-drop-empty-properties))
 #+end_src
 
 Answering =Ada Lovelace=, =friends=, =ada@example.org=, =+1 555 0100= and =1815-12-10= files:
@@ -47,16 +55,24 @@ END:VCARD
 #+end_example
 
 ** In Emacs
-Without =:omit-empty-entries t=, which is the app's own, the template files the same heading and drawer in Emacs (checked in Emacs 29.3), but keeps a property whose answer is blank (=:CELL:= with nothing after it). Emacs has no vCard export without the =org-vcard= package.
+The template and the function are standard Emacs, and Emacs 29.3 files the same heading and drawer. Emacs has no vCard export without the =org-vcard= package.
 
 * Template 2: a vCard as the body
 This one writes the vCard text itself, so the heading is a bare name and the card is in its body. =%\1= and =%\2= reuse the first two answers.
 
 #+begin_src emacs-lisp
+(defun my-vcard-drop-empty ()
+  "Drop the empty fields of a captured vCard, and an empty trailing tag."
+  (goto-char (point-min))
+  (when (re-search-forward "[ \t]+:+[ \t]*$" (line-end-position) t)
+    (replace-match ""))
+  (goto-char (point-min))
+  (flush-lines "^[A-Za-z][A-Za-z0-9_-]*\\(;[^:\n]*\\)?:[; \t]*$"))
+
 (add-to-list 'org-capture-templates
  '("v" "vCard Contact" entry (file+olp "contacts.org" "New")
    "* %^{First Name} %^{Last Name} :%^{Category/Tag}:\nBEGIN:VCARD\nVERSION:3.0\nFN:%\\1 %\\2\nN:%\\2;%\\1;;;\nEMAIL:%^{Email}\nTEL;TYPE=voice:%^{Phone Number}\nTEL;TYPE=cell:%^{Mobile Number}\nADR;TYPE=home:;;%^{Street};%^{City};%^{State};%^{Postal Code};%^{Country}\nBDAY:%^{Birthday (YYYY-MM-DD)}\nNOTE:%^{Note}\nORG:%^{Company/Organization}\nTITLE:%^{Job Title}\nEND:VCARD\n\n%?"
-   :omit-empty-entries t))
+   :prepare-finalize my-vcard-drop-empty))
 #+end_src
 
 Answering Grace, Hopper, navy, =grace@example.org=, a mobile number, a birthday, a note, an organization and a title (blank for the rest) files:
@@ -76,4 +92,4 @@ TITLE:Rear Admiral
 END:VCARD
 #+end_example
 
-Lines for questions left blank are dropped. *Import* (More → Import) reads this shape back as a contact, and the vCard text can be copied into a contacts app as it stands. =:omit-empty-entries= is the app's own; =examples/capture-functions.org= has the same contact for Emacs, with a function that drops the blank lines.
+Lines for questions left blank are dropped. *Import* (More → Import) reads this shape back as a contact, and the vCard text can be copied into a contacts app as it stands. The function drops the lines of the vCard that were left blank, as in =capture-functions.org=.

@@ -47,6 +47,20 @@ const WEATHER_CODE_MAP = {
   99: { text: 'Thunderstorm with heavy hail', icon: '\u26c8\ufe0f' },
 };
 
+/** The weather group of a WMO weather code, as org-weather's %main gives it (OpenWeatherMap's own group names).
+ * @param {string | number} code */
+function weatherGroup(code) {
+  const n = Number(code);
+  if (n <= 1) return 'Clear';
+  if (n <= 3) return 'Clouds';
+  if (n === 45 || n === 48) return 'Fog';
+  if (n >= 51 && n <= 57) return 'Drizzle';
+  if ((n >= 61 && n <= 67) || (n >= 80 && n <= 82)) return 'Rain';
+  if ((n >= 71 && n <= 77) || n === 85 || n === 86) return 'Snow';
+  if (n >= 95) return 'Thunderstorm';
+  return 'Unknown';
+}
+
 /** Looks up a WMO weather code -- returns a clear, distinct fallback
  *  for a code outside the table given (rather than silently showing
  *  nothing, or guessing), so an unrecognized code is still visibly
@@ -149,8 +163,10 @@ function formatWeatherAge(dataTime, now) {
 function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new Date()) {
   const { text: desc, icon } = lookupWeatherCode(data.weatherCode);
   const age = formatWeatherAge(data.currentTime, now);
+  const timeOfDay = (/** @type {number | undefined} */ f) => (typeof f === 'number' ? String(convertTemperature(f, temperatureUnit)) : '');
   const values = {
     '%desc': desc,
+    '%main': weatherGroup(data.weatherCode),
     '%icon': icon,
     '%h': String(data.humidity),
     '%hu': data.humidityUnit,
@@ -159,6 +175,11 @@ function formatWeatherLine(template, data, temperatureUnit, speedUnit, now = new
     '%tcur': String(convertTemperature(data.temperatureCurrent, temperatureUnit)),
     '%tmin': String(convertTemperature(data.temperatureMin, temperatureUnit)),
     '%tmax': String(convertTemperature(data.temperatureMax, temperatureUnit)),
+    // the temperature at 06:00, 12:00, 18:00 and 00:00 today; blank in a snapshot taken before these were fetched
+    '%tmorn': timeOfDay(data.temperatureMorning),
+    '%tday': timeOfDay(data.temperatureDay),
+    '%teve': timeOfDay(data.temperatureEvening),
+    '%tnight': timeOfDay(data.temperatureNight),
     '%tamin': String(convertTemperature(data.apparentTemperatureMin, temperatureUnit)),
     '%tamax': String(convertTemperature(data.apparentTemperatureMax, temperatureUnit)),
     '%tu': temperatureUnit,
@@ -200,6 +221,7 @@ function buildWeatherApiUrl(latitude, longitude) {
     latitude: String(latitude),
     longitude: String(longitude),
     daily: 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min',
+    hourly: 'temperature_2m',
     current: 'temperature_2m,weather_code,relative_humidity_2m,surface_pressure,wind_speed_10m',
     timezone: 'auto',
     forecast_days: '1',
@@ -213,6 +235,7 @@ function buildWeatherApiUrl(latitude, longitude) {
 export {
   WEATHER_CODE_MAP,
   lookupWeatherCode,
+  weatherGroup,
   convertTemperature,
   convertSpeed,
   formatWeatherLine,

@@ -27,7 +27,6 @@ export const placeFor = (template) => (/** @type {import('../src/types.js').Doc}
   emptyLinesBefore: template.emptyLinesBefore,
   emptyLinesAfter: template.emptyLinesAfter,
   tableLinePos: template.tableLinePos,
-  tableHeader: template.tableHeader,
   recalculate: (/** @type {import('../src/types.js').Table} */ table) => {
     try {
       return recalculateTable(table, { hourZeroPad: false, constants: parseTableConstants(doc), tables: parseNamedTables(doc), userCall: () => null });
@@ -72,7 +71,7 @@ for (const sec of sections) {
         const template = /** @type {import('../src/types.js').CaptureTemplate} */ (templates.find((t) => t.key === key));
         assert.ok(template, key);
         const asked = scanPrompts(template.template, { shared }).map((p) => (p.prompt === 'Text' ? typed[key] : answers[p.prompt] ?? answers[p.timestamp ? 'date' : '']) ?? '');
-        const r = captureInto(doc, template, { now, answers: asked, context: { shared }, preText: '', postText: '', place: placeFor(template) });
+        const r = captureInto(doc, template, { now, answers: asked, context: { shared }, place: placeFor(template) });
         assert.deepEqual(r.ok ? 'ok' : r.message, 'ok');
       }
     }

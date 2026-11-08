@@ -21,6 +21,7 @@
  * default set org-agenda-filter-by-effort itself uses.
  */
 
+import { readLisp, listItems, stringValue } from './lisp-read.js';
 import { getProperty, findAncestorPath } from './archive-model.js';
 import { parseOrgDuration } from './org-duration.js';
 
@@ -72,16 +73,16 @@ function readLispWords(text) {
 }
 
 /**
- * `org-global-properties` text -> { lowercased name: value string }.
+ * `org-global-properties`, an alist as in Emacs, `(("Effort_ALL" . "0:15 0:30 1:00"))` (a leading quote is allowed) -> { lowercased name: value string }.
  * @param {string} text
  */
 function parseGlobalProperties(text) {
   const result = {};
-  for (const entry of String(text == null ? '' : text).split(';')) {
-    const colon = entry.indexOf(':');
-    if (colon === -1) continue;
-    const name = entry.slice(0, colon).trim().toLowerCase();
-    if (name && !(name in result)) /** @type {any} */ (result)[name] = entry.slice(colon + 1).trim();
+  const form = readLisp(String(text == null ? '' : text).trim().replace(/^'/, ''))[0];
+  for (const entry of (form && listItems(form)) || []) {
+    const name = entry.k === 'list' && entry.items.length === 1 ? stringValue(entry.items[0]) : null;
+    const value = entry.k === 'list' ? stringValue(entry.tail) : null;
+    if (name && value !== null && !(name.toLowerCase() in result)) /** @type {any} */ (result)[name.toLowerCase()] = value.trim();
   }
   return result;
 }

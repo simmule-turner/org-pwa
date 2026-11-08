@@ -7,136 +7,80 @@
  * @typedef {{ documentId: string, heading: Heading, outlinePath: string[] }} RefileTarget
  */
 /**
- * org-refile-targets, translated into this app's own plain-text
- * Global/Local Variables format (a single line can't hold real org's
- * actual Lisp list-of-cons-cells syntax). One line, semicolon-separated
- * entries, each `<file-spec> <criterion> [<criterion> ...]`:
+ * org-refile-targets, written the way Emacs takes it: a list of `(FILES :KEY . VALUE)` entries, in the Lisp init, the Settings box or a
+ * `# org-refile-targets:` line. A leading quote is allowed.
  *
- *   org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT
+ *   ((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))
  *
- * File spec is one of:
- *   - `current`      -- this file only (org's own `nil`)
- *   - `agenda-files` -- every file in this app's own configured Agenda
- *                       Files (org's own `org-agenda-files` symbol)
- *   - anything else  -- a specific file, resolved with EXACTLY the same
- *                       sibling-file convention capture-template.js's
- *                       own resolveCaptureFileId already established
- *                       (a name with no "/" resolves relative to the
- *                       current file; a name containing "/" is used
- *                       as-is) -- not a second, parallel convention.
+ * FILES is `nil` (this file), the variable `org-agenda-files`, a file name, or a list of file names. A bare name is a sibling of
+ * the current file (the convention capture-template.js's resolveCaptureFileId already established), optionally with a `github:`,
+ * `webdav:` or `local:` prefix. The key is `:level`, `:maxlevel`, `:tag`, `:todo` or `:regexp`; one per entry, as in Emacs:
  *
- * Criteria (real org's own :level / :maxlevel / :tag / :todo /
- * :regexp target specs). An entry may list several; a heading must
- * satisfy ALL of them -- one deliberate extension: real org takes one
- * criterion per entry and needs a Lisp verify function to combine them.
+ *   :level N     exactly level N
+ *   :maxlevel N  level N or shallower
+ *   :tag "NAME"  NAME is one of the headline's OWN tags (no inheritance; case-sensitive)
+ *   :todo "KW"   the headline's TODO keyword is exactly KW (a DONE keyword works too)
+ *   :regexp "RE" an Emacs regexp matched against the headline line as written in the file, case-sensitively
  *
- *   level=N      exactly level N
- *   maxlevel=N   level N or shallower
- *   tag=NAME     NAME is one of the headline's OWN tags (no
- *                inheritance, as in org; case-sensitive)
- *   todo=KEYWORD the headline's TODO keyword is exactly KEYWORD
- *                (case-sensitive; a DONE keyword works too)
- *   regexp=PATTERN an Emacs regexp matched against the headline line as
- *                written in the file (`** TODO [#A] Title :tag:`),
- *                case-sensitively. Takes the REST of the entry, spaces
- *                included, so it must be the last criterion. A literal
- *                ";" inside it is written "\;".
- *
- * At least one criterion is required on every entry. An entry that
- * can't be understood is skipped AND reported (see
- * parseRefileTargetsWithErrors), never guessed at.
- *
- * Default when org-refile-targets is entirely unset (matches real
- * org's own actual, documented nil-default exactly): current file
- * only, level 1 headings only.
+ * An entry that can't be understood (a function for FILES, an unknown key) is skipped AND reported (see
+ * parseRefileTargetsWithErrors), never guessed at. Default when the variable is unset, as in Emacs: the current file only, level 1
+ * headings only.
  */
 
 import { resolveCaptureFileId } from './capture-template.js';
 import { emacsRegexToJs, EmacsRegexError } from './emacs-regex.js';
 import { serializeHeadingLine } from './org-parser.js';
+import { readLisp, listItems, stringValue, symbolName, isNil } from './lisp-read.js';
 
-const CRITERION_KEYS = ['level', 'maxlevel', 'tag', 'todo', 'regexp'];
-
-/** Splits on ";" separators, treating a backslash as escaping the next
- *  character (so "\;" stays inside its entry, and "\\;" is an escaped
- * @param {string} text
- *  backslash followed by a real separator). Escapes are kept as written. */
-function splitEntries(text) {
-  const entries = [];
-  let current = '';
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '\\' && i + 1 < text.length) {
-      current += ch + text[i + 1];
-      i++;
-    } else if (ch === ';') {
-      entries.push(current);
-      current = '';
-    } else {
-      current += ch;
-    }
-  }
-  entries.push(current);
-  return entries;
+/** @param {import('./lisp-read.js').Lisp} f  Emacs's `prin1` of the value
+ * @returns {string} */
+function printed(f) {
+  if (f.k === 'str') return JSON.stringify(f.v);
+  if (f.k === 'num') return String(f.v);
+  if (f.k === 'sym') return f.v;
+  return '(' + f.items.map(printed).join(' ') + (f.tail ? ' . ' + printed(f.tail) : '') + ')';
 }
 
 /**
- * Parses one entry; returns { entry } or { error }.
- * @param {string} entryText
+ * Reads one `(FILES :KEY . VALUE)` entry; returns { entries } (one per file) or { error }.
+ * @param {import('./lisp-read.js').Lisp} item
+ * @returns {{ entries: RefileEntry[] } | { error: string }}
  */
-function parseOneEntry(entryText) {
-  const firstSpace = entryText.search(/\s/);
-  const fileSpec = firstSpace === -1 ? entryText : entryText.slice(0, firstSpace);
-  if (fileSpec.includes('=')) {
-    return { error: `starts with "${fileSpec}" -- expected a file first (current, agenda-files, or a filename), then criteria` };
-  }
-  let rest = firstSpace === -1 ? '' : entryText.slice(firstSpace).trim();
-  if (!rest) {
-    return { error: 'needs at least one criterion (level=, maxlevel=, tag=, todo=, or regexp=)' };
-  }
-
-  /** @type {RefileCriterion[]} */ const criteria = [];
-  while (rest) {
-    const eq = rest.indexOf('=');
-    const space = rest.search(/\s/);
-    if (eq === -1 || (space !== -1 && space < eq)) {
-      const token = space === -1 ? rest : rest.slice(0, space);
-      return { error: `"${token}" isn't a criterion (expected key=value, e.g. level=2 or tag=work)` };
-    }
-    const key = rest.slice(0, eq);
-    if (!CRITERION_KEYS.includes(key)) {
-      return { error: `unknown criterion "${key}" (expected level, maxlevel, tag, todo, or regexp)` };
-    }
-    let value;
-    if (key === 'regexp') {
-      value = rest.slice(eq + 1); // the rest of the entry, spaces and all
-      rest = '';
-    } else {
-      const afterEq = rest.slice(eq + 1);
-      const valueEnd = afterEq.search(/\s/);
-      value = valueEnd === -1 ? afterEq : afterEq.slice(0, valueEnd);
-      rest = valueEnd === -1 ? '' : afterEq.slice(valueEnd).trim();
-    }
-    if (value === '') return { error: `${key}= needs a value` };
-
-    if (key === 'level' || key === 'maxlevel') {
-      if (!/^\d+$/.test(value)) return { error: `${key}= needs a whole number, not "${value}"` };
-      if (key === 'maxlevel' && Number(value) < 1) return { error: `maxlevel=${value} isn't valid: Emacs builds an empty heading pattern from it (Invalid content of \\{\\})` };
-      criteria.push({ kind: /** @type {'level' | 'maxlevel'} */ (key), n: Number(value) });
-    } else if (key === 'tag') {
-      criteria.push({ kind: 'tag', name: value });
-    } else if (key === 'todo') {
-      criteria.push({ kind: 'todo', keyword: value });
-    } else {
+function readOneEntry(item) {
+  if (item.k !== 'list' || item.items.length !== 2 || !item.tail) return { error: 'is not of the form (FILES :KEY . VALUE), such as (nil :maxlevel . 3)' };
+  const [files, keyForm] = item.items;
+  const key = symbolName(keyForm);
+  if (!key || !/^:(level|maxlevel|tag|todo|regexp)$/.test(key)) return { error: `the key ${printed(keyForm)} is not known (use :level, :maxlevel, :tag, :todo or :regexp)` };
+  const value = item.tail;
+  /** @type {RefileCriterion} */ let criterion;
+  if (key === ':level' || key === ':maxlevel') {
+    if (value.k !== 'num' || !Number.isInteger(value.v) || value.v < 0) return { error: `${key} needs a whole number, not ${printed(value)}` };
+    if (key === ':maxlevel' && value.v < 1) return { error: `:maxlevel ${value.v} isn't valid: Emacs builds an empty heading pattern from it (Invalid content of \\{\\})` };
+    criterion = { kind: key === ':level' ? 'level' : 'maxlevel', n: value.v };
+  } else {
+    const text = stringValue(value);
+    if (text === null || text === '') return { error: `${key} needs a string, not ${printed(value)}` };
+    if (key === ':tag') criterion = { kind: 'tag', name: text };
+    else if (key === ':todo') criterion = { kind: 'todo', keyword: text };
+    else {
       try {
-        criteria.push({ kind: 'regexp', source: value, regex: emacsRegexToJs(value) });
+        criterion = { kind: 'regexp', source: text, regex: emacsRegexToJs(text) };
       } catch (err) {
         if (!(err instanceof EmacsRegexError)) throw err;
-        return { error: `regexp "${value}" isn't valid: ${err.message}` };
+        return { error: `regexp "${text}" isn't valid: ${err.message}` };
       }
     }
   }
-  return { entry: { fileSpec, criteria } };
+  /** @type {string[]} */ let names;
+  const fileList = listItems(files);
+  if (isNil(files)) names = ['current'];
+  else if (files.k === 'sym') {
+    if (files.v !== 'org-agenda-files') return { error: `the variable ${files.v} is not known (use org-agenda-files, nil, a file name or a list of file names)` };
+    names = ['agenda-files'];
+  } else if (files.k === 'str') names = [files.v];
+  else if (fileList && fileList.every((f) => f.k === 'str')) names = fileList.map((f) => /** @type {string} */ (stringValue(f)));
+  else return { error: `the files ${printed(files)} are not nil, org-agenda-files, a file name or a list of file names` };
+  return { entries: names.map((fileSpec) => ({ fileSpec, criteria: [criterion] })) };
 }
 
 /** Parses org-refile-targets text into `{ entries, errors }`. `errors`
@@ -144,17 +88,21 @@ function parseOneEntry(entryText) {
  * @param {string} text
  *  it rather than have a target quietly disappear. */
 function parseRefileTargetsWithErrors(text) {
-  if (!text || !text.trim()) {
-    return { entries: /** @type {RefileEntry[]} */ ([{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]), errors: /** @type {string[]} */ ([]) };
-  }
   /** @type {RefileEntry[]} */ const entries = [];
-  const errors = [];
-  for (const rawEntry of splitEntries(text)) {
-    const entryText = rawEntry.trim();
-    if (!entryText) continue;
-    const result = parseOneEntry(entryText);
-    if (result.entry) entries.push(result.entry);
-    else errors.push({ entry: entryText, message: result.error });
+  /** @type {{ entry: string, message: string }[]} */ const errors = [];
+  const fallback = () => ({ entries: /** @type {RefileEntry[]} */ ([{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]), errors });
+  if (!text || !text.trim()) return fallback();
+  const form = readLisp(text.trim().replace(/^'/, ''))[0];
+  if (!form || isNil(form)) return fallback();
+  const list = listItems(form);
+  if (!list) {
+    errors.push({ entry: text.trim(), message: 'org-refile-targets is a list of (FILES :KEY . VALUE) entries, such as ((nil :maxlevel . 3))' });
+    return { entries, errors };
+  }
+  for (const item of list) {
+    const result = readOneEntry(item);
+    if ('entries' in result) entries.push(...result.entries);
+    else errors.push({ entry: printed(item), message: result.error });
   }
   return { entries, errors };
 }

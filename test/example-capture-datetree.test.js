@@ -33,7 +33,7 @@ for (const sec of sections) {
     const t = templates[0];
     const doc = parseOrg(unescape(block(sec, 'Before, journal.org', 'org')).replace(/$/, '\n').replace(/^\n$/, ''));
     const target = resolveOlpTarget(doc, t.olp, { now: new Date(+date[1], +date[2] - 1, +date[3], 12), datetree: !!t.datetree, treeType: t.treeType });
-    fileCapture(doc, target, t.type, t.template, !!t.prepend, false, '', '', {});
+    fileCapture(doc, target, t.type, t.template, !!t.prepend, {});
     assert.equal(serializeOrg(doc), unescape(block(sec, 'After, journal.org', 'org')) + '\n');
   });
 }

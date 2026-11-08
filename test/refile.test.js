@@ -12,39 +12,31 @@ test('an unset (empty) value defaults to current file, level 1 -- matching real 
   assert.deepEqual(parseRefileTargets('   '), [{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]);
 });
 
-test('parses a single explicit entry', () => {
-  assert.deepEqual(parseRefileTargets('current maxlevel=3'), [{ fileSpec: 'current', criteria: [{ kind: 'maxlevel', n: 3 }] }]);
+test('parses a single explicit entry, with or without the leading quote', () => {
+  assert.deepEqual(parseRefileTargets('((nil :maxlevel . 3))'), [{ fileSpec: 'current', criteria: [{ kind: 'maxlevel', n: 3 }] }]);
+  assert.deepEqual(parseRefileTargets("'((nil :maxlevel . 3))"), [{ fileSpec: 'current', criteria: [{ kind: 'maxlevel', n: 3 }] }]);
 });
 
-test('parses multiple semicolon-separated entries', () => {
-  const result = parseRefileTargets('current maxlevel=3; notes.org maxlevel=2; agenda-files level=1');
+test('parses several entries: nil, org-agenda-files, a file name, a list of file names', () => {
+  const result = parseRefileTargets('((nil :maxlevel . 3) ("notes.org" :maxlevel . 2) (org-agenda-files :level . 1) (("a.org" "b.org") :tag . "x"))');
   assert.deepEqual(result, [
     { fileSpec: 'current', criteria: [{ kind: 'maxlevel', n: 3 }] },
     { fileSpec: 'notes.org', criteria: [{ kind: 'maxlevel', n: 2 }] },
     { fileSpec: 'agenda-files', criteria: [{ kind: 'level', n: 1 }] },
+    { fileSpec: 'a.org', criteria: [{ kind: 'tag', name: 'x' }] },
+    { fileSpec: 'b.org', criteria: [{ kind: 'tag', name: 'x' }] },
   ]);
 });
 
-test('extra whitespace around entries and the semicolon separator is tolerated', () => {
-  const result = parseRefileTargets('  current maxlevel=3  ;   notes.org level=1  ');
-  assert.deepEqual(result, [
-    { fileSpec: 'current', criteria: [{ kind: 'maxlevel', n: 3 }] },
-    { fileSpec: 'notes.org', criteria: [{ kind: 'level', n: 1 }] },
-  ]);
+test('whitespace, newlines and comments between entries are tolerated', () => {
+  const result = parseRefileTargets('(\n  (nil :maxlevel . 3) ; the current file\n  ("notes.org" :level . 1)\n)');
+  assert.equal(result.length, 2);
 });
 
-test('an entry missing its level/maxlevel qualifier is skipped, not defaulted -- matching real org\u2019s own stricter per-entry requirement', () => {
-  const result = parseRefileTargets('current; notes.org maxlevel=2');
-  assert.deepEqual(result, [{ fileSpec: 'notes.org', criteria: [{ kind: 'maxlevel', n: 2 }] }]);
-});
-
-test('a completely malformed entry is silently skipped rather than throwing', () => {
-  const result = parseRefileTargets('this is nonsense; notes.org level=1');
-  assert.deepEqual(result, [{ fileSpec: 'notes.org', criteria: [{ kind: 'level', n: 1 }] }]);
-});
-
-test('an empty entry between two semicolons (e.g. a trailing semicolon) doesn\u0027t produce a phantom entry', () => {
-  assert.deepEqual(parseRefileTargets('current level=1;'), [{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]);
+test('the old text syntax is reported, not guessed at', () => {
+  const { entries, errors } = parseRefileTargetsWithErrors('current maxlevel=3; notes.org level=1');
+  assert.deepEqual(entries, []);
+  assert.match(errors[0].message, /list of \(FILES :KEY \. VALUE\)/);
 });
 
 // ---- resolveEntryFileIds ----------------------------------------------------
@@ -102,7 +94,7 @@ test('THE EXACT REQUEST: "agenda-files level=2" finds candidates across both con
   const contactsDoc = parseOrg('* Contacts\n** Jane\n** Bob\n');
   const journalDoc = parseOrg('* Journal\n** Entry 1\n');
   const agendaFilesConfig = ['github:contacts.org', 'github:journal.org'];
-  const targetsSpec = parseRefileTargets('agenda-files level=2');
+  const targetsSpec = parseRefileTargets('((org-agenda-files :level . 2))');
   const docsById = { 'contacts.org': contactsDoc, 'journal.org': journalDoc };
   const candidates = getRefileCandidates(targetsSpec, docsById, 'main.org', agendaFilesConfig);
   assert.deepEqual(
@@ -233,72 +225,54 @@ function pathsFor(spec) {
   return getRefileCandidates(entries, { 'x.org': CRIT_DOC }, 'x.org', []).map((c) => c.outlinePath.join(' / '));
 }
 
-test('tag=: only headings carrying that tag themselves -- inheritance is NOT considered', () => {
+test(':tag: only headings carrying that tag themselves -- inheritance is NOT considered', () => {
   // "Beta" sits under "Projects :work:" but has no :work: of its own
-  assert.deepEqual(pathsFor('current tag=work'), ['Projects', 'Projects / Alpha', 'Projects / Alpha / Alpha step']);
+  assert.deepEqual(pathsFor('((nil :tag . "work"))'), ['Projects', 'Projects / Alpha', 'Projects / Alpha / Alpha step']);
 });
 
-test('tag= is case-sensitive', () => {
-  assert.deepEqual(pathsFor('current tag=Work'), []);
+test(':tag is case-sensitive', () => {
+  assert.deepEqual(pathsFor('((nil :tag . "Work"))'), []);
 });
 
-test('todo=: the headline\u2019s keyword must equal it exactly, a DONE keyword included', () => {
-  assert.deepEqual(pathsFor('current todo=TODO'), ['Projects / Alpha', 'Home / Garden']);
-  assert.deepEqual(pathsFor('current todo=DONE'), ['Projects / Beta']);
-  assert.deepEqual(pathsFor('current todo=todo'), []);
+test(':todo: the headline\u2019s keyword must equal it exactly, a DONE keyword included', () => {
+  assert.deepEqual(pathsFor('((nil :todo . "TODO"))'), ['Projects / Alpha', 'Home / Garden']);
+  assert.deepEqual(pathsFor('((nil :todo . "DONE"))'), ['Projects / Beta']);
+  assert.deepEqual(pathsFor('((nil :todo . "todo"))'), []);
 });
 
-test('regexp=: matched against the headline line as written, stars, keyword, priority and tags included', () => {
-  assert.deepEqual(pathsFor('current regexp=^\\*\\* TODO \\[#A\\]'), ['Projects / Alpha']);
-  assert.deepEqual(pathsFor('current regexp=:urgent:$'), ['Projects / Alpha']);
-  assert.deepEqual(pathsFor('current regexp=Garden\\|Kitchen'), ['Home / Garden', 'Home / Kitchen']);
+test(':regexp: matched against the headline line as written, stars, keyword, priority and tags included', () => {
+  assert.deepEqual(pathsFor('((nil :regexp . "^\\\\*\\\\* TODO \\\\[#A\\\\]"))'), ['Projects / Alpha']);
+  assert.deepEqual(pathsFor('((nil :regexp . ":urgent:$"))'), ['Projects / Alpha']);
+  assert.deepEqual(pathsFor('((nil :regexp . "Garden\\\\|Kitchen"))'), ['Home / Garden', 'Home / Kitchen']);
 });
 
-test('regexp= is case-sensitive and keeps its spaces (it takes the rest of the entry)', () => {
-  assert.deepEqual(pathsFor('current regexp=alpha'), []);
-  assert.deepEqual(pathsFor('current regexp=TODO  *\\[#A\\] Alpha'), ['Projects / Alpha']);
+test(':regexp is case-sensitive and keeps its spaces', () => {
+  assert.deepEqual(pathsFor('((nil :regexp . "alpha"))'), []);
+  assert.deepEqual(pathsFor('((nil :regexp . "TODO  *\\\\[#A\\\\] Alpha"))'), ['Projects / Alpha']);
 });
 
-test('several criteria on one entry must ALL match', () => {
-  assert.deepEqual(pathsFor('current tag=work level=2'), ['Projects / Alpha']);
-  assert.deepEqual(pathsFor('current tag=work maxlevel=2 todo=TODO'), ['Projects / Alpha']);
-  assert.deepEqual(pathsFor('current level=2 regexp=Garden'), ['Home / Garden']);
-  assert.deepEqual(pathsFor('current tag=personal todo=NEXT'), []);
-});
-
-test('separate entries are still a union', () => {
-  assert.deepEqual(pathsFor('current tag=personal level=1; current todo=DONE'), ['Home', 'Projects / Beta']);
+test('separate entries are a union', () => {
+  assert.deepEqual(pathsFor('((nil :level . 1) (nil :todo . "DONE"))'), ['Projects', 'Home', 'Projects / Beta']);
 });
 
 test('a candidate nested under a non-matching heading is still found', () => {
-  assert.deepEqual(pathsFor('current todo=NEXT'), ['Projects / Alpha / Alpha step']);
+  assert.deepEqual(pathsFor('((nil :todo . "NEXT"))'), ['Projects / Alpha / Alpha step']);
 });
 
 test('the refiled heading and its own subtree are still excluded', () => {
-  const { entries } = parseRefileTargetsWithErrors('current tag=work');
+  const { entries } = parseRefileTargetsWithErrors('((nil :tag . "work"))');
   const alpha = CRIT_DOC.children[0].children[0];
   const paths = getRefileCandidates(entries, { 'x.org': CRIT_DOC }, 'x.org', [], alpha).map((c) => c.outlinePath.join(' / '));
   assert.deepEqual(paths, ['Projects']);
 });
 
-test('a literal semicolon inside a regexp is written \\; and does not split the entry', () => {
-  const { entries, errors } = parseRefileTargetsWithErrors('current regexp=a\\;b; notes.org level=1');
+test('a regexp keeps its backslashes and semicolons', () => {
+  const { entries, errors } = parseRefileTargetsWithErrors('((nil :regexp . "a;b") ("notes.org" :level . 1))');
   assert.deepEqual(errors, []);
   assert.equal(entries.length, 2);
-  assert.equal(entries[0].criteria[0].source, 'a\\;b');
+  assert.equal(entries[0].criteria[0].source, 'a;b');
   assert.ok(entries[0].criteria[0].regex.test('a;b'));
   assert.equal(entries[1].fileSpec, 'notes.org');
-});
-
-test('an escaped backslash before a semicolon does not swallow the separator', () => {
-  const { entries } = parseRefileTargetsWithErrors('current regexp=x\\\\; notes.org level=1');
-  assert.equal(entries.length, 2);
-});
-
-test('the criteria order is preserved, and regexp last keeps everything after it', () => {
-  const { entries } = parseRefileTargetsWithErrors('current tag=work maxlevel=2 regexp=a b  c');
-  assert.deepEqual(entries[0].criteria.map((c) => c.kind), ['tag', 'maxlevel', 'regexp']);
-  assert.equal(entries[0].criteria[2].source, 'a b  c');
 });
 
 // ---- errors are reported, not silently dropped ------------------------------
@@ -307,49 +281,48 @@ function errorsFor(spec) {
   return parseRefileTargetsWithErrors(spec).errors;
 }
 
-test('an entry with no criterion is reported', () => {
-  const [e] = errorsFor('current');
-  assert.equal(e.entry, 'current');
-  assert.match(e.message, /at least one criterion/);
+test('an entry with no key is reported', () => {
+  const [e] = errorsFor('((nil))');
+  assert.equal(e.entry, '(nil)');
+  assert.match(e.message, /\(FILES :KEY \. VALUE\)/);
 });
 
-test('an unknown criterion is reported by name', () => {
-  assert.match(errorsFor('current lvl=2')[0].message, /unknown criterion "lvl"/);
+test('a proper list instead of the dotted pair is reported', () => {
+  assert.match(errorsFor('((nil :level 2))')[0].message, /\(FILES :KEY \. VALUE\)/);
 });
 
-test('a non-numeric level is reported', () => {
-  assert.match(errorsFor('current level=x')[0].message, /whole number/);
+test('an unknown key is reported by name', () => {
+  assert.match(errorsFor('((nil :lvl . 2))')[0].message, /the key :lvl is not known/);
 });
 
-test('an empty value is reported', () => {
-  assert.match(errorsFor('current tag=')[0].message, /tag= needs a value/);
-  assert.match(errorsFor('current regexp=')[0].message, /regexp= needs a value/);
+test('a non-numeric level and a non-string tag are reported', () => {
+  assert.match(errorsFor('((nil :level . "x"))')[0].message, /whole number/);
+  assert.match(errorsFor('((nil :tag . 3))')[0].message, /:tag needs a string/);
+  assert.match(errorsFor('((nil :tag . ""))')[0].message, /:tag needs a string/);
 });
 
-test('a token that is not key=value is reported', () => {
-  assert.match(errorsFor('current maxlevel=2 stray')[0].message, /"stray" isn't a criterion/);
-});
-
-test('an entry that starts with a criterion (file forgotten) is reported', () => {
-  assert.match(errorsFor('level=2')[0].message, /expected a file first/);
+test('a variable other than org-agenda-files, and a function, are reported', () => {
+  assert.match(errorsFor('((my-files :level . 1))')[0].message, /the variable my-files is not known/);
+  assert.match(errorsFor('(((lambda () nil) :level . 1))')[0].message, /are not nil/);
 });
 
 test('a regexp that does not compile is reported with the reason, and the entry is skipped', () => {
-  const { entries, errors } = parseRefileTargetsWithErrors('current regexp=\\(; notes.org level=1');
+  const { entries, errors } = parseRefileTargetsWithErrors('((nil :regexp . "\\\\(") ("notes.org" :level . 1))');
   assert.equal(errors.length, 1);
   assert.match(errors[0].message, /isn't valid/);
   assert.deepEqual(entries.map((e) => e.fileSpec), ['notes.org']);
 });
 
 test('good entries survive next to bad ones, and every bad one is reported once', () => {
-  const { entries, errors } = parseRefileTargetsWithErrors('current level=1; junk; notes.org tag=a; other.org lvl=1');
+  const { entries, errors } = parseRefileTargetsWithErrors('((nil :level . 1) junk ("notes.org" :tag . "a") ("other.org" :lvl . 1))');
   assert.deepEqual(entries.map((e) => e.fileSpec), ['current', 'notes.org']);
-  assert.deepEqual(errors.map((e) => e.entry), ['junk', 'other.org lvl=1']);
+  assert.deepEqual(errors.map((e) => e.entry), ['junk', '("other.org" :lvl . 1)']);
 });
 
 test('valid and unset values report no errors', () => {
   assert.deepEqual(errorsFor(''), []);
-  assert.deepEqual(errorsFor('current maxlevel=3; notes.org tag=work level=2'), []);
+  assert.deepEqual(errorsFor('nil'), []);
+  assert.deepEqual(errorsFor('((nil :maxlevel . 3) ("notes.org" :tag . "work"))'), []);
 });
 
 // ---- recently used targets ----------------------------------------------------
@@ -393,7 +366,7 @@ test('recentRefileCandidates: current candidates only, in recent-first order', (
 });
 
 test('a recent target is dropped when org-refile-targets no longer offers it', () => {
-  const { entries } = parseRefileTargetsWithErrors('current level=1');
+  const { entries } = parseRefileTargetsWithErrors('((nil :level . 1))');
   const candidates = getRefileCandidates(entries, { 'x.org': CRIT_DOC }, 'x.org', []);
   const recent = [{ documentId: 'x.org', outlinePath: ['Projects', 'Alpha'] }, { documentId: 'x.org', outlinePath: ['Home'] }];
   assert.deepEqual(recentRefileCandidates(candidates, recent).map((c) => c.outlinePath.join('/')), ['Home'], 'a level-2 heading is not a level=1 target');
@@ -409,7 +382,7 @@ test('recentRefileCandidates respects its limit, and an empty history gives noth
 // ---- local: --------------------------------------------------------------------------------------
 
 test('a local: file in org-refile-targets is accepted, and its file id is the bare path, like github: and webdav:', () => {
-  const { entries, errors } = parseRefileTargetsWithErrors('local:inbox.org level=2; local:areas/home.org level=1');
+  const { entries, errors } = parseRefileTargetsWithErrors('(("local:inbox.org" :level . 2) ("local:areas/home.org" :level . 1))');
   assert.equal(errors.length, 0);
   assert.deepEqual(entries.map((e) => e.fileSpec), ['local:inbox.org', 'local:areas/home.org']);
   assert.deepEqual(resolveEntryFileIds(entries[0], 'notes.org', []), ['inbox.org']);

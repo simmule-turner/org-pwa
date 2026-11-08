@@ -10,7 +10,7 @@ import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
 /** Settings the init cannot set: the init itself, and the switch that lets scripts run (that stays the person's own decision). */
 const NOT_FROM_LISP = new Set(['org-xx-lisp-init', 'org-xx-extensions']);
 /** Settings whose box holds file names separated by semicolons. */
-const SEMICOLON_LISTS = new Set(['org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files']);
+const FILE_LISTS = new Set(['org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files']);
 
 /** @param {Lisp} f @returns {string} Emacs's `prin1` of the value */
 function printed(f) {
@@ -56,11 +56,7 @@ export function boxText(field, f) {
       if (f.k === 'num' && /^org-priority-(highest|lowest|default)$/.test(field.key)) return String.fromCharCode(f.v); // ?A is 65
       return f.k === 'str' ? f.v : f.k === 'sym' ? f.v : printed(f);
     case 'longtext': {
-      if (SEMICOLON_LISTS.has(field.key)) {
-        if (f.k === 'str') return f.v;
-        if (nil) return '';
-        return f.k === 'list' && f.items.every((x) => x.k === 'str') ? f.items.map((x) => /** @type {{ v: string }} */ (x).v).join(';') : null;
-      }
+      if (FILE_LISTS.has(field.key)) return nil ? '' : printed(f); // the list as Emacs prints it
       if (field.entryTokenizer) {
         if (f.k === 'str') return f.v;
         return f.k === 'list' && f.items.every((x) => x.k === 'str') ? f.items.map(printed).join(' ') : null;
@@ -81,7 +77,6 @@ export function boxText(field, f) {
  */
 function startingValue(field, raw) {
   const text = raw.trim();
-  if (SEMICOLON_LISTS.has(field.key)) return { k: 'list', items: text.split(';').map((s) => s.trim()).filter(Boolean).map((v) => ({ k: 'str', v })) };
   if (field.type === 'boolean') return { k: 'sym', v: text === 'nil' ? 'nil' : 't' };
   if (field.type === 'number' || field.type === 'weekday') return { k: 'num', v: Number(text) };
   if (field.type === 'text' || field.type === 'select') return { k: 'str', v: raw };

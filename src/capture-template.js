@@ -347,27 +347,15 @@ function expandTemplate(template, context = {}) {
   return { text: cleanupExpanded(text).replace(CURSOR_AT_END, '') };
 }
 
-/** Expands a capture template's own preText/template/postText fields
- *  together, as if they were one continuous template string, so
- *  %^{...} prompts and %\N backreferences are numbered/resolved
- *  consistently across all three pieces. The combined string is
- *  expanded once, then split back into its pieces on a sentinel that
- *  never reaches the document. The main text gets the same cleanup
- *  expandTemplate applies; preText and postText only have their tabs
- *  expanded.
- *
- *  Returns { preText, text, postText }.
- * @param {any} preText
+/** Expands a capture template: `expandTemplate`, plus whether %? asked for the cursor to end up at the end of the text.
+ *  Returns { text, cursorAtEnd }.
  * @param {string} template
- * @param {any} [postText]
+ * @param {any} [context]
  */
-function expandCaptureText(preText, template, postText, context = {}) {
-  const SENTINEL = '\x01\x02CAPTURE_SPLIT\x02\x01';
-  const combined = (preText || '') + SENTINEL + template + SENTINEL + (postText || '');
-  const { text } = runExpansion(combined, context, /** @type {any} */ (context).promptAnswers || []);
-  const [pre, main, post] = text.split(SENTINEL);
-  const cleaned = cleanupExpanded(main);
-  return { preText: untabify(pre), text: cleaned.replace(CURSOR_AT_END, ''), postText: untabify(post), cursorAtEnd: cleaned.includes(CURSOR_AT_END) };
+function expandCaptureText(template, context = {}) {
+  const { text } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
+  const cleaned = cleanupExpanded(text);
+  return { text: cleaned.replace(CURSOR_AT_END, ''), cursorAtEnd: cleaned.includes(CURSOR_AT_END) };
 }
 
 
@@ -385,13 +373,6 @@ function expandCaptureText(preText, template, postText, context = {}) {
  * "" (current file) is the only meaningful value here — a non-empty file
  * would mean "some other, not-currently-open document", which isn't
  * something a single-document capture flow can resolve.
- *
- * Each segment of the path is itself expanded for %<FORMAT> (and only
- * %<FORMAT> -- %^{...} prompts, @#, %t/%T/%u/%U don't have an obvious
- * meaning as part of a heading you're navigating TO rather than content
- * you're inserting, so they're deliberately not supported here), which
- * is what lets a template target a heading like the current month
- * ("2026-07") without the person needing to create it by hand first.
  *
  * `prepend`: when true, any heading actually auto-created along the way
  * (a segment that didn't already exist) becomes the FIRST child of its
@@ -425,8 +406,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
   let depth = 0;
   for (const rawSegment of olpPath) {
     depth++;
-    const wrapped = /^%<(.*)>$/.exec(rawSegment);
-    const title = wrapped ? formatTime(at, wrapped[1]) : rawSegment;
+    const title = rawSegment;
     if (unique && siblings.filter((h) => h.title === title).length > 1) throw new Error(`Heading not unique on level ${depth}: ${title}`);
     found = siblings.find((h) => h.title === title);
     if (!found) {
@@ -493,67 +473,10 @@ function splitTableRowLine(line) {
   return trimmed.split('|').map((c) => c.trim());
 }
 
-/** A vCard-style (or any KEY:value-shaped) plain body line whose own
- *  value is empty -- everything after the colon is nothing but
- *  whitespace and/or semicolons. Semicolons specifically, not just
- *  whitespace, because vCard's own multi-field properties (N, ADR)
- *  keep their own structural separators in the template regardless of
- *  which individual %^{...} fields were filled in -- "ADR;TYPE=home:
- *  ;;;;;;" with every field left blank is still, semantically, an
- *  entirely empty entry, even though literal semicolons remain. */
-const EMPTY_BODY_LINE_RE = /^[A-Za-z][A-Za-z0-9_-]*(;[^:\n]*)?:[;\s]*$/;
-
-/** A trailing, entirely empty tag list on a heading's own title --
- *  "Title ::" specifically, not "Title :tag:". Real org's own tag
- *  syntax requires at least one real tag between the colons, so an
- *  empty one (every %^{...} tag prompt left blank) is never
- *  recognized as a tag list at all by the parser -- it falls back to
- *  being kept as plain, literal title text instead, which is exactly
- *  what this strips back out. A tag list with at least one real tag
- *  mixed among empty ones needs no help here: the parser already
- *  collapses "Title :Work::Home:" to tags ["Work", "Home"] on its
- *  own, with the title cleaned up correctly, before this ever runs. */
-const EMPTY_TRAILING_TAG_RE = /\s+:{2,}$/;
-
-/** Removes every property from `heading` (and, recursively, every
- *  descendant heading) whose own value is empty or whitespace-only,
- *  every plain body line whose own value is empty in the same sense
- *  (see EMPTY_BODY_LINE_RE), and an empty trailing tag from the
- *  heading's own title (see EMPTY_TRAILING_TAG_RE) -- together, the
- *  omitEmptyEntries capture-template option's own full
- *  implementation, covering both ways a template can represent its
- *  own fields (a real :PROPERTIES: drawer, or plain body text lines
- *  -- e.g. raw vCard content, matching the same shape this app's own
- *  vCard export already produces for its own "new buffer"
- *  destination). Mutates heading.properties/propertyOrder (the same
- *  two structures a property removal always needs to keep in sync,
- *  see src/archive-model.js's own deleteProperty for the same
- *  pattern, reimplemented locally here rather than imported, since
- *  this module's own template-expansion half is deliberately
- *  self-contained and dependency-free), heading.bodyLines/body (the
- *  same two structures every other body edit in this app keeps in
- * @param {Heading} heading
- *  sync with each other), and heading.title. */
-function stripEmptyProperties(heading) {
-  for (const key of [...heading.propertyOrder]) {
-    if (!String(heading.properties[key] ?? '').trim()) {
-      delete heading.properties[key];
-      heading.propertyOrder = heading.propertyOrder.filter((k) => k !== key);
-    }
-  }
-  const keptLines = heading.bodyLines.filter((/** @type {string} */ line) => !EMPTY_BODY_LINE_RE.test(line));
-  if (keptLines.length !== heading.bodyLines.length) {
-    heading.bodyLines = keptLines;
-    heading.body = parseBody(heading.bodyLines);
-  }
-  heading.title = heading.title.replace(EMPTY_TRAILING_TAG_RE, '');
-  for (const child of heading.children || []) stripEmptyProperties(child);
-}
-
 /** @typedef {import('./types.js').Heading | import('./types.js').Doc} Host a heading, or a file's top level */
 /** @typedef {import('./types.js').Table} Table */
-/** The blank lines around filed text, the table row to use, whether a new table gets a header, and `recalculate`, which works out a table's #+TBLFM after a row is added.
- *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, blankBeforeTable?: boolean, cursorAtEnd?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
+/** The blank lines around filed text, the table row to use, and `recalculate`, which works out a table's #+TBLFM after a row is added.
+ *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, blankBeforeTable?: boolean, cursorAtEnd?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null, onFiled?: (where: { row?: number, host?: Host, line?: number }) => void }} PlaceOptions */
 const BLANK = (/** @type {string} */ l) => l.trim() === '';
 const ITEM_START_RE = /^[ \t]*(?:[-+]|\d+[.)])(?:[ \t]|$)/;
 
@@ -643,8 +566,9 @@ function placeHeadings(target, headings, prepend, before, after, keepEnd = false
 
 /** Files text that holds no heading (`org-capture-place-plain-text`): the end of the entry's own text, or its start past
  *  the meta data; for a file, its end or start.
- * @param {Host} target @param {string[]} text @param {boolean} prepend @param {number} before @param {number} after */
-function placePlainText(target, text, prepend, before, after) {
+ * @param {Host} target @param {string[]} text @param {boolean} prepend @param {number} before @param {number} after
+ * @param {PlaceOptions['onFiled']} [onFiled] told which text it went into and the line it starts on (and, for a table, the index of the new row) */
+function placePlainText(target, text, prepend, before, after, onFiled) {
   const top = !target.level;
   const host = !prepend && top ? lastNodeOf(target) : target;
   const lines = host.bodyLines;
@@ -653,6 +577,7 @@ function placePlainText(target, text, prepend, before, after) {
   lines.splice(at, 0, ...text);
   blanksAfter(lines, at + text.length, after);
   host.body = parseBody(lines);
+  onFiled?.({ host, line: at });
 }
 
 /** @param {string} line */
@@ -775,7 +700,7 @@ function tableRowIndex(table, prepend, pos) {
  */
 function plannedTableRow(target, prepend = false, opts = {}) {
   const found = firstTableInFile(target);
-  if (!found) return opts.tableHeader === false ? 1 : 2;
+  if (!found) return 2; // a new table starts with an empty header row and a rule, then the row
   try {
     const k = tableRowIndex(found.table, prepend, opts.tableLinePos);
     return found.table.rows.slice(0, k).filter((r) => r.type === 'row').length + 1;
@@ -785,8 +710,8 @@ function plannedTableRow(target, prepend = false, opts = {}) {
 }
 
 /** Files a table row (`org-capture-place-table-line`): into the first table, or into a new one at the end of the text.
- * @param {Host} target @param {string} text @param {boolean} prepend @param {string} pre @param {string} post @param {PlaceOptions} opts */
-function placeTableLine(target, text, prepend, pre, post, opts) {
+ * @param {Host} target @param {string} text @param {boolean} prepend @param {PlaceOptions} opts */
+function placeTableLine(target, text, prepend, opts) {
   const cells = splitTableRowLine(text);
   const found = firstTableInFile(target);
   if (found) {
@@ -804,28 +729,20 @@ function placeTableLine(target, text, prepend, pre, post, opts) {
         commit(host, now.lineIndex, now.lineCount, serializeTable(now, true));
       }
     }
-    return tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
+    const filed = tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
+    opts.onFiled?.({ host, line: table.lineIndex, row: at });
+    return filed;
   }
   const host = !target.level ? lastNodeOf(target) : target;
   /** @type {import('./types.js').TableRow[]} */
-  const rows = opts.tableHeader === false ? [{ type: 'row', cells }] : [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
+  const rows = [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
   const tableLines = serializeTable({ type: 'table', rows, tblfm: null, lineIndex: 0, lineCount: 0 }, true);
-  const lead = opts.blankBeforeTable && !pre ? [''] : []; // org's one blank line before the table of a day it has just made
+  const lead = opts.blankBeforeTable ? [''] : []; // org's one blank line before the table of a day it has just made
   const start = host.bodyLines.length + lead.length;
   commit(host, start - lead.length, 0, [...lead, ...tableLines]);
-  const end = start + tableLines.length;
-  // preText and postText (this app's own) go directly beside the new table, once
-  if (post) {
-    const postLines = post.split('\n');
-    const needsSeparatorAfter = host.bodyLines.length > end && host.bodyLines[end].trim() !== '';
-    commit(host, end, 0, needsSeparatorAfter ? [...postLines, ''] : postLines);
-  }
-  if (pre) {
-    const preLines = pre.split('\n');
-    const needsSeparatorBefore = start > 0 && host.bodyLines[start - 1].trim() !== '';
-    commit(host, start, 0, needsSeparatorBefore ? ['', ...preLines] : preLines);
-  }
-  return tablesOf(host)[0] || null;
+  const made = tablesOf(host)[0] || null;
+  if (made) opts.onFiled?.({ host, line: made.lineIndex, row: rows.length - 1 });
+  return made;
 }
 
 /**
@@ -834,26 +751,23 @@ function placeTableLine(target, text, prepend, pre, post, opts) {
  * @param {string} type entry, plain, item, checkitem or table-line
  * @param {string} expandedText
  * @param {boolean} [prepend]
- * @param {boolean} [omitEmptyEntries]
- * @param {string} [expandedPreText]
- * @param {string} [expandedPostText]
  * @param {PlaceOptions} [opts]
  */
-function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '', opts = {}) {
+function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
   const [before, after] = emptyLinesOf(opts);
   if (type === 'item' || type === 'checkitem') {
-    const placed = placeItem(target, '- ', expandedPreText + expandedText + expandedPostText, prepend, before, after, !!opts.cursorAtEnd && !expandedPostText);
+    const placed = placeItem(target, '- ', expandedText, prepend, before, after, !!opts.cursorAtEnd);
+    opts.onFiled?.({ host: placed.host, line: placed.line });
     for (const node of placed.host.body || []) {
       if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
     }
     return null;
   }
-  if (type === 'table-line') return placeTableLine(target, expandedText, prepend, expandedPreText, expandedPostText, opts);
+  if (type === 'table-line') return placeTableLine(target, expandedText, prepend, opts);
 
   // 'entry' and 'plain' (and the fallback for anything unrecognized -- filing the text as written is safer than discarding it)
-  const text = expandedPreText + expandedText + expandedPostText;
+  const text = expandedText;
   const fragment = parseOrg(text);
-  if (omitEmptyEntries) for (const heading of fragment.children) stripEmptyProperties(heading);
   if (fragment.children.length > 0) {
     const offset = (target.level || 0) + 1 - fragment.children[0].level; // the first heading becomes a child of the target; deeper ones keep their distance (org-paste-subtree)
     const shift = (/** @type {Heading[]} */ headings) => {
@@ -863,10 +777,10 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
       }
     };
     shift(fragment.children);
-    placeHeadings(target, fragment.children, prepend, before, after, !!opts.cursorAtEnd && !expandedPostText);
+    placeHeadings(target, fragment.children, prepend, before, after, !!opts.cursorAtEnd);
     return prepend ? target.children[0] : target.children[target.children.length - 1];
   }
-  placePlainText(target, text.split('\n'), prepend, before, after);
+  placePlainText(target, text.split('\n'), prepend, before, after, opts.onFiled);
   return null;
 }
 
@@ -874,10 +788,9 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
  * `insertCapture` for a whole file: the newline that ends the file is not a line of its own, so it stays at the end.
  * @param {Host} doc the file
  * @param {Host} target a heading of it, or the file itself
- * @param {string} type @param {string} expandedText @param {boolean} [prepend] @param {boolean} [omitEmptyEntries]
- * @param {string} [expandedPreText] @param {string} [expandedPostText] @param {Parameters<typeof insertCapture>[7]} [opts]
+ * @param {string} type @param {string} expandedText @param {boolean} [prepend] @param {Parameters<typeof insertCapture>[4]} [opts]
  */
-function fileCapture(doc, target, type, expandedText, prepend, omitEmptyEntries, expandedPreText, expandedPostText, opts) {
+function fileCapture(doc, target, type, expandedText, prepend, opts) {
   // org starts the table of a new date-tree day, the last in its month with more of the file after it, one line down
   if (type === 'table-line' && endCreated.delete(target)) opts = { ...opts, blankBeforeTable: true };
   const ends = (/** @type {Host} */ node) => node.bodyLines.length > 0 && node.bodyLines[node.bodyLines.length - 1] === '';
@@ -888,7 +801,7 @@ function fileCapture(doc, target, type, expandedText, prepend, omitEmptyEntries,
     last.body = parseBody(last.bodyLines);
   }
   try {
-    return insertCapture(target, type, expandedText, prepend, omitEmptyEntries, expandedPreText, expandedPostText, opts);
+    return insertCapture(target, type, expandedText, prepend, opts);
   } finally {
     if (newline) {
       const last = lastNodeOf(doc);

@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v663 — Emacs forms only
+Settings and capture keywords that had an Emacs equivalent now use only that. ~org-agenda-files~, ~org-contacts-files~ and ~org-agenda-text-search-extra-files~ are Lisp lists of strings, ~org-global-properties~ is an alist, and capture templates lose ~:omit-empty-entries~, ~:prepend-heading~, ~:table-header~, ~:pre-text~ and ~:post-text~ (a target function or ~:prepare-finalize~ does the same). Old text in these settings must be re-entered. A new test holds the code, README and examples to Emacs's keyword list.
+Verified: the capture keyword list and file-list reading against Emacs 29.3; browser checks for the lists, global properties and local: files.
+
+* v662 — Capture jumps like Emacs, Emacs refile targets
+A capture now leaves the screen where it was, as Emacs does, unless the template says ~:jump-to-captured t~; then it opens and scrolls to the new entry, item or table row, in another file's buffer too. The Tracking example uses it. ~org-refile-targets~ is now written the Emacs way, ~((nil :maxlevel . 3) ("notes.org" :tag . "work"))~, in the Lisp init, the Settings box and Local Variables, one key per entry. ~org-weather-format~ also takes ~%main~ and the temperatures at 6:00, 12:00, 18:00 and 0:00 as ~%tmorn~, ~%tday~, ~%teve~ and ~%tnight~, as in the org-weather package.
+Verified: refile targets against Emacs 29.3; browser checks for a jump in the same file and another, and for no jump without the keyword.
+
+* v661 — Capture scrolls to the new text
+After a capture into the open file, the view now scrolls to what was filed: the new table row, list item or heading, opening any folded headings above it. Before, a long month table or list opened at its top and the new row was out of sight. It applies to every capture type; a capture into another file leaves the screen alone, as before.
+Verified: browser checks for a long table, a long list and an entry among many children, with the headings open and folded.
+
 * v660 — Capture templates come from Lisp
 Capture templates are now written only in Lisp, as in Emacs: set =org-capture-templates= in the Lisp init (=org-xx-lisp-init=). Templates saved in the old Settings editor are not read, and the built-in ones are replaced by examples in =examples/capture-functions.org= (Bullet List, Check List, Meeting, Table row, Journal, shared page) with Emacs 29.3's results. Sharing a page or text still works with no setup, using your template with key =w= if you define one.
 Verified: against Emacs 29.3; the capture, share and settings checks.

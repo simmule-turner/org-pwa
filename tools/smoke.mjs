@@ -556,7 +556,7 @@ check('refile: criteria combine, and entries that cannot be understood are liste
       '* Inbox item',
       '',
       '# Local Variables:',
-      '# org-refile-targets: current tag=work; current todo=NEXT level=2; current regexp=^\\*+ Gar; current bogus=1; current regexp=\\(',
+      '# org-refile-targets: ((nil :tag . "work") (nil :todo . "NEXT") (nil :regexp . "^\\\\*+ Gar") (nil :bogus . 1) (nil :regexp . "\\\\("))',
       '# End:',
       '',
     ].join('\n')
@@ -565,8 +565,8 @@ check('refile: criteria combine, and entries that cannot be understood are liste
   await page.locator('[aria-label="Archive"]').first().click();
   await page.waitForTimeout(900);
   const panel = await page.locator('#archiveRefilePanelBox').innerText();
-  expect(panel.includes('Skipped target entry "current bogus=1"'), 'unknown criterion was not reported');
-  expect(panel.includes('Skipped target entry "current regexp=\\("'), 'bad regexp was not reported');
+  expect(panel.includes('Skipped target entry "(nil :bogus . 1)"'), 'unknown key was not reported');
+  expect(panel.includes('Skipped target entry "(nil :regexp . "\\\\(")"'), 'bad regexp was not reported');
   const offered = ['Projects', 'Projects / Alpha', 'Projects / Beta', 'Home / Garden'];
   for (const path of offered) expect(panel.includes(path), `missing target: ${path}`);
   expect(!panel.includes('Projects / Gamma'), 'Gamma should not be offered');
@@ -684,7 +684,7 @@ check('effort: Effort_ALL shows quick-picks (from #+PROPERTY), one tap saves the
 
   // the global setting, here as a file's own Local Variables line
   const third = await freshPage();
-  await newDocument(third.page, '* Global list\n\n# Local Variables:\n# org-global-properties: Effort_ALL: 0:15 0:45 3:00\n# End:\n');
+  await newDocument(third.page, '* Global list\n\n# Local Variables:\n# org-global-properties: (("Effort_ALL" . "0:15 0:45 3:00"))\n# End:\n');
   await third.page.locator('.heading-title').first().click();
   await openPalette(third.page);
   await third.page.keyboard.type('set effort estimate');
@@ -3752,6 +3752,85 @@ check("capture: a datetree template files under today's year, month and day", as
   await context.close();
 });
 
+/** Opens `content` as journal.org, captures through template `key` of `init` (the page loads with ?capture=key), and says whether the element matching `locator` ends up inside the viewport. */
+async function captureScrollsTo(content, init, key, find, { done = 'NEWTEXT', files = null, watch = 'journal.org' } = {}) {
+  dav.reset({ 'journal.org': content, ...(files || {}) });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await setCaptureInit(page, init);
+  await openDav(page, 'journal.org');
+  await page.goto(`${main.base}/index.html?capture=${key}`, { waitUntil: 'load' });
+  let text = '';
+  for (let n = 0; n < 40 && !text.includes(done); n++) {
+    await page.waitForTimeout(250);
+    text = (await bufferText(page, watch)) || '';
+  }
+  const el = find(page);
+  const height = page.viewportSize().height;
+  for (let n = 0; n < 30; n++) {
+    await page.waitForTimeout(200);
+    const at = (await el.count()) ? await el.first().boundingBox() : null;
+    if (at && at.y >= 0 && at.y + at.height <= height) break;
+  }
+  await page.waitForTimeout(300);
+  const box = (await el.count()) ? await el.first().boundingBox() : null; // scrolling has stopped
+  const shown = !!box && box.y >= 0 && box.y + box.height <= height;
+  const message = `the new text is on screen: ${JSON.stringify(box)} in a viewport ${height} high`;
+  const failures = errors.slice();
+  await context.close();
+  return { shown, message, text, errors: failures };
+}
+
+const MONTH_TABLE = (head) => `#+STARTUP: ${head}\n* Journal\n** 2026-10 October\n${Array.from({ length: 28 }, (_, i) => `| 2026-10-${String(i + 1).padStart(2, '0')} | 0800 | old ${i} |`).join('\n')}\n** 2026-11 November\n${Array.from({ length: 28 }, (_, i) => `| 2026-11-${String(i + 1).padStart(2, '0')} | 0800 | entry ${i} |`).join('\n')}\n`;
+
+for (const [how, file, startup] of [
+  ['file+olp', '(file+olp "" "Journal" "2026-11 November")', 'showall'],
+  ['file+function', '(file+function "" (lambda () (re-search-forward "2026-11 November") (beginning-of-line)))', 'showall'],
+  ['file+olp, every heading folded before the capture', '(file+olp "" "Journal" "2026-11 November")', 'overview'],
+]) {
+  check(`capture: the new row of a long table is scrolled into view (${how})`, async () => {
+    const r = await captureScrollsTo(MONTH_TABLE(startup), `(setq org-capture-templates '(("t" "Row" table-line ${file} "| 1030 | 1030 | NEWTEXT |" :jump-to-captured t)))`, 't', (page) => page.locator('tr', { hasText: 'NEWTEXT' }), {});
+    expect(/1030 +\| 1030 +\| NEWTEXT/.test(r.text), `the row was filed: ${r.text.slice(-200)}`);
+    expect(r.shown, r.message);
+    expect(r.errors.length === 0, `page errors: ${r.errors.join(' | ')}`);
+  });
+}
+
+check('capture: without :jump-to-captured the screen stays where it was (Emacs returns to the buffer it came from)', async () => {
+  const r = await captureScrollsTo(MONTH_TABLE('overview'), `(setq org-capture-templates '(("t" "Row" table-line (file+olp "" "Journal" "2026-11 November") "| 1030 | 1030 | NEWTEXT |")))`, 't', (page) => page.locator('tr', { hasText: 'NEWTEXT' }), {});
+  expect(/1030 +\| 1030 +\| NEWTEXT/.test(r.text), `the row was filed: ${r.text.slice(-200)}`);
+  expect(!r.shown, 'the folded outline was opened and scrolled to the new row without :jump-to-captured');
+  expect(r.errors.length === 0, `page errors: ${r.errors.join(' | ')}`);
+});
+
+check('capture: :jump-to-captured t visits the other file\u2019s buffer and shows the new text', async () => {
+  const other = `#+STARTUP: overview\n* Journal\n** Month\n${Array.from({ length: 40 }, (_, i) => `*** child ${i}\n`).join('')}`;
+  const r = await captureScrollsTo('* Here\n', `(setq org-capture-templates '(("e" "Entry" entry (file+olp "other.org" "Journal" "Month") "*** NEWTEXT entry" :jump-to-captured t)))`, 'e', (page) => page.locator('#outline > *', { hasText: 'NEWTEXT entry' }).first(), { files: { 'other.org': other }, watch: 'other.org' });
+  expect(r.text.includes('*** NEWTEXT entry'), 'the entry was filed in the other file');
+  expect(r.shown, r.message);
+  expect(r.errors.length === 0, `page errors: ${r.errors.join(' | ')}`);
+});
+
+for (const startup of ['showall', 'overview']) {
+  check(`capture: an entry among many children is scrolled into view (${startup})`, async () => {
+    const content = `#+STARTUP: ${startup}\n* Journal\n** Month\n${Array.from({ length: 60 }, (_, i) => `*** child ${i}\nline of ${i}\n`).join('')}`;
+    const r = await captureScrollsTo(content, `(setq org-capture-templates '(("e" "Entry" entry (file+olp "" "Journal" "Month") "*** NEWTEXT entry" :jump-to-captured t)))`, 'e', (page) => page.locator('#outline > *', { hasText: 'NEWTEXT entry' }).first(), {});
+    expect(r.text.includes('*** NEWTEXT entry'), 'the entry was filed');
+    expect(r.shown, r.message);
+    expect(r.errors.length === 0, `page errors: ${r.errors.join(' | ')}`);
+  });
+}
+
+check('capture: an item in a long list and a plain text after many lines are scrolled into view', async () => {
+  const content = `* Log\n${Array.from({ length: 60 }, (_, i) => `- item ${i}`).join('\n')}\n* Notes\n${Array.from({ length: 30 }, (_, i) => `note line ${i}\n\n`).join('')}`;
+  const item = await captureScrollsTo(content, `(setq org-capture-templates '(("i" "Item" item (file+olp "" "Log") "NEWTEXT item" :jump-to-captured t)))`, 'i', (page) => page.locator('#outline > *', { hasText: 'NEWTEXT item' }).first(), {});
+  expect(item.text.includes('- NEWTEXT item'), 'the item was filed');
+  expect(item.shown, item.message);
+  const plain = await captureScrollsTo(content, `(setq org-capture-templates '(("p" "Plain" plain (file+olp "" "Notes") "NEWTEXT plain" :empty-lines 1 :jump-to-captured t)))`, 'p', (page) => page.locator('#outline > *', { hasText: 'NEWTEXT plain' }).first(), {});
+  expect(plain.text.includes('NEWTEXT plain'), 'the plain text was filed');
+  expect(plain.shown, plain.message);
+  expect(item.errors.length + plain.errors.length === 0, `page errors: ${item.errors.concat(plain.errors).join(' | ')}`);
+});
+
 check('capture: with no templates in the Lisp init the Capture panel says where they are defined, the palette lists none, and a share still files with the built-in template', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Inbox\n');
@@ -4003,7 +4082,7 @@ check('local agenda files: a local: entry loads without any prompt when access i
   const perm = () => page.evaluate(() => ({ ...window.__perm }));
   const pageText = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
 
-  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: local:agenda-local.org', '# End:', ''].join('\n'));
+  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: ("local:agenda-local.org")', '# End:', ''].join('\n'));
   await viewMenu(page, 'Agenda');
   await page.waitForTimeout(1200);
   let t = await pageText();
@@ -4059,7 +4138,7 @@ check('local agenda files: a local: entry loads without any prompt when access i
 
 check('agenda files: the same file name under two schemes is reported, not silently dropped', async () => {
   const { context, page } = await freshPage();
-  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: webdav:dup.org;local:dup.org', '# End:', ''].join('\n'));
+  await newDocument(page, ['* Main document', '# Local Variables:', '# org-agenda-files: ("webdav:dup.org" "local:dup.org")', '# End:', ''].join('\n'));
   await viewMenu(page, 'Agenda');
   await page.waitForTimeout(1200);
   const text = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
@@ -4277,10 +4356,10 @@ check('calendar mirror: a calendar that does not exist is reported clearly, auto
 });
 
 const contactsVars = (files) => ['# Local Variables:', `# org-contacts-files: ${files}`, '# End:'];
-const peopleFile = (extra = []) => ['* Jane Doe', ':PROPERTIES:', ':ID: jane-1', ':EMAIL: jane@example.com', ':PHONE: 555-0100', ':END:', '* Not a contact', 'some prose', '* Tree Tom', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** tom@example.com', ':PROPERTIES:', ':FIELDTYPE: email', ':END:', ...extra, ...contactsVars('webdav:people.org'), ''].join('\n');
+const peopleFile = (extra = []) => ['* Jane Doe', ':PROPERTIES:', ':ID: jane-1', ':EMAIL: jane@example.com', ':PHONE: 555-0100', ':END:', '* Not a contact', 'some prose', '* Tree Tom', ':PROPERTIES:', ':KIND: individual', ':FIELDTYPE: name', ':END:', '** tom@example.com', ':PROPERTIES:', ':FIELDTYPE: email', ':END:', ...extra, ...contactsVars('("webdav:people.org")'), ''].join('\n');
 
 check('contacts mirror: org-contacts-files reach a CardDAV address book through the palette, the open file is not sent unless it is one of them, edits follow a save, a contact the app did not make is never touched, and Rebuild cleans only the app\u2019s own', async () => {
-  const notes = ['* Notes', '* Dave Notes', ':PROPERTIES:', ':EMAIL: dave@example.com', ':END:', ...contactsVars('webdav:people.org'), ''].join('\n');
+  const notes = ['* Notes', '* Dave Notes', ':PROPERTIES:', ':EMAIL: dave@example.com', ':END:', ...contactsVars('("webdav:people.org")'), ''].join('\n');
   dav.reset({ 'notes.org': notes, 'people.org': peopleFile() });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
@@ -4422,7 +4501,7 @@ check('contacts mirror: with an address set but no org-contacts-files, a manual 
 });
 
 check('Settings > Sync syncs the calendar and the contacts and says how each went in one line, an error in one is not hidden by the other, and the three buttons wrap on a narrow phone instead of overflowing', async () => {
-  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, ...contactsVars('webdav:people.org'), ''].join('\n');
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, ...contactsVars('("webdav:people.org")'), ''].join('\n');
   dav.reset({ 'notes.org': notes, 'people.org': peopleFile() });
   dav.setCollections(['cal/', 'card/']);
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -4470,7 +4549,7 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
 
 check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERSARY" line, in two files, show both from org-contacts-files (which need not be agenda files), with Emacs\u2019s titles, and the calendar gets the same entries', async () => {
   const md = (n) => calDay(n).slice(5, 10); // MM-DD; today, so the Week view always shows it (a day or two ahead falls into next week on a Saturday or Sunday)
-  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(0)}`, ':END:', '# Local Variables:', '# org-contacts-files: webdav:contacts.org', '# org-agenda-files: webdav:anniv.org', '# End:', ''].join('\n');
+  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(0)}`, ':END:', '# Local Variables:', '# org-contacts-files: ("webdav:contacts.org")', '# org-agenda-files: ("webdav:anniv.org")', '# End:', ''].join('\n');
   const anniv = ['* Anniversaries', '%%(org-contacts-anniversaries "ANNIVERSARY")', ''].join('\n');
   const contacts = ['* Jane Doe', ':PROPERTIES:', `:BIRTHDAY: 1990-${md(0)}`, `:ANNIVERSARY: 1998-${md(0)}`, ':SPOUSE: John Doe', ':END:', ''].join('\n');
   dav.reset({ 'notes.org': notes, 'anniv.org': anniv, 'contacts.org': contacts });
@@ -4543,7 +4622,7 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
 check('Search extra files: text search also looks in org-agenda-text-search-extra-files and names a file it cannot load, the agenda does not use them, a result opens its file, a file in both lists is searched once, and the Quick Settings row sits right after Contacts files', async () => {
   const extra = ['* TODO Extra heading', `SCHEDULED: <${calDay(1)}>`, 'a unicornword lives only here', ''].join('\n');
   const notes = (vars) => ['* Notes', 'plain text', '# Local Variables:', ...vars, '# End:', ''].join('\n');
-  dav.reset({ 'notes.org': notes(['# org-agenda-text-search-extra-files: webdav:extra.org;webdav:missing.org']), 'extra.org': extra });
+  dav.reset({ 'notes.org': notes(['# org-agenda-text-search-extra-files: ("webdav:extra.org" "webdav:missing.org")']), 'extra.org': extra });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
   await openDav(page, 'notes.org');
@@ -4594,7 +4673,7 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
   await context.close();
 
   // a file listed as an agenda file AND as an extra file is searched once
-  dav.reset({ 'notes.org': notes(['# org-agenda-files: webdav:extra.org', '# org-agenda-text-search-extra-files: webdav:extra.org']), 'extra.org': extra });
+  dav.reset({ 'notes.org': notes(['# org-agenda-files: ("webdav:extra.org")', '# org-agenda-text-search-extra-files: ("webdav:extra.org")']), 'extra.org': extra });
   const second = await freshPage(main, { withDav: true });
   await openDav(second.page, 'notes.org');
   await second.page.evaluate(() => document.getElementById('searchBtn').click());
@@ -6492,7 +6571,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = `<${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]}>`;
-  const phone = ['* Main', '# Local Variables:', '# org-agenda-files: local:agenda.org', '# org-contacts-files: local:contacts.org', '# org-refile-targets: local:inbox.org level=1', '# End:', ''].join('\n');
+  const phone = ['* Main', '# Local Variables:', '# org-agenda-files: ("local:agenda.org")', '# org-contacts-files: ("local:contacts.org")', '# org-refile-targets: (("local:inbox.org" :level . 1))', '# End:', ''].join('\n');
   await page.evaluate(async ({ phone, stamp }) => {
     const { installPlatform } = await import('/src-browser/platform.js');
     const picked = new Map([['phone.org', phone]]); // the one file opened through the picker
@@ -6581,7 +6660,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
   const refile = await page.evaluate(async () => {
     const { parseRefileTargetsWithErrors } = await import('/src/refile.js');
     const { loadRefileTargetDocs } = await import('/src-browser/refile-flow.js');
-    const { entries, errors } = parseRefileTargetsWithErrors('local:inbox.org level=1');
+    const { entries, errors } = parseRefileTargetsWithErrors('(("local:inbox.org" :level . 1))');
     const docs = await loadRefileTargetDocs(entries);
     return { errors: errors.length, ids: Object.keys(docs) };
   });
@@ -6626,7 +6705,7 @@ check('local: resolves in the org-pwa folder wherever a scheme is accepted: org-
 check('local: without an org-pwa folder (a browser) behaves as it did: only files opened through the picker, and the message says so', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });
-  await newDocument(page, ['* Main', '# Local Variables:', '# org-agenda-files: local:nothere.org', '# End:', ''].join('\n'));
+  await newDocument(page, ['* Main', '# Local Variables:', '# org-agenda-files: ("local:nothere.org")', '# End:', ''].join('\n'));
   await viewMenu(page, 'Agenda');
   await page.waitForTimeout(1200);
   const t = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
@@ -7242,7 +7321,7 @@ check('help: links: [[help:org-todo]] opens Help at the entry that documents it,
 
 check('id: links: a link to a heading with that :ID: goes to it in another open tab or in an Agenda File, says so when nothing has it, and Copy link to heading makes the :ID: and the link', async () => {
   dav.reset({
-    'a.org': ['* Source', '[[id:AAA-111][to B]] and [[id:ZZZ-999][far away]] and [[id:nope-000][nowhere]]', '# Local Variables:', '# org-agenda-files: webdav:c.org', '# End:', ''].join('\n'),
+    'a.org': ['* Source', '[[id:AAA-111][to B]] and [[id:ZZZ-999][far away]] and [[id:nope-000][nowhere]]', '# Local Variables:', '# org-agenda-files: ("webdav:c.org")', '# End:', ''].join('\n'),
     'b.org': '* Target\n:PROPERTIES:\n:ID: aaa-111\n:END:\n* Other\n',
     'c.org': '* Far target\n:PROPERTIES:\n:ID: zzz-999\n:END:\n',
   });
@@ -8265,10 +8344,10 @@ check('lisp init: (setq org-agenda-files ...) fills the Agenda files setting, sh
     const label = [...document.querySelectorAll('label')].find((l) => l.textContent.includes('Agenda files'));
     return label ? { text: label.querySelector('textarea')?.value, note: label.parentElement.parentElement.textContent.includes('Set by the Lisp init') } : null;
   });
-  expect(files && files.text === 'github:home.org;github:journal.org;github:calendar.org', `the box shows the list: ${JSON.stringify(files)}`);
+  expect(files && files.text === '("github:home.org" "github:journal.org" "github:calendar.org")', `the box shows the list: ${JSON.stringify(files)}`);
   expect(files && files.note, 'and says the Lisp init set it');
   const vars = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables);
-  expect(vars['org-agenda-files'] === 'github:home.org;github:journal.org;github:calendar.org' && vars['org-deadline-warning-days'] === '14', `the settings hold the init's values: ${JSON.stringify(vars)}`);
+  expect(vars['org-agenda-files'] === '("github:home.org" "github:journal.org" "github:calendar.org")' && vars['org-deadline-warning-days'] === '14', `the settings hold the init's values: ${JSON.stringify(vars)}`);
   const saved = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariablesText);
   expect(!/^org-agenda-files:/m.test(saved) && !/^org-deadline-warning-days:/m.test(saved), 'the init values are not written into the saved settings');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);

@@ -73,9 +73,12 @@ function ourFiles(c) {
 
 /** The target list the app offers for a targets case, as [file, outline path] pairs. @param {any} c */
 function ourTargets(c) {
-  const text = c.spec
-    .map((/** @type {any} */ s) => `${s.file} ${(Object.keys(s.criteria).length ? Object.entries(s.criteria).map(([k, v]) => `${k}=${v}`).join(' ') : 'maxlevel=1000')}`.trim())
-    .join('; ');
+  // the same list Emacs was given (one criterion per entry, as Emacs takes it)
+  const text = '(' + c.spec.map((/** @type {any} */ s) => {
+    const [k, v] = Object.entries(s.criteria)[0] || ['maxlevel', 1000];
+    const files = s.file === 'current' ? 'nil' : s.file === 'agenda-files' ? 'org-agenda-files' : JSON.stringify(s.file);
+    return `(${files} :${k} . ${typeof v === 'number' ? v : JSON.stringify(v)})`;
+  }).join(' ') + ')';
   /** @type {Record<string, any>} */ const docs = {};
   for (const [name, t] of Object.entries(c.files)) docs[name] = parseOrg(/** @type {string} */ (t));
   const parsed = parseRefileTargetsWithErrors(text);
@@ -91,7 +94,7 @@ function ourCapture(c) {
     const doc = parseOrg(c.init);
     const target = resolveOlpTarget(doc, c.target, { allowCreate: false, unique: true });
     if (!target) return 'ERROR no target';
-    fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, false, '', '', { ...c.opts });
+    fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, { ...c.opts });
     return serializeOrg(doc);
   } catch (e) {
     return 'ERROR ' + /** @type {Error} */ (e).message;

@@ -19,7 +19,7 @@ function file(c) {
   const doc = parseOrg(c.init);
   const [y, m, d] = c.ymd;
   const target = resolveOlpTarget(doc, c.olp, { now: new Date(y, m - 1, d, 12), datetree: true, treeType: c.opts.treeType });
-  fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, false, '', '', { ...c.opts, recalculate: (t) => recalculateTable(t, {}) });
+  fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, { ...c.opts, recalculate: (t) => recalculateTable(t, {}) });
   return serializeOrg(doc);
 }
 

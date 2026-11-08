@@ -145,18 +145,47 @@ export function runTargetFunction(doc, source, moment) {
   };
 }
 
+/** The part of `host`'s text that holds its line `line` (0-based): a list item for a list, else the block, table or paragraph. @param {Doc | Heading} host @param {number} line @returns {object | null} */
+export function bodyNodeAt(host, line) {
+  /** @type {object | null} */
+  let found = null;
+  if (line < 0 || line >= (host.bodyLines || []).length) return null;
+  for (const node of host.body || []) {
+    if (node.type === 'list') {
+      for (const item of node.items) if (item.lineIndex <= line) found = item;
+    } else if (node.lineIndex !== undefined && node.lineIndex <= line && line < node.lineIndex + (node.lineCount || 1)) found = node;
+  }
+  return found;
+}
+
+/**
+ * What the screen is to scroll to after filing: the node that is drawn as a row, the heading that holds it (null: the file's own
+ * text), and for a table the index of the new row in its `rows`.
+ * @typedef {{ node: object, heading: Heading | null, row: number | null }} Reveal
+ */
+
+/** The new text of a plain capture a target function put at line `line` of the file. @param {Doc} doc @param {number} line @returns {Reveal | null} */
+export function revealAtLine(doc, line) {
+  const heading = findHeadingAtLine(doc, line);
+  if (heading) return { node: heading, heading, row: null };
+  const owner = [...headingLineIndex(doc).lines.entries()].filter(([n, w]) => w.bodyStart <= line && line - w.bodyStart < n.bodyLines.length).pop();
+  const host = owner ? owner[0] : doc;
+  const node = bodyNodeAt(host, line - (owner ? owner[1].bodyStart : 0));
+  return node ? { node, heading: owner ? owner[0] : null, row: null } : null;
+}
+
 /**
  * Files `template` into `doc` (a file, or the one a target function chooses). `prepare` runs the template's :prepare-finalize functions;
  * on a failure nothing has been filed and `message` says why.
  * @param {Doc} doc
  * @param {CaptureTemplate} template
- * @param {{ now: Date, answers?: string[], context: Record<string, any>, preText: string, postText: string, place: (doc: Doc) => any }} options
+ * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options
  *   `context` is what the template can read besides the clock and its answers; `place` gives the options of filing (blank lines, table).
- * @returns {{ ok: true, target: Doc | Heading, placed: any } | { ok: false, message: string }}
+ * @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }}  `reveal`: where the new text is on screen
  */
 export function captureInto(doc, template, options) {
-  const { now, answers, context, preText: preSrc, postText: postSrc, place } = options;
-  const prepend = template.type === 'table-line' ? !!template.prependHeading : !!template.prepend;
+  const { now, answers, context, place } = options;
+  const prepend = template.type === 'table-line' ? false : !!template.prepend; // for a table row, :prepend is where the row goes, not where a new heading goes
   /** @type {Doc | Heading} */
   let target;
   /** @type {null | (() => Heading | null)} */
@@ -165,12 +194,14 @@ export function captureInto(doc, template, options) {
   let planned = null;
   /** @type {null | ((lines: string[]) => void)} */
   let insertPlain = null;
+  let pointLine = 0;
   if (template.targetFunction) {
     const found = runTargetFunction(doc, template.targetFunction, now);
     if (!found.ok) return { ok: false, message: `Capture failed: ${found.message}` };
     if (!found.onHeading && template.type !== 'entry' && template.type !== 'plain') return { ok: false, message: `Capture failed: the target function must leave point on a heading to file a ${template.type}` };
     if (template.type === 'plain' && !found.atLineStart) return { ok: false, message: 'Capture failed: the target function must leave point at the start of a line to file plain text' };
     apply = found.apply;
+    pointLine = found.line;
     insertPlain = template.type === 'plain' ? found.insertAtPoint : null;
     const scratch = parseOrg(found.after);
     planned = found.onHeading ? findHeadingAtLine(scratch, found.line) : scratch;
@@ -185,7 +216,7 @@ export function captureInto(doc, template, options) {
   const tableRowNumber = template.type === 'table-line' ? plannedTableRow(planned ?? target, !!template.prepend, template) : null;
   let expanded;
   try {
-    expanded = expandCaptureText(preSrc, template.template, postSrc, { ...context, now, promptAnswers: answers, tableRowNumber });
+    expanded = expandCaptureText(template.template, { ...context, now, promptAnswers: answers, tableRowNumber });
   } catch (err) {
     return { ok: false, message: `Can't capture: ${/** @type {Error} */ (err).message}` };
   }
@@ -200,9 +231,19 @@ export function captureInto(doc, template, options) {
     // Emacs puts plain text where point is, whatever it is on
     const before = template.emptyLinesBefore ?? template.emptyLines ?? 0;
     const after = template.emptyLinesAfter ?? template.emptyLines ?? 0;
-    insertPlain([...Array(before).fill(''), ...(expanded.preText + text + expanded.postText).split('\n'), ...Array(after).fill('')]);
-    return { ok: true, target: doc, placed: null };
+    insertPlain([...Array(before).fill(''), ...text.split('\n'), ...Array(after).fill('')]);
+    return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, pointLine + before) };
   }
-  const placed = fileCapture(doc, target, template.type, text, template.prepend, template.omitEmptyEntries, expanded.preText, expanded.postText, { ...place(doc), cursorAtEnd: expanded.cursorAtEnd || !!template.prepareFinalize?.length });
-  return { ok: true, target, placed };
+  /** @type {{ row?: number, host?: Doc | Heading, line?: number }} */
+  let filed = {};
+  const placed = fileCapture(doc, target, template.type, text, template.prepend, { ...place(doc), cursorAtEnd: expanded.cursorAtEnd || !!template.prepareFinalize?.length, onFiled: (where) => (filed = where) });
+  /** @type {Reveal | null} */
+  let reveal = null;
+  if (placed && 'level' in placed) reveal = { node: placed, heading: placed, row: null };
+  else if (filed.host && filed.line !== undefined) {
+    // found again by its line: filing may have parsed the text of the last heading again
+    const node = bodyNodeAt(filed.host, filed.line);
+    if (node) reveal = { node, heading: 'level' in filed.host && filed.host.level ? /** @type {Heading} */ (filed.host) : null, row: filed.row ?? null };
+  }
+  return { ok: true, target, placed, reveal };
 }

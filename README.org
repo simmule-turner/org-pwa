@@ -408,10 +408,10 @@ Example: ~work+urgent|blocked~ finds headings tagged both ~work~ and ~urgent~, o
 :CUSTOM_ID: search-extra-files
 :END:
 
-~org-agenda-text-search-extra-files~ lists more files to search, in addition to the file you have open and your [[#agenda-files][Agenda Files]]. It is the same ~scheme:path~ syntax (~github:~, ~webdav:~, ~local:~), semicolon-separated:
+~org-agenda-text-search-extra-files~ lists more files to search, in addition to the file you have open and your [[#agenda-files][Agenda Files]]. It is a list of file names, as in Emacs, each starting with ~github:~, ~webdav:~ or ~local:~:
 
 #+BEGIN_EXAMPLE
-org-agenda-text-search-extra-files: github:notes/reference.org;webdav:archive/2024.org
+org-agenda-text-search-extra-files: ("github:notes/reference.org" "webdav:archive/2024.org")
 #+END_EXAMPLE
 
 Set it in *Settings → Quick Settings → Advanced → Search extra files*, or per document in Local Variables. These files are searched only: they stay out of the Agenda, TODO and tag views, so they suit notes that should be findable but not scheduled. A file that is loading or can't be loaded is named above the results. *Replace* works on the open file and your agenda files only.
@@ -620,7 +620,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
 | ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~, or a Lisp function (a name or a ~lambda~), as in ~("x" "Mine" my-fn "match")~: it is called with the match and what it writes (~princ~, ~insert~) or returns (a string, or a list of strings) is shown in an *Org Agenda* text buffer; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
-| ~org-agenda-files~ | unset (current file only) | Semicolon-separated ~scheme:path~ entries: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
+| ~org-agenda-files~ | unset (current file only) | A list of file names, such as ~("github:notes.org" "webdav:work.org")~: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
 | ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
 | ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each, ~%(form)~ the text a Lisp form gives (it sees ~category~, ~time~, ~extra~, ~level~, ~effort~, ~tag~ and ~breadcrumbs~, and ~org-entry-get~ and the like work on the row's heading; an error stops the view and shows Emacs's message); ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
@@ -636,7 +636,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined-up~ and ~-down~ ask ~org-agenda-cmp-user-defined~ (no opinion while it is ~nil~) |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
-| ~org-agenda-text-search-extra-files~ | unset | More files for text search only, in the same syntax as ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
+| ~org-agenda-text-search-extra-files~ | unset | More files for text search only, a list of file names like ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
 | ~org-agenda-use-tag-inheritance~ | ~(todo search agenda)~ | The views that use tag inheritance: ~t~, ~nil~, or a list of ~agenda~, ~todo~ and ~search~ |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
@@ -652,7 +652,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); it beeps if the file is not there, and in the browser |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
 | ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~); also Settings → Quick Settings → *Diary* |
-| ~org-contacts-files~ | unset (current file only) | More files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
+| ~org-contacts-files~ | unset (current file only) | A list of file names like ~org-agenda-files~: more files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
 | ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. It must contain ~("min" . 1)~; an invalid value is ignored |
@@ -661,7 +661,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
 | ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
-| ~org-global-properties~ | unset | Properties that apply everywhere. Only ~Effort_ALL~ is used, as in ~Effort_ALL: 0:15 0:30 1:00 2:00~ (see [[#effort-all][Effort_ALL]]) |
+| ~org-global-properties~ | unset | Properties that apply everywhere, as the alist Emacs takes. Only ~Effort_ALL~ is used, as in ~(("Effort_ALL" . "0:15 0:30 1:00 2:00"))~ (see [[#effort-all][Effort_ALL]]) |
 | ~org-habit-following-days~ | ~7~ | Days shown after today in a habit's strip, today included (see [[#habits][Habits]]); also Settings → Quick Settings → *Agenda* |
 | ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Quick Settings → *Agenda* |
 | ~org-habit-show-all-today~ | ~nil~ | ~t~ shows every habit today, even one not yet due; also Settings → Quick Settings → *Agenda* |
@@ -690,7 +690,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
 | ~org-priority-start-cycle-with-default~ | ~t~ | Accepted for compatibility; as in Emacs 29.3 it does not change the cycle |
 | ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
-| ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT~ (see [[#refile][Refile]]) |
+| ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
@@ -909,14 +909,19 @@ Open the archive file (*File → Open* lists ~_archive~ files), tap the archived
 
 *Archive*, then pick a target in the lower part of the panel and tap *Refile* (~org-refile~, also in the palette) to move the subtree elsewhere in the outline or into another file. Targets show their outline path, with a search box (every word must match), your last five under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child with its levels adjusted.
 
-Targets come from ~org-refile-targets~; the default is the current file's top-level headings. Entries are separated by ~;~, each a file followed by criteria:
+Targets come from ~org-refile-targets~, written as in Emacs; the default is the current file's top-level headings. Each entry is ~(FILES :KEY . VALUE)~:
 
 #+BEGIN_SRC
-org-refile-targets: current maxlevel=3; notes.org tag=work level=2; agenda-files todo=NEXT
+(setq org-refile-targets
+      '((nil :maxlevel . 3)
+        ("notes.org" :tag . "work")
+        (org-agenda-files :todo . "NEXT")))
 #+END_SRC
 
-- *File*: ~current~, ~agenda-files~, or a file name (a bare name is a sibling of the current file), optionally with a ~github:~, ~webdav:~ or ~local:~ prefix.
-- *Criteria*: ~level=N~, ~maxlevel=N~, ~tag=NAME~ (the heading's own tag), ~todo=KEYWORD~ and ~regexp=PATTERN~ (matched against the whole heading line, so it comes last; write a literal ~;~ as ~\;~). Several criteria on one entry must all match.
+In a ~# org-refile-targets:~ line of a Local Variables block, write the list without the quote.
+
+- *FILES*: ~nil~ (this file), ~org-agenda-files~, a file name (a bare name is a sibling of the current file, optionally with a ~github:~, ~webdav:~ or ~local:~ prefix), or a list of file names.
+- *Key*: ~:level N~, ~:maxlevel N~, ~:tag "NAME"~ (the heading's own tag), ~:todo "KEYWORD"~ or ~:regexp "RE"~ (matched against the whole heading line). One key per entry, as in Emacs.
 
 An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works.
 
@@ -1112,7 +1117,7 @@ The effort prompt completes against ~Effort_ALL~. The first source with a usable
 
 1. an ~Effort_ALL~ property on the heading or its nearest ancestor that has one;
 2. the file's ~#+PROPERTY: Effort_ALL 0 0:10 0:30 1:00 2:00~;
-3. ~org-global-properties~ (Settings → Advanced or Local Variables), such as ~Effort_ALL: 0:15 0:30 1:00 2:00 4:00~.
+3. ~org-global-properties~ (Settings → Advanced or Local Variables), such as ~(("Effort_ALL" . "0:15 0:30 1:00 2:00 4:00"))~.
 
 Values are space-separated ~org-duration~ forms. When a list applies, *Set effort estimate* shows its values as buttons and the box still takes any other duration. The same list supplies the Agenda's effort filter; with none, the filter uses Org's ~0 0:10 0:30 1:00 2:00 3:00 4:00 5:00 6:00 7:00~.
 
@@ -1246,7 +1251,8 @@ Self-contained lines anywhere in a heading's body, with no switch line needed; t
 
 | Placeholder | Meaning |
 |---+---|
-| ~%desc~, ~%icon~ | Description and emoji for the current weather |
+| ~%desc~, ~%icon~, ~%main~ | Description, emoji and weather group (~Clear~, ~Clouds~, ~Fog~, ~Drizzle~, ~Rain~, ~Snow~ or ~Thunderstorm~) for the current weather |
+| ~%tmorn~, ~%tday~, ~%teve~, ~%tnight~ | Today's temperature at 6:00, 12:00, 18:00 and 0:00 |
 | ~%tcur~, ~%tmin~, ~%tmax~, ~%tamin~, ~%tamax~ | Current, low and high temperature, and the "feels like" low and high |
 | ~%tu~, ~%hu~, ~%pu~, ~%su~, ~%au~ | Units: temperature (~org-weather-temperature-unit~), humidity, pressure (~hPa~), wind (~org-weather-speed-unit~: ~mph~, ~km/h~, ~m/s~ or ~Knots~), snapshot age |
 | ~%h~, ~%p~, ~%s~, ~%a~ | Humidity, surface pressure, wind speed, age of the snapshot (~m~, ~h~ or ~d~) |
@@ -1410,7 +1416,7 @@ Tap a habit's strip for its history: how many times in a row it was done on time
 :CUSTOM_ID: agenda-files
 :END:
 
-Add files in *Settings → Quick Settings → Advanced → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). Entries are semicolon-separated ~scheme:path~ pairs, like ~github:journal.org;webdav:notes/todo.org~, the same syntax as ~org-refile-targets~ (see [[#refile][Refile]]). The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file on this device: one you have opened with *File → Open → Local file* or, in the [[#android-app][Android app]], one in the org-pwa folder. A malformed entry is skipped. If the open file is in the list, its live in-memory version is used.
+Add files in *Settings → Quick Settings → Advanced → Agenda files*, or in a document's own ~# Local Variables:~ block to override that for the one file (see [[#local-variables][Local Variables]]). The value is a list of file names, as in Emacs, each starting with ~github:~, ~webdav:~ or ~local:~: ~("github:journal.org" "webdav:notes/todo.org")~, with or without the leading quote. The Agenda and TODO views then scan all of them. ~github~ and ~webdav~ files are fetched; ~local:name.org~ reads a file on this device: one you have opened with *File → Open → Local file* or, in the [[#android-app][Android app]], one in the org-pwa folder. An entry with another prefix is skipped, and a value that is not a list is reported. If the open file is in the list, its live in-memory version is used.
 
 Files are fetched once per session; a *↻* button in the agenda controls refetches them, and a file that fails to load is reported above the list. A local file feeds the Agenda, TODO, Search and Export, and loads only if the browser already allows access; otherwise the agenda says it "needs permission" and *↻* asks. In a browser it is read-only here; in the [[#android-app][Android app]], Refile and Replace also write into it. Export's *This file + Agenda Files* scope always fetches fresh. Two entries with the same file name (~github:notes.org~ and ~local:notes.org~) can't both be used; the agenda names the one it skipped.
 
@@ -1488,22 +1494,19 @@ Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(
     "%?" :empty-lines 1))
 #+END_SRC
 
-If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init.
+If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into the open file scrolls to the new row, item or heading. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init.
 
 *A template* is ~("key" "description" type target "text" keyword value …)~:
 
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
 - ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, read as an org fragment), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
-- target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
+- target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path, found or created heading by heading.
 - The file ~"f"~ may be ~""~ for the open file. A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing.
 - ~(file+olp+datetree "f" "H" …)~ files under today's date. After the headings (which may be none, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day. ~:tree-type week~ files under the year, the ISO week (=2026-W45=) and the day; ~:tree-type month~ files directly under the month. ~file+datetree~ and ~file+weektree~ work too.
+- ~:jump-to-captured t~: after filing, go to the new text: the headings above it open and the view scrolls to it, a table row included. For a template that files into another file, that file's buffer is shown. Without it the screen stays where it was, as in Emacs.
 - ~:prepend t~: put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created heading of the path first among its siblings.
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
 - ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
-- ~:table-header nil~ (~table-line~ only): a new table starts with just the row, with no empty header row and rule.
-- ~:prepend-heading t~ (~table-line~ only): put newly created path headings first among their siblings, independently of ~:prepend~. That keeps the newest month's heading on top while its rows still append in order. It applies at every level that has to be created; existing segments are reused as they are.
-- ~:omit-empty-entries t~ (~plain~ and ~entry~): remove drawer entries and ~KEY:value~ body lines (such as raw vCard lines) whose value is empty because a ~%^{Prompt}~ was left blank, and an empty trailing tag.
-- ~:pre-text "…"~, ~:post-text "…"~: template text, in the same %-language, added around the output. For ~item~, ~checkitem~ and ~plain~ it wraps every capture, with no automatic spacing. For ~table-line~ it is added once, when the target has no table yet: pre-text, the new table with this first row, then post-text; later captures only add rows. No blank line separates them from the table, so a header row and rule in the pre-text join the table, and a ~#+TBLFM:~ or ~#+PLOT:~ line is picked up (see [[#table-formulas][Table formulas]] and [[#plots][Plots]]).
 
 A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading the capture is filed under it, for every type; an entry is its last child, or its first with ~:prepend~. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture. A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
 
@@ -1556,17 +1559,15 @@ A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ run
 - ~@#~ is the table-formula row number, for ~table-line~ captures only (empty otherwise). It takes an offset, ~@# + n~ or ~@# - n~, with n a non-negative integer.
 - ~%?~ is org's cursor marker, treated as one more prompt: labeled "Text", asked on the form, and focused with the keyboard up when it is the first or only field.
 
-*Worked example*, *Tracking*, logs a value with its date and time into a monthly table and plots it:
+*Worked example*, *Tracking*, logs a value with its date and time into a monthly table and plots it. A target function finds or makes the month's heading, its table with the plot line and the formulas, and leaves point on the heading; ~:jump-to-captured t~ then shows the new row:
 
 #+BEGIN_SRC emacs-lisp
 (add-to-list 'org-capture-templates
-  '("t" "Tracking" table-line (file+olp "github:home.org" "Health" "Tracking" "%<%Y-%m>")
-    "| @# | %<%Y-%m-%d> | %<%H%M> ||" :prepend-heading t
-    :pre-text "#+PLOT: title:\"Tracking\" ind:4 deps:1 with:points ticks:6"
-    :post-text "#+TBLFM: $4=round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60)"))
+  '("t" "Tracking" table-line (file+function "github:home.org" my-tracking-target)
+    "| | %<%Y-%m-%d> | %<%H%M> ||" :jump-to-captured t))
 #+END_SRC
 
-The last path segment creates the current month's heading the first time anything is captured that month. ~:pre-text~ and ~:post-text~ set up the chart and the formula once, when the month's table is created; the formula turns a raw ~HHMM~ value (~1830~) into the nearest whole hour (19). The template is one row, with a trailing ~||~ that leaves the 4th cell to the formula, and ~:prepend-heading t~ keeps the newest month on top. A template with prompts and backreferences can build a whole contact, as in =examples/capture-vcard.org=.
+The row has a trailing ~||~ that leaves the 4th cell to the table's formula, and the first cell is numbered by ~$1=@#-1~. =examples/capture-functions.org= has the function (~my-tracking-target~), the formulas and the file as Emacs files it.
 
 *** Capturing from other apps
 :PROPERTIES:
@@ -1613,7 +1614,7 @@ org-xx-extra-menu: "j;📔 Journal" \
 *LABEL* is the text shown, exactly as written (icon and all). *SPEC* is one of three shapes:
 
 - A bare *capture-template key* (~t~, ~j~, ~c~, ~m~ above) runs that template, as if picked from the Capture menu (see [[#capture-templates][Capture Templates]]). A key with no template shows a status message.
-- A bracketed *OLP path*: an array of double-quoted heading titles, as in the path of a capture template's ~file+olp~ target, each segment expanded for ~%<FORMAT>~ when the item is tapped (~"%<%Y-%m>"~ gives the current year and month). It navigates to that heading. Unlike a capture template, it never creates a missing heading, because browsing a menu shouldn't write to the file: a path that doesn't fully exist creates nothing and says so.
+- A bracketed *OLP path*: an array of double-quoted heading titles, like the path of a ~file+olp~ target, each segment written ~%<FORMAT>~ standing for the time when the item is tapped (~"%<%Y-%m>"~ gives the current year and month). It navigates to that heading. It never creates a missing heading, because browsing a menu shouldn't write to the file: a path that doesn't fully exist creates nothing and says so.
 - A *quoted function reference* (~'calendar~ above) runs the command palette command with that real Emacs or Org function name, as if chosen from the palette. It acts on the heading whose action menu is open, else the keyboard-focused one. A command that can't run says why in the status line (~Clock out: no clock is running.~), and no confirmation is asked, since choosing the item is the confirmation. The names are the ones the palette shows and searches (~org-clock-out~, ~org-clock-in~, ~org-refile~, ~org-todo~, ~org-agenda~, ~save-buffer~, ~isearch-forward~, ~calendar~, ~org-html-export-to-html~ and the rest), so type a function name into the palette to find the command, and quote the same name here.
 
   A name that no command has shows ~'name is not a recognized function.~ when tapped; the entry stays so a typo is visible. *New document*, *Undo history*, *Undo settings change* and *Redo settings change* have no Emacs function to name. *Recalculate all tables* is ~org-table-recalculate-buffer-tables~ and *Export as an Org buffer* is ~org-org-export-as-org~.

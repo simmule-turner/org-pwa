@@ -67,7 +67,8 @@ A new heading goes first among its siblings; a new month also gets the plot, the
 
 (add-to-list 'org-capture-templates
   '("t" "Tracking" table-line (file+function "github:home.org" my-tracking-target)
-     "| | %<%Y-%m-%d> | %<%H%M> ||"))`;
+     "| | %<%Y-%m-%d> | %<%H%M> ||"
+     :jump-to-captured t))`;
 
 const WEB = `(add-to-list 'org-capture-templates
   '("w" "Web page or text" entry (file+olp "inbox.org" "Inbox")
@@ -177,7 +178,7 @@ export const CASES = [
   },
   {
     title: 'Tracking', key: 't', file: 'home.org', at: [2026, 11, 7, 18, 30], runs: 2, warm: [2026, 10, 31, 8, 0],
-    about: ['A =table-line= template whose target function finds or makes the headings =Bag=, =Health=, =Tracking= and the current month, puts the new month first, and gives it a plot line, a table and the formulas. The row is filed into that table and the formulas are worked out again. The file already has October; two rows are captured in November.',
+    about: ['A =table-line= template whose target function finds or makes the headings =Bag=, =Health=, =Tracking= and the current month, puts the new month first, and gives it a plot line, a table and the formulas. The row is filed into that table, the formulas are worked out again, and =:jump-to-captured t= opens the table and scrolls to the new row. The file already has October; two rows are captured in November.',
       'Emacs does not expand =@#= in a template, so the first column is a formula, =$1=@#-1= (the header row counts as a row). Emacs rejects a =#+TBLFM= line that defines =$4== twice ("Double definition"), so one formula gives the hour column.'],
     init: TRACKING, before: '* 🛍️ Bag - lists and notes\n** ❤️ Health\n*** 🏩 Tracking\n*** Other\n',
   },
