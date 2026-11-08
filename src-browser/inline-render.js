@@ -100,7 +100,7 @@ export function renderImageNode(node, heading = null) {
           return;
         }
         const bytes = result.tooLarge ? result.bytes : base64Bytes(result.base64);
-        if (imageMax > 0 && bytes > imageMax) {
+        if (result.tooLarge || (imageMax > 0 && bytes > imageMax)) {
           img.replaceWith(largeImagePlaceholder(node.target, resolvedPath, cacheKey, bytes));
           return;
         }
@@ -131,7 +131,7 @@ function largeImagePlaceholder(target, resolvedPath, cacheKey, bytes) {
   box.setAttribute('data-large-image', '1');
   box.style.color = 'var(--text-muted, #888)';
   box.style.fontStyle = 'italic';
-  box.append(`[image: ${target} \u2014 ${formatSize(bytes)}, over the ${formatSize(getSizeLimits().image.max)} limit for inline images] `);
+  box.append(`[image: ${target} \u2014 ${bytes > 0 ? `${formatSize(bytes)}, ` : ''}over the ${formatSize(getSizeLimits().image.max)} limit for inline images] `);
   const load = document.createElement('a');
   load.href = '#';
   load.textContent = 'Load';

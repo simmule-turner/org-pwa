@@ -255,7 +255,7 @@ export function createWebdavAdapter(getConfig) {
     try {
       bytes = await readLimited(res, { maxBytes, kind: wanted > 0 ? 'image' : 'attachment', name: fileId });
     } catch (error) {
-      if (error instanceof SizeLimitError && wanted > 0) return { tooLarge: true, bytes: error.bytes, hash: res.headers.get('ETag') || null };
+      if (error instanceof SizeLimitError && wanted > 0) return { tooLarge: true, bytes: error.atLeast ? 0 : error.bytes, hash: res.headers.get('ETag') || null };
       throw error;
     }
     return { base64: arrayBufferToBase64(/** @type {ArrayBuffer} */ (bytes.buffer)), hash: res.headers.get('ETag') || null };

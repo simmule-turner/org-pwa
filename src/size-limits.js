@@ -150,12 +150,13 @@ export function checkSize(kind, bytes, limits = current.limits, name = '') {
 /** Raised when a read is refused for its size.
  * @extends Error */
 export class SizeLimitError extends Error {
-  /** @param {string} message @param {SizeKind} kind @param {number} bytes */
-  constructor(message, kind, bytes) {
+  /** @param {string} message @param {SizeKind} kind @param {number} bytes @param {boolean} [atLeast] the download was cut off, so `bytes` is only how far it got */
+  constructor(message, kind, bytes, atLeast = false) {
     super(message);
     this.name = 'SizeLimitError';
     this.kind = kind;
     this.bytes = bytes;
+    this.atLeast = atLeast;
   }
 }
 

@@ -38,13 +38,13 @@ test('readLimited collects a stream under the limit', async () => {
 
 test('readLimited stops and cancels the download as soon as it is over the limit', async () => {
   const response = fakeResponse([bytes(6), bytes(6), bytes(6)]);
-  await assert.rejects(readLimited(response, { maxBytes: 10, kind: 'orgFile', name: 'a.org' }), (e) => e instanceof SizeLimitError && /"a\.org" is more than 10 bytes/.test(e.message));
+  await assert.rejects(readLimited(response, { maxBytes: 10, kind: 'orgFile', name: 'a.org' }), (e) => e instanceof SizeLimitError && /"a\.org" is more than 10 bytes/.test(e.message) && e.atLeast === true);
   assert.equal(response.cancelled, true);
 });
 
 test('Content-Length over the limit refuses before any of the body is read', async () => {
   const response = fakeResponse([bytes(1)], { length: 50 });
-  assert.throws(() => refuseByContentLength(response, 10, 'orgFile', 'x'), SizeLimitError);
+  assert.throws(() => refuseByContentLength(response, 10, 'orgFile', 'x'), (e) => e instanceof SizeLimitError && e.atLeast === false);
   await assert.rejects(readLimited(response, { maxBytes: 10 }), SizeLimitError);
 });
 

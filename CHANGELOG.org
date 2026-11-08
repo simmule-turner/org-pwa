@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v658 — The right size on a large-image placeholder
+A picture over the inline-image limit showed a size that was only how much had been downloaded when the app stopped (3.3 MB for a 3.5 MB file, 3.1 MB for a 90 MB one). The placeholder now gives the real size when the server states it and otherwise just says the picture is over the limit.
+Verified: the large-image check and the download-limit tests.
+
 * v657 — Bool-vectors and a Lisp function list
 Lisp now has bool-vectors, so a sieve of Eratosthenes or any bit set works: =make-bool-vector=, the =bool-vector-*= operations, and the =#&5"\31"= print and read syntax, all as Emacs 29.3 gives them. The README gains a Lisp functions section listing every function the interpreter provides, grouped by topic and kept in step with the code by a test. Several =aref=, =seq-*= and reader details now match Emacs too.
 Verified: about 1,150 new cases against Emacs 29.3; the help-link, Lisp init and palette checks.

@@ -98,7 +98,7 @@ export async function readLimited(response, { maxBytes = 0, kind = 'orgFile', na
 function tooLarge(kind, bytes, max, name, atLeast = false) {
   const what = name ? `"${name}"` : 'The file';
   const size = atLeast ? `more than ${formatSize(max)}` : formatSize(bytes);
-  return new SizeLimitError(`${what} is ${size}, over the ${formatSize(max)} limit. Change the limit in Settings > Sync and storage > Size limits.`, kind, bytes);
+  return new SizeLimitError(`${what} is ${size}, over the ${formatSize(max)} limit. Change the limit in Settings > Sync and storage > Size limits.`, kind, bytes, atLeast);
 }
 
 /**
