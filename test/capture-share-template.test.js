@@ -3,12 +3,11 @@ import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { expandTemplate as expandWithNewline, insertCapture, resolveOlpTarget } from '../src/capture-template.js';
 const expandTemplate = (t, c) => ({ text: expandWithNewline(t, c).text.replace(/\n$/, '') }); // the newline that ends every expansion is not what these tests look at
-import { launchFromShare } from '../src/capture-shared.js';
-import { DEFAULT_CAPTURE_TEMPLATES } from '../src-browser/settings.js';
-import { validateCaptureTemplates } from '../src-browser/doc-helpers.js';
+import { launchFromShare, SHARE_TEMPLATE, shareTemplate } from '../src/capture-shared.js';
+import { captureTemplatesFromLisp } from '../src/capture-lisp.js';
 
-// The built-in "Web page or text" template: what ends up in the document for what Android's Share sheet hands over.
-const template = DEFAULT_CAPTURE_TEMPLATES.find((t) => t.key === 'w');
+// The built-in share template ("Web page or text"): what ends up in the document for what Android's Share sheet hands over.
+const template = SHARE_TEMPLATE;
 const NOW = new Date(2026, 9, 5, 9, 30);
 
 /** Runs the template for a share, as the capture form would: `answers` are the prompts in order (the title, then the note). */
@@ -21,10 +20,12 @@ function capture(docText, rawShare, answers) {
   return serializeOrg(doc);
 }
 
-test('the default templates are all valid, and the share template is among them, first', () => {
-  assert.equal(validateCaptureTemplates(DEFAULT_CAPTURE_TEMPLATES), null);
-  assert.equal(DEFAULT_CAPTURE_TEMPLATES[0].key, 'w');
-  assert.equal(template.type, 'plain');
+test('a share uses the Lisp init\'s template with the key w, and the built-in one when the init has none', () => {
+  assert.equal(shareTemplate([]), SHARE_TEMPLATE);
+  const { templates } = captureTemplatesFromLisp(`(setq org-capture-templates '(("n" "Note" plain (file "n.org") "* %?") ("w" "Shares" entry (file+olp "inbox.org" "Later") "* %a")))`);
+  assert.equal(shareTemplate(templates).description, 'Shares');
+  assert.equal(shareTemplate(templates.slice(0, 1)), SHARE_TEMPLATE, 'a list without a w');
+  assert.equal(SHARE_TEMPLATE.type, 'plain');
 });
 
 test('a shared web page becomes a heading that is a link to it, titled as the page is, with when it was captured', () => {

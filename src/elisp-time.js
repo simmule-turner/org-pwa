@@ -65,15 +65,33 @@ function timeList(seconds) {
   return list([...items, Math.round(frac * 1e6), 0]);
 }
 
-defun('format-time-string', 2, 3, ([format, time = NIL, zone = NIL]) => {
+/** The time `format-time-string` takes for a nil time, in place of the clock (`org-overriding-default-time`). @type {Date | null} */
+let defaultTime = null;
+
+/** Runs `fn` with `format-time-string` formatting `when` for a nil time, as a capture's moment. @template T @param {Date} when @param {() => T} fn */
+export function withDefaultTime(when, fn) {
+  const saved = defaultTime;
+  defaultTime = when;
+  try {
+    return fn();
+  } finally {
+    defaultTime = saved;
+  }
+}
+
+defun('format-time-string', 1, 3, ([format, time = NIL, zone = NIL]) => {
   if (typeof format !== 'string') throw wrongType('stringp', format);
-  const date = new Date(Math.round(secondsOf(time) * 1000));
+  const date = new Date(time === NIL && defaultTime ? defaultTime.getTime() : Math.round(secondsOf(time) * 1000));
   const minutes = zoneMinutes(zone);
   return formatTimeString(date, format, zone === T ? { utc: true } : minutes === null ? {} : { offset: minutes });
 });
 
 defun('float-time', 0, 1, ([time = NIL]) => new Flt(secondsOf(time)));
-defun('current-time', 0, 0, () => timeList(Math.floor(Date.now() / 1000)));
+defun('current-time', 0, 0, () => {
+  const ms = Date.now();
+  const whole = Math.floor(ms / 1000);
+  return list([Math.floor(whole / 65536), whole % 65536, (ms - whole * 1000) * 1000, 0]);
+});
 
 /** @param {LObj} x @returns {number} */
 function field(x) {

@@ -8,7 +8,6 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { captureTemplatesFromLisp } from '../src/capture-lisp.js';
 
 const DAY = '* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** Called Mom\n';
 /** @type {{ title: string, about: string, ymd: [number, number, number], before: string, form: string }[]} */
@@ -111,17 +110,13 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 let out = `#+TITLE: Capture into a date tree
 #+STARTUP: showall
 
-A cookbook for journals. Each section shows the file before, the template, and the file after org-capture files it. The results are what Emacs 29.3 (Org 9.6.15) produced, and a test holds the app to them. The template is written the way it goes in the Lisp init (=org-xx-lisp-init=), and in the Capture Templates setting as JSON.
+A cookbook for journals. Each section shows the file before, the template, and the file after org-capture files it. The results are what Emacs 29.3 (Org 9.6.15) produced, and a test holds the app to them. The template is written the way it goes in the Lisp init (=org-xx-lisp-init=).
 
 `;
 CASES.forEach((c, i) => {
-  const { templates, notes } = captureTemplatesFromLisp(c.form.replace('(add-to-list \'org-capture-templates', '(setq org-capture-templates (list').replace(/\)\)$/, '))))'));
-  if (notes.length || templates.length !== 1) throw new Error(`${c.title}: ${JSON.stringify(notes)}`);
-  const t = templates[0];
-  const json = JSON.stringify({ key: t.key, description: t.description, type: t.type, ...(t.file ? { file: t.file } : {}), olp: t.olp, datetree: t.datetree, ...(t.treeType ? { treeType: t.treeType } : {}), ...(t.prepend ? { prepend: true } : {}), template: t.template }, null, 2);
   const [y, mo, d] = c.ymd;
   const day = `${y}-${pad(mo)}-${pad(d)} ${WEEKDAYS[new Date(y, mo - 1, d, 12).getDay()]}`;
-  out += `* ${c.title}\n${c.about}\n\nCaptured on ${day}.\n\nTemplate, in the Lisp init:\n#+BEGIN_SRC emacs-lisp\n${c.form}\n#+END_SRC\n\nThe same template in Capture Templates:\n#+BEGIN_SRC json\n${json}\n#+END_SRC\n\nBefore, journal.org:\n#+BEGIN_SRC org\n${esc(c.before)}\n#+END_SRC\n\nAfter, journal.org:\n#+BEGIN_SRC org\n${esc(outs[i])}\n#+END_SRC\n\n`;
+  out += `* ${c.title}\n${c.about}\n\nCaptured on ${day}.\n\nTemplate, in the Lisp init:\n#+BEGIN_SRC emacs-lisp\n${c.form}\n#+END_SRC\n\nBefore, journal.org:\n#+BEGIN_SRC org\n${esc(c.before)}\n#+END_SRC\n\nAfter, journal.org:\n#+BEGIN_SRC org\n${esc(outs[i])}\n#+END_SRC\n\n`;
 });
 out += `* Where the app differs from Emacs
 =:time-prompt t= (asking for the date) is not read, and neither is =file+olp+datetree= with =:tree-type= given as a function or a list of levels: those need Org 9.8, and a message says so when the Capture list opens. The app leaves the end of a file as it was, where Emacs adds a final newline to a file that lacked one.

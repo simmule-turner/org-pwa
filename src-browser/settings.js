@@ -44,64 +44,8 @@ const KEYS = {
   openTabs: 'settings:openTabs',
   recentFiles: 'settings:recentFiles',
   fileScreenType: 'settings:fileScreenType',
-  captureTemplates: 'settings:captureTemplates',
   globalVariables: 'settings:globalVariables',
 };
-
-/** Ships as the default so capture works immediately with no setup —
- *  these are the four example templates from the request, translated
- *  from org-capture-templates' elisp shape into this app's JSON one:
- *  `(file+olp "" ...)` becomes `olp: [...]` (no separate file field,
- *  since this app edits one open document at a time -- see
- *  capture-template.js's resolveOlpTarget for why "" is the only
- *  meaningful file value here anyway), and `:empty-lines N` becomes
- *  `emptyLines: N`. */
-const DEFAULT_CAPTURE_TEMPLATES = [
-  {
-    // For anything shared in from another app (see "Capturing from other apps" in the README): a web page becomes a heading
-    // that is a link to it, titled as the page is, and shared text goes in the body. With no link shared there is no
-    // heading text, so the prompt asks for a title; for a web page it is left blank.
-    key: 'w',
-    description: 'Web page or text',
-    type: 'plain',
-    olp: ['Inbox'],
-    template: '* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?',
-    emptyLines: 1,
-  },
-  {
-    key: 'b',
-    description: 'Bullet List',
-    type: 'item',
-    olp: ['heading 1', 'heading n'],
-    template: '%? [The captured text or note]',
-    emptyLines: 1,
-  },
-  {
-    key: 'c',
-    description: 'Check List',
-    type: 'checkitem',
-    olp: ['heading 1', 'heading n'],
-    template: '%^{Item description}',
-    emptyLines: 0,
-  },
-  {
-    key: 'm',
-    description: 'Meeting',
-    type: 'plain',
-    olp: ['Meeting Notes'],
-    template:
-      '* %^{Meeting Title} :meeting:\n:PROPERTIES:\n:CREATED: %U\n:END:\n** Attendees\n- %?\n** Notes\n- \n** Action Items\n*** TODO [#A] %^{Top Priority Task}',
-    emptyLines: 1,
-  },
-  {
-    key: 't',
-    description: 'Table Insert prompted for values',
-    type: 'table-line',
-    olp: ['heading 1', '%<%Y-%m>'],
-    template: '| @# | %U | %^{Description} | %^{Amount} |',
-    emptyLines: 0,
-  },
-];
 
 const DEFAULT_GITHUB_CONFIG = { token: '', owner: '', repo: '', branch: 'main' };
 const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
@@ -767,23 +711,6 @@ export async function setFileScreenType(kvAdapter, type) {
 export async function clearRecentFiles(kvAdapter) {
   await setJson(kvAdapter, KEYS.recentFiles, []);
 }
-
-// ---- capture templates ----------------------------------------------------
-
-/** @param {KvAdapter} kvAdapter */
-export async function getCaptureTemplates(kvAdapter) {
-  return getJson(kvAdapter, KEYS.captureTemplates, DEFAULT_CAPTURE_TEMPLATES);
-}
-
-/**
- * @param {KvAdapter} kvAdapter
- * @param {unknown} templates
- */
-export async function setCaptureTemplates(kvAdapter, templates) {
-  await setJson(kvAdapter, KEYS.captureTemplates, templates);
-}
-
-export { DEFAULT_CAPTURE_TEMPLATES };
 
 export {
   DEFAULT_GITHUB_CONFIG,

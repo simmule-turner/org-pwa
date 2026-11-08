@@ -1,7 +1,7 @@
 #+TITLE: Capture templates in Lisp
 #+STARTUP: overview
 
-Put this in the Lisp init (~org-xx-lisp-init~). Each template is the form Emacs reads.
+Put this in the Lisp init (~org-xx-lisp-init~). Each template is the form Emacs reads. =capture-functions.org= has more, with the file before and after as Emacs files it: the template for a shared web page or text (=w=), lists, a table row and a journal.
 
 * Entries, lists and rows
 #+BEGIN_SRC emacs-lisp

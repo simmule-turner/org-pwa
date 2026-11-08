@@ -1,6 +1,7 @@
 // @ts-check
 // Extracted from app.js: capture ui.
-import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, fileCapture, getCaptureFileScheme, plannedTableRow, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
+import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandCaptureText, expandTemplate, getCaptureFileScheme, resolveCaptureFileId, resolveOlpTarget, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
+import { captureInto } from '../src/capture-run.js';
 import { parseOrg } from '../src/org-parser.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
 import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
@@ -15,9 +16,9 @@ import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { navigateToHeading } from './navigation.js';
 import { captureLispNotes, getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
-import { agendaFilesCache, kv } from './singletons.js';
+import { agendaFilesCache } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
-import { switchToView } from './views.js';
+import { openDocsAtHeading, switchToView } from './views.js';
 import { platform } from './platform.js';
 import { findRunningClockAcrossSessions } from './clock-flow.js';
 
@@ -66,7 +67,7 @@ export async function renderCapturePanel() {
   heading.textContent = 'Capture \u2014 pick a template';
   capturePanelBox.appendChild(heading);
 
-  const templates = await getCaptureTemplates(kv);
+  const templates = await getCaptureTemplates();
   if (!S.captureOpen) return; // panel was closed again before this resolved
   S.currentCaptureTemplates = templates;
   if (captureLispNotes.length) setStatus(captureLispNotes.join(' '));
@@ -76,10 +77,17 @@ export async function renderCapturePanel() {
     empty.style.opacity = '0.6';
     empty.style.fontSize = '13px';
     empty.style.marginBottom = '8px';
-    empty.textContent = 'No capture templates configured yet — add some in Settings.';
+    empty.textContent = 'No capture templates are defined. Capture templates are set with org-capture-templates in the Lisp init (Settings \u2192 Advanced \u2192 Lisp init); examples/capture-templates.org has some to copy.';
     capturePanelBox.appendChild(empty);
     const closeRow = document.createElement('div');
     closeRow.className = 'panel-row';
+    closeRow.appendChild(
+      menuButton('Capture Templates help', () => {
+        S.captureOpen = false;
+        renderCapturePanel();
+        openDocsAtHeading('#capture-templates');
+      })
+    );
     closeRow.appendChild(
       menuButton('Close', () => {
         S.captureOpen = false;
@@ -124,7 +132,7 @@ export async function renderCapturePanel() {
       btn.appendChild(badge);
     }
     const label = document.createElement('span');
-    label.textContent = template.description;
+    label.textContent = template.description || '';
     btn.appendChild(label);
     btn.onclick = () => openCapturePrompt(template);
     grid.appendChild(btn);
@@ -453,17 +461,11 @@ export async function runCaptureWithAnswers(template, answers) {
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (doc) => {
-        /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
-        let target;
-        try {
-          target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true, datetree: !!template.datetree, treeType: template.treeType }) : doc; // no path: the file's top level
-        } catch (err) {
-          setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
+        const result = captureInto(doc, template, { now, answers, context: templateContext(), preText: preTextSrc, postText: postTextSrc, place: (d) => placeOptions(template, d) });
+        if (!result.ok) {
+          setStatus(result.message);
           return null;
         }
-        const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
-        const { preText, text, postText } = expandCaptureText(preTextSrc, template.template, postTextSrc, { ...templateContext(), now, promptAnswers: answers, tableRowNumber });
-        fileCapture(doc, target, template.type, text.replace(/\n$/, ''), template.prepend, template.omitEmptyEntries, preText, postText, placeOptions(template, doc)); // the newline that ends an expansion is the line's own
         return true;
       },
     });
@@ -478,37 +480,22 @@ export async function runCaptureWithAnswers(template, answers) {
     return;
   }
 
-  /** @type {import('../src/types.js').Doc | import('../src/types.js').Heading} */
-  let target;
-  try {
-    target = (template.olp || []).length || template.datetree ? resolveOlpTarget(S.state.doc, template.olp || [], { now, prepend: getOlpPrepend(template), unique: true, datetree: !!template.datetree, treeType: template.treeType }) : S.state.doc; // no path: the file's top level
-  } catch (err) {
-    setStatus(`Capture failed: ${/** @type {Error} */ (err).message}`);
+  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), preText: preTextSrc, postText: postTextSrc, place: (d) => placeOptions(template, d) });
+  if (!result.ok) {
+    setStatus(result.message);
     renderCapturePanel();
     return;
   }
-
-  const tableRowNumber = template.type === 'table-line' ? plannedTableRow(target, !!template.prepend, template) : null;
-
-  let expanded;
-  try {
-    expanded = expandCaptureText(preTextSrc, template.template, postTextSrc, { ...templateContext(), now, promptAnswers: answers, tableRowNumber });
-  } catch (err) {
-    setStatus(`Can't capture: ${/** @type {Error} */ (err).message}`);
-    renderCapturePanel();
-    return;
-  }
-  const { preText, text, postText } = expanded;
-
-  const placed = fileCapture(S.state.doc, target, template.type, text.replace(/\n$/, ''), template.prepend, template.omitEmptyEntries, preText, postText, placeOptions(template, S.state.doc)); // the newline that ends an expansion is the line's own
+  const { target, placed } = result;
   commitAndRender(`Captured: ${template.description}`);
 
   switchToView('org');
-  const shown = (template.olp || []).length || template.datetree ? target : placed && 'level' in placed ? placed : null;
+  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
+  const shown = hasTarget && 'level' in target ? target : placed && 'level' in placed ? placed : null;
   if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
   setStatus('Captured.');
   afterSuccessfulCapture();
-  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: (template.olp || []).length || template.datetree ? target : null });
+  emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: hasTarget && 'level' in target ? target : null });
 }
 
 /** What a template says about how its text is filed: the blank lines around it, the table row, and the sums of a table it joins.

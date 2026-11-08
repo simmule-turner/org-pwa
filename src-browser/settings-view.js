@@ -18,7 +18,6 @@ import { syncNow } from './mirror-sync.js';
 import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionFile, saveExtensionScript } from './extension-flow.js';
-import { validateCaptureTemplates } from './doc-helpers.js';
 import { setStatus } from './editing.js';
 import { getServiceWorkerVersion } from './render-helpers.js';
 import { APP_VERSION } from './version.js';
@@ -26,13 +25,12 @@ import { render } from './render.js';
 import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnableProtectionDialog, prepareImport } from './connection-protection.js';
 import { forState, vault } from './connection-vault.js';
 import { buildHistoryCard, reapplySettings } from './settings-history.js';
-import { DEFAULT_CAPTURE_TEMPLATES, DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getCaptureTemplates, getFontFamily, getFontSize, getGithubConfig, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setCaptureTemplates, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
+import { DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getFontFamily, getFontSize, getGithubConfig, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
 import { formatPendingChangeTimestamp } from './sync-helpers.js';
 import { labeledInput, menuButton, pickTextFile, settingsTextBox } from './ui-widgets.js';
-import { openDocsAtHeading } from './views.js';
 import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 import { applyTheme, buildThemeColorCustomizationSection } from './settings-theme.js';
@@ -566,75 +564,6 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     extensionLog.textContent = ext.log.slice(-10).join('\n');
     extensionSection.appendChild(extensionLog);
   }
-
-  const captureSection = document.createElement('div');
-  captureSection.className = 'settings-section';
-  cards.set('capture', captureSection);
-
-  const captureTitle = document.createElement('div');
-  captureTitle.className = 'panel-section-title';
-  captureTitle.textContent = 'Capture Templates';
-  captureSection.appendChild(captureTitle);
-
-  const captureHint = document.createElement('div');
-  captureHint.style.fontSize = '12px';
-  captureHint.style.opacity = '0.75';
-  captureHint.style.margin = '2px 0 6px';
-  captureHint.textContent = 'Edited as JSON \u2014 an array of template objects. Full schema, every field, and examples are in the help doc:';
-  captureSection.appendChild(captureHint);
-
-  const captureHintLinkRow = document.createElement('div');
-  captureHintLinkRow.style.marginBottom = '8px';
-  captureHintLinkRow.appendChild(
-    menuButton('Capture Templates reference \u2192', () => {
-      openDocsAtHeading('#capture-templates');
-    })
-  );
-  captureSection.appendChild(captureHintLinkRow);
-
-  const currentTemplates = await getCaptureTemplates(kv);
-  const currentTemplatesText = JSON.stringify(currentTemplates, null, 2);
-  const defaultTemplatesText = JSON.stringify(DEFAULT_CAPTURE_TEMPLATES, null, 2);
-  const captureTextarea = document.createElement('textarea');
-  captureTextarea.value = currentTemplatesText;
-  settingsTextBox(captureTextarea);
-  captureTextarea.onfocus = () => {
-    captureTextarea.blur();
-    openTextFieldPopup({
-      label: 'Capture Templates',
-      value: currentTemplatesText,
-      defaultValue: defaultTemplatesText,
-      onSave: async (/** @type {any} */ newValue) => {
-        let parsed;
-        try {
-          parsed = JSON.parse(normalizeSmartQuotes(newValue));
-        } catch (err) {
-          setStatus('Capture templates: invalid JSON \u2014 ' + err.message);
-          return;
-        }
-        const problem = validateCaptureTemplates(parsed);
-        if (problem) {
-          setStatus('Capture templates: ' + problem);
-          return;
-        }
-        await setCaptureTemplates(kv, parsed);
-        syncCaptureShortcuts();
-        setStatus('Capture templates saved.');
-        renderSettingsView();
-        render();
-      },
-      onReset:
-        currentTemplatesText !== defaultTemplatesText
-          ? async () => {
-              await setCaptureTemplates(kv, DEFAULT_CAPTURE_TEMPLATES);
-              syncCaptureShortcuts();
-              setStatus('Capture templates reset to defaults.');
-              renderSettingsView();
-            }
-          : null,
-    });
-  };
-  captureSection.appendChild(captureTextarea);
 
   const pendingSection = document.createElement('div');
   pendingSection.className = 'settings-section';

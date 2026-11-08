@@ -7,7 +7,6 @@ import { openButtonChoiceModal } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
-import { kv } from './singletons.js';
 
 /**
  * A template as a shortcut: its key, and the description it is listed under. Templates without both are not offered.
@@ -22,7 +21,7 @@ function shortcutsFor(templates) {
 export async function syncCaptureShortcuts() {
   if (!platform.captureShortcuts.supported()) return;
   try {
-    const sent = shortcutsFor(await getCaptureTemplates(kv));
+    const sent = shortcutsFor(await getCaptureTemplates());
     const reply = await platform.captureShortcuts.set(sent);
     S.captureShortcutsResult = { ok: true, sent: sent.length, reply: reply || null };
   } catch (error) {
@@ -49,7 +48,7 @@ export async function addCaptureIconToHomeScreen() {
     setStatus("This launcher can't add icons from an app. Long-press the app icon instead and drag a Capture shortcut out.");
     return;
   }
-  const choices = [{ key: '', label: 'Capture (the template list)' }, ...shortcutsFor(await getCaptureTemplates(kv))];
+  const choices = [{ key: '', label: 'Capture (the template list)' }, ...shortcutsFor(await getCaptureTemplates())];
   openButtonChoiceModal({
     label: 'Add an icon for which capture? Your launcher will ask you to confirm it.',
     buttons: choices.map((choice) => ({

@@ -12,7 +12,7 @@ const table = (name) => /** @type {string} */ (classBody(name));
 const W = table('syntax:w');
 const SYMBOL = W + table('syntax:_');
 /** The inside of a character class for `[[:NAME:]]`, or undefined. @param {string} name */
-function posixClass(name) {
+export function posixClass(name) {
   switch (name) {
     case 'alpha': case 'alnum': case 'upper': case 'lower': case 'punct': case 'space': case 'blank': case 'print': case 'graph': return table(name);
     case 'word': return W;

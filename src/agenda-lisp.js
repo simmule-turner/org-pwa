@@ -5,10 +5,9 @@
  * `org-agenda-custom-commands` command. A setting is the function's name, `#'name`, or a `(lambda ...)` form, taken from the
  * Lisp init when that sets the variable, else from the setting's text.
  */
-import { Cons, NIL, Sym, intern, print } from './elisp-data.js';
+import { Cons, NIL, Sym, T, intern, print } from './elisp-data.js';
 import { Reader } from './elisp-read.js';
 import { evalPlain as evalForm, funcallPlain as funcall, state, withDynamic } from './elisp-core.js';
-import { defun } from './elisp-core.js';
 import { describeFailure } from './elisp.js';
 import { withContext } from './diary-lisp.js';
 import { initValue } from './holidays.js';
@@ -142,11 +141,7 @@ export function evalPrefixForm(formText, fields, heading) {
   }
 }
 
-// `insert` writes where `princ` does, so a function command can build its text either way.
-defun('insert', 0, -1, (args) => {
-  for (const a of args) funcall(intern('princ'), [typeof a === 'number' ? String.fromCodePoint(a) : a]);
-  return NIL;
-});
+// `insert` (src/elisp-buffer.js) writes where `princ` does while `org-xx--insert-to-output` is t, so a function command can build its text either way.
 
 /**
  * Runs a function command: the function is called with the match string, and what it writes (`princ`, `insert`, `print`) becomes the
@@ -158,7 +153,7 @@ defun('insert', 0, -1, (args) => {
 export function runFunctionCommand(functionText, match) {
   const fn = settingFunction('org-xx-command-function', functionText);
   if (!fn) return { ok: false, message: 'Not a function: ' + functionText };
-  const r = callFunction(fn, [match]);
+  const r = callFunction(fn, [match], null, { 'org-xx--insert-to-output': T });
   if (!r.ok) return r;
   return { ok: true, text: state.outputs[0].join('') };
 }

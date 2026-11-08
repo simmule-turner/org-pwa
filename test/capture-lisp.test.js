@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { captureTemplatesFromLisp, mergeCaptureTemplates } from '../src/capture-lisp.js';
+import { captureTemplatesFromLisp } from '../src/capture-lisp.js';
 import { insertCapture, resolveOlpTarget } from '../src/capture-template.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { expandLoads } from '../src/lisp-load.js';
@@ -28,7 +28,7 @@ test('add-to-list puts a template first, and a group heading or a template that 
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates '(("w" "Work") ("wt" "Task" entry (file+headline "w.org" "Tasks") "* TODO %?" :empty-lines 1)
                                   ("d" "Dated" entry (file+datetree+prompt "d.org") "* %?")
-                                  ("f" "Fn" entry (function my-fn) "* %?")))
+                                  ("f" "Fn" entry (clock) "* %?")))
     (add-to-list 'org-capture-templates '("n" "Note" plain (file "inbox.org") "* %?"))`);
   assert.deepEqual(templates.map((t) => t.key), ['n', 'wt']);
   assert.deepEqual(templates[0].olp, []);
@@ -37,11 +37,6 @@ test('add-to-list puts a template first, and a group heading or a template that 
   assert.equal(templates[1].emptyLines, 1);
   assert.match(notes.join(' '), /"d" is left out.*file\+datetree\+prompt/);
   assert.match(notes.join(' '), /"f" is left out/);
-});
-
-test('a Lisp template replaces a JSON template with the same key', () => {
-  const merged = mergeCaptureTemplates([{ key: 'a', type: 'item', template: 'old' }, { key: 'b', type: 'item', template: 'b' }], [{ key: 'a', type: 'entry', template: 'new' }]);
-  assert.deepEqual(merged.map((t) => [t.key, t.template]), [['b', 'b'], ['a', 'new']]);
 });
 
 test('an entry goes under its heading, or at the file’s top level when the target has no heading', () => {
@@ -70,7 +65,7 @@ test('a template written in a file the init loads is read, and one in the init i
   const { templates, notes } = captureTemplatesFromLisp(text);
   assert.deepEqual(notes, []);
   assert.deepEqual(templates.map((t) => [t.key, t.description]), [['x', 'In the init'], ['x', 'Also from file'], ['w', 'From file']]);
-  assert.deepEqual(mergeCaptureTemplates([], templates).filter((t) => t.key === 'x').map((t) => t.description), ['In the init', 'Also from file']);
+  assert.deepEqual(templates.filter((t) => t.key === 'x').map((t) => t.description), ['In the init', 'Also from file']);
 });
 
 test('file+olp+datetree and the older file+datetree and file+weektree read as a date tree target, :tree-type week or month choose the tree', () => {

@@ -540,7 +540,7 @@ org-agenda-start-on-weekday: 1
 
 Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
 
-*Smart quotes are normalized*: iOS and many Android keyboards turn a typed straight quote into a curly one, but quoted values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~, the [[#capture-templates][Capture Templates]] JSON) need straight quotes. Quick Settings, this text box and Capture Templates convert them back on save; quotes in ordinary prose are untouched.
+*Smart quotes are normalized*: iOS and many Android keyboards turn a typed straight quote into a curly one, but quoted values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~) need straight quotes. Quick Settings and this text box convert them back on save; quotes in ordinary prose are untouched.
 
 -----
 
@@ -794,6 +794,10 @@ The interpreter behind the Lisp init, ~emacs-lisp~ source blocks, holiday lists,
 *Symbols and functions* (58): Defining and calling functions, symbols, variables, features, equality and type tests. ~require~, ~provide~ and ~featurep~ treat every feature as loaded, so ~eval-after-load~ and ~with-eval-after-load~ run their body at once.
 
 ~add-hook~ ~add-to-list~ ~always~ ~apply~ ~booleanp~ ~boundp~ ~declare~ ~declare-function~ ~defalias~ ~default-value~ ~defconst~ ~defcustom~ ~defgroup~ ~defmacro~ ~defun~ ~defvar~ ~defvar-local~ ~eq~ ~eql~ ~equal~ ~eval~ ~eval-after-load~ ~eval-and-compile~ ~eval-when-compile~ ~fboundp~ ~featurep~ ~fmakunbound~ ~fset~ ~func-arity~ ~funcall~ ~functionp~ ~gensym~ ~get~ ~identity~ ~ignore~ ~interactive~ ~intern~ ~intern-soft~ ~keywordp~ ~macroexpand~ ~macroexpand-1~ ~macroexpand-all~ ~make-symbol~ ~make-variable-buffer-local~ ~makunbound~ ~provide~ ~put~ ~remove-hook~ ~require~ ~set~ ~special-variable-p~ ~symbol-function~ ~symbol-name~ ~symbol-plist~ ~symbol-value~ ~symbolp~ ~type-of~ ~with-eval-after-load~
+
+*Text buffers* (52): A buffer of text with point, narrowing, motion, insertion, deletion and searching, for ~:prepare-finalize~ and target functions, and for code of your own inside ~with-temp-buffer~. Positions count characters from 1. ~save-excursion~ and ~save-restriction~ keep point and the narrowing.
+
+~backward-char~ ~beginning-of-line~ ~bobp~ ~bolp~ ~buffer-live-p~ ~buffer-size~ ~buffer-string~ ~buffer-substring~ ~buffer-substring-no-properties~ ~bufferp~ ~char-after~ ~char-before~ ~count-lines~ ~current-buffer~ ~delete-char~ ~delete-region~ ~end-of-line~ ~eobp~ ~eolp~ ~erase-buffer~ ~flush-lines~ ~following-char~ ~forward-char~ ~forward-line~ ~goto-char~ ~how-many~ ~keep-lines~ ~line-beginning-position~ ~line-end-position~ ~line-number-at-pos~ ~looking-at~ ~looking-at-p~ ~looking-back~ ~narrow-to-region~ ~point~ ~point-max~ ~point-min~ ~pos-bol~ ~pos-eol~ ~preceding-char~ ~re-search-backward~ ~re-search-forward~ ~replace-regexp-in-region~ ~replace-string-in-region~ ~search-backward~ ~search-forward~ ~set-buffer~ ~skip-chars-backward~ ~skip-chars-forward~ ~widen~ ~with-current-buffer~ ~with-temp-buffer~
 
 *Errors and conditions* (10): Signaling, catching and describing errors.
 
@@ -1474,43 +1478,34 @@ It is a flat list in document order showing each item's keyword, title, category
 :CUSTOM_ID: capture-templates
 :END:
 
-The palette's *Capture* command (or ~C-c c~) opens org's ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
+The palette's *Capture* command (or ~C-c c~) opens the templates of ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
 
-If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]).
+Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-functions.org=, =examples/capture-datetree.org=.
 
-Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meeting) and ~t~ (Table Row). Edit or replace them in *Settings → Capture Templates*, as a JSON array of template objects.
-
-*Templates in Lisp:* ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~ in the Lisp init (~org-xx-lisp-init~) are read as Emacs reads them (also when they are in a file the init loads with ~(load …)~), and appear beside the JSON templates; where a Lisp and a JSON template share a key, the Lisp one is used. Types ~entry~, ~item~, ~checkitem~, ~table-line~ and ~plain~; targets ~(file "f")~, ~(file+headline "f" "H")~, ~(file+olp "f" "H1" "H2")~, where a segment may be a ~%<FORMAT>~, and ~(file+olp+datetree "f" "H")~ (with ~:tree-type week~ or ~month~ if you like; ~file+datetree~ and ~file+weektree~ work too); keywords ~:prepend~, ~:empty-lines~, ~:empty-lines-before~, ~:empty-lines-after~ and ~:table-line-pos~, and the app's own ~:omit-empty-entries~, ~:prepend-heading~, ~:table-header~, ~:pre-text~ and ~:post-text~. A template or keyword the app cannot use is named in a message when the Capture list opens. Examples with Emacs's results: =examples/capture-templates.org=.
-
-*Template shape:*
-
-#+BEGIN_SRC json
-{
-  "key": "b",
-  "description": "Bullet List",
-  "type": "item",
-  "olp": ["heading 1", "heading n"],
-  "template": "%? [The captured text or note]",
-  "file": "journal.org",
-  "prepend": true,
-  "prependHeading": true
-}
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("b" "Bullet List" item (file+olp "notes.org" "Lists" "Shopping")
+    "%?" :empty-lines 1))
 #+END_SRC
 
+If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init.
+
+*A template* is ~("key" "description" type target "text" keyword value …)~:
+
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
-- ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Emacs 9.6 inserts no box), ~plain~ (raw text parsed as an org fragment; the only type that can contain headings, drawers or TODO keywords) ~entry~ (a heading; its level follows the target) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
-- ~olp~: the outline path to insert into, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
-- ~file~ (optional): capture into a different file (~file+olp~). A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing. Omit it to capture into the open file.
-- ~datetree~ (default ~false~): file under today's date, as ~file+olp+datetree~ in Emacs. After ~olp~ (which may then be empty, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day.
-- ~treeType~ (~"day"~, ~"week"~ or ~"month"~, default ~"day"~; needs ~datetree~): ~"week"~ files under the year, the ISO week (=2026-W45=) and the day; ~"month"~ files directly under the month.
-- ~template~: the text inserted, after %-expansion. A JSON ~\n~ is a newline; a blank line after the entry is ~"...%?\n"~.
-- ~prepend~ (default ~false~): put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created ~olp~ heading first among its siblings.
-- ~emptyLines~, ~emptyLinesBefore~, ~emptyLinesAfter~ (default ~0~): the blank lines left before and after the new text, as ~:empty-lines~, ~:empty-lines-before~ and ~:empty-lines-after~ in Emacs. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
-- ~tableLinePos~ (~table-line~ only): where the row goes, as ~:table-line-pos~ in Emacs: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
-- ~tableHeader~ (default ~true~; ~table-line~ only): ~false~ starts a new table with just the row, with no empty header row and rule.
-- ~prependHeading~ (default ~false~; ~table-line~ only): put newly created ~olp~ headings first among their siblings, independently of ~prepend~. That keeps the newest month's heading on top while its rows still append in order. It applies at every level that has to be created; existing segments are reused as they are.
-- ~omitEmptyEntries~ (default ~false~; ~plain~ only): remove drawer entries and ~KEY:value~ body lines (such as raw vCard lines) whose value is empty because a ~%^{Prompt}~ was left blank, and an empty trailing tag.
-- ~preText~, ~postText~ (optional, default empty): template text, in the same %-language, added around the output. For ~item~, ~checkitem~ and ~plain~ it wraps every capture, with no automatic spacing. For ~table-line~ it is added once, when the target has no table yet: ~preText~, the new table with this first row, then ~postText~; later captures only add rows. No blank line separates them from the table, so a header row and rule in ~preText~ join the table, and a ~#+TBLFM:~ or ~#+PLOT:~ line is picked up (see [[#table-formulas][Table formulas]] and [[#plots][Plots]]).
+- ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, read as an org fragment), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
+- target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path, found or created heading by heading. A segment wrapped in ~%<FORMAT>~ (like ~"%<%Y-%m>"~) expands dynamically, so a monthly table can target "2026-07" without creating that heading by hand. Other segments are literal.
+- The file ~"f"~ may be ~""~ for the open file. A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing.
+- ~(file+olp+datetree "f" "H" …)~ files under today's date. After the headings (which may be none, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day. ~:tree-type week~ files under the year, the ISO week (=2026-W45=) and the day; ~:tree-type month~ files directly under the month. ~file+datetree~ and ~file+weektree~ work too.
+- ~:prepend t~: put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created heading of the path first among its siblings.
+- ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
+- ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
+- ~:table-header nil~ (~table-line~ only): a new table starts with just the row, with no empty header row and rule.
+- ~:prepend-heading t~ (~table-line~ only): put newly created path headings first among their siblings, independently of ~:prepend~. That keeps the newest month's heading on top while its rows still append in order. It applies at every level that has to be created; existing segments are reused as they are.
+- ~:omit-empty-entries t~ (~plain~ and ~entry~): remove drawer entries and ~KEY:value~ body lines (such as raw vCard lines) whose value is empty because a ~%^{Prompt}~ was left blank, and an empty trailing tag.
+- ~:pre-text "…"~, ~:post-text "…"~: template text, in the same %-language, added around the output. For ~item~, ~checkitem~ and ~plain~ it wraps every capture, with no automatic spacing. For ~table-line~ it is added once, when the target has no table yet: pre-text, the new table with this first row, then post-text; later captures only add rows. No blank line separates them from the table, so a header row and rule in the pre-text join the table, and a ~#+TBLFM:~ or ~#+PLOT:~ line is picked up (see [[#table-formulas][Table formulas]] and [[#plots][Plots]]).
+
+A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading the capture is filed under it, for every type; an entry is its last child, or its first with ~:prepend~. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture. A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
 
 *Template text, the %-escape language* (local time):
 
@@ -1556,41 +1551,37 @@ Four templates are the default: ~b~ (Bullet List), ~c~ (Check List), ~m~ (Meetin
 - ~%^g~ and ~%^G~ ask for tags, written as ~work:home~, and insert ~:work:home:~. On a heading line the tags are placed where ~org-tags-column~ says.
 - ~%^C~ asks for a clipboard value (pre-filled with the shared text, when there is any) and inserts it; ~%^L~ inserts it as ~[[value]]~.
 - ~%^t~, ~%^T~, ~%^u~, ~%^U~ (and ~%^{Prompt}t~ and the other letters, to name the field) are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. The date & time popup also has an *End time*, which follows the start by 30 minutes until you change it (*No end* removes it) and writes a range such as ~<2026-09-22 Tue 09:00-10:30>~: an appointment with a start and an end, exported with both. A date typed into the field (~2026-09-22~ or ~2026-09-22 14:30~) becomes a timestamp; ~T~ and ~U~ add the current time when none is given, and an empty field is now.
-- ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ (1-based) instead of asking again; tag, clipboard, timestamp and ~%?~ prompts are not counted. A number past the last prompt is an error and the capture does not run. In the JSON text the backslash must be doubled: ~%\\1~.
+- ~%\N~ (~%\1~, ~%\2~, ...) re-inserts the answer already given to the Nth ~%^{Prompt}~ (1-based) instead of asking again; tag, clipboard, timestamp and ~%?~ prompts are not counted. A number past the last prompt is an error and the capture does not run. In a Lisp string the backslash is doubled: ~"%\\1"~.
 - A backslash before ~%~ escapes it: ~\%t~ stays ~%t~. With several backslashes, half of them (rounded up) are removed and the ~%~ is literal when their number is odd, so ~\\%t~ is a backslash and a timestamp.
 - ~@#~ is the table-formula row number, for ~table-line~ captures only (empty otherwise). It takes an offset, ~@# + n~ or ~@# - n~, with n a non-negative integer.
 - ~%?~ is org's cursor marker, treated as one more prompt: labeled "Text", asked on the form, and focused with the keyboard up when it is the first or only field.
 
 *Worked example*, *Tracking*, logs a value with its date and time into a monthly table and plots it:
 
-#+BEGIN_SRC json
-{
-  "key": "t",
-  "description": "Tracking",
-  "type": "table-line",
-  "olp": ["Health", "Tracking", "%<%Y-%m>"],
-  "preText": "#+PLOT: title:\"Tracking\" ind:4 deps:1 with:points ticks:6",
-  "postText": "#+TBLFM: $4=round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60)",
-  "template": "| @# | %<%Y-%m-%d> | %<%H%M> ||",
-  "prependHeading": true,
-  "file": "github:home.org"
-}
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("t" "Tracking" table-line (file+olp "github:home.org" "Health" "Tracking" "%<%Y-%m>")
+    "| @# | %<%Y-%m-%d> | %<%H%M> ||" :prepend-heading t
+    :pre-text "#+PLOT: title:\"Tracking\" ind:4 deps:1 with:points ticks:6"
+    :post-text "#+TBLFM: $4=round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60)"))
 #+END_SRC
 
-The last ~olp~ segment creates the current month's heading the first time anything is captured that month. ~preText~ and ~postText~ set up the chart and the formula once, when the month's table is created; the formula turns a raw ~HHMM~ value (~1830~) into the nearest whole hour (19). The template is one row, with a trailing ~||~ that leaves the 4th cell to the formula, and ~prependHeading~ keeps the newest month on top. A ~plain~ template can build a whole heading with prompts and backreferences, as in the vCard template of =examples/capture-vcard.org=.
+The last path segment creates the current month's heading the first time anything is captured that month. ~:pre-text~ and ~:post-text~ set up the chart and the formula once, when the month's table is created; the formula turns a raw ~HHMM~ value (~1830~) into the nearest whole hour (19). The template is one row, with a trailing ~||~ that leaves the 4th cell to the formula, and ~:prepend-heading t~ keeps the newest month on top. A template with prompts and backreferences can build a whole contact, as in =examples/capture-vcard.org=.
 
 *** Capturing from other apps
 :PROPERTIES:
 :CUSTOM_ID: capture-from-other-apps
 :END:
 
-On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open Capture. Pick a template; its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
+On Android, the installed app is a share target: choose *org-pwa* in another app's Share sheet and the shared title, text and link open the share template (below); its ~%i~ and ~%a~ take the content. Long-press the app icon for a *Capture* shortcut.
 
-The built-in *Web page or text* template is made for this. Share a web page and it files a heading under *Inbox* that links to the page, titled as the page is; leave its title prompt blank. Share some text from a document and it files the text under a heading with the title you type. Either way the second prompt takes your own note, and ~:CREATED:~ records when. A part that isn't there (no text, no note) leaves a blank line. If you already have templates of your own, add it in *Settings → Capture Templates*:
+Shared content goes to the template with the key ~w~ in the Lisp init, or, when the init has none, to one that files a web page under *Inbox*. A web page becomes a heading that is a link to it, titled as the page is (leave the title prompt blank); shared text goes under the heading with the title you type. The second prompt takes your own note, and ~:CREATED:~ records when. To choose where shares go, define ~w~ yourself:
 
-#+BEGIN_SRC json
-{ "key": "w", "description": "Web page or text", "type": "plain", "olp": ["Inbox"],
-  "template": "* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?", "emptyLines": 1 }
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("w" "Web page or text" entry (file+olp "inbox.org" "Inbox")
+    "* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?"
+    :empty-lines 1))
 #+END_SRC
 
 Any link or bookmark can do the same: ~index.html?capture=KEY&text=Buy%20milk~ runs the template with that key and carries the content (a bare ~?capture~ shows the list; ~&title=~ and ~&url=~ also work). The address is cleaned afterwards, so reloading never captures twice, and it works offline. A template that files into another file needs a document from the same backend open.
@@ -1622,7 +1613,7 @@ org-xx-extra-menu: "j;📔 Journal" \
 *LABEL* is the text shown, exactly as written (icon and all). *SPEC* is one of three shapes:
 
 - A bare *capture-template key* (~t~, ~j~, ~c~, ~m~ above) runs that template, as if picked from the Capture menu (see [[#capture-templates][Capture Templates]]). A key with no template shows a status message.
-- A bracketed *OLP path*: an array of double-quoted heading titles, as in a capture template's ~olp:~, each segment expanded for ~%<FORMAT>~ when the item is tapped (~"%<%Y-%m>"~ gives the current year and month). It navigates to that heading. Unlike a capture template, it never creates a missing heading, because browsing a menu shouldn't write to the file: a path that doesn't fully exist creates nothing and says so.
+- A bracketed *OLP path*: an array of double-quoted heading titles, as in the path of a capture template's ~file+olp~ target, each segment expanded for ~%<FORMAT>~ when the item is tapped (~"%<%Y-%m>"~ gives the current year and month). It navigates to that heading. Unlike a capture template, it never creates a missing heading, because browsing a menu shouldn't write to the file: a path that doesn't fully exist creates nothing and says so.
 - A *quoted function reference* (~'calendar~ above) runs the command palette command with that real Emacs or Org function name, as if chosen from the palette. It acts on the heading whose action menu is open, else the keyboard-focused one. A command that can't run says why in the status line (~Clock out: no clock is running.~), and no confirmation is asked, since choosing the item is the confirmation. The names are the ones the palette shows and searches (~org-clock-out~, ~org-clock-in~, ~org-refile~, ~org-todo~, ~org-agenda~, ~save-buffer~, ~isearch-forward~, ~calendar~, ~org-html-export-to-html~ and the rest), so type a function name into the palette to find the command, and quote the same name here.
 
   A name that no command has shows ~'name is not a recognized function.~ when tapped; the entry stays so a typo is visible. *New document*, *Undo history*, *Undo settings change* and *Redo settings change* have no Emacs function to name. *Recalculate all tables* is ~org-table-recalculate-buffer-tables~ and *Export as an Org buffer* is ~org-org-export-as-org~.
@@ -1975,7 +1966,7 @@ Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It is this file, 
 
 The cards:
 
-- *Quick Settings*: labeled controls for the Global and Local Variables (see [[#local-variables][Local Variables]]), grouped by area, with an *Advanced* group for those with complex syntax. It shares storage with the *Global Variables* text box, so each reflects the other. *Capture Templates* is raw JSON edited in a popup.
+- *Quick Settings*: labeled controls for the Global and Local Variables (see [[#local-variables][Local Variables]]), grouped by area, with an *Advanced* group for those with complex syntax. It shares storage with the *Global Variables* text box, so each reflects the other.
 - *GitHub* and *WebDAV*: connection details. Use a fine-grained GitHub token scoped to one repository (Contents read and write only), and for WebDAV an app-specific password if offered. *Calendar (CalDAV) / Contacts (CardDAV)* follow (see [[#calendar-sync][Calendar and contacts sync]]).
 - *Protect connections*: *Protect with a passphrase…* (at least 8 characters) encrypts the GitHub token and owner and the logins of WebDAV, the calendar and contacts. The passphrase is asked for when one of them is first used in a session and is not stored; *Export Settings* writes the logins encrypted and *Import Settings* asks for the file's passphrase.
 - *Settings history* (Advanced): *Undo* and *Redo* name the setting they change, the list shows this session's changes (up to 100) and a tap goes to that point, and *Restore from start of session* returns to the first entry. The palette has *Undo settings change* and *Redo settings change*. Logins and actions such as *Sync* are not followed, and Undo in a document never changes settings.
@@ -2052,7 +2043,7 @@ The Android app is the same app in a native wrapper, with a few things done the 
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
 - *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
 - *Reminders*: agenda notifications (see [[#agenda-notifications][Agenda notifications]]) are handed to Android, so they arrive with the app closed. Allow notifications when asked; without the *Alarms & reminders* setting they may be a few minutes late.
-- *Long-press the app icon*: your capture templates are listed, in the order they are in *Settings → Capture Templates*, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
+- *Long-press the app icon*: your capture templates are listed, in the order they are in the Lisp init, as many as the launcher shows. Tapping one opens that template. Drag one onto the home screen for an icon, or run *Add a capture icon to the home screen*.
 - *Sharing in*: share a link or text from any app to *org-pwa*; Capture opens with it (see [[#capture-from-other-apps][Capturing from other apps]]).
 - *Separate from the browser*: the app keeps its own settings, tokens and documents, so enter GitHub, WebDAV, calendar and contacts settings again. A WebDAV, CalDAV or CardDAV server must allow the origin ~https://localhost~ (CORS).
 - *Updates*: the app is updated by installing a newer APK over the old one. *Settings → Updates* shows which version you have.
@@ -2090,7 +2081,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *Import* | Contacts (.vcf), ~org-vcard-import~; iCalendar (.ics), ~icalendar-import-file~ |
 | *App* | settings, help, show display measurements, copy keyboard debug log, copy security diagnostics, copy update and startup log, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 
-*Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
+*Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template of the Lisp init directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited Lisp init or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
 
 *Commands*, like the other More entries, can be renamed, hidden or reordered with [[#menu-customization][menu customization]] (~org-xx-menu-aliases~). It is the ordinary ~more:~ label ~Commands~, which renders first by default.
 

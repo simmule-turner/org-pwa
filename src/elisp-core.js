@@ -35,6 +35,10 @@ export const state = {
   /** @type {(number | null)[] | null} */
   matchData: null,
   matchString: '',
+  /** The buffer the last search matched in (match data then holds its positions), or null when it matched in a string. @type {import('./elisp-data.js').Buffer | null} */
+  matchBuffer: null,
+  /** The current buffer; src/elisp-buffer.js makes the first one when a program needs it. @type {import('./elisp-data.js').Buffer | null} */
+  buffer: null,
 };
 
 const maxDepthSym = intern('max-lisp-eval-depth');
@@ -507,14 +511,14 @@ defSpecial('eval-when-compile', (args, scope) => progn(args, scope));
 defSpecial('eval-and-compile', (args, scope) => progn(args, scope));
 defSpecial('save-match-data', (args, scope) => {
   const saved = state.matchData;
+  const savedBuffer = state.matchBuffer;
   try {
     return progn(args, scope);
   } finally {
     state.matchData = saved;
+    state.matchBuffer = savedBuffer;
   }
 });
-defSpecial('save-excursion', (args, scope) => progn(args, scope));
-defSpecial('save-restriction', (args, scope) => progn(args, scope));
 
 defSpecial('while', (args, scope) => {
   const test = car(args);
@@ -947,6 +951,8 @@ export function resetRun(options = {}) {
   state.outputs = [[]];
   state.messages = [];
   state.catches = [];
+  state.buffer = null;
+  state.matchBuffer = null;
 }
 
 /** `defvar`-style global setup used by the library. @param {string} name @param {LObj} value */

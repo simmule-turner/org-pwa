@@ -1,7 +1,7 @@
 // @ts-check
 /** The built-in functions of the Lisp interpreter: numbers, lists, strings, vectors, hash tables, output, errors, `format`. */
 import {
-  BoolVector, Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
+  Buffer, BoolVector, Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
   allSymbols, bool, box, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, isStr, list, print, signal, toArray, userErrors, wrongType,
 } from './elisp-data.js';
 import { Reader, readFromString } from './elisp-read.js';
@@ -385,6 +385,7 @@ defun('type-of', 1, 1, ([x]) => {
   if (Array.isArray(x)) return intern('vector');
   if (x instanceof BoolVector) return intern('bool-vector');
   if (x instanceof HashTable) return intern('hash-table');
+  if (x instanceof Buffer) return intern('buffer');
   if (x instanceof Lambda) return intern('cons');
   if (x instanceof Subr) return intern('subr');
   return intern('subr');
@@ -1433,7 +1434,7 @@ defun('string-to-number', 1, 2, ([s, base]) => {
 const foldCase = () => (intern('case-fold-search').value ?? T) !== NIL;
 
 /** Searches `s` from `start`; sets the match data. @param {string} re @param {string} s @param {number} start @param {boolean} setData */
-function search(re, s, start, setData) {
+export function search(re, s, start, setData) {
   const rx = toRegExp(re, foldCase(), true);
   const matchesGreedily = checkFailureStack(rx.source, rx.flags, s, start); // Emacs's own limit, for a long input
   const guard = matchesGreedily ? null : guardFor(rx.source, rx.flags, s.length);
@@ -1453,6 +1454,7 @@ function search(re, s, start, setData) {
       }
       state.matchData = md;
       state.matchString = s;
+      state.matchBuffer = null;
     }
     return hit.index;
   }
@@ -1480,6 +1482,7 @@ function search(re, s, start, setData) {
     }
     state.matchData = md;
     state.matchString = s;
+    state.matchBuffer = null;
   }
   return m.index;
 }
@@ -1517,7 +1520,7 @@ defAlias('match-string-no-properties', 'match-string');
 defun('regexp-quote', 1, 1, ([s]) => regexpQuote(str(s)));
 
 /** Expands `\&`, `\N` and `\\` of a replacement. @param {string} rep @param {string} source @param {(number | null)[]} md @param {string} whole */
-function expandReplacement(rep, source, md, whole) {
+export function expandReplacement(rep, source, md, whole) {
   void whole;
   if (/(^|[^\\])(\\\\)*\\$/.test(rep)) throw signal('error', ['Invalid use of ‘\\’ in replacement text']);
   return rep.replace(/\\(.)/gs, (_, c) => {
@@ -1534,7 +1537,7 @@ function expandReplacement(rep, source, md, whole) {
 }
 const WORD = /[\p{L}\p{N}]/u;
 /** Case adaptation of `replace-match`. @param {string} matched @param {string} rep */
-function adaptCase(matched, rep) {
+export function adaptCase(matched, rep) {
   let someMulti = false;
   let someLower = false;
   let someUpper = false;

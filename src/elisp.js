@@ -8,6 +8,7 @@ import './elisp-extra.js';
 import './elisp-loop.js';
 import './elisp-pcase.js';
 import './elisp-time.js';
+import './elisp-buffer.js';
 import './elisp-prelude.js';
 import {
   BudgetExceeded, Cons, LispSignal, LispThrow, NIL, errorMessageString, print, signal, unboxDeep,

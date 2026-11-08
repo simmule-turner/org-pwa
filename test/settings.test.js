@@ -229,6 +229,14 @@ test('importAllSettings skips an unrecognized key rather than throwing', async (
   assert.equal(await getTheme(kv), 'dark');
 });
 
+test('an old export that has captureTemplates imports without error, and the key is not written', async () => {
+  const kv = createInMemoryAdapter();
+  const imported = await importAllSettings(kv, { settings: { theme: 'dark', captureTemplates: [{ key: 'b', description: 'Bullet List', type: 'item', olp: ['A'], template: '%?' }] } });
+  assert.deepEqual(imported, ['theme']);
+  assert.equal(await kv.get('settings:captureTemplates'), null);
+  assert.equal('captureTemplates' in (await exportAllSettings(kv)).settings, false);
+});
+
 test('importAllSettings tolerates a missing or malformed settings field without throwing', async () => {
   const kv = createInMemoryAdapter();
   assert.deepEqual(await importAllSettings(kv, {}), []);

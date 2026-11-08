@@ -33,10 +33,7 @@
  *
  * Deliberately narrow in scope: only applied at specific, known-to-
  * always-be-syntax input points (Settings' own Quick Settings fields,
- * the raw Global/Local Variables textarea, and the Capture Templates
- * JSON textarea -- the most severe case of all three, since JSON is
- * entirely quote-delimited and JSON.parse rejects a single curly
- * quote outright rather than silently mis-parsing) -- never to
+ * and the raw Global/Local Variables textarea) -- never to
  * ordinary document prose (a heading's title, a paragraph's body
  * text), where a person's own real typographic quotes in their own
  * writing are wanted, not something to silently rewrite.

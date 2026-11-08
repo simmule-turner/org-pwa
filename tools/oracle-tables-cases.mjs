@@ -246,4 +246,10 @@ add('| ! | a | b |\n|---+---+---|\n| # | 1 | 2 |\n#+TBLFM: @2$b=7');
 add('| ! | a | b |\n| _ | a | b |\n|---+---+---|\n| # | 1 | 2 |\n#+TBLFM: $b=$a*3');
 add('| ! | a | b |\n| _ | a | b |\n|---+---+---|\n| # | 1 | 2 |\n#+TBLFM: $c=$a*3');
 
+// the number of the row (@#) and of the column ($#) of the field being set
+for (const e of ['@#', '@#-1', '@#*2', '$#', '$#+@#', '$1+@#', 'if(@# == 2, 7, 8)', 'if(round($2/3) == 1, 0, round($2/3))', "'(+ @# 1)", "'(+ $# 1)"]) { add(T(NUM, `$3=${e}`)); add(T(HDR, `$3=${e}`)); add(T(NUM, `@2$3=${e}`)); }
+add(T([['a', 'b'], '-', ['', '5'], ['', '7']], '$1=@#-1'));
+add('|   | 5 |\n|---+---|\n|   | 7 |\n#+TBLFM: $1=@#-1');
+add('|   | 5 |\n|   | 7 |\n#+TBLFM: $1=@#');
+
 export const CASES = cases.filter((c) => !/=now\b|float-time|=daysto|=weekday|\$0=|\$0'/.test(c));

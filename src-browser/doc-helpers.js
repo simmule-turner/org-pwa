@@ -8,7 +8,6 @@
 // Extracted from app.js: doc helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { emacsRegexToJs } from '../src/emacs-regex.js';
-import { CAPTURE_TYPES } from './constants.js';
 
 /** The raw table.rows array index (which, like editingCell's own
  *  existing convention, INCLUDES rule/hline entries) of the first
@@ -253,46 +252,6 @@ export function buildQueryReplacePattern(query, useRegex) {
   if (useRegex) return emacsRegexToJs(query, flags);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(escaped, flags);
-}
-
-/** Returns a human-readable problem description, or null if `parsed` is
- *  a valid capture-templates array. Checked before saving from Settings
- *  so a malformed edit gets a clear message immediately, rather than
- *  either silently corrupting the stored config or failing confusingly
- * @param {any} [parsed]
- *  later when a capture is actually run against it. */
-export function validateCaptureTemplates(parsed) {
-  if (!Array.isArray(parsed)) return 'must be a JSON array';
-  for (let i = 0; i < parsed.length; i++) {
-    const t = parsed[i];
-    const label = `template #${i + 1}`;
-    if (!t || typeof t !== 'object') return `${label} must be an object`;
-    if (typeof t.key !== 'string' || t.key.length === 0) return `${label}: "key" must be a non-empty string`;
-    if (typeof t.description !== 'string') return `${label}: "description" must be a string`;
-    if (!CAPTURE_TYPES.includes(t.type)) return `${label}: "type" must be one of ${CAPTURE_TYPES.join(', ')}`;
-    if (!Array.isArray(t.olp) || (t.olp.length === 0 && !t.datetree) || !t.olp.every((/** @type {any} */ s) => typeof s === 'string')) {
-      return `${label}: "olp" must be a non-empty array of strings`;
-    }
-    if ('datetree' in t && typeof t.datetree !== 'boolean') return `${label}: "datetree" must be true or false if present`;
-    if ('treeType' in t && !['day', 'week', 'month'].includes(t.treeType)) return `${label}: "treeType" must be "day", "week" or "month" if present`;
-    if ('treeType' in t && !t.datetree) return `${label}: "treeType" needs "datetree": true`;
-    if (typeof t.template !== 'string') return `${label}: "template" must be a string`;
-    if ('file' in t && typeof t.file !== 'string') return `${label}: "file" must be a string if present`;
-    if ('prepend' in t && typeof t.prepend !== 'boolean') return `${label}: "prepend" must be true or false if present`;
-    if ('prependHeading' in t && typeof t.prependHeading !== 'boolean') return `${label}: "prependHeading" must be true or false if present`;
-    if ('omitEmptyEntries' in t && typeof t.omitEmptyEntries !== 'boolean') return `${label}: "omitEmptyEntries" must be true or false if present`;
-    for (const field of ['emptyLines', 'emptyLinesBefore', 'emptyLinesAfter']) {
-      if (field in t && !(Number.isInteger(t[field]) && t[field] >= 0)) return `${label}: "${field}" must be a whole number if present`;
-    }
-    if ('tableLinePos' in t && typeof t.tableLinePos !== 'string') return `${label}: "tableLinePos" must be a string such as "I+1" if present`;
-    if ('tableHeader' in t && typeof t.tableHeader !== 'boolean') return `${label}: "tableHeader" must be true or false if present`;
-    if ('preText' in t && typeof t.preText !== 'string') return `${label}: "preText" must be a string if present`;
-    if ('postText' in t && typeof t.postText !== 'string') return `${label}: "postText" must be a string if present`;
-  }
-  const keys = parsed.map((t) => t.key);
-  const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
-  if (duplicate !== undefined) return `duplicate key "${duplicate}" \u2014 each template needs a unique key`;
-  return null;
 }
 
 /**

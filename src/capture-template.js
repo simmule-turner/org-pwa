@@ -65,6 +65,8 @@ const PROMPT_ESCAPE_RE = /%\^(?:\{([^}]*)\})?([CgGLptTuU])?|%\?/g;
 const BACKREF_RE = /%\\([1-9][0-9]*)/g;
 const LINK_RE = /\[\[(.*?)\](\[.*?\])?\]/;
 const TAGS_COLUMN = 77;
+/** Stands in the text where a blank %? ends it, until the text is cleaned up: the space before it is kept, as Emacs keeps it. */
+const CURSOR_AT_END = '\uE000';
 
 /** @typedef {{ buf: string, pos: number }} Cursor */
 
@@ -132,7 +134,7 @@ function untabify(text) {
  * @param {string} text
  */
 function cleanupExpanded(text) {
-  const first = text.search(/[^ \t\n]/);
+  const first = text.search(/[^ \t\n\uE000]/);
   if (first === -1) return '';
   const lineStart = text.lastIndexOf('\n', first - 1) + 1;
   const body = text.slice(lineStart).replace(/[ \t\n]+$/, '');
@@ -243,7 +245,9 @@ function runExpansion(template, context, answers) {
     if (m[0] === '%?') {
       prompts.push({ kind: 'text', prompt: 'Text', default: '', completions: [] });
       const given = answers[prompts.length - 1];
-      insertAt(cur, given === undefined || given === null ? '' : String(given));
+      const typed = given === undefined || given === null ? '' : String(given);
+      // Emacs leaves %? in the text while it trims and files it, so the space before it stays: mark where a blank one ends the text
+      insertAt(cur, typed === '' && /^[ \t\n]*(?:\x01\x02CAPTURE_SPLIT\x02\x01.*)?$/s.test(cur.buf.slice(cur.pos)) ? CURSOR_AT_END : typed);
       return;
     }
     const items = m[1] !== undefined ? m[1].split('|') : [];
@@ -340,7 +344,7 @@ function scanPrompts(template, context = {}) {
  */
 function expandTemplate(template, context = {}) {
   const { text } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
-  return { text: cleanupExpanded(text) };
+  return { text: cleanupExpanded(text).replace(CURSOR_AT_END, '') };
 }
 
 /** Expands a capture template's own preText/template/postText fields
@@ -362,7 +366,8 @@ function expandCaptureText(preText, template, postText, context = {}) {
   const combined = (preText || '') + SENTINEL + template + SENTINEL + (postText || '');
   const { text } = runExpansion(combined, context, /** @type {any} */ (context).promptAnswers || []);
   const [pre, main, post] = text.split(SENTINEL);
-  return { preText: untabify(pre), text: cleanupExpanded(main), postText: untabify(post) };
+  const cleaned = cleanupExpanded(main);
+  return { preText: untabify(pre), text: cleaned.replace(CURSOR_AT_END, ''), postText: untabify(post), cursorAtEnd: cleaned.includes(CURSOR_AT_END) };
 }
 
 
@@ -548,7 +553,7 @@ function stripEmptyProperties(heading) {
 /** @typedef {import('./types.js').Heading | import('./types.js').Doc} Host a heading, or a file's top level */
 /** @typedef {import('./types.js').Table} Table */
 /** The blank lines around filed text, the table row to use, whether a new table gets a header, and `recalculate`, which works out a table's #+TBLFM after a row is added.
- *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, blankBeforeTable?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
+ *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, blankBeforeTable?: boolean, cursorAtEnd?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null }} PlaceOptions */
 const BLANK = (/** @type {string} */ l) => l.trim() === '';
 const ITEM_START_RE = /^[ \t]*(?:[-+]|\d+[.)])(?:[ \t]|$)/;
 
@@ -594,10 +599,10 @@ function blanksAfter(lines, at, n) {
 
 /** The node's text ends in exactly `n` blank lines.
  * @param {Host} node @param {number} n */
-function endWithBlanks(node, n) {
+function endWithBlanks(node, n, keep = false) {
   const lines = node.bodyLines;
   let a = lines.length;
-  while (a > 0 && BLANK(lines[a - 1])) a--;
+  while (!keep && a > 0 && BLANK(lines[a - 1])) a--;
   lines.splice(a, lines.length - a, ...Array(n).fill(''));
   node.body = parseBody(lines);
 }
@@ -628,12 +633,12 @@ function emptyLinesOf(opts) {
 
 /** Files heading text (`org-capture-place-entry`): a child of the target, first or last.
  * @param {Host} target @param {Heading[]} headings @param {boolean} prepend @param {number} before @param {number} after */
-function placeHeadings(target, headings, prepend, before, after) {
+function placeHeadings(target, headings, prepend, before, after, keepEnd = false) {
   endWithBlanks(prepend ? target : lastNodeOf(target), before);
   if (prepend) target.children.unshift(...headings);
   else target.children.push(...headings);
   target.collapsed = false;
-  endWithBlanks(lastNodeOf(headings[headings.length - 1]), after);
+  endWithBlanks(lastNodeOf(headings[headings.length - 1]), after, keepEnd);
 }
 
 /** Files text that holds no heading (`org-capture-place-plain-text`): the end of the entry's own text, or its start past
@@ -658,8 +663,8 @@ function indentOf(line) {
 /** Files a list item (`org-capture-place-item`): into the first list of the entry's text (the file's text for a top
  *  level), else as a new list.
  * @param {Host} target @param {string} lead @param {string} text @param {boolean} prepend @param {number} before @param {number} after */
-function placeItem(target, lead, text, prepend, before, after) {
-  const body = text.replace(/^\s+|\s+$/g, '');
+function placeItem(target, lead, text, prepend, before, after, keepEnd = false) {
+  const body = keepEnd ? text.replace(/^\s+/, '') : text.replace(/^\s+|\s+$/g, '');
   const itemLines = (ITEM_START_RE.test(body) ? body : lead + body.split('\n').join('\n  ')).split('\n');
   /** @type {{ host: Host, list: ReturnType<typeof findLists>[number] } | null} */
   let found = null;
@@ -837,7 +842,7 @@ function placeTableLine(target, text, prepend, pre, post, opts) {
 function insertCapture(target, type, expandedText, prepend = false, omitEmptyEntries = false, expandedPreText = '', expandedPostText = '', opts = {}) {
   const [before, after] = emptyLinesOf(opts);
   if (type === 'item' || type === 'checkitem') {
-    const placed = placeItem(target, '- ', expandedPreText + expandedText + expandedPostText, prepend, before, after);
+    const placed = placeItem(target, '- ', expandedPreText + expandedText + expandedPostText, prepend, before, after, !!opts.cursorAtEnd && !expandedPostText);
     for (const node of placed.host.body || []) {
       if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
     }
@@ -850,7 +855,7 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
   const fragment = parseOrg(text);
   if (omitEmptyEntries) for (const heading of fragment.children) stripEmptyProperties(heading);
   if (fragment.children.length > 0) {
-    const offset = target.level || 0; // a file's top level has none
+    const offset = (target.level || 0) + 1 - fragment.children[0].level; // the first heading becomes a child of the target; deeper ones keep their distance (org-paste-subtree)
     const shift = (/** @type {Heading[]} */ headings) => {
       for (const h of headings) {
         h.level += offset;
@@ -858,7 +863,7 @@ function insertCapture(target, type, expandedText, prepend = false, omitEmptyEnt
       }
     };
     shift(fragment.children);
-    placeHeadings(target, fragment.children, prepend, before, after);
+    placeHeadings(target, fragment.children, prepend, before, after, !!opts.cursorAtEnd && !expandedPostText);
     return prepend ? target.children[0] : target.children[target.children.length - 1];
   }
   placePlainText(target, text.split('\n'), prepend, before, after);

@@ -1,5 +1,5 @@
 // examples/capture-datetree.org holds what Emacs 29.3 left after org-capture filed a template under a date tree
-// (tools/gen-example-capture-datetree.mjs). The app must read the template the same in the Lisp and the JSON form, and file it the same.
+// (tools/gen-example-capture-datetree.mjs). The app must read the template and file it the same.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -23,7 +23,7 @@ test('the file has its eight cases', () => {
 
 for (const sec of sections) {
   const title = sec.split('\n')[0];
-  test(`capture-datetree.org, "${title}": the template reads the same either way and files as Emacs filed it`, () => {
+  test(`capture-datetree.org, "${title}": the template is read and files as Emacs filed it`, () => {
     const date = /^Captured on (\d+)-(\d+)-(\d+) /m.exec(sec);
     assert.ok(date);
     const lisp = block(sec, 'Template, in the Lisp init', 'emacs-lisp');
@@ -31,11 +31,9 @@ for (const sec of sections) {
     assert.deepEqual(notes, []);
     assert.equal(templates.length, 1);
     const t = templates[0];
-    const json = JSON.parse(block(sec, 'The same template in Capture Templates', 'json'));
-    assert.deepEqual(json, JSON.parse(JSON.stringify({ key: t.key, description: t.description, type: t.type, ...(t.file ? { file: t.file } : {}), olp: t.olp, datetree: t.datetree, ...(t.treeType ? { treeType: t.treeType } : {}), ...(t.prepend ? { prepend: true } : {}), template: t.template })));
     const doc = parseOrg(unescape(block(sec, 'Before, journal.org', 'org')).replace(/$/, '\n').replace(/^\n$/, ''));
-    const target = resolveOlpTarget(doc, json.olp, { now: new Date(+date[1], +date[2] - 1, +date[3], 12), datetree: !!json.datetree, treeType: json.treeType });
-    fileCapture(doc, target, json.type, json.template, !!json.prepend, false, '', '', {});
+    const target = resolveOlpTarget(doc, t.olp, { now: new Date(+date[1], +date[2] - 1, +date[3], 12), datetree: !!t.datetree, treeType: t.treeType });
+    fileCapture(doc, target, t.type, t.template, !!t.prepend, false, '', '', {});
     assert.equal(serializeOrg(doc), unescape(block(sec, 'After, journal.org', 'org')) + '\n');
   });
 }

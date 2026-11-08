@@ -93,6 +93,12 @@ export const GROUPS = [
     names: 'defun defmacro defalias defvar defvar-local defconst defcustom defgroup declare declare-function interactive funcall apply eval macroexpand macroexpand-1 macroexpand-all func-arity fset functionp fboundp fmakunbound symbol-function symbol-name symbol-value symbol-plist symbolp keywordp booleanp boundp makunbound set default-value special-variable-p make-variable-buffer-local get put intern intern-soft make-symbol gensym eq eql equal type-of identity ignore always add-hook remove-hook add-to-list require provide featurep eval-after-load with-eval-after-load eval-and-compile eval-when-compile',
   },
   {
+    id: 'buffer', title: 'Text buffers',
+    intro: 'A buffer of text with point, narrowing, motion, insertion, deletion and searching, for ~:prepare-finalize~ and target functions, and for code of your own inside ~with-temp-buffer~.',
+    note: 'Positions count characters from 1. ~save-excursion~ and ~save-restriction~ keep point and the narrowing.',
+    names: 'backward-char beginning-of-line bobp bolp buffer-live-p buffer-size buffer-string buffer-substring buffer-substring-no-properties bufferp char-after char-before count-lines current-buffer delete-char delete-region end-of-line eobp eolp erase-buffer flush-lines following-char forward-char forward-line goto-char how-many keep-lines line-beginning-position line-end-position line-number-at-pos looking-at looking-at-p looking-back narrow-to-region point point-max point-min pos-bol pos-eol preceding-char re-search-backward re-search-forward replace-regexp-in-region replace-string-in-region search-backward search-forward set-buffer skip-chars-backward skip-chars-forward widen with-current-buffer with-temp-buffer',
+  },
+  {
     id: 'errors', title: 'Errors and conditions',
     intro: 'Signaling, catching and describing errors.',
     names: 'signal error user-error define-error condition-case condition-case-unless-debug ignore-errors ignore-error with-demoted-errors error-message-string',

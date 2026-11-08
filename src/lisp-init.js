@@ -67,15 +67,17 @@ function pushedNames(text) {
  * @param {string} text
  * @param {Map<string, Lisp>} [initial]
  * @param {Record<string, string>} [aliases]
- * @returns {Map<string, Lisp> & { errors: string[], raw: Map<string, LObj> }}  `raw` holds the values as Lisp objects, functions included
+ * @returns {Map<string, Lisp> & { errors: string[], failed: { message: string, form: string }[], raw: Map<string, LObj> }}  `raw` holds the values as Lisp objects, functions included; `failed` the same errors with the text of the form each came from
  */
 export function runInit(text, initial, aliases = {}) {
   const before = new Map(allSymbols().map((s) => [s, s.value]));
   /** @type {string[]} */
   const errors = [];
+  /** @type {{ message: string, form: string }[]} */
+  const failed = [];
   /** @type {Map<string, LObj>} */
   const raw = new Map();
-  const out = Object.assign(new Map(initial || []), { errors, raw });
+  const out = Object.assign(new Map(initial || []), { errors, failed, raw });
   if (!text.trim()) return out;
   for (const [name, value] of initial || []) {
     const s = intern(name);
@@ -92,11 +94,13 @@ export function runInit(text, initial, aliases = {}) {
   try {
     const reader = new Reader(text);
     while (reader.more()) {
+      const from = reader.pos;
       try {
         evalForm(reader.read(), null);
       } catch (raw) {
         const { message, kind } = describeFailure(raw);
         errors.push(message);
+        failed.push({ message, form: text.slice(from, reader.pos) });
         if (kind === 'budget') break;
         if (raw instanceof Error && raw.constructor.name === 'LispSignal' && /** @type {{ symbol?: Sym }} */ (raw).symbol === intern('end-of-file')) break;
       }

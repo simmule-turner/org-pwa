@@ -64,7 +64,7 @@
 
 /** One entry of the command palette. @typedef {{ id: string, label: string, orgName?: string, keys?: string, group?: string, keywords?: string[], needs?: string[], run: (target?: object | null) => any, [k: string]: any }} PaletteCommand */
 
-/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, datetree?: boolean, treeType?: string, [k: string]: any }} CaptureTemplate */
+/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, tableHeader?: boolean, prepend?: boolean, omitEmptyEntries?: boolean, preText?: string, postText?: string, datetree?: boolean, treeType?: string, targetFunction?: string, prepareFinalize?: string[], [k: string]: any }} CaptureTemplate */
 
 /**
  * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).

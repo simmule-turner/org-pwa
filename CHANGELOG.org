@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v660 — Capture templates come from Lisp
+Capture templates are now written only in Lisp, as in Emacs: set =org-capture-templates= in the Lisp init (=org-xx-lisp-init=). Templates saved in the old Settings editor are not read, and the built-in ones are replaced by examples in =examples/capture-functions.org= (Bullet List, Check List, Meeting, Table row, Journal, shared page) with Emacs 29.3's results. Sharing a page or text still works with no setup, using your template with key =w= if you define one.
+Verified: against Emacs 29.3; the capture, share and settings checks.
+
+* v659 — Capture with Lisp functions
+Capture templates in your Lisp init can now run a function: =(file+function "f" FN)= finds or creates the place to file under (a year heading, or a month with its plot and table), and =:prepare-finalize= cleans the captured text, such as dropping blank vCard lines. A text buffer for Lisp (point, search, insert, replace) backs both, and =examples/capture-functions.org= shows Meeting, Journal, Appointment, vCard and Tracking as Emacs-standard Lisp. =format-time-string= takes one argument, an error in the init now shows, and captured entries keep Emacs's levels and the blank line before =%?=.
+Verified: against Emacs 29.3; the capture and Lisp checks.
+
 * v658 — The right size on a large-image placeholder
 A picture over the inline-image limit showed a size that was only how much had been downloaded when the app stopped (3.3 MB for a 3.5 MB file, 3.1 MB for a 90 MB one). The placeholder now gives the real size when the server states it and otherwise just says the picture is over the limit.
 Verified: the large-image check and the download-limit tests.

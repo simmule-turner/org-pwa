@@ -6,7 +6,7 @@
  * a vector a JS array, a bool-vector a `BoolVector`, `nil` and `t` the symbols of those names, a list a chain of `Cons`.
  */
 
-/** @typedef {Sym | Cons | Flt | number | bigint | string | String | LObj[] | BoolVector | Lambda | Subr | Special | HashTable | Marker} LObj  any Lisp object */
+/** @typedef {Sym | Cons | Flt | number | bigint | string | String | LObj[] | BoolVector | Lambda | Subr | Special | HashTable | Marker | Buffer} LObj  any Lisp object */
 /** @typedef {{ vars: Map<Sym, LObj>, parent: Scope | null }} Scope  a lexical scope */
 
 /** A symbol. `value` is its global (dynamic) value; `fn` its function cell. */
@@ -154,6 +154,22 @@ export class HashTable {
 export class Marker {
   constructor() {
     this.pos = 0;
+  }
+}
+
+/** A text buffer (src/elisp-buffer.js): its text, point (1-based, in characters) and narrowing; no file, no window. */
+export class Buffer {
+  /** @param {string} name */
+  constructor(name) {
+    this.name = name;
+    this.text = '';
+    /** Point, and the accessible region [begv, zv] (zv is `point-max`). */
+    this.pt = 1;
+    this.begv = 1;
+    this.zv = 1;
+    this.live = true;
+    /** Saved places that follow edits (save-excursion, save-restriction). @type {{ pos: number, advance: boolean }[]} */
+    this.marks = [];
   }
 }
 
@@ -434,6 +450,7 @@ function printTo(x, escape, out, depth) {
     }
     out.push('))');
   }
+  else if (x instanceof Buffer) out.push(x.live ? `#<buffer ${x.name}>` : '#<killed buffer>');
   else out.push('#<marker>');
 }
 

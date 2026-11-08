@@ -297,6 +297,15 @@ async function newDocument(page, text) {
   await setDocumentText(page, text);
 }
 
+/** Defines the capture templates the way a person does: org-capture-templates in the Lisp init. */
+async function setCaptureInit(page, lisp) {
+  await page.evaluate(async (text) => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    const { encodeLispString } = await import('/src/export-defaults.js');
+    await commitGlobalVariableChange('org-xx-lisp-init', encodeLispString(text));
+  }, lisp);
+}
+
 async function setDocumentText(page, text) {
   await viewMenu(page, 'Text');
   await page.locator('#document-text-edit-input').fill(text);
@@ -1337,14 +1346,18 @@ check('details editor: five tabs, a dot on each tab that was edited, a footer no
 check('command palette: capture templates and Extras entries are commands you can run by name', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, ['* Note', '', '# Local Variables:', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));
-  const { DEFAULT_CAPTURE_TEMPLATES } = await import(ROOT + '/src-browser/settings.js');
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("b" "Bullet List" item (file+olp "" "Lists") "%?")
+    ("c" "Check List" checkitem (file+olp "" "Lists") "%^{Item description}")
+    ("m" "Meeting" entry (file+olp "" "Meeting Notes") "* %^{Meeting Title} :meeting:\\n%?")
+    ("t" "Table Insert prompted for values" table-line (file+olp "" "Expenses") "| | %U | %^{Description} | %^{Amount} |")))`);
 
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Commands');
   await page.waitForSelector('#command-palette');
   await page.keyboard.type('capture:');
   const captureRows = (await paletteRows(page)).map((r) => r.split('\n')[0]);
-  const expected = DEFAULT_CAPTURE_TEMPLATES.map((t) => `Capture: ${t.description}`);
+  const expected = ['Bullet List', 'Check List', 'Meeting', 'Table Insert prompted for values'].map((d) => `Capture: ${d}`);
   expect(JSON.stringify([...captureRows].sort()) === JSON.stringify([...expected].sort()), `capture rows: ${JSON.stringify(captureRows)} vs ${JSON.stringify(expected)}`);
 
   // an Extras entry from the document's own Local Variables
@@ -3639,23 +3652,11 @@ check('narrowing persists across a reload', async () => {
   await context.close();
 });
 
-check('capture from outside: a share URL runs the named template with the shared text and link, the URL is cleaned so a reload does not repeat it, a share with no key offers the templates, and an unknown key says so', async () => {
+check('capture from outside: a share URL runs the named template with the shared text and link, the URL is cleaned so a reload does not repeat it, a share with no key goes to the built-in share template, or to the init\'s own w, and an unknown key says so', async () => {
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
-  const templates = [
-    { key: 'n', description: 'Shared note', type: 'plain', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 },
-  ];
-  await page.evaluate((json) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('org-pwa');
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(json, 'settings:captureTemplates');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => reject(tx.error);
-    };
-    open.onerror = () => reject(open.error);
-  }), JSON.stringify(templates));
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
   // Capture to another file needs a document open on the same backend; the app restores the tab that was open when a launch URL starts it.
   await openDav(page, 'notes.org');
   const waitForFile = async (needle) => {
@@ -3682,13 +3683,20 @@ check('capture from outside: a share URL runs the named template with the shared
   await page.waitForFunction(() => document.getElementById('status').innerText.includes('Saved'), null, { timeout: 8000 });
   expect(dav.get('inbox.org').includes('** Note\n  First line'), `saving writes it: ${JSON.stringify(dav.get('inbox.org'))}`);
 
-  // 3. a share with no key shows the template list, with the shared text kept for whichever is chosen
+  // 3. a share with no key and no w in the init goes to the built-in share template: its form opens, with the shared text kept
   await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
   await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 6000 });
-  expect((await page.locator('#capturePanel').innerText()).includes('Shared note'), 'the template list is showing');
-  await page.locator('#capturePanel button', { hasText: 'Shared note' }).first().click();
+  const builtIn = await page.locator('#capturePanel').innerText();
+  expect(builtIn.includes('Title (leave blank for a web page)') && !builtIn.includes('Shared note'), `the built-in share template's form is showing, not the list: ${JSON.stringify(builtIn.slice(0, 160))}`);
+  await page.locator('#capturePanel button', { hasText: 'Cancel' }).first().click();
+
+  // 3b. with a w in the init, that one takes the share
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")
+    ("w" "Shares" plain (file+olp "inbox.org" "Later") "* From a share\\n  %i")))`);
+  await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
   const second = await waitForFile('chosen later');
-  expect(second.includes('  chosen later'), `the shared text went into the template that was picked: ${JSON.stringify(second)}`);
+  expect(second.includes('** From a share\n  chosen later') && second.includes('* Later'), `the init's w took the share: ${JSON.stringify(second)}`);
 
   // 4. an unknown key says so and still offers the list
   await page.goto(`${main.base}/index.html?capture=zzz&text=x`, { waitUntil: 'load' });
@@ -3712,12 +3720,11 @@ check('capture: a template from a loaded init file is offered', async () => {
   await page.waitForFunction(async () => (await import('/src-browser/lisp-init-text.js')).initText.text.includes('From the loaded file'), null, { timeout: 8000 });
   const found = await page.evaluate(async () => {
     const { getAllCaptureTemplates } = await import('/src-browser/capture-templates.js');
-    const { kv } = await import('/src-browser/singletons.js');
-    return (await getAllCaptureTemplates(kv)).map((t) => t.key + ':' + t.description);
+    return (await getAllCaptureTemplates()).map((t) => t.key + ':' + t.description);
   });
   expect(found.includes('l:From the loaded file'), `the template in the loaded file is among the templates: ${JSON.stringify(found)}`);
   // a fresh start, where the file is read from this device's copy while the Capture list is being asked for
-  await page.goto(`${main.base}/index.html?title=T&text=x`, { waitUntil: 'load' });
+  await page.goto(`${main.base}/index.html?capture`, { waitUntil: 'load' });
   await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 6000 });
   expect((await page.locator('#capturePanel').innerText()).includes('From the loaded file'), `and the Capture list shows it after a restart: ${JSON.stringify((await page.locator('#capturePanel').innerText()).slice(0, 200))}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
@@ -3727,18 +3734,7 @@ check('capture: a template from a loaded init file is offered', async () => {
 check("capture: a datetree template files under today's year, month and day", async () => {
   dav.reset({ 'journal.org': '* Journal\n', 'other.org': '* Other\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
-  const templates = [{ key: 'd', description: 'Dated', type: 'entry', olp: ['Journal'], datetree: true, template: '* Dated note', emptyLines: 0 }];
-  await page.evaluate((json) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('org-pwa');
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(json, 'settings:captureTemplates');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => reject(tx.error);
-    };
-    open.onerror = () => reject(open.error);
-  }), JSON.stringify(templates));
+  await setCaptureInit(page, `(setq org-capture-templates '(("d" "Dated" entry (file+olp+datetree "" "Journal") "* Dated note")))`);
   await openDav(page, 'journal.org');
   await page.goto(`${main.base}/index.html?capture=d`, { waitUntil: 'load' });
   let text = '';
@@ -3756,22 +3752,39 @@ check("capture: a datetree template files under today's year, month and day", as
   await context.close();
 });
 
+check('capture: with no templates in the Lisp init the Capture panel says where they are defined, the palette lists none, and a share still files with the built-in template', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Inbox\n');
+  await page.evaluate(async () => (await import('/src-browser/launch-params.js')).runLaunch({ capture: '', shared: null }));
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
+  const empty = await page.locator('#capturePanel').innerText();
+  expect(empty.includes('org-capture-templates') && empty.includes('Lisp init') && !empty.includes('Settings.'), `the empty list says where templates are defined: ${JSON.stringify(empty.slice(0, 200))}`);
+  await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  await openPalette(page);
+  await page.keyboard.type('capture:');
+  expect((await paletteRows(page)).filter((r) => r.startsWith('Capture:')).length === 0, 'no "Capture: <description>" entries');
+  await page.keyboard.press('Escape');
+  // a launch parameter naming a key that is not there says so and shows the same message
+  await page.evaluate(async () => (await import('/src-browser/launch-params.js')).runLaunch({ capture: 'b', shared: null }));
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
+  expect((await page.locator('#capturePanel').innerText()).includes('Lisp init'), 'an unknown key with no templates shows the message');
+  await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  // a share needs no init: the built-in template files a web page under Inbox
+  await page.evaluate(async () => (await import('/src-browser/launch-params.js')).runLaunch({ capture: '', shared: { title: 'Guide', text: '', url: 'https://orgmode.org/guide/' } }));
+  await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
+  await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
+  await page.waitForTimeout(700);
+  await viewMenu(page, 'Text');
+  const text = await page.locator('#document-text-edit-input').inputValue();
+  expect(text.includes('** [[https://orgmode.org/guide/][Guide]]'), `the share was filed under Inbox as a link: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture from outside: %x takes the clipboard (read only for a template that uses it), and a refused clipboard leaves %x empty but still captures, saying why', async () => {
-  const seed = (page, templates) => page.evaluate((json) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('org-pwa');
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(json, 'settings:captureTemplates');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => reject(tx.error);
-    };
-    open.onerror = () => reject(open.error);
-  }), JSON.stringify(templates));
-  const templates = [
-    { key: 'x', description: 'Clip', type: 'plain', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 },
-    { key: 'p', description: 'Plain', type: 'plain', olp: ['Inbox'], template: '* Plain', emptyLines: 0 },
-  ];
+  const seed = (page) => setCaptureInit(page, `(setq org-capture-templates
+  '(("x" "Clip" plain (file+olp "" "Inbox") "* Clip\\n  %x")
+    ("p" "Plain" plain (file+olp "" "Inbox") "* Plain")))`);
   const at = (step) => (e) => { e.message = `[${step}] ${e.message}`; throw e; };
   const runTemplate = async (page, name) => {
     await openPalette(page).catch(at('openPalette'));
@@ -3793,7 +3806,7 @@ check('capture from outside: %x takes the clipboard (read only for a template th
     const { context, page, errors } = await freshPage();
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await newDocument(page, '* Inbox\n');
-    await seed(page, templates);
+    await seed(page);
     await page.evaluate(async () => {
       window.__clipboardReads = 0;
       const real = navigator.clipboard.readText.bind(navigator.clipboard);
@@ -3814,7 +3827,7 @@ check('capture from outside: %x takes the clipboard (read only for a template th
   {
     const { context, page } = await freshPage();
     await newDocument(page, '* Inbox\n');
-    await seed(page, templates);
+    await seed(page);
     await page.evaluate(() => { navigator.clipboard.readText = async () => { throw new DOMException('denied', 'NotAllowedError'); }; });
     await runTemplate(page, 'clip');
     const text = await documentText(page);
@@ -4652,7 +4665,7 @@ check('settings page order: six categories in order; Sync and storage lists GitH
   expect(sections[0] === 'GitHub' && w >= 0 && sections[w + 1] === 'Calendar (CalDAV) / Contacts (CardDAV)', `Calendar / Contacts directly follows WebDAV: ${JSON.stringify(sections)}`);
   await page.locator('[data-settings-back]').click();
   await settingsCategory(page, 'advanced');
-  expect((await titlesOnPage()).includes('Capture Templates'), 'Capture Templates is under Advanced');
+  expect(!(await titlesOnPage()).includes('Capture Templates'), 'there is no Capture Templates section: templates are in the Lisp init');
   await page.locator('[data-settings-back]').click();
   const foot = await page.evaluate(() => {
     const u = document.querySelector('[data-settings-updates]');
@@ -4734,17 +4747,7 @@ check('platform seam: a platform injected before startup (as a native shell woul
 
   // the clipboard token reads the platform's clipboard (the real one would be refused in this browser)
   await newDocument(page, '* Inbox\n');
-  await page.evaluate((json) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('org-pwa');
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(json, 'settings:captureTemplates');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => reject(tx.error);
-    };
-    open.onerror = () => reject(open.error);
-  }), JSON.stringify([{ key: 'x', description: 'Clip', type: 'plain', olp: ['Inbox'], template: '* Clip\n  %x', emptyLines: 0 }]));
+  await setCaptureInit(page, `(setq org-capture-templates '(("x" "Clip" plain (file+olp "" "Inbox") "* Clip\\n  %x")))`);
   await openPalette(page);
   await page.keyboard.type('capture: clip');
   await page.keyboard.press('Enter');
@@ -4803,18 +4806,8 @@ check('platform seam: opening, editing and saving a local file goes through plat
 check('platform seam: a native shell can hand the app a share directly (runLaunch), with no URL involved, and it captures like the share URL does', async () => {
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
-  const templates = [{ key: 'n', description: 'Shared note', type: 'plain', file: 'inbox.org', olp: ['Inbox'], template: '* Note\n  %i\n  %a', emptyLines: 0 }];
-  await page.evaluate((json) => new Promise((resolve, reject) => {
-    const open = indexedDB.open('org-pwa');
-    open.onsuccess = () => {
-      const db = open.result;
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(json, 'settings:captureTemplates');
-      tx.oncomplete = () => { db.close(); resolve(); };
-      tx.onerror = () => reject(tx.error);
-    };
-    open.onerror = () => reject(open.error);
-  }), JSON.stringify(templates));
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
   await openDav(page, 'notes.org');
   const urlBefore = page.url();
 
@@ -4827,15 +4820,16 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
   expect(file.includes('** Note\n  handed over by a share extension\n  [[https://example.com/native][Native page]]'), `the template ran with the shared content: ${JSON.stringify(file)}`);
   expect(page.url() === urlBefore, 'and no URL was involved: the address is untouched');
 
-  // with no key, the template list opens and keeps what was shared for the one that is picked
+  // with no key, the share goes to the template w: the init's, else the built-in one (its form opens)
   await page.evaluate(async () => {
     const { runLaunch } = await import('/src-browser/launch-params.js');
     await runLaunch({ capture: '', shared: { title: '', text: 'second share', url: '' } });
   });
   await page.waitForSelector('#capturePanel', { state: 'visible', timeout: 5000 });
-  await page.locator('#capturePanel button', { hasText: 'Shared note' }).first().click();
-  for (let n = 0; n < 40 && !((await bufferText(page, 'inbox.org')) || '').includes('second share'); n++) await page.waitForTimeout(250);
-  expect(((await bufferText(page, 'inbox.org')) || '').includes('  second share'), 'a share with no key shows the list and the picked template gets the text');
+  expect((await page.locator('#capturePanel').innerText()).includes('Title (leave blank for a web page)'), 'a share with no key and no w in the init opens the built-in share template');
+  const kept = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.captureShared);
+  expect(kept && kept.text === 'second share', `with the shared text kept: ${JSON.stringify(kept)}`);
+  await page.locator('#capturePanel button', { hasText: 'Cancel' }).first().click();
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -4886,6 +4880,7 @@ check('status bar: no menu, dialog, overlay or the dragged floating keyboard rea
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 411, height: 924 });
   await newDocument(page, '* One\n');
+  await setCaptureInit(page, `(setq org-capture-templates '(("m" "Meeting" entry (file+olp "" "Meetings") "* %^{Meeting Title}\\n%?")))`);
   const cdp = await context.newCDPSession(page);
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 58, bottom: 0, left: 0, right: 0 } });
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
@@ -5025,7 +5020,7 @@ check('native shell: a share queued before the app was ready, and one that arriv
   expect((await page.evaluate(() => window.orgPwaLaunchQueue.length)) === 0, 'and the queue was emptied');
 
   await page.evaluate(() => { document.getElementById('capturePanel').querySelector('button').scrollIntoView(); });
-  await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+  await page.locator('#capturePanel button', { hasText: 'Cancel' }).first().click();
   await page.locator('#capturePanel').waitFor({ state: 'hidden', timeout: 3000 });
   await page.evaluate(() => window.orgPwaLaunch({ text: 'a second share', url: 'https://example.com/later' }));
   await page.locator('#capturePanel').waitFor({ state: 'visible', timeout: 4000 });
@@ -5035,7 +5030,7 @@ check('native shell: a share queued before the app was ready, and one that arriv
   await context.close();
 });
 
-check('capture shortcuts: a launcher platform gets one shortcut per capture template at startup and again when the templates change, and "Add a capture icon" pins the one chosen', async () => {
+check('capture shortcuts: a launcher platform gets one shortcut per capture template of the Lisp init, and again when the init changes, and "Add a capture icon" pins the one chosen', async () => {
   const { context, page, errors } = await freshPage(main, {
     initScript: () => {
       window.__sets = [];
@@ -5053,22 +5048,16 @@ check('capture shortcuts: a launcher platform gets one shortcut per capture temp
   });
   await page.waitForFunction(() => window.__sets.length >= 1, null, { timeout: 6000 });
   const first = await page.evaluate(() => window.__sets[0]);
-  expect(Array.isArray(first) && first.length > 0 && first.every((x) => typeof x.key === 'string' && x.key && typeof x.label === 'string' && x.label), `at startup: one {key, label} per template: ${JSON.stringify(first).slice(0, 160)}`);
+  expect(Array.isArray(first) && first.length === 0, `at startup with no templates in the init: an empty list: ${JSON.stringify(first)}`);
 
-  // edit the templates in Settings: the launcher's list follows
-  await page.click('#moreBtn');
-  await pick(page, '#morePanel', 'Settings');
-  await settingsCategory(page, 'advanced');
-  const section = page.locator('.settings-section', { has: page.locator('.panel-section-title', { hasText: 'Capture Templates' }) });
-  const current = await section.locator('textarea').first().inputValue();
-  const two = JSON.parse(current).slice(0, 2).map((t, n) => ({ ...t, key: ['x', 'y'][n], description: ['Alpha', 'Beta'][n] }));
-  await section.locator('textarea').first().focus();
-  const popup = page.locator('textarea').last();
-  await popup.fill(JSON.stringify(two));
-  await popup.locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' panel ')][1]").getByRole('button', { name: 'OK', exact: true }).click();
+  // define templates in the Lisp init: the launcher's list follows
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("x" "Alpha" entry (file+olp "" "A") "* %?")
+    ("y" "Beta" entry (file+olp "" "B") "* %?")))`);
+  await page.evaluate(async () => (await import('/src-browser/capture-shortcuts.js')).syncCaptureShortcuts());
   await page.waitForFunction(() => window.__sets.length >= 2, null, { timeout: 5000 });
   const after = await page.evaluate(() => window.__sets[window.__sets.length - 1]);
-  expect(JSON.stringify(after) === JSON.stringify([{ key: 'x', label: 'Alpha' }, { key: 'y', label: 'Beta' }]), `after the edit: ${JSON.stringify(after)}`);
+  expect(JSON.stringify(after) === JSON.stringify([{ key: 'x', label: 'Alpha' }, { key: 'y', label: 'Beta' }]), `after the init defines them: ${JSON.stringify(after)}`);
 
   // put an icon for one on the home screen
   await page.keyboard.press('Escape');

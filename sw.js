@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v658';
+const CACHE_NAME = 'org-pwa-shell-v660';
 
 const SHELL_FILES = [
   './',
@@ -102,6 +102,7 @@ const SHELL_FILES = [
   './src/capture-lisp.js',
   './src/capture-datetree.js',
   './src/capture-template.js',
+  './src/capture-run.js',
   './src/format-time.js',
   './src/js-inspect.js',
   './src/line-endings.js',
@@ -187,6 +188,7 @@ const SHELL_FILES = [
   './src/agenda-span.js',
   './src/file-keywords.js',
   './src/elisp-time.js',
+  './src/elisp-buffer.js',
   './src/org-macro.js',
   './src/emacs-classes.js',
   './src/elisp-prelude.js',

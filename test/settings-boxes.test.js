@@ -15,5 +15,5 @@ test('every multi-line box in the settings screens is made by settingsTextBox, s
       assert.doesNotMatch(source, new RegExp(`${m[1]}\\.(rows|style\\.(resize|fontFamily|fontSize|padding|borderRadius))\\b`), `${f}: ${m[1]} sets its own size or look`);
     }
   }
-  assert.ok(boxes >= 5);
+  assert.ok(boxes >= 4);
 });

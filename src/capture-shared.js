@@ -89,4 +89,23 @@ function launchFromShare(payload) {
   return { capture: typeof p.capture === 'string' ? field(p.capture) : '', shared: any ? shared : null };
 }
 
-export { MAX_FIELD, normalizeShared, parseLaunchParams, sharedAnnotation, placeInsertedText, launchFromShare };
+/** The template that files what is shared into the app when the Lisp init defines no template with the key `w`: a web page becomes
+ *  a heading that is a link to it, titled as the page is, and shared text goes in the body. With no link shared there is no heading
+ *  text, so the prompt asks for a title; for a web page it is left blank. It is not one of the templates the Capture list shows.
+ * @type {import('./types.js').CaptureTemplate} */
+const SHARE_TEMPLATE = {
+  key: 'w',
+  description: 'Web page or text',
+  type: 'plain',
+  olp: ['Inbox'],
+  template: '* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?',
+  emptyLines: 1,
+};
+
+/** The template a share is filed with: the Lisp init's `w`, else the built-in one.
+ * @param {import('./types.js').CaptureTemplate[]} templates the init's templates */
+function shareTemplate(templates) {
+  return templates.find((t) => t.key === 'w') || SHARE_TEMPLATE;
+}
+
+export { SHARE_TEMPLATE, shareTemplate, MAX_FIELD, normalizeShared, parseLaunchParams, sharedAnnotation, placeInsertedText, launchFromShare };

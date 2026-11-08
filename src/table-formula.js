@@ -264,7 +264,7 @@ function computeHlinePositions(workingRows) {
 // ---- expression tokenizing/parsing ------------------------------------
 
 const TOKEN_RE =
-  /\s*("(?:[^"\\]|\\.)*"|\.\.|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+#[0-9A-Za-z]+(?:\.[0-9A-Za-z]*)?|\d+_[A-Za-z0-9_]*|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
+  /\s*("(?:[^"\\]|\\.)*"|\.\.|@#|\$#|@(?:<+|>+|[+-]?\d+|[+-]?I+(?:[+-]\d+)?)(?:\$(?:<+|>+|[+-]\d+|\d+))?|\$(?:<+|>+|[+-]\d+|\d+|[A-Za-z_][A-Za-z0-9_]*)|\d+#[0-9A-Za-z]+(?:\.[0-9A-Za-z]*)?|\d+_[A-Za-z0-9_]*|(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z0-9_]*|==|!=|<=|>=|&&|\|\||[()[\]+\-*/%\\^,<>=!])\s*/y;
 
 /** date-to-time and format-time-string are real Emacs function names
  *  with literal hyphens in them -- TOKEN_RE's own generic identifier
@@ -1098,6 +1098,10 @@ function parseExpression(tokens) {
       if (args.length > maxArgs) throw new Error(`"${name}" takes at most ${maxArgs} arguments, got ${args.length}`);
       return { type: 'scalarCall', name, args };
     }
+    if (tok === '@#' || tok === '$#') { // the number of the row, or of the column, of the field being set
+      next();
+      return { type: 'cellIndex', which: tok === '@#' ? 'row' : 'col' };
+    }
     if (tok.startsWith('$')) {
       const constantMatch = /^\$([A-Za-z_][A-Za-z0-9_]*)$/.exec(tok);
       if (constantMatch) {
@@ -1705,6 +1709,8 @@ function complexScalarCall(name, argValues, ctx) {
   switch (node.type) {
     case 'number':
       return wrapNumericLiteral(node.value, ctx, node.float === true);
+    case 'cellIndex':
+      return wrapNumericLiteral(node.which === 'row' ? ctx.currentRow : ctx.currentCol, ctx, false);
     case 'string':
       return node.value;
     case 'vectorLiteral': {
@@ -2492,6 +2498,10 @@ function symbolicForm(source, ctx) {
   };
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
+    if (tok === '@#' || tok === '$#') {
+      out.push(String(tok === '@#' ? ctx.currentRow : ctx.currentCol));
+      continue;
+    }
     if (isRef(tok)) {
       if (tokens[i + 1] === '..' && tokens[i + 2] !== undefined && isRef(tokens[i + 2])) {
         hold(symbolicRange(parseExpression([tok, '..', tokens[i + 2]]), ctx));
@@ -2547,6 +2557,7 @@ function usesSymbolicConstant(node) {
 function isPlainAlgebra(node, allowUnknown = false) {
   switch (node.type) {
     case 'number':
+    case 'cellIndex':
       return true;
     case 'string':
       return allowUnknown; // Calc reads a string as its character codes

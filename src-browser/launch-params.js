@@ -1,15 +1,14 @@
 // @ts-check
 // Capture from outside the app. A launch URL can carry what to capture: `index.html?capture=KEY` runs the template
 // with that key, a bare `?capture` shows the template list, and `&text=...&title=...&url=...` hand content to the
-// template's %i and %a. The manifest points Android's share sheet at the same URL (share_target) and offers
+// template's %i and %a; shared content with no key goes to the template `w` (see shareTemplate). The manifest points Android's share sheet at the same URL (share_target) and offers
 // `?capture` as an icon shortcut. The parsing is src/capture-shared.js; this is the browser half.
-import { launchFromShare, parseLaunchParams } from '../src/capture-shared.js';
+import { launchFromShare, parseLaunchParams, shareTemplate } from '../src/capture-shared.js';
 import { S } from './app-state.js';
 import { openCapturePrompt, renderCapturePanel } from './capture-ui.js';
 import { setStatus } from './editing.js';
 import { openApptDay } from './appt-flow.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
-import { kv } from './singletons.js';
 
 /** Acts on the launch URL, once, after startup has restored everything. A URL with nothing for Capture does nothing. */
 export async function handleLaunchParams() {
@@ -33,7 +32,7 @@ export async function handleLaunchParams() {
 export async function runLaunch(params) {
   S.captureShared = params.shared;
   S.captureOpen = true;
-  const templates = await getCaptureTemplates(kv);
+  const templates = await getCaptureTemplates();
   S.currentCaptureTemplates = templates;
 
   if (params.capture) {
@@ -44,6 +43,12 @@ export async function runLaunch(params) {
       return;
     }
     setStatus(`No capture template "${params.capture}" \u2014 pick one.`);
+  }
+  if (params.shared && !params.capture) {
+    // something shared in with no template named: the init's `w`, else the built-in one (see shareTemplate)
+    S.captureOpenedFromExtraMenu = true;
+    await openCapturePrompt(shareTemplate(templates));
+    return;
   }
   renderCapturePanel();
 }

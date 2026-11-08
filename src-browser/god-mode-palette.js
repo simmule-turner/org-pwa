@@ -862,9 +862,9 @@ export async function openCommandPalette() {
  * different document's Extras menu is always current.
  */
 async function paletteDynamicCommands() {
-  let templates = [];
+  /** @type {import('../src/types.js').CaptureTemplate[]} */ let templates = [];
   try {
-    templates = await getCaptureTemplates(kv);
+    templates = await getCaptureTemplates();
   } catch {
     templates = []; // a broken template list must never stop the palette opening
   }

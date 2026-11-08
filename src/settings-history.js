@@ -23,7 +23,6 @@ export const SETTING_LABELS = Object.freeze({
   readingWidth: 'Reading width',
   settingsOrder: 'Settings order',
   sidePanelWidth: 'Side panel width',
-  captureTemplates: 'Capture templates',
   globalVariables: 'Variables',
 });
 

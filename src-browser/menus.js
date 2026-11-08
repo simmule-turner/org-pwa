@@ -15,7 +15,6 @@ import { findPaletteCommandByOrgName, openCommandPalette, runPaletteCommand } fr
 import { navigateToHeading } from './navigation.js';
 import { render } from './render.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
-import { kv } from './singletons.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton, requiredMenuDivItem } from './ui-widgets.js';
 import { switchToView } from './views.js';
 
@@ -91,7 +90,7 @@ export async function runExtraMenuEntry(entry) {
   renderExtraMenu();
 
   if (entry.type === 'capture') {
-    const templates = await getCaptureTemplates(kv);
+    const templates = await getCaptureTemplates();
     const template = templates.find((/** @type {any} */ t) => t.key === entry.key);
     if (!template) {
       setStatus(`No capture template with key "${entry.key}" found.`);
