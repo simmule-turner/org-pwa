@@ -32,6 +32,7 @@ import { executeFocusedBlock } from './babel-flow.js';
 import { tangleCurrentDocument } from './tangle-flow.js';
 import { extensionPaletteEntries } from './extension-flow.js';
 import { showDisplayMeasurements, showKeyboardDebugLog, showUpdateLog } from './display-info.js';
+import { showSecurityDiagnostics } from './security-diagnostics.js';
 import { platform } from './platform.js';
 import { clockCancelHeading, clockContinue, clockGoto, clockGotoRecent, clockInHeading, clockOutHeading, findRunningClockAcrossSessions, recentlyClockedAcrossSessions } from './clock-flow.js';
 import { GLOBAL_TODO_DEFAULT, PALETTE_RECENT_KEY } from './constants.js';
@@ -648,6 +649,7 @@ export function paletteCommandList() {
     { id: 'settings', label: 'Settings', orgName: 'customize', group: 'App', run: () => settingsBtn.click() },
     { id: 'help', label: 'Help', orgName: 'describe-mode', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
     { id: 'keyboard-debug-log', label: 'Copy keyboard debug log', group: 'App', keywords: ['floating keyboard', 'cursor', 'caret', 'text view', 'debug', 'log'], run: () => showKeyboardDebugLog() },
+    { id: 'security-diagnostics', label: 'Copy security diagnostics', group: 'App', keywords: ['sandbox', 'javascript', 'babel', 'native', 'bridge', 'android', 'capacitor', 'debug', 'check'], run: () => showSecurityDiagnostics() },
     { id: 'update-log', label: 'Copy update and startup log', group: 'App', keywords: ['update', 'reload', 'version', 'slow', 'startup', 'service worker', 'debug', 'log', 'timing'], run: () => showUpdateLog() },
     { id: 'display-info', label: 'Show display measurements', group: 'App', keywords: ['status bar', 'inset', 'viewport', 'keyboard', 'screen', 'notch', 'debug'], run: () => showDisplayMeasurements() },
     { id: 'capture-icon', label: 'Add a capture icon to the home screen', group: 'App', keywords: ['shortcut', 'launcher', 'pin', 'capture template'], needs: ['captureShortcuts'], run: () => addCaptureIconToHomeScreen() },

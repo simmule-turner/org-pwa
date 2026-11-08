@@ -93,7 +93,7 @@ function parse(src, flags) {
       greedy = false;
       i++;
     }
-    return { t: 'rep', node: a, min, max, greedy, lo: before + 1, hi: groups };
+    return { t: 'rep', node: a.t === 'seq' && a.items.length === 1 ? a.items[0] : a, min, max, greedy, lo: before + 1, hi: groups };
   }
   /** @returns {Node} */
   function primary() {
@@ -283,7 +283,7 @@ const POLY_MIN_INPUT = 2000;
 const POLY_LIMIT = 10_000_000;
 
 /** @typedef {{ root: Node, groups: number, limit?: number }} Guard */
-/** @type {Map<string, { root: Node, groups: number, kind: 'runaway' | 'poly' | null }>} */
+/** @type {Map<string, { root: Node, groups: number, kind: 'runaway' | 'poly' | null, deep: boolean }>} */
 const parsed = new Map();
 
 /**
@@ -296,10 +296,10 @@ export function guardFor(source, flags, inputLength = 0) {
   const key = `${flags}/${source}`;
   let entry = parsed.get(key);
   if (!entry) {
-    entry = { root: { t: 'seq', items: [] }, groups: 0, kind: null };
+    entry = { root: { t: 'seq', items: [] }, groups: 0, kind: null, deep: false };
     try {
       const p = parse(source, flags);
-      entry = { root: p.root, groups: p.groups, kind: runaway(p.root) ? 'runaway' : polynomial(p.root) ? 'poly' : null };
+      entry = { root: p.root, groups: p.groups, kind: runaway(p.root) ? 'runaway' : polynomial(p.root) ? 'poly' : null, deep: hasLoopOverGroup(p.root) || hasFollowedCharLoop(p.root) };
     } catch (e) {
       if (!(e instanceof Unsupported)) throw e;
     }
@@ -308,6 +308,245 @@ export function guardFor(source, flags, inputLength = 0) {
   if (entry.kind === 'runaway') return entry;
   if (entry.kind === 'poly' && inputLength > POLY_MIN_INPUT) return { root: entry.root, groups: entry.groups, limit: POLY_LIMIT };
   return null;
+}
+
+
+// ---- Emacs's failure stack ---------------------------------------------------------------------------------------------
+//
+// Emacs keeps the places a match can still back up to on a failure stack of 40,000 entries of 20 words (800,000 words), and signals
+// "Stack overflow in regexp matcher" when a loop pushes past it, however simple the loop is: `\(a\|b\)*` over 100,000 characters
+// does, `[ab]*` does not. The browser's engine has no such limit and a failing `\(a\|b\)*c` on that input takes half a minute
+// (every start position runs to the end), so before the native engine runs on a long input this walks the greedy path of the
+// pattern and counts words the way Emacs 29.3 pushes them. Measured with string-match on a string of one repeated unit (the
+// last column is the string length at which Emacs overflowed; words per round = 800,000 / length):
+//
+//   pattern            unit  length  words per round
+//   \(a\)*             a     133333  6   loop 3 + capture 3
+//   \(.\)*             a     133333  6
+//   \(ab\)*            ab    133333  6   (rounds, not characters)
+//   \(?:ab\|cd\)*      ab    133333  6   loop 3 + first branch left to try 3
+//   \(?:a\|b\)*        a     133333  6
+//   \(?:a\|b\)*        b     266665  3   the last branch leaves nothing to try
+//   \(a\|b\)*          a      88888  9   loop 3 + capture 3 + first branch 3
+//   \(a\|b\)*          b     133332  6
+//   \(a\|b\)+          a      88889  9
+//   \(?:a*b\)*         ab    266665  3
+//   \(\(a\)*\)*        a     133331  6   the inner loop's rounds
+//   .*c  [ab]*a  a*a   a  266665  3   a loop over one character pushes 3 words per character when what follows could
+//                                     also match that character (`.*c`, `[ab]*a`, `a*\(a\|b\)`), and nothing when it cannot (`[ab]*c`)
+//   no overflow up to 400,000: \(?:a\)*c  \(?:ab\)*c  [ab]*c  \(a\|b\)\{1,500000\}  (a plain character or fixed text repeated
+//   needs no stack, and neither does a counted loop). A lazy loop over a group (`\(?:a\|b\)*?c`) does push (3 words a round
+//   here) but is not followed: the native engine runs it.
+//
+// Only a loop that can overflow at all (over 800,000 / 9 characters) triggers the walk, so shorter input is untouched.
+
+/** The failure stack's size in words, and the input length below which no pattern of the shapes above can overflow it. */
+const FAILURE_WORDS = 800_000;
+const DEEP_MIN_INPUT = 40_000;
+/** The walk gives up (the native engine runs, as before) after this many nodes. */
+const WALK_BUDGET = 5_000_000;
+
+/** Whether a node is only characters and fixed text (no loop, no choice, no group): the body of a loop Emacs compiles without a stack. @param {Node} node @returns {boolean} */
+function plainText(node) {
+  switch (node.t) {
+    case 'atom': return true;
+    case 'seq': return node.items.every(plainText);
+    default: return false;
+  }
+}
+
+/** The characters a node must start with, or null when that is not known (a class, a dot, a loop that can match nothing).
+ * @param {Node} node @returns {Set<number> | null} */
+function firstSet(node) {
+  switch (node.t) {
+    case 'atom': return node.text === '.' || !node.wide ? null : charsOf(node.text);
+    case 'group': return firstSet(node.node);
+    case 'seq': return node.items.length ? firstSet(node.items[0]) : null;
+    case 'rep': return node.min > 0 ? firstSet(node.node) : null;
+    case 'alt': {
+      /** @type {Set<number>} */
+      const all = new Set();
+      for (const b of node.branches) {
+        const f = firstSet(b);
+        if (!f) return null;
+        for (const c of f) all.add(c);
+      }
+      return all;
+    }
+    default: return null;
+  }
+}
+
+/** The characters the items from `k` on can start with, looking past loops that may match nothing; null when not known.
+ * @param {Node[]} items @param {number} k @returns {Set<number> | null} */
+function followSet(items, k) {
+  /** @type {Set<number>} */
+  const all = new Set();
+  for (let j = k; j < items.length; j++) {
+    const it = items[j];
+    const f = it.t === 'rep' && it.min === 0 ? firstSet(it.node) : firstSet(it);
+    if (!f) return null;
+    for (const c of f) all.add(c);
+    if (!(it.t === 'rep' && it.min === 0)) return all;
+  }
+  return null;
+}
+
+/** Whether a node holds a greedy unbounded loop over one character with something after it in a sequence (`.*c`). @param {Node} node @returns {boolean} */
+function hasFollowedCharLoop(node) {
+  switch (node.t) {
+    case 'seq': return node.items.some((item, k) => (k + 1 < node.items.length && unboundedChar(item) && item.greedy && item.min <= 1) || hasFollowedCharLoop(item));
+    case 'group': return hasFollowedCharLoop(node.node);
+    case 'rep': return hasFollowedCharLoop(node.node);
+    case 'alt': return node.branches.some(hasFollowedCharLoop);
+    default: return false;
+  }
+}
+
+/** Whether a node holds a greedy unbounded loop over something that is not one character. @param {Node} node @returns {boolean} */
+function hasLoopOverGroup(node) {
+  switch (node.t) {
+    case 'rep': return (node.greedy && node.max === Infinity && node.min <= 1 && !(node.node.t === 'atom' && node.node.wide)) || hasLoopOverGroup(node.node);
+    case 'group': return hasLoopOverGroup(node.node);
+    case 'seq': return node.items.some(hasLoopOverGroup);
+    case 'alt': return node.branches.some(hasLoopOverGroup);
+    default: return false;
+  }
+}
+
+/**
+ * Signals "Stack overflow in regexp matcher" when Emacs would, for a long input, by walking the pattern's greedy path from each
+ * start position and counting failure-stack words. It never decides a match: when nothing overflows it returns and the usual
+ * engine runs. Back-references and the paths taken after backing up are not followed.
+ * Returns true when the greedy path matched at `start` without overflowing: the native engine takes that same path and ends at once,
+ * which the step-limited matcher (recursive, so too deep for a match this long) cannot do.
+ * @param {string} source @param {string} flags @param {string} s @param {number} start @returns {boolean}
+ */
+export function checkFailureStack(source, flags, s, start) {
+  if (s.length - start < DEEP_MIN_INPUT) return false;
+  guardFor(source, flags, 0); // fills the cache
+  const entry = parsed.get(`${flags}/${source}`);
+  if (!entry || !entry.deep) return false;
+  let depth = 0;
+  let altWords = 0;
+  let steps = 0;
+  /** What the item after the loop being walked can start with. @type {Set<number> | null} */
+  let follower = null;
+  /** @type {number[]} */
+  let caps = [];
+  /** @param {Extract<Node, { t: 'atom' }>} a @param {number} pos */
+  const test = (a, pos) => {
+    a.re.lastIndex = pos;
+    const m = a.re.exec(s);
+    return m ? m[0].length : -1;
+  };
+  /** The end of the first way the node matches at `pos`, or -1. @param {Node} node @param {number} pos @returns {number} */
+  function walk(node, pos) {
+    if (++steps > WALK_BUDGET) throw new Unsupported();
+    switch (node.t) {
+      case 'atom': {
+        const len = test(node, pos);
+        return len < 0 ? -1 : pos + len;
+      }
+      case 'seq': {
+        let p = pos;
+        for (let k = 0; k < node.items.length; k++) {
+          const item = node.items[k];
+          follower = k + 1 < node.items.length && unboundedChar(item) ? followSet(node.items, k + 1) : null;
+          p = walk(item, p);
+          if (p < 0) return -1;
+        }
+        return p;
+      }
+      case 'alt': {
+        for (let k = 0; k < node.branches.length; k++) {
+          const before = depth;
+          const r = walk(node.branches[k], pos);
+          if (r >= 0) {
+            if (k < node.branches.length - 1) altWords += 3; // the later branches are still to try
+            return r;
+          }
+          depth = before;
+        }
+        return -1;
+      }
+      case 'group': {
+        const r = walk(node.node, pos);
+        if (r >= 0) {
+          caps[node.index * 2] = pos;
+          caps[node.index * 2 + 1] = r;
+        }
+        return r;
+      }
+      case 'back': {
+        const from = caps[node.n * 2];
+        const to = caps[node.n * 2 + 1];
+        if (from === undefined || from < 0) return pos;
+        const text = s.slice(from, to);
+        return s.startsWith(text, pos) ? pos + text.length : -1;
+      }
+      case 'rep': {
+        const body = node.node;
+        if (body.t === 'atom' && body.wide) {
+          // one character at a time: 3 stack words a character when what follows could match that character too
+          const after = node.greedy && node.max === Infinity && node.min <= 1 ? follower : null;
+          follower = null;
+          const costly = after !== null && [...after].some((c) => {
+            body.re.lastIndex = 0;
+            return body.re.test(String.fromCodePoint(c));
+          });
+          let p = pos;
+          let n = 0;
+          const most = node.greedy ? node.max : node.min;
+          while (n < most) {
+            steps++;
+            const len = test(body, p);
+            if (len <= 0) break;
+            p += len;
+            n++;
+            if (costly) {
+              depth += 3;
+              if (depth > FAILURE_WORDS) throw new Overflow();
+            }
+          }
+          return n < node.min ? -1 : p;
+        }
+        const unbounded = node.greedy && node.max === Infinity && node.min <= 1;
+        let p = pos;
+        let n = 0;
+        const most = node.greedy ? (node.max === Infinity ? Infinity : node.max) : node.min;
+        while (n < most) {
+          const savedAlt = altWords;
+          altWords = 0;
+          const r = walk(body, p);
+          const round = altWords;
+          altWords = savedAlt;
+          if (r < 0 || (r === p && n >= node.min)) break;
+          if (unbounded) {
+            depth += (body.t === 'group' ? 6 : plainText(body) ? 0 : 3) + round;
+            if (depth > FAILURE_WORDS) throw new Overflow();
+          }
+          p = r;
+          n++;
+        }
+        return n < node.min ? -1 : p;
+      }
+    }
+  }
+  try {
+    for (let i = start; i <= s.length; i++) {
+      depth = 0;
+      altWords = 0;
+      caps = [];
+      if (walk(entry.root, i) >= 0) return i === start; // matched on the first path tried: the usual engine finds it at once too
+      const cp = s.codePointAt(i);
+      if (cp !== undefined && cp > 0xffff) i++;
+    }
+  } catch (e) {
+    if (e instanceof Overflow) throw signal('error', ['Stack overflow in regexp matcher']);
+    if (!(e instanceof Unsupported)) throw e;
+  }
+  return false;
 }
 
 /**

@@ -1,12 +1,12 @@
 // @ts-check
 /** The built-in functions of the Lisp interpreter: numbers, lists, strings, vectors, hash tables, output, errors, `format`. */
 import {
-  Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
+  BoolVector, Cons, Flt, HashTable, Lambda, LispSignal, LispThrow, NIL, Special, Subr, Sym, T,
   allSymbols, bool, box, conditionsOf, eql, equal, errorMessageString, floatToString, formatG, intern, isStr, list, print, signal, toArray, userErrors, wrongType,
 } from './elisp-data.js';
 import { Reader, readFromString } from './elisp-read.js';
 import { regexpQuote, toRegExp, translate } from './elisp-regex.js';
-import { guardFor, guardedSearch } from './regex-guard.js';
+import { checkFailureStack, guardFor, guardedSearch } from './regex-guard.js';
 import {
   defAlias, defineError, defun, defvarGlobal, emit, evalForm, funcall, nthcdr, state, topScope,
 } from './elisp-core.js';
@@ -351,8 +351,8 @@ defun('symbolp', 1, 1, ([x]) => bool(x instanceof Sym));
 defun('keywordp', 1, 1, ([x]) => bool(x instanceof Sym && x.name.startsWith(':') && x.interned));
 defun('stringp', 1, 1, ([x]) => bool(typeof x === 'string'));
 defun('vectorp', 1, 1, ([x]) => bool(Array.isArray(x)));
-defun('arrayp', 1, 1, ([x]) => bool(Array.isArray(x) || typeof x === 'string'));
-defun('sequencep', 1, 1, ([x]) => bool(Array.isArray(x) || typeof x === 'string' || x instanceof Cons || x === NIL));
+defun('arrayp', 1, 1, ([x]) => bool(Array.isArray(x) || typeof x === 'string' || x instanceof BoolVector));
+defun('sequencep', 1, 1, ([x]) => bool(Array.isArray(x) || typeof x === 'string' || x instanceof BoolVector || x instanceof Cons || x === NIL));
 defun('characterp', 1, 1, ([x]) => bool(typeof x === 'number' && x >= 0 && x <= 0x3fffff));
 defun('booleanp', 1, 1, ([x]) => bool(x === NIL || x === T));
 defun('hash-table-p', 1, 1, ([x]) => bool(x instanceof HashTable));
@@ -383,6 +383,7 @@ defun('type-of', 1, 1, ([x]) => {
   if (x instanceof Sym) return intern(x === NIL || x === T ? 'symbol' : 'symbol');
   if (x instanceof Cons) return intern('cons');
   if (Array.isArray(x)) return intern('vector');
+  if (x instanceof BoolVector) return intern('bool-vector');
   if (x instanceof HashTable) return intern('hash-table');
   if (x instanceof Lambda) return intern('cons');
   if (x instanceof Subr) return intern('subr');
@@ -430,6 +431,7 @@ defun('setcdr', 2, 2, ([c, v]) => {
 defun('list', 0, -1, (a) => list(a));
 /** A non-negative count, or the `wholenump` error. @param {LObj} n */
 function count(n, max = 2 ** 24) {
+  if (typeof n === 'bigint' && n >= 0n) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']); // a fixnum-sized or bigger count
   if (typeof n !== 'number' || n < 0) throw wrongType('wholenump', n);
   if (n > max) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
   return n;
@@ -450,8 +452,8 @@ defun('nthcdr', 2, 2, ([n, l]) => {
 });
 defun('elt', 2, 2, ([s, n]) => {
   if (s instanceof Cons || s === NIL) return carOf(nthcdr(Number(int(n)), s));
-  if (typeof s !== 'string' && !Array.isArray(s)) throw wrongType('sequencep', s);
-  return seqGet(s, Number(int(n)));
+  if (typeof s !== 'string' && !Array.isArray(s) && !(s instanceof BoolVector)) throw wrongType('sequencep', s);
+  return seqGet(s, index(n));
 });
 defun('last', 1, 2, ([l, n]) => {
   const items = [];
@@ -498,6 +500,7 @@ const chars = (s) => (hasPairs(s) ? Array.from(s) : s.split(''));
 function seqLength(s) {
   if (typeof s === 'string') return hasPairs(s) ? Array.from(s).length : s.length;
   if (Array.isArray(s)) return s.length;
+  if (s instanceof BoolVector) return s.length;
   if (s === NIL) return 0;
   if (s instanceof Cons) {
     let n = 0;
@@ -512,6 +515,12 @@ function seqLength(s) {
   }
   throw wrongType('sequencep', s);
 }
+/** An array index: a fixnum, or the `fixnump` error. @param {LObj} i */
+function index(i) {
+  if (typeof i === 'number') return i;
+  if (typeof i === 'bigint' && i >= -2305843009213693952n && i <= 2305843009213693951n) return Number(i);
+  throw wrongType('fixnump', i);
+}
 /** @param {LObj} s @param {number} i */
 function seqGet(s, i) {
   if (typeof s === 'string') {
@@ -523,6 +532,10 @@ function seqGet(s, i) {
     if (i < 0 || i >= s.length) throw signal('args-out-of-range', [s, i]);
     return s[i];
   }
+  if (s instanceof BoolVector) {
+    if (i < 0 || i >= s.length) throw signal('args-out-of-range', [s, i]);
+    return bool(s.get(i) === 1);
+  }
   throw wrongType('arrayp', s);
 }
 /** The elements of any sequence. @param {LObj} s @returns {LObj[]} */
@@ -530,6 +543,7 @@ function seqToArray(s) {
   if (s === NIL) return [];
   if (s instanceof Cons) return toArray(s);
   if (Array.isArray(s)) return s.slice();
+  if (s instanceof BoolVector) return Array.from({ length: s.length }, (_, i) => bool(s.get(i) === 1));
   if (typeof s === 'string') return chars(s).map((c) => /** @type {number} */ (c.codePointAt(0)));
   throw wrongType('sequencep', s);
 }
@@ -561,14 +575,20 @@ defun('nconc', 0, -1, (a) => {
   return result;
 });
 defun('reverse', 1, 1, ([s]) => {
-  if (typeof s !== 'string' && !Array.isArray(s) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
+  if (typeof s !== 'string' && !Array.isArray(s) && !(s instanceof BoolVector) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
+  if (s instanceof BoolVector) return boolFrom(seqToArray(s).reverse());
   if (typeof s === 'string') return chars(s).reverse().join('');
   if (Array.isArray(s)) return s.slice().reverse();
   return list(toArray(s).reverse());
 });
 defun('nreverse', 1, 1, ([s]) => {
-  if (s !== NIL && !(s instanceof Cons) && !Array.isArray(s) && typeof s !== 'string') throw wrongType('arrayp', s);
+  if (s !== NIL && !(s instanceof Cons) && !Array.isArray(s) && !(s instanceof BoolVector) && typeof s !== 'string') throw wrongType('arrayp', s);
   if (Array.isArray(s)) return s.reverse();
+  if (s instanceof BoolVector) {
+    const bits = seqToArray(s).reverse();
+    bits.forEach((b, i) => s.set(i, b !== NIL));
+    return s;
+  }
   if (typeof s === 'string') return chars(s).reverse().join('');
   /** @type {LObj} */
   let prev = NIL;
@@ -587,7 +607,8 @@ defun('nreverse', 1, 1, ([s]) => {
   return prev;
 });
 defun('copy-sequence', 1, 1, ([s]) => {
-  if (typeof s !== 'string' && !Array.isArray(s) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
+  if (typeof s !== 'string' && !Array.isArray(s) && !(s instanceof BoolVector) && s !== NIL && !(s instanceof Cons)) throw wrongType('sequencep', s);
+  if (s instanceof BoolVector) return new BoolVector(s.length, s.bytes.slice());
   if (s === NIL || typeof s === 'string') return s;
   if (Array.isArray(s)) return s.slice();
   return list(toArray(s));
@@ -685,6 +706,7 @@ const removeWith = (drop) => (/** @type {LObj} */ l) => {
 };
 defun('delq', 2, 2, ([x, l]) => removeWith((e) => eqSame(e, x))(l));
 defun('delete', 2, 2, ([x, l]) => {
+  if (l instanceof BoolVector) throw wrongType('listp', l);
   if (Array.isArray(l)) return l.filter((e) => !equal(e, x));
   if (typeof l === 'string') return chars(l).filter((c) => c.codePointAt(0) !== x).join('');
   return removeWith((e) => equal(e, x))(l);
@@ -771,6 +793,7 @@ defun('sort', 1, 2, ([s, pred]) => {
   if (pred === undefined) throw signal('wrong-number-of-arguments', [intern('sort'), 1]);
   /** @param {LObj} a @param {LObj} b */
   const cmp = (a, b) => (funcall(pred, [a, b]) !== NIL ? -1 : funcall(pred, [b, a]) !== NIL ? 1 : 0);
+  if (s instanceof BoolVector) throw wrongType('list-or-vector-p', s);
   if (Array.isArray(s)) {
     const sorted = s.slice().sort(cmp);
     sorted.forEach((e, i) => (s[i] = e));
@@ -816,6 +839,10 @@ defun('seq-uniq', 1, 2, ([s, test]) => {
 /** @param {LObj} s @param {LObj} n @param {boolean} take */
 function seqCut(s, n, take) {
   const k = num(n);
+  if (s instanceof BoolVector) {
+    if (!take && k <= 0) return s;
+    throw signal('error', [`Unsupported sequence: ${print(s)}`]);
+  }
   if (s instanceof Cons || s === NIL) {
     if (take) return funcall(intern('take'), [n, s]);
     return nthcdr(Math.max(0, k), s);
@@ -835,12 +862,15 @@ defun('seq-min', 1, 1, ([s]) => funcall(intern('min'), seqToArray(s)));
 defun('seq-max', 1, 1, ([s]) => funcall(intern('max'), seqToArray(s)));
 defun('seq-sort', 2, 2, ([p, s]) => {
   const sorted = funcall(intern('sort'), [list(seqToArray(s)), p]);
+  if (s instanceof BoolVector) throw signal('error', ['Not a sequence type name: bool-vector']);
   return Array.isArray(s) ? toArray(sorted) : typeof s === 'string' ? String.fromCodePoint(...toArray(sorted).map(Number)) : sorted;
 });
 defun('seq-concatenate', 1, -1, ([type, ...seqs]) => {
-  const items = seqs.flatMap(seqToArray);
   const t = /** @type {Sym} */ (type).name;
-  return t === 'vector' ? items : t === 'string' ? String.fromCodePoint(...items.map(Number)) : list(items);
+  if (t === 'string') return seqs.map(concatPiece).join('');
+  const items = seqs.flatMap(seqToArray);
+  if (t !== 'vector' && t !== 'list') throw signal('error', [`Not a sequence type name: ${print(type)}`]);
+  return t === 'vector' ? items : list(items);
 });
 defun('seq-empty-p', 1, 1, ([s]) => bool(s instanceof Cons ? false : seqLength(s) === 0));
 defun('seq-first', 1, 1, ([s]) => funcall(intern('elt'), [s, 0]));
@@ -855,6 +885,7 @@ defun('seq-subseq', 2, 3, ([s, a, b]) => {
   return typeof s === 'string' ? String.fromCodePoint(...part.map(Number)) : Array.isArray(s) ? part : list(part);
 });
 defun('seq-partition', 2, 2, ([s, n]) => {
+  if (s instanceof BoolVector && s.length > 0 && Number(n) > 0) throw signal('error', [`Unsupported sequence: ${print(s)}`]);
   const items = seqToArray(s);
   const k = Number(n);
   /** @type {LObj[]} */
@@ -940,18 +971,103 @@ defun('cl-parse-integer', 1, -1, ([s, ...kw]) => {
 defun('vector', 0, -1, (a) => a);
 defun('make-vector', 2, 2, ([n, x]) => Array(count(n)).fill(x));
 defun('vconcat', 0, -1, (a) => a.flatMap(seqToArray));
-defun('aref', 2, 2, ([s, i]) => seqGet(s, Number(int(i))));
+defun('aref', 2, 2, ([s, i]) => seqGet(s, index(i)));
 defun('aset', 3, 3, ([s, i, v]) => {
-  if (!Array.isArray(s)) throw wrongType('arrayp', s);
-  const k = Number(int(i));
+  if (!Array.isArray(s) && !(s instanceof BoolVector)) throw wrongType('arrayp', s);
+  const k = index(i);
   if (k < 0 || k >= s.length) throw signal('args-out-of-range', [s, i]);
-  s[k] = v;
+  if (s instanceof BoolVector) s.set(k, v !== NIL);
+  else s[k] = v;
   return v;
 });
 defun('fillarray', 2, 2, ([s, v]) => {
-  if (!Array.isArray(s)) throw wrongType('arrayp', s);
-  s.fill(v);
+  if (!Array.isArray(s) && !(s instanceof BoolVector)) throw wrongType('arrayp', s);
+  if (s instanceof BoolVector) {
+    s.bytes.fill(v === NIL ? 0 : 255);
+    s.trim();
+  } else s.fill(v);
   return s;
+});
+
+// ---- bool-vectors -------------------------------------------------------------------------------
+
+/** A bool-vector of the truth values `items` (nil is false). @param {LObj[]} items */
+function boolFrom(items) {
+  const v = new BoolVector(items.length);
+  items.forEach((x, i) => v.set(i, x !== NIL));
+  return v;
+}
+/** @param {LObj} x */
+function boolVec(x) {
+  if (x instanceof BoolVector) return x;
+  throw wrongType('bool-vector-p', x);
+}
+/** A fixnum count of Emacs (`wholenump`): what a bigint can be only when it lies past the memory a vector can have. @param {LObj} n @param {number} max */
+function wholeCount(n, max) {
+  if (typeof n === 'bigint' && n >= 0n && n <= 2305843009213693951n) return Infinity;
+  if (typeof n !== 'number' || n < 0) throw wrongType('wholenump', n);
+  return n > max ? Infinity : n;
+}
+defun('make-bool-vector', 2, 2, ([n, init]) => {
+  const k = wholeCount(n, 2 ** 27);
+  if (k === Infinity) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
+  const v = new BoolVector(k);
+  if (init !== NIL) {
+    v.bytes.fill(255);
+    v.trim();
+  }
+  return v;
+});
+defun('bool-vector', 0, -1, (a) => boolFrom(a));
+defun('bool-vector-p', 1, 1, ([x]) => bool(x instanceof BoolVector));
+/** The set operation `op` on the bytes of A and B, into DEST (a new bool-vector when nil): DEST if it changed, else nil. @param {(a: number, b: number) => number} op */
+const boolBinop = (op) => (/** @type {LObj[]} */ [a, b, dest]) => {
+  const x = boolVec(a);
+  const y = boolVec(b);
+  const d = dest === undefined || dest === NIL ? null : boolVec(dest);
+  if (y.length !== x.length || (d && d.length !== x.length)) throw signal('wrong-length-argument', d ? [x.length, y.length, d.length] : [x.length, y.length]);
+  const out = d ?? new BoolVector(x.length);
+  let changed = !d;
+  x.bytes.forEach((byte, i) => {
+    const r = op(byte, y.bytes[i]) & 255;
+    if (r !== out.bytes[i]) changed = true;
+    out.bytes[i] = r;
+  });
+  return changed ? out : NIL;
+};
+defun('bool-vector-union', 2, 3, boolBinop((a, b) => a | b));
+defun('bool-vector-intersection', 2, 3, boolBinop((a, b) => a & b));
+defun('bool-vector-exclusive-or', 2, 3, boolBinop((a, b) => a ^ b));
+defun('bool-vector-set-difference', 2, 3, boolBinop((a, b) => a & ~b));
+defun('bool-vector-not', 1, 2, ([a, b]) => {
+  const x = boolVec(a);
+  const out = b === undefined || b === NIL ? new BoolVector(x.length) : boolVec(b);
+  if (out.length !== x.length) throw signal('wrong-length-argument', [x.length, out.length]);
+  x.bytes.forEach((byte, i) => (out.bytes[i] = ~byte & 255));
+  out.trim();
+  return out;
+});
+defun('bool-vector-subsetp', 2, 2, ([a, b]) => {
+  const x = boolVec(a);
+  const y = boolVec(b);
+  if (y.length !== x.length) throw signal('wrong-length-argument', [x.length, y.length, y.length]);
+  return bool(x.bytes.every((byte, i) => (byte & ~y.bytes[i]) === 0));
+});
+defun('bool-vector-count-population', 1, 1, ([a]) => {
+  let n = 0;
+  for (let byte of boolVec(a).bytes) {
+    for (; byte; byte &= byte - 1) n++;
+  }
+  return n;
+});
+defun('bool-vector-count-consecutive', 3, 3, ([a, b, i]) => {
+  const x = boolVec(a);
+  if (typeof i === 'bigint' && i >= 0n && i <= 2305843009213693951n) throw signal('args-out-of-range', [x, i]);
+  if (typeof i !== 'number' || i < 0) throw wrongType('wholenump', i);
+  if (i > x.length) throw signal('args-out-of-range', [x, i]);
+  let n = 0;
+  while (i + n < x.length && (x.get(i + n) === 1) === (b !== NIL)) n++;
+  return n;
 });
 
 /** @type {WeakMap<object, number>} */
@@ -977,6 +1093,12 @@ defun('make-hash-table', 0, -1, (a) => {
   const i = a.indexOf(intern(':test'));
   const test = i >= 0 ? /** @type {Sym} */ (a[i + 1]).name : 'eql';
   if (!['eq', 'eql', 'equal'].includes(test)) throw signal('error', ['Invalid hash table test']);
+  const z = a.indexOf(intern(':size'));
+  if (z >= 0 && a[z + 1] !== NIL) {
+    const size = a[z + 1];
+    if (typeof size === 'bigint' && size >= 0n) throw signal('error', ['Memory exhausted--use C-x s then exit and restart Emacs']);
+    if (typeof size !== 'number' || !Number.isInteger(size) || size < 0) throw signal('error', ['Invalid hash table size', size]);
+  }
   return new HashTable(test);
 });
 /** @param {LObj} h */
@@ -1206,8 +1328,8 @@ defun('char-to-string', 1, 1, ([c]) => {
   return c > 0x10ffff ? '\ufffd' : String.fromCodePoint(c);
 });
 defun('string-to-char', 1, 1, ([s]) => (str(s) === '' ? 0 : /** @type {number} */ (str(s).codePointAt(0))));
-defun('string-to-list', 1, 1, ([s]) => list(seqToArray(str(s))));
-defun('string-to-vector', 1, 1, ([s]) => seqToArray(str(s)));
+defun('string-to-list', 1, 1, ([s]) => list(seqToArray(s)));
+defun('string-to-vector', 1, 1, ([s]) => seqToArray(s));
 
 /** Resolves FROM/TO of `substring`-like functions over `n` characters. @param {LObj} obj @param {LObj | undefined} from @param {LObj | undefined} to @param {number} n @returns {[number, number]} */
 function range(obj, from, to, n) {
@@ -1262,7 +1384,7 @@ function joinPart(x) {
   if (x instanceof Cons || Array.isArray(x)) return (Array.isArray(x) ? x : toArray(x)).map((c) => (typeof c === 'number' && c >= 0 ? String.fromCodePoint(c) : (() => { throw wrongType('characterp', c); })())).join('');
   throw wrongType('sequencep', x);
 }
-defun('string-join', 1, 2, ([l, sep]) => (Array.isArray(l) ? l : toArray(l)).map(joinPart).join(sep === undefined || sep === NIL ? '' : str(sep)));
+defun('string-join', 1, 2, ([l, sep]) => (Array.isArray(l) ? l : l instanceof BoolVector ? seqToArray(l) : toArray(l)).map(joinPart).join(sep === undefined || sep === NIL ? '' : str(sep)));
 defun('string-reverse', 1, 1, ([s]) => chars(str(s)).reverse().join(''));
 defun('string-width', 1, 3, ([s]) => chars(str(s)).reduce((n, c) => n + charWidth(/** @type {number} */ (c.codePointAt(0))), 0));
 defun('string-pad', 2, 4, ([s, n, pad, start]) => {
@@ -1313,7 +1435,8 @@ const foldCase = () => (intern('case-fold-search').value ?? T) !== NIL;
 /** Searches `s` from `start`; sets the match data. @param {string} re @param {string} s @param {number} start @param {boolean} setData */
 function search(re, s, start, setData) {
   const rx = toRegExp(re, foldCase(), true);
-  const guard = guardFor(rx.source, rx.flags, s.length);
+  const matchesGreedily = checkFailureStack(rx.source, rx.flags, s, start); // Emacs's own limit, for a long input
+  const guard = matchesGreedily ? null : guardFor(rx.source, rx.flags, s.length);
   if (guard) {
     // a pattern that can backtrack without end (or, on a long input, in polynomial time) runs in the step-limited matcher
     const hit = guardedSearch(guard, s, start);

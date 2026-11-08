@@ -119,7 +119,7 @@ function workerMain() {
  * The code that runs inside the worker: the lock-down first, then `main`.
  * @param {() => void} main
  */
-function workerSource(main) {
+export function workerSource(main) {
   return `(${lockDown.toString()})();(${main.toString()})()`;
 }
 
@@ -128,10 +128,20 @@ function workerSource(main) {
  * @param {HTMLIFrameElement} frame
  * @param {() => void} main
  */
-function loadFrame(frame, main) {
+export function loadFrame(frame, main) {
   frame.src = 'sandbox-frame.html';
   const source = workerSource(main);
   return () => frame.contentWindow && frame.contentWindow.postMessage({ type: 'boot', source }, '*');
+}
+
+/** The hidden iframe every sandbox run uses; the security diagnostics build theirs the same way. */
+export function createSandboxFrame() {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('sandbox', 'allow-scripts');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
+  return frame;
 }
 
 export const DEFAULT_MAX_BYTES = 64 * 1024;
@@ -182,11 +192,7 @@ export function createRpcHost(onRpc, post) {
  */
 export function runJavaScript(/** @type {any} */ { code, vars = {}, variables = {}, timeoutMs = 5000, maxBytes = DEFAULT_MAX_BYTES, startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) }) {
   return new Promise((resolve) => {
-    const frame = document.createElement('iframe');
-    frame.setAttribute('sandbox', 'allow-scripts');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.tabIndex = -1;
-    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
+    const frame = createSandboxFrame();
     const id = Math.random().toString(36).slice(2);
     /** @type {number | null} */
     /** @type {any} */
@@ -251,11 +257,7 @@ export function runJavaScript(/** @type {any} */ { code, vars = {}, variables = 
  */
 export function startSandbox(main, { startupMs = 4000, onRpc = /** @type {((method: any, args: any) => any) | null} */ (null) } = {}) {
   return new Promise((resolve) => {
-    const frame = document.createElement('iframe');
-    frame.setAttribute('sandbox', 'allow-scripts');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.tabIndex = -1;
-    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
+    const frame = createSandboxFrame();
     const listeners = new Set();
     const rpcs = createRpcHost(onRpc, (/** @type {string} */ message) => frame.contentWindow && frame.contentWindow.postMessage(message, '*'));
     let settled = false;

@@ -21,6 +21,25 @@
       });
       parent.postMessage({ type: 'ready' }, '*');
     }
+    // "Copy security diagnostics" (src-browser/security-diagnostics.js) asks what this page can reach. Only the app page can ask,
+    // and nothing here is reachable from the worker: the worker's messages go to the app page, never to this handler.
+    addEventListener('message', function probe(e) {
+      if (e.source !== parent || !e.data || e.data.type !== 'probe') return;
+      var typeofs = {};
+      var names = String(e.data.names || '').split(',');
+      for (var i = 0; i < names.length; i++) {
+        try { typeofs[names[i]] = typeof window[names[i]]; } catch (err) { typeofs[names[i]] = 'error ' + (err && err.name); }
+      }
+      var extra = [];
+      try {
+        var all = Object.getOwnPropertyNames(window);
+        for (var j = 0; j < all.length; j++) if (/capacitor|android|bridge|webview|native/i.test(all[j]) && names.indexOf(all[j]) < 0) extra.push(all[j]);
+      } catch (err) { /* the list is only a bonus */ }
+      var parentAccess;
+      try { parentAccess = typeof parent.document; } catch (err) { parentAccess = 'blocked'; }
+      if (parentAccess === 'undefined') parentAccess = 'blocked';
+      parent.postMessage({ type: 'probe-page', nonce: e.data.nonce, probe: { typeofs: typeofs, extra: extra, parentAccess: parentAccess } }, '*');
+    });
     addEventListener('message', function boot(e) {
       if (e.source !== parent || !e.data || e.data.type !== 'boot') return;
       removeEventListener('message', boot);

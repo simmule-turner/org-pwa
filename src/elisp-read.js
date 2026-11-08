@@ -1,6 +1,6 @@
 // @ts-check
 /** The Lisp reader (`read`, `read-from-string`): text to Lisp objects, with Emacs's syntax errors. */
-import { Cons, Flt, NIL, box, intern, list, signal } from './elisp-data.js';
+import { BoolVector, Cons, Flt, NIL, box, intern, list, signal } from './elisp-data.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
 
@@ -17,6 +17,8 @@ export class Reader {
     this.pos = pos;
     /** Strings read become objects with an identity of their own (what `eq` compares). */
     this.boxStrings = false;
+    /** Whether the string `readString` read last holds a character past 255 (a multibyte string). */
+    this.wide = false;
   }
 
   /** Skips blanks and comments; true while there is more text. */
@@ -105,6 +107,7 @@ export class Reader {
           while (this.pos < t.length && t[this.pos] !== '\n') this.pos++;
           return this.read();
         }
+        if (t[this.pos + 1] === '&') return this.readBoolVector();
         const rad = /^#(\d+)r/.exec(t.slice(this.pos, this.pos + 6));
         if (rad) {
           const radix = Number(rad[1]);
@@ -161,14 +164,36 @@ export class Reader {
     }
   }
 
+  /** `#&LENGTH"BYTES"`: the packed bits of a bool-vector, as Emacs 29 reads them. */
+  readBoolVector() {
+    const t = this.text;
+    this.pos += 2;
+    let digits = '';
+    while (/[0-9]/.test(t[this.pos] ?? '')) digits += t[this.pos++];
+    if (t[this.pos] !== '"' || BigInt(digits || '0') > 2n ** 63n - 1n) throw signal('invalid-read-syntax', ['#&']);
+    this.pos++;
+    const length = Number(digits || '0');
+    const text = this.readString();
+    const bytes = Math.ceil(length / 8);
+    // a string of one character too many is accepted (what old Emacs versions printed when the length was a multiple of 8)
+    if (this.wide || (text.length !== bytes && length !== (text.length - 1) * 8)) throw signal('invalid-read-syntax', ['#&...']);
+    const v = new BoolVector(length);
+    for (let i = 0; i < v.bytes.length; i++) v.bytes[i] = text.charCodeAt(i);
+    v.trim();
+    return v;
+  }
+
   readString() {
     const t = this.text;
     let out = '';
+    /** Set when the string holds a character past 255, which Emacs reads as a multibyte string. */
+    this.wide = false;
     for (;;) {
       if (this.pos >= t.length) throw signal('end-of-file', []);
       const c = t[this.pos++];
       if (c === '"') return out;
       if (c !== '\\') {
+        if (c > '\x7f') this.wide = true;
         out += c;
         continue;
       }
@@ -189,10 +214,14 @@ export class Reader {
       if (e === 'x') {
         let h = '';
         while (/[0-9a-fA-F]/.test(t[this.pos] || '')) h += t[this.pos++];
-        out += String.fromCodePoint(parseInt(h || '0', 16));
+        const code = parseInt(h || '0', 16);
+        // 3fff80 to 3fffff are Emacs's raw bytes 128 to 255
+        out += code >= 0x3fff80 && code <= 0x3fffff ? String.fromCharCode(code - 0x3fff00) : String.fromCodePoint(code);
+        if (code > 255 && !(code >= 0x3fff80 && code <= 0x3fffff)) this.wide = true;
       } else if (e === 'u' || e === 'U') {
         const n = e === 'u' ? 4 : 8;
         out += String.fromCodePoint(parseInt(t.slice(this.pos, this.pos + n), 16));
+        if (parseInt(t.slice(this.pos, this.pos + n), 16) > 127) this.wide = true;
         this.pos += n;
       } else if (/[0-7]/.test(e)) {
         let o = e;

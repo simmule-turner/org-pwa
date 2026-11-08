@@ -749,7 +749,76 @@ All of Lisp is there to compute a value: ~let~, ~defun~, loops, ~append~, ~forma
 
 A form that fails shows Emacs's message in the status line (~Symbol’s function definition is void: foo~) and the forms after it still run. ~(load "github:file.el")~ reads another file as part of the init, and the Agenda's *Refresh* reads it again. More forms, with the values Emacs gives, are in =examples/lisp-init.org=.
 
-*Limits.* A program stops after 5 seconds or about a million steps with ~Lisp evaluation stopped: too many steps (possible infinite loop)~; nothing in the program can catch it. As in Emacs, nesting deeper than ~max-lisp-eval-depth~ (1600) signals ~excessive-lisp-nesting~, and a number of more than ~integer-width~ bits (65536) signals ~overflow-error~. A list or vector of more than 16 million elements, or a string of more than 134 million characters, is refused with Emacs's ~Memory exhausted~ message. A regexp that would backtrack without end signals ~Stack overflow in regexp matcher~.
+*Limits.* A program stops after 5 seconds or about a million steps with ~Lisp evaluation stopped: too many steps (possible infinite loop)~; nothing in the program can catch it. As in Emacs, nesting deeper than ~max-lisp-eval-depth~ (1600) signals ~excessive-lisp-nesting~, and a number of more than ~integer-width~ bits (65536) signals ~overflow-error~. A list or vector of more than 16 million elements, or a string or bool-vector of more than 134 million characters or bits, is refused with Emacs's ~Memory exhausted~ message. A regexp that would backtrack without end, or a loop that runs through a string of tens of thousands of characters (such as ~\\(a\\|b\\)*c~ on 100,000 characters), signals ~Stack overflow in regexp matcher~, at about the same length as Emacs 29.3. A size that is negative or not an integer signals ~wrong-type-argument~ and a shift or power too large for memory ~overflow-error~, as in Emacs.
+
+*** Lisp functions
+:PROPERTIES:
+:CUSTOM_ID: lisp-functions
+:END:
+
+The interpreter behind the Lisp init, ~emacs-lisp~ source blocks, holiday lists, diary entries and agenda settings has these functions, special forms and macros. They behave as in Emacs 29.3; a group says where it does not.
+
+# BEGIN lisp-reference
+*Control and binding* (47): Special forms and macros for choosing, looping, binding and quitting early. Code runs with lexical binding.
+
+~`~ ~and~ ~and-let*~ ~catch~ ~cond~ ~dolist~ ~dotimes~ ~function~ ~if~ ~if-let~ ~if-let*~ ~lambda~ ~let~ ~let*~ ~let-alist~ ~letrec~ ~macroexp-progn~ ~or~ ~pcase~ ~pcase-dolist~ ~pcase-let~ ~pcase-let*~ ~pop~ ~prog1~ ~prog2~ ~progn~ ~push~ ~quote~ ~save-excursion~ ~save-match-data~ ~save-restriction~ ~seq-let~ ~setf~ ~setopt~ ~setq~ ~setq-default~ ~setq-local~ ~thread-first~ ~thread-last~ ~throw~ ~unless~ ~unwind-protect~ ~when~ ~when-let~ ~when-let*~ ~while~ ~with-output-to-string~
+
+*Numbers and math* (59): Integers of any size up to 65536 bits, floats, bitwise operations and the usual functions.
+
+~%~ ~*~ ~+~ ~-~ ~/~ ~/=~ ~1+~ ~1-~ ~<~ ~<=~ ~=~ ~>~ ~>=~ ~abs~ ~acos~ ~ash~ ~asin~ ~atan~ ~bignump~ ~ceiling~ ~copysign~ ~cos~ ~exp~ ~expt~ ~fceiling~ ~ffloor~ ~fixnump~ ~float~ ~floatp~ ~floor~ ~fround~ ~ftruncate~ ~integer-or-marker-p~ ~integerp~ ~isnan~ ~ldexp~ ~log~ ~logand~ ~logb~ ~logior~ ~lognot~ ~logxor~ ~lsh~ ~max~ ~min~ ~mod~ ~natnump~ ~number-or-marker-p~ ~number-sequence~ ~number-to-string~ ~numberp~ ~random~ ~round~ ~sin~ ~sqrt~ ~tan~ ~truncate~ ~wholenump~ ~zerop~
+
+*Lists* (63): Conses, association lists and property lists.
+
+~alist-get~ ~append~ ~assoc~ ~assoc-default~ ~assoc-delete-all~ ~assq~ ~assq-delete-all~ ~atom~ ~butlast~ ~caaar~ ~caadr~ ~caar~ ~cadar~ ~cadddr~ ~caddr~ ~cadr~ ~car~ ~car-safe~ ~cdaar~ ~cdadr~ ~cdar~ ~cddar~ ~cdddr~ ~cddr~ ~cdr~ ~cdr-safe~ ~cons~ ~consp~ ~copy-alist~ ~copy-tree~ ~delete~ ~delete-consecutive-dups~ ~delete-dups~ ~delq~ ~ensure-list~ ~flatten-tree~ ~last~ ~list~ ~listp~ ~make-list~ ~member~ ~memq~ ~memql~ ~nbutlast~ ~nconc~ ~nlistp~ ~not~ ~ntake~ ~nth~ ~nthcdr~ ~null~ ~plist-get~ ~plist-member~ ~plist-put~ ~proper-list-p~ ~rassoc~ ~rassq~ ~remove~ ~remq~ ~safe-length~ ~setcar~ ~setcdr~ ~take~
+
+*Sequences and vectors* (66): Functions that take a list, vector or string alike.
+
+~aref~ ~arrayp~ ~aset~ ~copy-sequence~ ~elt~ ~fillarray~ ~length~ ~length<~ ~length=~ ~length>~ ~make-vector~ ~mapc~ ~mapcan~ ~mapcar~ ~mapconcat~ ~nreverse~ ~reverse~ ~seq-concatenate~ ~seq-contains-p~ ~seq-count~ ~seq-difference~ ~seq-do~ ~seq-do-indexed~ ~seq-doseq~ ~seq-drop~ ~seq-drop-while~ ~seq-elt~ ~seq-empty-p~ ~seq-every-p~ ~seq-filter~ ~seq-find~ ~seq-first~ ~seq-group-by~ ~seq-intersection~ ~seq-into~ ~seq-keep~ ~seq-length~ ~seq-map~ ~seq-map-indexed~ ~seq-mapcat~ ~seq-mapn~ ~seq-max~ ~seq-min~ ~seq-partition~ ~seq-position~ ~seq-positions~ ~seq-reduce~ ~seq-remove~ ~seq-remove-at-position~ ~seq-rest~ ~seq-reverse~ ~seq-set-equal-p~ ~seq-some~ ~seq-sort~ ~seq-sort-by~ ~seq-split~ ~seq-subseq~ ~seq-take~ ~seq-take-while~ ~seq-union~ ~seq-uniq~ ~sequencep~ ~sort~ ~vconcat~ ~vector~ ~vectorp~
+
+*Bool-vectors* (11): Fixed-length vectors of bits, printed as ~#&5"\31"~ and read back from that syntax. A bool-vector of more than 134 million bits is refused with ~Memory exhausted~.
+
+~bool-vector~ ~bool-vector-count-consecutive~ ~bool-vector-count-population~ ~bool-vector-exclusive-or~ ~bool-vector-intersection~ ~bool-vector-not~ ~bool-vector-p~ ~bool-vector-set-difference~ ~bool-vector-subsetp~ ~bool-vector-union~ ~make-bool-vector~
+
+*Strings and characters* (48): Building, comparing, trimming and converting text. ~substring-no-properties~ is ~substring~.
+
+~assoc-string~ ~capitalize~ ~char-equal~ ~char-to-string~ ~characterp~ ~compare-strings~ ~concat~ ~downcase~ ~make-string~ ~split-string~ ~string~ ~string-blank-p~ ~string-chop-newline~ ~string-clean-whitespace~ ~string-distance~ ~string-empty-p~ ~string-equal~ ~string-greaterp~ ~string-join~ ~string-lessp~ ~string-limit~ ~string-lines~ ~string-pad~ ~string-prefix-p~ ~string-remove-prefix~ ~string-remove-suffix~ ~string-replace~ ~string-reverse~ ~string-search~ ~string-suffix-p~ ~string-to-char~ ~string-to-list~ ~string-to-number~ ~string-to-vector~ ~string-trim~ ~string-trim-left~ ~string-trim-right~ ~string-version-lessp~ ~string-width~ ~string<~ ~string=~ ~string>~ ~stringp~ ~substring~ ~substring-no-properties~ ~truncate-string-to-width~ ~upcase~ ~upcase-initials~
+
+*Regexps and searching* (16): Emacs regexp syntax on strings, with the match data kept for ~match-string~ and ~replace-match~. The matching runs on the browser's regexp engine; a pattern that would backtrack without end signals ~Stack overflow in regexp matcher~.
+
+~match-beginning~ ~match-data~ ~match-end~ ~match-string~ ~match-string-no-properties~ ~match-substitute-replacement~ ~regexp-opt~ ~regexp-opt-charset~ ~regexp-opt-depth~ ~regexp-opt-group~ ~regexp-quote~ ~replace-match~ ~replace-regexp-in-string~ ~set-match-data~ ~string-match~ ~string-match-p~
+
+*Hash tables* (11): Tables with ~eq~, ~eql~ or ~equal~ keys.
+
+~clrhash~ ~copy-hash-table~ ~gethash~ ~hash-table-count~ ~hash-table-keys~ ~hash-table-p~ ~hash-table-values~ ~make-hash-table~ ~maphash~ ~puthash~ ~remhash~
+
+*Symbols and functions* (58): Defining and calling functions, symbols, variables, features, equality and type tests. ~require~, ~provide~ and ~featurep~ treat every feature as loaded, so ~eval-after-load~ and ~with-eval-after-load~ run their body at once.
+
+~add-hook~ ~add-to-list~ ~always~ ~apply~ ~booleanp~ ~boundp~ ~declare~ ~declare-function~ ~defalias~ ~default-value~ ~defconst~ ~defcustom~ ~defgroup~ ~defmacro~ ~defun~ ~defvar~ ~defvar-local~ ~eq~ ~eql~ ~equal~ ~eval~ ~eval-after-load~ ~eval-and-compile~ ~eval-when-compile~ ~fboundp~ ~featurep~ ~fmakunbound~ ~fset~ ~func-arity~ ~funcall~ ~functionp~ ~gensym~ ~get~ ~identity~ ~ignore~ ~interactive~ ~intern~ ~intern-soft~ ~keywordp~ ~macroexpand~ ~macroexpand-1~ ~macroexpand-all~ ~make-symbol~ ~make-variable-buffer-local~ ~makunbound~ ~provide~ ~put~ ~remove-hook~ ~require~ ~set~ ~special-variable-p~ ~symbol-function~ ~symbol-name~ ~symbol-plist~ ~symbol-value~ ~symbolp~ ~type-of~ ~with-eval-after-load~
+
+*Errors and conditions* (10): Signaling, catching and describing errors.
+
+~condition-case~ ~condition-case-unless-debug~ ~define-error~ ~error~ ~error-message-string~ ~ignore-error~ ~ignore-errors~ ~signal~ ~user-error~ ~with-demoted-errors~
+
+*Time and dates* (5): Time values as numbers, ~(HIGH LOW)~ lists or ~(TICKS . HZ)~ pairs. A zone is nil (the device's), ~t~ (UTC) or a number of seconds east of UTC.
+
+~current-time~ ~decode-time~ ~encode-time~ ~float-time~ ~format-time-string~
+
+*Formatting and output* (12): Building text with ~format~, printing it and reading Lisp text back. ~message~ lines go to the status line, and ~princ~, ~print~ and ~insert~ write to the output a block or command returns.
+
+~format~ ~format-message~ ~insert~ ~message~ ~prin1~ ~prin1-to-string~ ~princ~ ~print~ ~read~ ~read-from-string~ ~terpri~ ~write-char~
+
+*Org functions* (15): The read-only Org functions an agenda setting, skip function or capture template may call. They work on the entry being processed, as when Emacs runs them with the cursor on a heading.
+
+~org-agenda-skip-entry-if~ ~org-agenda-skip-if~ ~org-agenda-skip-subtree-if~ ~org-entry-get~ ~org-entry-get-with-inheritance~ ~org-entry-is-done-p~ ~org-entry-is-todo-p~ ~org-get-category~ ~org-get-heading~ ~org-get-tags~ ~org-get-todo-state~ ~org-link-escape~ ~org-link-make-string~ ~org-outline-level~ ~orgtbl-ascii-draw~
+
+*Calendar, diary and holiday functions* (89): Calendar arithmetic, the holiday functions of ~calendar-holidays~ and the diary sexp functions of ~%%(...)~ entries. A holiday entry is evaluated for the month shown, with ~displayed-month~ and ~displayed-year~ bound. ~org-xx-dst-date~, ~org-weather~ and ~today-p~ are this app's own.
+
+~calendar-absolute-from-gregorian~ ~calendar-check-holidays~ ~calendar-current-date~ ~calendar-date-equal~ ~calendar-date-is-valid-p~ ~calendar-date-is-visible-p~ ~calendar-day-name~ ~calendar-day-number~ ~calendar-day-of-week~ ~calendar-dayname-on-or-before~ ~calendar-extract-day~ ~calendar-extract-month~ ~calendar-extract-year~ ~calendar-gregorian-from-absolute~ ~calendar-hebrew-from-absolute~ ~calendar-hebrew-last-day-of-month~ ~calendar-hebrew-last-month-of-year~ ~calendar-hebrew-leap-year-p~ ~calendar-hebrew-to-absolute~ ~calendar-islamic-from-absolute~ ~calendar-islamic-last-day-of-month~ ~calendar-islamic-leap-year-p~ ~calendar-islamic-to-absolute~ ~calendar-julian-from-absolute~ ~calendar-julian-to-absolute~ ~calendar-last-day-of-month~ ~calendar-leap-year-p~ ~calendar-month-name~ ~calendar-nth-named-absday~ ~calendar-nth-named-day~ ~diary-anniversary~ ~diary-astro-day-number~ ~diary-bahai-date~ ~diary-block~ ~diary-chinese-date~ ~diary-cyclic~ ~diary-date~ ~diary-day-of-year~ ~diary-entry-time~ ~diary-float~ ~diary-hebrew-birthday~ ~diary-hebrew-date~ ~diary-hebrew-omer~ ~diary-hebrew-parasha~ ~diary-hebrew-rosh-hodesh~ ~diary-hebrew-sabbath-candles~ ~diary-hebrew-yahrzeit~ ~diary-islamic-date~ ~diary-iso-date~ ~diary-julian-date~ ~diary-lunar-phases~ ~diary-offset~ ~diary-ordinal-suffix~ ~diary-remind~ ~diary-sunrise-sunset~ ~holiday-advent~ ~holiday-bahai~ ~holiday-bahai-new-year~ ~holiday-bahai-ridvan~ ~holiday-chinese~ ~holiday-chinese-new-year~ ~holiday-chinese-qingming~ ~holiday-chinese-winter-solstice~ ~holiday-easter-etc~ ~holiday-filter-visible-calendar~ ~holiday-fixed~ ~holiday-float~ ~holiday-greek-orthodox-easter~ ~holiday-hebrew~ ~holiday-hebrew-hanukkah~ ~holiday-hebrew-misc~ ~holiday-hebrew-passover~ ~holiday-hebrew-rosh-hashanah~ ~holiday-hebrew-tisha-b-av~ ~holiday-islamic~ ~holiday-islamic-new-year~ ~holiday-julian~ ~holiday-sexp~ ~org-anniversary~ ~org-block~ ~org-class~ ~org-cyclic~ ~org-date~ ~org-weather~ (own) ~org-xx-dst-date~ (own) ~solar-equinoxes-solstices~ ~solar-sunrise-sunset~ ~solar-time-string~ ~today-p~ (own)
+
+*cl-lib* (80): The common cl-lib functions and macros, including ~cl-loop~ with its usual clauses.
+
+~cl-adjoin~ ~cl-assert~ ~cl-assoc~ ~cl-block~ ~cl-case~ ~cl-ceiling~ ~cl-copy-list~ ~cl-count~ ~cl-count-if~ ~cl-decf~ ~cl-defmacro~ ~cl-defun~ ~cl-delete~ ~cl-destructuring-bind~ ~cl-dolist~ ~cl-dotimes~ ~cl-endp~ ~cl-equalp~ ~cl-evenp~ ~cl-every~ ~cl-find~ ~cl-find-if~ ~cl-first~ ~cl-flet~ ~cl-floor~ ~cl-function~ ~cl-gcd~ ~cl-getf~ ~cl-incf~ ~cl-intersection~ ~cl-isqrt~ ~cl-labels~ ~cl-lcm~ ~cl-ldiff~ ~cl-letf~ ~cl-letf*~ ~cl-list*~ ~cl-list-length~ ~cl-loop~ ~cl-mapcan~ ~cl-mapcar~ ~cl-maplist~ ~cl-member~ ~cl-minusp~ ~cl-mismatch~ ~cl-mod~ ~cl-multiple-value-bind~ ~cl-notany~ ~cl-notevery~ ~cl-oddp~ ~cl-parse-integer~ ~cl-plusp~ ~cl-position~ ~cl-pushnew~ ~cl-reduce~ ~cl-rem~ ~cl-remove~ ~cl-remove-duplicates~ ~cl-remove-if~ ~cl-remove-if-not~ ~cl-rest~ ~cl-return~ ~cl-return-from~ ~cl-round~ ~cl-search~ ~cl-second~ ~cl-set-difference~ ~cl-signum~ ~cl-some~ ~cl-sort~ ~cl-stable-sort~ ~cl-subseq~ ~cl-subst~ ~cl-substitute~ ~cl-tailp~ ~cl-third~ ~cl-truncate~ ~cl-typep~ ~cl-union~ ~cl-values~
+# END lisp-reference
 
 -----
 
@@ -1928,6 +1997,8 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 
 *Conflict detection*: Save compares the file's current state with what the app last knew, so one version never silently overwrites the other. The app also checks for external changes when a file is opened, when the tab regains focus, and when you switch into a tab with real backing storage. A banner then appears with *Merge*, *Reload* and *Dismiss*. For a local file this background check never asks the browser for permission: it runs only if access is already granted, so the banner may not appear until you have saved or reloaded the file in the session. Save, Reload and Merge still ask when they need to.
 
+*Saved in another window*: if another window of the app saved the same file while this one has unsaved edits, Save asks *Merge*, *Overwrite* or *Cancel*. Merge combines the two and leaves the Save to you, Overwrite replaces the other window's save, and Cancel (or Escape) saves nothing.
+
 *Resolving a conflict*: the app keeps the full text of the file as of the last successful open or save, the common ancestor a three-way merge needs. When Save finds the file changed elsewhere under your unsaved edits, it compares the ancestor, your version and the other one line by line:
 
 - *The other version has no real change, or matches yours*: Save just proceeds. A server that changes a file's ETag without changing its content isn't a conflict.
@@ -1955,7 +2026,7 @@ An outline or agenda with more than 400 rows draws only the rows near the screen
 :CUSTOM_ID: size-limits
 :END:
 
-A large file can make the app slow, so each kind has a size at which it asks and one at which it refuses; *Settings → Sync and storage → Size limits* changes them, and ~off~ removes a limit. An Org file above 500KB asks "This is large and may be slow. Open anyway?" and above 2MB is not opened; the same limit applies to a file read for the Agenda, a refile or a capture. A picture above 3MB is not shown inline: it appears as its size with a *Load* link. An attachment above 20MB asks before it is attached, and above 95MB is refused. Bibliography, ~#+SETUPFILE:~ and ~#+INCLUDE:~ files above their limits are skipped, and the app says so. A download that has not started answering after 30 seconds stops with a message. Pasting into the Text view and pictures linked from a web address are not limited.
+A large file can make the app slow, so each kind has a size at which it asks and one at which it refuses; *Settings → Sync and storage → Size limits* changes them, and ~off~ removes a limit. An Org file above 500KB asks "This is large and may be slow. Open anyway?" and above 2MB is not opened; the same limit applies to a file read for the Agenda, a refile or a capture. A picture above 3MB is not shown inline: it appears as its size with a *Load* link. An attachment above 20MB asks before it is attached, and above 95MB is refused. Bibliography, ~#+SETUPFILE:~ and ~#+INCLUDE:~ files above their limits are skipped, and the app says so. A download that has not started answering after 30 seconds stops with a message. Pasting into the Text view asks or refuses at the same Org file sizes, and ~#+INCLUDE:~ files together cannot grow a document past the limit. A calendar, CalDAV or WebDAV reply above 32MB is refused. Pictures linked from a web address are not limited.
 
 ** Platform support
 :PROPERTIES:
@@ -2017,7 +2088,7 @@ A searchable list of what the app can do, the touch counterpart of Emacs's ~M-x~
 | *View* | agenda, TODO list, outline view, text view, cycle visibility of the whole document, calendar, search, sync agenda to calendar, rebuild calendar, sync contacts to the address book, rebuild contacts |
 | *Export* | the Export menu; this file as HTML, LaTeX or ASCII |
 | *Import* | Contacts (.vcf), ~org-vcard-import~; iCalendar (.ics), ~icalendar-import-file~ |
-| *App* | settings, help, show display measurements, copy keyboard debug log, copy update and startup log, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
+| *App* | settings, help, show display measurements, copy keyboard debug log, copy security diagnostics, copy update and startup log, add a capture icon to the home screen and choose the org-pwa folder (Android app only) |
 
 *Also in it*: your own capture templates and [[#extras-menu][Extras menu]] entries, one command each. *Capture: <description>* (such as *Capture: Meeting*) runs that template directly, and *Extras: <label>* runs that Extras entry as tapping it would. Both are read fresh each time the palette opens, so an edited template list or a document's own Extras menu (set in its Local Variables) is current. The plain *Capture* command still opens the template picker.
 
@@ -2034,6 +2105,8 @@ There is no server of ours: the app talks only to the places you set up, and not
 *Where things are kept.* Your files stay where they are (a file on the device, GitHub or WebDAV). The app keeps its settings in the browser's own storage on this device, including the GitHub token, the WebDAV, calendar and contacts passwords, and the init script. They are stored as plain text, as in any browser app, so use a token limited to one repository and an app-specific password, and sign out of a shared device by clearing its site data. Nothing but what you set up is synced, exported or read from a file.
 
 *What can run.* Only the app's own code runs in the page. The page's Content-Security-Policy refuses inline and injected scripts. Code from a document or the init script runs in a [[#extensions][sandbox]] with no access to the page, your files or your tokens. It reaches a server only if you allow it.
+
+*Check the sandbox.* =Copy security diagnostics= (palette, App) starts the sandbox on your device and asks it what it can reach. The first line is =PASS: no native bridge reachable from sandboxed code=, or =FAIL:= with what was found. OK copies the report; paste it when reporting a problem.
 
 ** Keybindings
 :PROPERTIES:

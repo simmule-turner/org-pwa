@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v655';
+const CACHE_NAME = 'org-pwa-shell-v657';
 
 const SHELL_FILES = [
   './',
@@ -48,6 +48,7 @@ const SHELL_FILES = [
   './src/babel-elisp.js',
   './src/babel-ref.js',
   './src/babel-trust.js',
+  './src/security-diagnostics.js',
   './src/regex-guard.js',
   './src/save-lock.js',
   './src/storage-path.js',
@@ -370,6 +371,7 @@ const SHELL_FILES = [
   './src-browser/doc-helpers.js',
   './src-browser/display-info.js',
   './src-browser/key-log.js',
+  './src-browser/security-diagnostics.js',
   './src-browser/update-log.js',
   './src-browser/saved-elsewhere.js',
   './src-browser/sync-helpers.js',

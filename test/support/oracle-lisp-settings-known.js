@@ -11,7 +11,7 @@ export const KNOWN = [
   { chosen: true, reason: '`special-variable-p` is true only for variables the app defines, not for every Emacs built-in variable such as `load-path`.', match: /^\(special-variable-p \(quote load-path\)\)$/ },
   { chosen: true, reason: 'A `cl-case` clause keyed by `nil` makes Emacs print a compiler warning; the interpreter stays silent.', match: /^\(cl-case nil \(nil 1\) \(t 2\)\)$/ },
   { chosen: false, reason: '`(lambda)` with no parameter list: Emacs makes an empty closure, the interpreter signals an error.', match: /^\(condition-case e \(lambda\) \(error e\)\)$/ },
-  { chosen: false, reason: 'Read syntax `#s(...)` records, `#&N"..."` bool-vectors, `#N=` labels, `#("..." props)` strings and `?\\N{NAME}` characters is not supported, nor are bool-vectors.', match: /#s\(|#&|#1=|'#\(\\"abc|\\N\{|make-bool-vector/ },
+  { chosen: false, reason: 'Read syntax `#s(...)` records, `#N=` labels, `#("..." props)` strings and `?\\N{NAME}` characters is not supported.', match: /#s\(|#1=|'#\(\\"abc|\\N\{/ },
   { chosen: false, reason: 'A group repeated over an empty match (`\\(a*\\)*`) keeps its last non-empty match in JavaScript; Emacs lets an empty iteration set it.', match: /string-match "\\\\\(a\*\\\\\)[*+]"/ },
   { chosen: false, reason: 'A back-reference to a group that did not take part in the match matches the empty string in JavaScript; in Emacs it fails.', match: /string-match "\\\\\(\\\\\(a\\\\\)\\\\\|b\\\\\)\\\\2"/ },
   { chosen: false, reason: 'With case folding JavaScript treats the Kelvin sign and the long s as `k` and `s`, so `[[:nonascii:]]` also matches those ASCII letters.', match: /string-match "\[\[:(nonascii|multibyte):\]\]"/ },

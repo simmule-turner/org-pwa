@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v657 — Bool-vectors and a Lisp function list
+Lisp now has bool-vectors, so a sieve of Eratosthenes or any bit set works: =make-bool-vector=, the =bool-vector-*= operations, and the =#&5"\31"= print and read syntax, all as Emacs 29.3 gives them. The README gains a Lisp functions section listing every function the interpreter provides, grouped by topic and kept in step with the code by a test. Several =aref=, =seq-*= and reader details now match Emacs too.
+Verified: about 1,150 new cases against Emacs 29.3; the help-link, Lisp init and palette checks.
+
+* v656 — Security diagnostics and Emacs limits
+A new "Copy security diagnostics" command checks the page, the sandbox and the worker and reports PASS or FAIL, so a questionable WebView can be tested directly. Regexps that loop over very long strings now stop with Emacs's "Stack overflow in regexp matcher" instead of hanging, and huge =make-string=, =make-vector= and =make-list= sizes report memory exhausted like Emacs. The README now covers the save prompt and the size limits.
+Verified: against Emacs 29.3; the diagnostics, sandbox, JavaScript block, Lisp, UTF-8 and palette checks.
+
 * v655 — Safer saves and fewer loose ends
 After "saved elsewhere", Save now asks Merge, Overwrite or Cancel instead of silently replacing the other window's save. Calendar, CalDAV and WebDAV replies are size-capped, a failed local-file write leaves the original untouched, and picking a different file with the name of an open one is refused. Lisp integers past Emacs's =integer-width= now overflow like Emacs, and the vendored mathjs version is recorded.
 Verified: new tests for each item; the saved-elsewhere, conflict and UTF-8 checks.

@@ -43,7 +43,7 @@ const driver = `;; -*- lexical-binding: t -*-
 `;
 const file = path.join(os.tmpdir(), `elisp-oracle-${process.pid}.el`);
 fs.writeFileSync(file, driver);
-const r = spawnSync('emacs', ['--batch', '-Q', '-l', file], { encoding: 'utf8', maxBuffer: 1e9, env: { ...process.env, LC_ALL: 'C.UTF-8' }, timeout: 300000 });
+const r = spawnSync('emacs', ['--batch', '-Q', '-l', file], { encoding: 'utf8', maxBuffer: 1e9, env: { ...process.env, LC_ALL: 'C.UTF-8' }, timeout: 1500000 });
 fs.unlinkSync(file);
 if (r.status !== 0) throw new Error(r.stderr);
 const results = [];

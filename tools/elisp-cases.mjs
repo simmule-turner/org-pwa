@@ -193,3 +193,242 @@ for (const sp of seps) for (const tx of texts) for (const extra of sp === '' || 
 const reps = [['a', 'X'], ['\\(a\\)\\(b\\)', '\\2\\1'], ['b*', '-'], ['^', '> '], ['$', '!'], ['\\<', '<'], ['[aeiou]', '\\&\\&'], ['x', '\\\\'], ['a', 'b']];
 const rsubj = ['banana', 'abab', 'Hello world', '', 'a\nb', 'AAA aaa Aaa'];
 for (const [re, rp] of reps) for (const sj of rsubj) for (const extra of ['', ' t', ' nil t']) CASES.push(`(condition-case e (replace-regexp-in-string ${lisp(re)} ${lisp(rp)} ${lisp(sj)}${extra}) (error (list 'err (error-message-string e))))`);
+
+// ---- Emacs's regexp failure stack: a loop that goes on long enough signals "Stack overflow in regexp matcher"
+// (src/regex-guard.js checkFailureStack). Each shape is tried on both sides of the length where Emacs 29.3 overflows (measured:
+// 88,888 to 266,665 repeated units), at a margin of about 15%, with a last character so the cases below the boundary match at once.
+/** @type {[string, string, string, number, number][]} pattern, repeated unit, last text, shorter, longer */
+const stackCases = [
+  ['\\(a\\|b\\)*c', 'a', 'c', 75000, 100000],
+  ['\\(a\\|b\\)*c', 'b', 'c', 112000, 152000],
+  ['\\(?:a\\|b\\)*c', 'a', 'c', 112000, 152000],
+  ['\\(?:a\\|b\\)*c', 'b', 'c', 226000, 306000],
+  ['\\(a\\|b\\|c\\)*d', 'a', 'd', 75000, 100000],
+  ['\\(a\\)*c', 'a', 'c', 112000, 152000],
+  ['\\(.\\)*c', 'a', 'c', 112000, 152000],
+  ['\\([ab]\\)*c', 'a', 'c', 112000, 152000],
+  ['\\(ab\\)*c', 'ab', 'c', 112000, 152000],
+  ['\\(?:ab\\|cd\\)*e', 'ab', 'e', 112000, 152000],
+  ['\\(a\\|b\\)+c', 'a', 'c', 75000, 100000],
+  ['\\(?:a*b\\)*c', 'ab', 'c', 226000, 306000],
+  ['x*\\(a\\|b\\)*c', 'a', 'c', 75000, 100000],
+  ['\\(a\\|\\)*c', 'a', 'c', 75000, 100000],
+  // one character at a time: only when what follows could match that character
+  ['.*c', 'a', 'c', 226000, 306000],
+  ['\\(?:.\\)*c', 'a', 'c', 226000, 306000],
+  ['[ab]*a', 'a', 'a', 226000, 306000],
+  ['a*a', 'a', 'a', 226000, 306000],
+  ['a*\\(a\\|b\\)*c', 'a', 'c', 226000, 306000],
+  // never overflow
+  ['[ab]*c', 'a', 'c', 300000, 400000],
+  ['\\(?:a\\)*c', 'a', 'c', 300000, 400000],
+  ['\\(?:ab\\)*c', 'ab', 'c', 200000, 300000],
+];
+for (const [re, unit, last, shorter, longer] of stackCases) {
+  for (const n of [shorter, longer]) {
+    CASES.push(`(condition-case e (string-match ${JSON.stringify(re)} (concat (apply #'concat (make-list ${n} ${JSON.stringify(unit)})) ${JSON.stringify(last)})) (error (cadr e)))`);
+  }
+}
+CASES.push(
+  // the example that stalled: no "c" at all, so every start position would run to the end
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*c" (make-string 100000 ?a)) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*c" (concat (make-string 10 ?x) (make-string 100000 ?a))) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*c" (make-string 100000 ?x)) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*" (make-string 100000 ?a)) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*" (make-string 100000 ?b)) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*c" (make-string 30000 ?a)) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*" (make-string 100000 ?a) 50000) (error (cadr e)))',
+  '(condition-case e (string-match "\\\\(a\\\\|b\\\\)*" (make-string 100000 ?a) 20000) (error (cadr e)))',
+  '(condition-case e (string-match "x*\\\\(a\\\\|b\\\\)*" (make-string 100000 ?a)) (error (cadr e)))',
+  '(condition-case e (string-match "[ab]*c" (make-string 400000 ?a)) (error (cadr e)))',
+);
+
+// ---- huge or invalid sizes: the error Emacs 29.3 signals (a size past memory is "Memory exhausted")
+for (const form of ["(make-string most-positive-fixnum ?a)", "(make-string 1000000000000 ?a)",  "(make-string -1 ?a)", "(make-string 1.5 ?a)", "(make-string 'a ?a)", "(make-string 3 \"a\")", "(make-string 3 -1)", "(make-string most-negative-fixnum ?a)", "(make-string 0 ?a)", "(make-string 3 ?a t)", "(make-list most-negative-fixnum 0)", "(make-list -1 0)", "(make-list 1.5 0)", "(make-list 'a 0)", "(make-list 0 1)", "(make-vector most-positive-fixnum 0)", "(make-vector 1000000000000 0)", "(make-vector -1 0)", "(make-vector 1.5 0)", "(make-vector 'a 0)", "(make-vector 0 1)",      "(make-hash-table :size -1)", "(make-hash-table :size 1.5)", "(make-hash-table :size 'a)",  "(hash-table-p (make-hash-table :size 10))", "(expt 2 100000000)", "(expt 2 -1)", "(ash 1 100000000)", "(ash 1 -100000)", "(ash 1 1.5)", "(ash 1 most-positive-fixnum)", "(expt 2 'a)", "(expt 2.0 100000)", "(expt 0 -1)"]) {
+  CASES.push(`(condition-case e ${form} (error (list (car e) (if (stringp (cadr e)) (substring (cadr e) 0 20) (cadr e)) (cddr e))))`);
+}
+
+// ---- bool-vectors: construction, printing and reading (#&LENGTH"BYTES"), the bool-vector-* functions, and the generic sequence
+// functions on them. The cases show a value through `bv-show`, which prints control characters as ^A..., because the oracle
+// driver's records use the bytes 1 to 4 as separators.
+CASES.push(
+  '(defun bv-show (v) (replace-regexp-in-string "[\\0-\\37\\177]" (lambda (m) (string ?^ (logxor (aref m 0) 64))) (prin1-to-string v)))',
+  '(defun bv-make (n k) (let ((b (make-bool-vector n nil))) (dotimes (i n) (aset b i (= 1 (% (+ (* i i) (* k i)) 3)))) b))',
+);
+/** A case that shows the value of `form`, or the error it signals. @param {string} form */
+const bvShow = (form) => `(condition-case e (bv-show ${form}) (error (bv-show e)))`;
+for (let n = 0; n <= 20; n++) {
+  for (const k of [0, 1, 2]) CASES.push(bvShow(`(bv-make ${n} ${k})`));
+  CASES.push(bvShow(`(make-bool-vector ${n} t)`), bvShow(`(make-bool-vector ${n} nil)`));
+  // the exact characters of the printed form, for prin1 and for princ
+  CASES.push(`(append (prin1-to-string (bv-make ${n} 1)) nil)`, `(append (with-output-to-string (princ (bv-make ${n} 2))) nil)`);
+  CASES.push(bvShow(`(with-output-to-string (princ (bv-make ${n} 1)))`), `(equal (read (prin1-to-string (bv-make ${n} 0))) (bv-make ${n} 0))`, `(equal (read (prin1-to-string (bv-make ${n} 1))) (bv-make ${n} 1))`, `(equal (read (prin1-to-string (make-bool-vector ${n} t))) (make-bool-vector ${n} t))`);
+}
+/** A case that reads `text` and shows the object, or the error's symbol and data. @param {string} text */
+const bvRead = (text) => `(condition-case e (bv-show (read ${JSON.stringify(text)})) (error (list (car e) (if (eq (car e) 'end-of-file) nil (cdr e)))))`;
+for (const text of [
+  '#&5"\\31"', '#&3"\\5"', '#&0""', '#&5""', '#&5"\\31\\31"', '#&5"\\377"', '#&5a', '#&', '#&-1""', '#&5 "a"', '#&8"a"', '#&9"ab"', '#&2"\\377"', '#&2"\\3"',
+  '#&10"\\377\\3"', '#&10"\\377\\377"', '#&3"\\xff"', '#&16"\\x0\\x80"', '#&8"é"', '#&8"\\^A"', '#&8"\\C-a"', '#&8"\\n"', '#&8"\\\\"', '#&8"\\""', '#&01"\\1"', '#&1.0"\\1"',
+  '#&1e0"\\1"', '#&#x10"\\1"', '#&+1"\\1"', "'#&1\"\\1\"", '#&8"a\\0"', '#&8""', '#&16"ab\\0"', '#&15"ab\\0"', '#&7"ab"', '#& 8"a"', '#&8', '#&8 ', '#&99999999999999999999"a"',
+  '#&"a"', '#&1"\\1"x', '#&3"\\u0001"', '#&3"\\x1"', '#&3"\\x100"', '#&8"\\200"', '#&1"\\s"', '#&1"\\^?"', '#&9"\\^?\\^?"', '#&1"\\0"', '#&1"\\18"', '#&24"\\1\\12\\123"',
+  '#&24"\\60\\61\\62"', '#&16"\\3 "', '#&16"\\3a"', '(#&2"\\3" . #&1"\\0")', '(#&2"\\3"#&1"\\0")', '[#&2"\\3"#&1"\\0"]', '#&2"\\3"#&1"\\0"', '#&2"\\3"abc', '#&2"\\3', '#&2"', '#&2"\\',
+  '#&2"\\3""', '`(a #&2"\\3" ,(+ 1 2))', '(quote #&2"\\3")', '#&1"\\1" ', '#&18"\\377\\377\\3"', '#&17"\\377\\377\\1"', '#&20"\\266m\\13"',
+]) CASES.push(bvRead(text));
+CASES.push(
+  // evaluating a bool-vector literal gives itself, and a literal is one object
+  bvShow('#&2"\\3"'), bvShow("'#&2\"\\3\""), bvShow('(let ((b (read "#&1\\"\\\\1\\""))) (aset b 0 nil) b)'), '(eq (read "#&1\\"\\\\1\\"") (read "#&1\\"\\\\1\\""))',
+  bvShow('(car (read-from-string "#&2\\"\\\\3\\""))'), '(cdr (read-from-string "#&2\\"\\\\3\\""))', bvShow('(read-from-string "(#&2\\"\\\\3\\" . #&1\\"\\\\0\\")")'),
+  bvShow('(equal #&2"\\3" (bool-vector t t))'), '(type-of (read "#&2\\"\\\\3\\""))',
+);
+
+// construction, predicates and the type
+const bvForms = [
+  '(make-bool-vector 5 t)', '(make-bool-vector 0 t)', '(make-bool-vector 3 \'x)', '(make-bool-vector 3 nil)', '(length (make-bool-vector 134217728 nil))', '(aref (make-bool-vector 134217728 t) 134217727)', '(bool-vector-count-population (make-bool-vector 134217728 t))',
+  '(bool-vector t nil t)', '(bool-vector)', '(bool-vector 1 2)', '(bool-vector 1)', '(apply #\'bool-vector \'(t nil))', '(bool-vector t t t t t t t t t t)',
+  '(bool-vector-p (bool-vector))', '(bool-vector-p [t])', '(bool-vector-p nil)', '(bool-vector-p "a")', '(vectorp (bool-vector))', '(arrayp (bool-vector))', '(sequencep (bool-vector))',
+  '(stringp (bool-vector))', '(listp (bool-vector))', '(atom (bool-vector))', '(consp (bool-vector))', '(functionp (bool-vector))', '(type-of (bool-vector))', '(type-of [t])',
+  "(cl-typep (bool-vector) 'bool-vector)", "(cl-typep (bool-vector) 'array)", "(cl-typep (bool-vector t) 'sequence)", "(cl-typep (bool-vector) 'vector)", "(cl-typep (bool-vector) 'atom)",
+  "(cl-typep (bool-vector) 'list)", "(cl-typep (bool-vector) 'string)", "(cl-typep (bool-vector) 'integer)", "(cl-typep (bool-vector) '(or string bool-vector))", "(cl-typep [t] 'bool-vector)", "(cl-typep nil 'bool-vector)",
+  // sizes and arguments
+  '(make-bool-vector -1 t)', '(make-bool-vector 1.5 t)', "(make-bool-vector 'a t)", '(make-bool-vector "3" t)', '(make-bool-vector nil t)', '(make-bool-vector (expt 2 70) t)', '(make-bool-vector (- (expt 2 70)) t)',
+  '(make-bool-vector most-negative-fixnum t)', '(make-bool-vector (1+ most-positive-fixnum) t)', '(make-bool-vector 3)', '(make-bool-vector 3 t t)', '(bool-vector-p)',
+  // aref, aset, elt, length
+  '(aref (bool-vector t nil) 0)', '(aref (bool-vector t nil) 1)', '(aref (bool-vector t nil) 2)', '(aref (bool-vector t nil) -1)', '(aref (bool-vector t nil) 1.0)', "(aref (bool-vector t) 'a)", '(aref (bool-vector t) nil)',
+  '(aref (bool-vector) 0)', '(aref [1 2] 1.0)', '(aref [1 2] nil)', '(aset [1 2] 1.0 t)', '(aset [1 2] \'a t)', '(aref 5 0)', '(aset 5 0 t)',
+  "(let ((b (bool-vector t nil))) (aset b 1 'foo) b)", "(let ((b (bool-vector t nil))) (list (aset b 1 'foo) b))", '(let ((b (bool-vector t nil))) (aset b 1 nil) b)', '(let ((b (bool-vector t nil))) (aset b 2 t) b)',
+  '(let ((b (bool-vector t nil))) (aset b -1 t) b)', '(aset (bool-vector t) 0.0 t)', '(aset (bool-vector t) nil t)', '(aset (bool-vector) 0 t)', '(let ((b (make-bool-vector 20 nil))) (aset b 19 t) (aset b 8 t) b)',
+  '(elt (bool-vector t nil) 1)', '(elt (bool-vector t nil) 5)', '(elt (bool-vector t) -1)', '(elt (bool-vector t) 1.0)', "(elt (bool-vector t) 'a)",
+  '(length (bool-vector t nil t))', '(length (bool-vector))', '(length (make-bool-vector 17 t))', '(length= (bool-vector t nil) 2)', '(length< (bool-vector t) 2)', '(safe-length (bool-vector t))',
+  // copy, equality
+  '(copy-sequence (bool-vector t nil t))', '(copy-sequence (bool-vector))', '(let* ((a (bool-vector t nil)) (b (copy-sequence a))) (aset b 0 nil) (list a b (eq a b)))',
+  '(equal (bool-vector t nil) (bool-vector t nil))', '(equal (bool-vector t nil) (bool-vector t nil t))', '(equal (bool-vector t nil) [t nil])', '(equal (bool-vector) "")', '(equal (bool-vector) [])',
+  '(equal (bool-vector) (bool-vector))', '(equal (bool-vector t) (bool-vector nil))', '(equal (make-bool-vector 9 t) (make-bool-vector 9 t))', '(eq (bool-vector) (bool-vector))', '(eql (bool-vector t) (bool-vector t))',
+  '(let ((a (bool-vector t))) (eq a a))', '(equal (list (bool-vector t nil)) (list (bool-vector t nil)))', '(equal (vector (bool-vector t nil)) (vector (bool-vector t nil)))',
+  '(member (bool-vector t) (list (bool-vector t)))', '(assoc (bool-vector t) (list (cons (bool-vector t) 1)))', '(memq (bool-vector t) (list (bool-vector t)))', '(delete-dups (list (bool-vector t) (bool-vector t)))',
+  '(identity (bool-vector t))', '(let ((v (vector 1 2))) (aset v 0 (bool-vector t)) v)', '(vconcat (list (bool-vector t)))', '(list (bool-vector t) (vector (bool-vector nil)) (cons (bool-vector t nil) 1))',
+  // lists, vectors, strings
+  '(append (bool-vector t nil) nil)', "(append (bool-vector t nil) '(1))", '(append (bool-vector) nil)', '(append (make-bool-vector 9 t) nil)', '(append (bool-vector t) (bool-vector nil) nil)', '(append (bool-vector t) (bool-vector nil))',
+  '(append nil (bool-vector t))', "(append '(1) (bool-vector t))", '(append (bool-vector t nil) "ab")', '(append [1] (bool-vector t))', '(vconcat (bool-vector t nil) [1] "a")', '(vconcat (bool-vector))',
+  '(vconcat (make-bool-vector 9 t))', '(vconcat (bool-vector t) (bool-vector nil))', '(concat (bool-vector t nil))', '(string (bool-vector t))', '(substring (bool-vector t nil) 0)', '(number-to-string (bool-vector t))',
+  '(symbol-name (bool-vector t))', '(string= (bool-vector) "")', '(car (bool-vector t))', '(cdr (bool-vector t))', '(nth 0 (bool-vector t))', '(nthcdr 1 (bool-vector t))', '(delete t (bool-vector t nil))',
+  '(remove t (bool-vector t nil))', '(member t (bool-vector t nil))', '(take 1 (bool-vector t nil))', '(last (bool-vector t))', '(apply #\'+ (bool-vector))', "(apply #'list (bool-vector t))", '(funcall (bool-vector t))',
+  '(flatten-tree (bool-vector t))', '(flatten-tree (list (bool-vector t)))', '(string-to-list (bool-vector t))', '(string-to-vector (bool-vector t))', '(string-to-list 5)',
+  '(format "%s" (bool-vector t nil))', '(format "%S" (bool-vector t nil))', '(format "%s" (read "#&16\\"\\\\200\\\\1\\""))', '(format "%d" (bool-vector t))', '(prin1-to-string (bool-vector t nil))',
+  '(prin1-to-string (list (bool-vector t) 1))', '(prin1-to-string (read "#&16\\"\\\\377\\\\60\\""))', '(prin1-to-string (read "#&16\\"\\\\200\\\\61\\""))', '(prin1-to-string (read "#&8\\"\\\\177\\""))', '(prin1-to-string (read "#&8\\"\\\\\\"\\""))',
+  '(prin1-to-string (read "#&8\\"\\\\\\\\\\""))', '(with-output-to-string (princ (read "#&16\\"\\\\200\\\\1\\"")))', '(with-output-to-string (print (bool-vector t)))', '(with-output-to-string (prin1 (list (bool-vector t nil) "s")))',
+  '(error-message-string (list \'error (bool-vector t)))', '(condition-case e (aref (bool-vector t) 3) (error e))', 
+  // reverse, nreverse, fillarray, sort
+  '(reverse (bool-vector t nil nil))', '(reverse (bool-vector))', '(reverse (let ((b (make-bool-vector 10 nil))) (aset b 0 t) b))', '(let ((b (bool-vector t nil nil))) (list (reverse b) b))',
+  '(nreverse (bool-vector t nil nil))', '(nreverse (bool-vector))', '(nreverse (let ((b (make-bool-vector 10 nil))) (aset b 0 t) b))', '(let ((b (bool-vector t nil nil))) (list (nreverse b) b))', '(nreverse 5)', '(reverse 5)',
+  '(fillarray (make-bool-vector 3 nil) t)', '(fillarray (make-bool-vector 3 t) nil)', '(fillarray (make-bool-vector 3 t) 5)', '(fillarray (bool-vector) t)', '(fillarray (make-bool-vector 20 nil) t)',
+  '(fillarray (make-bool-vector 9 nil) t)', '(fillarray (make-bool-vector 9 t) nil)', "(fillarray (bool-vector t) 'x)", '(fillarray (list 1) 0)', '(fillarray (make-bool-vector 3 nil))', '(fillarray 5 t)',
+  '(sort (bool-vector t nil t) (lambda (a b) (and a (not b))))', '(sort (bool-vector t nil t) #\'<)', '(sort (bool-vector t nil))',
+  // mapping
+  "(mapcar #'identity (bool-vector t nil t))", '(mapcar (lambda (x) (if x 1 0)) (bool-vector t nil t))', "(mapcar #'identity (bool-vector))", '(let (r) (mapc (lambda (x) (push x r)) (bool-vector t nil)) r)',
+  '(mapc #\'ignore (bool-vector t))', '(mapconcat (lambda (x) (if x "1" "0")) (bool-vector t nil t) ",")', '(mapconcat (lambda (x) (if x "a" "b")) (bool-vector t nil))', "(mapconcat #'identity (bool-vector) \",\")",
+  '(mapcan (lambda (x) (list x)) (bool-vector t nil))', "(mapcar #'identity 5)",
+  // seq functions
+  "(seq-map #'identity (bool-vector t nil))", "(seq-filter #'identity (bool-vector t nil t))", "(seq-remove #'not (bool-vector t nil nil))", '(seq-reduce (lambda (a x) (+ a (if x 1 0))) (bool-vector t nil t) 0)', "(seq-reduce #'+ (bool-vector) 0)",
+  '(seq-length (bool-vector t nil))', '(seq-length (make-bool-vector 17 t))', '(seq-elt (bool-vector t nil) 0)', '(seq-elt (bool-vector t nil) 9)', '(seq-elt (bool-vector t) 1)', '(seq-reverse (bool-vector t nil nil))',
+  '(seq-reverse (make-bool-vector 9 t))', '(seq-subseq (bool-vector t nil nil) 1)', '(seq-subseq (bool-vector) 0)', '(seq-take (bool-vector t nil nil) 1)', '(seq-take (bool-vector) 0)', '(seq-drop (bool-vector t nil nil) 1)',
+  '(seq-drop (bool-vector) 0)', '(seq-drop (bool-vector t) 0)', '(seq-rest (bool-vector t nil))', '(seq-rest (bool-vector))', '(seq-uniq (bool-vector t nil nil))', '(seq-uniq (bool-vector t t))', "(seq-count #'identity (bool-vector t nil t))",
+  "(seq-count #'not (bool-vector t nil nil))", "(seq-into (bool-vector t nil) 'list)", "(seq-into (bool-vector t nil) 'vector)", "(seq-into (bool-vector) 'string)", "(seq-into '(t nil) 'bool-vector)", "(seq-into (bool-vector) 'bool-vector)",
+  "(seq-into (bool-vector t) 'array)", "(seq-concatenate 'vector (bool-vector t nil) [1])", "(seq-concatenate 'list (bool-vector t nil) '(1))", "(seq-concatenate 'bool-vector (bool-vector t nil) [1])",
+  "(seq-concatenate 'string (bool-vector t nil) \"a\")", "(seq-concatenate 'foo [1])", "(seq-concatenate 'string \"a\" [98])", '(seq-position (bool-vector nil t) t)', '(seq-position (bool-vector t nil) nil)',
+  '(seq-contains-p (bool-vector nil t) t)', '(seq-contains-p (bool-vector t) nil)', '(seq-empty-p (bool-vector))', '(seq-empty-p (bool-vector t))', '(seq-first (bool-vector t))', '(seq-first (bool-vector))',
+  "(seq-some #'identity (bool-vector nil t))", "(seq-some #'identity (bool-vector))", "(seq-every-p #'identity (bool-vector t t))", "(seq-every-p #'identity (bool-vector))", "(seq-find #'identity (bool-vector nil t))",
+  "(seq-find #'not (bool-vector t nil nil))", "(seq-do #'ignore (bool-vector nil t))", "(seq-mapn #'list (bool-vector nil t) [1 2])", "(seq-mapn (lambda (a b) (list a b)) (bool-vector t nil) (bool-vector nil t))",
+  '(seq-partition (bool-vector t nil t) 2)', '(seq-partition (bool-vector) 2)', '(seq-min (bool-vector t nil))', '(seq-max (bool-vector t nil))', '(seq-min (bool-vector))',
+  '(seq-sort (lambda (a b) (and a (not b))) (bool-vector nil t nil))', "(seq-sort #'< (bool-vector))", "(seq-sort-by #'identity #'< (bool-vector))",
+  '(seq-map-indexed (lambda (e i) (cons i e)) (bool-vector t nil))', '(seq-do-indexed (lambda (e i) (ignore e i)) (bool-vector t))', '(seq-set-equal-p (bool-vector t) (bool-vector t))',
+  '(seq-difference (bool-vector t nil) (bool-vector t))', '(seq-intersection (bool-vector t nil) (bool-vector t))', '(seq-union (bool-vector t nil) (bool-vector t))', "(seq-group-by #'identity (bool-vector t nil t))",
+  '(seq-split (bool-vector t nil t) 2)', "(seq-take-while #'identity (bool-vector t nil t))", "(seq-drop-while #'identity (bool-vector t nil t))", "(seq-mapcat #'list (bool-vector t nil))",
+  "(seq-keep #'identity (bool-vector t nil t))", '(seq-positions (bool-vector t nil t) t)', '(seq-doseq (x (bool-vector t nil)) (ignore x))', '(let (r) (seq-doseq (x (bool-vector t nil)) (push x r)) r)',
+  "(seq-take-while #'identity [t t nil])", "(seq-drop-while #'identity [t t nil])", "(seq-take-while #'identity '(t t nil))", "(seq-drop-while #'identity '(t t nil))", "(seq-take-while #'identity \"abc\")", "(seq-drop-while #'identity \"abc\")",
+  // cl-lib
+  "(cl-position t (bool-vector nil t))", "(cl-find t (bool-vector nil t))", "(cl-count t (bool-vector nil t t))", "(cl-every #'identity (bool-vector t t))", "(cl-every #'identity (bool-vector))", "(cl-some #'identity (bool-vector nil t))",
+  "(cl-reduce (lambda (a b) (or a b)) (bool-vector nil t))", "(cl-reduce #'+ (bool-vector))", '(cl-subseq (bool-vector t nil nil) 1)', '(cl-subseq (bool-vector) 0)',
+  "(cl-sort (bool-vector t nil) #'(lambda (a b) (and a (not b))))", "(cl-sort (bool-vector t nil t nil) #'(lambda (a b) (and a (not b))))", "(cl-sort (bool-vector t nil) #'>)", "(cl-find-if #'not (bool-vector t nil))",
+  "(cl-count-if #'not (bool-vector t nil))", '(cl-equalp (bool-vector t) (bool-vector t))', '(cl-first (bool-vector t))',
+  "(cl-loop for x across (bool-vector t nil t) collect x)", "(cl-loop for x across (bool-vector) collect x)", "(cl-loop for x across (bool-vector t nil t) count x)", "(cl-loop for x across (bool-vector t nil) for i from 0 collect (cons i x))",
+  "(cl-loop for x across (make-bool-vector 3 t) sum 1)", "(cl-loop for x in (bool-vector t) collect x)",
+];
+for (const form of bvForms) CASES.push(bvShow(form));
+
+// the set operations: every length around a byte boundary, with and without DEST, DEST changed and unchanged, and the errors
+for (const op of ['union', 'intersection', 'exclusive-or', 'set-difference']) {
+  const f = `bool-vector-${op}`;
+  for (const n of [0, 1, 3, 7, 8, 9, 16, 17, 20]) {
+    CASES.push(bvShow(`(${f} (bv-make ${n} 0) (bv-make ${n} 1))`), bvShow(`(${f} (bv-make ${n} 1) (make-bool-vector ${n} t))`), bvShow(`(${f} (make-bool-vector ${n} t) (make-bool-vector ${n} nil))`));
+    CASES.push(bvShow(`(let* ((c (make-bool-vector ${n} nil)) (r (${f} (bv-make ${n} 0) (bv-make ${n} 2) c))) (list r c (eq r c)))`));
+    CASES.push(bvShow(`(let* ((c (make-bool-vector ${n} t)) (r (${f} (bv-make ${n} 0) (bv-make ${n} 2) c))) (list r c (eq r c)))`));
+    CASES.push(bvShow(`(let* ((a (bv-make ${n} 1)) (r (${f} a a a))) (list r a))`));
+    CASES.push(bvShow(`(let* ((a (bv-make ${n} 1)) (c (copy-sequence a)) (r (${f} a (make-bool-vector ${n} nil) c))) (list r c))`));
+    CASES.push(bvShow(`(${f} (bv-make ${n} 1) (bv-make ${n} 2) nil)`));
+  }
+  CASES.push(
+    bvShow(`(${f} (bool-vector t nil nil) (bool-vector nil nil))`), bvShow(`(${f} (bool-vector t nil nil) (bool-vector nil nil t) (make-bool-vector 2 nil))`),
+    bvShow(`(${f} (bool-vector t nil nil) (bool-vector nil nil t) (make-bool-vector 4 nil))`), bvShow(`(${f} (bool-vector t nil) (bool-vector t) (make-bool-vector 5 nil))`),
+    bvShow(`(${f} (bool-vector t nil nil) [t nil nil])`), bvShow(`(${f} [t] (bool-vector t))`), bvShow(`(${f} 1 2)`), bvShow(`(${f} (bool-vector t nil nil) (bool-vector nil nil t) 5)`),
+    bvShow(`(${f} (bool-vector t nil nil) (bool-vector nil nil t) [1])`), bvShow(`(${f} (bool-vector t nil) (bool-vector t nil) 'x)`), bvShow(`(${f} (bool-vector t nil) 3 (bool-vector t))`),
+    bvShow(`(${f} 3 (bool-vector t) (bool-vector t))`), bvShow(`(${f} (bool-vector t))`), bvShow(`(${f})`), bvShow(`(${f} (bool-vector t) (bool-vector t) (bool-vector t) nil)`),
+  );
+}
+for (const n of [0, 1, 3, 8, 9, 16, 17, 20]) {
+  CASES.push(bvShow(`(bool-vector-not (bv-make ${n} 0))`), bvShow(`(bool-vector-not (make-bool-vector ${n} nil))`), bvShow(`(bool-vector-not (make-bool-vector ${n} t))`),
+    bvShow(`(let* ((a (bv-make ${n} 1)) (r (bool-vector-not a a))) (list r a (eq r a)))`), bvShow(`(let* ((a (bv-make ${n} 1)) (c (make-bool-vector ${n} t)) (r (bool-vector-not a c))) (list r c (eq r c)))`),
+    `(bool-vector-count-population (bool-vector-not (make-bool-vector ${n} nil)))`, `(bool-vector-count-population (bv-make ${n} 0))`, `(bool-vector-count-population (bv-make ${n} 1))`, `(bool-vector-count-population (make-bool-vector ${n} t))`,
+    `(bool-vector-subsetp (bv-make ${n} 0) (make-bool-vector ${n} t))`, `(bool-vector-subsetp (make-bool-vector ${n} t) (bv-make ${n} 0))`, `(bool-vector-subsetp (bv-make ${n} 1) (bv-make ${n} 1))`, `(bool-vector-subsetp (bv-make ${n} 1) (bv-make ${n} 2))`,
+    `(bool-vector-subsetp (make-bool-vector ${n} nil) (bv-make ${n} 2))`);
+}
+CASES.push(
+  bvShow('(bool-vector-not (bool-vector t nil t) (make-bool-vector 2 nil))'), bvShow('(bool-vector-not [t])'), bvShow('(bool-vector-not (bool-vector t nil) 3)'), bvShow('(bool-vector-not (bool-vector t nil) (make-bool-vector 3 nil))'),
+  bvShow('(bool-vector-not)'), bvShow('(bool-vector-not (bool-vector t) nil nil)'), bvShow('(bool-vector-subsetp (bool-vector t t) (bool-vector t nil nil))'), bvShow('(bool-vector-subsetp (bool-vector t nil) (bool-vector t))'),
+  bvShow('(bool-vector-subsetp [t] (bool-vector t))'), bvShow('(bool-vector-subsetp (bool-vector t) [t])'), bvShow('(bool-vector-subsetp (bool-vector t))'), bvShow('(bool-vector-subsetp (bool-vector) (bool-vector))'),
+  bvShow('(bool-vector-count-population [t])'), bvShow('(bool-vector-count-population (bool-vector))'), bvShow('(bool-vector-count-population (make-bool-vector 100 t))'), bvShow('(bool-vector-count-population)'),
+  bvShow('(bool-vector-count-population "a")'), bvShow('(bool-vector-count-population nil)'),
+  // bool-vector-count-consecutive: the run of bits equal to B from index I
+  bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t 0)'), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) nil 2)'), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t 3)'),
+  bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t 4)'), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t 5)'), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t -1)'),
+  bvShow("(bool-vector-count-consecutive (bool-vector t t nil t) 'x 0)"), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t 1.0)'), bvShow('(bool-vector-count-consecutive (bool-vector t t nil t) t)'),
+  bvShow('(bool-vector-count-consecutive (make-bool-vector 100 t) t 0)'), bvShow('(bool-vector-count-consecutive (make-bool-vector 100 t) t 7)'), bvShow('(bool-vector-count-consecutive (make-bool-vector 100 nil) nil 3)'),
+  bvShow('(bool-vector-count-consecutive (make-bool-vector 100 nil) t 3)'), bvShow('(bool-vector-count-consecutive [t] t 0)'), bvShow('(bool-vector-count-consecutive (bool-vector) t 0)'), bvShow('(bool-vector-count-consecutive (bool-vector) t 1)'),
+  bvShow('(bool-vector-count-consecutive (bool-vector t) nil 0)'), bvShow('(bool-vector-count-consecutive (bool-vector t) t 1)'), bvShow('(bool-vector-count-consecutive (bool-vector t) t 2)'), bvShow('(bool-vector-count-consecutive (bool-vector t) t (expt 2 70))'),
+  bvShow('(bool-vector-count-consecutive (bool-vector t) t most-positive-fixnum)'), bvShow('(bool-vector-count-consecutive (bool-vector t) t "a")'), bvShow('(bool-vector-count-consecutive 1 t \'a)'), bvShow('(bool-vector-count-consecutive (bool-vector t t t) t 3)'),
+  bvShow('(let ((b (make-bool-vector 40 nil))) (dolist (i \'(3 4 5 6 20 21)) (aset b i t)) (list (bool-vector-count-consecutive b nil 0) (bool-vector-count-consecutive b t 3) (bool-vector-count-consecutive b t 4) (bool-vector-count-consecutive b nil 7) (bool-vector-count-consecutive b t 20) (bool-vector-count-consecutive b nil 22)))'),
+);
+
+// programs
+CASES.push(
+  // the sieve of Eratosthenes to 100
+  bvShow('(let* ((n 100) (sieve (make-bool-vector (1+ n) t)) primes) (aset sieve 0 nil) (aset sieve 1 nil) (let ((i 2)) (while (<= (* i i) n) (when (aref sieve i) (let ((j (* i i))) (while (<= j n) (aset sieve j nil) (setq j (+ j i))))) (setq i (1+ i)))) (dotimes (k (1+ n)) (when (aref sieve k) (push k primes))) (list (nreverse primes) (bool-vector-count-population sieve) sieve))'),
+  bvShow('(let ((sieve (make-bool-vector 101 t))) (aset sieve 0 nil) (aset sieve 1 nil) (cl-loop for i from 2 to 10 when (aref sieve i) do (cl-loop for j from (* i i) to 100 by i do (aset sieve j nil))) (seq-filter (lambda (i) (aref sieve i)) (number-sequence 0 100)))'),
+  // a population count by hand, and against the built-in
+  bvShow('(let ((b (bv-make 37 1)) (n 0)) (dotimes (i 37) (when (aref b i) (setq n (1+ n)))) (list n (bool-vector-count-population b) (= n (bool-vector-count-population b))))'),
+  bvShow('(let ((b (bv-make 37 0)) (n 0) (i 0)) (while (< i 37) (let ((run (bool-vector-count-consecutive b t i))) (if (> run 0) (setq n (+ n run) i (+ i run)) (setq i (1+ i))))) (list n (bool-vector-count-population b)))'),
+  // a set as a bool-vector
+  bvShow('(let ((a (bool-vector t t nil nil)) (b (bool-vector t nil t nil))) (list (bool-vector-union a b) (bool-vector-intersection a b) (bool-vector-exclusive-or a b) (bool-vector-set-difference a b) (bool-vector-not a) (bool-vector-subsetp (bool-vector-intersection a b) a)))'),
+  bvShow('(let ((b (make-bool-vector 12 nil))) (dolist (i \'(1 3 5 7 9 11)) (aset b i t)) (list b (append b nil) (vconcat b) (mapcar (lambda (x) (if x 1 0)) b) (reverse b) (seq-count #\'identity b)))'),
+  // nested in lists and vectors, as hash keys and as the elements of tables
+  bvShow('(let ((h (make-hash-table :test \'equal))) (puthash (bool-vector t nil) 1 h) (puthash (list 1 (bool-vector t)) 2 h) (puthash (vector (bool-vector t)) 3 h) (list (gethash (bool-vector t nil) h) (gethash (bool-vector nil t) h) (gethash (list 1 (bool-vector t)) h) (gethash (vector (bool-vector t)) h) (hash-table-count h)))'),
+  bvShow('(let ((h (make-hash-table :test \'eq))) (puthash (bool-vector t nil) 1 h) (gethash (bool-vector t nil) h))'),
+  bvShow('(let ((h (make-hash-table :test \'eql))) (puthash (bool-vector t nil) 1 h) (gethash (bool-vector t nil) h))'),
+  bvShow('(let* ((k (bool-vector t nil)) (h (make-hash-table :test \'eq))) (puthash k 1 h) (gethash k h))'),
+  bvShow('(let ((h (make-hash-table :test \'equal))) (puthash (make-bool-vector 9 t) \'a h) (gethash (make-bool-vector 9 t) h))'),
+  bvShow('(let ((h (make-hash-table :test \'equal))) (puthash (make-bool-vector 9 t) \'a h) (gethash (make-bool-vector 10 t) h))'),
+  bvShow('(equal (list 1 (vector (bool-vector t nil) "s")) (list 1 (vector (bool-vector t nil) "s")))'), bvShow('(equal (list 1 (vector (bool-vector t nil) "s")) (list 1 (vector (bool-vector nil nil) "s")))'),
+  bvShow('(list (bool-vector t) (cons (bool-vector nil) (vector (bool-vector t nil t))))'), bvShow('(let ((v (vector (bool-vector t) (bool-vector nil)))) (aset (aref v 0) 0 nil) (aset (aref v 1) 0 t) v)'),
+  bvShow('(let ((l (list (bool-vector t nil) (bool-vector nil t)))) (list (mapcar (lambda (b) (bool-vector-count-population b)) l) (apply #\'bool-vector-union l) (seq-reduce #\'bool-vector-union (cdr l) (car l))))'),
+  bvShow('(let ((l (list (bool-vector t nil) (bool-vector nil t)))) (delete-dups (append l (list (bool-vector t nil)))))'), bvShow('(let ((al (list (cons (bool-vector t nil) \'a)))) (cdr (assoc (bool-vector t nil) al)))'),
+  bvShow('(let ((a (bool-vector t nil))) (list (eq a a) (eq a (copy-sequence a)) (equal a (copy-sequence a))))'),
+  bvShow('(let ((b (make-bool-vector 3 nil))) (dotimes (i 3) (aset b i (cl-evenp i))) b)'), bvShow('(cl-loop for i from 0 below 3 collect (make-bool-vector i t))'),
+  bvShow('(condition-case e (aset (bool-vector t) 5 t) (args-out-of-range (list \'oops (cdr e))))'), bvShow('(condition-case e (bool-vector-union 1 2) (wrong-type-argument (list \'oops (cdr e))))'),
+  bvShow('(condition-case e (bool-vector-union (bool-vector t) (bool-vector t nil)) (wrong-length-argument (list \'oops (cdr e))))'), bvShow('(error-message-string (list \'wrong-length-argument 3 2))'),
+  bvShow('(error-message-string (list \'wrong-type-argument \'bool-vector-p [1]))'),
+);
+
+// huge or invalid sizes: the error Emacs signals (a size past memory is "Memory exhausted"; sizes of a few billion bits are machine-dependent, so they are not asked)
+for (const form of ['(make-bool-vector most-positive-fixnum t)', '(make-bool-vector 1000000000000 t)', '(make-bool-vector 1000000000000000 t)', '(make-bool-vector 36028797018963967 t)', '(make-bool-vector -1 t)', '(make-bool-vector 1.5 t)',
+  "(make-bool-vector 'a t)", '(make-bool-vector most-negative-fixnum t)', '(make-bool-vector (expt 2 70) t)', '(make-bool-vector (1+ most-positive-fixnum) t)', '(make-bool-vector (* 8 most-positive-fixnum) t)', '(make-bool-vector 0 t)', '(make-bool-vector 3 t t)']) {
+  CASES.push(`(condition-case e ${form} (error (list (car e) (if (stringp (cadr e)) (substring (cadr e) 0 20) (cadr e)) (cddr e))))`);
+}

@@ -6810,6 +6810,50 @@ check('display measurements: the command reports what the screen and web view gi
   await context.close();
 });
 
+check('diagnostics: security diagnostics report PASS in the browser, and OK copies the report', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    window.__copied = null;
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ clipboard: { writeText: async (t) => { window.__copied = t; }, readText: async () => '' } });
+  });
+  await openPalette(page);
+  await page.keyboard.type('security diagnostics');
+  await page.keyboard.press('Enter');
+  const box = page.locator('textarea').last();
+  await box.waitFor({ state: 'visible', timeout: 8000 });
+  const text = await box.inputValue();
+  expect(text.startsWith('PASS: no native bridge reachable from sandboxed code'), `the verdict is first and PASS: ${text.split('\n')[0]}`);
+  for (const want of ['platform: web', 'sandbox page (where the code runner lives):', "sandbox worker (where your code runs):", 'CapacitorHttpAndroidInterface: undefined', 'parent page: blocked']) {
+    expect(text.includes(want), `the report has "${want}"`);
+  }
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 });
+  expect((await page.evaluate(() => window.__copied)) === text, 'OK copies exactly what is shown');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('diagnostics: a bridge object that reaches the sandbox page is reported as FAIL naming it', async () => {
+  const inject = () => {
+    if (location.protocol === 'about:' || location.href.includes('sandbox-frame')) window.CapacitorHttpAndroidInterface = {};
+  };
+  const { context, page, errors } = await freshPage(main, { initScript: inject });
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({ clipboard: { writeText: async () => {}, readText: async () => '' } });
+  });
+  await openPalette(page);
+  await page.keyboard.type('security diagnostics');
+  await page.keyboard.press('Enter');
+  const box = page.locator('textarea').last();
+  await box.waitFor({ state: 'visible', timeout: 8000 });
+  const text = await box.inputValue();
+  expect(/^FAIL: .*CapacitorHttpAndroidInterface is object in the sandbox page/.test(text), `the verdict names it: ${text.split('\n')[0]}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('agenda notifications: an appointment inside its warning time gets a system notification and a banner, the mode line counts down, echo uses the status line only, and turning it off clears all of it', async () => {
   const stub = () => {
     window.__shown = [];

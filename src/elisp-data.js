@@ -3,10 +3,10 @@
  * The data of the Lisp interpreter (src/elisp.js): symbols, conses, floats, errors and the printer, all as Emacs 29.3 has them.
  *
  * An integer is a JS number (a safe integer); a float is a `Flt`, so `1` and `1.0` stay different as in Emacs. A string is a JS string,
- * a vector a JS array, `nil` and `t` the symbols of those names, a list a chain of `Cons`.
+ * a vector a JS array, a bool-vector a `BoolVector`, `nil` and `t` the symbols of those names, a list a chain of `Cons`.
  */
 
-/** @typedef {Sym | Cons | Flt | number | bigint | string | String | LObj[] | Lambda | Subr | Special | HashTable | Marker} LObj  any Lisp object */
+/** @typedef {Sym | Cons | Flt | number | bigint | string | String | LObj[] | BoolVector | Lambda | Subr | Special | HashTable | Marker} LObj  any Lisp object */
 /** @typedef {{ vars: Map<Sym, LObj>, parent: Scope | null }} Scope  a lexical scope */
 
 /** A symbol. `value` is its global (dynamic) value; `fn` its function cell. */
@@ -112,6 +112,31 @@ export class Special {
     this.max = max;
     /** True for a function a script registered (extensions.js), which the next registration replaces. */
     this.user = false;
+  }
+}
+
+/** A bool-vector: `length` bits packed into `bytes` (bit i is bit i % 8 of byte i / 8; the unused bits of the last byte stay 0). */
+export class BoolVector {
+  /** @param {number} length @param {Uint8Array} [bytes] */
+  constructor(length, bytes) {
+    this.length = length;
+    this.bytes = bytes ?? new Uint8Array((length + 7) >> 3);
+  }
+
+  /** @param {number} i */
+  get(i) {
+    return (this.bytes[i >> 3] >> (i & 7)) & 1;
+  }
+
+  /** @param {number} i @param {boolean} on */
+  set(i, on) {
+    if (on) this.bytes[i >> 3] |= 1 << (i & 7);
+    else this.bytes[i >> 3] &= ~(1 << (i & 7));
+  }
+
+  /** Clears the unused bits of the last byte. */
+  trim() {
+    if (this.length & 7) this.bytes[this.bytes.length - 1] &= (1 << (this.length & 7)) - 1;
   }
 }
 
@@ -306,6 +331,7 @@ export function equal(a, b) {
       continue;
     }
     if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => equal(x, /** @type {LObj[]} */ (b)[i]));
+    if (a instanceof BoolVector && b instanceof BoolVector) return a.length === b.length && a.bytes.every((x, i) => x === /** @type {BoolVector} */ (b).bytes[i]);
     return false;
   }
 }
@@ -388,6 +414,11 @@ function printTo(x, escape, out, depth) {
       printTo(e, escape, out, depth + 1);
     });
     out.push(']');
+  } else if (x instanceof BoolVector) {
+    // #&LENGTH"BYTES": a control character prints as itself, a byte past 127 as a three-digit octal escape
+    let text = '';
+    for (const b of x.bytes) text += b > 127 ? `\\${b.toString(8)}` : b === 34 || b === 92 ? `\\${String.fromCharCode(b)}` : String.fromCharCode(b);
+    out.push(`#&${x.length}"${text}"`);
   } else if (x instanceof Lambda) printLambda(x, escape, out, depth);
   else if (x instanceof Subr) out.push(`#<subr ${x.name}>`);
   else if (x instanceof Special) out.push(`#<subr ${x.name}>`);

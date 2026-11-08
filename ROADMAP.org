@@ -38,20 +38,11 @@ A subtree moved on one side and edited on the other is an ordinary clash today.
 
 * Security
 Left from the security reviews. Each is small, none lets a document run code without the "Run code?" prompt.
-** [#C] Android: the sandbox page and old WebViews
-=CapacitorHttpAndroidInterface= and =CapacitorCookiesAndroidInterface= are injected into every frame, including the sandbox page (the code's worker cannot reach them). Remove them when Capacitor offers a switch. On a WebView without message-listener support the bridge falls back to one every frame can reach; decide whether to refuse to start there.
-- Effort: M. Impact: S.
-** [#C] Pin the workflow actions to commit SHAs
-The Android and CI workflows pin actions by version tag. Pin by commit SHA, and update them with each upgrade.
-- Effort: S. Impact: S.
 ** [#C] Dev dependency advisory
 =minimatch= (GHSA-g3hv-75wg-m249, denial of service) comes in through eslint, including the latest eslint 10; dev-only, no runtime code. Update when eslint releases a fix.
 - Effort: S. Impact: S.
-** [#C] Regexp that never finishes
-A pattern such as =\(a\|b\)*c= on a very long string (100,000 characters) takes about 30 seconds and cannot be interrupted, where Emacs answers at once with "Stack overflow in regexp matcher". Add a depth limit like Emacs's.
-- Effort: M. Impact: S.
-** [#C] Very large =make-string= and =make-list= sizes
-=(make-string most-positive-fixnum ?a)= reports wrong-type-argument where Emacs reports memory exhausted. Match the error.
+** [#C] Regexp lazy loops over groups
+Lazy loops over groups (such as =\(a\|b\)*?c=) on very long strings also overflow in Emacs with "Stack overflow in regexp matcher"; the app answers slowly instead.
 - Effort: S. Impact: S.
 
 * Order for the next release
