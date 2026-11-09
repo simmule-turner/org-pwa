@@ -4331,7 +4331,7 @@ check('calendar mirror: a calendar that does not exist is reported clearly, auto
   await openPalette(page);
   await page.keyboard.type('sync agenda to calendar');
   await page.keyboard.press('Enter');
-  await waitForStatus(page, 'Calendar not found');
+  await waitForStatus(page, 'for the calendar at');
   // only requests to a calendar folder count: the app also checks its own open file for outside changes on resume
   const calendarRequests = () => dav.requests.filter((r) => /^\S+ (nope|cal)\//.test(r));
   const first = calendarRequests().length;
@@ -4458,7 +4458,7 @@ check('contacts mirror: an address book that does not exist is reported clearly,
   await openPalette(page);
   await page.keyboard.type('sync contacts to the address book');
   await page.keyboard.press('Enter');
-  await waitForStatus(page, 'Address book not found');
+  await waitForStatus(page, 'for the address book at');
   const bookRequests = () => dav.requests.filter((r) => /^\S+ (nope|card)\//.test(r));
   const first = bookRequests().length;
   expect(first >= 1 && bookRequests().every((r) => r.startsWith('PROPFIND')), `only the one check request was made, no writes: ${JSON.stringify(bookRequests())}`);
@@ -4542,7 +4542,7 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
   await page.getByRole('button', { name: 'Sync', exact: true }).click();
   await waitForStatus(page, 'Contacts synced');
   said = await page.locator('#minibuffer').innerText();
-  expect(said.includes('Calendar sync: Calendar not found') && said.includes('Contacts synced'), `the calendar\u2019s failure is not hidden by the contacts\u2019 success: ${said}`);
+  expect(said.includes('Calendar sync: The CalDAV server answered') && said.includes('Contacts synced'), `the calendar\u2019s failure is not hidden by the contacts\u2019 success: ${said}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

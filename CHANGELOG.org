@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v664 — A clearer "calendar not found"
+When a calendar or address book is missing on the server, the message now names the protocol (CalDAV or CardDAV), says the server answered 404, shows the address it tried (without any password) and what to fix: create it on the server and end the address at the calendar itself.
+Verified: browser checks for the calendar and contacts messages.
+
 * v663 — Emacs forms only
 Settings and capture keywords that had an Emacs equivalent now use only that. ~org-agenda-files~, ~org-contacts-files~ and ~org-agenda-text-search-extra-files~ are Lisp lists of strings, ~org-global-properties~ is an alist, and capture templates lose ~:omit-empty-entries~, ~:prepend-heading~, ~:table-header~, ~:pre-text~ and ~:post-text~ (a target function or ~:prepare-finalize~ does the same). Old text in these settings must be re-entered. A new test holds the code, README and examples to Emacs's keyword list.
 Verified: the capture keyword list and file-list reading against Emacs 29.3; browser checks for the lists, global properties and local: files.

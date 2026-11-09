@@ -167,12 +167,14 @@ test('a CardDAV client\u2019s errors say address book, with the same kinds the c
   assert.deepEqual([wrong.kind, wrong.message], ['auth', 'The address book server rejected the username or password.']);
   assert.equal((await fail(403)).message, 'The address book server does not allow this account to change that address book.');
   const missing = await fail(404);
-  assert.deepEqual([missing.kind, missing.message], ['not-found', 'Address book not found. Create it on the server first; the address must end at the address book itself.']);
+  assert.deepEqual([missing.kind, missing.message], ['not-found', 'The CardDAV server answered 404 (not found) for the address book at https://dav.example.com/radicale/me/contacts/. Create the address book on the server first, and set the CardDAV address to end at the address book itself, such as .../user/address-book-name/.']);
   assert.equal((await fail(500)).message, 'The address book server answered 500 (writing a.vcf).');
   const down = await bookClient(fakeFetch(() => new TypeError('Failed to fetch'))).put('a.vcf', 'x').then(() => null, (e) => e);
   assert.equal(down.kind, 'network');
   assert.ok(down.message.startsWith("Couldn't reach the address book server."), down.message);
-  // and the calendar's own wording is unchanged
+  // the calendar's own wording names CalDAV and the address, and never a password in it
+  const lost = await client(fakeFetch(() => ({ status: 409 })), { url: 'https://me:secret@dav.example.com/radicale/me/cal' }).put('a.ics', 'x').then(() => null, (e) => e);
+  assert.equal(lost.message, 'The CalDAV server answered 409 (not found) for the calendar at https://dav.example.com/radicale/me/cal/. Create the calendar on the server first, and set the CalDAV address to end at the calendar itself, such as .../user/calendar-name/.');
   assert.equal((await client(fakeFetch(() => ({ status: 401 }))).put('a.ics', 'x').then(() => null, (e) => e)).message, 'The calendar server rejected the username or password.');
 });
 
@@ -180,7 +182,7 @@ test('a CardDAV client\u2019s check asks about the address book, and says so whe
   await bookClient(fakeFetch(() => ({ status: 207 }))).check();
   const e = await bookClient(fakeFetch(() => ({ status: 404 }))).check().then(() => null, (err) => err);
   assert.equal(e.kind, 'not-found');
-  assert.ok(e.message.startsWith('Address book not found.'));
+  assert.ok(e.message.startsWith('The CardDAV server answered 404 (not found) for the address book at '));
 });
 
 

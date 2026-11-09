@@ -53,8 +53,8 @@ function parseHrefs(xml) {
 
 /** What differs between a calendar and an address book: the file type, what it is sent as, and what to call it. */
 const KINDS = {
-  calendar: { extension: '.ics', contentType: 'text/calendar; charset=utf-8', noun: 'calendar', Noun: 'Calendar' },
-  contacts: { extension: '.vcf', contentType: 'text/vcard; charset=utf-8', noun: 'address book', Noun: 'Address book' },
+  calendar: { extension: '.ics', contentType: 'text/calendar; charset=utf-8', noun: 'calendar', Noun: 'Calendar', protocol: 'CalDAV' },
+  contacts: { extension: '.vcf', contentType: 'text/vcard; charset=utf-8', noun: 'address book', Noun: 'Address book', protocol: 'CardDAV' },
 };
 
 /** The file names with `extension` among `hrefs` (each a path or a full URL, possibly percent-encoded). The folder itself and
@@ -86,11 +86,11 @@ function icsNamesFromHrefs(hrefs, extension = '.ics') {
  * @param {any} response
  * @param {string} what
  */
-function errorForResponse(response, what, /** @type {any} */ { noun, Noun }) {
+function errorForResponse(response, what, /** @type {any} */ { noun, protocol }, /** @type {string} */ address = '') {
   const status = response.status;
   if (status === 401) return new CaldavError('auth', `The ${noun} server rejected the username or password.`, status);
   if (status === 403) return new CaldavError('auth', `The ${noun} server does not allow this account to change that ${noun}.`, status);
-  if (status === 404 || status === 409) return new CaldavError('not-found', `${Noun} not found. Create it on the server first; the address must end at the ${noun} itself.`, status);
+  if (status === 404 || status === 409) return new CaldavError('not-found', `The ${protocol} server answered ${status} (not found) for the ${noun} at ${address}. Create the ${noun} on the server first, and set the ${protocol} address to end at the ${noun} itself, such as .../user/${noun.replace(' ', '-')}-name/.`, status);
   return new CaldavError('server', `The ${noun} server answered ${status}${response.statusText ? ' ' + response.statusText : ''} (${what}).`, status);
 }
 
@@ -99,6 +99,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
   const what = /** @type {any} */ (KINDS)[kind] || KINDS.calendar;
   const base = url.endsWith('/') ? url : url + '/';
   const authorization = basicAuthHeader(username || '', password || '');
+  const shownAddress = base.replace(/^(https?:\/\/)[^/@]*@/, '$1'); // never the password, if the address carries one
 
   /** @param {string} method @param {string | null} name @param {{ headers?: Record<string, string>, body?: string }} [extra] */
   async function request(method, name, { headers = {}, body } = {}) {
@@ -122,7 +123,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
      */
     async put(name, ics) {
       const response = await request('PUT', name, { headers: { 'Content-Type': what.contentType }, body: ics });
-      if (!response.ok) throw errorForResponse(response, `writing ${name}`, what);
+      if (!response.ok) throw errorForResponse(response, `writing ${name}`, what, shownAddress);
     },
     /**
      * Removes one event file. Already gone counts as removed.
@@ -130,7 +131,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
      */
     async remove(name) {
       const response = await request('DELETE', name);
-      if (!response.ok && response.status !== 404) throw errorForResponse(response, `removing ${name}`, what);
+      if (!response.ok && response.status !== 404) throw errorForResponse(response, `removing ${name}`, what, shownAddress);
     },
     /** The names of the .ics files in the calendar (the .vcf files in an address book). */
     async list() {
@@ -138,7 +139,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
         headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
         body: '<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><getetag/></prop></propfind>',
       });
-      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `listing the ${what.noun}`, what);
+      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `listing the ${what.noun}`, what, shownAddress);
       return icsNamesFromHrefs(parseHrefs(await readText(response)), what.extension);
     },
     /** Whether the address and credentials work. Throws a CaldavError if not. */
@@ -147,7 +148,7 @@ function createCaldavClient({ url, username, password, kind = 'calendar', fetch:
         headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
         body: '<?xml version="1.0" encoding="utf-8"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
       });
-      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `checking the ${what.noun}`, what);
+      if (response.status !== 207 && !response.ok) throw errorForResponse(response, `checking the ${what.noun}`, what, shownAddress);
     },
   };
 }
