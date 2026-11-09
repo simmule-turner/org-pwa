@@ -110,6 +110,18 @@ export function render() {
       height: VH_UNIT === 'dvh' ? 'calc(100dvh - 155px)' : 'calc(100vh - 155px)',
     });
     outlineEl.appendChild(editor.root);
+    // Typing is in the text box and reaches the document only when the view is left or the file saved; the buffer is shown as modified
+    // as soon as the text differs from the saved one, and as unmodified again when it is typed back to it
+    const initialText = textarea.value;
+    const wasDirty = S.isDirty;
+    textarea.addEventListener('input', () => {
+      const dirty = S.narrowedHeading || S.lastSavedText === null ? wasDirty || textarea.value !== initialText : textarea.value !== S.lastSavedText;
+      if (dirty === S.isDirty) return;
+      S.isDirty = dirty;
+      updateSaveButtonState();
+      renderModeline();
+      renderTabBar();
+    });
 
     if (S.textLanding && !S.narrowedHeading) {
       // opened from the Agenda's diary: select the entry rather than landing near the last heading

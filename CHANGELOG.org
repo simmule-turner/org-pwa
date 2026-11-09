@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v666 — Text view marks edits, and a way to find a selection problem
+Typing in the Text view now shows the buffer as modified at once (red Save button, ** in the modeline), and unmodified again when typed back to the saved text. "Copy keyboard debug log" also reports whether the Text view's colored layer lines up with the editor under it, row by row, with fonts and page scale, and logs each cut and copy, to find why a selection can look to be on other lines than the ones it holds.
+Verified: browser checks for the modified state and the layer report, which notices rows of another height.
+
 * v665 — More of Emacs's capture keywords
 Capture templates now honor ~:immediate-finish~ (no text to edit; only the questions are asked), ~:time-prompt~ (a date and time for a date-tree capture), ~:clock-in~ with ~:clock-keep~ and ~:clock-resume~, and ~:before-finalize~. ~plain~ templates put their text in as written, headings included, as Emacs does; the built-in share template is now an ~entry~. The capture examples are one file, =capture-templates.org=, and unused code was removed.
 Verified: capture filing, clock lines and date prompts against Emacs 29.3; browser checks for the three keywords.

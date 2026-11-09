@@ -3963,6 +3963,63 @@ check(':clock-in t clocks in the new entry and stops the running clock; :clock-k
   }
 });
 
+check('typing in the Text view shows the buffer as modified (red Save button, ** in the modeline) at once, and as unmodified again when typed back to the saved text', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\n* Two\n');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    S.state.storageKind = 'webdav'; // a file with somewhere to be saved, so the Save button is live
+    S.lastSavedText = serializeOrg(S.state.doc);
+    S.isDirty = false;
+    (await import('/src-browser/render.js')).render();
+  });
+  await viewMenu(page, 'Text');
+  const dirty = () => page.evaluate(async () => (await import('/src-browser/app-state.js')).S.isDirty);
+  const saveColor = () => page.evaluate(() => getComputedStyle(document.getElementById('saveBtn')).color);
+  expect(!(await dirty()), 'clean before typing');
+  await page.locator('#document-text-edit-input').click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('x');
+  expect(await dirty(), 'typing in the Text view marks the buffer modified');
+  expect((await saveColor()) === 'rgb(192, 57, 43)', `the Save button is red: ${await saveColor()}`);
+  expect((await page.locator('#modeline').innerText()).includes('**'), `the modeline shows **: ${await page.locator('#modeline').innerText()}`);
+  await page.keyboard.press('Backspace');
+  expect(!(await dirty()), 'typed back to the saved text, it is unmodified again');
+  expect((await saveColor()) !== 'rgb(192, 57, 43)', 'and the Save button is not red');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('the keyboard debug log says whether the Text view’s coloured layer is laid out like the textarea over it, and notices when it is not', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '** 2026\n*** 2026-11 November\n**** 2026-11-08 Sunday\n- 22:52 - went to casino, Caesars VA with Marcus\n');
+  await viewMenu(page, 'Text');
+  const layers = () => page.evaluate(async () => {
+    const { layerAlignment } = await import('/src-browser/key-log.js');
+    return layerAlignment(/** @type {HTMLTextAreaElement} */ (document.getElementById('document-text-edit-input')));
+  });
+  const fine = await layers();
+  expect(fine.rowsChecked === 5 && fine.rowsDiffering === 0, `the layers agree: ${JSON.stringify(fine)}`);
+  expect(fine.sameTextWidth.regular > 0 && fine.sameTextWidth.bold > 0, 'the regular and bold widths are measured');
+  expect(fine.vertical.rows === 5 && Math.abs(fine.vertical.driftAtLastRow) < 1 && fine.vertical.steps.length === 0, `the rows are at the same heights: ${JSON.stringify(fine.vertical)}`);
+  const log = await page.evaluate(async () => (await import('/src-browser/key-log.js')).keyLogText());
+  expect(/text layers: \{"rowsChecked":5,"rowsDiffering":0/.test(log), `the copied log has the section: ${log.slice(0, 400)}`);
+  await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.te-back')).style.letterSpacing = '1px'; });
+  const off = await layers();
+  expect(off.rowsDiffering === 4 && off.offenders.length > 0 && off.worstPx > 5, `a layer laid out differently is noticed: ${JSON.stringify(off)}`);
+  await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.te-back')).style.letterSpacing = ''; document.querySelectorAll('.te-ln').forEach((r) => { /** @type {HTMLElement} */ (r).style.lineHeight = '30px'; }); });
+  const tall = await layers();
+  expect(tall.vertical.driftAtLastRow >= 30 && tall.vertical.steps.length > 0 && tall.vertical.firstDriftLine === 2, `rows of another height are noticed, and where the drift starts: ${JSON.stringify(tall.vertical)}`);
+  // and a cut is logged, with how much it took
+  await page.locator('#document-text-edit-input').click();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
+  expect((await page.evaluate(async () => (await import('/src-browser/key-log.js')).keyLogText())).includes('selectedLength=101'), 'the cut is in the log');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture from outside: %x takes the clipboard (read only for a template that uses it), and a refused clipboard leaves %x empty but still captures, saying why', async () => {
   const seed = (page) => setCaptureInit(page, `(setq org-capture-templates
   '(("x" "Clip" entry (file+olp "" "Inbox") "* Clip\\n  %x")

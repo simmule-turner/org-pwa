@@ -92,6 +92,120 @@ export function caretGeometry(t) {
   };
 }
 
+/**
+ * Whether row N of the coloured layer is at the height of row N of the textarea: the textarea's rows are laid out on a hidden copy of
+ * it (the whole text in one block, as the textarea has it) and each line's top is compared with the top of the coloured layer's row.
+ * A drift is what puts a selection a few lines away from the text it holds.
+ * @param {HTMLTextAreaElement} t @param {Element} back @param {CSSStyleDeclaration} cs
+ */
+function rowDrift(t, back, cs) {
+  const mirror = document.createElement('div');
+  mirror.style.cssText = `position:absolute;visibility:hidden;top:0;left:-9999px;box-sizing:border-box;width:${t.clientWidth}px;padding:0;margin:0;border:0;white-space:${cs.whiteSpace};overflow-wrap:${cs.overflowWrap};word-break:${cs.wordBreak};`;
+  for (const prop of ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'tab-size']) mirror.style.setProperty(prop, cs.getPropertyValue(prop));
+  const node = document.createTextNode(t.value);
+  mirror.appendChild(node);
+  document.body.appendChild(mirror);
+  const base = mirror.getBoundingClientRect().top;
+  const lh = parseFloat(cs.lineHeight) || 1;
+  const lines = t.value.split('\n');
+  const rows = Math.min(lines.length, back.children.length);
+  const range = document.createRange();
+  const backTop = back.getBoundingClientRect().top;
+  const pad = parseFloat(getComputedStyle(back).paddingTop) || 0;
+  let offset = 0;
+  let firstDrift = -1;
+  let last = 0;
+  let previousTop = -lh;
+  /** @type {number | null} */
+  let calibration = null;
+  /** @type {Array<Record<string, unknown>>} */
+  const steps = [];
+  for (let i = 0; i < rows; i++) {
+    // measured on the first plain character of the line (the box of a glyph from another font, an emoji say, stands at another height);
+    // a line without one has nothing to measure, and its row is taken as the one after the row before
+    let own = previousTop + lh;
+    const plain = lines[i].search(/[\x20-\x7e]/);
+    if (plain >= 0) {
+      range.setStart(node, offset + plain);
+      range.setEnd(node, offset + plain + 1);
+      const rect = range.getClientRects()[0];
+      if (rect) own = rect.top - base;
+    }
+    previousTop = own;
+    const drawn = back.children[i].getBoundingClientRect().top - backTop - pad;
+    if (calibration === null) calibration = drawn - own; // a glyph's box starts a little below its row's top: the same for every row
+    const drift = Math.round((drawn - own - calibration) * 10) / 10;
+    if (Math.abs(drift - last) >= 0.5 && steps.length < 6) {
+      // the drift changed at this row: the row before it, or this one, is taller in one layer than the other
+      steps.push({ line: i + 1, driftNow: drift, change: Math.round((drift - last) * 10) / 10, start: lines[i].slice(0, 14), codes: [...lines[i].slice(0, 14)].filter((c) => (c.codePointAt(0) || 0) > 0x2000 || (c.codePointAt(0) || 0) > 0xffff).map((c) => 'U+' + (c.codePointAt(0) || 0).toString(16)).join(' ') });
+      if (firstDrift < 0) firstDrift = i + 1;
+    }
+    last = drift;
+    offset += lines[i].length + 1;
+  }
+  mirror.remove();
+  return { rows, lineHeight: lh, firstDriftLine: firstDrift, driftAtLastRow: last, steps, textareaHeight: t.scrollHeight, layerHeight: Math.round(back.getBoundingClientRect().height) };
+}
+
+/**
+ * Whether the coloured layer of the Text view lays its text out like the textarea over it, which does the selecting and cutting. The
+ * textarea's layout is measured on a hidden copy with its own styles (regular weight, one row per line), the coloured layer's from the
+ * rows it draws. A row that differs is where a selection would look to be on other characters than the ones it holds. Also how wide the
+ * same text is in regular and in bold weight (the coloured layer sets headings in bold, the textarea does not), and the page scale.
+ * @param {HTMLTextAreaElement} t
+ * @returns {Record<string, unknown> | null} null when there is no coloured layer
+ */
+export function layerAlignment(t) {
+  const back = t.parentElement && t.parentElement.querySelector('.te-back');
+  if (!back) return null;
+  const cs = getComputedStyle(t);
+  const mirror = document.createElement('div');
+  mirror.style.cssText = 'position:absolute;visibility:hidden;top:0;left:-9999px;white-space:pre;';
+  for (const prop of ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing', 'tab-size', 'font-variant-ligatures', 'font-kerning', 'font-feature-settings', 'text-rendering', 'font-synthesis']) mirror.style.setProperty(prop, cs.getPropertyValue(prop));
+  const span = document.createElement('span');
+  mirror.appendChild(span);
+  document.body.appendChild(mirror);
+  const width = (/** @type {string} */ text, weight = '') => {
+    span.style.fontWeight = weight;
+    span.textContent = text;
+    return span.getBoundingClientRect().width;
+  };
+  const lines = t.value.split('\n');
+  const rows = Math.min(lines.length, back.children.length, 400);
+  const range = document.createRange();
+  /** @type {Array<Record<string, unknown>>} */
+  const off = [];
+  let worst = 0;
+  let differing = 0;
+  for (let i = 0; i < rows; i++) {
+    range.selectNodeContents(back.children[i]);
+    const drawn = range.getBoundingClientRect().width;
+    const own = width(lines[i] || '​');
+    const diff = drawn - own;
+    if (Math.abs(diff) < 0.5) continue;
+    differing++;
+    worst = Math.max(worst, Math.abs(diff));
+    if (off.length < 4) off.push({ line: i + 1, textarea: Math.round(own * 10) / 10, drawn: Math.round(drawn * 10) / 10, classes: [...new Set(Array.from(back.children[i].querySelectorAll('span')).map((x) => x.className))].join(' '), start: (lines[i] || '').slice(0, 12) });
+  }
+  const vertical = rowDrift(t, back, cs);
+  const sample = '0123456789abcdefghij';
+  const regular = width(sample, '400');
+  const bold = width(sample, '700');
+  mirror.remove();
+  const bs = getComputedStyle(back);
+  const vv = window.visualViewport;
+  return {
+    rowsChecked: rows,
+    rowsDiffering: differing,
+    worstPx: Math.round(worst * 10) / 10,
+    offenders: off,
+    vertical,
+    sameTextWidth: { regular: Math.round(regular * 100) / 100, bold: Math.round(bold * 100) / 100 },
+    fonts: { textarea: cs.fontFamily, layer: bs.fontFamily, size: [cs.fontSize, bs.fontSize], ligatures: [cs.fontVariantLigatures, bs.fontVariantLigatures], kerning: [cs.fontKerning, bs.fontKerning] },
+    scale: { devicePixelRatio: window.devicePixelRatio, pageScale: vv ? vv.scale : null, wrap: t.wrap, clientWidth: t.clientWidth, layerWidth: Math.round(back.getBoundingClientRect().width) },
+  };
+}
+
 const editor = () => /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
 
 if (typeof document !== 'undefined') {
@@ -126,6 +240,16 @@ if (typeof document !== 'undefined') {
     },
     true
   );
+  for (const type of ['cut', 'copy']) {
+    document.addEventListener(
+      type,
+      (e) => {
+        const t = editor();
+        if (t && e.target === t) noteKeyLog(type, { ...describeEditor(t), selectedLength: t.selectionEnd - t.selectionStart });
+      },
+      true
+    );
+  }
   window.addEventListener('pagehide', () => noteKeyLog('pagehide'));
   window.addEventListener('pageshow', () => noteKeyLog('pageshow'));
 }
@@ -133,5 +257,8 @@ if (typeof document !== 'undefined') {
 /** The whole trail as text, newest last. */
 export function keyLogText() {
   const head = [`user agent: ${navigator.userAgent}`, `standalone: ${/** @type {{ standalone?: boolean }} */ (navigator).standalone === true || matchMedia('(display-mode: standalone)').matches}`, `entries: ${entries.length} (the last ${LIMIT} kept)`, `now: ${new Date().toISOString()}`, ''];
+  const t = editor();
+  const layers = t ? layerAlignment(t) : null;
+  if (layers) head.push(`text layers: ${JSON.stringify(layers)}`, '');
   return [...head, ...entries.map((e) => `${(e.t / 1000).toFixed(1)}s ${e.what}`)].join('\n');
 }
