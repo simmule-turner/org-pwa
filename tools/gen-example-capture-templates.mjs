@@ -151,7 +151,7 @@ export const CASES = [
   },
   {
     title: 'Meeting notes', key: 'm', file: 'inbox.org', at: [2026, 11, 7, 18, 30],
-    about: ['An =entry= template with prompts, a property drawer and sub-headings. =:prepend t= puts the new meeting first under =Meeting Notes=. Emacs stops with an error when the headings of the target are missing; the app makes them.'],
+    about: ['An =entry= template with prompts, a property drawer and sub-headings. =:prepend t= puts the new meeting first under =Meeting Notes=. As in Emacs, a missing heading of a =file+olp= target stops the capture with =Heading not found on level 1: …=; =file+headline= makes its heading.'],
     init: MEETING, answers: { 'Meeting Title': 'Planning', 'Top Priority Task': 'Send the agenda' },
     before: '* 📥 Inbox - unprocessed\n** Meeting Notes\n*** Earlier meeting\n',
   },
@@ -319,7 +319,7 @@ Two keywords make this possible: =(file+function "file.org" FUNCTION)= as a targ
 
 `;
   out += `* Where the app differs from Emacs
-The app makes missing headings of a =file+olp= target, where Emacs stops with an error. =:before-finalize= runs on the text of the capture, after =:prepare-finalize=, where Emacs runs it on the whole file; =:after-finalize= and =:refile-targets= have no effect. =:clock-in= clocks the new entry when the capture is filed; Emacs does it when the capture buffer opens. A target function may only insert whole lines; one that changes or deletes a line is refused with a message and nothing is filed. A =file+function= template of type =item=, =checkitem= or =table-line= needs the function to leave point on a heading. In the buffer of a function, markers and text properties are not available, the regexp operator ~\\=~ never matches, and a search with a bound treats ~$~ and ~\\'~ at the bound as the end of the text. The =github:= prefix of a file name is the app's own.
+=:before-finalize= runs on the text of the capture, after =:prepare-finalize=, where Emacs runs it on the whole file. =:after-finalize= runs once the entry is filed, in a buffer with no text; =:refile-targets= has no effect. =:clock-in= clocks the new entry when the capture is filed; Emacs does it when the capture buffer opens. A target function may only insert whole lines; one that changes or deletes a line is refused with a message and nothing is filed. A =file+function= template of type =item=, =checkitem= or =table-line= needs the function to leave point on a heading. In the buffer of a function, markers and text properties are not available, the regexp operator ~\\=~ never matches, and a search with a bound treats ~$~ and ~\\'~ at the bound as the end of the text. The =github:= prefix of a file name is the app's own.
 `;
   fs.writeFileSync(new URL('../examples/capture-templates.org', import.meta.url), out);
   console.log(`${CASES.length} cases`);

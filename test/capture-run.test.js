@@ -99,7 +99,7 @@ test('an error in the Lisp init that sets the templates is a note, shown when th
   assert.match(notes[0], /^The Lisp init could not set the capture templates: .*nosuchfunction/);
 });
 
-test('the keywords: a target function, :prepare-finalize and :before-finalize, and :after-finalize, which the app does not run', () => {
+test('the keywords: a target function, :prepare-finalize and :before-finalize, and :after-finalize', () => {
   const { templates, notes } = captureTemplatesFromLisp(`(setq org-capture-templates '(
     ("a" "A" entry (file+function "f.org" my-fn) "* x" :prepare-finalize (my-a (lambda () (foo))) :before-finalize my-b :after-finalize my-c)
     ("b" "B" entry (function (lambda () (goto-char 1))) "* y")))`);
@@ -109,8 +109,8 @@ test('the keywords: a target function, :prepare-finalize and :before-finalize, a
   assert.deepEqual(templates[0].prepareFinalize, ['my-a', '(lambda nil (foo))']);
   assert.equal(templates[1].targetFunction, '(lambda nil (goto-char 1))');
   assert.deepEqual(templates[0].beforeFinalize, ['my-b']);
-  assert.equal(notes.length, 1);
-  assert.match(notes[0], /:after-finalize/);
+  assert.deepEqual(templates[0].afterFinalize, ['my-c']);
+  assert.deepEqual(notes, []);
 });
 
 /** The reveal of the one capture a template makes into `before`. @param {string} template the template line @param {string} before */
@@ -205,4 +205,29 @@ test('the two contact templates of examples/capture-vcard.org file what the guid
   const second = run(sources[1], '* New\n', { answers: answersFor(sources[1], ['Grace', 'Hopper', 'navy', 'grace@example.org', '', '+1 555 0123', '', '', '', '', '', '1906-12-09', 'Pioneer', 'US Navy', 'Rear Admiral']) });
   assert.ok(second.results[0].ok);
   assert.equal(collapse(second.text), collapse('* New\n' + shown[2]));
+});
+
+// Checked against Emacs 29.3 (org-capture with a file that lacks the heading): file+headline makes the heading; file+olp and
+// file+olp+datetree stop with "Heading not found on level N: NAME" (N the first level that is missing) and file nothing.
+test('file+headline makes a missing heading; file+olp and file+olp+datetree stop at one, as Emacs does', () => {
+  const made = run(`(setq org-capture-templates '(("a" "A" entry (file+headline "f.org" "Missing") "* X")))`, '* Other\n');
+  assert.ok(made.results[0].ok);
+  assert.equal(made.text, '* Other\n* Missing\n** X\n');
+  const olp = run(`(setq org-capture-templates '(("a" "A" entry (file+olp "f.org" "Missing" "Deep") "* X")))`, '* Other\n');
+  assert.deepEqual(olp.results[0], { ok: false, message: 'Capture failed: Heading not found on level 1: Missing' });
+  assert.equal(olp.text, '* Other\n');
+  const deep = run(`(setq org-capture-templates '(("a" "A" entry (file+olp "f.org" "Missing" "Deep") "* X")))`, '* Other\n* Missing\n');
+  assert.deepEqual(deep.results[0], { ok: false, message: 'Capture failed: Heading not found on level 2: Deep' });
+  const tree = run(`(setq org-capture-templates '(("a" "A" entry (file+olp+datetree "f.org" "Missing" "Deep") "* X")))`, '* Other\n* Missing\n');
+  assert.deepEqual(tree.results[0], { ok: false, message: 'Capture failed: Heading not found on level 2: Deep' });
+});
+
+// Emacs runs :after-finalize once the entry is filed, also when it is the only keyword; its failure does not undo the capture.
+test(':after-finalize runs after the entry is filed, and a failing one is reported without undoing it', () => {
+  const ok = run(`(defun my-after () (message "done")) (setq org-capture-templates '(("a" "A" entry (file "f.org") "* X" :after-finalize my-after)))`, '* Other\n');
+  assert.equal(ok.text, '* Other\n* X\n');
+  assert.equal(/** @type {any} */ (ok.results[0]).afterFinalizeMessage, undefined);
+  const bad = run(`(setq org-capture-templates '(("a" "A" entry (file "f.org") "* X" :after-finalize no-such-function)))`, '* Other\n');
+  assert.equal(bad.text, '* Other\n* X\n');
+  assert.match(/** @type {any} */ (bad.results[0]).afterFinalizeMessage, /no-such-function/);
 });

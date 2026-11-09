@@ -17,7 +17,7 @@ const TYPES = new Set(['entry', 'item', 'checkitem', 'table-line', 'plain']);
 /** Keywords that only change how Emacs shows the capture buffer; nothing to do here. */
 const QUIET = new Set([':unnarrowed', ':kill-buffer', ':no-save', ':hook']);
 /** Keywords that have no effect here. */
-const UNSUPPORTED = new Set([':after-finalize', ':refile-targets']);
+const UNSUPPORTED = new Set([':refile-targets']);
 /** Emacs keywords that are on or off, with the field they set. */
 const FLAGS = /** @type {Record<string, string>} */ ({ ':immediate-finish': 'immediateFinish', ':time-prompt': 'timePrompt', ':clock-in': 'clockIn', ':clock-keep': 'clockKeep', ':clock-resume': 'clockResume' });
 /** Emacs keywords that take a count of blank lines or a position, with the field they set. */
@@ -60,7 +60,7 @@ function functionTexts(f) {
 /**
  * Where a template files: `{ file, olp }` (with `datetree` for file+olp+datetree, `fn` for a function that finds the place), or a reason it cannot be read.
  * @param {Lisp | undefined} target
- * @returns {{ file: string, olp: string[], datetree?: boolean, treeType?: string, fn?: string } | string}
+ * @returns {{ file: string, olp: string[], datetree?: boolean, treeType?: string, fn?: string, strict?: boolean } | string}
  */
 function readTarget(target) {
   const items = listItems(target);
@@ -82,13 +82,13 @@ function readTarget(target) {
   }
   if (head === 'file+olp') {
     const path = items.slice(2).map(stringValue);
-    return path.length && path.every((s) => s !== null) ? { file, olp: /** @type {string[]} */ (path) } : 'file+olp needs headings as strings';
+    return path.length && path.every((s) => s !== null) ? { file, olp: /** @type {string[]} */ (path), strict: true } : 'file+olp needs headings as strings';
   }
   if (head === 'file+olp+datetree' || head === 'file+datetree' || head === 'file+weektree') {
     // the last two are Org's older names, which it changes into the first (with :tree-type week for a week tree)
     const path = items.slice(2).map(stringValue);
     if (!path.every((s) => s !== null)) return `${head} needs headings as strings`;
-    return { file, olp: /** @type {string[]} */ (path), datetree: true, ...(head === 'file+weektree' ? { treeType: 'week' } : {}) };
+    return { file, olp: /** @type {string[]} */ (path), strict: true, datetree: true, ...(head === 'file+weektree' ? { treeType: 'week' } : {}) };
   }
   return `the target ${head} is not supported (use file, file+headline, file+olp, file+olp+datetree or file+function)`;
 }
@@ -118,6 +118,7 @@ function readEntry(entry, notes) {
   const out = { key, description, type, olp: target.olp, template: text };
   if (target.file) out.file = target.file;
   if (target.datetree) out.datetree = true;
+  if (target.strict) out.olpMustExist = true; // file+olp stops at a heading that is not there, as in Emacs; file+headline makes it
   if (target.treeType) out.treeType = target.treeType;
   if (target.fn) out.targetFunction = target.fn;
   const props = items.slice(5);
@@ -129,9 +130,9 @@ function readEntry(entry, notes) {
     else if (name === ':jump-to-captured') out.jumpToCaptured = !isNil(value);
     else if (name === ':time-prompt' && !target.datetree) notes.push(`Capture template "${key}": :time-prompt has no effect without a file+olp+datetree target, as in Emacs.`);
     else if (FLAGS[name]) out[FLAGS[name]] = !isNil(value);
-    else if (name === ':prepare-finalize' || name === ':before-finalize') {
+    else if (name === ':prepare-finalize' || name === ':before-finalize' || name === ':after-finalize') {
       const fns = functionTexts(value);
-      const field = name === ':prepare-finalize' ? 'prepareFinalize' : 'beforeFinalize';
+      const field = name === ':prepare-finalize' ? 'prepareFinalize' : name === ':before-finalize' ? 'beforeFinalize' : 'afterFinalize';
       if (fns === null) notes.push(`Capture template "${key}": ${name} needs a function or a list of functions and is ignored.`);
       else if (fns.length) out[field] = fns;
     }

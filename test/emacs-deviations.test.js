@@ -63,6 +63,26 @@ test('the options that were removed in favor of Emacs’s own way do not come ba
   }
 });
 
+/** Settings the app once had of its own, each now an Emacs variable (the second name) or, for the last two, the Lisp init. */
+const RENAMED = [
+  ['org-xx-text-wrap', 'org-startup-truncated'], ['org-xx-size-limit-org-file-warn', 'large-file-warning-threshold'],
+  ['org-xx-text-line-numbers', 'display-line-numbers-mode'], ['org-xx-latex-header', 'org-latex-packages-alist'], ['org-xx-latex-init', 'the Lisp init'],
+];
+
+test('the own settings that Emacs variables replaced do not come back', () => {
+  const files = [...sourceFiles('src'), ...sourceFiles('src-browser'), 'app.js', 'README.org', ...readdirSync(new URL('../docs', import.meta.url)).filter((x) => x.endsWith('.org')).map((f) => 'docs/' + f), ...readdirSync(new URL('../examples', import.meta.url)).filter((x) => x.endsWith('.org')).map((f) => 'examples/' + f)];
+  for (const file of files) {
+    const text = read(file);
+    for (const [old, now] of RENAMED) if (text.includes(old)) assert.fail(`${file} mentions ${old}; it is ${now} now`);
+  }
+});
+
+test('the Global Variables text is read as (setq ...) forms, not as the old name: value lines', async () => {
+  const { parseGlobalVariables } = await import('../src/global-variables.js');
+  assert.deepEqual(parseGlobalVariables("org-log-done: 'time"), {});
+  assert.deepEqual(parseGlobalVariables("(setq org-log-done 'time)"), { 'org-log-done': "'time" });
+});
+
 /** Settings whose value is written as Emacs writes it: a Lisp list, alist or string. */
 const EMACS_FORM = new Set([
   'org-agenda-sorting-strategy', 'org-agenda-custom-commands', 'org-modules', 'org-inlinetask-min-level', 'org-refile-targets', 'org-global-properties',

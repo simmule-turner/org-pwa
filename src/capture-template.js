@@ -394,9 +394,9 @@ function expandCaptureText(template, context = {}) {
  * Emacs's file+olp; false takes the first.
  * `datetree` (file+olp+datetree): after the path, the day (or month, or week and day) heading for `now` is found or created under it,
  * and that heading is the target; `treeType` is Org's :tree-type, week or month. Nothing is created where `allowCreate` is false.
- * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean, datetree?: boolean, treeType?: string }} [options]
+ * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean, datetree?: boolean, treeType?: string, mustExist?: boolean }} [options]
  */
-function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false, datetree = false, treeType } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false, datetree = false, treeType, mustExist = false } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
@@ -410,8 +410,17 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
     if (unique && siblings.filter((h) => h.title === title).length > 1) throw new Error(`Heading not unique on level ${depth}: ${title}`);
     found = siblings.find((h) => h.title === title);
     if (!found) {
+      if (mustExist) throw new Error(`Heading not found on level ${depth}: ${title}`);
       if (!allowCreate) return null;
+      const last = lastNodeOf(parent || doc);
+      const atEnd = !prepend && lastNodeOf(doc) === last;
+      // Emacs adds the heading after the file's last line, which ends in a newline: the line break that ended the text moves on to the new heading
+      if (atEnd && last.bodyLines.length && last.bodyLines[last.bodyLines.length - 1] === '') {
+        last.bodyLines.pop();
+        last.body = parseBody(last.bodyLines);
+      }
       found = parent ? insertChildHeading(parent, { title }, prepend) : insertTopLevelHeading(doc, { title }, prepend);
+      if (atEnd) found.bodyLines = [''];
     }
     parent = found;
     siblings = found.children;

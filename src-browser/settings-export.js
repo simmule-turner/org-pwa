@@ -1,8 +1,9 @@
 // @ts-check
-// The Export page's HTML and LaTeX cards: text for the preamble, postamble, head and the LaTeX init, each edited in the large editor.
+// The Export page's HTML and LaTeX cards: text for the preamble, postamble and head, each edited in the large editor.
 // Nothing is applied until its box is ticked, and anything the file itself says wins (see src/export-defaults.js).
-import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeLispString, exportItemState, hasLatexTocFix, hasPagedToc, LATEX_HEADER_KEY, LATEX_INIT_KEY, latexExportDefaults, withLatexTocFix, withPagedToc } from '../src/export-defaults.js';
+import { EXPORT_DEFAULT_ITEMS, LATEX_CLASSES, LATEX_COMPILERS, encodeLispString, exportItemState, hasLatexTocFix, hasPagedToc, latexExportDefaults, lispStringValue, withLatexTocFix, withPagedToc } from '../src/export-defaults.js';
 import { S } from './app-state.js';
+import { initText } from './lisp-init-text.js';
 import { setStatus } from './editing.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
 import { menuButton, settingsTextBox } from './ui-widgets.js';
@@ -167,46 +168,13 @@ export function buildExportCards(rerender) {
 
   const latex = cardShell('LaTeX', 'LaTeX export', 'Used for every LaTeX export whose file does not set its own #+LATEX_CLASS: or #+LATEX_COMPILER:.');
   latex.setAttribute('data-export-card', 'latex');
-  const current = latexExportDefaults(S.globalVariables);
+  const current = latexExportDefaults(S.globalVariables, initText.text);
   latex.appendChild(choiceRow('Document class', 'org-latex-default-class', [...LATEX_CLASSES, ...latexClassNames(current.init).filter((n) => !LATEX_CLASSES.includes(n))], current.cls || 'article'));
   latex.appendChild(choiceRow('Compiler', 'org-latex-compiler', LATEX_COMPILERS, current.compiler || 'pdflatex'));
-  latex.appendChild(latexTocFixRow(rerender, current.header || ''));
+  latex.appendChild(latexTocFixRow(rerender, lispStringValue(S.globalVariables['org-xx-lisp-init']) || ''));
   latex.appendChild(line('xelatex and lualatex write Unicode text as it is; pdflatex gets the inputenc and fontenc packages.', 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
-  latex.appendChild(latexInitRow(rerender, current.init || ''));
+  latex.appendChild(line("Classes, packages and the source block backend are set in the Lisp init (Settings → Advanced), as in an init file: (add-to-list 'org-latex-classes ...), (add-to-list 'org-latex-packages-alist '(\"\" \"listings\")), (setq org-latex-src-block-backend 'listings) or 'minted.", 'font-size: 11px; opacity: 0.65; margin-top: 4px'));
   return { html, latex };
-}
-
-/** The init text for the LaTeX export: Emacs Lisp that sets org-latex-classes, org-latex-packages-alist and the source block backend.
- * @param {() => void} rerender @param {string} text */
-function latexInitRow(rerender, text) {
-  const row = document.createElement('div');
-  row.setAttribute('data-export-latex-init', '');
-  row.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border)';
-  const name = document.createElement('div');
-  name.style.cssText = 'font-size: 14px; font-weight: 700; min-height: 32px; display: flex; align-items: center';
-  name.textContent = 'Classes, packages and source blocks';
-  row.appendChild(name);
-  row.appendChild(line("Emacs Lisp, as in an init file: (add-to-list 'org-latex-classes ...), (add-to-list 'org-latex-packages-alist '(\"\" \"listings\")), (setq org-latex-src-block-backend 'listings) or 'minted, org-latex-listings-options, org-latex-minted-options; for Beamer org-beamer-frame-level, org-beamer-theme, org-beamer-frame-default-options, org-beamer-environments-extra. Other forms are ignored.", 'font-size: 11px; opacity: 0.65; margin-bottom: 6px'));
-  let current = text;
-  const field = editorBox({
-    name: 'Classes, packages and source blocks',
-    value: () => current,
-    defaultValue: '',
-    onReset: async () => {
-      current = '';
-      await commitGlobalVariableChange(LATEX_INIT_KEY, null);
-      setStatus('LaTeX init text removed.');
-      rerender();
-    },
-    onSave: async (next) => {
-      current = next;
-      await commitGlobalVariableChange(LATEX_INIT_KEY, next.trim() === '' ? null : encodeLispString(next));
-      setStatus(next.trim() === '' ? 'LaTeX init text removed.' : 'LaTeX init text saved.');
-      rerender();
-    },
-  });
-  row.appendChild(field);
-  return row;
 }
 
 /** "Add TOC with page numbers": adds or removes the Paged.js script and its CSS in org-html-head, so the text box above shows it.
@@ -235,25 +203,25 @@ function pagedTocRow(rerender) {
   return row;
 }
 
-/** "Fix wide TOC numbers": adds or removes the tocloft lines in the LaTeX header kept in org-xx-latex-header.
- * @param {() => void} rerender @param {string} header */
-function latexTocFixRow(rerender, header) {
+/** "Fix wide TOC numbers": adds or removes the (add-to-list 'org-latex-packages-alist "...tocloft...") form in the Lisp init.
+ * @param {() => void} rerender @param {string} init */
+function latexTocFixRow(rerender, init) {
   const row = document.createElement('label');
   row.setAttribute('data-export-latex-toc-fix', '');
   row.style.cssText = 'display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; font-size: 14px; cursor: pointer';
   const box = document.createElement('input');
   box.type = 'checkbox';
-  box.checked = hasLatexTocFix(header);
+  box.checked = hasLatexTocFix(init);
   box.style.cssText = 'width: 22px; height: 22px; margin: 0';
   row.appendChild(box);
   const text = document.createElement('span');
   text.textContent = 'Fix wide TOC numbers';
   text.style.fontWeight = '700';
   row.appendChild(text);
-  row.appendChild(line(LATEX_HEADER_KEY, 'font-size: 12px; opacity: 0.65'));
+  row.appendChild(line('org-latex-packages-alist', 'font-size: 12px; opacity: 0.65'));
   box.onchange = async () => {
-    const next = withLatexTocFix(header, box.checked);
-    await commitGlobalVariableChange(LATEX_HEADER_KEY, next.trim() === '' ? null : encodeLispString(next));
+    const next = withLatexTocFix(init, box.checked);
+    await commitGlobalVariableChange('org-xx-lisp-init', next.trim() === '' ? null : encodeLispString(next));
     setStatus(box.checked ? 'Table-of-contents number fix added to every LaTeX export (needs the tocloft package).' : 'Table-of-contents number fix removed.');
     rerender();
   };

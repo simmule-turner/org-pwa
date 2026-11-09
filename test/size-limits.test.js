@@ -57,7 +57,7 @@ test('checkSize: ok up to and including the warn limit, then warn, then refuse a
 });
 
 test('a limit set to off never warns or refuses', () => {
-  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'off', 'org-xx-size-limit-org-file-warn': 'off' });
+  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'off', 'large-file-warning-threshold': 'off' });
   assert.equal(checkSize('orgFile', 500 * MB, limits).ok, true);
   assert.equal(textCeiling(limits), 0, 'no ceiling when a text kind has no limit');
 });
@@ -87,7 +87,7 @@ test('every Size limits setting is a text field with a default and a validator t
   for (const f of fields) {
     assert.equal(f.type, 'text');
     assert.equal(f.validate(f.default), null, f.key);
-    assert.match(f.key, /^org-xx-(size-limit-|fetch-timeout)/);
+    assert.match(f.key, /^(org-xx-(size-limit-|fetch-timeout)|large-file-warning-threshold$)/);
   }
 });
 

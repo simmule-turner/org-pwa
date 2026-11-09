@@ -65,17 +65,16 @@ export function countExportItemsOn(vars, ids) {
 
 /** The LaTeX defaults from the Global Variables: `org-latex-default-class` and `org-latex-compiler`, each a quoted string; anything else is ignored.
  * @param {Record<string, string> | null | undefined} vars
- * @returns {{ cls?: string, compiler?: string, header?: string, init?: string }} */
-export function latexExportDefaults(vars) {
+ * @param {string} [loadedInit]  the Lisp init text with its (load ...) files read in; without it, the init setting as it was saved
+ * @returns {{ cls?: string, compiler?: string, init?: string }} */
+export function latexExportDefaults(vars, loadedInit) {
   const v = vars || {};
   const word = (/** @type {string} */ key, /** @type {string[]} */ allowed) => {
     const t = String(v[key] ?? '').trim().replace(/^"(.*)"$/s, '$1');
     return allowed.includes(t) ? t : undefined;
   };
-  /** @type {{ cls?: string, compiler?: string, header?: string, init?: string }} */ const out = {};
-  const header = lispStringValue(v[LATEX_HEADER_KEY]);
-  if (header !== null && header.trim() !== '') out.header = header;
-  const init = lispStringValue(v[LATEX_INIT_KEY]);
+  /** @type {{ cls?: string, compiler?: string, init?: string }} */ const out = {};
+  const init = loadedInit || lispStringValue(v['org-xx-lisp-init']);
   if (init !== null && init.trim() !== '') out.init = init;
   const cls = word('org-latex-default-class', [...LATEX_CLASSES, ...latexClassNames(out.init)]);
   const compiler = word('org-latex-compiler', LATEX_COMPILERS);
@@ -114,12 +113,6 @@ export function withPagedToc(head, on) {
   return on ? (bare ? bare + '\n' : '') + PAGED_TOC_HEAD : bare;
 }
 
-/** The Global Variable that holds the init text for the LaTeX export: `(add-to-list 'org-latex-classes ...)`, `(setq org-latex-src-block-backend 'listings)` and the like (own). */
-export const LATEX_INIT_KEY = 'org-xx-latex-init';
-
-/** The Global Variable that holds extra preamble lines for every LaTeX export (own; Org has no single variable for it). */
-export const LATEX_HEADER_KEY = 'org-xx-latex-header';
-
 /** What "Fix wide TOC numbers" adds: LaTeX's table of contents gives a section number a fixed box, so numbers such as 1.11 and 1.11.1
  *  run into the title. These widen the boxes (tocloft is part of TeX Live). */
 export const LATEX_TOC_FIX_HEADER = `\\usepackage{tocloft}
@@ -129,17 +122,20 @@ export const LATEX_TOC_FIX_HEADER = `\\usepackage{tocloft}
 \\setlength{\\cftsubsubsecindent}{6em}
 \\setlength{\\cftsubsubsecnumwidth}{4.2em}`;
 
-/** Whether a header text already carries the table-of-contents fix.
- * @param {string} header */
-export function hasLatexTocFix(header) {
-  return header.includes('\\cftsubsubsecnumwidth');
+/** The form "Fix wide TOC numbers" keeps in the Lisp init: a string in `org-latex-packages-alist` goes into the preamble as it is. */
+const LATEX_TOC_FIX_FORM = `(add-to-list 'org-latex-packages-alist ${encodeLispString(LATEX_TOC_FIX_HEADER)})`;
+
+/** Whether the Lisp init text carries the table-of-contents fix.
+ * @param {string} init */
+export function hasLatexTocFix(init) {
+  return init.includes(LATEX_TOC_FIX_FORM);
 }
 
-/** The header text with the table-of-contents fix added or removed.
- * @param {string} header @param {boolean} on */
-export function withLatexTocFix(header, on) {
-  const bare = header.split(LATEX_TOC_FIX_HEADER).join('').replace(/\n{3,}/g, '\n\n').trim();
-  return on ? (bare ? bare + '\n' : '') + LATEX_TOC_FIX_HEADER : bare;
+/** The Lisp init text with the table-of-contents fix added or removed.
+ * @param {string} init @param {boolean} on */
+export function withLatexTocFix(init, on) {
+  const bare = init.split(LATEX_TOC_FIX_FORM).join('').replace(/\n{3,}/g, '\n\n').trim();
+  return on ? (bare ? bare + '\n' : '') + LATEX_TOC_FIX_FORM : bare;
 }
 
 /** The symbols of a Lisp list value (`'(a b)`, `(a b)`), or null when the value is not set. @param {unknown} raw @returns {string[] | null} */

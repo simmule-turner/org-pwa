@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readLisp, runInit } from '../src/lisp-read.js';
 import { latexConfig, latexClassNames } from '../src/latex-config.js';
-import { latexExportDefaults, LATEX_INIT_KEY } from '../src/export-defaults.js';
+import { latexExportDefaults } from '../src/export-defaults.js';
 
 test('the Lisp reader handles strings, quotes, dotted pairs, comments and escapes', () => {
   const [form] = readLisp(`; a comment\n(a "b\\"c\\\\d\\ne" . 'f)`);
@@ -42,7 +42,7 @@ test('org-latex-listings is the old name of org-latex-src-block-backend', () => 
 test('a class the init text defines shows up in the class list and as the default class', () => {
   const init = `(add-to-list 'org-latex-classes '("memo" "\\\\documentclass{article}" ("\\\\section{%s}" . "\\\\section*{%s}")))`;
   assert.deepEqual(latexClassNames(init), ['memo', 'article', 'report', 'book']);
-  const defaults = latexExportDefaults({ [LATEX_INIT_KEY]: JSON.stringify(init), 'org-latex-default-class': '"memo"' });
+  const defaults = latexExportDefaults({ 'org-xx-lisp-init': JSON.stringify(init), 'org-latex-default-class': '"memo"' });
   assert.equal(defaults.cls, 'memo');
   assert.equal(defaults.init, init);
 });

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v667 — Emacs's variables, and a Text view fix
+The Text view's selection and cut now line up on a Chromebook: blank rows of the colored layer were shorter than the editor's, which shifted a selection by seven rows. Settings use Emacs's names where Emacs has them: ~org-startup-truncated~, ~large-file-warning-threshold~ and ~display-line-numbers-mode~, and LaTeX preamble and classes go in the Lisp init. Global Variables are ~(setq ...)~ forms, and *Apropos variable…* lists variables as ~apropos-variable~ does. Capture gains ~:after-finalize~, and ~file+olp~ stops at a missing heading as Emacs does.
+Verified: capture filing and the missing-heading messages against Emacs 29.3; browser checks for the Text view rows and the LaTeX fix.
+
 * v666 — Text view marks edits, and a way to find a selection problem
 Typing in the Text view now shows the buffer as modified at once (red Save button, ** in the modeline), and unmodified again when typed back to the saved text. "Copy keyboard debug log" also reports whether the Text view's colored layer lines up with the editor under it, row by row, with fonts and page scale, and logs each cut and copy, to find why a selection can look to be on other lines than the ones it holds.
 Verified: browser checks for the modified state and the layer report, which notices rows of another height.

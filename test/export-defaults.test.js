@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { countExportItemsOn, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_HEADER_KEY, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
+import { countExportItemsOn, encodeLispString, hasLatexTocFix, hasPagedToc, htmlExportDefaults, LATEX_TOC_FIX_HEADER, latexExportDefaults, withLatexTocFix, PAGED_TOC_HEAD, withPagedToc } from '../src/export-defaults.js';
 import { exportToHtml } from '../src/export-html.js';
 import { exportToLatex } from '../src/export-latex.js';
 import { exportToAscii } from '../src/export-ascii.js';
@@ -69,14 +69,15 @@ test('"Add TOC with page numbers" adds and removes its text in org-html-head and
   assert.ok(PAGED_TOC_HEAD.includes('li { break-inside: auto; page-break-inside: auto }') && PAGED_TOC_HEAD.includes('paged.polyfill.min.js'));
 });
 
-test('"Fix wide TOC numbers" is stored in org-xx-latex-header and written before the file\'s own #+LATEX_HEADER: lines', () => {
+test('"Fix wide TOC numbers" is an org-latex-packages-alist string in the Lisp init, written before the file\'s own #+LATEX_HEADER: lines', () => {
   const on = withLatexTocFix('', true);
-  assert.equal(on, LATEX_TOC_FIX_HEADER);
-  assert.ok(hasLatexTocFix(on) && !hasLatexTocFix('\\usepackage{x}'));
-  assert.equal(withLatexTocFix(withLatexTocFix('\\usepackage{x}', true), false), '\\usepackage{x}');
-  const vars = { [LATEX_HEADER_KEY]: encodeLispString(on) };
-  assert.equal(latexExportDefaults(vars).header, on); // a backslash survives the round trip through the stored string
-  assert.equal(latexExportDefaults({}).header, undefined);
+  assert.equal(on, `(add-to-list 'org-latex-packages-alist ${encodeLispString(LATEX_TOC_FIX_HEADER)})`);
+  assert.ok(hasLatexTocFix(on) && !hasLatexTocFix('(setq x 1)'));
+  assert.equal(withLatexTocFix(withLatexTocFix('(setq x 1)', true), false), '(setq x 1)');
+  assert.equal(withLatexTocFix(on, true), on); // ticking again does not add it twice
+  const vars = { 'org-xx-lisp-init': encodeLispString(on) };
+  assert.equal(latexExportDefaults(vars).init, on); // a backslash survives the round trip through the stored string
+  assert.equal(latexExportDefaults({}).init, undefined);
   const tex = exportToLatex(doc('#+LATEX_HEADER: \\usepackage{mine}\n* One\n'), null, { defaults: latexExportDefaults(vars) });
   const at = (text) => tex.indexOf(text);
   assert.ok(at('\\usepackage{tocloft}') > at('\\usepackage{hyperref}') && at('\\cftsubsubsecnumwidth') < at('\\usepackage{mine}'), tex.slice(0, 600));

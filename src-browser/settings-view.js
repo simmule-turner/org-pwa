@@ -388,7 +388,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   globalVarsHint.style.opacity = '0.6';
   globalVarsHint.style.margin = '2px 0 6px';
   globalVarsHint.textContent =
-    'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 one per line, same "name: value" format. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: org-log-done: \'time';
+    'The same kind of variable a file\u2019s own "# Local Variables:" block or #+STARTUP: line can set, but as the app-wide baseline default across every file \u2014 written as in an init file, one (setq NAME VALUE) form per variable. A file-specific #+STARTUP:/Local Variables setting still overrides this; see Configuration in the README for the full precedence order. Example: (setq org-log-done \'time)';
   globalVarsSection.appendChild(globalVarsHint);
 
   /** @param {string} newText */

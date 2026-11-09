@@ -64,7 +64,7 @@
 
 /** One entry of the command palette. @typedef {{ id: string, label: string, orgName?: string, keys?: string, group?: string, keywords?: string[], needs?: string[], run: (target?: object | null) => any, [k: string]: any }} PaletteCommand */
 
-/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, prepend?: boolean, datetree?: boolean, treeType?: string, targetFunction?: string, prepareFinalize?: string[], beforeFinalize?: string[], jumpToCaptured?: boolean, immediateFinish?: boolean, timePrompt?: boolean, clockIn?: boolean, clockKeep?: boolean, clockResume?: boolean, [k: string]: any }} CaptureTemplate */
+/** A capture template (org-capture-templates entry). @typedef {{ key?: string, description?: string, type: string, olp?: string[], olpMustExist?: boolean, afterFinalize?: string[], template: string, emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, prepend?: boolean, datetree?: boolean, treeType?: string, targetFunction?: string, prepareFinalize?: string[], beforeFinalize?: string[], jumpToCaptured?: boolean, immediateFinish?: boolean, timePrompt?: boolean, clockIn?: boolean, clockKeep?: boolean, clockResume?: boolean, [k: string]: any }} CaptureTemplate */
 
 /**
  * One line of a table: a data row, or a horizontal rule (`type: 'rule'`, which has no cells).

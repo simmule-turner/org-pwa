@@ -531,11 +531,11 @@ Three layers set variables (Emacs Lisp variables or org directives), in org's ow
 :CUSTOM_ID: global-variables
 :END:
 
-Set in *Settings → Global Variables*. This is the lowest layer, and the only one not stored in a ~.org~ file. The format is one ~name: value~ per line, like a [[#local-variables][Local Variables]] block without its wrapper:
+Set in *Settings → Global Variables*. This is the lowest layer, and the only one not stored in a ~.org~ file. It is written as an init file is, one ~(setq NAME VALUE)~ per variable (a ~setq~ may set several, and ~;~ starts a comment):
 
-#+BEGIN_SRC
-org-log-done: 'time
-org-agenda-start-on-weekday: 1
+#+BEGIN_SRC emacs-lisp
+(setq org-log-done 'time
+      org-agenda-start-on-weekday 1)
 #+END_SRC
 
 Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
@@ -616,6 +616,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-mode~ | ~nil~ | ~t~ shows each row's line number in the file beside it in the outline, and in the Text view (see [[#line-numbers][Line numbers]]) |
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
+| ~large-file-warning-threshold~ | ~500KB~ | Ask before opening an Org file above this size, in bytes or as ~500KB~; ~nil~ never asks; also Settings → Sync and storage → Size limits |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
 | ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~, or a Lisp function (a name or a ~lambda~), as in ~("x" "Mine" my-fn "match")~: it is called with the match and what it writes (~princ~, ~insert~) or returns (a string, or a list of strings) is shown in an *Org Agenda* text buffer; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
@@ -678,7 +679,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-icalendar-with-timestamps~ | ~'active~ | Which timestamps in a heading's title and text become events: ~'active~, ~'inactive~, ~t~ or ~nil~ |
 | ~org-inlinetask-min-level~ | ~15~ | With ~org-inlinetask~ in ~org-modules~: the number of stars from which a headline is an inline task (see Inline tasks under Export) |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
-| ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class from the LaTeX init text: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
+| ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class the Lisp init adds to ~org-latex-classes~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a closing note. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
 | ~org-log-into-drawer~ | ~nil~ | ~t~ or a drawer name writes log items into ~:LOGBOOK:~ (any name is written as ~LOGBOOK~). ~#+STARTUP: logdrawer~ |
 | ~org-log-repeat~ | ~'time~ | ~'time~ logs a repeating task's completion and sets ~LAST_REPEAT~; ~'note~ asks for a note; ~nil~ does neither. ~#+STARTUP: logrepeat~, ~lognoterepeat~, ~nologrepeat~ |
@@ -693,6 +694,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
+| ~org-startup-truncated~ | ~t~ | ~t~ scrolls long lines of the Text view sideways; ~nil~ wraps them; also Settings → Quick Settings → *Editing* |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
 | ~org-tags-column~ | ~0~ | Where a heading's tags sit when the line is rewritten: ~0~ one space after the title, a negative number right-aligns them to that column, a positive one starts them at that column; also Settings → Editing |
@@ -710,8 +712,6 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~off~ waits as long as the browser does; also Settings → Sync and storage → Size limits |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
-| ~org-xx-latex-header~ | unset | (own) A quoted string of preamble lines added to every LaTeX export before the file's own ~#+LATEX_HEADER:~ lines. Settings → Export → LaTeX fills it for *Fix wide TOC numbers* |
-| ~org-xx-latex-init~ | unset | (own) A quoted string of Emacs Lisp for the LaTeX and Beamer exports: ~org-latex-classes~, ~org-latex-packages-alist~ and ~org-latex-src-block-backend~ with its options (see the LaTeX export), and the ~org-beamer-*~ variables (see Beamer); Settings → Export → LaTeX sets it |
 | ~org-xx-lisp-init~ | unset | (own) Emacs Lisp run like an init file: ~setq~ of any setting in this table, the ~holiday-*~ lists, capture templates, LaTeX and ODT styles, ~(load "github:file.el")~ to read more from a file (see [[#lisp-init][Lisp init]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
@@ -721,12 +721,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-size-limit-image~ | ~3MB~ | (own) An inline image above this size shows its size and a *Load* link instead; ~off~ shows every image; also Settings → Sync and storage → Size limits |
 | ~org-xx-size-limit-include~ | ~2MB~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
 | ~org-xx-size-limit-org-file~ | ~2MB~ | (own) Refuse to open an Org file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-org-file-warn~ | ~500KB~ | (own) Ask before opening an Org file above this size; ~off~ never asks; also Settings → Sync and storage → Size limits |
 | ~org-xx-size-limit-setupfile~ | ~1MB~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
-| ~org-xx-text-line-numbers~ | ~t~ | (own) Whether the Text view shows line numbers |
-| ~org-xx-text-wrap~ | ~nil~ | (own) ~t~ wraps long lines in the Text view; ~nil~ scrolls them sideways |
 | ~org-xx-windowing-threshold~ | ~400~ | (own) Above this many rows an outline or agenda draws only the rows near the screen; ~0~ always draws every row |
 
 Any other ~# key: value~ line is parsed and ignored, so new variables can be added later without changing the format.
@@ -1126,7 +1123,7 @@ Values are space-separated ~org-duration~ forms. When a list applies, *Set effor
 :CUSTOM_ID: line-numbers
 :END:
 
-As in Emacs, ~display-line-numbers-mode~ shows the file's own line numbers; ~-n~ on a source block numbers only the exported block (see [[#export-line-numbers][Line numbers and references in source blocks]]). Set ~display-line-numbers-mode~ to ~t~ (Settings → Editing) and every file line the outline shows gets a number; a wrapped line keeps one. Lines that are not drawn (the ~#+end~ line, planning and drawer lines, a folded body) are skipped. A narrowed outline counts from 1 at the narrowed heading unless ~display-line-numbers-widen~ is ~t~. The Text view shows them when this or ~org-xx-text-line-numbers~ is on.
+As in Emacs, ~display-line-numbers-mode~ shows the file's own line numbers; ~-n~ on a source block numbers only the exported block (see [[#export-line-numbers][Line numbers and references in source blocks]]). Set ~display-line-numbers-mode~ to ~t~ (Settings → Editing) and every file line the outline shows gets a number; a wrapped line keeps one. Lines that are not drawn (the ~#+end~ line, planning and drawer lines, a folded body) are skipped. A narrowed outline counts from 1 at the narrowed heading unless ~display-line-numbers-widen~ is ~t~. The Text view shows them too.
 
 ~display-line-numbers-type~ is ~t~ (numbers from the top), ~relative~ (file lines away from the current row) or ~visual~ (rows shown away from it); the current row keeps its absolute number.
 
@@ -1150,7 +1147,7 @@ Tap *View → Text* to replace the outline with one textarea holding the raw org
 
 Switching in lands near your last navigation (a search result, link or agenda item). While [[#narrowing][narrowed]], only the narrowed subtree is editable and switching back splices it into place.
 
-The text is colored (headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links, emphasis, and JavaScript or Lisp in source blocks). A row of tools sits above it: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, duplicates, deletes, moves, indents or outdents the selected lines, and has *Select all* and *Copy all*. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. The settings ~org-xx-text-line-numbers~, ~org-xx-text-wrap~ and ~org-xx-text-font-size~ are at the end of Editing in [[#settings][Settings]]; ~display-line-numbers-mode~ also turns the numbers on (see [[#line-numbers][Line numbers]]).
+The text is colored (headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links, emphasis, and JavaScript or Lisp in source blocks). A row of tools sits above it: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, duplicates, deletes, moves, indents or outdents the selected lines, and has *Select all* and *Copy all*. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. Line numbers follow ~display-line-numbers-mode~ (see [[#line-numbers][Line numbers]]), wrapping follows ~org-startup-truncated~, and ~org-xx-text-font-size~ is the size; all three are at the end of Editing in [[#settings][Settings]].
 
 *Other files*: *File → Open → All files* lists every file. One that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only; ~.md~, ~.js~, ~.json~ and ~.el~ are colored.
 
@@ -1331,6 +1328,8 @@ In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly,
 
 The Agenda, the diary, ~org-class~ and ~calendar-check-holidays~ use Emacs's ~calendar-holidays~: ~holiday-general-holidays~ (US), ~holiday-christian-holidays~, ~holiday-hebrew-holidays~, ~holiday-islamic-holidays~, ~holiday-bahai-holidays~, ~holiday-oriental-holidays~ (Chinese New Year, and with ~calendar-chinese-all-holidays-flag~ the other Chinese festivals) and ~holiday-solar-holidays~ (equinoxes, solstices, daylight saving changes), plus your own ~holiday-local-holidays~ and ~holiday-other-holidays~. The forms are Emacs's: see [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Holidays.html][Holidays]] in the Emacs manual.
 
+*Apropos variable…* (palette, ~apropos-variable~) asks for a word, a list of words (names with at least two of them) or a regexp, and lists the matching variables with their descriptions and values in a buffer named ~*Apropos*~. It covers the variables that have a place in Settings and the ones set in the Global Variables or the file's Local Variables.
+
 *List holidays…* (palette, ~list-holidays~) asks for a first and last year and lists the holidays in a new buffer, one to a line.
 
 Change them in Settings → Advanced → *Lisp init*; ~remove~ and ~delete~ take one entry out of a group. =examples/holidays.org= shows the default entries, every flag turned on, how to switch groups and single entries off, how to add each kind of entry, and a description link for every holiday. This switches the built-in groups off and keeps three days of your own:
@@ -1500,13 +1499,14 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
 - ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, headings included, put where point would be), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
-- target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path, found or created heading by heading.
+- target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path. ~file+headline~ makes its heading when the file lacks it; ~file+olp~ stops with ~Heading not found on level N: NAME~, as Emacs does.
 - The file ~"f"~ may be ~""~ for the open file. A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing.
 - ~(file+olp+datetree "f" "H" …)~ files under today's date. After the headings (which may be none, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day. ~:tree-type week~ files under the year, the ISO week (=2026-W45=) and the day; ~:tree-type month~ files directly under the month. ~file+datetree~ and ~file+weektree~ work too.
 - ~:jump-to-captured t~: after filing, go to the new text: the headings above it open and the view scrolls to it, a table row included. For a template that files into another file, that file's buffer is shown. Without it the screen stays where it was, as in Emacs.
 - ~:immediate-finish t~: file without offering the text to edit. The ~%^{…}~ questions are still asked; ~%?~ is not, so a template with no question is filed at once.
 - ~:time-prompt t~ (~file+olp+datetree~ only): the form asks for a date and time first, and the capture is filed for them: the day in the tree, ~%U~, ~%<…>~. It takes ~2026-12-01 9:05~, a date alone (00:00 of that day, or the time of day if it is today), ~+2d~, ~-1w~, ~+1m~, ~+1y~ or a weekday name (the next one); empty is now.
 - ~:clock-in t~: clock in the new entry (for ~item~, ~checkitem~, ~plain~ and ~table-line~, the heading it went under); a running clock is stopped first. ~:clock-keep t~ leaves the new clock running; otherwise it is stopped again at once, as when you finish a capture buffer in Emacs. ~:clock-resume t~ then starts the clock that was interrupted. ~:clock-keep~ wins over ~:clock-resume~.
+- ~:after-finalize FN~: a function, a ~(lambda () …)~ or a list of them, run once the entry is filed, in a buffer with no text (the capture buffer is gone, as in Emacs); an error is shown and the entry stays filed.
 - ~:prepare-finalize FN~ and ~:before-finalize FN~: a function, a ~(lambda () …)~ or a list of them, run on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed. ~:before-finalize~ runs after ~:prepare-finalize~.
 - ~:prepend t~: put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created heading of the path first among its siblings.
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
@@ -1806,7 +1806,7 @@ HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lab
 
 *** LaTeX
 
-A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out as ~org-latex-export-to-latex~ lays it out: sections, lists, tables (~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. With pictures the app can read the export is a ~.zip~ with them in ~images/~; otherwise just the ~.tex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep numbers such as 1.11.1 from running into titles. Examples with Emacs's results: =examples/export-latex.org=.
+A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out as ~org-latex-export-to-latex~ lays it out: sections, lists, tables (~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. With pictures the app can read the export is a ~.zip~ with them in ~images/~; otherwise just the ~.tex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep numbers such as 1.11.1 from running into titles, as an ~(add-to-list 'org-latex-packages-alist …)~ form in the Lisp init. Examples with Emacs's results: =examples/export-latex.org=.
 
 #+BEGIN_SRC
 #+LATEX_CLASS: report
@@ -1814,7 +1814,7 @@ A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out a
 #+OPTIONS: todo:nil tags:nil
 #+END_SRC
 
-~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file; Settings → Export → LaTeX sets class and compiler for files that do not. Its Lisp box reads, as in an init file:
+~#+LATEX_CLASS:~, ~#+LATEX_CLASS_OPTIONS:~, ~#+LATEX_COMPILER:~ and ~#+LATEX_HEADER:~ are read from the file; Settings → Export → LaTeX sets class and compiler for files that do not. The Lisp init (Settings → Advanced) reads, as in an init file:
 - ~org-latex-classes~ (an ~add-to-list~ of ~("name" "\\documentclass…" ("\\section{%s}" . "\\section*{%s}") …)~; the header may contain ~[NO-DEFAULT-PACKAGES]~, ~[PACKAGES]~ and ~[EXTRA]~) and ~org-latex-packages-alist~;
 - ~org-latex-src-block-backend~ (~'listings~ or ~'minted~; add the package to ~org-latex-packages-alist~ yourself) with ~org-latex-listings-options~, ~org-latex-listings-langs~, ~org-latex-minted-options~ and ~org-latex-minted-langs~;
 - ~org-latex-tables-centered~, ~org-latex-tables-booktabs~, ~org-latex-default-table-environment~, ~org-latex-default-table-mode~, ~org-latex-caption-above~, ~org-latex-images-centered~, ~org-latex-default-figure-position~, ~org-latex-title-command~, ~org-latex-toc-command~, ~org-latex-active-timestamp-format~, ~org-latex-inactive-timestamp-format~, ~org-latex-prefer-user-labels~ and ~org-latex-text-markup-alist~;
@@ -1831,7 +1831,7 @@ More → Export → Beamer writes a presentation as ~org-beamer-export-to-latex~
 - *Document*: ~#+BEAMER_THEME:~, ~_COLOR_THEME:~, ~_FONT_THEME:~, ~_INNER_THEME:~ and ~_OUTER_THEME:~ write the ~\use…theme~ lines; ~#+BEAMER_HEADER:~ adds preamble lines; ~#+BEAMER:~ lines go in as written; ~#+SUBTITLE:~ is ~\subtitle{}~; ~toc:t~ gives the table of contents its own frame.
 - *Text*: ~*bold*~ is ~\alert{}~; ~@@beamer:\pause@@~ is written as it stands, and ~@@beamer:<2>@@~ at the start of a list item, bold text or link description sets its overlay; ~#+ATTR_BEAMER: :overlay <+->~ and ~:options~ apply to a list.
 
-The Lisp box of Settings → Export → LaTeX reads ~org-beamer-frame-level~, ~org-beamer-theme~, ~org-beamer-frame-default-options~, ~org-beamer-outline-frame-title~, ~org-beamer-outline-frame-options~, ~org-beamer-subtitle-format~ and ~org-beamer-environments-extra~ (with the ~%a~ ~%A~ ~%o~ ~%O~ ~%h~ ~%r~ ~%H~ ~%R~ escapes).
+The Lisp init reads ~org-beamer-frame-level~, ~org-beamer-theme~, ~org-beamer-frame-default-options~, ~org-beamer-outline-frame-title~, ~org-beamer-outline-frame-options~, ~org-beamer-subtitle-format~ and ~org-beamer-environments-extra~ (with the ~%a~ ~%A~ ~%o~ ~%O~ ~%h~ ~%r~ ~%H~ ~%R~ escapes).
 
 *** Slides (HTML)
 

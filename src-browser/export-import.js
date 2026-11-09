@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
+import { initText } from './lisp-init-text.js';
 import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults, lispStringValue } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
@@ -97,11 +98,11 @@ export async function performExport(format, scope) {
       saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'slides') {
       const heading = scope && typeof scope === 'object' ? scope : null;
-      saveOut(baseName + '.html', exportToSlides(doc, heading, { images: await collectExportImages(doc, heading), defaults: { ...htmlExportDefaults(S.globalVariables), init: latexExportDefaults(S.globalVariables).init, sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
+      saveOut(baseName + '.html', exportToSlides(doc, heading, { images: await collectExportImages(doc, heading), defaults: { ...htmlExportDefaults(S.globalVariables), init: latexExportDefaults(S.globalVariables, initText.text).init, sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex' || format === 'beamer') {
       const beamer = format === 'beamer'; // a presentation: the same .tex and .zip, from the Beamer back end
       const saved = S.state.documentId && !S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.state.documentId.split('/').pop() : undefined; // {{{input-file}}} and {{{modification-time}}} need a file
-      const defaults = { ...latexExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables), file: { name: saved, mtime: new Date() } };
+      const defaults = { ...latexExportDefaults(S.globalVariables, initText.text), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables), file: { name: saved, mtime: new Date() } };
       const heading = scope && typeof scope === 'object' ? scope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);

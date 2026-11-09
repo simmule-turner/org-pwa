@@ -18,9 +18,9 @@ const INIT = `
 test('templates written in Lisp become the template objects the app runs', () => {
   const { templates, notes } = captureTemplatesFromLisp(INIT);
   assert.deepEqual(notes, []);
-  assert.deepEqual(templates[0], { key: 'a', description: 'Appointment', type: 'entry', olp: ['Calendar'], template: '* %^{Description} %^T\n%?', file: 'github:calendar.org', prepend: true });
-  assert.deepEqual(templates[1], { key: 'j', description: 'Journal', type: 'item', olp: ['Journal', 'Log'], template: '%<%H:%M> - %?', file: 'github:home.org', prepend: true });
-  assert.deepEqual(templates[2], { key: 't', description: 'Tracking', type: 'table-line', olp: ['Tracking'], template: '| @# | %<%Y-%m-%d> | %<%H%M> ||', file: 'home.org' });
+  assert.deepEqual(templates[0], { key: 'a', description: 'Appointment', type: 'entry', olp: ['Calendar'], olpMustExist: true, template: '* %^{Description} %^T\n%?', file: 'github:calendar.org', prepend: true });
+  assert.deepEqual(templates[1], { key: 'j', description: 'Journal', type: 'item', olp: ['Journal', 'Log'], olpMustExist: true, template: '%<%H:%M> - %?', file: 'github:home.org', prepend: true });
+  assert.deepEqual(templates[2], { key: 't', description: 'Tracking', type: 'table-line', olp: ['Tracking'], olpMustExist: true, template: '| @# | %<%Y-%m-%d> | %<%H%M> ||', file: 'home.org' });
 });
 
 test('keywords that only this app once had are reported as unknown, not carried out', () => {
@@ -65,13 +65,14 @@ test('blank lines and the table row are read from their keywords', () => {
   assert.deepEqual(notes, ['Capture template "b": :empty-lines needs a whole number and is ignored.', 'Capture template "b": :table-line-pos needs a string and is ignored.']);
 });
 
-test(':immediate-finish, :time-prompt, the clock keywords and :before-finalize are read; :after-finalize and :refile-targets are said to do nothing', () => {
+test(':immediate-finish, :time-prompt, the clock keywords and :before-finalize are read; :refile-targets is said to do nothing', () => {
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates
       '(("a" "A" entry (file+olp+datetree "a.org") "* %?" :immediate-finish t :time-prompt t :clock-in t :clock-keep t :clock-resume nil :before-finalize (lambda () (insert "x")))
         ("b" "B" entry (file "b.org") "* %?" :after-finalize my-after :refile-targets ((nil :maxlevel . 2)))))`);
-  assert.deepEqual(templates[0], { key: 'a', description: 'A', type: 'entry', olp: [], template: '* %?', file: 'a.org', datetree: true, immediateFinish: true, timePrompt: true, clockIn: true, clockKeep: true, clockResume: false, beforeFinalize: ['(lambda nil (insert "x"))'] });
-  assert.deepEqual(notes, ['Capture template "b": :after-finalize has no effect here.', 'Capture template "b": :refile-targets has no effect here.']);
+  assert.deepEqual(templates[0], { key: 'a', description: 'A', type: 'entry', olp: [], olpMustExist: true, template: '* %?', file: 'a.org', datetree: true, immediateFinish: true, timePrompt: true, clockIn: true, clockKeep: true, clockResume: false, beforeFinalize: ['(lambda nil (insert "x"))'] });
+  assert.deepEqual(templates[1].afterFinalize, ['my-after']);
+  assert.deepEqual(notes, ['Capture template "b": :refile-targets has no effect here.']);
   assert.deepEqual(captureTemplatesFromLisp(`(setq org-capture-templates '(("c" "C" entry (file "c.org") "* x" :time-prompt t)))`).notes, ['Capture template "c": :time-prompt has no effect without a file+olp+datetree target, as in Emacs.']);
 });
 

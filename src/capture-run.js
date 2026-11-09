@@ -181,9 +181,20 @@ export function revealAtLine(doc, line) {
  * @param {CaptureTemplate} template
  * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options
  *   `context` is what the template can read besides the clock and its answers; `place` gives the options of filing (blank lines, table).
- * @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }}  `reveal`: where the new text is on screen
+ * @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null, afterFinalizeMessage?: string } | { ok: false, message: string }}  `reveal`: where the new text is on screen; `afterFinalizeMessage`: why an :after-finalize function failed (the entry is filed all the same)
  */
 export function captureInto(doc, template, options) {
+  const result = captureIntoDoc(doc, template, options);
+  if (result.ok && template.afterFinalize?.length) {
+    // Emacs runs :after-finalize once the entry is filed, in whatever buffer was current before the capture (the capture buffer is gone), so here an empty one
+    const ran = runInBuffer('', template.afterFinalize, options.now);
+    if (!ran.ok) return { ...result, afterFinalizeMessage: ran.message };
+  }
+  return result;
+}
+
+/** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
+function captureIntoDoc(doc, template, options) {
   const { now, answers, context, place } = options;
   const prepend = template.type === 'table-line' ? false : !!template.prepend; // for a table row, :prepend is where the row goes, not where a new heading goes
   /** @type {Doc | Heading} */
@@ -208,7 +219,7 @@ export function captureInto(doc, template, options) {
     target = doc;
   } else {
     try {
-      target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend, unique: true, datetree: !!template.datetree, treeType: template.treeType }) : doc; // no path: the file's top level
+      target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend, unique: true, datetree: !!template.datetree, treeType: template.treeType, mustExist: !!template.olpMustExist }) : doc; // no path: the file's top level
     } catch (err) {
       return { ok: false, message: `Capture failed: ${/** @type {Error} */ (err).message}` };
     }

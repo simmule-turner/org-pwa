@@ -479,7 +479,7 @@ export async function setTablesFontSize(kvAdapter, fontSize) {
 /** "Global Variables" -- the app-wide, cross-file counterpart to a
  *  file's own "# Local Variables:" block (see
  *  src/global-variables.js), configured here as one setting per line
- *  in the exact same "name: value" text format. Stored as raw text
+ *  as `(setq NAME VALUE)` forms, as an init file has them. Stored as raw text
  *  (not pre-parsed) since the Settings UI is a plain editable
  *  textarea -- parsing happens on read, the same relationship
  *  Local Variables' own raw file text has to parseLocalVariables. */

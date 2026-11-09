@@ -4,7 +4,7 @@
 //
 // The textarea stays the real editor (its caret, selection, undo and input methods are the browser's own); its text is made
 // transparent and the colored copy of the same text is drawn underneath, so what is typed is never rewritten by this code.
-import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getTextFontSize, getTextLineNumbers, getTextWrap } from '../src/local-variables.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getTextFontSize, getTextWrap } from '../src/local-variables.js';
 import { displayedLineNumber } from '../src/line-numbers.js';
 import { deleteLines, duplicateLines, indentLines, lineCount, lineNumberAt, lineRange, moveLines, newlineWithIndent } from '../src/text-edit.js';
 import { locateDiaryEntry } from '../src/diary-entry.js';
@@ -239,8 +239,8 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   const drawn = { text: null, lines: null };
   const vars = () => /** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {});
 
-  /** Line numbers show when the Text view's own setting says so, or when `display-line-numbers-mode` is on. */
-  const showNumbers = () => getTextLineNumbers(vars()) || getDisplayLineNumbersMode(vars());
+  /** Line numbers show when `display-line-numbers-mode` is on. */
+  const showNumbers = () => getDisplayLineNumbersMode(vars());
 
   /** `relative` and `visual` count from the line the cursor is on, which keeps its absolute number; `t` leaves it to the CSS counter. */
   function renumber() {
@@ -265,6 +265,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     wrap.style.fontSize = `${size}px`;
     wrap.style.setProperty('--te-fs', `${size}px`);
     wrap.style.lineHeight = `${lh}px`;
+    wrap.style.setProperty('--te-lh', `${lh}px`); // a blank row is as tall as a row of text, as in the textarea over it
     wrap.style.setProperty('--te-gutter', numbers ? `calc(${digits}ch + 12px)` : '0px');
     wrap.classList.toggle('te-nums', numbers);
     gutter.style.display = numbers ? 'block' : 'none';
@@ -397,13 +398,11 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   undo.disabled = redo.disabled = !editable;
   const numbersBtn = iconButton('Line numbers', SVG.numbers, () =>
       void (async () => {
-        const shown = showNumbers();
-        await commitGlobalVariableChange('org-xx-text-line-numbers', shown ? 'nil' : 't');
-        if (shown && getDisplayLineNumbersMode(vars())) await commitGlobalVariableChange('display-line-numbers-mode', 'nil');
+        await commitGlobalVariableChange('display-line-numbers-mode', showNumbers() ? 'nil' : 't');
         numbersBtn.setAttribute('aria-pressed', String(showNumbers()));
         layout();
       })(), showNumbers());
-  const wrapBtn = iconButton('Wrap lines', SVG.wrap, () => void commitGlobalVariableChange('org-xx-text-wrap', getTextWrap(vars()) ? 'nil' : 't').then(() => (wrapBtn.setAttribute('aria-pressed', String(getTextWrap(vars()))), layout())), getTextWrap(vars()));
+  const wrapBtn = iconButton('Wrap lines', SVG.wrap, () => void commitGlobalVariableChange('org-startup-truncated', getTextWrap(vars()) ? 't' : 'nil').then(() => (wrapBtn.setAttribute('aria-pressed', String(getTextWrap(vars()))), layout())), getTextWrap(vars()));
   /** @param {number} delta */
   const resize = (delta) => () =>
     void commitGlobalVariableChange('org-xx-text-font-size', String(Math.max(9, Math.min(28, getTextFontSize(vars()) + delta)))).then(layout);

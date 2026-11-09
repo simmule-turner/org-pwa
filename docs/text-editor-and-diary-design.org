@@ -62,7 +62,7 @@ The textarea stays (native selection, IME, spelling off, the platform's own keyb
 Syntax colouring (date, ~&~, ~%%(~, comments) by drawing behind a transparent textarea. It is the most fragile piece (scroll and wrap alignment) and is not needed for the rest.
 
 ** Settings
-Three own settings, each with a toolbar button as well: ~org-xx-text-line-numbers~, ~org-xx-text-wrap~, ~org-xx-text-font-size~. Their place in Settings is your decision (see the end).
+Three settings, each with a toolbar button as well: ~display-line-numbers-mode~, ~org-startup-truncated~ (Emacs's own) and ~org-xx-text-font-size~. Their place in Settings is your decision (see the end).
 
 * Diary integration
 ** Rows know where they came from

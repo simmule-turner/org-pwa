@@ -131,13 +131,16 @@ function rowDrift(t, back, cs) {
       const rect = range.getClientRects()[0];
       if (rect) own = rect.top - base;
     }
+    const previousRowTop = previousTop;
     previousTop = own;
     const drawn = back.children[i].getBoundingClientRect().top - backTop - pad;
     if (calibration === null) calibration = drawn - own; // a glyph's box starts a little below its row's top: the same for every row
     const drift = Math.round((drawn - own - calibration) * 10) / 10;
     if (Math.abs(drift - last) >= 0.5 && steps.length < 6) {
       // the drift changed at this row: the row before it, or this one, is taller in one layer than the other
-      steps.push({ line: i + 1, driftNow: drift, change: Math.round((drift - last) * 10) / 10, start: lines[i].slice(0, 14), codes: [...lines[i].slice(0, 14)].filter((c) => (c.codePointAt(0) || 0) > 0x2000 || (c.codePointAt(0) || 0) > 0xffff).map((c) => 'U+' + (c.codePointAt(0) || 0).toString(16)).join(' ') });
+      const before = i > 0 ? lines[i - 1] : '';
+      const odd = [...new Set([...before].filter((c) => (c.codePointAt(0) || 0) > 0x7e || (c.codePointAt(0) || 0) < 0x20).map((c) => 'U+' + (c.codePointAt(0) || 0).toString(16)))].slice(0, 8).join(' ');
+      steps.push({ line: i + 1, driftNow: drift, change: Math.round((drift - last) * 10) / 10, rowBefore: { text: before.slice(0, 24), length: before.length, odd, textareaRowPx: Math.round((own - previousRowTop) * 10) / 10, layerRowPx: i > 0 ? Math.round(back.children[i - 1].getBoundingClientRect().height * 10) / 10 : 0 }, start: lines[i].slice(0, 14) });
       if (firstDrift < 0) firstDrift = i + 1;
     }
     last = drift;

@@ -3693,7 +3693,7 @@ check('capture from outside: a share URL runs the named template with the shared
   // 3b. with a w in the init, that one takes the share
   await setCaptureInit(page, `(setq org-capture-templates
   '(("n" "Shared note" entry (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")
-    ("w" "Shares" entry (file+olp "inbox.org" "Later") "* From a share\\n  %i")))`);
+    ("w" "Shares" entry (file+headline "inbox.org" "Later") "* From a share\\n  %i")))`);
   await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
   const second = await waitForFile('chosen later');
   expect(second.includes('** From a share\n  chosen later') && second.includes('* Later'), `the init's w took the share: ${JSON.stringify(second)}`);
@@ -3903,6 +3903,26 @@ check(':immediate-finish t files without offering the text to edit: the %^{...} 
   await context.close();
 });
 
+check('a file+olp target stops at a missing heading as Emacs does and files nothing, file+headline makes its heading, and :after-finalize runs after filing', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Other\n');
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("o" "Olp" entry (file+olp "" "Missing") "* One")
+    ("h" "Headline" entry (file+headline "" "Made") "* Two" :after-finalize my-after)))
+(defun my-after () (message "after"))`);
+  await runCapture(page, 'olp');
+  await page.waitForTimeout(400);
+  expect((await page.evaluate(() => document.getElementById('status')?.innerText || document.body.innerText)).includes('Heading not found on level 1: Missing'), 'the message is Emacs\'s');
+  await closeCapturePanel(page).catch(() => {});
+  expect(!(await captureDocText(page)).includes('One'), 'nothing was filed');
+  await runCapture(page, 'headline');
+  await page.waitForTimeout(500);
+  await closeCapturePanel(page).catch(() => {});
+  expect((await captureDocText(page)) === '* Other\n* Made\n** Two\n', `the heading was made: ${JSON.stringify(await captureDocText(page))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check(':time-prompt t on a date-tree template asks for the date and time, files the capture for them, and does not capture when they are not understood', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Other\n');
@@ -4016,6 +4036,44 @@ check('the keyboard debug log says whether the Text view’s coloured layer is l
   await page.keyboard.press('Control+a');
   await page.keyboard.press('Control+x');
   expect((await page.evaluate(async () => (await import('/src-browser/key-log.js')).keyLogText())).includes('selectedLength=101'), 'the cut is in the log');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('the Text view: a blank row is as tall as a row of text even when its zero-width character draws nothing, and org-startup-truncated nil wraps the lines', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* A\n\n\nbody\n\n* B\n');
+  await viewMenu(page, 'Text');
+  // a font without the zero-width space (a Chromebook's) gives the row no line box; emulate it by emptying the blank rows
+  await page.evaluate(() => document.querySelectorAll('.te-ln').forEach((r) => { if (r.textContent === '​') r.textContent = ''; }));
+  const heights = await page.evaluate(() => [...document.querySelectorAll('.te-ln')].map((r) => Math.round(r.getBoundingClientRect().height * 10) / 10));
+  const lh = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('document-text-edit-input')).lineHeight));
+  expect(heights.length >= 6 && heights.every((h) => h === lh), `every row is ${lh}px: ${JSON.stringify(heights)}`);
+  expect((await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.getElementById('document-text-edit-input')).wrap)) === 'off', 'long lines are truncated by default, as org-startup-truncated t does');
+  await page.click('button[aria-label="Wrap lines"]');
+  await page.waitForTimeout(400);
+  expect((await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.getElementById('document-text-edit-input')).wrap)) === 'soft', 'the Wrap lines button sets org-startup-truncated to nil, and the lines wrap');
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-startup-truncated'])) === 'nil', 'it is the Emacs variable that was set');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('apropos-variable asks for a pattern and lists the matching variables with their values in *Apropos*', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  await page.evaluate(async () => (await import('/src-browser/settings-quick.js')).commitGlobalVariableChange('org-log-done', "'time"));
+  await page.evaluate(async () => {
+    const { aproposVariableCommand } = await import('/src-browser/apropos-variable.js');
+    aproposVariableCommand();
+  });
+  await page.waitForSelector('#minibufferPrompt input');
+  expect((await page.locator('#minibufferPrompt').innerText()).includes('Apropos variable (word list or regexp)'), 'the prompt is Emacs\'s');
+  await page.fill('#minibufferPrompt input', 'org-log-done');
+  await page.press('#minibufferPrompt input', 'Enter');
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('*Apropos*'), null, { timeout: 8000 });
+  const text = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.getElementById('document-text-edit-input')).value);
+  expect(text.includes('org-log-done\n  User option: Log completing a TODO\n  Value: time'), `the list: ${text.slice(0, 300)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5517,8 +5575,8 @@ check('LaTeX export: "Fix wide TOC numbers" adds the tocloft lines to the saved 
   await box.waitFor({ state: 'visible', timeout: 8000 });
   await box.check();
   await page.waitForTimeout(400);
-  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-xx-latex-header'] || '');
-  expect(stored.includes('cftsubsubsecnumwidth'), `stored: ${stored.slice(0, 80)}`);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-xx-lisp-init'] || '');
+  expect(stored.includes('org-latex-packages-alist') && stored.includes('cftsubsubsecnumwidth'), `stored: ${stored.slice(0, 80)}`);
   await page.locator('[data-settings-back]').first().click().catch(() => {});
   await page.locator('[data-settings-back]').first().click().catch(() => {});
   await newDocument(page, '#+LATEX_HEADER: \\usepackage{mine}\n* One\nbody\n');
@@ -8229,11 +8287,11 @@ check('text editor and diary file: All files lists a diary, a row of the Agenda 
   expect((await page.locator('.te-back .tk-date').first().innerText()) === md, 'the date should be colored');
   expect((await page.locator('.te-back .tk-time').first().innerText()) === '10:00am', 'the time should be colored');
   expect((await page.locator('.te-back .tk-ignored').first().innerText()).startsWith('a note'), 'the ignored line should be gray');
-  expect((await page.locator('.te-wrap.te-nums').count()) === 1, 'line numbers should be on');
+  expect((await page.locator('.te-wrap.te-nums').count()) === 0, 'line numbers are off until display-line-numbers-mode is on, as in Emacs');
   await page.locator('[aria-label="Line numbers"]').click();
   await page.waitForTimeout(300);
-  expect((await page.locator('.te-wrap.te-nums').count()) === 0, 'the line numbers button should turn them off');
-  await page.locator('[aria-label="Line numbers"]').click();
+  expect((await page.locator('.te-wrap.te-nums').count()) === 1, 'the line numbers button turns them on');
+  expect((await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['display-line-numbers-mode'])) === 't', 'it sets display-line-numbers-mode');
 
   // Enter keeps the indentation, and Undo takes the new line back
   const before = await page.locator('#document-text-edit-input').inputValue();
@@ -8644,7 +8702,7 @@ check('size limits: pasting a huge text into Text view is refused, and a large o
   await openDav(page, 'p.org');
   await page.evaluate(async () => {
     const { setSizeLimits, sizeLimitsOf } = await import('/src/size-limits.js');
-    setSizeLimits(sizeLimitsOf({ 'org-xx-size-limit-org-file': '3KB', 'org-xx-size-limit-org-file-warn': '1KB' }));
+    setSizeLimits(sizeLimitsOf({ 'org-xx-size-limit-org-file': '3KB', 'large-file-warning-threshold': '1KB' }));
   });
   await viewMenu(page, 'Text');
   const paste = (text) => page.evaluate((t) => {

@@ -453,7 +453,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
       return;
     }
 
-    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}`);
+    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}${afterNote(captured)}`);
     if (template.jumpToCaptured && captured) {
       // :jump-to-captured t visits the other file's buffer, as Emacs does
       const tab = S.documentSessions.find((/** @type {any} */ x) => x.state && x.state.documentId === targetFileId);
@@ -480,9 +480,14 @@ export async function runCaptureWithAnswers(template, answers, at) {
   const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
   // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry
   if (template.jumpToCaptured) showCaptured(template, result);
-  setStatus('Captured.' + clocked);
+  setStatus('Captured.' + clocked + afterNote(result));
   afterSuccessfulCapture();
   emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: hasTarget && 'level' in target ? target : null });
+}
+
+/** What to add to the status line when an :after-finalize function failed (the entry is filed all the same). @param {{ afterFinalizeMessage?: string } | null} result */
+function afterNote(result) {
+  return result && result.afterFinalizeMessage ? ` :after-finalize failed: ${result.afterFinalizeMessage}` : '';
 }
 
 /** :clock-in t: clocks in the new entry, or the heading the new text went under. @param {import('../src/types.js').CaptureTemplate} template

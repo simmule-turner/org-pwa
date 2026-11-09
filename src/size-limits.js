@@ -26,7 +26,7 @@ export const DEFAULT_SIZE_LIMITS = Object.freeze({
 
 /** What each kind is called in a message, and the settings that hold its limits (`key` the refuse limit, `warnKey` the warn limit). */
 export const SIZE_KINDS = Object.freeze({
-  orgFile: { label: 'an Org file', key: 'org-xx-size-limit-org-file', warnKey: 'org-xx-size-limit-org-file-warn' },
+  orgFile: { label: 'an Org file', key: 'org-xx-size-limit-org-file', warnKey: 'large-file-warning-threshold' },
   image: { label: 'an inline image', key: 'org-xx-size-limit-image', warnKey: null },
   attachment: { label: 'an attachment', key: 'org-xx-size-limit-attachment', warnKey: 'org-xx-size-limit-attachment-warn' },
   bibliography: { label: 'a bibliography file', key: 'org-xx-size-limit-bibliography', warnKey: null },

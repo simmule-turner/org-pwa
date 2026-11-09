@@ -960,11 +960,6 @@ export function getDiaryMergeRows(vars) {
   return parseLispBoolean((vars || {})['org-xx-diary-merge-rows'], true);
 }
 
-/** org-xx-text-line-numbers: this app's own variable. Whether the Text view shows line numbers. Default t.
- * @param {LocalVars} vars */
-export function getTextLineNumbers(vars) {
-  return parseLispBoolean((vars || {})['org-xx-text-line-numbers'], true);
-}
 
 /** display-line-numbers-mode: Emacs's own variable. Whether the outline (and the Text view) number the file's lines. Default nil.
  * @param {LocalVars} vars */
@@ -985,10 +980,10 @@ export function getDisplayLineNumbersType(vars) {
   return raw === 'relative' || raw === 'visual' ? raw : 'absolute';
 }
 
-/** org-xx-text-wrap: this app's own variable. Whether the Text view wraps long lines. Default nil.
+/** org-startup-truncated: Emacs's own variable (default t): Org sets `truncate-lines` when it starts, so a long line runs on past the edge and is scrolled sideways. `nil` wraps long lines. In the Text view.
  * @param {LocalVars} vars */
 export function getTextWrap(vars) {
-  return parseLispBoolean((vars || {})['org-xx-text-wrap'], false);
+  return !parseLispBoolean((vars || {})['org-startup-truncated'], true);
 }
 
 /** org-xx-windowing-threshold: this app's own variable. A long outline or agenda draws only the rows near the screen once it has more rows than this; 0 never does. Default 400.

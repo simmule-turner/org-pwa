@@ -19,7 +19,7 @@ test('a paste is checked as the file it would make: fine, ask, or refuse; a repl
 });
 
 test('a paste is not limited when the Org file limit is off', () => {
-  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'off', 'org-xx-size-limit-org-file-warn': 'off' });
+  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'off', 'large-file-warning-threshold': 'off' });
   assert.deepEqual(checkPaste(1 * MB, 0, 50 * MB, 'a.org', limits), { ok: true });
 });
 

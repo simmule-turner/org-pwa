@@ -1440,7 +1440,7 @@ export function exportToLatex(doc, scope = null, { beamer = false, images = /** 
 
   const head = [
     '% Intended LaTeX compiler: ' + compiler,
-    ...spliceHeader(cls.header, classOptions, compiler, [...(defaults.header ? defaults.header.split('\n').filter((l) => l.trim() !== '') : []), ...keywordList(doc, 'LATEX_HEADER'), ...keywordList(doc, 'LATEX_HEADER_EXTRA')]),
+    ...spliceHeader(cls.header, classOptions, compiler, [...keywordList(doc, 'LATEX_HEADER'), ...keywordList(doc, 'LATEX_HEADER_EXTRA')]),
     ...(beamer ? bm.themeLines(doc, S.cfg.beamer.theme) : []),
     ...(typeof S.opts.num === 'number' && !beamer ? ['\\setcounter{secnumdepth}{' + S.opts.num + '}'] : []),
     '\\author{' + authorLine(options.author && author ? plain(author) : '', S.opts.email ? plain(keywordList(doc, 'EMAIL')[0] || '') : '') + '}',
