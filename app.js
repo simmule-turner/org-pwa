@@ -589,6 +589,7 @@ S.captureOpenedFromExtraMenu = false;
 S.captureOpenedViaGodMode = false;
 S.currentCaptureTemplates = [];
 S.capturePromptValues = [];
+S.captureTimeValue = ''; // :time-prompt: the date and time typed for the capture
 S.moreOpen = false;
 S.searchQuery = '';
 S.searchUseRegex = false; // deliberately NOT reset when the search panel closes, unlike searchQuery -- this is a mode preference, not a one-off query value

@@ -22,10 +22,10 @@ function capture(docText, rawShare, answers) {
 
 test('a share uses the Lisp init\'s template with the key w, and the built-in one when the init has none', () => {
   assert.equal(shareTemplate([]), SHARE_TEMPLATE);
-  const { templates } = captureTemplatesFromLisp(`(setq org-capture-templates '(("n" "Note" plain (file "n.org") "* %?") ("w" "Shares" entry (file+olp "inbox.org" "Later") "* %a")))`);
+  const { templates } = captureTemplatesFromLisp(`(setq org-capture-templates '(("n" "Note" entry (file "n.org") "* %?") ("w" "Shares" entry (file+olp "inbox.org" "Later") "* %a")))`);
   assert.equal(shareTemplate(templates).description, 'Shares');
   assert.equal(shareTemplate(templates.slice(0, 1)), SHARE_TEMPLATE, 'a list without a w');
-  assert.equal(SHARE_TEMPLATE.type, 'plain');
+  assert.equal(SHARE_TEMPLATE.type, 'entry');
 });
 
 test('a shared web page becomes a heading that is a link to it, titled as the page is, with when it was captured', () => {

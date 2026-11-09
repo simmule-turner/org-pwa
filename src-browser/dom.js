@@ -52,8 +52,6 @@ export const modelineBarEl = byId('modelineBar');
 
 export const modelineEl = byId('modeline');
 
-export const minibufferEl = byId('minibuffer');
-
 export const minibufferSearchEl = byId('minibufferSearch');
 
 export const navBackBtn = byId('navBackBtn');

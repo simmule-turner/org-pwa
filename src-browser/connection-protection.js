@@ -72,12 +72,6 @@ export async function ensureConnectionsUnlocked() {
   return vault.pending;
 }
 
-/** For work that runs by itself (a sync timer): true when unlocked, never asks.
- * @returns {boolean} */
-export function connectionsReadyQuietly() {
-  return !connectionsLocked();
-}
-
 /** The start of a calendar or contacts sync: true when the logins can be used. A person's own Sync asks for the passphrase; a run that
  *  starts by itself never asks and says once that it is waiting.
  * @param {boolean} manual

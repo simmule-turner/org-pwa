@@ -27,10 +27,6 @@ export function setInlineTaskLevel(level) {
   config.level = level;
 }
 
-export function getInlineTaskLevel() {
-  return config.level;
-}
-
 /**
  * The inline task level the variables ask for: `org-inlinetask-min-level` when org-inlinetask is in `org-modules` (the global variables or the
  * Lisp init) or required there; null otherwise.

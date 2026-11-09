@@ -29,7 +29,7 @@ import { placeInsertedText, sharedAnnotation } from './capture-shared.js';
 import { makeLinkString } from './link-string.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { formatTimeString } from './format-time.js';
-import { parseOrg } from './org-parser.js';
+import { parseOrg, serializeOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
 import { commitLines, fixTableFormulas, serializeTable } from './body-edit.js';
 import { findLists, listAt, renumber } from './list-edit.js';
@@ -785,12 +785,76 @@ function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
 }
 
 /**
+ * The date and time a template with :time-prompt is filed for, from what was typed, as org-read-date takes it: nothing is now, a date
+ * (2026-12-01) is for 00:00 of that day, or the time of day of `base` if it is today, a date with a time (2026-12-01 9:05) sets it, an Org timestamp is read, and +2d, -1w, +1m, +1y or a weekday name
+ * (the next one) count from `base`. Returns null for anything else.
+ * @param {string} text @param {Date} base @returns {Date | null}
+ */
+function parseTimePrompt(text, base) {
+  const date = readTimePrompt(text, base);
+  // org-capture: a date other than today with no time given is filed for 00:00 (org-extend-today-until)
+  if (date && text.trim() !== '' && !/\d{1,2}:\d\d/.test(text) && date.toDateString() !== base.toDateString()) date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/** @param {string} text @param {Date} base @returns {Date | null} */
+function readTimePrompt(text, base) {
+  const typed = text.trim().replace(/^[<[]|[>\]]$/g, '').replace(/^(\d{4}-\d{1,2}-\d{1,2})( [A-Za-z]{2,}\.?)/, '$1').trim();
+  if (typed === '') return new Date(base.getTime());
+  const abs = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d\d))?$/.exec(typed);
+  if (abs) {
+    const date = new Date(Number(abs[1]), Number(abs[2]) - 1, Number(abs[3]), abs[4] === undefined ? base.getHours() : Number(abs[4]), abs[4] === undefined ? base.getMinutes() : Number(abs[5]));
+    return date.getMonth() === Number(abs[2]) - 1 ? date : null;
+  }
+  const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(typed.slice(0, 3).toLowerCase());
+  if (day >= 0 && /^[a-z]+$/i.test(typed) && ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].some((w) => w.startsWith(typed.toLowerCase()) && typed.length >= 3)) {
+    const date = new Date(base.getTime()); // the next one, not today
+    date.setDate(date.getDate() + (((day - base.getDay() + 6) % 7) + 1));
+    return date;
+  }
+  const rel = /^([+-]?)(\d+)([dwmy])$/.exec(typed);
+  if (!rel) return null;
+  const n = (rel[1] === '-' ? -1 : 1) * Number(rel[2]);
+  const date = new Date(base.getTime());
+  if (rel[3] === 'd') date.setDate(date.getDate() + n);
+  else if (rel[3] === 'w') date.setDate(date.getDate() + 7 * n);
+  else if (rel[3] === 'm') date.setMonth(date.getMonth() + n);
+  else date.setFullYear(date.getFullYear() + n);
+  return date;
+}
+
+/** Whether `text` has a heading line, which a plain capture puts in as written. @param {string} text */
+function holdsHeading(text) {
+  return /^\*+ /m.test(text);
+}
+
+/**
+ * Files plain text that has heading lines: as written, headings and all, since Emacs does not shift their levels as it does for an entry.
+ * The place is the one a line of plain text gets, found with a stand-in line that is then replaced by the text.
+ * @param {Host} doc the file @param {Host} target @param {string} text @param {boolean} [prepend] @param {Parameters<typeof insertCapture>[4]} [opts]
+ * @returns {number} the line of the file where the text starts
+ */
+function filePlainText(doc, target, text, prepend, opts) {
+  const standIn = '@@capture-point@@';
+  fileCapture(doc, target, 'plain', standIn, prepend, opts);
+  const lines = serializeOrg(/** @type {any} */ (doc)).split('\n');
+  const at = lines.indexOf(standIn);
+  lines.splice(at, 1, ...text.split('\n'));
+  Object.assign(doc, parseOrg(lines.join('\n')));
+  return at;
+}
+
+/**
  * `insertCapture` for a whole file: the newline that ends the file is not a line of its own, so it stays at the end.
  * @param {Host} doc the file
  * @param {Host} target a heading of it, or the file itself
  * @param {string} type @param {string} expandedText @param {boolean} [prepend] @param {Parameters<typeof insertCapture>[4]} [opts]
  */
 function fileCapture(doc, target, type, expandedText, prepend, opts) {
+  if (type === 'plain' && holdsHeading(expandedText)) {
+    filePlainText(doc, target, expandedText, prepend, opts);
+    return null;
+  }
   // org starts the table of a new date-tree day, the last in its month with more of the file after it, one line down
   if (type === 'table-line' && endCreated.delete(target)) opts = { ...opts, blankBeforeTable: true };
   const ends = (/** @type {Host} */ node) => node.bodyLines.length > 0 && node.bodyLines[node.bodyLines.length - 1] === '';
@@ -918,6 +982,9 @@ function computeNonCollidingKeys(items, keyFn) {
 
 export {
   formatTime,
+  filePlainText,
+  parseTimePrompt,
+  holdsHeading,
   scanPrompts,
   expandTemplate,
   expandCaptureText,

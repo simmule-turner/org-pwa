@@ -1677,11 +1677,6 @@ export function wrapText(text, width) {
   return filled === '' ? [] : filled.split('\n');
 }
 
-/** Org's link brackets down to plain text: `[[target][description]]` reads `description (target)`. @param {string} text */
-export function stripLinksForAscii(text) {
-  return text.replace(/\[\[([^\]]+)\](?:\[([^\]]+)\])?\]/g, (_, target, description) => (description ? `${description} (${target})` : target));
-}
-
 /**
  * The element tree for an export back end built on the same tree (ox-odt): macros expanded, inline tasks folded, headlines
  * numbered, footnotes numbered, ordinals collected.  `odt` supplies the plain-text transcoder and the name of the export-snippet back end.

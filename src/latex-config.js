@@ -5,7 +5,7 @@
  * Their defaults are Org 9.6's. See lisp-read.js for the forms an init text may use.
  */
 
-import { readLisp, listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
+import { listItems, stringValue, symbolName, isNil, datum } from './lisp-read.js';
 import { runInit } from './lisp-init.js';
 import { NIL, Sym } from './elisp-data.js';
 
@@ -244,9 +244,4 @@ export function latexConfig(init) {
 /** The names of the classes an init text defines, for the Settings class list. @param {string | undefined} init */
 export function latexClassNames(init) {
   return [...new Set(latexConfig(init).classes.map((c) => c.name))].filter((n) => n !== 'beamer');
-}
-
-/** Parses an init text only to tell whether it has anything the exporter reads (for the "N set" count). @param {string | undefined} init */
-export function hasLatexInit(init) {
-  return !!init && readLisp(init).length > 0;
 }

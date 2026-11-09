@@ -41,9 +41,6 @@ export const prop = (h, key) => {
 /** The headline's environment as written (`''` when it has none). @param {Heading} h */
 export const envOf = (h) => prop(h, 'BEAMER_ENV');
 
-/** Is `env` one of these names, whatever its case? @param {string} env @param {string[]} names */
-export const isEnv = (env, names) => names.includes(env.toLowerCase());
-
 /** Does the headline stand for a column: it has a width, or its environment is `column`? @param {Heading} h */
 export const isColumn = (h) => prop(h, 'BEAMER_COL') !== '' || envOf(h).toLowerCase() === 'column';
 

@@ -1486,7 +1486,7 @@ It is a flat list in document order showing each item's keyword, title, category
 
 The palette's *Capture* command (or ~C-c c~) opens the templates of ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
 
-Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-functions.org=, =examples/capture-datetree.org=.
+Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-templates.org=, =examples/capture-datetree.org=.
 
 #+BEGIN_SRC emacs-lisp
 (add-to-list 'org-capture-templates
@@ -1499,11 +1499,15 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 *A template* is ~("key" "description" type target "text" keyword value …)~:
 
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
-- ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, read as an org fragment), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
+- ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, headings included, put where point would be), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
 - target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path, found or created heading by heading.
 - The file ~"f"~ may be ~""~ for the open file. A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing.
 - ~(file+olp+datetree "f" "H" …)~ files under today's date. After the headings (which may be none, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day. ~:tree-type week~ files under the year, the ISO week (=2026-W45=) and the day; ~:tree-type month~ files directly under the month. ~file+datetree~ and ~file+weektree~ work too.
 - ~:jump-to-captured t~: after filing, go to the new text: the headings above it open and the view scrolls to it, a table row included. For a template that files into another file, that file's buffer is shown. Without it the screen stays where it was, as in Emacs.
+- ~:immediate-finish t~: file without offering the text to edit. The ~%^{…}~ questions are still asked; ~%?~ is not, so a template with no question is filed at once.
+- ~:time-prompt t~ (~file+olp+datetree~ only): the form asks for a date and time first, and the capture is filed for them: the day in the tree, ~%U~, ~%<…>~. It takes ~2026-12-01 9:05~, a date alone (00:00 of that day, or the time of day if it is today), ~+2d~, ~-1w~, ~+1m~, ~+1y~ or a weekday name (the next one); empty is now.
+- ~:clock-in t~: clock in the new entry (for ~item~, ~checkitem~, ~plain~ and ~table-line~, the heading it went under); a running clock is stopped first. ~:clock-keep t~ leaves the new clock running; otherwise it is stopped again at once, as when you finish a capture buffer in Emacs. ~:clock-resume t~ then starts the clock that was interrupted. ~:clock-keep~ wins over ~:clock-resume~.
+- ~:prepare-finalize FN~ and ~:before-finalize FN~: a function, a ~(lambda () …)~ or a list of them, run on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed. ~:before-finalize~ runs after ~:prepare-finalize~.
 - ~:prepend t~: put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created heading of the path first among its siblings.
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
 - ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
@@ -1567,7 +1571,7 @@ A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ run
     "| | %<%Y-%m-%d> | %<%H%M> ||" :jump-to-captured t))
 #+END_SRC
 
-The row has a trailing ~||~ that leaves the 4th cell to the table's formula, and the first cell is numbered by ~$1=@#-1~. =examples/capture-functions.org= has the function (~my-tracking-target~), the formulas and the file as Emacs files it.
+The row has a trailing ~||~ that leaves the 4th cell to the table's formula, and the first cell is numbered by ~$1=@#-1~. =examples/capture-templates.org= has the function (~my-tracking-target~), the formulas and the file as Emacs files it.
 
 *** Capturing from other apps
 :PROPERTIES:

@@ -1,6 +1,6 @@
 // @ts-check
 // Extracted from app.js: capture ui.
-import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandTemplate, getCaptureFileScheme, resolveCaptureFileId, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
+import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandTemplate, getCaptureFileScheme, parseTimePrompt, resolveCaptureFileId, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { captureInto } from '../src/capture-run.js';
 import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
 import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
@@ -18,7 +18,7 @@ import { captureLispNotes, getAllCaptureTemplates as getCaptureTemplates } from 
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { openDocsAtHeading, switchToView } from './views.js';
 import { platform } from './platform.js';
-import { findRunningClockAcrossSessions } from './clock-flow.js';
+import { clockInCaptured, findRunningClockAcrossSessions } from './clock-flow.js';
 
 /** Converts org-agenda-files' own raw string value (semicolon-
  *  separated "scheme:path" entries, the same separator convention
@@ -156,13 +156,21 @@ export async function renderCapturePanel() {
 export async function openCapturePrompt(template) {
   await readClipboardIfUsed(template); // first, while the tap that chose the template still counts as a gesture
   const prompts = scanPrompts(template.template, templateContext());
-  if (prompts.length === 0) {
+  if (!prompts.some((p) => asked(template, p)) && !template.timePrompt) {
     runCaptureWithAnswers(template, []);
     return;
   }
   S.capturePromptTemplate = template;
   S.capturePromptValues = prompts.map((p) => p.default || '');
+  S.captureTimeValue = '';
   renderCapturePanel();
+}
+
+/** Whether the form asks for `prompt`. :immediate-finish t files without offering the text to edit, so the %? of the template is not asked
+ *  for; its other prompts still are, as in Emacs.
+ * @param {import('../src/types.js').CaptureTemplate} template @param {{ kind: string, prompt: string }} prompt */
+function asked(template, prompt) {
+  return !(template.immediateFinish && prompt.kind === 'text' && prompt.prompt === 'Text');
 }
 
 /** What a template can read besides the clock and its own answers: shared-in content, the clipboard, the running
@@ -208,7 +216,7 @@ async function readClipboardIfUsed(template) {
 export function renderCapturePromptForm() {
   const template = /** @type {import('../src/types.js').CaptureTemplate} */ (S.capturePromptTemplate);
   const prompts = scanPrompts(template.template, templateContext());
-  const previewNow = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
+  const previewBase = new Date(); // captured once, not per-keystroke, so the displayed time doesn't visibly tick while typing
 
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
@@ -237,7 +245,7 @@ export function renderCapturePromptForm() {
   capturePanelBox.appendChild(preview);
 
   function updatePreview() {
-    const context = { ...templateContext(), now: previewNow, promptAnswers: S.capturePromptValues };
+    const context = { ...templateContext(), now: (template.timePrompt && parseTimePrompt(S.captureTimeValue, previewBase)) || previewBase, promptAnswers: S.capturePromptValues };
     try {
       preview.textContent = expandTemplate(template.template, context).text;
     } catch (err) {
@@ -247,7 +255,43 @@ export function renderCapturePromptForm() {
   updatePreview();
 
   /** @type {HTMLInputElement[]} */ const promptInputs = [];
+  /** @type {Map<HTMLInputElement, number>} the prompt each field answers; the time field answers none */ const promptOf = new Map();
+  if (template.timePrompt) {
+    // :time-prompt: the date and time the capture is filed for (the date tree, %t, %U, %<...>)
+    const field = document.createElement('div');
+    field.style.marginBottom = '10px';
+    const label = document.createElement('div');
+    label.style.fontSize = '13px';
+    label.style.marginBottom = '3px';
+    label.textContent = 'Date and time for the captured entry';
+    field.appendChild(label);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = S.captureTimeValue;
+    input.placeholder = 'now; 2026-12-01 9:05; +2d; fri';
+    input.setAttribute('data-capture-time', '');
+    input.style.cssText = 'width:100%;box-sizing:border-box;font-size:15px;padding:8px 10px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg);color:var(--fg)';
+    input.addEventListener('input', () => {
+      S.captureTimeValue = input.value;
+      updatePreview();
+    });
+    field.appendChild(input);
+    const pickerBtn = document.createElement('button');
+    pickerBtn.textContent = '\ud83d\udcc5 Pick date & time';
+    pickerBtn.style.cssText = 'margin-top:4px;font-size:13px;padding:6px 10px';
+    pickerBtn.onclick = async () => {
+      const result = await openTimestampPickerPopup({ active: false, hasTime: true });
+      if (result === null) return;
+      input.value = result;
+      S.captureTimeValue = result;
+      updatePreview();
+    };
+    field.appendChild(pickerBtn);
+    capturePanelBox.appendChild(field);
+    promptInputs.push(input);
+  }
   prompts.forEach((p, i) => {
+    if (!asked(template, p)) return;
     const field = document.createElement('div');
     field.style.marginBottom = '10px';
 
@@ -274,6 +318,7 @@ export function renderCapturePromptForm() {
     });
     field.appendChild(input);
     promptInputs.push(input);
+    promptOf.set(input, i);
 
     if (p.timestamp) {
       const pickerBtn = document.createElement('button');
@@ -301,8 +346,8 @@ export function renderCapturePromptForm() {
     }
 
     capturePanelBox.appendChild(field);
-    if (i === 0) input.focus();
   });
+  promptInputs[0]?.focus();
 
   const row = document.createElement('div');
   row.className = 'panel-row';
@@ -320,7 +365,11 @@ export function renderCapturePromptForm() {
   row.appendChild(
     menuButton('Reset', () => {
       S.capturePromptValues = prompts.map((p) => p.default || '');
-      promptInputs.forEach((input, i) => (input.value = S.capturePromptValues[i]));
+      S.captureTimeValue = '';
+      promptInputs.forEach((input) => {
+        const at = promptOf.get(input);
+        input.value = at === undefined ? '' : S.capturePromptValues[at];
+      });
       updatePreview();
       promptInputs[0]?.focus();
     })
@@ -328,7 +377,15 @@ export function renderCapturePromptForm() {
   row.appendChild(
     menuButton('OK', () => {
       const answers = S.capturePromptValues.slice();
-      runCaptureWithAnswers(template, answers);
+      let at;
+      if (template.timePrompt) {
+        at = parseTimePrompt(S.captureTimeValue, new Date()) ?? undefined;
+        if (!at) {
+          setStatus('Can\u2019t capture: the date and time were not understood. Try 2026-12-01 9:05, +2d or fri.');
+          return;
+        }
+      }
+      runCaptureWithAnswers(template, answers, at);
     })
   );
   capturePanelBox.appendChild(row);
@@ -337,8 +394,9 @@ export function renderCapturePromptForm() {
 /**
  * @param {import('../src/types.js').CaptureTemplate} template
  * @param {string[]} [answers]
+ * @param {Date} [at] the date and time asked for by :time-prompt
  */
-export async function runCaptureWithAnswers(template, answers) {
+export async function runCaptureWithAnswers(template, answers, at) {
   if (S.currentView === 'text') {
     // Same reasoning as search's own text-mode guard above: leaving text
     // mode reparses the document into new objects, so do it now, before
@@ -346,7 +404,7 @@ export async function runCaptureWithAnswers(template, answers) {
     switchToView('org');
   }
 
-  const now = new Date();
+  const now = at ?? new Date();
   const rawFile = String(template.file || '').trim();
   if (rawFile) {
     const { scheme } = getCaptureFileScheme(rawFile);
@@ -374,6 +432,7 @@ export async function runCaptureWithAnswers(template, answers) {
     // buffer just because a template's target is elsewhere.
     setStatus(`Capturing to ${targetFileId}\u2026`);
     /** @type {any} */ let captured = null;
+    let clocked = '';
     const { ok } = await writeToOtherFile(targetFileId, {
       label: 'capture',
       historyLabel: `Captured: ${template.description}`,
@@ -385,6 +444,7 @@ export async function runCaptureWithAnswers(template, answers) {
           return null;
         }
         captured = result;
+        clocked = clockCapturedEntry(template, result, doc);
         return true;
       },
     });
@@ -393,7 +453,7 @@ export async function runCaptureWithAnswers(template, answers) {
       return;
     }
 
-    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.`);
+    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}`);
     if (template.jumpToCaptured && captured) {
       // :jump-to-captured t visits the other file's buffer, as Emacs does
       const tab = S.documentSessions.find((/** @type {any} */ x) => x.state && x.state.documentId === targetFileId);
@@ -414,14 +474,24 @@ export async function runCaptureWithAnswers(template, answers) {
     return;
   }
   const { target } = result;
+  const clocked = clockCapturedEntry(template, result, S.state.doc);
   commitAndRender(`Captured: ${template.description}`);
 
   const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
   // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry
   if (template.jumpToCaptured) showCaptured(template, result);
-  setStatus('Captured.');
+  setStatus('Captured.' + clocked);
   afterSuccessfulCapture();
   emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: hasTarget && 'level' in target ? target : null });
+}
+
+/** :clock-in t: clocks in the new entry, or the heading the new text went under. @param {import('../src/types.js').CaptureTemplate} template
+ * @param {{ target: any, placed: any }} result @param {import('../src/types.js').Doc} doc @returns {string} what to add to the status line */
+function clockCapturedEntry(template, result, doc) {
+  if (!template.clockIn) return '';
+  const heading = result.placed && 'level' in result.placed ? result.placed : 'level' in result.target ? result.target : null;
+  if (!heading) return ' There is no heading to clock in.';
+  return clockInCaptured(heading, template, new Date(), doc);
 }
 
 /** Goes to what a capture just filed (:jump-to-captured t): the headings above it are opened and it is scrolled to, a table row included.

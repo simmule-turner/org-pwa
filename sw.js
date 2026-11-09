@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v664';
+const CACHE_NAME = 'org-pwa-shell-v665';
 
 const SHELL_FILES = [
   './',
@@ -99,6 +99,7 @@ const SHELL_FILES = [
   './src/calendar-mirror.js',
   './src/contacts-mirror.js',
   './src/capture-shared.js',
+  './src/capture-clock.js',
   './src/capture-lisp.js',
   './src/capture-datetree.js',
   './src/capture-template.js',
@@ -215,7 +216,6 @@ const SHELL_FILES = [
   './src-browser/footnotes-ui.js',
   './src-browser/remote-gate.js',
   './src-browser/setupfile.js',
-  './src/export-links.js',
   './src/export-odt.js',
   './src/ox-odt.js',
   './src/odt-assets.js',

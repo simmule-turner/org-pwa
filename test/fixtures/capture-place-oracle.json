@@ -80,6 +80,34 @@
   },
   {
    "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\nbody\n** Deep\nbody\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {},
+   "emacs": "a\n\n* Z\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\n",
    "type": "item",
    "template": "new",
    "olp": [
@@ -241,6 +269,40 @@
     "prepend": true
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\ntext\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n** Deep\nbody\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* X\nbody\na\n\n* Z\n"
   },
   {
    "init": "* Tr\n",
@@ -419,6 +481,40 @@
     "emptyLines": 1
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n\n* X\nbody\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\nbody\n\n** Deep\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "a\n\n* Z\n\n* X\nbody\n\n"
   },
   {
    "init": "* Tr\n",
@@ -608,6 +704,43 @@
   },
   {
    "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n* X\nbody\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** Deep\nbody\n\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "\n* X\nbody\n\na\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
    "type": "item",
    "template": "new",
    "olp": [
@@ -790,6 +923,40 @@
     "emptyLines": 2
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\n\ntext\n\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\n\n\n* X\nbody\n\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "* Tr\nbody\n\n\n** Deep\nbody\n\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLines": 2
+   },
+   "emacs": "a\n\n* Z\n\n\n* X\nbody\n\n\n"
   },
   {
    "init": "* Tr\n",
@@ -979,6 +1146,43 @@
   },
   {
    "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n* X\nbody\n\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** Deep\nbody\n\n\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLines": 2,
+    "prepend": true
+   },
+   "emacs": "\n\n* X\nbody\n\n\na\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
    "type": "item",
    "template": "new",
    "olp": [
@@ -1161,6 +1365,40 @@
     "emptyLinesBefore": 2
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\n\n\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "* Tr\nbody\n\n\n** Deep\nbody\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 2
+   },
+   "emacs": "a\n\n* Z\n\n\n* X\nbody\n"
   },
   {
    "init": "* Tr\n",
@@ -1350,6 +1588,43 @@
   },
   {
    "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n\n** Deep\nbody\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 2,
+    "prepend": true
+   },
+   "emacs": "\n\n* X\nbody\na\n\n* Z\n"
+  },
+  {
+   "init": "* Tr\n",
    "type": "item",
    "template": "new",
    "olp": [
@@ -1532,6 +1807,40 @@
     "emptyLinesAfter": 1
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\ntext\n\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\n* X\nbody\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "* Tr\nbody\n** Deep\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesAfter": 1
+   },
+   "emacs": "a\n\n* Z\n* X\nbody\n\n"
   },
   {
    "init": "* Tr\n",
@@ -1718,6 +2027,43 @@
     "prepend": true
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\ntext\n\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n* X\nbody\n\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n** Deep\nbody\n\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesAfter": 1,
+    "prepend": true
+   },
+   "emacs": "* X\nbody\n\na\n\n* Z\n"
   },
   {
    "init": "* Tr\n",
@@ -1911,6 +2257,43 @@
     "emptyLinesAfter": 0
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n\ntext\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\n\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "* Tr\nbody\n\n** Deep\nbody\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0
+   },
+   "emacs": "a\n\n* Z\n\n* X\nbody\n"
   },
   {
    "init": "* Tr\n",
@@ -2112,6 +2495,46 @@
     "prepend": true
    },
    "emacs": "* Tr\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\nbody\n** A\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n* X\nbody\n"
+  },
+  {
+   "init": "* Tr\nbody\n\n** A\nabody\n\n* Z\n",
+   "type": "plain",
+   "template": "** Deep\nbody",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "* Tr\n\n** Deep\nbody\nbody\n\n** A\nabody\n\n* Z\n"
+  },
+  {
+   "init": "a\n\n* Z\n",
+   "type": "plain",
+   "template": "* X\nbody",
+   "olp": [],
+   "opts": {
+    "emptyLinesBefore": 1,
+    "emptyLinesAfter": 0,
+    "prepend": true
+   },
+   "emacs": "\n* X\nbody\na\n\n* Z\n"
   },
   {
    "init": "* Tr\n",

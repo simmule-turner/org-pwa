@@ -96,7 +96,7 @@ function launchFromShare(payload) {
 const SHARE_TEMPLATE = {
   key: 'w',
   description: 'Web page or text',
-  type: 'plain',
+  type: 'entry',
   olp: ['Inbox'],
   template: '* %a%^{Title (leave blank for a web page)}\n:PROPERTIES:\n:CREATED: %U\n:END:\n  %i\n  %?',
   emptyLines: 1,

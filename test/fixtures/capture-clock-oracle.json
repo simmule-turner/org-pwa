@@ -1,0 +1,469 @@
+{
+ "emacs": "GNU Emacs 29.3",
+ "cases": [
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": false,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": true,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n** TODO hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": false,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "item",
+   "text": "- hi",
+   "previous": true,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": false,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "plain",
+   "text": "hi",
+   "previous": true,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\nhi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": false,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": "",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-in t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-in t :clock-keep t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "checkitem",
+   "text": "- [ ] hi",
+   "previous": true,
+   "flags": ":clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\nbody\n- [ ] hi\n* Work\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": "Inbox",
+   "flags": ":clock-in t :clock-resume t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\n* Work\n"
+  },
+  {
+   "type": "entry",
+   "text": "* TODO hi",
+   "previous": "Inbox",
+   "flags": ":clock-in t :clock-keep t",
+   "init": "* Inbox\nbody\n* Work\n",
+   "emacs": "* Inbox\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]--[2026-11-08 Sun 21:22] =>  0:00\n:END:\nbody\n** TODO hi\n:LOGBOOK:\nCLOCK: [2026-11-08 Sun 21:22]\n:END:\n* Work\n"
+  }
+ ]
+}

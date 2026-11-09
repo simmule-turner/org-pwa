@@ -59,10 +59,20 @@ test('blank lines and the table row are read from their keywords', () => {
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates
       '(("t" "Row" table-line (file+headline "t.org" "Log") "| @# | %U |"
-         :empty-lines 1 :empty-lines-before 2 :empty-lines-after 0 :table-line-pos "I+1" :immediate-finish t)
+         :empty-lines 1 :empty-lines-before 2 :empty-lines-after 0 :table-line-pos "I+1" :unnarrowed t)
         ("b" "Bad" entry (file "b.org") "* %?" :empty-lines "x" :table-line-pos 3)))`);
   assert.deepEqual(templates[0], { key: 't', description: 'Row', type: 'table-line', olp: ['Log'], template: '| @# | %U |', file: 't.org', emptyLines: 1, emptyLinesBefore: 2, emptyLinesAfter: 0, tableLinePos: 'I+1' });
   assert.deepEqual(notes, ['Capture template "b": :empty-lines needs a whole number and is ignored.', 'Capture template "b": :table-line-pos needs a string and is ignored.']);
+});
+
+test(':immediate-finish, :time-prompt, the clock keywords and :before-finalize are read; :after-finalize and :refile-targets are said to do nothing', () => {
+  const { templates, notes } = captureTemplatesFromLisp(`
+    (setq org-capture-templates
+      '(("a" "A" entry (file+olp+datetree "a.org") "* %?" :immediate-finish t :time-prompt t :clock-in t :clock-keep t :clock-resume nil :before-finalize (lambda () (insert "x")))
+        ("b" "B" entry (file "b.org") "* %?" :after-finalize my-after :refile-targets ((nil :maxlevel . 2)))))`);
+  assert.deepEqual(templates[0], { key: 'a', description: 'A', type: 'entry', olp: [], template: '* %?', file: 'a.org', datetree: true, immediateFinish: true, timePrompt: true, clockIn: true, clockKeep: true, clockResume: false, beforeFinalize: ['(lambda nil (insert "x"))'] });
+  assert.deepEqual(notes, ['Capture template "b": :after-finalize has no effect here.', 'Capture template "b": :refile-targets has no effect here.']);
+  assert.deepEqual(captureTemplatesFromLisp(`(setq org-capture-templates '(("c" "C" entry (file "c.org") "* x" :time-prompt t)))`).notes, ['Capture template "c": :time-prompt has no effect without a file+olp+datetree target, as in Emacs.']);
 });
 
 test('a template written in a file the init loads is read, and one in the init itself wins over it', async () => {

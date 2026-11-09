@@ -15,9 +15,11 @@ import { print } from './elisp-data.js';
 
 const TYPES = new Set(['entry', 'item', 'checkitem', 'table-line', 'plain']);
 /** Keywords that only change how Emacs shows the capture buffer; nothing to do here. */
-const QUIET = new Set([':immediate-finish', ':unnarrowed', ':kill-buffer', ':no-save', ':hook']);
+const QUIET = new Set([':unnarrowed', ':kill-buffer', ':no-save', ':hook']);
 /** Keywords that have no effect here. */
-const UNSUPPORTED = new Set([':before-finalize', ':after-finalize', ':clock-in', ':clock-keep', ':clock-resume', ':refile-targets', ':time-prompt']);
+const UNSUPPORTED = new Set([':after-finalize', ':refile-targets']);
+/** Emacs keywords that are on or off, with the field they set. */
+const FLAGS = /** @type {Record<string, string>} */ ({ ':immediate-finish': 'immediateFinish', ':time-prompt': 'timePrompt', ':clock-in': 'clockIn', ':clock-keep': 'clockKeep', ':clock-resume': 'clockResume' });
 /** Emacs keywords that take a count of blank lines or a position, with the field they set. */
 const EMACS_OPTIONS = /** @type {Record<string, [string, 'count' | 'string']>} */ ({
   ':empty-lines': ['emptyLines', 'count'],
@@ -125,10 +127,13 @@ function readEntry(entry, notes) {
     if (!name || !name.startsWith(':')) continue;
     if (name === ':prepend') out.prepend = !isNil(value);
     else if (name === ':jump-to-captured') out.jumpToCaptured = !isNil(value);
-    else if (name === ':prepare-finalize') {
+    else if (name === ':time-prompt' && !target.datetree) notes.push(`Capture template "${key}": :time-prompt has no effect without a file+olp+datetree target, as in Emacs.`);
+    else if (FLAGS[name]) out[FLAGS[name]] = !isNil(value);
+    else if (name === ':prepare-finalize' || name === ':before-finalize') {
       const fns = functionTexts(value);
-      if (fns === null) notes.push(`Capture template "${key}": :prepare-finalize needs a function or a list of functions and is ignored.`);
-      else if (fns.length) out.prepareFinalize = fns;
+      const field = name === ':prepare-finalize' ? 'prepareFinalize' : 'beforeFinalize';
+      if (fns === null) notes.push(`Capture template "${key}": ${name} needs a function or a list of functions and is ignored.`);
+      else if (fns.length) out[field] = fns;
     }
     else if (name === ':tree-type') {
       const kind = symbolName(value);

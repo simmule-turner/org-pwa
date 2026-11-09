@@ -50,13 +50,6 @@ export function landInTextView(landing, target = /** @type {HTMLTextAreaElement 
   return true;
 }
 
-/** Redraws the colors and line numbers after the text was changed from code (a replace) rather than typed. @param {HTMLTextAreaElement} textarea */
-export function refreshTextEditor(textarea) {
-  noteKeyLog('editor text refreshed');
-  const refresh = refreshers.get(textarea);
-  if (refresh) refresh();
-}
-
 /** Makes an edit as a typed one would be, so the browser's undo can take it back; the selection ends at selStart..selEnd.
  * @param {HTMLTextAreaElement} textarea
  * @param {{ from: number, to: number, insert: string, selStart: number, selEnd: number }} edit

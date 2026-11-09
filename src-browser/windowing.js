@@ -309,12 +309,6 @@ export function scrollToRow(target, options = { block: 'nearest' }) {
   return el;
 }
 
-/** What is drawn, for tests and the status line: the rows in the DOM and the rows in the list. */
-export function windowStats() {
-  const m = live.mount;
-  return m ? { drawn: m.els.size, total: m.items.length, ranges: m.ranges.length } : null;
-}
-
 /** The key of every row of the windowed list, in order, or null when no list is windowed. */
 export function windowItemKeys() {
   const m = live.mount;

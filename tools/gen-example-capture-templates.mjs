@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Writes examples/capture-functions.org: capture templates that use Lisp functions (a target function, :prepare-finalize), each with the
- * file before and the file Emacs 29.3 leaves after org-capture files it. test/example-capture-functions.test.js holds the app to them.
- *   node tools/gen-example-capture-functions.mjs   (needs emacs on the PATH)
+ * Writes examples/capture-templates.org: capture templates, among them ones that use Lisp functions (a target function, :prepare-finalize), each with the
+ * file before and the file Emacs 29.3 leaves after org-capture files it. test/example-capture-templates.test.js holds the app to them.
+ *   node tools/gen-example-capture-templates.mjs   (needs emacs on the PATH)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -177,6 +177,39 @@ export const CASES = [
     before: '* New\n** existing\n',
   },
   {
+    title: 'A capture for another day', key: 'd', file: 'journal.org', at: [2026, 11, 7, 18, 30],
+    about: ['=:time-prompt t= asks for a date and time first, and files the capture for it: the date tree, =%U= and =%<...>= use the answer. Emacs asks only for a =file+olp+datetree= target, with =org-read-date=; the app shows a Date and time field, which takes 2026-11-09 14:30, a date alone, =+2d=, =-1w= or a weekday name such as =fri=. Here the answer is 2026-11-09 14:30.'],
+    init: `(add-to-list 'org-capture-templates
+  '("d" "Another day" entry (file+olp+datetree "journal.org") "* %<%H:%M> %?\\n%U" :time-prompt t :empty-lines 0))`,
+    answers: { date: '2026-11-09 14:30' }, typed: 'Call back', free: true,
+    before: '* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n',
+  },
+  {
+    title: 'A capture for another day, without a time', key: 'd', file: 'journal.org', at: [2026, 11, 7, 18, 30],
+    about: ['When the answer has a date but no time, and the date is not today, the capture is filed for 00:00 of that day. For today the time of day is kept. Here the answer is 2026-11-10.'],
+    init: `(add-to-list 'org-capture-templates
+  '("d" "Another day" entry (file+olp+datetree "journal.org") "* %<%H:%M> %?\\n%U" :time-prompt t :empty-lines 0))`,
+    answers: { date: '2026-11-10' }, typed: 'Pay rent', free: true,
+    before: '* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n',
+  },
+  {
+    title: 'File at once', key: 't', file: 'inbox.org', at: [2026, 11, 7, 18, 30],
+    about: ['=:immediate-finish t= files the capture without offering the text to edit. The questions (=%^{...}=) are still asked; the place of =%?= is left empty. Without the keyword the app would also show a Text field for it.'],
+    init: `(add-to-list 'org-capture-templates
+  '("t" "Task" entry (file+headline "inbox.org" "Inbox") "* TODO %^{What}\\n:PROPERTIES:\\n:CREATED: %U\\n:END:\\n%?" :immediate-finish t))`,
+    answers: { What: 'Water the plants' },
+    before: '* Inbox\n** Earlier\n',
+  },
+  {
+    title: 'A function after the text is filed', key: 's', file: 'inbox.org', at: [2026, 11, 7, 18, 30],
+    about: ['=:before-finalize= names a function (or a lambda, or a list of them) that runs once the capture is filed, before it is saved. In Emacs it sees the whole file with point on the new entry; in the app it runs on the text of the capture, as =:prepare-finalize= does, after it. This one changes the keyword.'],
+    init: `(add-to-list 'org-capture-templates
+  '("s" "Standup" entry (file+headline "inbox.org" "Inbox") "* TODO Standup with %^{Who}"
+    :before-finalize (lambda () (goto-char (point-min)) (re-search-forward "TODO") (replace-match "NEXT"))))`,
+    answers: { Who: 'Sam' },
+    before: '* Inbox\n** Earlier\n',
+  },
+  {
     title: 'Tracking', key: 't', file: 'home.org', at: [2026, 11, 7, 18, 30], runs: 2, warm: [2026, 10, 31, 8, 0],
     about: ['A =table-line= template whose target function finds or makes the headings =Bag=, =Health=, =Tracking= and the current month, puts the new month first, and gives it a plot line, a table and the formulas. The row is filed into that table, the formulas are worked out again, and =:jump-to-captured t= opens the table and scrolls to the new row. The file already has October; two rows are captured in November.',
       'Emacs does not expand =@#= in a template, so the first column is a formula, =$1=@#-1= (the header row counts as a row). Emacs rejects a =#+TBLFM= line that defines =$4== twice ("Double definition"), so one formula gives the hour column.'],
@@ -193,12 +226,22 @@ const el = (dir) => `
 (defvar my-date "2026-11-09 14:30")
 (defun my-ans (p &rest _) (or (cdr (cl-find-if (lambda (a) (string-match-p (regexp-quote (car a)) p)) my-answers)) ""))
 (defvar org-time-was-given) (defvar org-end-time-was-given)
-(defun my-read-date (&rest args) (setq org-time-was-given t org-end-time-was-given nil) (org-time-string-to-time my-date))
+(defvar my-now nil)
+(defun my-read-date (&rest args)
+  ;; like org-read-date: a date alone has the time of day of now, and says no time was given
+  (let ((has-time (string-match-p " [0-9]+:[0-9]+" my-date)))
+    (setq org-time-was-given (and has-time t) org-end-time-was-given nil)
+    (if has-time (org-time-string-to-time my-date)
+      (let ((d (decode-time (org-time-string-to-time my-date))) (n (decode-time my-now)))
+        (encode-time (list 0 (nth 1 n) (nth 2 n) (nth 3 d) (nth 4 d) (nth 5 d) nil -1 nil))))))
+(advice-add 'org-today :around (lambda (f) (if my-now (time-to-days my-now) (funcall f))))
+(advice-add 'org-current-time :around (lambda (f) (or my-now (funcall f))))
 (advice-add 'format-time-string :filter-args
-  (lambda (args) (list (car args) (or (nth 1 args) org-overriding-default-time) (nth 2 args))))
-(defun run-case (init steps file before at runs warm answers shared)
+  (lambda (args) (list (car args) (or (nth 1 args) org-overriding-default-time my-now) (nth 2 args))))
+(defun run-case (init steps file before at runs warm answers shared free)
   (let* ((org-capture-templates nil)
          (my-answers answers)
+         (my-date (or (cdr (assoc "date" answers)) my-date))
          (forms (with-temp-buffer (insert init) (goto-char (point-min)) (let (r) (condition-case nil (while t (push (read (current-buffer)) r)) (end-of-file nil)) (nreverse r)))))
     (with-temp-file file (insert before))
     (dolist (f forms) (eval f t))
@@ -211,12 +254,14 @@ const el = (dir) => `
           (progn
             (dolist (when (append (and warm (list warm)) (make-list runs at)))
               (dolist (step steps)
-                (let ((org-overriding-default-time (encode-time (list 0 (nth 4 when) (nth 3 when) (nth 2 when) (nth 1 when) (nth 0 when) nil -1 nil)))
+                (let* ((my-now (encode-time (list 0 (nth 4 when) (nth 3 when) (nth 2 when) (nth 1 when) (nth 0 when) nil -1 nil)))
+                      (org-overriding-default-time (if free nil my-now))
                       (org-capture-link-is-already-stored (and shared t))
                       (org-store-link-plist (and shared (list :annotation (nth 0 shared)))))
                   (org-capture-string (nth 1 shared) (car step))
-                  (unless (string= (cdr step) "") (insert (cdr step)))
-                  (org-capture-finalize))))
+                  (when (bound-and-true-p org-capture-mode)
+                    (unless (string= (cdr step) "") (insert (cdr step)))
+                    (org-capture-finalize)))))
             (with-current-buffer (find-buffer-visiting file)
               (prog1 (substring-no-properties (buffer-string)) (set-buffer-modified-p nil))))
         (error (concat "ERROR " (error-message-string err)))))))
@@ -227,7 +272,7 @@ const el = (dir) => `
     const answers = Object.entries(c.answers || {}).map(([k, v]) => `(cons ${q(k)} ${q(v)})`).join(' ');
     const steps = (c.steps || [{ key: c.key, typed: c.typed ?? '' }]).map((st) => `(cons ${q(st.key)} ${q(st.typed)})`).join(' ');
     const shared = c.shared ? `(list ${q(annotation(c.shared))} ${q(c.shared.text || '')})` : 'nil';
-    return `(push (list ${q(c.key)} (run-case ${q(init)} (list ${steps}) ${q(file)} ${q(c.before)} '(${c.at.join(' ')}) ${c.runs ?? 1} ${c.warm ? `'(${c.warm.join(' ')})` : 'nil'} (list ${answers}) ${shared})) out)`;
+    return `(push (list ${q(c.key)} (run-case ${q(init)} (list ${steps}) ${q(file)} ${q(c.before)} '(${c.at.join(' ')}) ${c.runs ?? 1} ${c.warm ? `'(${c.warm.join(' ')})` : 'nil'} (list ${answers}) ${shared} ${c.free ? 't' : 'nil'})) out)`;
   }).join('\n  ')}
   (princ (json-encode (vconcat (mapcar (lambda (x) (cadr x)) (nreverse out))))))
 `;
@@ -244,10 +289,10 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   const esc = (s) => s.replace(/^(\*|#\+)/gm, ',$1').replace(/\n$/, '');
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const pad = (n) => String(n).padStart(2, '0');
-  let out = `#+TITLE: Capture with Lisp functions
+  let out = `#+TITLE: Capture templates
 #+STARTUP: showall
 
-Capture templates that use a function: the templates of the Lisp init (=org-xx-lisp-init=, Settings > Advanced) beyond a fixed place. Each section shows the file before, the Lisp to copy into the init, and the file after org-capture files it. The results are what Emacs 29.3 (Org 9.6.15) produced, and a test holds the app to them.
+Capture templates for the Lisp init (=org-xx-lisp-init=, Settings > Advanced), the form Emacs reads, and what they do beyond a fixed place. Each section shows the file before, the Lisp to copy into the init, and the file after org-capture files it. The results are what Emacs 29.3 (Org 9.6.15) produced, and a test holds the app to them.
 
 Two keywords make this possible: =(file+function "file.org" FUNCTION)= as a target, and =:prepare-finalize FUNCTION=. A function is a name, a =(lambda () ...)=, and for =:prepare-finalize= also a list of them; it runs in a text buffer as Emacs's (=point=, =re-search-forward=, =insert=, =flush-lines= ...).
 
@@ -258,9 +303,24 @@ Two keywords make this possible: =(file+function "file.org" FUNCTION)= as a targ
     const answers = Object.entries(c.answers || {}).map(([k, v]) => `- ${k}: ${v}`).join('\n');
     out += `* ${c.title}\n${c.about.join('\n\n')}\n\nCaptured on ${day}${c.runs > 1 ? `, ${c.runs} times` : ''}${c.warm ? `, after one capture on ${c.warm[0]}-${pad(c.warm[1])}-${pad(c.warm[2])}` : ''}.${c.steps ? `\n\nTemplates captured, in order: ${c.steps.map((st) => st.key).join(', ')}.` : ''}\n\nIn the Lisp init:\n#+BEGIN_SRC emacs-lisp\n${c.init}\n#+END_SRC\n\n${c.shared ? `Shared into the app:\n#+BEGIN_SRC text\n${Object.entries(c.shared).map(([k, v]) => `- ${k}: ${v.replace(/\n/g, '\n    ')}`).join('\n')}\n#+END_SRC\n\n` : ''}${answers ? `Answers to the prompts:\n#+BEGIN_SRC text\n${answers}\n#+END_SRC\n\n` : ''}${c.typed || c.steps ? `Typed at the cursor (=%?=):\n#+BEGIN_SRC text\n${(c.steps || [{ key: c.key, typed: c.typed }]).map((st) => `- ${st.key}: ${st.typed}`).join('\n')}\n#+END_SRC\n\n` : ''}Before, ${c.file}:\n#+BEGIN_SRC org\n${esc(c.before)}\n#+END_SRC\n\nAfter, ${c.file}:\n#+BEGIN_SRC org\n${esc(outs[i])}\n#+END_SRC\n\n`;
   });
-  out += `* Where the app differs from Emacs
-The app makes missing headings of a =file+olp= target, where Emacs stops with an error. A target function may only insert whole lines; one that changes or deletes a line is refused with a message and nothing is filed. A =file+function= template of type =item=, =checkitem= or =table-line= needs the function to leave point on a heading. In the buffer of a function, markers and text properties are not available, the regexp operator ~\\=~ never matches, and a search with a bound treats ~$~ and ~\\'~ at the bound as the end of the text. The =github:= prefix of a file name is the app's own.
+  out += `* Blank lines and table rows
+=:empty-lines N= leaves N blank lines before and after the new text (=:empty-lines-before= and =:empty-lines-after= set each side). =:table-line-pos "I+1"= puts a row on the line after the first rule. A table a capture starts has an empty header row and a rule, as in Emacs.
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("e" "Expense" table-line (file+headline "money.org" "Expenses")
+    "| %<%Y-%m-%d> | %^{What} | %^{Amount} |" :table-line-pos "I+1"))
+(add-to-list 'org-capture-templates
+  '("s" "Task" entry (file+headline "tasks.org" "Inbox")
+    "* TODO %?" :empty-lines 1))
+#+END_SRC
+
+* Under today's date
+=file+olp+datetree= files a capture under the year, the month and the day, making the headings it needs; =:tree-type week= or =:tree-type month= chooses the week or month tree, and =:prepend t= puts the entry first. =capture-datetree.org= shows each with the file before and after.
+
 `;
-  fs.writeFileSync(new URL('../examples/capture-functions.org', import.meta.url), out);
+  out += `* Where the app differs from Emacs
+The app makes missing headings of a =file+olp= target, where Emacs stops with an error. =:before-finalize= runs on the text of the capture, after =:prepare-finalize=, where Emacs runs it on the whole file; =:after-finalize= and =:refile-targets= have no effect. =:clock-in= clocks the new entry when the capture is filed; Emacs does it when the capture buffer opens. A target function may only insert whole lines; one that changes or deletes a line is refused with a message and nothing is filed. A =file+function= template of type =item=, =checkitem= or =table-line= needs the function to leave point on a heading. In the buffer of a function, markers and text properties are not available, the regexp operator ~\\=~ never matches, and a search with a bound treats ~$~ and ~\\'~ at the bound as the end of the text. The =github:= prefix of a file name is the app's own.
+`;
+  fs.writeFileSync(new URL('../examples/capture-templates.org', import.meta.url), out);
   console.log(`${CASES.length} cases`);
 }

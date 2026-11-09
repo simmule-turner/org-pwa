@@ -92,4 +92,4 @@ TITLE:Rear Admiral
 END:VCARD
 #+end_example
 
-Lines for questions left blank are dropped. *Import* (More → Import) reads this shape back as a contact, and the vCard text can be copied into a contacts app as it stands. The function drops the lines of the vCard that were left blank, as in =capture-functions.org=.
+Lines for questions left blank are dropped. *Import* (More → Import) reads this shape back as a contact, and the vCard text can be copied into a contacts app as it stands. The function drops the lines of the vCard that were left blank, as in =capture-templates.org=.

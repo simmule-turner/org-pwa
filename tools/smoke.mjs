@@ -3656,7 +3656,7 @@ check('capture from outside: a share URL runs the named template with the shared
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await setCaptureInit(page, `(setq org-capture-templates
-  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
+  '(("n" "Shared note" entry (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
   // Capture to another file needs a document open on the same backend; the app restores the tab that was open when a launch URL starts it.
   await openDav(page, 'notes.org');
   const waitForFile = async (needle) => {
@@ -3692,8 +3692,8 @@ check('capture from outside: a share URL runs the named template with the shared
 
   // 3b. with a w in the init, that one takes the share
   await setCaptureInit(page, `(setq org-capture-templates
-  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")
-    ("w" "Shares" plain (file+olp "inbox.org" "Later") "* From a share\\n  %i")))`);
+  '(("n" "Shared note" entry (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")
+    ("w" "Shares" entry (file+olp "inbox.org" "Later") "* From a share\\n  %i")))`);
   await page.goto(`${main.base}/index.html?title=T&text=chosen%20later`, { waitUntil: 'load' });
   const second = await waitForFile('chosen later');
   expect(second.includes('** From a share\n  chosen later') && second.includes('* Later'), `the init's w took the share: ${JSON.stringify(second)}`);
@@ -3709,7 +3709,7 @@ check('capture from outside: a share URL runs the named template with the shared
 });
 
 check('capture: a template from a loaded init file is offered', async () => {
-  dav.reset({ 'notes.org': SAMPLE, 'init.el': `(add-to-list 'org-capture-templates '("l" "From the loaded file" plain (file "") "* Loaded"))\n` });
+  dav.reset({ 'notes.org': SAMPLE, 'init.el': `(add-to-list 'org-capture-templates '("l" "From the loaded file" entry (file "") "* Loaded"))\n` });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
   await page.evaluate(async () => {
@@ -3860,10 +3860,113 @@ check('capture: with no templates in the Lisp init the Capture panel says where 
   await context.close();
 });
 
+// The capture keywords that change how a capture runs: :immediate-finish, :time-prompt, :clock-in.
+const runCapture = async (page, name) => {
+  await openPalette(page);
+  await page.keyboard.type('capture: ' + name);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+};
+const closeCapturePanel = async (page) => {
+  if (await page.locator('#capturePanel').isVisible()) await page.locator('#capturePanel button', { hasText: 'Close' }).first().click();
+};
+const captureDocText = async (page) => {
+  await viewMenu(page, 'Text');
+  const text = await page.locator('#document-text-edit-input').inputValue();
+  await viewMenu(page, 'Org');
+  return text;
+};
+
+check(':immediate-finish t files without offering the text to edit: the %^{...} questions are still asked, and with none the capture is filed at once', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Inbox\n');
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("t" "Task" entry (file+olp "" "Inbox") "* TODO %^{What}\\n%?" :immediate-finish t)
+    ("n" "Note" entry (file+olp "" "Inbox") "* Noted %<%Y>%?" :immediate-finish t)
+    ("u" "Usual" entry (file+olp "" "Inbox") "* TODO %^{What}\\n%?")))`);
+  await runCapture(page, 'usual');
+  expect((await page.locator('#capturePanel input').count()) === 2, `without the keyword the form asks for the question and the text: ${await page.locator('#capturePanel input').count()} fields`);
+  await page.locator('#capturePanel button', { hasText: 'Cancel' }).first().click();
+  await closeCapturePanel(page);
+  await runCapture(page, 'task');
+  expect((await page.locator('#capturePanel input').count()) === 1, `with the keyword only the question is asked: ${await page.locator('#capturePanel input').count()} fields`);
+  await page.locator('#capturePanel input').first().fill('Water the plants');
+  await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
+  await page.waitForTimeout(500);
+  await closeCapturePanel(page);
+  await runCapture(page, 'note');
+  expect((await page.locator('#capturePanel input').count()) === 0, 'a template with nothing to ask is filed at once');
+  await closeCapturePanel(page);
+  const text = await captureDocText(page);
+  expect(text.includes('** TODO Water the plants') && /\*\* Noted \d{4}\n/.test(text), `both were filed: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check(':time-prompt t on a date-tree template asks for the date and time, files the capture for them, and does not capture when they are not understood', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Other\n');
+  await setCaptureInit(page, `(setq org-capture-templates
+  '(("d" "Day" entry (file+olp+datetree "") "* %?\\n%U" :time-prompt t)
+    ("e" "Elsewhere" entry (file+olp "" "Other") "* Plain %?" :time-prompt t)))`);
+  await runCapture(page, 'day');
+  await page.waitForSelector('[data-capture-time]');
+  await page.locator('[data-capture-time]').fill('not a date');
+  await page.locator('#capturePanel input').nth(1).fill('Dentist');
+  await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
+  await page.waitForTimeout(300);
+  expect((await page.locator('#status').innerText()).includes('not understood'), `a date that is not understood says so: ${await page.locator('#status').innerText()}`);
+  expect((await page.locator('[data-capture-time]').count()) === 1, 'and the form stays');
+  await page.locator('[data-capture-time]').fill('2026-03-05 9:15');
+  await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
+  await page.waitForTimeout(500);
+  await closeCapturePanel(page);
+  const text = await captureDocText(page);
+  expect(text.includes('*** 2026-03-05 Thursday') && text.includes('**** Dentist\n[2026-03-05 Thu 09:15]'), `filed for the date given: ${JSON.stringify(text)}`);
+  // without a date tree there is nothing to ask, as in Emacs
+  await runCapture(page, 'elsewhere');
+  expect((await page.locator('[data-capture-time]').count()) === 0, 'a template that is not a date tree is not asked for a date');
+  await page.locator('#capturePanel button', { hasText: 'Cancel' }).first().click();
+  await closeCapturePanel(page);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check(':clock-in t clocks in the new entry and stops the running clock; :clock-keep leaves it running, :clock-resume starts the interrupted clock again', async () => {
+  const doc = '* Inbox\n* Work\n:LOGBOOK:\nCLOCK: [2026-01-01 Thu 09:00]\n:END:\n';
+  const init = `(setq org-capture-templates
+  '(("k" "Keep" entry (file+olp "" "Inbox") "* TODO Keep" :clock-in t :clock-keep t)
+    ("r" "Resume" entry (file+olp "" "Inbox") "* TODO Break" :clock-in t :clock-resume t)))`;
+  {
+    const { context, page, errors } = await freshPage();
+    await newDocument(page, doc);
+    await setCaptureInit(page, init);
+    await runCapture(page, 'keep');
+    expect((await page.locator('#status').innerText()).includes('Clocked in'), `it says so: ${await page.locator('#status').innerText()}`);
+    await closeCapturePanel(page);
+    const text = await captureDocText(page);
+    expect(/\* Work\n:LOGBOOK:\nCLOCK: \[2026-01-01 Thu 09:00\]--\[[^\]]+\] => +\d+:\d\d\n:END:/.test(text), `the clock on Work was stopped: ${JSON.stringify(text)}`);
+    expect(/\*\* TODO Keep\n:LOGBOOK:\nCLOCK: \[[^\]]+\]\n:END:/.test(text), `and the new entry has a clock that runs: ${JSON.stringify(text)}`);
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+  {
+    const { context, page } = await freshPage();
+    await newDocument(page, doc);
+    await setCaptureInit(page, init);
+    await runCapture(page, 'resume');
+    await closeCapturePanel(page);
+    const text = await captureDocText(page);
+    expect(/\*\* TODO Break\n:LOGBOOK:\nCLOCK: \[[^\]]+\]--\[[^\]]+\] => +0:00\n:END:/.test(text), `the new entry has a clock of no length: ${JSON.stringify(text)}`);
+    expect(/\* Work\n:LOGBOOK:\nCLOCK: \[[^\]]+\]\nCLOCK: \[2026-01-01 Thu 09:00\]--\[[^\]]+\] => +\d+:\d\d\n:END:/.test(text), `and Work is clocked in again: ${JSON.stringify(text)}`);
+    await context.close();
+  }
+});
+
 check('capture from outside: %x takes the clipboard (read only for a template that uses it), and a refused clipboard leaves %x empty but still captures, saying why', async () => {
   const seed = (page) => setCaptureInit(page, `(setq org-capture-templates
-  '(("x" "Clip" plain (file+olp "" "Inbox") "* Clip\\n  %x")
-    ("p" "Plain" plain (file+olp "" "Inbox") "* Plain")))`);
+  '(("x" "Clip" entry (file+olp "" "Inbox") "* Clip\\n  %x")
+    ("p" "Plain" entry (file+olp "" "Inbox") "* Plain")))`);
   const at = (step) => (e) => { e.message = `[${step}] ${e.message}`; throw e; };
   const runTemplate = async (page, name) => {
     await openPalette(page).catch(at('openPalette'));
@@ -4826,7 +4929,7 @@ check('platform seam: a platform injected before startup (as a native shell woul
 
   // the clipboard token reads the platform's clipboard (the real one would be refused in this browser)
   await newDocument(page, '* Inbox\n');
-  await setCaptureInit(page, `(setq org-capture-templates '(("x" "Clip" plain (file+olp "" "Inbox") "* Clip\\n  %x")))`);
+  await setCaptureInit(page, `(setq org-capture-templates '(("x" "Clip" entry (file+olp "" "Inbox") "* Clip\\n  %x")))`);
   await openPalette(page);
   await page.keyboard.type('capture: clip');
   await page.keyboard.press('Enter');
@@ -4886,7 +4989,7 @@ check('platform seam: a native shell can hand the app a share directly (runLaunc
   dav.reset({ 'notes.org': SAMPLE, 'inbox.org': '* Inbox\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await setCaptureInit(page, `(setq org-capture-templates
-  '(("n" "Shared note" plain (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
+  '(("n" "Shared note" entry (file+olp "inbox.org" "Inbox") "* Note\\n  %i\\n  %a")))`);
   await openDav(page, 'notes.org');
   const urlBefore = page.url();
 

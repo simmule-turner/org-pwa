@@ -175,8 +175,6 @@ export class Buffer {
 
 // ---- lists --------------------------------------------------------------------------------------
 
-/** @param {LObj} x @returns {x is Cons} */
-export const isCons = (x) => x instanceof Cons;
 /** @param {LObj} x */
 export const isNil = (x) => x === NIL;
 /** @param {boolean} b */
@@ -239,8 +237,6 @@ export class BudgetExceeded extends Error {
 export function signal(symbol, data) {
   return new LispSignal(intern(symbol), list(data));
 }
-/** `(error "message")`. @param {string} message */
-export const lispError = (message) => signal('error', [message]);
 /** @param {string} predicate @param {LObj} value */
 export const wrongType = (predicate, value) => signal('wrong-type-argument', [intern(predicate), value]);
 

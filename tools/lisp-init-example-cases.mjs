@@ -75,7 +75,7 @@ export const SECTIONS = [
     prose: '=add-to-list= adds a template to =org-capture-templates=, which the Capture list shows. The same forms work in a file read with =(load "github:init.el")=.',
     init: `(setq org-capture-templates nil)
 (add-to-list 'org-capture-templates
-  '("w" "Web page or text" plain (file+headline "inbox.org" "Inbox") "* %a"))
+  '("w" "Web page or text" entry (file+headline "inbox.org" "Inbox") "* %a"))
 (add-to-list 'org-capture-templates
   '("j" "Journal" entry (file+olp+datetree "journal.org") "* %?"))`,
     show: ['(mapcar (function car) org-capture-templates)', '(nth 1 (car org-capture-templates))'],

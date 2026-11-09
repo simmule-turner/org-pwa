@@ -982,16 +982,6 @@ export function cEquals(a, b, D, degrees) {
 }
 
 /**
- * @param {Complex} z
- * @param {Domain} D
- */
-export function cIsZero(z, D) {
-  if (isReal(z)) return D.isZero(z.x);
-  if (z.polar) return D.isZero(z.r);
-  return D.isZero(z.re) && D.isZero(z.im);
-}
-
-/**
  * vsum / vmean / vprod / vcount over a list that holds at least one complex value.
  * @param {string} name
  * @param {Operand[]} values

@@ -622,46 +622,6 @@ export function dropSilentCitations(nodes, printsNothing) {
   return out;
 }
 
-const PRINT_BIBLIOGRAPHY_LINE = /^[ \t]*#\+PRINT_BIBLIOGRAPHY:/i;
-
-/** Whether a line is `#+PRINT_BIBLIOGRAPHY:`. @param {string} line */
-export const isPrintBibliography = (line) => PRINT_BIBLIOGRAPHY_LINE.test(line);
-
-/**
- * A paragraph's lines cut at each `#+PRINT_BIBLIOGRAPHY:` line, for exporters that read paragraphs.
- * @param {string[]} lines
- * @returns {({ lines: string[] } | { bibliography: true })[]}
- */
-export function splitBibliography(lines) {
-  /** @type {({ lines: string[] } | { bibliography: true })[]} */ const pieces = [];
-  /** @type {string[]} */ let current = [];
-  for (const line of lines) {
-    if (PRINT_BIBLIOGRAPHY_LINE.test(line)) {
-      if (current.length) pieces.push({ lines: current });
-      current = [];
-      pieces.push({ bibliography: true });
-    } else current.push(line);
-  }
-  if (current.length) pieces.push({ lines: current });
-  return pieces;
-}
-
-/** `text` with each citation in it replaced by `replacement(citation)` (and the blanks after it kept).
- * @param {string} text @param {(c: CitationNode) => string} replacement */
-export function replaceCitationsInText(text, replacement) {
-  if (!text.includes('[cite')) return text;
-  let out = '';
-  let i = 0;
-  while (i < text.length) {
-    const hit = text[i] === '[' ? parseCitationAt(text, i) : null;
-    if (hit) {
-      out += replacement(hit.node) + ' '.repeat(hit.node.blanks);
-      i += hit.length;
-    } else out += text[i++];
-  }
-  return out;
-}
-
 /** The entry for `key` in the bibliography `files`, or null (also when none of the files is loaded yet).
  * @param {string[]} files @param {string} key @returns {BibEntry | null} */
 export function citeEntry(files, key) {

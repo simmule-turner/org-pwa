@@ -13,8 +13,7 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | beamer-demo.org         | a Beamer presentation                                                                                        | export compared with Emacs                        |
 | calendar.org            | a month, holidays and events built from =js= blocks                                                          | app only                                          |
 | capture-datetree.org    | capture into a date tree: year, month and day headings, week and month trees, =:prepend=                     | org-capture                                       |
-| capture-functions.org   | capture: shared pages, lists, a table row, a journal; =file+function= targets, =:prepare-finalize=           | org-capture                                       |
-| capture-templates.org   | capture templates written in Lisp: targets, blank lines, table rows                                          | org-capture                                       |
+| capture-templates.org   | capture templates in Lisp: shared pages, lists, table rows, a journal, blank lines; =file+function= targets, =:prepare-finalize=                                          | org-capture                                       |
 | capture-vcard.org       | a capture template that files a contact                                                                      | app only                                          |
 | citations.org           | citations and the reference list                                                                             | org-cite                                          |
 | clock-tables.org        | =#+BEGIN: clocktable= reports: =:block=, =:step=, =:match=, =:formula=, =:link=, =:compact=                  | org-update-all-dblocks                            |

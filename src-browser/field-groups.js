@@ -263,7 +263,6 @@ export function buildTimestampFieldGroup(label, currentRaw) {
  *  with one tap; anything outside that range isn't reachable from this
  *  UI, a stated scope limit rather than trying to build a full A-Z
  *  picker for a rarely-used case. */
-export const PRIORITY_LEVELS = ['A', 'B', 'C']; // the default range; the editor reads org-priority-highest/-lowest
 
 /** @param {Heading} heading */
 export function buildPriorityFieldGroup(heading) {

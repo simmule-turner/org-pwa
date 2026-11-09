@@ -22,11 +22,6 @@ export function cacheSetupFile(path, text) {
   texts.set(path, text);
 }
 
-/** @param {string} path */
-export function cachedSetupFile(path) {
-  return texts.get(path);
-}
-
 /** The paths named by #+SETUPFILE: lines, in order.
  * @param {string[]} lines */
 export function setupFilePaths(lines) {

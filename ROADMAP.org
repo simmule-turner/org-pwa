@@ -21,6 +21,11 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
+* Capture
+** [#C] Maybe: =file+headline= and =file+olp= stop at a missing heading, as Emacs does
+Emacs reports "Heading not found" when the target heading is not in the file; the Capture panel here makes the heading instead, so a template keeps working on a new or empty file. Following Emacs would make a missing heading an error and leave creating it to a target function (=capture-templates.org= has one). Waits to see whether anyone relies on the headings being made.
+- Effort: S. Impact: S.
+
 * Editing and structure
 ** [#C] An undo tree
 ** [#C] Structure-aware merge
@@ -58,6 +63,5 @@ The interpreter (=src/elisp.js=), the diary, holiday lists, source blocks and th
 ** Later: Emacs and Org specific
 These need Emacs's own libraries and are not part of "small standalone programs":
 - Buffer and Org functions: =org-map-entries=, =org-element-parse-buffer=, =org-todo=; only the read-only =org-entry-get= family is there.
-- =format-time-string=, =decode-time=, =encode-time= and other time functions.
-- =cl-loop= and the rest of =cl-lib= beyond the basics, and =re-search-forward= on buffers.
+- =cl-loop= and the rest of =cl-lib= beyond the basics.
 - Files and network (=insert-file-contents=, =url-retrieve=): left out on purpose.

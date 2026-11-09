@@ -24,6 +24,9 @@ for (const base of EL) for (const o of withP(base)) {
   add('* Tr\nbody\n\n** A\n', 'plain', 'text', TR, o);
   add('* Tr\nbody\n\n* Z\n', 'plain', 'text', TR, o);
   add('* Tr\n:PROPERTIES:\n:ID: x\n:END:\nbody\n** A\n', 'plain', 'text', TR, o);
+  add('* Tr\n', 'plain', '* X\nbody', TR, o); // plain text is put in as written, headings and all: Emacs does not shift their levels
+  add('* Tr\nbody\n\n** A\nabody\n\n* Z\n', 'plain', '** Deep\nbody', TR, o);
+  add('a\n\n* Z\n', 'plain', '* X\nbody', [], o);
   add('* Tr\n', 'item', 'new', TR, o);
   add('* Tr\nintro\n', 'item', 'new', TR, o);
   add('* Tr\n- i1\n- i2\n', 'item', 'new', TR, o);

@@ -1,10 +1,10 @@
-// examples/capture-functions.org holds what Emacs 29.3 left after org-capture filed templates that use Lisp functions: a target function
-// (file+function) and :prepare-finalize (tools/gen-example-capture-functions.mjs). The app must file the same text.
+// examples/capture-templates.org holds what Emacs 29.3 left after org-capture filed templates that use Lisp functions: a target function
+// (file+function) and :prepare-finalize (tools/gen-example-capture-templates.mjs). The app must file the same text.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { scanPrompts } from '../src/capture-template.js';
+import { parseTimePrompt, scanPrompts } from '../src/capture-template.js';
 import { captureInto } from '../src/capture-run.js';
 import { captureTemplatesFromLisp } from '../src/capture-lisp.js';
 import { launchFromShare } from '../src/capture-shared.js';
@@ -12,7 +12,7 @@ import { setTagsColumn } from '../src/tags-column.js';
 import { parseNamedTables, parseTableConstants, recalculateTable } from '../src/table-formula.js';
 
 setTagsColumn(-77); // Emacs's default org-tags-column, which the file was made with
-const text = readFileSync(new URL('../examples/capture-functions.org', import.meta.url), 'utf8');
+const text = readFileSync(new URL('../examples/capture-templates.org', import.meta.url), 'utf8');
 const unescape = (/** @type {string} */ s) => s.replace(/^,(\*|#\+)/gm, '$1');
 const block = (/** @type {string} */ sec, /** @type {string} */ label, /** @type {string} */ lang) => {
   const m = new RegExp(`^${label}:\\n#\\+BEGIN_SRC ${lang}\\n([\\s\\S]*?)\\n?#\\+END_SRC`, 'm').exec(sec);
@@ -36,13 +36,13 @@ export const placeFor = (template) => (/** @type {import('../src/types.js').Doc}
   },
 });
 
-test('the file has its twelve cases', () => {
-  assert.equal(sections.length, 12);
+test('the file has its sixteen cases', () => {
+  assert.equal(sections.length, 16);
 });
 
 for (const sec of sections) {
   const title = sec.split('\n')[0];
-  test(`capture-functions.org, "${title}": the app files what Emacs filed`, () => {
+  test(`capture-templates.org, "${title}": the app files what Emacs filed`, () => {
     const when = /^Captured on (\d+)-(\d+)-(\d+) \w+ (\d+):(\d+)(, (\d+) times)?(, after one capture on (\d+)-(\d+)-(\d+))?\./m.exec(sec);
     assert.ok(when);
     const { templates, notes } = captureTemplatesFromLisp(block(sec, 'In the Lisp init', 'emacs-lisp'));
@@ -71,7 +71,8 @@ for (const sec of sections) {
         const template = /** @type {import('../src/types.js').CaptureTemplate} */ (templates.find((t) => t.key === key));
         assert.ok(template, key);
         const asked = scanPrompts(template.template, { shared }).map((p) => (p.prompt === 'Text' ? typed[key] : answers[p.prompt] ?? answers[p.timestamp ? 'date' : '']) ?? '');
-        const r = captureInto(doc, template, { now, answers: asked, context: { shared }, place: placeFor(template) });
+        const filedFor = template.timePrompt ? (parseTimePrompt(answers.date ?? '', now) ?? now) : now; // :time-prompt: the date and time that were asked for
+        const r = captureInto(doc, template, { now: filedFor, answers: asked, context: { shared }, place: placeFor(template) });
         assert.deepEqual(r.ok ? 'ok' : r.message, 'ok');
       }
     }

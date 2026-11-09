@@ -99,17 +99,18 @@ test('an error in the Lisp init that sets the templates is a note, shown when th
   assert.match(notes[0], /^The Lisp init could not set the capture templates: .*nosuchfunction/);
 });
 
-test('the keywords: a target function, :prepare-finalize and the finalize keywords the app does not run', () => {
+test('the keywords: a target function, :prepare-finalize and :before-finalize, and :after-finalize, which the app does not run', () => {
   const { templates, notes } = captureTemplatesFromLisp(`(setq org-capture-templates '(
-    ("a" "A" entry (file+function "f.org" my-fn) "* x" :prepare-finalize (my-a (lambda () (foo))) :before-finalize my-b)
+    ("a" "A" entry (file+function "f.org" my-fn) "* x" :prepare-finalize (my-a (lambda () (foo))) :before-finalize my-b :after-finalize my-c)
     ("b" "B" entry (function (lambda () (goto-char 1))) "* y")))`);
   assert.equal(templates.length, 2);
   assert.equal(templates[0].targetFunction, 'my-fn');
   assert.equal(templates[0].file, 'f.org');
   assert.deepEqual(templates[0].prepareFinalize, ['my-a', '(lambda nil (foo))']);
   assert.equal(templates[1].targetFunction, '(lambda nil (goto-char 1))');
+  assert.deepEqual(templates[0].beforeFinalize, ['my-b']);
   assert.equal(notes.length, 1);
-  assert.match(notes[0], /:before-finalize/);
+  assert.match(notes[0], /:after-finalize/);
 });
 
 /** The reveal of the one capture a template makes into `before`. @param {string} template the template line @param {string} before */

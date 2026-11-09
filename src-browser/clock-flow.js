@@ -3,6 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: clock flow.
 import { clockCancel, clockIn, clockInSwitchingTasks, clockOut, findHeadingWithRunningClock, findMostRecentlyClockedHeading, isClockRunning, listRecentlyClockedHeadings } from '../src/clock.js';
+import { clockCaptured } from '../src/capture-clock.js';
 import { findAncestorPath } from '../src/archive-model.js';
 import { clockOutSwitchState } from '../src/clock-settings.js';
 import { resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
@@ -244,4 +245,29 @@ function goToClockedEntry(entry) {
   switchToTab(entry.tabId);
   const heading = S.state.doc ? findHeadingByOutlinePath(S.state.doc, path) : null;
   if (heading) navigateToHeading(heading);
+}
+
+/**
+ * A capture template's :clock-in: clocks in the heading the capture filed under (see clockCaptured). The running clock may be in this
+ * document or in another open tab; the document it is in is saved when it is not the active one.
+ * @param {Heading} heading @param {import('../src/types.js').CaptureTemplate} template @param {Date} now @param {Doc} ownDoc the document the capture went into
+ * @returns {string} what to tell the person, or ''
+ */
+export function clockInCaptured(heading, template, now, ownDoc) {
+  now = new Date(now.getTime());
+  now.setSeconds(0, 0); // timestamps count whole minutes, so a clock that starts and stops in one minute has no length
+  const timestamp = formatOrgTimestamp({ date: now, time: now.toTimeString().slice(0, 5), active: false });
+  const own = findHeadingWithRunningClock(ownDoc);
+  const other = own ? null : findRunningClockAcrossSessions();
+  const result = clockCaptured(heading, own ?? other?.heading ?? null, { keep: !!template.clockKeep, resume: !!template.clockResume }, timestamp, now, clockSettingsFor);
+  if (other && !other.isActive) {
+    const session = S.documentSessions.find((x) => x.tabId === other.tabId);
+    if (session) {
+      session.isDirty = true;
+      saveDocument({ documentId: session.state.documentId, doc: session.state.doc, kvAdapter: kv }).catch((err) => setStatus('Save failed: ' + err.message));
+    }
+  } else if (other && ownDoc !== S.state.doc) commitAndRender('Captured'); // the clock stopped was in the open document, which the capture did not touch
+  if (result.running) window.dispatchEvent(new Event('org-clock-started'));
+  if (!result.started) return ' A clock is already running on that heading.';
+  return result.running ? ` Clocked in${result.stopped && !template.clockKeep ? ' again on "' + result.stopped.title + '"' : ''}.` : '';
 }

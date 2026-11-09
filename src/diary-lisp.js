@@ -187,16 +187,6 @@ export function evalSource(source, context) {
   }
 }
 
-/** Evaluates an already-built form the same way. @param {LObj} form @param {Context} context */
-export function evalLisp(form, context) {
-  try {
-    return { value: withContext(context, () => evalForm(literalize(form), null)) };
-  } catch (e) {
-    const { message, kind } = describeFailure(e);
-    return { error: message, kind };
-  }
-}
-
 // ---- helpers for the built-ins ------------------------------------------------------------------
 
 /** @param {LObj} x @returns {number} */

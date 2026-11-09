@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v665 — More of Emacs's capture keywords
+Capture templates now honor ~:immediate-finish~ (no text to edit; only the questions are asked), ~:time-prompt~ (a date and time for a date-tree capture), ~:clock-in~ with ~:clock-keep~ and ~:clock-resume~, and ~:before-finalize~. ~plain~ templates put their text in as written, headings included, as Emacs does; the built-in share template is now an ~entry~. The capture examples are one file, =capture-templates.org=, and unused code was removed.
+Verified: capture filing, clock lines and date prompts against Emacs 29.3; browser checks for the three keywords.
+
 * v664 — A clearer "calendar not found"
 When a calendar or address book is missing on the server, the message now names the protocol (CalDAV or CardDAV), says the server answered 404, shows the address it tried (without any password) and what to fix: create it on the server and end the address at the calendar itself.
 Verified: browser checks for the calendar and contacts messages.

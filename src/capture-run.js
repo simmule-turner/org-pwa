@@ -11,7 +11,7 @@ import { describeFailure } from './elisp.js';
 import { enterBuffer, openBuffer, textBefore } from './elisp-buffer.js';
 import { withDefaultTime } from './elisp-time.js';
 import { withContext } from './diary-lisp.js';
-import { expandCaptureText, fileCapture, plannedTableRow, resolveOlpTarget } from './capture-template.js';
+import { expandCaptureText, fileCapture, filePlainText, holdsHeading, plannedTableRow, resolveOlpTarget } from './capture-template.js';
 import { findHeadingAtLine, headingLineIndex, parseOrg, serializeOrg } from './org-parser.js';
 import { parseBody } from './body-parser.js';
 
@@ -221,8 +221,9 @@ export function captureInto(doc, template, options) {
     return { ok: false, message: `Can't capture: ${/** @type {Error} */ (err).message}` };
   }
   let text = expanded.text.replace(/\n$/, ''); // the newline that ends an expansion is the line's own
-  if (template.prepareFinalize?.length) {
-    const ran = runInBuffer(expanded.text, template.prepareFinalize, now); // the buffer ends with the newline of its last line
+  const finalizers = [...(template.prepareFinalize ?? []), ...(template.beforeFinalize ?? [])]; // :before-finalize runs on the same text, after :prepare-finalize
+  if (finalizers.length) {
+    const ran = runInBuffer(expanded.text, finalizers, now); // the buffer ends with the newline of its last line
     if (!ran.ok) return { ok: false, message: `Capture failed: ${ran.message}` };
     text = ran.text.replace(/\n$/, '');
   }
@@ -234,9 +235,13 @@ export function captureInto(doc, template, options) {
     insertPlain([...Array(before).fill(''), ...text.split('\n'), ...Array(after).fill('')]);
     return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, pointLine + before) };
   }
+  if (template.type === 'plain' && holdsHeading(text)) {
+    const at = filePlainText(doc, target, text, template.prepend, { ...place(doc) });
+    return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, at) };
+  }
   /** @type {{ row?: number, host?: Doc | Heading, line?: number }} */
   let filed = {};
-  const placed = fileCapture(doc, target, template.type, text, template.prepend, { ...place(doc), cursorAtEnd: expanded.cursorAtEnd || !!template.prepareFinalize?.length, onFiled: (where) => (filed = where) });
+  const placed = fileCapture(doc, target, template.type, text, template.prepend, { ...place(doc), cursorAtEnd: expanded.cursorAtEnd || finalizers.length > 0, onFiled: (where) => (filed = where) });
   /** @type {Reveal | null} */
   let reveal = null;
   if (placed && 'level' in placed) reveal = { node: placed, heading: placed, row: null };

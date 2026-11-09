@@ -131,10 +131,3 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
     },
   };
 }
-
-/** True when the platform has no File System Access API at all — the
- *  signal the UI uses to offer this fallback (and GitHub) instead of the
- *  native file picker flow. */
-export function isFileSystemAccessUnsupported() {
-  return typeof window === 'undefined' || !('showOpenFilePicker' in window);
-}
