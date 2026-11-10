@@ -26,7 +26,7 @@
  *   body: BodyNode[],
  *   raw?: HeadingRaw,
  *   drawersHidden?: boolean | null,
- *   plotVisible?: Set<number> | null,
+ *   plotVisible?: Set<number> | null, padVisible?: Set<number> | null,
  * }} Heading
  */
 

@@ -9,7 +9,7 @@ import { deviceIo } from './device-folder.js';
 
 /** @typedef {'github' | 'webdav' | 'device'} Place */
 /** @typedef {import('../src/file-ops.js').FileEntry} FileEntry */
-/** @typedef {{ list: (folder: string) => Promise<FileEntry[]>, readBinary: (path: string) => Promise<{ base64?: string } | null | undefined | any>, writeBinary: (path: string, base64: string) => Promise<any>, delete: (path: string) => Promise<any> }} PlaceIo */
+/** @typedef {{ makeDirectory?: (path: string) => Promise<any>, list: (folder: string) => Promise<FileEntry[]>, readBinary: (path: string) => Promise<{ base64?: string } | null | undefined | any>, writeBinary: (path: string, base64: string) => Promise<any>, delete: (path: string) => Promise<any> }} PlaceIo */
 
 /** What reads and writes bytes in `place`. @param {Place} place @returns {PlaceIo} */
 export function ioOf(place) {
@@ -50,9 +50,12 @@ export async function removeEntry(place, entry) {
   if (entry.type === 'dir' && place !== 'github') await io.delete(cleanPath(entry.path)).catch(() => {});
 }
 
-/** Makes the folder `path`, holding a `.gitkeep` so that it exists in every place. @param {Place} place @param {string} path */
+/** Makes the folder `path`: an empty folder where the place can hold one (WebDAV, and a folder opened in a browser), else a folder holding an empty `.gitkeep`, which is what makes it exist in GitHub and in the Android app's folder. @param {Place} place @param {string} path */
 export async function makeFolder(place, path) {
-  await ioOf(place).writeBinary(cleanPath(path).replace(/\/+$/, '') + '/.gitkeep', '');
+  const clean = cleanPath(path).replace(/\/+$/, '');
+  const io = ioOf(place);
+  if (place !== 'github' && io.makeDirectory) await io.makeDirectory(clean);
+  else await io.writeBinary(clean + '/.gitkeep', '');
 }
 
 /** Makes an empty file at `path`. @param {Place} place @param {string} path */

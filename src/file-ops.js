@@ -33,16 +33,17 @@ export function findMatches(all, regexp) {
   return all.filter((e) => e.type === 'file' && compiled.test(e.name));
 }
 
-/** The entries to show, sorted. Folders come first whatever the key (Dired with `dired-listing-switches` "--group-directories-first").
+/** The entries to show, sorted. Folders and files are sorted together, as `ls` does with Dired's default `dired-listing-switches` "-al";
+ * `groupFirst` (the switch "--group-directories-first") puts the folders first whatever the key.
  * 'name' is ascending; 'date' and 'size' put the newest and biggest first, as `ls -t` and `ls -S` do. An entry whose place gave no
  * date or size sorts after the others, by name.
- * @param {FileEntry[]} entries @param {SortKey} key @param {boolean} [reverse] */
-export function arrange(entries, key, reverse = false) {
+ * @param {FileEntry[]} entries @param {SortKey} key @param {boolean} [reverse] @param {boolean} [groupFirst] */
+export function arrange(entries, key, reverse = false, groupFirst = false) {
   const byName = (/** @type {FileEntry} */ a, /** @type {FileEntry} */ b) => a.name.localeCompare(b.name, undefined, { numeric: true });
   const value = (/** @type {FileEntry} */ e) => (key === 'date' ? e.modified : key === 'size' ? e.size : undefined);
   const rows = entries.slice();
   rows.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+    if (groupFirst && a.type !== b.type) return a.type === 'dir' ? -1 : 1;
     let order = 0;
     if (key !== 'name') {
       const x = value(a);
@@ -78,17 +79,13 @@ export const marking = {
     }
     return next;
   },
-  /** `% m REGEXP`: marks the rows whose name matches. A bad pattern is reported by returning null. Like Dired, the match is on the file name, not the path, and is case-folded as `case-fold-search` is by default.
+  /** `% m REGEXP`: marks the rows whose name matches an Emacs regexp. A bad pattern is reported by returning null. Like Dired, the match is on the file name, not the path, and is case-folded as `case-fold-search` is by default.
    * @param {Set<string>} marks @param {FileEntry[]} shown @param {string} pattern */
   byRegexp(marks, shown, pattern) {
-    let re;
-    try {
-      re = new RegExp(pattern, 'i');
-    } catch {
-      return null;
-    }
+    const compiled = compileFind(pattern);
+    if ('error' in compiled) return null;
     const next = new Set(marks);
-    for (const e of shown) if (re.test(e.name)) next.add(e.path);
+    for (const e of shown) if (compiled.test(e.name)) next.add(e.path);
     return next;
   },
   /** `U`: nothing marked. */
@@ -181,4 +178,23 @@ export function sizeLabel(n) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * Where `R` (dired-do-rename) puts a file: what was typed, read from the folder in view (or from the top of the place when it starts with a
+ * slash), with "." and ".." resolved. A name ending in a slash is a folder. `path` is null when it names the top itself.
+ * @param {string} folder @param {string} typed @returns {{ path: string, folder: boolean } | { error: string }}
+ */
+export function renameTarget(folder, typed) {
+  const text = typed.trim();
+  if (text === '' || /[\u0000-\u001f\u007f\\]/.test(text)) return { error: 'A name cannot be empty.' };
+  const parts = (text.startsWith('/') ? text : [cleanPath(folder), text].join('/')).split('/').filter((p) => p !== '' && p !== '.');
+  /** @type {string[]} */
+  const out = [];
+  for (const part of parts) {
+    if (part !== '..') out.push(part);
+    else if (out.length === 0) return { error: 'That path leaves the place.' };
+    else out.pop();
+  }
+  return { path: out.join('/'), folder: text.endsWith('/') };
 }

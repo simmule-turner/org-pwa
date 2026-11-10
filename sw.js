@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v674';
+const CACHE_NAME = 'org-pwa-shell-v676';
 
 const SHELL_FILES = [
   './',
@@ -262,7 +262,9 @@ const SHELL_FILES = [
   './src/webm-track-detect.js',
   './src/scroll-util.js',
   './src/window-math.js',
+  './src/table-commands.js',
   './src/table-formula.js',
+  './src/table-sort-lisp.js',
   './src/types.js',
   './src/settings-layout.js',
   './src/export-defaults.js',
@@ -367,6 +369,8 @@ const SHELL_FILES = [
   './src-browser/tag-display.js',
   './src-browser/minibuffer-prompt.js',
   './src-browser/settings-export.js',
+  './src-browser/table-edit.js',
+  './src-browser/table-pad.js',
   './src-browser/table-recalc.js',
   './src-browser/tabs.js',
   './src-browser/todo-workflow.js',

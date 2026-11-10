@@ -350,8 +350,9 @@ function unconfiguredBody(f) {
 
 /** The rows on screen: the listing, filtered and sorted. @param {FileScreen} f */
 function shownRows(f) {
-  if (f.found) return arrange(findMatches(f.found.all, f.found.regexp) || [], f.sort, f.reverse);
-  return f.entries ? arrange(f.entries, f.sort, f.reverse) : [];
+  const groupFirst = /--group-directories-first/.test(String((S.globalVariables || {})['dired-listing-switches'] || ''));
+  if (f.found) return arrange(findMatches(f.found.all, f.found.regexp) || [], f.sort, f.reverse, groupFirst);
+  return f.entries ? arrange(f.entries, f.sort, f.reverse, groupFirst) : [];
 }
 
 /** What to act on: the marked rows, or `point` when none is marked. @param {FileScreen} f @param {any} [point] */
@@ -483,10 +484,10 @@ function toolBar(f) {
       {
         text: 'Mark by pattern…',
         onClick: async () => {
-          const pattern = await promptText('Mark the files whose name matches (a regular expression):', '', { okLabel: 'Mark' });
+          const pattern = await promptText('Mark the files whose name matches (an Emacs regexp):', '', { okLabel: 'Mark' });
           if (!pattern) return;
           const next = marking.byRegexp(f.marks, shownRows(f), pattern);
-          if (!next) setStatusNote(f, 'That is not a valid regular expression.');
+          if (!next) setStatusNote(f, 'That is not a valid Emacs regexp.');
           else f.marks = next;
           renderFileScreen();
         },

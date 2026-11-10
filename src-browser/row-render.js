@@ -46,6 +46,8 @@ import { marksOn, nextMark, skipMarks } from './line-marks.js';
 import { recalculateOneTable } from './table-recalc.js';
 import { applyTodoTransition, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './ui-widgets.js';
+import { renderTablePad, tablePadOpen } from './table-pad.js';
+import { onPress } from './table-edit.js';
 
 /** The vertical margin around a paragraph, and around everything else in the
  *  body (tables, rules, source/quote/other blocks). Two adjacent blocks' margins
@@ -927,7 +929,26 @@ export function renderTableRow(row) {
       })
     );
   }
+  const padOpen = tablePadOpen(row.heading, row.node);
+  const padButton = smallButton(padOpen ? '\u22ef Hide' : '\u22ef Table', padOpen ? 'Hide the table commands' : 'Table commands: insert, delete and move rows and columns, rules, sort');
+  onPress(padButton, () => {
+    if (padOpen) /** @type {Set<number>} */ (row.heading.padVisible).delete(row.node.lineIndex);
+    else {
+      row.heading.padVisible = row.heading.padVisible || new Set();
+      row.heading.padVisible.add(row.node.lineIndex);
+      const onThisTable = !!S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table' && S.keyboardFocusedBodyRow.heading === row.heading && S.keyboardFocusedBodyRow.node.lineIndex === row.node.lineIndex;
+      if (!onThisTable) {
+        setKeyboardFocusToRow(row);
+        S.keyboardFocusedCellPos = null;
+      }
+      if (!S.keyboardFocusedCellPos || !row.node.rows[S.keyboardFocusedCellPos.rowIndex]) S.keyboardFocusedCellPos = { rowIndex: Math.max(0, row.node.rows.findIndex((r) => r.type === 'row')), colIndex: 0 };
+    }
+    render();
+  });
+  padButton.dataset.act = 'table-pad';
+  controls.appendChild(padButton);
   wrap.appendChild(controls);
+  if (padOpen) wrap.appendChild(renderTablePad(row.heading, row.node));
 
   if (row.node.plot && row.heading.plotVisible && row.heading.plotVisible.has(row.node.lineIndex)) {
     const plotWrap = document.createElement('div');

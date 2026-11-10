@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v676 — Table sort asks as Emacs does; Files closer to Dired
+Sorting a table (C-c ^, or Sort… in the Table pad) asks as org-table-sort-lines does: a, n, t or f, a capital to reverse; f takes the names of a key function and a compare function, run on the app's Lisp interpreter. In Files, Marks by pattern takes an Emacs regexp; folders sort in with files unless dired-listing-switches has --group-directories-first; Rename takes a path and moves (copy, then delete); a new folder in WebDAV or a browser's device folder is a real empty folder, with .gitkeep kept only for GitHub and the Android folder.
+Verified: sorts by function compared with Emacs 29.3; browser checks of the sort prompt and of Files in WebDAV.
+
+* v675 — Insert, move, delete and sort in tables
+*⋯ Table* under a table opens a pad that acts at the cell you last tapped: insert, delete and move rows and columns, add rules, and sort by the column. They are Org's own commands (org-table-move-row-up, org-table-insert-hline, org-table-sort-lines and the rest) and are in the command palette; in a table the M-arrows, M-S-arrows, C-c -, C-c RET and C-c ^ chords (god-mode too) do them, and formulas follow a moved row or column. Also fixed: an Extras entry that opens a heading path, set from the Lisp init, was dropped from the menu.
+Verified: each command compared with Emacs 29.3 for the resulting text and cursor; browser checks of the pad and the chords.
+
 * v674 — Choose the folder from "This device" in the Android app
 In the Android app, "This device" in the Files list now offers "Choose a folder…" when no org-pwa folder has been chosen yet, instead of only the file chooser; the folder you pick is listed straight away. Android Chrome (a web page) cannot open folders at all, so it still offers the file chooser only.
 Verified: type checks and the existing Files view browser checks; the folder chooser itself needs the Android app (not tested on a device).

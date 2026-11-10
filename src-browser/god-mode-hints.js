@@ -22,8 +22,6 @@ export const UNNAMED_CHORD_LABELS = {
   'S-<down>': 'Move heading down',
   'S-<left>': 'Promote heading (table: cell left)',
   'S-<right>': 'Demote heading (table: cell right)',
-  'M-S-<left>': 'Promote with subtree',
-  'M-S-<right>': 'Demote with subtree',
   'C-c C-f': 'Next heading, same level',
   'C-c C-b': 'Previous heading, same level',
   'C-c C-u': 'Parent heading',

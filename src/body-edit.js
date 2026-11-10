@@ -208,7 +208,7 @@ export function fixTableFormulas(tblfm, key, replace, limit, delta, remove) {
 }
 
 /** @param {Table} table @param {number} rowIndex the 1-based number of the data line, rules not counted */
-function dataLineNumber(table, rowIndex) {
+export function dataLineNumber(table, rowIndex) {
   return table.rows.slice(0, rowIndex + 1).filter((r) => r.type === 'row').length;
 }
 

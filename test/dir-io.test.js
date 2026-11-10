@@ -86,3 +86,11 @@ test('an empty write makes an empty file; folders sort first', async () => {
   assert.equal((await io.list('')).find((e) => e.name === 'z.org').size, 0);
   assert.deepEqual(splitPath('a/b/c.org'), ['a/b', 'c.org']);
 });
+
+test('makeDirectory makes an empty folder, with the ones above it, and lists as a folder', async () => {
+  const root = fakeDir();
+  const io = createDirIo(async () => root);
+  await io.makeDirectory('a/b/');
+  assert.deepEqual((await io.list('a')).map((e) => [e.name, e.type]), [['b', 'dir']]);
+  assert.deepEqual(await io.list('a/b'), []);
+});

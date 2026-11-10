@@ -59,7 +59,8 @@ export function boxText(field, f) {
       if (FILE_LISTS.has(field.key)) return nil ? '' : printed(f); // the list as Emacs prints it
       if (field.entryTokenizer) {
         if (f.k === 'str') return f.v;
-        return f.k === 'list' && f.items.every((x) => x.k === 'str') ? f.items.map(printed).join(' ') : null;
+        // each entry as the app keeps it: the string itself in quotes, a quote inside it (an OLP path) not escaped
+        return f.k === 'list' && f.items.every((x) => x.k === 'str') ? f.items.map((x) => `"${x.v}"`).join(' ') : null;
       }
       return f.k === 'str' ? f.v : printed(f);
     }

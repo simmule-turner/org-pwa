@@ -355,6 +355,8 @@ export function clearStaleKeyboardFocusIfClickedElsewhere(e) {
   // within the document," and shouldn't discard keyboard focus before
   // a tab switch's own session snapshot gets a chance to save it.
   if (!outlineEl.contains(e.target)) return;
+  // the Table pad acts at the focused cell, so pressing its buttons keeps that focus
+  if (e.target.closest('[data-table-pad], [data-act="table-pad"]')) return;
   const onCell = !!e.target.closest('td');
   const onHeadingTitle = !!e.target.closest('.heading-title');
   let changed = false;

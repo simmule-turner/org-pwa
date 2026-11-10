@@ -41,6 +41,10 @@ export function createDirIo(getRoot) {
       }
       return out.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
     },
+    /** An empty folder at `path`, with the folders above it. @param {string} path */
+    async makeDirectory(path) {
+      await dirAt(path.replace(/^\/+|\/+$/g, ''), true);
+    },
     /** @param {string} path */
     async readBinary(path) {
       const [folder, name] = splitPath(path);

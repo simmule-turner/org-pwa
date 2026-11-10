@@ -3645,8 +3645,8 @@ check('Files view: marks by pattern, copy into a folder, rename, move and delete
   await fileMenu(page, 'Open', 'WebDAV');
   await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
 
-  // 1. everything is listed, folders first
-  expect(JSON.stringify(await names()) === JSON.stringify(['sub', 'a.org', 'b.org', 'n.txt']), `listing: ${JSON.stringify(await names())}`);
+  // 1. everything is listed, folders mixed in by name as Dired does by default
+  expect(JSON.stringify(await names()) === JSON.stringify(['a.org', 'b.org', 'n.txt', 'sub']), `listing: ${JSON.stringify(await names())}`);
 
   // 2. Marks > Mark by pattern marks the .org files; a bad pattern marks nothing
   await box.locator('[data-act=marks]').click();
@@ -9416,6 +9416,130 @@ check('windowing: a long agenda draws only the rows near the screen, and j/k wal
   expect(after.length === 1 && after[0] !== focused[0], `p moves it back: ${JSON.stringify(after)}`);
   expect((await drawn()) < 300, `still few rows: ${await drawn()}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+const liveText = (page) =>
+  page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return serializeOrg(S.state.doc);
+  });
+
+check('table pad: moves, inserts, deletes, rules and sort act at the tapped cell, and undo takes the last back', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* T', '| fruit  | qty |', '|--------+-----|', '| apple  |   3 |', '| banana |  12 |', '| cherry |   7 |', ''].join('\n'));
+  // read the document without leaving the Org view, which would drop the table cursor
+  const lines = async () => (await liveText(page)).split('\n').filter((l) => l.startsWith('|'));
+  const pad = async (id) => {
+    await page.locator(`[data-pad-command="${id}"]`).click();
+    await page.waitForTimeout(150);
+  };
+  await page.locator('td', { hasText: 'banana' }).first().click();
+  await page.locator('[data-act="table-pad"]').click();
+  await page.waitForSelector('[data-table-pad]');
+  await pad('row-up');
+  let t = await lines();
+  expect(t[2].includes('banana') && t[3].includes('apple') && t[4].includes('cherry'), `row up: ${t.join(' / ')}`);
+  await pad('row-up'); // now next to the rule: the row swaps with it, as Emacs's org-table-move-row does
+  t = await lines();
+  expect(/^\|-/.test(t[2]) && t[1].includes('banana'), `row over the rule: ${t.join(' / ')}`);
+  await pad('row-down');
+  await pad('row-down');
+  t = await lines();
+  expect(t[2].includes('apple') && t[3].includes('banana') && t[4].includes('cherry'), `back where it was: ${t.join(' / ')}`);
+  // sort by the qty column: tap a qty cell, then 9 to 1
+  await page.locator('td', { hasText: /^3$/ }).first().click();
+  await page.locator('[data-act="table-pad"]').or(page.locator('[data-table-pad]')).first().waitFor();
+  if (!(await page.locator('[data-table-pad]').count())) await page.locator('[data-act="table-pad"]').click();
+  await pad('sort'); // asks the way Emacs does, one key for the kind
+  await page.getByRole('button', { name: /Numeric, reversed/ }).click();
+  await page.waitForTimeout(150);
+  t = await lines();
+  expect(t[2].includes('banana') && t[3].includes('cherry') && t[4].includes('apple'), `sorted 9 to 1: ${t.join(' / ')}`);
+  await pad('rule-below');
+  t = await lines();
+  expect(t.filter((l) => /^\|-/.test(l)).length === 2, `rule added: ${t.join(' / ')}`);
+  await pad('col-delete');
+  t = await lines();
+  expect(t.every((l) => l.split('|').length === 3), `column deleted: ${t.join(' / ')}`);
+  await pad('col-delete'); // the last column stays: Emacs would leave a table of nothing
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await page.evaluate(async () => {
+    const { performUndo } = await import('/src-browser/editing.js');
+    performUndo();
+  });
+  t = await lines();
+  expect(t.some((l) => /qty/.test(l)), `undo brought the column back: ${t.join(' / ')}`);
+  await context.close();
+});
+
+check('table pad: the M-arrow, M-S-arrow, C-c - and C-c ^ chords act on a table, and the heading ones are unchanged', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* A', '* T', '| x | y |', '|---+---|', '| 1 | b |', '| 2 | a |', '', '* C', ''].join('\n'));
+  const lines = async () => (await liveText(page)).split('\n');
+  const chord = (name) =>
+    page.evaluate(async (c) => {
+      const { GOD_MODE_ACTIONS } = await import('/src-browser/god-mode-palette.js');
+      GOD_MODE_ACTIONS[c]();
+    }, name);
+  await page.locator('td', { hasText: /^2$/ }).first().click();
+  await page.locator('[data-act="table-pad"]').click();
+  await page.waitForSelector('[data-table-pad]');
+  await chord('M-<up>');
+  let t = await lines();
+  expect(t.findIndex((l) => l.includes('| 2 ')) < t.findIndex((l) => l.includes('| 1 ')), `M-up moved the row: ${t.join(' / ')}`);
+  await chord('M-S-<down>');
+  t = await lines();
+  expect(t.filter((l) => /^\|\s+\|\s+\|$/.test(l)).length === 1, `M-S-down added a row: ${t.join(' / ')}`);
+  await chord('M-S-<right>');
+  t = await lines();
+  expect(t.filter((l) => l.startsWith('|') && !l.startsWith('|-')).every((l) => l.split('|').length === 5), `M-S-right added a column: ${t.join(' / ')}`);
+  await chord('M-<left>');
+  await chord('C-c -');
+  t = await lines();
+  expect(t.filter((l) => /^\|-/.test(l)).length === 2, `C-c - added a rule: ${t.join(' / ')}`);
+  // no table focused: M-up moves the heading again
+  await page.locator('[data-act="table-pad"]').click();
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { setKeyboardFocusToHeading } = await import('/src-browser/keyboard-focus.js');
+    setKeyboardFocusToHeading(S.state.doc.children[1]);
+  });
+  await chord('M-<up>');
+  t = await lines();
+  expect(t[0] === '* T', `M-up on a heading moved it: ${t.slice(0, 3).join(' / ')}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('table pad: C-c ^ asks for the kind of sort as Emacs does, and f asks for the key and compare functions by name', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, ['* T', '| fruit  | qty |', '|--------+-----|', '| apple  |   3 |', '| banana |  12 |', '| cherry |   7 |', ''].join('\n'));
+  const lines = async () => (await liveText(page)).split('\n').filter((l) => l.startsWith('|'));
+  await page.locator('td', { hasText: 'banana' }).first().click();
+  await page.locator('[data-act="table-pad"]').click();
+  await page.waitForSelector('[data-table-pad]');
+  await page.locator('[data-pad-command="sort"]').click();
+  expect(await page.getByText('Sort Table: [a]lphabetic, [n]umeric, [t]ime, [f]unc. A/N/T/F means reversed:').count() === 1, 'the prompt is the one Emacs asks');
+  await page.getByRole('button', { name: /Function, reversed/ }).click();
+  const ask = async (text, button) => {
+    await page.locator('input[aria-label^="Function for"]').fill(text);
+    await page.getByRole('button', { name: button, exact: true }).click();
+    await page.waitForTimeout(200);
+  };
+  await ask('no-such-function-here', 'Next');
+  const said = await page.evaluate(() => document.getElementById('status').innerText);
+  expect(said.includes('No match'), `a function that does not exist is refused: ${said}`);
+  let t = await lines();
+  expect(t[2].includes('apple') && t[3].includes('banana'), `unchanged after a refusal: ${t.join(' / ')}`);
+  await page.locator('[data-pad-command="sort"]').click();
+  await page.getByRole('button', { name: /Function, reversed/ }).click();
+  await ask('length', 'Next');
+  await ask('', 'Sort'); // the default comparison of sort-subr
+  t = await lines();
+  expect(t[2].includes('banana') && t[3].includes('cherry') && t[4].includes('apple'), `longest first, ties in order: ${t.join(' / ')}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 

@@ -3,7 +3,7 @@
 // would be replaced: yes / no / all / quit; delete: one confirmation, a folder named as such), and the care it takes of open
 // documents. A file that is open with unsaved changes is never deleted, moved or replaced; one that is open and saved is asked
 // about, and its tab follows a move or closes with a delete. The decisions are in src/file-ops.js; the work on files in file-ops-io.js.
-import { cleanPath, movedPath, openConflicts, planTransfer, validName } from '../src/file-ops.js';
+import { cleanPath, isInside, movedPath, openConflicts, planTransfer, renameTarget, validName } from '../src/file-ops.js';
 import { githubAdapter, webdavAdapter, filesystemAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { confirmDialog, openButtonChoiceModal, promptText } from './dialogs.js';
@@ -150,20 +150,42 @@ export async function transferTo(kind, items, from, into, folder) {
   return performTransfer(kind, plan.moves, from, into);
 }
 
-/** `R` on one file: asks for the new name in the same folder. @param {FileEntry} entry @param {Place} place @param {string} folder */
+/** The folder part of a path and its last name. @param {string} path @returns {[string, string]} */
+const splitLast = (path) => {
+  const i = path.lastIndexOf('/');
+  return i < 0 ? ['', path] : [path.slice(0, i), path.slice(i + 1)];
+};
+
+/**
+ * `R` (dired-do-rename) on one file: asks where it goes. A bare name renames it in its folder; a path moves it there, relative to the folder in
+ * view or, with a leading slash, to the top of the place. An existing folder takes the file in, keeping its name. The file is copied and the
+ * original deleted, as every move is here.
+ * @param {FileEntry} entry @param {Place} place @param {string} folder
+ */
 export async function renameEntry(entry, place, folder) {
-  const name = await promptText(`Rename "${entry.name}" to:`, entry.name, { okLabel: 'Rename' });
-  if (name == null) return 0;
-  const target = name.trim();
-  if (!validName(target)) {
-    setStatus('A name cannot be empty or hold a slash.');
+  const typed = await promptText(`Rename "${entry.name}" to:`, entry.name, { okLabel: 'Rename' });
+  if (typed == null) return 0;
+  /** @param {string} message */
+  const refuse = (message) => {
+    setStatus(message);
     render();
     return 0;
-  }
-  if (target === entry.name) return 0;
-  const existing = await listing(place, folder);
-  const to = [cleanPath(folder), target].filter(Boolean).join('/');
-  return performTransfer('move', [{ item: entry, to, clash: !!existing && existing.some((e) => e.name === target) }], place, place);
+  };
+  const target = renameTarget(folder, typed);
+  if ('error' in target) return refuse(target.error);
+  const [targetParent, targetName] = splitLast(target.path);
+  const inParent = target.path === '' ? null : await listing(place, targetParent);
+  const intoFolder = target.path === '' || (!!inParent && inParent.some((e) => e.name === targetName && e.type === 'dir'));
+  let to;
+  if (intoFolder) to = [target.path, entry.name].filter(Boolean).join('/');
+  else if (target.folder || !inParent) return refuse(`No such directory: ${target.folder ? target.path : targetParent}`);
+  else to = target.path;
+  const source = cleanPath(entry.path);
+  if (to === source) return refuse('Cannot rename a file to itself.');
+  if (entry.type === 'dir' && isInside(source, to)) return refuse('Cannot move a folder into itself.');
+  const [toParent, toName] = splitLast(to);
+  const existing = await listing(place, toParent);
+  return performTransfer('move', [{ item: entry, to, clash: !!existing && existing.some((e) => e.name === toName) }], place, place);
 }
 
 /** `D`: deletes `items` after one question (Dired names a folder as a recursive delete). Open files with unsaved changes refuse; saved ones are mentioned and their tabs close.

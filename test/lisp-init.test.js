@@ -99,3 +99,10 @@ test('a value that does not fit its setting is reported', () => {
 test('nil for a file list is an empty box', () => {
   assert.equal(boxText(field('org-agenda-files'), { k: 'sym', v: 'nil' }), '');
 });
+
+test('the init sets an extras-menu entry whose OLP path has quotes in it, and the menu reads it', async () => {
+  const { parseExtraMenu } = await import('../src/extra-menu.js');
+  const { values } = settingsFromInit(String.raw`(setq org-xx-extra-menu '("t;Tracking" "[\"Bag - lists\", \"%<%Y-%m>\"];Current" "v;vCard"))`, {});
+  assert.equal(values['org-xx-extra-menu'], '"t;Tracking" "["Bag - lists", "%<%Y-%m>"];Current" "v;vCard"');
+  assert.deepEqual(parseExtraMenu(values['org-xx-extra-menu']).map((e) => e.type), ['capture', 'olp', 'capture']);
+});

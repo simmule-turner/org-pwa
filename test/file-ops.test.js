@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { arrange, compileFind, findMatches, freeName, isInside, marking, movedPath, openConflicts, planTransfer, sizeLabel, targets, validName } from '../src/file-ops.js';
+import { arrange, compileFind, renameTarget, findMatches, freeName, isInside, marking, movedPath, openConflicts, planTransfer, sizeLabel, targets, validName } from '../src/file-ops.js';
 
 const f = (name, extra = {}) => ({ name, path: `d/${name}`, type: 'file', ...extra });
 const d = (name) => ({ name, path: `d/${name}`, type: 'dir' });
@@ -25,10 +25,13 @@ test('Find refuses a regexp Emacs would refuse and says why', () => {
 
 test('sorting keeps folders first; date and size put the newest and biggest first, unknown last', () => {
   const rows = [f('b.org', { modified: 2, size: 5 }), f('a.org', { modified: 1, size: 9 }), f('c.org'), d('z'), d('y')];
-  assert.deepEqual(arrange(rows, 'name').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
-  assert.deepEqual(arrange(rows, 'date').map((e) => e.name), ['y', 'z', 'b.org', 'a.org', 'c.org']);
-  assert.deepEqual(arrange(rows, 'size').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
-  assert.deepEqual(arrange(rows, 'name', true).map((e) => e.name).slice(0, 2), ['z', 'y']);
+  assert.deepEqual(arrange(rows, 'name', false, true).map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'date', false, true).map((e) => e.name), ['y', 'z', 'b.org', 'a.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'size', false, true).map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'name', true, true).map((e) => e.name).slice(0, 2), ['z', 'y']);
+  // by default folders and files are sorted together, as ls does under Dired's "-al"
+  assert.deepEqual(arrange(rows, 'name').map((e) => e.name), ['a.org', 'b.org', 'c.org', 'y', 'z']);
+  assert.deepEqual(arrange([f('b'), d('a'), f('c')], 'name').map((e) => e.name), ['a', 'b', 'c']);
   assert.deepEqual(arrange([f('f10.org'), f('f9.org')], 'name').map((e) => e.name), ['f9.org', 'f10.org']);
 });
 
@@ -40,7 +43,10 @@ test('marks: toggle, invert, regexp (case-folded, on the name), clear', () => {
   assert.deepEqual([...m].sort(), ['d/B.org', 'd/c.md']);
   m = marking.byRegexp(new Set(), rows, '^b');
   assert.deepEqual([...m], ['d/B.org']);
-  assert.equal(marking.byRegexp(new Set(), rows, '('), null);
+  // an Emacs regexp: \\( \\| \\) group, and a bare parenthesis is text
+  assert.deepEqual([...marking.byRegexp(new Set(), rows, '\\.\\(org\\|el\\)$')].sort(), ['d/B.org', 'd/a.org']);
+  assert.deepEqual([...marking.byRegexp(new Set(), rows, '(')], []);
+  assert.equal(marking.byRegexp(new Set(), rows, '\\('), null);
   assert.equal(marking.clear().size, 0);
 });
 
@@ -93,4 +99,15 @@ test('size labels', () => {
   assert.equal(sizeLabel(4300), '4.2 KB');
   assert.equal(sizeLabel(5 * 1024 * 1024), '5.0 MB');
   assert.equal(sizeLabel(undefined), '');
+});
+
+test('R: a name renames in the folder, a path moves, ".." and a leading slash are read as Dired reads them', () => {
+  assert.deepEqual(renameTarget('d/e', 'z.org'), { path: 'd/e/z.org', folder: false });
+  assert.deepEqual(renameTarget('d/e', '../z.org'), { path: 'd/z.org', folder: false });
+  assert.deepEqual(renameTarget('d/e', '/top/z.org'), { path: 'top/z.org', folder: false });
+  assert.deepEqual(renameTarget('d/e', 'sub/'), { path: 'd/e/sub', folder: true });
+  assert.deepEqual(renameTarget('d', './x/../y'), { path: 'd/y', folder: false });
+  assert.deepEqual(renameTarget('d', '/'), { path: '', folder: true });
+  assert.ok('error' in renameTarget('d', '../../x'));
+  assert.ok('error' in renameTarget('d', '  '));
 });

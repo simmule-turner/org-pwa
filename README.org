@@ -163,11 +163,42 @@ Landing on a step identical to the last saved text clears the modified indicator
 
 - *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term only when the list's first item has one; an item with nothing after its bullet gets the new item above it; blank lines between items are kept). Lists inside drawers and example blocks edit like any other list. *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
 - *Checkboxes* toggle between unchecked and done. A box that has boxes under it shows what they add up to (~[-]~ when some are done), as in Org, so tapping it changes nothing. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
-- *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table. Every edit aligns the table the way ~org-table-align~ does (deleting a row leaves the others as they are), and the references in ~#+TBLFM:~ follow an inserted or deleted row or column. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
+- *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table; *⋯ Table* opens more (see [[#table-pad][Table pad]]). Every edit aligns the table the way ~org-table-align~ does (deleting a row leaves the others as they are), and the references in ~#+TBLFM:~ follow an inserted or deleted row or column. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
 - *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. A caption shows in italics with its markup rendered; ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~ and ~em~ work). The other lines stay visible as small muted text, exactly as written.
 
 Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]]).
+
+*** Table pad
+:PROPERTIES:
+:CUSTOM_ID: table-pad
+:END:
+
+*⋯ Table*, below a table, opens a pad of buttons that act at the highlighted cell, the one you last tapped; the arrows at its top move it. Each button is an Org command, and holding one shows its key. They are in the command palette too (~org-table-insert-row~, ~org-table-kill-row~, ~org-table-sort-lines~ and the rest). In a table the M-arrow keys do these instead of moving headings.
+
+| Key | What it does |
+|---+---|
+| ~M-S-↓~, ~M-S-↑~ | Insert a row above the cursor; delete the row |
+| ~M-↑~, ~M-↓~ | Move the row up or down (a rule counts as a row) |
+| ~M-S-→~, ~M-S-←~ | Insert a column at the cursor; delete the column |
+| ~M-←~, ~M-→~ | Move the column left or right |
+| ~C-c -~ | Insert a rule below the row |
+| ~C-c RET~ | Insert a rule and go to the row below it |
+| ~C-c ^~ | Sort the rows between the nearest rules (the whole table if there are none) by the cursor's column |
+
+*Sort* asks the way Emacs does: ~a~ alphabetic (ignoring case, by character code), ~n~ numeric (text that is not a number counts as 0), ~t~ time (timestamps and durations such as ~1:30~; other text counts as 0) or ~f~ function, and a capital letter reverses. ~f~ asks for the name of a function that gets the key from a field (a function that exists, such as ~length~ or one from your Lisp init), then for one that compares two keys; leave that empty for ~<~ on numbers and ~string<~ on strings. Rows that tie keep their order. The formulas follow a moved row or column; a sort leaves them alone.
+
+With the cursor in the qty column of
+
+#+begin_example
+| fruit  | qty |
+|--------+-----|
+| apple  |   3 |
+| banana |  12 |
+| cherry |   7 |
+#+end_example
+
+~C-c ^ n~ puts the rows in the order apple, cherry, banana (3, 7, 12).
 
 *** Table formulas
 :PROPERTIES:
@@ -1747,15 +1778,15 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 :CUSTOM_ID: files-view
 :END:
 
-The Files list manages files the way Dired does. It shows every file. *Sort* by name, date (newest first) or size (largest first); *Reverse the order* flips it. Folders come first.
+The Files list manages files the way Dired does. It shows every file. *Sort* by name, date (newest first) or size (largest first); *Reverse the order* flips it. Folders are sorted in with the files, as Dired does; put ~--group-directories-first~ in ~dired-listing-switches~ (Lisp init) to list them first (that is the only switch read).
 
 *Find…* (~find-lisp-find-dired~) asks for an Emacs regexp and lists the files below the folder whose /name/ matches, folders searched and not listed, with the case folded as Emacs does by default. ~\.org$~ finds the Org files, ~\.\(org\|el\)$~ Org and Elisp files; a bare ~(~ or ~|~ is text, as in Emacs. Each row shows its path. *Change filter…* (~find-lisp-find-dired-filter~) matches the same files against another regexp, *Search again* looks again, *Close* returns to the folder. GitHub is searched with one request; WebDAV and a device folder one folder at a time, with *Cancel*, and the search stops after 5000 files and says so.
 
-*Marks*: the box at the left of a row marks it. *Marks…* marks by regular expression (matched against the file name, case-folded), marks all shown, inverts, or unmarks. With files marked, *Copy to…*, *Move to…* and *Delete…* act on them; with none, a row's *⋯* menu acts on that row.
+*Marks*: the box at the left of a row marks it. *Marks…* marks by Emacs regexp (matched against the file name, case-folded; ~\.\(org\|el\)$~ marks Org and Elisp files), marks all shown, inverts, or unmarks. With files marked, *Copy to…*, *Move to…* and *Delete…* act on them; with none, a row's *⋯* menu acts on that row.
 
 - *Copy to…* / *Move to…*: open the folder to copy into (in any place) and tap *Copy here*. A name that is already there asks *Yes / No / Yes to all / Quit*. A move deletes the original only after the copy is written.
-- *Rename…* keeps the folder. *Flag for deletion* and *Delete the flagged* are ~d~ and ~x~ of Dired; *Delete…* asks once, and names a folder as such.
-- *New…* makes a file (opened for editing) or a folder. A new folder holds an empty ~.gitkeep~ so it exists in every place.
+- *Rename…* (Dired's ~R~) takes a new name or a path: ~sub/a.org~ is relative to this folder, ~/x/a.org~ to the top of the place, a folder you name takes the file, and the parent must exist. It copies, then deletes the original, so it works across folders. *Flag for deletion* and *Delete the flagged* are ~d~ and ~x~ of Dired; *Delete…* asks once, and names a folder as such.
+- *New…* makes a file (opened for editing) or a folder. A new folder is a real empty folder in WebDAV and in a browser's device folder; GitHub and the Android folder cannot hold an empty one, so there it holds an empty ~.gitkeep~.
 - *Info* shows the path, size and modified time, where the place gives them.
 
 A file open with unsaved changes is never deleted, moved or replaced. One that is open and saved is asked about, its tab closes with a delete and follows a move.
@@ -2223,9 +2254,11 @@ The translation rules follow real god-mode.el (github.com/emacsorphanage/god-mod
 | ~Tab~ | ~Tab~ | Cycle the focused heading's fold state |
 | ~S-Tab~ | ~S-Tab~ | Cycle the whole document (overview, fully shown) |
 | ~←~, ~→~ | ~<left>~, ~<right>~ | Collapse the focused heading fully, or expand it one level |
-| ~g↑~, ~g↓~ | ~M-↑~, ~M-↓~ | Move the focused heading up or down among its siblings |
-| ~g←~, ~g→~ | ~M-←~, ~M-→~ | Promote or demote the focused heading with its subtree |
-| ~gS-←~, ~gS-→~ | ~M-S-←~, ~M-S-→~ | The same (there is no separate whole-subtree action) |
+| ~g↑~, ~g↓~ | ~M-↑~, ~M-↓~ | Move the focused heading up or down among its siblings (in a table: the row) |
+| ~g←~, ~g→~ | ~M-←~, ~M-→~ | Promote or demote the focused heading with its subtree (in a table: move the column) |
+| ~gS-←~, ~gS-→~ | ~M-S-←~, ~M-S-→~ | The same (there is no separate whole-subtree action); in a table: delete or insert a column |
+| ~gS-↑~, ~gS-↓~ | ~M-S-↑~, ~M-S-↓~ | In a table: delete the row; insert a row above |
+| ~c -~, ~c RET~, ~c ^~ | ~C-c -~, ~C-c RET~, ~C-c ^~ | In a table: insert a rule; insert a rule and go to the next row; sort |
 | ~c f~, ~c b~ | ~C-c C-f~, ~C-c C-b~ | Focus the next or previous heading at the same level; a status message says when there is none |
 | ~c u~ | ~C-c C-u~ | Focus the parent heading (a status message at the top level) |
 | ~c n~, ~c p~ | ~C-c C-n~, ~C-c C-p~ | Focus the next or previous visible heading, at any level |
@@ -2335,7 +2368,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Attachments* (see [[#attachments][Attachments]]): the same folder model as ~org-attach~ (an ~ID~ or ~DIR~ folder and the ~:ATTACH:~ tag) and the dispatcher keys ~a~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~, plus ~r~ to record audio. The Folder panel stands in for ~org-attach-dired~: select files, then open, save or delete them. Needs GitHub, WebDAV, or the org-pwa folder in the Android app.
 
-*Files view* (see [[#files-view][Files view]]): after Dired, with touch controls in place of keys. A copy or move reads the bytes and writes them at the new path (GitHub and WebDAV have no copy of their own), so a folder is copied file by file; GitHub has no empty folders, so a new folder holds a ~.gitkeep~. A listing gives a date only where the place does (WebDAV and the device, not GitHub). Find uses a regexp on the name only and has no narrowing of the folder in view (the ~dired-narrow~ package is not part of Emacs). Attach from Files is on ~p~, which ~org-attach~ does not use.
+*Files view* (see [[#files-view][Files view]]): after Dired, with touch controls in place of keys. A copy or move reads the bytes and writes them at the new path (GitHub and WebDAV have no copy of their own), so a folder is copied file by file; GitHub and the Android folder have no empty folders, so a new folder there holds a ~.gitkeep~. A listing gives a date only where the place does (WebDAV and the device, not GitHub). Find uses a regexp on the name only and has no narrowing of the folder in view (the ~dired-narrow~ package is not part of Emacs). Attach from Files is on ~p~, which ~org-attach~ does not use.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a three-way merge by lines, and by heading for a subtree moved on one side and edited on the other, with a region-by-region resolver for what remains.
 

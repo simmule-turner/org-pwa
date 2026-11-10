@@ -662,3 +662,20 @@ test('parsePropfindResponse reads the size and last-modified time of a file when
   assert.equal(entry.size, 812);
   assert.equal(entry.modified, Date.parse('2026-11-10T05:00:00Z'));
 });
+
+test('makeDirectory makes an empty folder with MKCOL, each level from the top, and no file', () => {
+  const calls = [];
+  return withMockFetch(
+    async (url, opts) => {
+      calls.push({ url, method: opts.method });
+      return textResponse(opts.method === 'MKCOL' ? 201 : 404, '');
+    },
+    async () => {
+      await createWebdavAdapter(() => CONFIG).makeDirectory('notes/new/');
+    }
+  ).then(() => {
+    assert.deepEqual(calls.map((c) => c.method), ['MKCOL', 'MKCOL']);
+    assert.match(calls[0].url, /notes\/$/);
+    assert.match(calls[1].url, /notes\/new\/$/);
+  });
+});

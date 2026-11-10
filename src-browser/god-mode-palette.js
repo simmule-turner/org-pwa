@@ -47,6 +47,7 @@ import { performExport, performOrgOrgExport } from './export-import.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
+import { tableChord, focusedTable, askSort } from './table-edit.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
@@ -181,21 +182,25 @@ export const GOD_MODE_ACTIONS = {
     render();
   },
   'M-<up>': () => {
+    if (tableChord('row-up')) return;
     if (S.keyboardFocusedHeading && moveHeadingUp(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading up');
       scrollFocusedHeadingIntoView();
     }
   },
   'M-<down>': () => {
+    if (tableChord('row-down')) return;
     if (S.keyboardFocusedHeading && moveHeadingDown(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading down');
       scrollFocusedHeadingIntoView();
     }
   },
   'M-<right>': () => {
+    if (tableChord('col-move-right')) return;
     if (S.keyboardFocusedHeading && demoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Demoted heading');
   },
   'M-<left>': () => {
+    if (tableChord('col-move-left')) return;
     if (S.keyboardFocusedHeading && promoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Promoted heading');
   },
   // Real org's own C-x n s / C-x n w (narrow-to-subtree / widen).
@@ -208,10 +213,30 @@ export const GOD_MODE_ACTIONS = {
   // heading-only version, so the "entire subtree" god-mode sequence
   // maps to the exact same action as the plain one above.
   'M-S-<right>': () => {
+    if (tableChord('col-left')) return;
     if (S.keyboardFocusedHeading && demoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Demoted heading');
   },
   'M-S-<left>': () => {
+    if (tableChord('col-delete')) return;
     if (S.keyboardFocusedHeading && promoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Promoted heading');
+  },
+  // Org's table commands: M-S-up and M-S-down are not heading commands in this app, so they only act in a table
+  'M-S-<up>': () => {
+    if (!tableChord('row-delete')) godModeNotSupported('delete row needs the cursor in a table');
+  },
+  'M-S-<down>': () => {
+    if (!tableChord('row-above')) godModeNotSupported('insert row needs the cursor in a table');
+  },
+  'C-c -': () => {
+    if (!tableChord('rule-below')) godModeNotSupported('insert rule needs the cursor in a table');
+  },
+  'C-c RET': () => {
+    if (!tableChord('rule-and-move')) godModeNotSupported('this needs the cursor in a table');
+  },
+  'C-c ^': () => {
+    const t = focusedTable();
+    if (t) askSort(t.heading, t.table);
+    else godModeNotSupported('sort needs the cursor in a table');
   },
   'C-c C-f': () => moveToSameLevelHeading(1),
   'C-c C-b': () => moveToSameLevelHeading(-1),
@@ -497,6 +522,17 @@ export function paletteCommandList() {
     if (target) setKeyboardFocusToHeading(target);
     /** @type {Record<string, () => void>} */ (GOD_MODE_ACTIONS)[c]();
   };
+  // the heading commands that share a chord with a table command (M-arrows) act on the heading even when a table has focus
+  const headingChord = (/** @type {string} */ c) => (/** @type {Heading | null | undefined} */ target) => {
+    S.actionMenuFor = null;
+    const heading = target || S.keyboardFocusedHeading;
+    if (heading) setKeyboardFocusToHeading(heading);
+    /** @type {Record<string, () => void>} */ (GOD_MODE_ACTIONS)[c]();
+  };
+  const tableCommand = (/** @type {string} */ id) => () => {
+    S.actionMenuFor = null;
+    if (!tableChord(id)) setStatus('Put the cursor in a table first (tap a cell).');
+  };
   const onHeading = (/** @type {Function} */ fn) => (/** @type {object | null | undefined} */ target) => {
     S.actionMenuFor = null;
     fn(target);
@@ -527,6 +563,32 @@ export function paletteCommandList() {
   };
 
   return [
+    // -- Table (the cursor is the cell last tapped; see the Table pad under a table)
+    { id: 'table-insert-row', label: 'Table: insert row above', orgName: 'org-table-insert-row', keys: 'M-S-<down>', group: 'Table', keywords: ['table', 'row'], needs: ['doc', 'writable'], run: tableCommand('row-above') },
+    { id: 'table-kill-row', label: 'Table: delete row', orgName: 'org-table-kill-row', keys: 'M-S-<up>', group: 'Table', keywords: ['table', 'row'], needs: ['doc', 'writable'], run: tableCommand('row-delete') },
+    { id: 'table-move-row-up', label: 'Table: move row up', orgName: 'org-table-move-row-up', keys: 'M-<up>', group: 'Table', keywords: ['table', 'row'], needs: ['doc', 'writable'], run: tableCommand('row-up') },
+    { id: 'table-move-row-down', label: 'Table: move row down', orgName: 'org-table-move-row-down', keys: 'M-<down>', group: 'Table', keywords: ['table', 'row'], needs: ['doc', 'writable'], run: tableCommand('row-down') },
+    { id: 'table-insert-column', label: 'Table: insert column left', orgName: 'org-table-insert-column', keys: 'M-S-<right>', group: 'Table', keywords: ['table', 'column'], needs: ['doc', 'writable'], run: tableCommand('col-left') },
+    { id: 'table-delete-column', label: 'Table: delete column', orgName: 'org-table-delete-column', keys: 'M-S-<left>', group: 'Table', keywords: ['table', 'column'], needs: ['doc', 'writable'], run: tableCommand('col-delete') },
+    { id: 'table-move-column-left', label: 'Table: move column left', orgName: 'org-table-move-column-left', keys: 'M-<left>', group: 'Table', keywords: ['table', 'column'], needs: ['doc', 'writable'], run: tableCommand('col-move-left') },
+    { id: 'table-move-column-right', label: 'Table: move column right', orgName: 'org-table-move-column-right', keys: 'M-<right>', group: 'Table', keywords: ['table', 'column'], needs: ['doc', 'writable'], run: tableCommand('col-move-right') },
+    { id: 'table-insert-hline', label: 'Table: insert rule below', orgName: 'org-table-insert-hline', keys: 'C-c -', group: 'Table', keywords: ['table', 'hline', 'rule', 'separator'], needs: ['doc', 'writable'], run: tableCommand('rule-below') },
+    { id: 'table-hline-and-move', label: 'Table: insert rule, go to next row', orgName: 'org-table-hline-and-move', keys: 'C-c RET', group: 'Table', keywords: ['table', 'hline', 'rule'], needs: ['doc', 'writable'], run: tableCommand('rule-and-move') },
+    {
+      id: 'table-sort-lines',
+      label: 'Table: sort by this column',
+      orgName: 'org-table-sort-lines',
+      keys: 'C-c ^',
+      group: 'Table',
+      keywords: ['table', 'sort', 'order'],
+      needs: ['doc', 'writable'],
+      run: () => {
+        S.actionMenuFor = null;
+        const t = focusedTable();
+        if (t) askSort(t.heading, t.table);
+        else setStatus('Put the cursor in a table first (tap a cell).');
+      },
+    },
     // -- Heading
     { id: 'todo', label: 'Cycle TODO state', orgName: 'org-todo', keys: 'C-c C-t', group: 'Heading', needs: HEAD, run: onHeading(openTodoOrPickWorkflow) },
     { id: 'priority', label: 'Set priority', orgName: 'org-priority', keys: 'C-c ,', group: 'Heading', needs: HEAD, run: onHeading(cyclePriorityFor) },
@@ -543,10 +605,10 @@ export function paletteCommandList() {
     },
     { id: 'add-heading', label: 'Add heading after', orgName: 'org-insert-heading', keys: 'M-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-RET') },
     { id: 'add-todo-heading', label: 'Add TODO heading after', orgName: 'org-insert-todo-heading', keys: 'M-S-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-S-RET') },
-    { id: 'promote', label: 'Promote subtree', orgName: 'org-promote-subtree', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: chord('M-<left>') },
-    { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: chord('M-<right>') },
-    { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: chord('M-<up>') },
-    { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: chord('M-<down>') },
+    { id: 'promote', label: 'Promote subtree', orgName: 'org-promote-subtree', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: headingChord('M-<left>') },
+    { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: headingChord('M-<right>') },
+    { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: headingChord('M-<up>') },
+    { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: headingChord('M-<down>') },
     { id: 'footnote-action', label: 'Footnote: go to definition or reference, or add one', orgName: 'org-footnote-action', keys: 'C-c C-x f', group: 'Document', keywords: ['footnote', 'jump', 'definition', 'reference', 'fn'], needs: ['doc'], run: () => footnoteActionCommand() },
     { id: 'footnote-new', label: 'Insert footnote', orgName: 'org-footnote-new', group: 'Document', keywords: ['footnote', 'reference', 'note', 'fn'], needs: ['doc', 'writable'], run: () => insertFootnoteCommand() },
     { id: 'footnote-delete', label: 'Delete footnote', orgName: 'org-footnote-delete', group: 'Document', keywords: ['footnote', 'remove', 'fn'], needs: ['doc', 'writable'], run: () => deleteFootnoteCommand() },

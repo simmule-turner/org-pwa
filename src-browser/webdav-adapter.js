@@ -406,6 +406,10 @@ export function createWebdavAdapter(getConfig) {
     read: readImpl,
     write: writeImpl,
     writeBinary: writeBinaryImpl,
+    /** An empty folder (a WebDAV collection) at `path`, with the folders above it. @param {string} path */
+    async makeDirectory(path) {
+      await ensureIntermediateDirectories(requireConfig(getConfig), path.replace(/^\/+|\/+$/g, '') + '/x');
+    },
     delete: deleteImpl,
     list: listImpl,
     readBinary: readBinaryImpl,
