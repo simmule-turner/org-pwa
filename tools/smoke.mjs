@@ -2864,6 +2864,42 @@ check('god-mode: C-/ undoes, and C-f then C-/ redoes -- repeatedly, until it fal
   await context.close();
 });
 
+check('undo tree: an edit after an Undo starts a branch, the history panel shows both, tapping a step on the other branch jumps there, and Redo leads back to it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Alpha\n* Beta\n');
+  const rename = async (from, to) => {
+    await page.locator('.heading-title', { hasText: from }).first().click();
+    await page.getByRole('button', { name: 'Edit title' }).click();
+    await page.waitForSelector('#heading-title-edit-popup');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(to);
+    await page.getByText('OK', { exact: true }).last().click();
+    await page.waitForTimeout(300);
+  };
+  await rename('Alpha', 'Alpha1'); // step 1
+  await runCommand(page, 'Undo'); // back to the opened text
+  await rename('Beta', 'Beta1'); // an edit after the Undo: a second branch from the opened text
+  const text = await documentText(page);
+  expect(text.includes('* Alpha\n') && text.includes('Beta1'), `the new branch has only the second edit: ${text}`);
+  await runCommand(page, 'Undo history');
+  await page.waitForSelector('.menu-list-item');
+  const rows = await page.locator('.menu-list-item').allInnerTexts();
+  expect(rows.length === 4, `four steps (the setup edit, and one per branch) are listed, the left branch too (${rows.length}): ${JSON.stringify(rows)}`);
+  const pads = await page.locator('.menu-list-item').evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).paddingLeft)));
+  expect(pads[2] > pads[1] && pads[3] > pads[1], `the branches are indented: ${pads}`);
+  // tap the step on the other branch (the one that renamed Alpha)
+  await page.locator('.menu-list-item').nth(2).click(); // the older branch, listed first
+  await page.waitForTimeout(300);
+  let after = await documentText(page);
+  expect(after.includes('Alpha1') && !after.includes('Beta1'), `jumped to the other branch: ${after}`);
+  await runCommand(page, 'Undo');
+  await runCommand(page, 'Redo');
+  after = await documentText(page);
+  expect(after.includes('Alpha1') && !after.includes('Beta1'), `Redo leads back to the branch jumped to: ${after}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('god-mode: the new chords for refile/attach/clocking/export reach their real targets', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Write report\n');
@@ -3543,6 +3579,21 @@ check('conflict: edits in different places merge automatically, keeping both', a
   const expected = SAMPLE.replace('body 1', 'body 1 -- mine').replace('body 5', 'body 5 -- theirs');
   expect(dav.get('notes.org') === expected, `server has: ${JSON.stringify(dav.get('notes.org'))}`);
   expect((await documentText(page)) === expected, 'the open document was not updated to the merged text');
+  await context.close();
+});
+
+check('conflict: a subtree moved on the server and edited here merges by heading without asking', async () => {
+  dav.reset({ 'notes.org': SAMPLE });
+  const { context, page } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await replaceInDocument(page, 'body 2', 'body 2 -- mine');
+  const moved = ['* Two', 'body 2', '* One', 'body 1', '* Three', 'body 3', '* Four', 'body 4', '* Five', 'body 5', ''].join('\n'); // Two moved above One
+  dav.set('notes.org', moved);
+  await fileMenu(page, 'Save');
+  await waitForStatus(page, 'merged');
+  expect(!(await page.locator('#conflict-resolver').count()), 'a moved subtree edited here should not ask anything');
+  const expected = ['* Two', 'body 2 -- mine', '* One', 'body 1', '* Three', 'body 3', '* Four', 'body 4', '* Five', 'body 5', ''].join('\n');
+  expect(dav.get('notes.org') === expected, `server has: ${JSON.stringify(dav.get('notes.org'))}`);
   await context.close();
 });
 

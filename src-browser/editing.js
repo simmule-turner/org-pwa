@@ -14,7 +14,7 @@ import { saveNarrowState } from '../src/narrow-state.js';
 import { findHeadingAtLine, parseOrg, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
-import { canRedo, canUndo, currentEntry, jumpTo, pushSnapshot, redo, undo } from '../src/undo-history.js';
+import { canRedo, canUndo, currentEntry, jumpTo, parentOf, pushSnapshot, redo, redoBranches, treeRows, undo } from '../src/undo-history.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { openTextFieldPopup } from './dialogs.js';
@@ -347,9 +347,10 @@ export function performRedo() {
     setStatus('Nothing to redo.');
     return;
   }
+  const { count, which } = redoBranches(S.history);
   S.history = redo(S.history);
   restoreFromHistory();
-  setStatus(`Redid: ${currentEntry(S.history).label}`);
+  setStatus(`Redid: ${currentEntry(S.history).label}${count > 1 ? ` (branch ${which} of ${count})` : ''}`);
 }
 
 export function renderHistoryPanel(target = S.historyRenderTarget) {
@@ -386,16 +387,18 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
   hint.style.fontSize = '11px';
   hint.style.opacity = '0.6';
   hint.style.margin = '4px 0';
-  hint.textContent = 'Tap an entry to jump there. Tap "diff" to see what that step actually changed.';
+  hint.textContent = 'Tap an entry to jump there, on any branch. Tap "diff" to see what that step actually changed. A step with several steps after it is where an edit made after an Undo started another branch; Redo takes the branch you were last on.';
   container.appendChild(hint);
 
   const list = document.createElement('div');
 
-  S.history.entries.forEach((entry, /** @type {number} */ idx) => {
+  for (const { index: idx, depth, kind } of treeRows(S.history)) {
+    const entry = S.history.entries[idx];
     const row = document.createElement('div');
     row.className = 'menu-list-item';
     row.style.cursor = 'pointer';
-    row.style.opacity = idx > S.history.index ? '0.55' : '1'; // "future" (redo-available) entries shown dimmer
+    row.style.opacity = kind === 'after' ? '0.55' : kind === 'aside' ? '0.4' : '1'; // steps Redo reaches shown dimmer, other branches dimmest
+    row.style.paddingLeft = `${depth * 14}px`; // a step with several steps after it puts each branch a level deeper
 
     const line = document.createElement('div');
     line.style.display = 'flex';
@@ -420,7 +423,7 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
     time.style.opacity = '0.6';
     line.appendChild(time);
 
-    if (idx > 0) {
+    if (parentOf(S.history, idx) !== null) {
       const diffBtn = document.createElement('span');
       diffBtn.textContent = 'diff';
       diffBtn.style.fontSize = '11px';
@@ -443,12 +446,12 @@ export function renderHistoryPanel(target = S.historyRenderTarget) {
       renderHistoryPanel();
     };
 
-    if (S.historyDiffExpandedIndex === idx && idx > 0) {
-      row.appendChild(renderDiffView(S.history.entries[idx - 1].text, entry.text));
+    if (S.historyDiffExpandedIndex === idx && parentOf(S.history, idx) !== null) {
+      row.appendChild(renderDiffView(S.history.entries[parentOf(S.history, idx) ?? 0].text, entry.text));
     }
 
     list.appendChild(row);
-  });
+  }
 
   container.appendChild(list);
 }

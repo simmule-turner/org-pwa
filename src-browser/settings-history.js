@@ -4,7 +4,8 @@
 // The history lives in memory for the session; logins, their passphrase, and what was open last are not part of it (src/settings-history.js).
 import { applyDurationVariables } from '../src/org-duration.js';
 import { applyLispInit } from './lisp-init-load.js';
-import { mergeGlobalAndLocalVariables, parseGlobalVariables } from '../src/global-variables.js';
+import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
+import { parseGlobalVariables } from './global-variables-lisp.js';
 import { parseLocalVariables } from '../src/local-variables.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { changedNames, labelForChange, planRestore, pushCapped, snapshotText } from '../src/settings-history.js';

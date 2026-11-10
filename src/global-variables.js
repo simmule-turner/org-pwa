@@ -2,6 +2,8 @@
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 import { setTagsColumn, tagsColumnOf } from './tags-column.js';
 import { setSizeLimits, sizeLimitsOf } from './size-limits.js';
+import { tokenize as tokenizeExtraMenu } from './extra-menu.js';
+import { tokenizeMenuAliasValue } from './menu-alias.js';
 /**
  * "Global Variables" -- an app-wide, cross-file settings mechanism
  * (configured in Settings, not embedded in any particular .org file)
@@ -82,27 +84,60 @@ function formElements(form) {
   return out;
 }
 
+/** The variables whose value is a list of strings (one menu entry each) that the app keeps as its quoted entries, `"a" "b"`, with the
+ *  tokenizer that reads them. In the text they are a quoted list of Lisp strings, as an init file has them: `'("a" "b")`. */
+const ENTRY_LISTS = /** @type {Record<string, (raw: string) => string[]>} */ ({
+  'org-xx-extra-menu': tokenizeExtraMenu,
+  'org-xx-menu-aliases': tokenizeMenuAliasValue,
+});
+
+/** How a setting's value goes to and from the file, for settings whose box text is not Lisp (a bare word, `true`, `0`): `toLisp` gives the
+ *  source for a `(setq)` and `fromLisp` the box text for a source; each returns undefined for a variable it knows nothing about.
+ * @typedef {{ toLisp: (name: string, box: string) => string | undefined, fromLisp: (name: string, source: string) => string | undefined }} ValueCodec */
+
+/** A value as it goes after the name in a `(setq NAME VALUE)` when nothing knows the setting: as typed, but several bare items become a
+ *  quoted list, since setq would take them as more pairs.
+ * @param {string} value */
+function plainSource(value) {
+  return formElements(`(${value})`).length > 1 ? `'(${value})` : value;
+}
+
+/** The entries of a quoted list of strings as the app keeps them: each string read as Lisp reads it, then quoted again with nothing escaped.
+ * @param {string} value  `'("a" "b")`, `("a" "b")` or one string */
+function entriesOfList(value) {
+  const source = value.replace(/^'/, '');
+  const elements = source.startsWith('(') ? formElements(source) : [source];
+  return elements.filter((e) => e.length >= 2 && e.startsWith('"') && e.endsWith('"')).map((e) => '"' + e.slice(1, -1).replace(/\\(["\\])/g, '$1') + '"').join(' ');
+}
+
+/** The reverse: the entries of `raw` as a quoted list of Lisp strings, one to a line.
+ * @param {string} raw @param {(raw: string) => string[]} tokenize */
+function listOfEntries(raw, tokenize) {
+  const entries = tokenize(raw).map((t) => '"' + t.replace(/[\\"]/g, '\\$&') + '"');
+  return entries.length === 0 ? 'nil' : `'(${entries.join('\n    ')})`;
+}
+
 /** The variables the `(setq NAME VALUE ...)` forms of a text set, each value as its source (`'time`, `"text"`, `t`); other forms are ignored.
- * @param {string} text */
-export function parseGlobalVariables(text) {
+ * @param {string} text @param {ValueCodec | null} [codec] */
+export function parseGlobalVariables(text, codec = null) {
   /** @type {Record<string, string>} */ const vars = {};
   if (!text) return vars;
   for (const form of topLevelForms(text)) {
     const [head, ...rest] = formElements(form);
     if (head !== 'setq') continue;
-    for (let k = 0; k + 1 < rest.length; k += 2) if (/^[A-Za-z][^\s'"()]*$/.test(rest[k])) vars[rest[k]] = rest[k + 1];
+    for (let k = 0; k + 1 < rest.length; k += 2) if (/^[A-Za-z][^\s'"()]*$/.test(rest[k])) vars[rest[k]] = rest[k] in ENTRY_LISTS ? entriesOfList(rest[k + 1]) : (codec && codec.fromLisp(rest[k], rest[k + 1])) ?? rest[k + 1];
   }
   return vars;
 }
 
 /** The reverse of parseGlobalVariables: one `(setq NAME VALUE)` per variable, sorted by name so the text does not depend on the order
  *  the variables were set in. A variable whose value is null, undefined or empty is left out (a setting reset to unset).
- * @param {LocalVars} vars */
-export function serializeGlobalVariables(vars) {
+ * @param {LocalVars} vars @param {ValueCodec | null} [codec] */
+export function serializeGlobalVariables(vars, codec = null) {
   return Object.keys(vars)
     .filter((k) => vars[k] !== null && vars[k] !== undefined && vars[k] !== '')
     .sort()
-    .map((k) => `(setq ${k} ${vars[k]})`)
+    .map((k) => `(setq ${k} ${k in ENTRY_LISTS ? listOfEntries(String(vars[k]), ENTRY_LISTS[k]) : (codec && codec.toLisp(k, String(vars[k]))) ?? plainSource(String(vars[k]))})`)
     .join('\n');
 }
 

@@ -98,3 +98,40 @@ test('serializeGlobalVariables round-trips correctly through parseGlobalVariable
 test('serializeGlobalVariables of an empty object produces an empty string', () => {
   assert.equal(serializeGlobalVariables({}), '');
 });
+
+// ---- the menu variables: a quoted list of Lisp strings, as an init file has them --------------------
+
+test('org-xx-extra-menu and org-xx-menu-aliases are quoted lists of strings, read to the entries the menus take', () => {
+  const vars = parseGlobalVariables(`(setq org-xx-extra-menu
+      '("a;📅 Appointment"
+        "-----"
+        "[\\"🛍️ Bag - lists and notes\\", \\"%<%Y-%m>\\"];👁 Current"
+        "'calendar;🗓️ Calendar")
+      org-xx-menu-aliases '("more:Commands;💲Commands" "more:Settings;⚙️ Settings"))`);
+  assert.equal(vars['org-xx-extra-menu'], `"a;📅 Appointment" "-----" "["🛍️ Bag - lists and notes", "%<%Y-%m>"];👁 Current" "'calendar;🗓️ Calendar"`);
+  assert.equal(vars['org-xx-menu-aliases'], '"more:Commands;💲Commands" "more:Settings;⚙️ Settings"');
+});
+
+test('the menu variables are written as a quoted list, quotes inside an entry escaped, and read back the same', () => {
+  const vars = { 'org-xx-extra-menu': '"a;A" "["Bag", "%<%Y>"];Now"', 'org-xx-menu-aliases': '"more:Export;E"' };
+  const text = serializeGlobalVariables(vars);
+  assert.equal(text, `(setq org-xx-extra-menu '("a;A"\n    "[\\"Bag\\", \\"%<%Y>\\"];Now"))\n(setq org-xx-menu-aliases '("more:Export;E"))`);
+  assert.deepEqual(parseGlobalVariables(text), vars);
+});
+import { parseGlobalVariables as parseLisp, serializeGlobalVariables as serializeLisp } from '../src-browser/global-variables-lisp.js';
+
+test('a string setting with spaces is written as a Lisp string and read back as its text', () => {
+  const vars = { 'display-time-format': '%b%d %H:%M', 'org-weather-format': 'Weather: %desc, %tcur', 'org-footnote-section': 'Footnotes', 'org-deadline-warning-days': '14' };
+  const text = serializeLisp(vars);
+  assert.equal(text, '(setq display-time-format "%b%d %H:%M")\n(setq org-deadline-warning-days 14)\n(setq org-footnote-section "Footnotes")\n(setq org-weather-format "Weather: %desc, %tcur")');
+  assert.deepEqual(parseLisp(text), vars);
+  assert.equal(parseLisp('(setq display-time-format %H:%M)')['display-time-format'], '%H:%M'); // unquoted still reads
+});
+
+test('a list typed bare is saved as a quoted list, and nil stays nil', () => {
+  const text = serializeLisp({ 'org-modules': 'org-habit org-id', 'org-contacts-files': '("github:c" "github:d")', 'org-footnote-section': 'nil', 'org-clock-out-switch-to-state': 'DONE' });
+  assert.equal(text, '(setq org-clock-out-switch-to-state "DONE")\n(setq org-contacts-files \'("github:c" "github:d"))\n(setq org-footnote-section nil)\n(setq org-modules \'(org-habit org-id))');
+  const back = parseLisp(text);
+  assert.equal(back['org-modules'], '(org-habit org-id)');
+  assert.equal(back['org-footnote-section'], 'nil');
+});

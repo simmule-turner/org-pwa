@@ -107,3 +107,10 @@ test('the settings that were changed to Emacs’s form do not read the old text'
   assert.deepEqual(parseRefileTargetsWithErrors('current maxlevel=3').entries, []);
   assert.deepEqual(parseGlobalProperties('Effort_ALL: 0:10'), {});
 });
+
+test('a list or symbol value written quoted, as Emacs writes it, is read like the unquoted one', async () => {
+  const { getUseSubSuperscripts, getTimeDisplayForm } = await import('../src/local-variables.js');
+  assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': "'{}" }), '{}');
+  assert.equal(getUseSubSuperscripts({ 'org-use-sub-superscripts': "'nil" }), 'nil');
+  assert.equal(getTimeDisplayForm({ 'calendar-time-display-form': `'(24-hours ":" minutes)` }), '(24-hours ":" minutes)');
+});

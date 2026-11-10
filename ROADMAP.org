@@ -21,11 +21,6 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
-* Editing and structure
-** [#C] An undo tree
-** [#C] Structure-aware merge
-A subtree moved on one side and edited on the other is an ordinary clash today.
-
 * Babel and attachments
 ** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
 ** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage

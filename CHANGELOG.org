@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v668 — An undo tree, merge by heading, and Global Variables as Lisp
+An edit after an Undo now starts a branch instead of discarding what was undone; the history panel shows the branches and any step can be jumped to. A sync conflict where one side moved or promoted a subtree and the other edited it now merges by heading, without a dialog, and asks only when it cannot be sure. Global Variables are real Lisp: toggles are ~t~ or ~nil~, choices are quoted symbols, strings are quoted and lists are quoted, so the text works in a Lisp init as well. Menu lists are quoted lists.
+Verified: round-trip of every Quick Settings field through the Lisp init; browser checks for the branch panel and a moved-subtree conflict.
+
 * v667 — Emacs's variables, and a Text view fix
 The Text view's selection and cut now line up on a Chromebook: blank rows of the colored layer were shorter than the editor's, which shifted a selection by seven rows. Settings use Emacs's names where Emacs has them: ~org-startup-truncated~, ~large-file-warning-threshold~ and ~display-line-numbers-mode~, and LaTeX preamble and classes go in the Lisp init. Global Variables are ~(setq ...)~ forms, and *Apropos variable…* lists variables as ~apropos-variable~ does. Capture gains ~:after-finalize~, and ~file+olp~ stops at a missing heading as Emacs does.
 Verified: capture filing and the missing-heading messages against Emacs 29.3; browser checks for the Text view rows and the LaTeX fix.

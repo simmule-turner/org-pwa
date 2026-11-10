@@ -141,3 +141,21 @@ test('saving fewer entries than the cap does not trim anything', async () => {
   const loaded = await loadPersistedHistory(adapter, 'nrp.org');
   assert.equal(loaded.entries.length, 2);
 });
+
+test('branches survive a save and a load, and a branch that was left is trimmed before the line being worked on', async () => {
+  const { createHistory, pushSnapshot, undo, redo, currentEntry, redoBranches } = await import('../src/undo-history.js');
+  let h = createHistory('0', 'Opened');
+  h = pushSnapshot(h, '1', 'one');
+  h = pushSnapshot(h, 'side', 'side branch');
+  h = undo(h);
+  for (let i = 2; i < HISTORY_STORE_LIMIT + 5; i++) h = pushSnapshot(h, String(i), `step ${i}`);
+  const store = new Map();
+  const adapter = { get: async (/** @type {string} */ k) => store.get(k), set: async (/** @type {string} */ k, /** @type {string} */ v) => { store.set(k, v); }, delete: async (/** @type {string} */ k) => { store.delete(k); } };
+  await savePersistedHistory(adapter, 'doc', h);
+  const back = /** @type {any} */ (await loadPersistedHistory(adapter, 'doc'));
+  assert.equal(back.entries.length, HISTORY_STORE_LIMIT);
+  assert.equal(currentEntry(back).text, String(HISTORY_STORE_LIMIT + 4));
+  assert.ok(!back.entries.some((/** @type {any} */ e) => e.text === 'side'), 'the left branch went first');
+  assert.equal(redoBranches(undo(back)).count, 1);
+  assert.equal(currentEntry(redo(undo(back))).text, String(HISTORY_STORE_LIMIT + 4));
+});

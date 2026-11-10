@@ -1,7 +1,7 @@
 // @ts-check
 // The pure part of the settings history: which settings it follows, how a change is named, and what undoing to a step has to write.
 // A step is the whole set of followed settings as JSON text (the same snapshot idea as the document's undo history).
-import { pushSnapshot } from './undo-history.js';
+import { pushSnapshot, trimHistory } from './undo-history.js';
 
 export const MAX_SETTINGS_STEPS = 100;
 
@@ -79,8 +79,6 @@ export function planRestore(live, targetText) {
  * @param {string} text
  * @param {string} label */
 export function pushCapped(history, text, label, now = new Date()) {
-  const next = pushSnapshot(history, text, label, now);
-  if (next === history || next.entries.length <= MAX_SETTINGS_STEPS) return next;
-  const drop = next.entries.length - MAX_SETTINGS_STEPS;
-  return { entries: next.entries.slice(drop), index: next.index - drop };
+  const next = pushSnapshot(history, text, label, now, false); // the settings history stays a line
+  return next === history ? next : trimHistory(next, MAX_SETTINGS_STEPS);
 }

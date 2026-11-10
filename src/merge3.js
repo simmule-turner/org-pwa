@@ -26,6 +26,8 @@
  * element) and any "\r" survive a merge exactly.
  */
 
+import { structureMerge } from './org-merge.js';
+
 const MAX_EDIT_DISTANCE = 2500;
 
 /** @typedef {{ aStart: number, aEnd: number, bStart: number, bEnd: number }} Hunk */
@@ -380,6 +382,10 @@ function planConflict(mine, theirs, base) {
     if (r) {
       if (r.conflictCount === 0) {
         return { kind: 'auto', mergedText: /** @type {any} */ (r).mergedText, stats: r.stats, keepsMineOnly: /** @type {any} */ (r).mergedText === mine };
+      }
+      const byHeading = structureMerge(base, mine, theirs, merge3);
+      if (byHeading !== null) { // a subtree moved on one side and edited on the other, which lines alone cannot tell apart from a clash
+        return { kind: 'auto', mergedText: byHeading, stats: { ...r.stats, identical: r.stats.identical + r.stats.conflicts, conflicts: 0 }, keepsMineOnly: byHeading === mine, byHeading: true };
       }
       return { kind: 'review', segments: r.segments, conflictCount: r.conflictCount, hasBase: true, stats: r.stats };
     }

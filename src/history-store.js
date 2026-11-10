@@ -21,6 +21,8 @@
  * never had to worry about.
  */
 
+import { trimHistory } from './undo-history.js';
+
 const HISTORY_STORE_LIMIT = 200;
 
 /** @param {string} documentId */
@@ -49,9 +51,7 @@ function unwrapAdapterValue(result) {
  * @param {any} [history]
  */
 async function savePersistedHistory(adapter, documentId, history) {
-  const overflow = history.entries.length - HISTORY_STORE_LIMIT;
-  const entries = overflow > 0 ? history.entries.slice(overflow) : history.entries;
-  const index = overflow > 0 ? Math.max(0, history.index - overflow) : history.index;
+  const { entries, index } = trimHistory(history, HISTORY_STORE_LIMIT);
   await adapter.set(historyKey(documentId), JSON.stringify({ entries, index }));
 }
 
@@ -75,7 +75,11 @@ async function loadPersistedHistory(adapter, documentId) {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!parsed || !Array.isArray(parsed.entries) || parsed.entries.length === 0) return null;
     if (typeof parsed.index !== 'number' || parsed.index < 0 || parsed.index >= parsed.entries.length) return null;
-    const entries = parsed.entries.map((/** @type {any} */ e) => ({ ...e, timestamp: new Date(e.timestamp) }));
+    const entries = parsed.entries.map((/** @type {any} */ e, /** @type {number} */ i) => {
+      const out = { ...e, timestamp: new Date(e.timestamp) };
+      if (e.parent !== null && !(Number.isInteger(e.parent) && e.parent >= 0 && e.parent < i)) delete out.parent; // unreadable: it follows the step before
+      return out;
+    });
     return { entries, index: parsed.index };
   } catch {
     return null;

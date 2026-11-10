@@ -98,8 +98,12 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   syncContactsFilesConfig();
   const openedText = serializeOrg(doc);
   const persistedHistory = documentId ? await loadPersistedHistory(kv, documentId) : null;
-  if (persistedHistory && persistedHistory.entries[persistedHistory.entries.length - 1].text === openedText) {
-    S.history = persistedHistory;
+  // the step whose text is the file as opened: the one the history was left on if it is that, else the newest that is
+  const at = persistedHistory
+    ? persistedHistory.entries[persistedHistory.index].text === openedText ? persistedHistory.index : persistedHistory.entries.map((/** @type {{ text: string }} */ e) => e.text).lastIndexOf(openedText)
+    : -1;
+  if (persistedHistory && at >= 0) {
+    S.history = { ...persistedHistory, index: at };
   } else {
     if (persistedHistory) await clearPersistedHistory(kv, documentId); // stale -- text changed since this app last saved history here
     S.history = createHistory(openedText, resumedFromCache ? 'Opened (resumed unsaved local version)' : 'Opened');

@@ -793,7 +793,7 @@ export const TIME_DISPLAY_FORM_24 = '(24-hours ":" minutes)';
  * @param {LocalVars} vars */
 export function getTimeDisplayForm(vars) {
   const raw = (vars || {})['calendar-time-display-form'];
-  return raw === undefined || String(raw).trim() === '' ? DEFAULT_TIME_DISPLAY_FORM : String(raw);
+  return raw === undefined || String(raw).trim() === '' ? DEFAULT_TIME_DISPLAY_FORM : String(raw).trim().replace(/^'/, ''); // Emacs writes the list quoted
 }
 
 /** Whether calendar-time-display-form shows 24-hour times (it names 24-hours and not 12-hours): the Quick Settings checkbox.
@@ -880,7 +880,7 @@ export function getWeatherRefreshInterval(vars) {
  *  default, rather than silently disabling the feature. */
 export function getUseSubSuperscripts(vars) {
   const raw = (vars || {})['org-use-sub-superscripts'];
-  const trimmed = raw ? String(raw).trim() : '';
+  const trimmed = (raw ? String(raw).trim() : '').replace(/^'/, ''); // Emacs writes the symbol quoted: '{}
   if (trimmed === 'nil' || trimmed === '{}') return trimmed;
   return 't';
 }

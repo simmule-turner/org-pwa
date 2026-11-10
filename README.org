@@ -141,7 +141,7 @@ Every edit can be undone and redone: text, TODO state, priority, tags, propertie
 
 Undo and redo keep the folds you see: a heading stays open or closed as it was, matched by its title and its parents' titles; a heading the text change renamed or added opens as the file's ~#+STARTUP~ says.
 
-Tap any entry to jump there. Entries past your position are dimmer. A new edit from an undone point discards what was ahead of it; browsing the list discards nothing.
+The history is a tree. An edit made after an Undo starts a branch instead of discarding what was undone, and the panel shows the branches side by side, each indented from the step it follows. Tap any entry, on any branch, to jump there. Undo goes to the step before; Redo goes to the branch you were last on (the status line says ~branch 2 of 3~ when there is a choice). Dimmer entries are the ones Redo reaches, dimmest the other branches. The saved history keeps up to 200 steps, and branches you left go before the line you are working on.
 
 A step is one completed edit action (saving a title, toggling a checkbox, archiving a heading), not a keystroke, and an edit that changes nothing adds none.
 
@@ -538,7 +538,7 @@ Set in *Settings → Global Variables*. This is the lowest layer, and the only o
       org-agenda-start-on-weekday 1)
 #+END_SRC
 
-Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
+Settings you change in Quick Settings are saved here as Lisp (a symbol as ~'overview~, a toggle as ~t~ or ~nil~, a string in quotes, a list quoted), so the text can be pasted into a Lisp init. Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
 
 *Smart quotes are normalized*: iOS and many Android keyboards turn a typed straight quote into a curly one, but quoted values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~) need straight quotes. Quick Settings and this text box convert them back on save; quotes in ordinary prose are untouched.
 
@@ -1615,6 +1615,16 @@ org-xx-extra-menu: "j;📔 Journal" \
                    "'calendar;📅 Calendar"
 #+END_SRC
 
+In Settings → Global Variables the entries are a quoted list of strings, as in an init file, with a quote inside an entry written ~\"~:
+
+#+BEGIN_SRC emacs-lisp
+(setq org-xx-extra-menu
+      '("j;📔 Journal"
+        "-----"
+        "[\"Bag\", \"%<%Y-%m>\"];👁 Current"
+        "'calendar;📅 Calendar"))
+#+END_SRC
+
 *LABEL* is the text shown, exactly as written (icon and all). *SPEC* is one of three shapes:
 
 - A bare *capture-template key* (~t~, ~j~, ~c~, ~m~ above) runs that template, as if picked from the Capture menu (see [[#capture-templates][Capture Templates]]). A key with no template shows a status message.
@@ -1645,6 +1655,14 @@ org-xx-menu-aliases: "more:Commands;💲 Commands" \
                      "more:Export;📤 Export" \
                      "more:Import;📥 Import" \
                      "more:Settings;⚙️ Settings"
+#+END_SRC
+
+In Settings → Global Variables, a quoted list of strings:
+
+#+BEGIN_SRC emacs-lisp
+(setq org-xx-menu-aliases
+      '("more:Commands;💲 Commands"
+        "more:Settings;⚙️ Settings"))
 #+END_SRC
 
 Export and Import are steps within the More menu with their own namespaces, ~export:~ and ~import:~. ~Label~ is a built-in button label (table below); an unknown label or menu is skipped, and a label never mentioned keeps its default.
@@ -1999,6 +2017,7 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 
 - *The other version has no real change, or matches yours*: Save just proceeds. A server that changes a file's ETag without changing its content isn't a conflict.
 - *Your changes and theirs are in different places*: they are combined automatically and Save completes with a status message (~Saved — merged with the changes made elsewhere~). The merge is its own undo step (*Merged with changes from elsewhere*), so Undo returns to your text from just before it.
+- *A subtree moved on one side and edited on the other*: when the line merge would clash, the app merges by heading instead. The moved subtree arrives in its new place with the other side's edits, a promoted or demoted heading keeps its children, and a heading is the same heading after a TODO state or tag change (or any title change, when it has an ~:ID:~). Siblings reordered on one side merge with edits on the other. It merges only when it is sure: two headings with the same title and no ~:ID:~, a heading deleted on one side and edited on the other, or one moved to two different places, still go to the dialog below.
 - *Both sides changed the same lines*, or adjacent lines with no unchanged line between them (the same place, as in git and GNU diff3): a dialog lists each such region with your version and the other one. Choose *Yours*, *Other* or *Both* (yours, then theirs) for each, or *All yours* or *All other* for every region at once. *Apply* stays disabled until every region has a decision, and everything outside the regions is already combined. *Cancel*, Escape or tapping outside changes nothing: the other version is untouched, your edits stay unsaved, and the next Save raises the same conflict.
 - *No common ancestor is known* (a file last synced by a version that didn't keep one, until its next open or save), or the two versions are too different to compare by lines: every difference, or the whole file as one choice, is shown for you to decide.
 
@@ -2006,7 +2025,7 @@ Edits are cached locally at once; writing to disk, GitHub or WebDAV happens only
 
 *The banner's Merge* does the same without waiting for Save. It combines your unsaved edits with the version now stored, asks about clashing regions in the same dialog, and applies the result as an ordinary, undoable, still-unsaved edit. The other version becomes the new baseline, so the Save that follows is a plain write. With no unsaved changes Merge just reloads, and a read-only buffer can't be merged into (make it writable first).
 
-*What this isn't*: the merge works on lines, not org structure. A subtree moved on one side and edited on the other is an ordinary clash, and two sides that each add the same new heading in different places keep both. A clean automatic merge is still worth a glance; that is what the undo step is for.
+*Same new heading on both sides*: two sides that each add the same new heading in different places keep both. A clean automatic merge is still worth a glance; that is what the undo step is for.
 
 -----
 
@@ -2269,7 +2288,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Attachments* (see [[#attachments][Attachments]]): the same folder model as ~org-attach~ (an ~ID~ or ~DIR~ folder and the ~:ATTACH:~ tag) and the dispatcher keys ~a~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~, plus ~r~ to record audio. The Folder panel stands in for ~org-attach-dired~: select files, then open, save or delete them. Needs GitHub, WebDAV, or the org-pwa folder in the Android app.
 
-*Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a line-based three-way merge with a region-by-region resolver. A subtree moved on one side and edited on the other is an ordinary clash.
+*Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a three-way merge by lines, and by heading for a subtree moved on one side and edited on the other, with a region-by-region resolver for what remains.
 
 Each file in =examples/= ends with its own list of differences, checked against Emacs 29.3. What is planned is in [[file:ROADMAP.org][ROADMAP.org]].
 

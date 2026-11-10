@@ -4,7 +4,7 @@
 // button reads the files again.
 import { expandLoads, findLoads } from '../src/lisp-load.js';
 import { applyHolidayVariables } from '../src/holidays.js';
-import { parseGlobalVariables } from '../src/global-variables.js';
+import { parseGlobalVariables } from './global-variables-lisp.js';
 import { settingsFromInit } from './lisp-settings.js';
 import { S } from './app-state.js';
 import { lispStringValue } from '../src/export-defaults.js';

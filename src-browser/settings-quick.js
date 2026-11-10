@@ -3,7 +3,8 @@
 import { applyDurationVariables } from '../src/org-duration.js';
 import { encodeLispString, lispStringValue } from '../src/export-defaults.js';
 import { applyLispInit, lispSettings, onLispSettingsChange } from './lisp-init-load.js';
-import { mergeGlobalAndLocalVariables, parseGlobalVariables, serializeGlobalVariables } from '../src/global-variables.js';
+import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
+import { parseGlobalVariables, serializeGlobalVariables } from './global-variables-lisp.js';
 import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
 import { serializeOrg } from '../src/org-parser.js';

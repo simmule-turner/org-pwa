@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v667';
+const CACHE_NAME = 'org-pwa-shell-v668';
 
 const SHELL_FILES = [
   './',
@@ -119,6 +119,7 @@ const SHELL_FILES = [
   './src/line-numbers.js',
   './src/completion.js',
   './src/merge3.js',
+  './src/org-merge.js',
   './src/command-palette.js',
   './src/history-store.js',
   './src/query-replace.js',
@@ -290,6 +291,7 @@ const SHELL_FILES = [
   './src-browser/lisp-init-load.js',
   './src-browser/lisp-init-text.js',
   './src-browser/lisp-settings.js',
+  './src-browser/global-variables-lisp.js',
   './src-browser/diary-flow.js',
   './src-browser/diary-sheets.js',
   './src-browser/text-view.js',
