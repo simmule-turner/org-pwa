@@ -1362,6 +1362,29 @@ check('capture: a heading a target function makes before a heading of another le
   expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
 });
 
+check('capture: a heading a target function adds last in the journal leaves the folds of the rest of the file as they were', async () => {
+  const { page, errors } = await freshPage();
+  await newDocument(page, '#+STARTUP: overview\n* Top\n** Child\nhidden body text\n* Journal\n** Old\n*** Day\n* Bag\n** Inner\n');
+  await setCaptureInit(page, `(defun my-last ()
+  (goto-char (point-min)) (re-search-forward "^\\\\* Journal$") (forward-line 1)
+  (goto-char (or (and (re-search-forward "^\\\\* " nil t) (match-beginning 0)) (point-max)))
+  (insert "** Made\\n") (forward-line -1) (beginning-of-line))
+(setq org-capture-templates '(("j" "Journal" item (file+function "" my-last) "entry text" :prepend nil)))`);
+  const before = await page.locator('#outline').innerText();
+  expect(!before.includes('hidden body text') && !before.includes('Inner'), `the file starts folded: ${JSON.stringify(before)}`);
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('capture: journal');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  const after = await page.locator('#outline').innerText();
+  expect(after === before, `nothing on screen changes (the capture does not jump to the entry): ${JSON.stringify(after)}`);
+  const text = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); const { serializeOrg } = await import('/src/org-parser.js'); return serializeOrg(S.state.doc); });
+  expect(text.includes('** Made\n- entry text\n* Bag'), `the entry is filed last in Journal: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
+});
+
 check('command palette: capture templates and Extras entries are commands you can run by name', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, ['* Note', '', '# Local Variables:', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));

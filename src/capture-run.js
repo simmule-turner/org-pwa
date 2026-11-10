@@ -92,10 +92,17 @@ function insertLines(doc, at, lines, after) {
   const last = lastNode(doc);
   const lastLines = last.bodyLines || [];
   try {
-    if (onlyHeadings && atHeading && fragment.children.every((h) => h.level === atHeading[0].level)) {
-      // a heading of another level goes by the parse below: spliced in here it would sit in the wrong list (a level-2 heading among the level-1 ones)
+    const level = onlyHeadings ? fragment.children[0].level : 0;
+    const flat = onlyHeadings && fragment.children.every((h) => h.level === level);
+    if (flat && atHeading && level === atHeading[0].level) {
       const siblings = parentChildren(doc, atHeading[0]);
       siblings.splice(siblings.indexOf(atHeading[0]), 0, ...fragment.children);
+    } else if (flat && atHeading && level > atHeading[0].level) {
+      // deeper than the heading it goes before: the last children of the nearest heading above that is shallower, where a parse puts them,
+      // so that nothing else is rebuilt (and every other heading keeps its fold)
+      const above = nodes.filter(([, w]) => w.line < at).map(([n]) => n);
+      const parent = [...above].reverse().find((n) => n.level < level);
+      (parent ? parent.children : doc.children).push(...fragment.children);
     } else if (onlyHeadings && at === total - 1 && lastLines[lastLines.length - 1] === '' && fragment.children.every((h) => h.level === 1)) {
       // only the empty line that ends the file follows: the headings go before it
       lastLines.pop();

@@ -1573,6 +1573,30 @@ A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ run
 
 The row has a trailing ~||~ that leaves the 4th cell to the table's formula, and the first cell is numbered by ~$1=@#-1~. =examples/capture-templates.org= has the function (~my-tracking-target~), the formulas and the file as Emacs files it.
 
+*Worked example*, *Journal*, files an entry under the journal heading, the month and the day, making the month and day headings when they are not there yet. The function reads ~:prepend~ with ~org-capture-get~: a new month or day heading goes first among its siblings (newest on top) when it is ~t~, else last. The item follows the template's own ~:prepend~, so ~:prepend nil~ keeps the entries of a day in time order. To have newest-first headings with items in time order, set ~(prepend t)~ in the function and ~:prepend nil~ on the template.
+
+#+BEGIN_SRC emacs-lisp
+(defun my-olp-target (names)
+  (let ((level 1) (start (point-min)) (end (point-max)) (prepend (org-capture-get :prepend)))
+    (dolist (name names)
+      (goto-char start)
+      (if (re-search-forward (format "^\\*\\{%d\\} %s[ \t]*$" level (regexp-quote name)) end t)
+          (setq start (1+ (match-end 0)))
+        (goto-char start)
+        (goto-char (if (and prepend (re-search-forward "^\\*+ " end t)) (match-beginning 0) end))
+        (unless (bolp) (insert "\n"))
+        (insert (make-string level ?*) " " name "\n")
+        (setq start (point)))
+      (goto-char start)
+      (setq end (if (re-search-forward (format "^\\*\\{1,%d\\} " level) nil t) (match-beginning 0) (point-max)))
+      (setq level (1+ level)))
+    (goto-char start) (forward-line -1) (beginning-of-line)))
+(defun my-journal-target ()
+  (my-olp-target (list "Journal" (format-time-string "%Y-%m %b") (format-time-string "%Y-%m-%d"))))
+(add-to-list 'org-capture-templates
+  '("j" "Journal" item (file+function "github:home.org" my-journal-target) "%<%H:%M> - %?" :prepend nil))
+#+END_SRC
+
 *** Capturing from other apps
 :PROPERTIES:
 :CUSTOM_ID: capture-from-other-apps

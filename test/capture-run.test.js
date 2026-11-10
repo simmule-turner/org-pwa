@@ -259,3 +259,21 @@ test('keywords first met in the init text still evaluate to themselves afterward
 (setq org-capture-templates '(("j" "J" entry (file+function "f.org" my-t) "* new")))`, '* A\n');
   assert.ok(text.startsWith('** t\n** 3\n'), text);
 });
+
+test('a heading a function makes last in a deeper level keeps every heading object, so the folds stay as they were', () => {
+  const init = `(defun my-sub ()
+  (goto-char (point-min)) (re-search-forward "^\\\\* Alpha$") (forward-line 1)
+  (goto-char (or (and (re-search-forward "^\\\\* " nil t) (match-beginning 0)) (point-max)))
+  (insert "** Made\\n") (forward-line -1) (beginning-of-line))
+(setq org-capture-templates '(("a" "A" item (file+function "f.org" my-sub) "one")))`;
+  const { templates } = captureTemplatesFromLisp(init);
+  const doc = file('* Alpha\n** Old\n* Beta\n** Inner\n');
+  const [alpha, beta] = doc.children;
+  alpha.collapsed = true;
+  beta.collapsed = true;
+  const r = captureInto(doc, templates[0], { now: NOW, answers: [], context: {}, place: () => ({}) });
+  assert.ok(r.ok);
+  assert.equal(serializeOrg(doc), '* Alpha\n** Old\n** Made\n- one\n* Beta\n** Inner\n');
+  assert.ok(doc.children[0] === alpha && doc.children[1] === beta, 'the headings are the same objects');
+  assert.equal(beta.collapsed, true, 'a heading the capture did not touch stays folded');
+});

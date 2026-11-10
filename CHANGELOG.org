@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v670 — A capture no longer unfolds the whole file
+When a capture function made a new heading deeper than the heading after it (a new month added last in the journal, say), the file was read again from its text and every heading lost its fold, so the whole file opened out. The new heading is now put under its parent directly, and only the lines the capture adds change; every other fold stays as it was.
+Verified: the 240 journal captures still match Emacs; browser check that a folded file stays folded after such a capture.
+
 * v669 — Capture functions can read their template, and a new heading shows in the right place
 A target function can now ask its template what it was given with ~(org-capture-get :prepend)~, as in Emacs, so a journal function can put a new month first or last the way the template says. A heading a capture function created before a heading of another level was drawn at the top level until the file was reopened; it now shows where it belongs. Keywords first used in the Lisp init (such as ~:prepend~ inside a function) now keep working after the init has run.
 Verified: 240 journal captures (both templates, :prepend t and nil) match Emacs; browser check of the outline after a capture.
