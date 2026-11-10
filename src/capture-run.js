@@ -5,8 +5,8 @@
  * a target function (`(file+function "f.org" FN)`, which finds the place) and `:prepare-finalize` (which edits the text on its way in).
  */
 import { Reader } from './elisp-read.js';
-import { evalPlain, funcallPlain, state } from './elisp-core.js';
-import { Cons, Sym, intern } from './elisp-data.js';
+import { defun, evalPlain, funcallPlain, state } from './elisp-core.js';
+import { Cons, NIL, Sym, intern } from './elisp-data.js';
 import { describeFailure } from './elisp.js';
 import { enterBuffer, openBuffer, textBefore } from './elisp-buffer.js';
 import { withDefaultTime } from './elisp-time.js';
@@ -31,11 +31,13 @@ function functionOf(source) {
 /**
  * Runs the functions named by `sources`, one after another with no arguments, in a buffer that holds `text` with point at its start.
  * @param {string} text @param {string[]} sources @param {Date} [now] the moment `format-time-string` formats when it is given no time
+ * @param {string[]} [plist] the template's `org-capture-plist`, as name and Lisp text in turn, for `org-capture-get`
  * @returns {{ ok: true, text: string, line: number, atLineStart: boolean } | { ok: false, message: string }}  `line` is the 0-based line point ends on
  */
-export function runInBuffer(text, sources, now) {
+export function runInBuffer(text, sources, now, plist) {
   try {
     return withContext({}, () => withDefaultTime(now ?? new Date(), () => {
+      if (plist) setCapturePlist(plist);
       const b = openBuffer(text);
       enterBuffer(b);
       for (const source of sources) funcallPlain(functionOf(source), []);
@@ -46,6 +48,23 @@ export function runInBuffer(text, sources, now) {
   } catch (raw) {
     return { ok: false, message: describeFailure(raw).message };
   }
+}
+
+/** `org-capture-get` and `org-capture-put`, as Emacs's org-capture.el defines them over `org-capture-plist`. */
+defun('org-capture-get', 1, 2, ([prop]) => funcallPlain(intern('plist-get'), [intern('org-capture-plist').value ?? NIL, prop]));
+defun('org-capture-put', 0, -1, (stuff) => {
+  const plist = intern('org-capture-plist');
+  for (let i = 0; i < stuff.length; i += 2) plist.value = funcallPlain(intern('plist-put'), [plist.value ?? NIL, stuff[i], stuff[i + 1] ?? NIL]);
+  return plist.value ?? NIL;
+});
+
+/** Makes `org-capture-plist` hold the template's properties for the function about to run. @param {string[]} plist name and Lisp text in turn */
+function setCapturePlist(plist) {
+  const pairs = [];
+  for (let i = 0; i + 1 < plist.length; i += 2) pairs.push(`${plist[i]} ${plist[i + 1]}`);
+  const sym = intern('org-capture-plist');
+  sym.special = true;
+  sym.value = evalPlain(new Reader(`'(${pairs.join(' ')})`).read(), null);
 }
 
 /** The document taken over by another parse of it, for when a function's insertions are not a simple splice. @param {Doc} doc @param {string} text */
@@ -73,7 +92,8 @@ function insertLines(doc, at, lines, after) {
   const last = lastNode(doc);
   const lastLines = last.bodyLines || [];
   try {
-    if (onlyHeadings && atHeading) {
+    if (onlyHeadings && atHeading && fragment.children.every((h) => h.level === atHeading[0].level)) {
+      // a heading of another level goes by the parse below: spliced in here it would sit in the wrong list (a level-2 heading among the level-1 ones)
       const siblings = parentChildren(doc, atHeading[0]);
       siblings.splice(siblings.indexOf(atHeading[0]), 0, ...fragment.children);
     } else if (onlyHeadings && at === total - 1 && lastLines[lastLines.length - 1] === '' && fragment.children.every((h) => h.level === 1)) {
@@ -116,11 +136,12 @@ function parentChildren(doc, heading) {
  * at its start, and the capture goes where point ends. Lines the function inserted are put into `doc`; a function that changes or
  * deletes a line is refused. Returns the heading point is on (null: not on a heading) and how the text is to be filed.
  * @param {Doc} doc @param {string} source @param {Date} [moment] what `format-time-string` formats when given no time
+ * @param {string[]} [plist] the template's properties for `org-capture-get`
  * @returns {{ ok: true, apply: () => Heading | null, insertAtPoint: (lines: string[]) => void, onHeading: boolean, atLineStart: boolean, line: number, after: string } | { ok: false, message: string }}
  */
-export function runTargetFunction(doc, source, moment) {
+export function runTargetFunction(doc, source, moment, plist) {
   const before = serializeOrg(doc);
-  const ran = runInBuffer(before, [source], moment);
+  const ran = runInBuffer(before, [source], moment, plist);
   if (!ran.ok) return ran;
   const was = before.split('\n');
   const now = ran.text.split('\n');
@@ -207,7 +228,7 @@ function captureIntoDoc(doc, template, options) {
   let insertPlain = null;
   let pointLine = 0;
   if (template.targetFunction) {
-    const found = runTargetFunction(doc, template.targetFunction, now);
+    const found = runTargetFunction(doc, template.targetFunction, now, template.plist);
     if (!found.ok) return { ok: false, message: `Capture failed: ${found.message}` };
     if (!found.onHeading && template.type !== 'entry' && template.type !== 'plain') return { ok: false, message: `Capture failed: the target function must leave point on a heading to file a ${template.type}` };
     if (template.type === 'plain' && !found.atLineStart) return { ok: false, message: 'Capture failed: the target function must leave point at the start of a line to file plain text' };
@@ -234,7 +255,7 @@ function captureIntoDoc(doc, template, options) {
   let text = expanded.text.replace(/\n$/, ''); // the newline that ends an expansion is the line's own
   const finalizers = [...(template.prepareFinalize ?? []), ...(template.beforeFinalize ?? [])]; // :before-finalize runs on the same text, after :prepare-finalize
   if (finalizers.length) {
-    const ran = runInBuffer(expanded.text, finalizers, now); // the buffer ends with the newline of its last line
+    const ran = runInBuffer(expanded.text, finalizers, now, template.plist); // the buffer ends with the newline of its last line
     if (!ran.ok) return { ok: false, message: `Capture failed: ${ran.message}` };
     text = ran.text.replace(/\n$/, '');
   }

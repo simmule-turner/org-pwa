@@ -1343,6 +1343,25 @@ check('details editor: five tabs, a dot on each tab that was edited, a footer no
   await context.close();
 });
 
+check('capture: a heading a target function makes before a heading of another level is drawn under its parent at once', async () => {
+  const { page, errors } = await freshPage();
+  await newDocument(page, '* Journal\n** Old\n* Bag\n');
+  await setCaptureInit(page, `(defun my-sub ()
+  (goto-char (point-min)) (re-search-forward "^\\\\* Journal$") (forward-line 1)
+  (goto-char (or (and (re-search-forward "^\\\\* " nil t) (match-beginning 0)) (point-max)))
+  (insert "** Made\\n") (forward-line -1) (beginning-of-line))
+(setq org-capture-templates '(("j" "Journal" item (file+function "" my-sub) "one")))`);
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('capture: journal');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(600);
+  const x = await page.locator('#outline').evaluate((e) => Object.fromEntries([...e.querySelectorAll('*')].filter((el) => el.children.length === 0 && /^(Journal|Old|Made|Bag)$/.test((el.textContent || '').trim())).map((el) => [el.textContent.trim(), Math.round(el.getBoundingClientRect().x)])));
+  expect(x.Made === x.Old && x.Made > x.Journal && x.Bag === x.Journal, `the new level-2 heading should be indented like Old, not like Bag: ${JSON.stringify(x)}`);
+  expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
+});
+
 check('command palette: capture templates and Extras entries are commands you can run by name', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, ['* Note', '', '# Local Variables:', '# org-xx-extra-menu: "\'org-clock-out;Stop the clock"', '# End:', ''].join('\n'));

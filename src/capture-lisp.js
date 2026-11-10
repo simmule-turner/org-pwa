@@ -122,10 +122,13 @@ function readEntry(entry, notes) {
   if (target.treeType) out.treeType = target.treeType;
   if (target.fn) out.targetFunction = target.fn;
   const props = items.slice(5);
+  /** @type {string[]} org-capture-plist as Emacs has it for a function to read: the template's own keywords as written, then the ones Emacs adds */
+  const plist = [];
   for (let i = 0; i < props.length; i += 2) {
     const name = symbolName(props[i]);
     const value = props[i + 1];
     if (!name || !name.startsWith(':')) continue;
+    plist.push(name, print(toObject(value ?? props[i])));
     if (name === ':prepend') out.prepend = !isNil(value);
     else if (name === ':jump-to-captured') out.jumpToCaptured = !isNil(value);
     else if (name === ':time-prompt' && !target.datetree) notes.push(`Capture template "${key}": :time-prompt has no effect without a file+olp+datetree target, as in Emacs.`);
@@ -152,6 +155,8 @@ function readEntry(entry, notes) {
     } else if (UNSUPPORTED.has(name)) notes.push(`Capture template "${key}": ${name} has no effect here.`);
     else if (!QUIET.has(name)) notes.push(`Capture template "${key}": ${name} is not known and has no effect.`);
   }
+  plist.push(':key', print(toObject(items[0])), ':description', print(toObject(items[1])), ':target', print(toObject(items[3])), ':template', print(toObject(items[4])), ':type', type);
+  out.plist = plist;
   return out;
 }
 

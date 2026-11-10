@@ -231,3 +231,31 @@ test(':after-finalize runs after the entry is filed, and a failing one is report
   assert.equal(bad.text, '* Other\n* X\n');
   assert.match(/** @type {any} */ (bad.results[0]).afterFinalizeMessage, /no-such-function/);
 });
+
+test('a level-2 heading made before a level-1 one is a child of the heading above it in the tree, not a top-level one', () => {
+  const init = `(defun my-sub ()
+  (goto-char (point-min)) (re-search-forward "^\\\\* Alpha$") (forward-line 1)
+  (goto-char (or (and (re-search-forward "^\\\\* " nil t) (match-beginning 0)) (point-max)))
+  (insert "** Made\\n") (forward-line -1) (beginning-of-line))
+(setq org-capture-templates '(("a" "A" item (file+function "f.org" my-sub) "one")))`;
+  const { doc, text } = run(init, '* Alpha\n** Old\n* Beta\n');
+  assert.equal(text, '* Alpha\n** Old\n** Made\n- one\n* Beta\n');
+  assert.deepEqual(doc.children.map((h) => h.title), ['Alpha', 'Beta']);
+  assert.deepEqual(doc.children[0].children.map((h) => h.title), ['Old', 'Made']);
+});
+
+test('a target function reads the template through org-capture-get, as in Emacs (values checked against Emacs 29.3: :prepend t, :type item, :key "j", :template "%?", missing keys nil)', () => {
+  const init = `(defun my-t ()
+  (goto-char (point-min))
+  (org-capture-put :mine 5)
+  (insert (format "** %S\\n" (list (org-capture-get :prepend) (org-capture-get :type) (org-capture-get :key) (org-capture-get :description) (org-capture-get :template) (org-capture-get :nothere) (org-capture-get :mine) (plist-get org-capture-plist :empty-lines)))))
+(setq org-capture-templates '(("j" "Journal" item (file+function "f.org" my-t) "%?" :prepend t :empty-lines 1)))`;
+  const { text } = run(init, '* A\n');
+  assert.ok(text.startsWith('** (t item "j" "Journal" "%?" nil 5 1)\n'), text);
+});
+
+test('keywords first met in the init text still evaluate to themselves afterwards', () => {
+  const { text } = run(`(defun my-t () (goto-char (point-min)) (insert (format "** %S\\n" (eq :first-seen-here :first-seen-here))) (insert (format "** %S\\n" (plist-get '(:first-seen-here 3) :first-seen-here))))
+(setq org-capture-templates '(("j" "J" entry (file+function "f.org" my-t) "* new")))`, '* A\n');
+  assert.ok(text.startsWith('** t\n** 3\n'), text);
+});

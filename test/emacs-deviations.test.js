@@ -11,6 +11,8 @@ const EMACS_CAPTURE_KEYWORDS = new Set([
   ':after-finalize', ':before-finalize', ':clock-in', ':clock-keep', ':clock-resume', ':empty-lines', ':empty-lines-after', ':empty-lines-before',
   ':hook', ':immediate-finish', ':jump-to-captured', ':kill-buffer', ':no-save', ':prepare-finalize', ':prepend', ':refile-targets',
   ':table-line-pos', ':time-prompt', ':tree-type', ':unnarrowed',
+  // org-capture also puts these in org-capture-plist, where a function reads them with org-capture-get (checked in Emacs 29.3)
+  ':key', ':description', ':target', ':template', ':type',
 ]);
 /** Words the app once added to capture templates; Emacs has an equivalent (a target function or :prepare-finalize), so they were removed. */
 const REMOVED = [':omit-empty-entries', ':prepend-heading', ':table-header', ':pre-text', ':post-text'];

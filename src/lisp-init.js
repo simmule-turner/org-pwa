@@ -114,7 +114,7 @@ export function runInit(text, initial, aliases = {}) {
       if (real) out.set(real, value);
     }
   } finally {
-    for (const s of allSymbols()) if (before.has(s) ? s.value !== before.get(s) : s.value !== undefined) s.value = before.get(s);
+    for (const s of allSymbols()) if (!s.constant && (before.has(s) ? s.value !== before.get(s) : s.value !== undefined)) s.value = before.get(s); // a keyword first seen in the init keeps being its own value
   }
   return out;
 }
