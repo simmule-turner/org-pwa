@@ -22,8 +22,12 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
 * Babel and attachments
-** [#C] Babel in languages other than JavaScript, =:session=, =<<name()>>= calls, results that refresh on open
-** [#C] Attaching from a Dired buffer, and =DIR= paths outside the storage
+** [#B] Files view, phases 2 and 3 (v672)
+- Phase 2: marks and pattern marking, rename, move, copy (also between places), delete (refused for a file open with unsaved changes, asked for an open one), new file and folder, sort, info. Renaming an open file renames its tab.
+- One list with a filter by extension replaces the "Org files" / "All files" switch: it starts on =.org=, and the filter can be changed to another extension or cleared to show everything.
+- Phase 3: attach from the Files view, with the same Attach and =org-attach-method=, and "Choose from device…".
+- A real device-folder view in browsers (=showDirectoryPicker=, kept handle, permission prompt); Chrome and Edge on desktop and ChromeOS only.
+** [#C] =DIR= paths outside the storage
 
 * Export
 ** [#C] ODT export: what is left after the port
@@ -41,7 +45,7 @@ Lazy loops over groups (such as =\(a\|b\)*?c=) on very long strings also overflo
 - Effort: S. Impact: S.
 
 * Order for the next release
-Nothing is planned: the items above are [#C] and wait for demand. Refile and Replace into =local:= files from the web and other backends are [#C] too.
+v671: Extras button opacity, the Babel item removed, Files view phase 1 (places, Open and Save As). v672: Files view phases 2 and 3 and the browser device folder. The other items above are [#C] and wait for demand. Refile and Replace into =local:= files from the web and other backends are [#C] too.
 
 * Appendix: a Lisp interpreter
 :PROPERTIES:

@@ -76,12 +76,14 @@ It is not org-mode with full parity: Babel runs JavaScript, and the rest is a su
 :END:
 
 1. Open the app and tap *File → Open* if no file is open.
-2. Choose where to open from:
+2. The place bar at the top names where the list is looking; tap it to change place. It opens where you were last, in the folder you were last in for that place. The command palette's *Files (Dired)…* (~dired~) opens the same list in the folder of the current file.
 
-   - *Local file*: the browser's file picker. Save writes straight back to the same file. Needs File System Access (Chrome or Edge on desktop and Android).
    - *GitHub*: browse a repo set up in Settings and tap a file. *Type a path instead…* is always there for a path the listing doesn't show.
    - *WebDAV*: the same, for a WebDAV server set up in Settings.
-   - *Import file* (instead of *Local file* where File System Access is missing, such as iOS): reads a file once. Save downloads a new copy for you to put back (see [[#platform-support][Platform support]]).
+   - *This device*: the browser's file picker. Save writes straight back to the same file. Needs File System Access (Chrome or Edge on desktop and Android). In the Android app, the org-pwa folder is listed here, and *Choose another file…* opens the system picker.
+   - *Import file* (instead of *This device* where File System Access is missing, such as iOS): reads a file once. Save downloads a new copy for you to put back (see [[#platform-support][Platform support]]).
+
+   A place that is not set up says so and links to Settings; if the last place cannot be used, the list opens the most recent one that can and tells you. On a wide screen the places are listed beside the files.
 
 3. Edit. Edits apply at once and are cached locally, so nothing is lost if you close the tab before saving.
 4. Tap *Save* to write the file back to where it came from, or *Save As* to choose another destination.
@@ -2085,7 +2087,7 @@ On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and S
 
 The Android app is the same app in a native wrapper, with a few things done the Android way.
 
-- *Local files*: *File → Open → Local file* uses Android's file picker, and the app keeps access to the file, so Save writes straight back and the file reopens from the recent list. *Save As → Local file* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
+- *Local files*: *File → Open → This device* lists the org-pwa folder, and *Choose another file…* uses Android's file picker; the app keeps access to a picked file, so Save writes straight back and the file reopens from the recent list. *Save As → This device* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
 - *Agenda files*: ~local:name.org~ names a file in the org-pwa folder (below), like ~github:journal.org;local:home.org~. It loads silently, and Refile and Replace can write into it while a local file is open; a file you opened with *Open → Local file* works too, and so does one added with the command *Add a local file* (command palette), which remembers the file without opening it.
 - *Attaching a file*: *Attach* opens Android's chooser with the camera apps beside your files, as the browser's does. Pick *Take a photo* or *Record a video*, and the result is attached. With ~org-attach-method~ ~mv~ or ~ln~ (or *Attach and move*, *Attach a link*) the document picker opens instead, with no camera: a move asks before deleting the original, and a link keeps reading the original file, so it stays where it is.
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
@@ -2326,7 +2328,7 @@ Each file in =examples/= ends with its own list of differences, checked against 
 Platform limits, which no update can change:
 
 - Local and relative images show a placeholder on local files (File System Access) and iOS imports, the same picker-permission limit as archiving and capture to a file. GitHub and WebDAV documents are unaffected.
-- iOS has no File System Access, so *Import* stands in for *Local file* (see [[#platform-support][Platform support]]).
+- iOS has no File System Access, so *Import* stands in for *This device* (see [[#platform-support][Platform support]]).
 
 -----
 

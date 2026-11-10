@@ -1,27 +1,35 @@
-// @ts-check
-// The Open / Save As screen: one sheet (dialog from 600px) with a GitHub / Local file / WebDAV picker that remembers the last type
-// used. GitHub and WebDAV show their folder list straight away; Local file is a single button into the system picker.
-// State lives in S.fileScreen so Escape and the other panels' dismissal reach it like any panel.
-import { forState } from './connection-vault.js';
-import { FILE_SCREEN_TYPES, joinPath, listedAsFile, parentFolder, resolveFileScreenType, stepFileScreenType, visibleEntries } from '../src/file-screen-model.js';
+// The Open / Save As screen: one sheet (dialog from 600px) that browses a place -- GitHub, WebDAV or this device -- and remembers where
+// the person was last in each. The place bar names where it is looking and opens the list of places (a side list on a wide screen).
+// GitHub and WebDAV show their folder list straight away; this device does too where the app keeps a folder (the org-pwa folder),
+// and elsewhere is a button into the system picker. State lives in S.fileScreen so Escape and the other panels' dismissal reach it
+// like any panel. The rules for which place opens first are in src/file-places.js.
+import { connectionsLocked, forState } from './connection-vault.js';
+import { joinPath, listedAsFile, parentFolder, visibleEntries } from '../src/file-screen-model.js';
+import { PLACES, PLACE_NAMES, rememberLocation, spotLabel, startingPlace } from '../src/file-places.js';
 import { isPlainTextFile } from '../src/plain-file.js';
-import { githubAdapter, webdavAdapter } from './adapters.js';
+import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { confirmDialog, showModalOverlay } from './dialogs.js';
 import { ensureConnectionsUnlocked } from './connection-protection.js';
-import { openFromFilesystem, openFromImport, openRemotePath, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, suggestedSaveAsName } from './documents-io.js';
+import { openFromFilesystem, openFromImport, openRemotePath, saveAsDeviceFolder, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, suggestedSaveAsName } from './documents-io.js';
 import { fileScreen, fileScreenBox, settingsBtn } from './dom.js';
 import { commitTextModeIfActive } from './editing.js';
 import { isGithubConfigured } from './github-adapter.js';
+import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
 import { render } from './render.js';
-import { getFileScreenType, getGithubConfig, getWebdavConfig, setFileScreenType } from './settings.js';
+import { getFileLocation, getGithubConfig, getWebdavConfig, setFileLocation } from './settings.js';
 import { kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { isWebdavConfigured } from './webdav-adapter.js';
 
-const LABEL = { github: 'GitHub', local: 'Local file', webdav: 'WebDAV' };
+/** @typedef {typeof S.fileScreen} FileScreen */
+
+const LABEL = PLACE_NAMES;
+const BADGE = { github: 'GH', webdav: 'DAV', device: '\u{1F4F1}' };
+/** A wide screen lists the places beside the files instead of in a sheet. */
+const wide = () => window.matchMedia('(min-width: 900px)').matches;
 
 /** @param {string} css @param {string} [text] */
 function div(css, text) {
@@ -31,22 +39,74 @@ function div(css, text) {
   return el;
 }
 
-/** The middle segment's name: a live file on most browsers, a read-once import where there is no File System Access (iOS).
- * @param {'open' | 'saveas'} mode */
-function localLabel(mode) {
-  if (platform.localFiles.supported()) return LABEL.local;
-  return mode === 'open' ? 'Import file' : 'Download';
+/** What this device is here: the org-pwa folder the app keeps (listed like the other places), the system file chooser, or a
+ * read-once import where there is no File System Access (iOS).
+ * @returns {'folder' | 'picker' | 'import'} */
+function deviceKind() {
+  if (folderAvailable()) return 'folder';
+  return platform.localFiles.supported() ? 'picker' : 'import';
 }
 
-/** Opens the screen for 'open' or 'saveas' on the remembered type.
- * @param {'open' | 'saveas'} mode */
-export async function openFileScreen(mode) {
+/** Whether `place` shows a list of folders and files (this device only when the app keeps a folder). @param {string} place */
+function browsable(place) {
+  return place !== 'device' || deviceKind() === 'folder';
+}
+
+/** The adapter that lists, reads and writes in `place`. @param {string} place */
+function adapterOf(place) {
+  if (place === 'github') return githubAdapter;
+  if (place === 'webdav') return webdavAdapter;
+  return { list: (/** @type {string} */ folder) => platform.attachments.adapter.list(folder), read: (/** @type {string} */ path) => filesystemAdapter.read(path) };
+}
+
+/** Whether each place can be used now, without asking for a passphrase: a locked connection counts as usable (listing it asks).
+ * @returns {Promise<{ ready: Record<'github' | 'webdav' | 'device', boolean>, detail: Record<string, string> }>} */
+async function placeStatus() {
+  /** @type {Record<string, string>} */
+  const detail = {};
+  const ready = { github: true, webdav: true, device: true };
+  if (!connectionsLocked()) {
+    const gh = await getGithubConfig(kv);
+    const dav = await getWebdavConfig(kv);
+    ready.github = isGithubConfigured(gh);
+    ready.webdav = isWebdavConfigured(dav);
+    if (ready.github) detail.github = `${gh.owner}/${gh.repo}${gh.branch ? ' \u00b7 ' + gh.branch : ''}`;
+    if (ready.webdav) detail.webdav = String(dav.baseUrl || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  } else detail.github = detail.webdav = 'Locked \u2014 enter the passphrase to list';
+  return { ready, detail };
+}
+
+/** Opens the screen for 'open' or 'saveas' where the person was last, or with `dired` in the folder of the current file.
+ * @param {'open' | 'saveas'} mode @param {{ dired?: boolean }} [options] */
+export async function openFileScreen(mode, options = {}) {
   if (mode === 'saveas' && !S.state.doc) return;
   if (commitTextModeIfActive()) render();
-  const type = resolveFileScreenType(await getFileScreenType(kv));
-  S.fileScreen = { mode, type, folder: '', entries: null, error: null, unconfigured: false, all: false, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusSeg: false };
+  const loc = await getFileLocation(kv);
+  let status = null;
+  /** @type {{ place: 'github' | 'webdav' | 'device', folder: string, note: string | null }} */
+  let start;
+  const wanted = loc.place ?? 'device';
+  if (wanted !== 'device' && (await ensureConnectionsUnlocked())) {
+    status = await placeStatus();
+    start = startingPlace(loc, status.ready);
+  } else start = startingPlace(loc, { github: true, webdav: true, device: true });
+  if (options.dired && S.state.doc) {
+    const here = currentFileSpot();
+    if (here) start = { ...here, note: null };
+  }
+  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, all: false, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false };
   renderFileScreen();
   loadListing();
+}
+
+/** The place and folder of the file in the current tab, when it is in one the screen lists. @returns {{ place: 'github' | 'webdav' | 'device', folder: string } | null} */
+function currentFileSpot() {
+  const kind = S.state.storageKind;
+  const id = S.state.documentId;
+  if (!id) return null;
+  if (kind === 'github' || kind === 'webdav') return { place: kind, folder: parentFolder(id) };
+  if (kind === 'filesystem' && folderAvailable() && !id.startsWith('/')) return { place: 'device', folder: parentFolder(id) };
+  return null;
 }
 
 export function closeFileScreen() {
@@ -54,54 +114,66 @@ export function closeFileScreen() {
   renderFileScreen();
 }
 
-/** Switches type, remembers it, and shows that type's body. @param {'github' | 'local' | 'webdav'} type */
-async function setType(type) {
+/** Remembers that the person is in `folder` of the current place (what the next Open starts on). @param {FileScreen} f */
+function remember(f) {
+  // a place that has no folders to list (the system chooser) is the last place but has no folder worth coming back to
+  f.loc = browsable(f.place) ? rememberLocation(f.loc, f.place, f.folder) : { ...f.loc, place: f.place };
+  setFileLocation(kv, f.loc).catch(() => {});
+}
+
+/** Moves to a place, in its own last folder unless one is given; a place this device cannot list is the chooser. @param {'github' | 'webdav' | 'device'} place @param {string} [folder] */
+function setPlace(place, folder) {
   const f = S.fileScreen;
-  if (!f || f.type === type) return;
-  f.type = type;
-  f.folder = '';
+  if (!f) return;
+  f.place = place;
+  f.folder = folder ?? f.loc.folders[place] ?? '';
   f.entries = null;
   f.error = null;
   f.unconfigured = false;
-  f.focusSeg = true;
-  await setFileScreenType(kv, type);
+  f.switching = false;
+  f.note = null;
+  f.focusPlace = true;
+  if (!browsable(place)) remember(f);
   renderFileScreen();
   loadListing();
 }
 
-/** Loads the folder list for the current GitHub / WebDAV folder; flags a backend that has no settings yet. */
+/** Loads the folder list of the current place; flags a place that has no settings yet. */
 async function loadListing() {
   const f = S.fileScreen;
-  if (!f || f.type === 'local') return;
-  const type = f.type;
+  if (!f || !browsable(f.place)) return;
+  const place = f.place;
   const folder = f.folder;
-  if (!(await ensureConnectionsUnlocked())) {
-    if (S.fileScreen === f && f.type === type) {
-      f.entries = null;
-      f.error = 'The connections are locked. Enter the passphrase to list these files.';
-      renderFileScreen();
+  if (place !== 'device') {
+    if (!(await ensureConnectionsUnlocked())) {
+      if (S.fileScreen === f && f.place === place) {
+        f.entries = null;
+        f.error = 'The connections are locked. Enter the passphrase to list these files.';
+        renderFileScreen();
+      }
+      return;
     }
-    return;
-  }
-  const config = type === 'github' ? await getGithubConfig(kv) : await getWebdavConfig(kv);
-  if (type === 'github') S.githubConfig = forState('github', config);
-  else S.webdavConfig = forState('webdav', config);
-  if (S.fileScreen !== f || f.type !== type) return;
-  const ok = type === 'github' ? isGithubConfigured(config) : isWebdavConfigured(config);
-  if (!ok) {
-    f.unconfigured = true;
-    renderFileScreen();
-    return;
+    const config = place === 'github' ? await getGithubConfig(kv) : await getWebdavConfig(kv);
+    if (place === 'github') S.githubConfig = forState('github', config);
+    else S.webdavConfig = forState('webdav', config);
+    if (S.fileScreen !== f || f.place !== place) return;
+    const ok = place === 'github' ? isGithubConfigured(config) : isWebdavConfigured(config);
+    if (!ok) {
+      f.unconfigured = true;
+      renderFileScreen();
+      return;
+    }
   }
   f.entries = null;
   f.error = null;
   renderFileScreen();
   try {
-    const entries = await (type === 'github' ? githubAdapter : webdavAdapter).list(folder);
-    if (S.fileScreen !== f || f.type !== type || f.folder !== folder) return; // superseded
+    const entries = await adapterOf(place).list(folder);
+    if (S.fileScreen !== f || f.place !== place || f.folder !== folder) return; // superseded
     f.entries = entries;
+    remember(f);
   } catch (err) {
-    if (S.fileScreen !== f || f.type !== type || f.folder !== folder) return;
+    if (S.fileScreen !== f || f.place !== place || f.folder !== folder) return;
     f.error = err.message;
   }
   renderFileScreen();
@@ -111,11 +183,12 @@ async function loadListing() {
 function openPath(path) {
   const f = S.fileScreen;
   if (!f || !path.trim()) return;
-  const type = f.type;
+  const place = f.place;
   closeFileScreen();
   const clean = path.trim().replace(/^\/+/, '');
-  if (type === 'github') openRemotePath(clean, 'github', githubAdapter, 'GitHub');
-  else openRemotePath(clean, 'webdav', webdavAdapter, 'WebDAV');
+  if (place === 'github') openRemotePath(clean, 'github', githubAdapter, 'GitHub');
+  else if (place === 'webdav') openRemotePath(clean, 'webdav', webdavAdapter, 'WebDAV');
+  else openRemotePath(clean, 'filesystem', filesystemAdapter, 'Local');
 }
 
 /** Saves under the typed name, asking first when that file is already in the listed folder. */
@@ -124,8 +197,8 @@ async function saveHere() {
   if (!f) return;
   const name = (f.nameEl ? f.nameEl.value : f.name).trim();
   if (!name) return;
-  const type = f.type;
-  if (type === 'local') {
+  const place = f.place;
+  if (!browsable(place)) {
     closeFileScreen();
     saveAsImport(name);
     return;
@@ -134,7 +207,7 @@ async function saveHere() {
   /** @type {string | null | undefined} */ let seen; // the text being replaced, so a save by someone else meanwhile is asked about
   if (listedAsFile(f.entries, path)) {
     try {
-      const existing = await (type === 'github' ? githubAdapter : webdavAdapter).read(path);
+      const existing = await adapterOf(place).read(path);
       seen = existing ? existing.content : null;
     } catch {
       seen = undefined; // not readable now; the save reads it again
@@ -143,11 +216,12 @@ async function saveHere() {
   }
   if (S.fileScreen !== f) return;
   closeFileScreen();
-  if (type === 'github') saveAsGithub(path, seen);
-  else saveAsWebdav(path, seen);
+  if (place === 'github') saveAsGithub(path, seen);
+  else if (place === 'webdav') saveAsWebdav(path, seen);
+  else saveAsDeviceFolder(path, seen);
 }
 
-/** @param {any} [f] */
+/** @param {FileScreen} [f] */
 function localBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;');
   const live = platform.localFiles.supported();
@@ -167,12 +241,12 @@ function localBody(f) {
   return box;
 }
 
-/** @param {any} [f] */
+/** @param {FileScreen} [f] */
 function unconfiguredBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;');
-  box.appendChild(div('font-weight:600;', `${/** @type {any} */ (LABEL)[f.type]} isn't set up yet`));
-  box.appendChild(div('font-size:13px;opacity:.7;', f.type === 'github' ? 'Add a repository and access token to browse it here.' : 'Add a server address and login to browse it here.'));
-  const btn = menuButton(`Open ${/** @type {any} */ (LABEL)[f.type]} settings`, () => {
+  box.appendChild(div('font-weight:600;', `${LABEL[f.place]} isn't set up yet`));
+  box.appendChild(div('font-size:13px;opacity:.7;', f.place === 'github' ? 'Add a repository and access token to browse it here.' : 'Add a server address and login to browse it here.'));
+  const btn = menuButton(`Open ${LABEL[f.place]} settings`, () => {
     closeFileScreen();
     settingsBtn.click();
   });
@@ -181,7 +255,7 @@ function unconfiguredBody(f) {
   return box;
 }
 
-/** @param {any} [f] */
+/** @param {FileScreen} [f] */
 function listBody(f) {
   const wrap = div('display:flex;flex-direction:column;gap:8px;min-height:0;flex:1 1 auto;');
   const crumb = div('display:flex;align-items:center;gap:8px;font-size:13px;');
@@ -193,7 +267,7 @@ function listBody(f) {
     up.dataset.act = 'up';
     crumb.appendChild(up);
   }
-  const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `${/** @type {any} */ (LABEL)[f.type]}: /${f.folder}`);
+  const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `/${f.folder}`);
   crumb.appendChild(where);
   wrap.appendChild(crumb);
   if (f.mode === 'open') {
@@ -256,7 +330,7 @@ function listBody(f) {
 
 /**
  * The path or name field, built once per open so typing survives redraws.
- * @param {any} f
+ * @param {FileScreen} f
  * @param {string} which
  */
 function field(f, which) {
@@ -286,6 +360,99 @@ function field(f, which) {
   return input;
 }
 
+/** The line under a place's name in the list of places. @param {FileScreen} f @param {'github' | 'webdav' | 'device'} place */
+function placeDetail(f, place) {
+  if (place === 'device') {
+    const kind = deviceKind();
+    return kind === 'folder' ? 'The org-pwa folder' : kind === 'picker' ? 'Choose a file with the system chooser' : "Import a file (this browser can't keep a link to it)";
+  }
+  if (f.ready && f.ready[place] === false) return 'Not set up';
+  return f.detail[place] || 'Tap to browse';
+}
+
+/** One row of the list of places or of the recent folders. @param {FileScreen} f @param {'github' | 'webdav' | 'device'} place @param {string} title @param {string} detail @param {() => void} act @param {boolean} current @param {boolean} [recent] */
+function placeRow(f, place, title, detail, act, current, recent = false) {
+  const row = document.createElement('button');
+  row.type = 'button';
+  if (recent) row.dataset.recent = place;
+  else {
+    row.dataset.type = place;
+    row.setAttribute('role', 'radio');
+    row.setAttribute('aria-checked', String(current));
+  }
+  row.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border:none;border-bottom:1px solid var(--border);background:${current ? 'var(--accent-soft, var(--surface-solid))' : 'transparent'};color:var(--fg);font:inherit;min-height:var(--target);`;
+  const badge = div('flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:var(--fg);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;', BADGE[place]);
+  const text = div('flex:1;min-width:0;');
+  text.appendChild(div('font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', title));
+  text.appendChild(div('font-size:12px;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', detail));
+  row.append(badge, text);
+  if (current) row.appendChild(div('color:var(--accent);', '\u2713'));
+  row.onclick = act;
+  return row;
+}
+
+/** The places to choose from, and the recent folders. @param {FileScreen} f */
+function placeList(f) {
+  const list = div('display:flex;flex-direction:column;overflow-y:auto;min-height:0;');
+  list.setAttribute('role', 'radiogroup');
+  list.setAttribute('aria-label', 'Where');
+  if (f.loc.recent.length) {
+    list.appendChild(div('padding:8px 12px 2px;font-size:11px;font-weight:700;opacity:.6;letter-spacing:.04em;', 'RECENT'));
+    for (const r of f.loc.recent) list.appendChild(placeRow(f, r.place, spotLabel(r.place, r.folder), `${LABEL[/** @type {'github' | 'webdav' | 'device'} */ (r.place)]} \u00b7 ${r.folder || 'top folder'}`, () => setPlace(r.place, r.folder), false, true));
+  }
+  list.appendChild(div('padding:8px 12px 2px;font-size:11px;font-weight:700;opacity:.6;letter-spacing:.04em;', 'PLACES'));
+  for (const place of PLACES) list.appendChild(placeRow(f, place, LABEL[place], placeDetail(f, place), () => setPlace(place), f.place === place));
+  return list;
+}
+
+/** The place bar: where the screen is looking, and a way to change it. @param {FileScreen} f */
+function placeBar(f) {
+  const bar = document.createElement('button');
+  bar.type = 'button';
+  bar.dataset.act = 'place';
+  bar.setAttribute('aria-label', `${LABEL[f.place]}. Change place`);
+  bar.setAttribute('aria-expanded', String(!!f.switching));
+  bar.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:transparent;color:var(--fg);font:inherit;flex:0 0 auto;min-height:var(--target);';
+  const badge = div('flex:0 0 auto;width:26px;height:26px;border-radius:7px;background:var(--fg);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;', BADGE[f.place]);
+  const text = div('flex:1;min-width:0;');
+  text.appendChild(div('font-weight:600;', LABEL[f.place]));
+  text.appendChild(div('font-size:12px;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', placeDetail(f, f.place)));
+  bar.append(badge, text, div('opacity:.7;', f.switching ? '\u25B4 Close' : '\u25BE Change'));
+  bar.onclick = () => {
+    f.switching = !f.switching;
+    renderFileScreen();
+  };
+  return bar;
+}
+
+/** What goes under the place bar: the files of the place, or what is needed first. @param {FileScreen} f @param {boolean} needsName */
+function mainBody(f, needsName) {
+  const body = div('display:flex;flex-direction:column;gap:10px;min-height:0;flex:1 1 auto;');
+  if (f.note) {
+    const note = div('font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-solid);', f.note);
+    note.dataset.part = 'note';
+    body.appendChild(note);
+  }
+  const open = f.mode === 'open';
+  if (browsable(f.place) && f.unconfigured) body.appendChild(unconfiguredBody(f));
+  else if (browsable(f.place)) {
+    if (open) body.appendChild(field(f, 'pathEl'));
+    body.appendChild(listBody(f));
+    if (f.place === 'device' && platform.localFiles.supported()) {
+      // a file outside the org-pwa folder still comes from the system chooser
+      const choose = menuButton(open ? 'Choose another file\u2026' : 'Save somewhere else\u2026', () => {
+        closeFileScreen();
+        if (open) openFromFilesystem();
+        else saveAsFilesystem();
+      });
+      choose.dataset.act = 'local';
+      body.appendChild(choose);
+    }
+  } else body.appendChild(localBody(f));
+  if (needsName) body.appendChild(field(f, 'nameEl'));
+  return body;
+}
+
 /** Draws, or hides, the screen from S.fileScreen. */
 export function renderFileScreen() {
   const f = S.fileScreen;
@@ -300,52 +467,38 @@ export function renderFileScreen() {
   showModalOverlay(fileScreen);
   fileScreenBox.setAttribute('role', 'dialog');
   const open = f.mode === 'open';
-  fileScreenBox.setAttribute('aria-label', open ? 'Open' : 'Save As');
-  const col = 'display:flex;flex-direction:column;gap:10px;padding:0 14px 14px;min-height:0;flex:1 1 auto;';
+  const title = f.dired ? 'Files' : open ? 'Open' : 'Save As';
+  fileScreenBox.setAttribute('aria-label', title);
+  const sideBySide = wide();
+  fileScreenBox.style.maxWidth = sideBySide ? '860px' : '';
+  const col = `display:flex;flex-direction:column;gap:10px;padding:${sideBySide ? 12 : 0}px 14px 14px;min-height:0;flex:1 1 auto;`;
   const inner = div(col);
   const grip = div('');
   grip.className = 'ui-grip';
   fileScreenBox.appendChild(grip);
-  inner.appendChild(div('font-weight:650;font-size:var(--text-title);', open ? 'Open' : 'Save As'));
+  inner.appendChild(div('font-weight:650;font-size:var(--text-title);', title));
 
-  // type picker
-  const seg = div('display:flex;border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow:hidden;flex:0 0 auto;');
-  seg.setAttribute('role', 'radiogroup');
-  seg.setAttribute('aria-label', 'Where');
-  for (const t of FILE_SCREEN_TYPES) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.type = t;
-    b.setAttribute('role', 'radio');
-    b.setAttribute('aria-checked', String(f.type === t));
-    b.tabIndex = f.type === t ? 0 : -1;
-    b.textContent = t === 'local' ? localLabel(f.mode) : LABEL[t];
-    b.style.cssText = `flex:1;min-height:var(--target);border:none;border-left:1px solid var(--border-strong);font:inherit;color:var(--fg);background:${f.type === t ? 'var(--accent-soft, var(--surface-solid))' : 'transparent'};font-weight:${f.type === t ? 700 : 400};${f.type === t ? 'box-shadow:inset 0 -3px 0 var(--accent);' : ''}`;
-    b.onclick = () => setType(t);
-    b.onkeydown = (e) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      e.preventDefault();
-      setType(stepFileScreenType(f.type, e.key === 'ArrowLeft' ? -1 : 1));
-    };
-    seg.appendChild(b);
+  const needsName = !open && ((browsable(f.place) && !f.unconfigured) || (!browsable(f.place) && !platform.localFiles.supported()));
+  const main = div('display:flex;flex-direction:column;gap:10px;min-height:0;flex:1 1 auto;');
+  if (sideBySide) {
+    // places beside the files
+    main.appendChild(mainBody(f, needsName));
+    const row = div('display:flex;gap:12px;min-height:0;flex:1 1 auto;');
+    const side = div('flex:0 0 240px;border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow:hidden;display:flex;flex-direction:column;min-height:0;');
+    side.appendChild(placeList(f));
+    row.append(side, main);
+    inner.appendChild(row);
+  } else {
+    inner.appendChild(placeBar(f));
+    if (f.switching) main.appendChild(placeList(f));
+    else main.appendChild(mainBody(f, needsName));
+    inner.appendChild(main);
   }
-  inner.appendChild(seg);
-
-  // body
-  const remote = f.type !== 'local';
-  if (remote && f.unconfigured) inner.appendChild(unconfiguredBody(f));
-  else if (remote) {
-    if (open) inner.appendChild(field(f, 'pathEl'));
-    inner.appendChild(listBody(f));
-  } else inner.appendChild(localBody(f));
-
-  const needsName = !open && ((remote && !f.unconfigured) || (!remote && !platform.localFiles.supported()));
-  if (needsName) inner.appendChild(field(f, 'nameEl'));
 
   // buttons: Cancel is the emphasized one; nothing here is highlighted for Open or Save
   const buttons = div('display:flex;gap:8px;justify-content:flex-end;flex:0 0 auto;');
-  if (needsName) {
-    const save = menuButton(!remote ? 'Download' : 'Save', () => saveHere());
+  if (needsName && !f.switching) {
+    const save = menuButton(!browsable(f.place) ? 'Download' : 'Save', () => saveHere());
     save.dataset.act = 'save';
     buttons.appendChild(save);
   }
@@ -356,9 +509,9 @@ export function renderFileScreen() {
   inner.appendChild(buttons);
   fileScreenBox.appendChild(inner);
 
-  if (f.focusSeg) {
-    f.focusSeg = false;
-    /** @type {HTMLElement | null} */ (seg.querySelector('[aria-checked="true"]'))?.focus();
+  if (f.focusPlace) {
+    f.focusPlace = false;
+    /** @type {HTMLElement | null} */ (fileScreenBox.querySelector('[data-act="place"], [role="radio"][aria-checked="true"]'))?.focus();
   } else if (!fileScreenBox.contains(document.activeElement)) cancel.focus();
 }
 

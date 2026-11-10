@@ -16,6 +16,7 @@
  * used throughout the storage layer.
  */
 
+import { normalizeLocation } from '../src/file-places.js';
 import { normalizeApptSettings } from '../src/appt.js';
 import { openConnection, sealForStore } from './connection-vault.js';
 import { normalizeAttachLinkMode } from '../src/attach.js';
@@ -44,6 +45,7 @@ const KEYS = {
   openTabs: 'settings:openTabs',
   recentFiles: 'settings:recentFiles',
   fileScreenType: 'settings:fileScreenType',
+  fileLocation: 'settings:fileLocation',
   globalVariables: 'settings:globalVariables',
 };
 
@@ -692,19 +694,22 @@ export async function removeRecentFile(kvAdapter, documentId, storageKind) {
 }
 
 /**
- * The storage type the Open / Save As screen last used ('github' | 'local' | 'webdav'), or null before the first use.
+ * Where the Open / Save As screen was last: the place, the folder in each place and the recent folders. An earlier version kept only
+ * a storage type, which is read as the place.
  * @param {KvAdapter} kvAdapter
+ * @returns {Promise<import('../src/file-places.js').Location>}
  */
-export async function getFileScreenType(kvAdapter) {
-  return getJson(kvAdapter, KEYS.fileScreenType, null);
+export async function getFileLocation(kvAdapter) {
+  const stored = await getJson(kvAdapter, KEYS.fileLocation, null);
+  return normalizeLocation(stored ?? (await getJson(kvAdapter, KEYS.fileScreenType, null)));
 }
 
 /**
  * @param {KvAdapter} kvAdapter
- * @param {string} type
+ * @param {import('../src/file-places.js').Location} location
  */
-export async function setFileScreenType(kvAdapter, type) {
-  await setJson(kvAdapter, KEYS.fileScreenType, type);
+export async function setFileLocation(kvAdapter, location) {
+  await setJson(kvAdapter, KEYS.fileLocation, location);
 }
 
 /** @param {KvAdapter} kvAdapter */

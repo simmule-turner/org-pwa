@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v671 — One place to browse GitHub, WebDAV and this device
+Open and Save As now share one list with a place bar: tap it to switch between GitHub, WebDAV and this device, and each place remembers the folder you were last in. If the last place is not set up, the list opens the most recent one that works and says so. On a wide screen the places sit beside the files. The Files (Dired) command opens the list in the folder of the current file. The Extras button is as visible as the back button.
+Verified: browser checks for remembering folders, the fallback note, Dired's starting folder and the Android folder listing.
+
 * v670 — A capture no longer unfolds the whole file
 When a capture function made a new heading deeper than the heading after it (a new month added last in the journal, say), the file was read again from its text and every heading lost its fold, so the whole file opened out. The new heading is now put under its parent directly, and only the lines the capture adds change; every other fold stays as it was.
 Verified: the 240 journal captures still match Emacs; browser check that a folded file stays folded after such a capture.

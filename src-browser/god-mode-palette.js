@@ -579,6 +579,7 @@ export function paletteCommandList() {
     { id: 'save-some-buffers', label: 'Save some buffers', orgName: 'save-some-buffers', keys: 'C-x s', group: 'Document', keywords: ['save all', 'all files', 'modified', 'unsaved'], needs: ['modifiedBuffers'], run: () => saveSomeBuffers() },
     { id: 'revert-buffer', label: 'Revert buffer', orgName: 'revert-buffer', group: 'Document', keywords: ['reload', 'discard', 'undo changes', 'from file'], needs: ['doc', 'storage'], run: () => revertBuffer() },
     { id: 'open', label: 'Open file\u2026', orgName: 'find-file', keys: 'C-x C-f', group: 'Document', run: () => openFileMenuAt('open') },
+    { id: 'dired', label: 'Files (Dired)\u2026', orgName: 'dired', group: 'Document', keywords: ['files', 'folder', 'directory', 'browse'], run: () => openFileScreen('open', { dired: true }) },
     { id: 'rename-buffer', label: 'Rename buffer\u2026', orgName: 'rename-buffer', keys: 'C-x x r', group: 'Document', needs: ['doc'], run: () => renameBuffer() },
     { id: 'new', label: 'New document', group: 'Document', run: () => createNewUnsavedDocument() },
     { id: 'undo', label: 'Undo', orgName: 'undo', keys: 'C-/', group: 'Document', needs: ['doc', 'undo'], run: () => performUndo() },

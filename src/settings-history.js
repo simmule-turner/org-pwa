@@ -6,7 +6,7 @@ import { pushSnapshot, trimHistory } from './undo-history.js';
 export const MAX_SETTINGS_STEPS = 100;
 
 /** Stored under these names but not part of the history: logins and their passphrase marker, what was open last, and window layout. */
-export const HISTORY_EXCLUDED = Object.freeze(['github', 'webdav', 'caldav', 'connectionProtection', 'lastActiveDocument', 'openTabs', 'recentFiles', 'bufferNames', 'fileScreenType', 'floatingKeyboardPos']);
+export const HISTORY_EXCLUDED = Object.freeze(['github', 'webdav', 'caldav', 'connectionProtection', 'lastActiveDocument', 'openTabs', 'recentFiles', 'bufferNames', 'fileScreenType', 'fileLocation', 'floatingKeyboardPos']);
 
 /** @type {Readonly<Record<string, string>>} */
 export const SETTING_LABELS = Object.freeze({

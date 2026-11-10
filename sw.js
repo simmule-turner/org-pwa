@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v670';
+const CACHE_NAME = 'org-pwa-shell-v671';
 
 const SHELL_FILES = [
   './',
@@ -74,6 +74,7 @@ const SHELL_FILES = [
   './src-browser/settings-quick.js',
   './src-browser/file-screen.js',
   './src/file-screen-model.js',
+  './src/file-places.js',
   './src/agenda-filter.js',
   './src/agenda-variables.js',
   './src/agenda-prefix.js',

@@ -261,16 +261,22 @@ async function settingsCategory(page, id) {
   if (await back.first().isVisible()) await back.first().click();
   await page.locator(`[data-settings-category="${id}"]`).first().click();
 }
+/** Opens the place list of the Open / Save As screen (unless it is already showing, as on a wide screen) and picks `place`. */
+async function choosePlace(page, place) {
+  const row = page.locator(`#fileScreenBox [data-type="${place}"]`);
+  if (!(await row.isVisible())) await page.locator('#fileScreenBox [data-act="place"]').click();
+  await row.click();
+}
 async function fileMenu(page, ...labels) {
   await page.click('#fileMenuBtn');
   const [first, ...rest] = labels;
   await pick(page, '#fileMenuPanel', first);
   if (first !== 'Open' && first !== 'Save As') return;
   // Open and Save As go to one screen: pick the type there ("Local file" also presses its button)
-  const types = { GitHub: 'github', 'Local file': 'local', WebDAV: 'webdav' };
+  const types = { GitHub: 'github', 'Local file': 'device', WebDAV: 'webdav' };
   await page.locator('#fileScreenBox').waitFor({ state: 'visible' });
   for (const label of rest) {
-    await page.locator(`#fileScreenBox [data-type="${types[label]}"]`).click();
+    await choosePlace(page, types[label]);
     if (label === 'Local file') await page.locator('#fileScreenBox [data-act="local"]').click();
   }
 }
@@ -3401,22 +3407,111 @@ check('webdav: a document opens from the server and Save writes it back', async 
   await context.close();
 });
 
-check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV picker that remembers the last type, Enter path opens, Save As asks before replacing, an unset backend says so, and a recent file can be removed', async () => {
+check('Open screen: starts in the folder each place was last in, falls back with a note when the last place is not set up, and Dired starts in the folder of the current file', async () => {
+  dav.reset({ 'notes.org': SAMPLE, 'work/a.org': '* A\n' });
+  const { page, errors } = await freshPage(main, { withDav: true });
+  await newDocument(page, '* One\n');
+  const box = page.locator('#fileScreenBox');
+  const setLocation = (loc) => page.evaluate(async (l) => { const { setFileLocation } = await import('/src-browser/settings.js'); const { kv } = await import('/src-browser/singletons.js'); await setFileLocation(kv, l); }, loc);
+  const folders = { github: '', webdav: 'work', device: '' };
+  const placeName = async () => (await box.locator('[data-act=place]').getAttribute('aria-label')).split('.')[0];
+
+  // 1. the last place and its folder
+  await setLocation({ place: 'webdav', folders, recent: [{ place: 'webdav', folder: 'work' }] });
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
+  expect((await placeName()) === 'WebDAV' && (await box.innerText()).includes('/work'), `opens in WebDAV, in work: ${await box.innerText()}`);
+  await page.keyboard.press('Escape');
+
+  // 2. the last place is GitHub, which has no settings: the most recent usable place opens, and the screen says so
+  await setLocation({ place: 'github', folders, recent: [{ place: 'github', folder: '' }, { place: 'webdav', folder: 'work' }] });
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
+  const note = await box.locator('[data-part=note]').innerText();
+  expect((await placeName()) === 'WebDAV' && note.includes("GitHub isn't available") && note.includes('WebDAV'), `fell back with a note: ${await placeName()} / ${note}`);
+  await page.keyboard.press('Escape');
+
+  // 3. Dired: the folder of the file in this tab, whatever the last place was
+  await setLocation({ place: 'device', folders, recent: [] });
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await box.waitFor({ state: 'visible' });
+  expect((await placeName()) === 'This device', 'a plain Open goes to the last place');
+  await box.locator('[data-act=place]').click();
+  await box.locator('[data-type=webdav]').click();
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 }); // in the folder WebDAV was last in
+  await box.locator('[data-entry="a.org"]').click();
+  await waitForModeline(page, 'a.org');
+  await setLocation({ place: 'device', folders: { github: '', webdav: '', device: '' }, recent: [] });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Commands');
+  await page.waitForSelector('#command-palette');
+  await page.keyboard.type('dired');
+  await page.keyboard.press('Enter');
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
+  expect((await placeName()) === 'WebDAV' && (await box.getAttribute('aria-label')) === 'Files', `dired starts where the current file is: ${await placeName()}`);
+  expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
+});
+
+check('Open screen: where the app keeps an org-pwa folder, This device lists it, opens a file from it, and still offers the system chooser', async () => {
+  const { page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    installPlatform({
+      localFiles: { supported: () => true, pickOpen: async () => 'picked.org', pickNew: async (kv, n) => n, adapter: { async read() { return null; }, async write() {}, async exists() { return false; }, async access() { return 'none'; } } },
+      attachments: {
+        supported: () => true,
+        folder: async () => ({ name: 'org-pwa' }),
+        pickFolder: async () => ({ name: 'org-pwa' }),
+        adapter: {
+          list: async (folder) => (folder === '' ? [{ name: 'home.org', path: 'home.org', type: 'file' }, { name: 'diary', path: 'diary', type: 'dir' }] : [{ name: 'd.org', path: 'diary/d.org', type: 'file' }]),
+          readBinary: async (path) => (path === 'home.org' ? { base64: btoa('* From the folder\n') } : path === 'diary/d.org' ? { base64: btoa('* In a subfolder\n') } : null),
+          writeBinary: async () => {},
+          exists: async (path) => path === 'home.org',
+          delete: async () => {},
+        },
+      },
+    });
+    (await import('/src-browser/app-state.js')).S.attachmentsFolder = 'org-pwa';
+  });
+  await newDocument(page, '* One\n');
+  const box = page.locator('#fileScreenBox');
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await box.waitFor({ state: 'visible' });
+  await choosePlace(page, 'device');
+  await box.locator('[data-entry="home.org"]').waitFor({ timeout: 8000 });
+  expect((await box.locator('[data-entry="diary"]').count()) === 1 && (await box.locator('[data-act=local]').count()) === 1, 'the folder is listed and the chooser is still offered');
+  await box.locator('[data-entry="diary"]').click();
+  await box.locator('[data-entry="d.org"]').waitFor({ timeout: 8000 });
+  await box.locator('[data-act=up]').click();
+  await box.locator('[data-entry="home.org"]').click();
+  await waitForModeline(page, 'home.org');
+  expect((await page.locator('#outline').innerText()).includes('From the folder'), 'the file from the folder is open');
+  expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
+});
+
+check('Open / Save As screen: one screen with a place bar (GitHub, WebDAV, this device) that remembers the last place, Enter path opens, Save As asks before replacing, an unset backend says so, and a recent file can be removed', async () => {
   dav.reset({ 'notes.org': SAMPLE });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await newDocument(page, '* One\n');
   const box = page.locator('#fileScreenBox');
-  const checked = () => box.locator('[role=radio][aria-checked=true]').getAttribute('data-type');
+  const placeName = async () => (await box.locator('[data-act=place]').getAttribute('aria-label')).split('.')[0];
   await page.click('#fileMenuBtn');
   await pick(page, '#fileMenuPanel', 'Open');
   await box.waitFor({ state: 'visible' });
-  expect((await box.locator('[role=radio]').count()) === 3 && (await checked()) === 'local', 'three types, Local file first time');
+  expect((await placeName()) === 'This device', 'this device the first time');
+  await box.locator('[data-act=place]').click();
+  expect((await box.locator('[role=radio]').count()) === 3, 'three places to choose from');
+  await box.locator('[data-act=place]').click();
   expect(await box.locator('[data-act=cancel]').evaluate((b) => b === document.activeElement && b.classList.contains('ui-cancel')), 'Cancel is focused and emphasized');
   expect(await box.evaluate((b) => !/rgba\(.*, 0(\.\d+)?\)$/.test(getComputedStyle(b).backgroundColor)), 'the screen is opaque');
-  await box.locator('[data-type=github]').click();
+  await choosePlace(page, 'github');
   await box.locator('[data-act=settings]').waitFor();
   expect((await box.innerText()).includes("GitHub isn't set up yet") && (await box.locator('[data-act=settings]').count()) === 1, 'an unset backend says so and links to settings');
-  await box.locator('[data-type=webdav]').click();
+  await choosePlace(page, 'webdav');
   await box.locator('[data-entry="notes.org"]').waitFor();
   expect((await box.locator('[data-field=path]').getAttribute('placeholder')).startsWith('Enter path'), 'Enter path field');
   await box.locator('[data-field=path]').fill('notes.org');
@@ -3426,7 +3521,7 @@ check('Open / Save As screen: one screen with a GitHub / Local file / WebDAV pic
   await page.click('#fileMenuBtn');
   await pick(page, '#fileMenuPanel', 'Save As');
   await box.waitFor({ state: 'visible' });
-  expect((await checked()) === 'webdav', 'Save As opens on the type last used');
+  expect((await placeName()) === 'WebDAV', 'Save As opens on the place last used');
   await page.keyboard.press('Escape');
   expect(!(await box.isVisible()), 'Escape closes the screen');
   await page.click('#fileMenuBtn');

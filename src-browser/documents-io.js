@@ -700,6 +700,49 @@ export async function saveAsWebdav(chosenPath, seenFromScreen) {
   }
 }
 
+/** Save As to a file in the org-pwa folder, from the Save As screen (which has asked about replacing it).
+ * @param {string} chosenPath the path in the folder @param {string | null} [seenFromScreen] the text of the file that screen asked to replace (null: none) */
+export async function saveAsDeviceFolder(chosenPath, seenFromScreen) {
+  if (!S.state.doc) return;
+  if (commitTextModeIfActive()) render();
+  const saveAsTab = /** @type {number} */ (S.activeTabId);
+  const saveAsText = serializeOrg(S.state.doc);
+  const path = chosenPath;
+  const previous = { documentId: S.state.documentId, storageKind: S.state.storageKind };
+  let written = false;
+  try {
+    const seen = seenFromScreen === undefined ? await readSeen(filesystemAdapter, path) : seenFromScreen;
+    S.state.documentId = path;
+    S.state.storageKind = 'filesystem';
+    await markDocumentOpen(kv, path);
+    setStatus('Saving\u2026');
+    render();
+    const result = await saveAndSync({
+      documentId: path,
+      doc: S.state.doc,
+      kvAdapter: kv,
+      diskAdapter: filesystemAdapter,
+      resolveConflict: replaceOnlyWhatWasSeen(seen ?? null),
+    });
+    if (result.status === 'conflict' && result.resolution === 'cancelled') {
+      undoSaveAsRename(previous, path);
+      setStatus('Save As cancelled \u2014 the file there is untouched.');
+      render();
+      return;
+    }
+    written = true;
+    markTabSaved(saveAsTab, saveAsText);
+    await recordRecentFile(kv, path, 'filesystem');
+    setStatus('Saved as ' + path + '.');
+    closeFileMenu();
+    render();
+  } catch (err) {
+    if (!written) undoSaveAsRename(previous, path);
+    setStatus('Save As failed: ' + err.message);
+    render();
+  }
+}
+
 /** @param {string} [chosenName] the name from the Save As screen; asked for in a prompt when omitted */
 export async function saveAsImport(chosenName) {
   if (!S.state.doc) return;

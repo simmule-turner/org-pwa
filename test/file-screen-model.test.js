@@ -1,17 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { joinPath, listedAsFile, parentFolder, resolveFileScreenType, stepFileScreenType, visibleEntries } from '../src/file-screen-model.js';
+import { joinPath, listedAsFile, parentFolder, visibleEntries } from '../src/file-screen-model.js';
 
-test('the remembered type is used only when it is a known type', () => {
-  assert.equal(resolveFileScreenType('webdav'), 'webdav');
-  assert.equal(resolveFileScreenType('nope'), 'local');
-  assert.equal(resolveFileScreenType(undefined), 'local');
-});
-test('arrow stepping stops at the ends', () => {
-  assert.equal(stepFileScreenType('github', -1), 'github');
-  assert.equal(stepFileScreenType('github', 1), 'local');
-  assert.equal(stepFileScreenType('webdav', 1), 'webdav');
-});
 test('listing keeps folders and org files, folders first', () => {
   const e = [
     { name: 'b.org', path: 'b.org', type: 'file' },
