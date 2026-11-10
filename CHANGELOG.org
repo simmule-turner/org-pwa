@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v673 — Find files in the Files list
+The Files list gets Find, after Emacs's find-lisp-find-dired: type an Emacs regexp such as \.org$ and it lists the matching files in the folder and everything below it, each with its path. You can change the regexp without searching again, and mark, copy, move, rename, delete and attach from the results. This replaces the extension filter. GitHub is searched in one request. The Android app's folder listing now includes subfolders, sizes and dates (shell 0.7.11).
+Verified: browser checks of Find against the folder tree, case, Emacs syntax, a refused regexp and acting on results; regexps compared with Emacs 29.3.
+
 * v672 — Manage files from the Files list
 The Files list now manages files as Dired does: mark files by tapping or by pattern, then copy, move (also between GitHub, WebDAV and this device), rename, delete, flag for deletion, make files and folders, sort by name, date or size, and see a file's info. One extension filter replaces the Org / All switch and starts on everything. A file with unsaved changes is never deleted or moved, and a saved open one follows its move. Attach from Files joins the Attach menu, and Chrome and Edge on desktop can list a folder you choose.
 Verified: browser checks of marks, copy, move, rename, delete, the open-file rules, attach and the folder prompt.

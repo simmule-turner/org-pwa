@@ -5,7 +5,7 @@
 // like any panel. The rules for which place opens first are in src/file-places.js.
 import { connectionsLocked, forState } from './connection-vault.js';
 import { joinPath, listedAsFile, parentFolder } from '../src/file-screen-model.js';
-import { arrange, marking, sizeLabel, targets } from '../src/file-ops.js';
+import { arrange, compileFind, findMatches, marking, sizeLabel, targets } from '../src/file-ops.js';
 import { PLACES, PLACE_NAMES, rememberLocation, spotLabel, startingPlace } from '../src/file-places.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -17,7 +17,7 @@ import { openFromFilesystem, openFromImport, openRemotePath, saveAsDeviceFolder,
 import { fileScreen, fileScreenBox, settingsBtn } from './dom.js';
 import { commitTextModeIfActive, setStatus } from './editing.js';
 import { allowDeviceFolder, chooseDeviceFolder, deviceFolderState, deviceIo, dirPickerSupported, isFolderPath, loadKnownPaths, registerFolderFile } from './device-folder.js';
-import { ioOf } from './file-ops-io.js';
+import { collectFiles, ioOf } from './file-ops-io.js';
 import { deleteEntries, newFile, newFolder, renameEntry, transferTo } from './file-manage.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { folderAvailable } from './local-folder.js';
@@ -114,7 +114,7 @@ export async function openFileScreen(mode, options = {}) {
     const here = currentFileSpot();
     if (here) start = { ...here, note: null };
   }
-  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, filter: '', sort: 'name', reverse: false, marks: new Set(), flags: new Set(), transfer: null, attach: options.attach || null, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false, filterEl: null };
+  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, sort: 'name', reverse: false, marks: new Set(), flags: new Set(), found: null, transfer: null, attach: options.attach || null, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false };
   renderFileScreen();
   loadListing();
 }
@@ -186,6 +186,7 @@ async function loadListing() {
   }
   f.entries = null;
   f.error = null;
+  f.found = null;
   f.marks = new Set();
   f.flags = new Set();
   renderFileScreen();
@@ -330,7 +331,8 @@ function unconfiguredBody(f) {
 
 /** The rows on screen: the listing, filtered and sorted. @param {FileScreen} f */
 function shownRows(f) {
-  return f.entries ? arrange(f.entries, f.filter, f.sort, f.reverse) : [];
+  if (f.found) return arrange(findMatches(f.found.all, f.found.regexp) || [], f.sort, f.reverse);
+  return f.entries ? arrange(f.entries, f.sort, f.reverse) : [];
 }
 
 /** What to act on: the marked rows, or `point` when none is marked. @param {FileScreen} f @param {any} [point] */
@@ -341,7 +343,9 @@ function actTargets(f, point) {
 /** Back to the folder list after a change to files. */
 async function reloadAfter() {
   const f = S.fileScreen;
-  if (f) await loadListing();
+  if (!f) return;
+  if (f.found) await runFind(f, f.found.regexp);
+  else await loadListing();
 }
 
 /** @param {FileScreen} f @param {string} label @param {{ text: string, onClick: () => any, disabled?: boolean }[]} buttons */
@@ -353,6 +357,7 @@ function chooseFrom(f, label, buttons) {
 function startTransfer(f, kind, items) {
   if (items.length === 0) return;
   f.transfer = { kind, items, from: f.place };
+  f.found = null; // the folder where the search started is the place to browse from
   f.marks = new Set();
   renderFileScreen();
 }
@@ -382,7 +387,7 @@ function rowMenu(f, entry) {
     {
       text: 'Rename…',
       onClick: async () => {
-        await renameEntry(entry, place, f.folder);
+        await renameEntry(entry, place, parentFolder(entry.path.replace(/^\/+/, '')));
         await reloadAfter();
       },
     },
@@ -431,7 +436,9 @@ function toolBar(f) {
     ]),
   );
   sort.dataset.act = 'sort';
-  bar.appendChild(sort);
+  const find = menuButton('Find\u2026', () => askFind(f));
+  find.dataset.act = 'find';
+  bar.append(find, sort);
   if (f.attach) return bar;
   const create = menuButton('New…', () =>
     chooseFrom(f, 'New', [
@@ -499,7 +506,8 @@ function toolBar(f) {
     ]),
   );
   marks.dataset.act = 'marks';
-  bar.append(create, marks);
+  if (f.found) bar.appendChild(marks);
+  else bar.append(create, marks);
   return bar;
 }
 
@@ -570,7 +578,7 @@ function fillList(f, list) {
   else if (f.entries === null) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', 'Loading…'));
   else {
     const rows = shownRows(f);
-    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.filter.trim() ? `Nothing here matches “${f.filter.trim()}”.` : 'No files or folders here.'));
+    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.found ? 'No file matches.' : 'No files or folders here.'));
     for (const entry of rows) list.appendChild(listRow(f, entry));
   }
 }
@@ -604,7 +612,7 @@ function listRow(f, entry) {
   main.style.cssText = `display:flex;justify-content:space-between;align-items:center;gap:8px;flex:1 1 auto;min-width:0;min-height:var(--target);text-align:left;padding:8px 12px;border:none;background:transparent;color:var(--fg);font:inherit;font-size:14px;${dead ? 'opacity:.4;' : ''}`;
   const name = document.createElement('span');
   name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-  name.textContent = entry.name;
+  name.textContent = f.found ? entry.path.replace(/^\/+/, '').slice(f.found.folder ? f.found.folder.length + 1 : 0) : entry.name;
   main.appendChild(name);
   const tag = document.createElement('small');
   tag.style.cssText = 'opacity:.6;flex:0 0 auto;';
@@ -637,25 +645,105 @@ function listRow(f, entry) {
   return row;
 }
 
-/** The filter field: kept across redraws so typing is not interrupted. @param {FileScreen} f @param {HTMLElement} list */
-function filterField(f, list) {
-  if (!f.filterEl) {
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.autocapitalize = 'off';
-    input.spellcheck = false;
-    input.placeholder = 'Filter by extension, e.g. org md';
-    input.setAttribute('aria-label', 'Filter by extension');
-    input.dataset.field = 'filter';
-    input.value = f.filter;
-    input.style.cssText = 'flex:1 1 120px;min-width:0;box-sizing:border-box;min-height:var(--target);padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--bg);color:var(--fg);font:inherit;';
-    f.filterEl = input;
+/** Asks for the regexp of a Find and runs it from the folder on screen. @param {FileScreen} f */
+async function askFind(f) {
+  const regexp = await promptText(`Find files below /${f.folder} whose name matches (an Emacs regexp, e.g. \\.org$):`, f.found ? f.found.regexp : '', { okLabel: 'Find' });
+  if (regexp == null || S.fileScreen !== f) return;
+  await runFind(f, regexp);
+}
+
+/** `find-lisp-find-dired`: lists the files below the folder whose name matches `regexp`. The files are fetched once; changing the filter matches them again.
+ * @param {FileScreen} f @param {string} regexp */
+async function runFind(f, regexp) {
+  const compiled = compileFind(regexp);
+  if ('error' in compiled) {
+    f.note = `Not an Emacs regexp: ${compiled.error}`;
+    renderFileScreen();
+    return;
   }
-  f.filterEl.oninput = () => {
-    f.filter = f.filterEl.value;
-    fillList(f, list);
-  };
-  return f.filterEl;
+  const place = f.place;
+  const folder = f.found ? f.found.folder : f.folder;
+  let stop = false;
+  const search = { regexp, all: /** @type {any[]} */ ([]), truncated: false, folder, place, searching: true, progress: 'Searching…', cancel: () => (stop = true) };
+  f.found = search;
+  f.note = null;
+  f.marks = new Set();
+  f.flags = new Set();
+  renderFileScreen();
+  try {
+    const result = await collectFiles(place, folder, {
+      cancelled: () => stop || S.fileScreen !== f || f.found !== search,
+      onProgress: (files, folders) => {
+        if (S.fileScreen !== f || f.found !== search) return;
+        search.progress = `Searching… ${files} files in ${folders} folders`;
+        const status = fileScreenBox.querySelector('[data-part=found-status]');
+        if (status) status.textContent = search.progress;
+      },
+    });
+    if (S.fileScreen !== f || f.found !== search) return;
+    search.all = result.files;
+    search.truncated = result.truncated;
+  } catch (err) {
+    if (S.fileScreen !== f || f.found !== search) return;
+    f.found = null;
+    f.error = err && err.message ? err.message : String(err);
+  }
+  search.searching = false;
+  renderFileScreen();
+}
+
+/** The line above a Find's results: what it found, and changing the filter, searching again, or leaving. @param {FileScreen} f */
+function foundBar(f) {
+  const found = f.found;
+  const bar = div('display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-solid);');
+  bar.dataset.part = 'found';
+  const rows = findMatches(found.all, found.regexp) || [];
+  const text = found.searching ? found.progress : `${rows.length} of ${found.all.length} files below /${found.folder} match “${found.regexp}”${found.truncated ? ` (the search stopped at ${found.all.length} files)` : ''}`;
+  const status = div('font-size:13px;flex:1 1 160px;min-width:0;', text);
+  status.dataset.part = 'found-status';
+  bar.appendChild(status);
+  /** @type {[string, string, () => any][]} */
+  const actions = found.searching
+    ? [['find-cancel', 'Cancel', () => found.cancel()]]
+    : [
+        [
+          'refine',
+          'Change filter…',
+          async () => {
+            const next = await promptText('Change the filter to (an Emacs regexp):', found.regexp, { okLabel: 'Change' });
+            if (next == null || S.fileScreen !== f || f.found !== found) return;
+            const compiled = compileFind(next);
+            if ('error' in compiled) {
+              f.note = `Not an Emacs regexp: ${compiled.error}`;
+              renderFileScreen();
+              return;
+            }
+            found.regexp = next;
+            const keep = new Set((findMatches(found.all, next) || []).map((e) => e.path));
+            f.marks = new Set([...f.marks].filter((path) => keep.has(path)));
+            f.flags = new Set([...f.flags].filter((path) => keep.has(path)));
+            renderFileScreen();
+          },
+        ],
+        ['find-reload', 'Search again', () => runFind(f, found.regexp)],
+        [
+          'find-close',
+          'Close',
+          () => {
+            f.found = null;
+            f.marks = new Set();
+            f.flags = new Set();
+            if (f.entries === null) loadListing();
+            else renderFileScreen();
+          },
+        ],
+      ];
+  for (const [act, label, run] of actions) {
+    const b = menuButton(label, run);
+    b.dataset.act = act;
+    bar.appendChild(b);
+  }
+  return bar;
 }
 
 /** @param {FileScreen} [f] */
@@ -679,10 +767,8 @@ function listBody(f) {
     const word = f.transfer.kind === 'copy' ? 'Copy' : 'Move';
     wrap.appendChild(div('font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-solid);', `${word} ${f.transfer.items.length === 1 ? `“${f.transfer.items[0].name}”` : `${f.transfer.items.length} items`}: open the folder to ${word.toLowerCase()} into${f.transfer.from !== f.place ? ` (from ${LABEL[f.transfer.from]})` : ''}, then tap ${word} here.`));
   } else {
-    const tools = div('display:flex;flex-wrap:wrap;gap:6px;align-items:center;');
-    tools.appendChild(filterField(f, list));
-    wrap.appendChild(tools);
     wrap.appendChild(toolBar(f));
+    if (f.found) wrap.appendChild(foundBar(f));
     if (f.marks.size) wrap.appendChild(markedBar(f));
   }
   fillList(f, list);

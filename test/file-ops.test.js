@@ -1,27 +1,35 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { arrange, freeName, isInside, marking, matchesFilter, movedPath, openConflicts, planTransfer, sizeLabel, targets, validName } from '../src/file-ops.js';
+import { arrange, compileFind, findMatches, freeName, isInside, marking, movedPath, openConflicts, planTransfer, sizeLabel, targets, validName } from '../src/file-ops.js';
 
 const f = (name, extra = {}) => ({ name, path: `d/${name}`, type: 'file', ...extra });
 const d = (name) => ({ name, path: `d/${name}`, type: 'dir' });
 
-test('the filter takes extensions with or without a dot, and folders always pass', () => {
-  assert.equal(matchesFilter(f('a.org'), 'org'), true);
-  assert.equal(matchesFilter(f('a.org'), '.md'), false);
-  assert.equal(matchesFilter(f('a.MD'), 'org, md'), true);
-  assert.equal(matchesFilter(f('a.txt'), ''), true);
-  assert.equal(matchesFilter(d('sub'), 'org'), true);
-  assert.equal(matchesFilter(f('notes_archive'), 'org'), true);
-  assert.equal(matchesFilter(f('x.org'), '*.org'), true);
+test('Find matches an Emacs regexp against the file name, folding case like Emacs, and only files', () => {
+  const all = [f('a.org'), f('B.ORG'), f('c.el'), f('d.elc'), f('notes_archive'), d('sub.org'), { name: 'e.org', path: 'sub/deep/e.org', type: 'file' }];
+  const names = (re) => findMatches(all, re).map((e) => e.name);
+  assert.deepEqual(names('\\.org\\\''), ['a.org', 'B.ORG', 'e.org']);
+  assert.deepEqual(names('\\.org$'), ['a.org', 'B.ORG', 'e.org']);
+  assert.deepEqual(names('\\.\\(org\\|el\\)$'), ['a.org', 'B.ORG', 'c.el', 'e.org']);
+  assert.deepEqual(names('\\.(org|el)$'), [], 'unescaped parentheses are literal text in Emacs');
+  assert.deepEqual(names('^c'), ['c.el']);
+  assert.deepEqual(names(''), ['a.org', 'B.ORG', 'c.el', 'd.elc', 'notes_archive', 'e.org']);
+  assert.deepEqual(names('sub'), [], 'a folder name is not a file name');
+});
+
+test('Find refuses a regexp Emacs would refuse and says why', () => {
+  assert.equal(findMatches([f('a.org')], '\\('), null);
+  assert.match(compileFind('\\(').error, /./);
+  assert.equal(typeof compileFind('a').test, 'function');
 });
 
 test('sorting keeps folders first; date and size put the newest and biggest first, unknown last', () => {
   const rows = [f('b.org', { modified: 2, size: 5 }), f('a.org', { modified: 1, size: 9 }), f('c.org'), d('z'), d('y')];
-  assert.deepEqual(arrange(rows, '', 'name').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
-  assert.deepEqual(arrange(rows, '', 'date').map((e) => e.name), ['y', 'z', 'b.org', 'a.org', 'c.org']);
-  assert.deepEqual(arrange(rows, '', 'size').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
-  assert.deepEqual(arrange(rows, 'org', 'name', true).map((e) => e.name).slice(0, 2), ['z', 'y']);
-  assert.deepEqual(arrange([f('f10.org'), f('f9.org')], '', 'name').map((e) => e.name), ['f9.org', 'f10.org']);
+  assert.deepEqual(arrange(rows, 'name').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'date').map((e) => e.name), ['y', 'z', 'b.org', 'a.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'size').map((e) => e.name), ['y', 'z', 'a.org', 'b.org', 'c.org']);
+  assert.deepEqual(arrange(rows, 'name', true).map((e) => e.name).slice(0, 2), ['z', 'y']);
+  assert.deepEqual(arrange([f('f10.org'), f('f9.org')], 'name').map((e) => e.name), ['f9.org', 'f10.org']);
 });
 
 test('marks: toggle, invert, regexp (case-folded, on the name), clear', () => {

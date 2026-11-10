@@ -315,12 +315,36 @@ export function createGithubAdapter(getConfig) {
       });
   }
 
+  /**
+   * Every file at or below `path`, in one request (the Git Trees API with `recursive=1`) instead of one listing per folder.
+   * Resolves { files: [{ name, path, type: 'file', size }], truncated }; `truncated` is GitHub's own flag for a tree too big
+   * to send whole (over 100,000 entries or 7 MB), and the caller says so. An empty or missing folder gives no files.
+   * @param {string} [path]
+   */
+  async function treeImpl(path = '') {
+    const config = requireConfig(getConfig);
+    const url = `${API_BASE}/repos/${config.owner}/${config.repo}/git/trees/${encodeURIComponent(config.branch || 'main')}?recursive=1`;
+    const res = await fetchWithTimeout(url, { headers: authHeaders(config), cache: 'no-store' });
+    if (res.status === 404) return { files: [], truncated: false };
+    if (!res.ok) throw new Error(await githubErrorMessage(res));
+    const body = await readJsonCapped(res, REPLY_CAP_BYTES * 8, "GitHub's file tree");
+    const prefix = path.replace(/^\/+|\/+$/g, '');
+    const under = prefix ? prefix + '/' : '';
+    /** @type {{ type?: string, path?: unknown, size?: unknown }[]} */
+    const tree = Array.isArray(body.tree) ? body.tree : [];
+    const files = tree
+      .filter((e) => e.type === 'blob' && typeof e.path === 'string' && e.path.startsWith(under) && !e.path.split('/').some((/** @type {string} */ part) => part === '' || part === '.' || part === '..' || /[\\\u0000-\u001f\u007f]/.test(part)))
+      .map((e) => ({ name: /** @type {string} */ (String(e.path).split('/').pop()), path: String(e.path), type: /** @type {'file'} */ ('file'), ...(typeof e.size === 'number' ? { size: e.size } : {}) }));
+    return { files, truncated: !!body.truncated };
+  }
+
   return {
     read: readImpl,
     write: writeImpl,
     writeBinary: writeBinaryImpl,
     delete: deleteImpl,
     list: listImpl,
+    tree: treeImpl,
     readBinary: readBinaryImpl,
     /** @param {string} fileId */
     async exists(fileId) {

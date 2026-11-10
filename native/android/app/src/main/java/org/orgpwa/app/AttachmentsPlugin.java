@@ -196,31 +196,68 @@ public class AttachmentsPlugin extends Plugin {
         call.resolve(out);
     }
 
-    /** The names of the files in a folder by its path inside the chosen folder. Resolves { names }, empty if there is no such folder. */
+    /**
+     * What is in a folder, by its path inside the chosen folder ("" or no path is the chosen folder itself). Resolves { names, entries }:
+     * `names` the file names (older web code reads only this), and `entries` every file and folder as { name, dir, size, modified }
+     * (size in bytes and modified in milliseconds since the epoch, for a file, and only when Android reports them). Both are empty
+     * if there is no such folder.
+     */
     @PluginMethod
     public void list(PluginCall call) {
         JSObject out = new JSObject();
         JSArray names = new JSArray();
-        if (!isPlainPath(call.getString("path"))) {
+        JSArray entries = new JSArray();
+        String path = call.getString("path", "");
+        boolean root = path == null || path.isEmpty();
+        DocumentFile folder = null;
+        if (root) {
+            Uri tree = treeUri();
+            if (tree != null && hasPermission(tree)) folder = DocumentFile.fromTreeUri(getContext(), tree);
+        } else if (isPlainPath(path)) {
+            folder = locate(path, false);
+        } else {
             out.put("names", names);
+            out.put("entries", entries);
             call.resolve(out);
             return;
         }
-        DocumentFile folder = locate(call.getString("path"), false);
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
         if (folder != null && folder.isDirectory()) {
             for (DocumentFile child : folder.listFiles()) {
                 String name = child.getName();
-                if (child.isFile() && name != null) names.put(name);
+                if (name == null || !(child.isFile() || child.isDirectory())) continue;
+                JSObject entry = new JSObject();
+                entry.put("name", name);
+                entry.put("dir", child.isDirectory());
+                if (child.isFile()) {
+                    names.put(name);
+                    long length = child.length();
+                    if (length >= 0) entry.put("size", length);
+                    long modified = child.lastModified();
+                    if (modified > 0) entry.put("modified", modified);
+                }
+                seen.add(name);
+                entries.put(entry);
             }
         }
-        String prefix = call.getString("path", "") + "/";
+        String prefix = root ? "" : path + "/";
         JSONObject links = links();
         java.util.Iterator<String> keys = links.keys();
         while (keys.hasNext()) {
             String key = keys.next();
-            if (key.startsWith(prefix) && key.indexOf('/', prefix.length()) < 0) names.put(key.substring(prefix.length()));
+            if (key.startsWith(prefix) && key.indexOf('/', prefix.length()) < 0) {
+                String name = key.substring(prefix.length());
+                names.put(name);
+                if (seen.add(name)) {
+                    JSObject entry = new JSObject();
+                    entry.put("name", name);
+                    entry.put("dir", false);
+                    entries.put(entry);
+                }
+            }
         }
         out.put("names", names);
+        out.put("entries", entries);
         call.resolve(out);
     }
 

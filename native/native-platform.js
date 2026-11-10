@@ -321,11 +321,21 @@
             return !!result.value;
           });
         },
-        // the files in a folder (an attachment folder), as GitHub's and WebDAV's list() give them
+        // what is in a folder ('' is the chosen folder itself), as GitHub's and WebDAV's list() give it: files and folders, with
+        // a file's size and modified time when Android reports them. A shell older than 0.7.11 sends only the file names.
         list: function (folder) {
-          return attachments.list({ path: folder }).then(function (result) {
-            return (result.names || []).map(function (name) {
-              return { name: name, path: folder + '/' + name, type: 'file' };
+          var base = folder ? folder + '/' : '';
+          return attachments.list({ path: folder || '' }).then(function (result) {
+            if (!result.entries) {
+              return (result.names || []).map(function (name) {
+                return { name: name, path: base + name, type: 'file' };
+              });
+            }
+            return result.entries.map(function (entry) {
+              var item = { name: entry.name, path: base + entry.name, type: entry.dir ? 'dir' : 'file' };
+              if (!entry.dir && typeof entry.size === 'number') item.size = entry.size;
+              if (!entry.dir && typeof entry.modified === 'number' && entry.modified > 0) item.modified = entry.modified;
+              return item;
             });
           });
         },

@@ -39,11 +39,6 @@ Left from the security reviews. Each is small, none lets a document run code wit
 Lazy loops over groups (such as =\(a\|b\)*?c=) on very long strings also overflow in Emacs with "Stack overflow in regexp matcher"; the app answers slowly instead.
 - Effort: S. Impact: S.
 
-* Android app
-** [#B] Size and date in the folder listing (next native release)
-The native shell's folder listing returns only name, path and type, so the Files view shows no size or modified time for the org-pwa folder, and Sort by Date falls back to name order there. Return =size= (bytes) and =modified= (milliseconds since the epoch) for each file in =list(folder)=; the web side already uses them where a place supplies them.
-- Effort: S. Impact: S.
-
 * Order for the next release
 Nothing is planned: the items above are [#C] and wait for demand. Refile and Replace into =local:= files from the web and other backends are [#C] too.
 

@@ -596,3 +596,45 @@ test('list() also passes cache: "no-store"', () => {
     }
   );
 });
+
+// ---- tree() -----------------------------------------------------------------
+
+test('tree() asks for the whole tree of the branch in one request and returns the files below the folder', async () => {
+  const calls = [];
+  await withMockFetch(
+    async (url) => {
+      calls.push(url);
+      return jsonResponse(200, {
+        truncated: false,
+        tree: [
+          { path: 'a.org', type: 'blob', size: 5 },
+          { path: 'notes', type: 'tree' },
+          { path: 'notes/b.org', type: 'blob', size: 7 },
+          { path: 'notes/deep/c.el', type: 'blob', size: 9 },
+          { path: 'notesx/d.org', type: 'blob', size: 1 },
+        ],
+      });
+    },
+    async () => {
+      const adapter = createGithubAdapter(() => CONFIG);
+      const whole = await adapter.tree('');
+      assert.equal(calls.length, 1);
+      assert.match(calls[0], /\/repos\/me\/notes\/git\/trees\/main\?recursive=1$/);
+      assert.deepEqual(whole.files.map((f) => f.path), ['a.org', 'notes/b.org', 'notes/deep/c.el', 'notesx/d.org']);
+      const below = await adapter.tree('notes');
+      assert.deepEqual(below.files.map((f) => [f.name, f.path, f.size]), [['b.org', 'notes/b.org', 7], ['c.el', 'notes/deep/c.el', 9]]);
+    }
+  );
+});
+
+test('tree() passes on GitHub’s truncated flag, treats a missing branch as empty and reports other errors', async () => {
+  await withMockFetch(async () => jsonResponse(200, { truncated: true, tree: [] }), async () => {
+    assert.equal((await createGithubAdapter(() => CONFIG).tree('')).truncated, true);
+  });
+  await withMockFetch(async () => jsonResponse(404, {}), async () => {
+    assert.deepEqual(await createGithubAdapter(() => CONFIG).tree(''), { files: [], truncated: false });
+  });
+  await withMockFetch(async () => jsonResponse(401, {}), async () => {
+    await assert.rejects(createGithubAdapter(() => CONFIG).tree(''), /rejected the token/);
+  });
+});

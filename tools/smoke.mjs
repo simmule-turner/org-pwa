@@ -106,8 +106,10 @@ function createDav() {
           return res.end();
         }
         const children = [...files.keys()].filter((n) => n.startsWith(prefix) && !n.slice(prefix.length).includes('/'));
+        const subfolders = new Set([...files.keys()].filter((n) => n.startsWith(prefix) && n.slice(prefix.length).includes('/')).map((n) => n.slice(prefix.length).split('/')[0]));
         const items = [
           `<d:response><d:href>/dav/${prefix}</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>`,
+          ...[...subfolders].map((n) => `<d:response><d:href>/dav/${prefix}${encodeURIComponent(n)}/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>`),
           ...children.map((n) => `<d:response><d:href>/dav/${prefix}${encodeURIComponent(n.slice(prefix.length))}</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>${Buffer.byteLength(files.get(n))}</d:getcontentlength></d:prop></d:propstat></d:response>`),
         ];
         res.writeHead(207, { 'Content-Type': 'application/xml' });
@@ -341,7 +343,7 @@ const saveBuffers = (page) => page.evaluate(async () => (await import('/src-brow
 
 async function openDav(page, name) {
   await fileMenu(page, 'Open', 'WebDAV');
-  await page.getByText(name, { exact: false }).first().click();
+  await page.locator('#fileScreenBox').getByText(name, { exact: false }).first().click(); // the list, not a link to the file in the open document
   await page.waitForFunction((n) => document.getElementById('modeline').innerText.includes(n), name, { timeout: 8000 });
   await page.waitForTimeout(300);
 }
@@ -3628,7 +3630,7 @@ check('Open / Save As screen: one screen with a place bar (GitHub, WebDAV, this 
   await context.close();
 });
 
-check('Files view: the extension filter and sort, marks by pattern, copy into a folder, rename, move and delete in WebDAV, a file open with unsaved changes is never deleted, and a saved one is asked about', async () => {
+check('Files view: marks by pattern, copy into a folder, rename, move and delete in WebDAV, a file open with unsaved changes is never deleted, and a saved one is asked about', async () => {
   dav.reset({ 'a.org': '* A\n', 'b.org': '* B\n', 'n.txt': 'plain', 'sub/keep.org': '* K\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
@@ -3643,11 +3645,8 @@ check('Files view: the extension filter and sort, marks by pattern, copy into a 
   await fileMenu(page, 'Open', 'WebDAV');
   await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
 
-  // 1. everything is listed, folders first; the filter narrows by extension; a folder always stays
+  // 1. everything is listed, folders first
   expect(JSON.stringify(await names()) === JSON.stringify(['sub', 'a.org', 'b.org', 'n.txt']), `listing: ${JSON.stringify(await names())}`);
-  await box.locator('[data-field="filter"]').fill('txt');
-  expect(JSON.stringify(await names()) === JSON.stringify(['sub', 'n.txt']), `filtered: ${JSON.stringify(await names())}`);
-  await box.locator('[data-field="filter"]').fill('');
 
   // 2. Marks > Mark by pattern marks the .org files; a bad pattern marks nothing
   await box.locator('[data-act=marks]').click();
@@ -3777,6 +3776,67 @@ check('attach from Files: the dispatcher’s Attach from Files lists the place, 
   await page.waitForFunction(() => true);
   await page.waitForTimeout(800);
   expect(dav.get('other.txt') === undefined, 'the original is deleted after the answer');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Files view Find: searches every folder below for names matching an Emacs regexp (case folded, files only), shows paths, changes the filter without searching again, refuses a bad regexp, and acts on the results', async () => {
+  dav.reset({ 'a.org': '* A\n', 'B.ORG': '* B\n', 'n.txt': 'plain', 'sub/c.org': '* C\n', 'sub/deep/d.el': '(d)\n', 'sub/deep/2026-11.org': '* E\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  const box = page.locator('#fileScreenBox');
+  const top = () => page.locator('body > .ui-overlay').last();
+  const rows = () => box.locator('[data-entry]').evaluateAll((els) => els.map((e) => e.getAttribute('data-entry')));
+  const ask = async (label, text, button) => {
+    await box.locator(`[data-act="${label}"]`).click();
+    await top().locator('input').fill(text);
+    await top().getByRole('button', { name: button, exact: true }).click();
+  };
+  await fileMenu(page, 'Open', 'WebDAV');
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
+
+  // 1. \\.org$ finds the Org files in every folder, whatever their case, and no folder; each row shows its path
+  await ask('find', '\\.org$', 'Find');
+  await box.locator('[data-part="found"]').waitFor({ timeout: 8000 });
+  await page.waitForFunction(() => /files below/.test(document.querySelector('#fileScreenBox [data-part="found"]').innerText), null, { timeout: 8000 });
+  expect(JSON.stringify((await rows()).sort()) === JSON.stringify(['2026-11.org', 'B.ORG', 'a.org', 'c.org']), `found: ${JSON.stringify(await rows())}`);
+  const labels = await box.locator('[data-row]').evaluateAll((els) => els.map((e) => e.querySelector('[data-entry] span').textContent).sort());
+  expect(labels.includes('sub/deep/2026-11.org') && labels.includes('sub/c.org'), `rows show their path: ${JSON.stringify(labels)}`);
+  expect((await box.locator('[data-part="found"]').innerText()).includes('4 of 6 files'), `the count counts files only: ${await box.locator('[data-part="found"]').innerText()}`);
+
+  // 2. Emacs syntax: \( \| \) group, bare parentheses are text
+  await ask('refine', '\\.\\(org\\|el\\)$', 'Change');
+  expect((await rows()).length === 5, `org and el together: ${JSON.stringify(await rows())}`);
+  const before = dav.requests.length;
+  await ask('refine', '\\.(org|el)$', 'Change');
+  expect((await rows()).length === 0, 'unescaped parentheses are literal, so nothing matches');
+  await ask('refine', '^[0-9]\\{4\\}-', 'Change');
+  expect(JSON.stringify(await rows()) === JSON.stringify(['2026-11.org']), `an interval: ${JSON.stringify(await rows())}`);
+  expect(dav.requests.slice(before).every((r) => !r.startsWith('PROPFIND')), 'changing the filter does not search again');
+
+  // 3. a regexp Emacs refuses is reported and the results stay
+  await ask('refine', '\\(', 'Change');
+  expect((await box.innerText()).includes('Not an Emacs regexp'), 'the bad regexp is named');
+  expect(JSON.stringify(await rows()) === JSON.stringify(['2026-11.org']), 'and the results stay as they were');
+
+  // 4. act on a result: mark it and rename it in its own folder
+  await box.locator('[data-row="2026-11.org"] [data-act=row-menu]').click();
+  await top().getByRole('button', { name: 'Rename…', exact: true }).click();
+  await top().locator('input').fill('2026-12.org');
+  await top().getByRole('button', { name: 'Rename', exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector('#fileScreenBox [data-part="found-status"]')?.innerText.startsWith('Searching'), null, { timeout: 8000 });
+  await page.waitForTimeout(500);
+  expect(dav.get('sub/deep/2026-12.org') === '* E\n' && dav.get('sub/deep/2026-11.org') === undefined, `renamed where it is: ${[...dav.files.keys()].join(',')}`);
+
+  // 5. Search again finds a file added since; Close goes back to the folder
+  dav.set('new.org', '* N\n');
+  await box.locator('[data-act="find-reload"]').click();
+  await page.waitForFunction(() => /files below/.test(document.querySelector('#fileScreenBox [data-part="found"]')?.innerText || ''), null, { timeout: 8000 });
+  await ask('refine', '\\.org$', 'Change');
+  expect((await rows()).includes('new.org'), `a new file is found: ${JSON.stringify(await rows())}`);
+  await box.locator('[data-act="find-close"]').click();
+  await box.locator('[data-entry="sub"]').waitFor({ timeout: 8000 });
+  expect((await box.locator('[data-part="found"]').count()) === 0, 'the folder list is back');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -8675,14 +8735,17 @@ check('text editor and diary file: the Files list shows a diary, a row of the Ag
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
 
-  // the file browser lists every file; the extension filter narrows it to Org files and back
+  // the file browser lists every file; Find narrows it to the files whose name matches a regexp, and Close goes back
   await fileMenu(page, 'Open', 'WebDAV');
   await page.locator('#fileScreenBox [data-entry="notes.org"]').waitFor({ timeout: 8000 });
   await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
-  await page.locator('#fileScreenBox [data-field="filter"]').fill('org');
-  expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary should be hidden by the org filter');
-  expect((await page.locator('#fileScreenBox [data-entry="notes.org"]').count()) === 1, 'notes.org should stay');
-  await page.locator('#fileScreenBox [data-field="filter"]').fill('');
+  await page.locator('#fileScreenBox [data-act="find"]').click();
+  await page.locator('body > .ui-overlay').last().locator('input').fill('\\.org$');
+  await page.locator('body > .ui-overlay').last().getByRole('button', { name: 'Find', exact: true }).click();
+  await page.locator('#fileScreenBox [data-part="found"]').waitFor({ timeout: 8000 });
+  expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary does not match \\.org$');
+  expect((await page.locator('#fileScreenBox [data-entry="notes.org"]').count()) === 1, 'notes.org matches');
+  await page.locator('#fileScreenBox [data-act="find-close"]').click();
   await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
   await page.locator('#fileScreenBox [data-entry="notes.org"]').click();
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('notes.org'), null, { timeout: 8000 });

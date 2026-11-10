@@ -1747,7 +1747,9 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 :CUSTOM_ID: files-view
 :END:
 
-The Files list manages files the way Dired does. It shows every file; the *filter* narrows it by extension (~org md~, or empty for all). *Sort* by name, date (newest first) or size (largest first); *Reverse the order* flips it. Folders come first.
+The Files list manages files the way Dired does. It shows every file. *Sort* by name, date (newest first) or size (largest first); *Reverse the order* flips it. Folders come first.
+
+*Find…* (~find-lisp-find-dired~) asks for an Emacs regexp and lists the files below the folder whose /name/ matches, folders searched and not listed, with the case folded as Emacs does by default. ~\.org$~ finds the Org files, ~\.\(org\|el\)$~ Org and Elisp files; a bare ~(~ or ~|~ is text, as in Emacs. Each row shows its path. *Change filter…* (~find-lisp-find-dired-filter~) matches the same files against another regexp, *Search again* looks again, *Close* returns to the folder. GitHub is searched with one request; WebDAV and a device folder one folder at a time, with *Cancel*, and the search stops after 5000 files and says so.
 
 *Marks*: the box at the left of a row marks it. *Marks…* marks by regular expression (matched against the file name, case-folded), marks all shown, inverts, or unmarks. With files marked, *Copy to…*, *Move to…* and *Delete…* act on them; with none, a row's *⋯* menu acts on that row.
 
@@ -2333,7 +2335,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Attachments* (see [[#attachments][Attachments]]): the same folder model as ~org-attach~ (an ~ID~ or ~DIR~ folder and the ~:ATTACH:~ tag) and the dispatcher keys ~a~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~, plus ~r~ to record audio. The Folder panel stands in for ~org-attach-dired~: select files, then open, save or delete them. Needs GitHub, WebDAV, or the org-pwa folder in the Android app.
 
-*Files view* (see [[#files-view][Files view]]): after Dired, with touch controls in place of keys. A copy or move reads the bytes and writes them at the new path (GitHub and WebDAV have no copy of their own), so a folder is copied file by file; GitHub has no empty folders, so a new folder holds a ~.gitkeep~. A listing gives a date only where the place does (WebDAV and the device, not GitHub). Attach from Files is on ~p~, which ~org-attach~ does not use.
+*Files view* (see [[#files-view][Files view]]): after Dired, with touch controls in place of keys. A copy or move reads the bytes and writes them at the new path (GitHub and WebDAV have no copy of their own), so a folder is copied file by file; GitHub has no empty folders, so a new folder holds a ~.gitkeep~. A listing gives a date only where the place does (WebDAV and the device, not GitHub). Find uses a regexp on the name only and has no narrowing of the folder in view (the ~dired-narrow~ package is not part of Emacs). Attach from Files is on ~p~, which ~org-attach~ does not use.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a three-way merge by lines, and by heading for a subtree moved on one side and edited on the other, with a region-by-region resolver for what remains.
 

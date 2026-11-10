@@ -1,35 +1,46 @@
 // @ts-check
-// The pure parts of the Files view's file management, after Emacs Dired: marks, the extension filter, sorting, and the plan for
+// The pure parts of the Files view's file management, after Emacs Dired: marks, Find, sorting, and the plan for
 // a copy, move or delete (which names collide, what a folder holds). The adapters that do the work are in
 // src-browser/file-ops-io.js.
 
 /** @typedef {import('./file-screen-model.js').BrowseEntry} BrowseEntry */
 /** @typedef {BrowseEntry & { size?: number, modified?: number }} FileEntry */
 /** @typedef {'name' | 'date' | 'size'} SortKey */
+import { emacsRegexToJs } from './emacs-regex.js';
 
 /** The path without a leading slash, which is how every place names a file. @param {string} path */
 export const cleanPath = (path) => path.replace(/^\/+/, '');
 
-/** Whether `entry` matches the extension filter. `filter` is a list of extensions separated by spaces or commas, with or without
- * the dot ("org md", ".txt"), or empty for everything. Folders always match, so there is a way down. A "_archive" file counts as
- * org, as it does for Open.
- * @param {BrowseEntry} entry @param {string} filter */
-export function matchesFilter(entry, filter) {
-  if (entry.type === 'dir') return true;
-  const wanted = filter.split(/[\s,]+/).map((s) => s.replace(/^\*?\./, '').toLowerCase()).filter(Boolean);
-  if (wanted.length === 0) return true;
-  const name = entry.name.toLowerCase();
-  return wanted.some((ext) => name.endsWith('.' + ext) || (ext === 'org' && name.endsWith('_archive')));
+/** Compiles the regexp of Find (`find-lisp-find-dired`): an Emacs regexp tried against a file's name, folding case as Emacs does by default
+ * (`case-fold-search`). Resolves { test } for a good regexp or { error } for one Emacs would refuse. An empty regexp matches every name.
+ * @param {string} regexp @returns {{ test: (name: string) => boolean } | { error: string }} */
+export function compileFind(regexp) {
+  if (regexp === '') return { test: () => true };
+  try {
+    const re = emacsRegexToJs(regexp, 'i');
+    return { test: (name) => re.test(name) };
+  } catch (err) {
+    return { error: err && /** @type {Error} */ (err).message ? /** @type {Error} */ (err).message : 'Invalid regexp' };
+  }
 }
 
-/** The entries to show: filtered, then sorted. Folders come first whatever the key (Dired with `dired-listing-switches` "--group-directories-first").
+/** The files of a Find: those of `all` (every file below the folder) whose name matches `regexp`, or null for a regexp Emacs refuses. Changing the regexp
+ * (`find-lisp-find-dired-filter`) matches the same files again, as a new search would.
+ * @param {FileEntry[]} all @param {string} regexp @returns {FileEntry[] | null} */
+export function findMatches(all, regexp) {
+  const compiled = compileFind(regexp);
+  if ('error' in compiled) return null;
+  return all.filter((e) => e.type === 'file' && compiled.test(e.name));
+}
+
+/** The entries to show, sorted. Folders come first whatever the key (Dired with `dired-listing-switches` "--group-directories-first").
  * 'name' is ascending; 'date' and 'size' put the newest and biggest first, as `ls -t` and `ls -S` do. An entry whose place gave no
  * date or size sorts after the others, by name.
- * @param {FileEntry[]} entries @param {string} filter @param {SortKey} key @param {boolean} [reverse] */
-export function arrange(entries, filter, key, reverse = false) {
+ * @param {FileEntry[]} entries @param {SortKey} key @param {boolean} [reverse] */
+export function arrange(entries, key, reverse = false) {
   const byName = (/** @type {FileEntry} */ a, /** @type {FileEntry} */ b) => a.name.localeCompare(b.name, undefined, { numeric: true });
   const value = (/** @type {FileEntry} */ e) => (key === 'date' ? e.modified : key === 'size' ? e.size : undefined);
-  const rows = entries.filter((e) => matchesFilter(e, filter));
+  const rows = entries.slice();
   rows.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
     let order = 0;

@@ -68,3 +68,48 @@ export async function listing(place, folder) {
     return null;
   }
 }
+
+/** Find stops after this many files and says so. */
+export const FIND_LIMIT = 5000;
+
+/**
+ * Every file below `folder` of `place`, for Find. GitHub sends the whole tree in one request; WebDAV and a device are walked one
+ * folder at a time (a folder that cannot be read is skipped, except the first). `onProgress(files, folders)` reports the walk and
+ * `cancelled()` stops it; a walk that stops, or reaches `limit`, resolves what it has with `truncated`.
+ * @param {Place} place @param {string} folder
+ * @param {{ limit?: number, onProgress?: (files: number, folders: number) => void, cancelled?: () => boolean }} [options]
+ * @returns {Promise<{ files: FileEntry[], truncated: boolean }>}
+ */
+export async function collectFiles(place, folder, { limit = FIND_LIMIT, onProgress = () => {}, cancelled = () => false } = {}) {
+  const start = cleanPath(folder).replace(/\/+$/, '');
+  if (place === 'github') {
+    const { files, truncated } = await githubAdapter.tree(start);
+    return { files: files.slice(0, limit), truncated: truncated || files.length > limit };
+  }
+  /** @type {FileEntry[]} */
+  const files = [];
+  const queue = [start];
+  let folders = 0;
+  while (queue.length) {
+    if (cancelled()) return { files, truncated: true };
+    const dir = /** @type {string} */ (queue.shift());
+    /** @type {FileEntry[]} */
+    let rows;
+    try {
+      rows = await ioOf(place).list(dir);
+    } catch (err) {
+      if (dir === start) throw err;
+      continue;
+    }
+    folders++;
+    for (const row of rows) {
+      if (row.type === 'dir') queue.push(cleanPath(row.path).replace(/\/+$/, ''));
+      else {
+        files.push(row);
+        if (files.length >= limit) return { files, truncated: true };
+      }
+    }
+    onProgress(files.length, folders);
+  }
+  return { files, truncated: false };
+}
