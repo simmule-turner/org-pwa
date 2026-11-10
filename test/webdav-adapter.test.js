@@ -655,3 +655,10 @@ test('readBinary() also passes cache: "no-store"', () => {
     }
   );
 });
+
+test('parsePropfindResponse reads the size and last-modified time of a file when the server gives them', () => {
+  const xml = `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:"><d:response><d:href>/dav/a.org</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>812</d:getcontentlength><d:getlastmodified>Tue, 10 Nov 2026 05:00:00 GMT</d:getlastmodified></d:prop></d:propstat></d:response></d:multistatus>`;
+  const [entry] = parsePropfindResponse(xml);
+  assert.equal(entry.size, 812);
+  assert.equal(entry.modified, Date.parse('2026-11-10T05:00:00Z'));
+});

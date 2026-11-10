@@ -4,17 +4,21 @@
 // and elsewhere is a button into the system picker. State lives in S.fileScreen so Escape and the other panels' dismissal reach it
 // like any panel. The rules for which place opens first are in src/file-places.js.
 import { connectionsLocked, forState } from './connection-vault.js';
-import { joinPath, listedAsFile, parentFolder, visibleEntries } from '../src/file-screen-model.js';
+import { joinPath, listedAsFile, parentFolder } from '../src/file-screen-model.js';
+import { arrange, marking, sizeLabel, targets } from '../src/file-ops.js';
 import { PLACES, PLACE_NAMES, rememberLocation, spotLabel, startingPlace } from '../src/file-places.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
-import { confirmDialog, showModalOverlay } from './dialogs.js';
+import { confirmDialog, openButtonChoiceModal, promptText, showModalOverlay } from './dialogs.js';
 import { ensureConnectionsUnlocked } from './connection-protection.js';
 import { openFromFilesystem, openFromImport, openRemotePath, saveAsDeviceFolder, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, suggestedSaveAsName } from './documents-io.js';
 import { fileScreen, fileScreenBox, settingsBtn } from './dom.js';
-import { commitTextModeIfActive } from './editing.js';
+import { commitTextModeIfActive, setStatus } from './editing.js';
+import { allowDeviceFolder, chooseDeviceFolder, deviceFolderState, deviceIo, dirPickerSupported, isFolderPath, loadKnownPaths, registerFolderFile } from './device-folder.js';
+import { ioOf } from './file-ops-io.js';
+import { deleteEntries, newFile, newFolder, renameEntry, transferTo } from './file-manage.js';
 import { isGithubConfigured } from './github-adapter.js';
 import { folderAvailable } from './local-folder.js';
 import { platform } from './platform.js';
@@ -22,7 +26,7 @@ import { render } from './render.js';
 import { getFileLocation, getGithubConfig, getWebdavConfig, setFileLocation } from './settings.js';
 import { kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
-import { isWebdavConfigured } from './webdav-adapter.js';
+import { base64ToArrayBuffer, isWebdavConfigured } from './webdav-adapter.js';
 
 /** @typedef {typeof S.fileScreen} FileScreen */
 
@@ -39,24 +43,36 @@ function div(css, text) {
   return el;
 }
 
-/** What this device is here: the org-pwa folder the app keeps (listed like the other places), the system file chooser, or a
- * read-once import where there is no File System Access (iOS).
- * @returns {'folder' | 'picker' | 'import'} */
+/** The chosen folder of this device, in a browser that can open one: its name and what the browser allows now. */
+const dirState = /** @type {{ name: string, access: 'granted' | 'prompt' | 'none' }} */ ({ name: '', access: 'none' });
+
+/** What this device is here: the org-pwa folder the app keeps (listed like the other places), a folder the person chose in the browser
+ * (listed once the browser allows it), the system file chooser, or a read-once import where there is no File System Access (iOS).
+ * @returns {'folder' | 'dirpicker' | 'picker' | 'import'} */
 function deviceKind() {
   if (folderAvailable()) return 'folder';
+  if (dirPickerSupported()) return 'dirpicker';
   return platform.localFiles.supported() ? 'picker' : 'import';
 }
 
-/** Whether `place` shows a list of folders and files (this device only when the app keeps a folder). @param {string} place */
+/** Whether `place` shows a list of folders and files (this device only when the app keeps a folder, or the browser allows the chosen one). @param {string} place */
 function browsable(place) {
-  return place !== 'device' || deviceKind() === 'folder';
+  if (place !== 'device') return true;
+  const kind = deviceKind();
+  return kind === 'folder' || (kind === 'dirpicker' && dirState.access === 'granted');
+}
+
+/** The text of a file in the chosen folder, or null. @param {string} path */
+async function readFolderText(path) {
+  const bytes = await deviceIo().readBinary(path);
+  return bytes && typeof bytes.base64 === 'string' ? { content: new TextDecoder().decode(base64ToArrayBuffer(bytes.base64)) } : null;
 }
 
 /** The adapter that lists, reads and writes in `place`. @param {string} place */
 function adapterOf(place) {
   if (place === 'github') return githubAdapter;
   if (place === 'webdav') return webdavAdapter;
-  return { list: (/** @type {string} */ folder) => platform.attachments.adapter.list(folder), read: (/** @type {string} */ path) => filesystemAdapter.read(path) };
+  return { list: (/** @type {string} */ folder) => deviceIo().list(folder), read: (/** @type {string} */ path) => (deviceKind() === 'dirpicker' ? readFolderText(path) : filesystemAdapter.read(path)) };
 }
 
 /** Whether each place can be used now, without asking for a passphrase: a locked connection counts as usable (listing it asks).
@@ -77,10 +93,14 @@ async function placeStatus() {
 }
 
 /** Opens the screen for 'open' or 'saveas' where the person was last, or with `dired` in the folder of the current file.
- * @param {'open' | 'saveas'} mode @param {{ dired?: boolean }} [options] */
+ * @param {'open' | 'saveas'} mode @param {{ dired?: boolean, attach?: { heading: any, method: 'cp' | 'mv' | 'ln' | 'lns', onAttach: (files: any[]) => Promise<void> } }} [options] */
 export async function openFileScreen(mode, options = {}) {
   if (mode === 'saveas' && !S.state.doc) return;
   if (commitTextModeIfActive()) render();
+  if (dirPickerSupported()) {
+    await loadKnownPaths();
+    Object.assign(dirState, await deviceFolderState());
+  }
   const loc = await getFileLocation(kv);
   let status = null;
   /** @type {{ place: 'github' | 'webdav' | 'device', folder: string, note: string | null }} */
@@ -94,7 +114,7 @@ export async function openFileScreen(mode, options = {}) {
     const here = currentFileSpot();
     if (here) start = { ...here, note: null };
   }
-  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, all: false, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false };
+  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, filter: '', sort: 'name', reverse: false, marks: new Set(), flags: new Set(), transfer: null, attach: options.attach || null, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false, filterEl: null };
   renderFileScreen();
   loadListing();
 }
@@ -105,7 +125,7 @@ function currentFileSpot() {
   const id = S.state.documentId;
   if (!id) return null;
   if (kind === 'github' || kind === 'webdav') return { place: kind, folder: parentFolder(id) };
-  if (kind === 'filesystem' && folderAvailable() && !id.startsWith('/')) return { place: 'device', folder: parentFolder(id) };
+  if (kind === 'filesystem' && !id.startsWith('/') && (folderAvailable() || (dirPickerSupported() && isFolderPath(id)))) return { place: 'device', folder: parentFolder(id) };
   return null;
 }
 
@@ -166,6 +186,8 @@ async function loadListing() {
   }
   f.entries = null;
   f.error = null;
+  f.marks = new Set();
+  f.flags = new Set();
   renderFileScreen();
   try {
     const entries = await adapterOf(place).list(folder);
@@ -188,7 +210,12 @@ function openPath(path) {
   const clean = path.trim().replace(/^\/+/, '');
   if (place === 'github') openRemotePath(clean, 'github', githubAdapter, 'GitHub');
   else if (place === 'webdav') openRemotePath(clean, 'webdav', webdavAdapter, 'WebDAV');
-  else openRemotePath(clean, 'filesystem', filesystemAdapter, 'Local');
+  else if (deviceKind() === 'dirpicker') {
+    registerFolderFile(clean).then(
+      () => openRemotePath(clean, 'filesystem', filesystemAdapter, 'Local'),
+      (err) => setStatus(`Could not open "${clean}": ${err && err.message ? err.message : err}`),
+    );
+  } else openRemotePath(clean, 'filesystem', filesystemAdapter, 'Local');
 }
 
 /** Saves under the typed name, asking first when that file is already in the listed folder. */
@@ -218,7 +245,17 @@ async function saveHere() {
   closeFileScreen();
   if (place === 'github') saveAsGithub(path, seen);
   else if (place === 'webdav') saveAsWebdav(path, seen);
-  else saveAsDeviceFolder(path, seen);
+  else {
+    if (deviceKind() === 'dirpicker') {
+      try {
+        await registerFolderFile(path, true);
+      } catch (err) {
+        setStatus(`Could not save "${path}": ${err && err.message ? err.message : err}`);
+        return;
+      }
+    }
+    saveAsDeviceFolder(path, seen);
+  }
 }
 
 /** @param {FileScreen} [f] */
@@ -241,6 +278,42 @@ function localBody(f) {
   return box;
 }
 
+/** Asks the browser for a folder of this device and lists it. @param {FileScreen} f */
+async function pickDeviceFolder(f) {
+  try {
+    await chooseDeviceFolder();
+  } catch {
+    return; // nothing chosen
+  }
+  Object.assign(dirState, await deviceFolderState());
+  if (S.fileScreen !== f) return;
+  setPlace('device', '');
+}
+
+/** The folder of this device: choose it, or allow it again in this session. @param {FileScreen} f */
+function dirPickerBody(f) {
+  const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;');
+  const need = dirState.access === 'prompt';
+  box.appendChild(div('font-weight:600;', need ? `Allow access to \u201c${dirState.name}\u201d` : 'Choose a folder of this device'));
+  box.appendChild(div('font-size:13px;opacity:.7;', need ? 'The browser asks again in each new session.' : 'Its files are listed here and can be opened, saved and managed like the other places.'));
+  const btn = menuButton(need ? 'Allow access' : 'Choose a folder\u2026', async () => {
+    if (need) {
+      const ok = await allowDeviceFolder().catch(() => false);
+      Object.assign(dirState, await deviceFolderState());
+      if (ok && S.fileScreen === f) setPlace('device', f.loc.folders.device || '');
+      else renderFileScreen();
+    } else await pickDeviceFolder(f);
+  });
+  btn.dataset.act = 'device-folder';
+  box.appendChild(btn);
+  if (need) {
+    const other = menuButton('Choose another folder\u2026', () => pickDeviceFolder(f));
+    other.dataset.act = 'change-folder';
+    box.appendChild(other);
+  }
+  return box;
+}
+
 /** @param {FileScreen} [f] */
 function unconfiguredBody(f) {
   const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;');
@@ -253,6 +326,336 @@ function unconfiguredBody(f) {
   btn.dataset.act = 'settings';
   box.appendChild(btn);
   return box;
+}
+
+/** The rows on screen: the listing, filtered and sorted. @param {FileScreen} f */
+function shownRows(f) {
+  return f.entries ? arrange(f.entries, f.filter, f.sort, f.reverse) : [];
+}
+
+/** What to act on: the marked rows, or `point` when none is marked. @param {FileScreen} f @param {any} [point] */
+function actTargets(f, point) {
+  return targets(f.marks, shownRows(f), point || null);
+}
+
+/** Back to the folder list after a change to files. */
+async function reloadAfter() {
+  const f = S.fileScreen;
+  if (f) await loadListing();
+}
+
+/** @param {FileScreen} f @param {string} label @param {{ text: string, onClick: () => any, disabled?: boolean }[]} buttons */
+function chooseFrom(f, label, buttons) {
+  openButtonChoiceModal({ label, buttons: [...buttons, { text: 'Cancel', onClick: () => {} }] });
+}
+
+/** Copy or move `items` into a folder the person picks next in this same screen. @param {FileScreen} f @param {'copy' | 'move'} kind @param {any[]} items */
+function startTransfer(f, kind, items) {
+  if (items.length === 0) return;
+  f.transfer = { kind, items, from: f.place };
+  f.marks = new Set();
+  renderFileScreen();
+}
+
+async function finishTransfer() {
+  const f = S.fileScreen;
+  if (!f || !f.transfer) return;
+  const { kind, items, from } = f.transfer;
+  f.transfer = null;
+  await transferTo(kind, items, from, f.place, f.folder);
+  await reloadAfter();
+}
+
+/** @param {any} entry */
+function infoLine(entry) {
+  const parts = [`${entry.type === 'dir' ? 'Folder' : 'File'} “${entry.name}”`, `path /${entry.path.replace(/^\/+/, '')}`];
+  if (typeof entry.size === 'number') parts.push(`${sizeLabel(entry.size)} (${entry.size} bytes)`);
+  if (typeof entry.modified === 'number') parts.push(`modified ${new Date(entry.modified).toLocaleString()}`);
+  return parts.join(' · ');
+}
+
+/** The actions for one row: what Dired does at point. @param {FileScreen} f @param {any} entry */
+function rowMenu(f, entry) {
+  const place = f.place;
+  const flagged = f.flags.has(entry.path);
+  chooseFrom(f, entry.name, [
+    {
+      text: 'Rename…',
+      onClick: async () => {
+        await renameEntry(entry, place, f.folder);
+        await reloadAfter();
+      },
+    },
+    { text: 'Copy to…', onClick: () => startTransfer(f, 'copy', actTargets(f, entry)) },
+    { text: 'Move to…', onClick: () => startTransfer(f, 'move', actTargets(f, entry)) },
+    {
+      text: 'Delete…',
+      onClick: async () => {
+        await deleteEntries(actTargets(f, entry), place);
+        await reloadAfter();
+      },
+    },
+    {
+      text: flagged ? 'Unflag' : 'Flag for deletion',
+      onClick: () => {
+        if (flagged) f.flags.delete(entry.path);
+        else f.flags.add(entry.path);
+        renderFileScreen();
+      },
+    },
+    { text: 'Info', onClick: () => confirmDialog(infoLine(entry), { confirmLabel: 'OK', cancelLabel: 'Close', danger: false }) },
+  ]);
+}
+
+/** The buttons above the list: sort, new, marks, and what the marked rows can have done to them. @param {FileScreen} f */
+function toolBar(f) {
+  const bar = div('display:flex;flex-wrap:wrap;gap:6px;align-items:center;');
+  bar.dataset.part = 'tools';
+  const sortName = { name: 'Name', date: 'Date', size: 'Size' }[/** @type {'name' | 'date' | 'size'} */ (f.sort)];
+  const sort = menuButton(`Sort: ${sortName}${f.reverse ? ' ⇅' : ''}`, () =>
+    chooseFrom(f, 'Sort by', [
+      ...(/** @type {['name' | 'date' | 'size', string][]} */ ([['name', 'Name'], ['date', 'Date, newest first'], ['size', 'Size, largest first']])).map(([key, text]) => ({
+        text,
+        onClick: () => {
+          f.sort = key;
+          renderFileScreen();
+        },
+      })),
+      {
+        text: 'Reverse the order',
+        onClick: () => {
+          f.reverse = !f.reverse;
+          renderFileScreen();
+        },
+      },
+    ]),
+  );
+  sort.dataset.act = 'sort';
+  bar.appendChild(sort);
+  if (f.attach) return bar;
+  const create = menuButton('New…', () =>
+    chooseFrom(f, 'New', [
+      {
+        text: 'File',
+        onClick: async () => {
+          const path = await newFile(f.place, f.folder, f.entries);
+          if (path) openPath(path);
+        },
+      },
+      {
+        text: 'Folder',
+        onClick: async () => {
+          await newFolder(f.place, f.folder);
+          await reloadAfter();
+        },
+      },
+    ]),
+  );
+  create.dataset.act = 'new';
+  const marks = menuButton(f.marks.size || f.flags.size ? `Marks (${f.marks.size}${f.flags.size ? ` + ${f.flags.size} flagged` : ''})` : 'Marks', () =>
+    chooseFrom(f, 'Marks', [
+      {
+        text: 'Mark by pattern…',
+        onClick: async () => {
+          const pattern = await promptText('Mark the files whose name matches (a regular expression):', '', { okLabel: 'Mark' });
+          if (!pattern) return;
+          const next = marking.byRegexp(f.marks, shownRows(f), pattern);
+          if (!next) setStatusNote(f, 'That is not a valid regular expression.');
+          else f.marks = next;
+          renderFileScreen();
+        },
+      },
+      {
+        text: 'Mark all shown',
+        onClick: () => {
+          f.marks = new Set(shownRows(f).map((e) => e.path));
+          renderFileScreen();
+        },
+      },
+      {
+        text: 'Invert marks',
+        onClick: () => {
+          f.marks = marking.invert(f.marks, shownRows(f));
+          renderFileScreen();
+        },
+      },
+      {
+        text: 'Unmark all',
+        onClick: () => {
+          f.marks = marking.clear();
+          f.flags = new Set();
+          renderFileScreen();
+        },
+      },
+      {
+        text: `Delete the ${f.flags.size} flagged`,
+        disabled: f.flags.size === 0,
+        onClick: async () => {
+          const flagged = shownRows(f).filter((e) => f.flags.has(e.path));
+          await deleteEntries(flagged, f.place);
+          await reloadAfter();
+        },
+      },
+    ]),
+  );
+  marks.dataset.act = 'marks';
+  bar.append(create, marks);
+  return bar;
+}
+
+/** A line of feedback under the place bar. @param {FileScreen} f @param {string} text */
+function setStatusNote(f, text) {
+  f.note = text;
+}
+
+/** What the marked rows can have done to them. @param {FileScreen} f */
+function markedBar(f) {
+  const bar = div('display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-solid);');
+  bar.dataset.part = 'marked';
+  bar.appendChild(div('font-size:13px;font-weight:600;flex:1 1 auto;', `${f.marks.size} marked`));
+  const items = () => shownRows(f).filter((e) => f.marks.has(e.path));
+  /** @type {[string, string, () => any][]} */
+  const actions = [
+    ['copy', 'Copy to…', () => startTransfer(f, 'copy', items())],
+    ['move', 'Move to…', () => startTransfer(f, 'move', items())],
+    [
+      'delete',
+      'Delete…',
+      async () => {
+        await deleteEntries(items(), f.place);
+        await reloadAfter();
+      },
+    ],
+    [
+      'unmark',
+      'Unmark',
+      () => {
+        f.marks = new Set();
+        renderFileScreen();
+      },
+    ],
+  ];
+  if (f.attach) actions.splice(0, 3);
+  for (const [act, text, run] of actions) {
+    const b = menuButton(text, run);
+    b.dataset.act = act;
+    bar.appendChild(b);
+  }
+  return bar;
+}
+
+/** Attaches the marked files to the heading this screen was opened for. */
+async function attachMarked() {
+  const f = S.fileScreen;
+  if (!f || !f.attach) return;
+  const { heading, onAttach } = f.attach;
+  const place = f.place;
+  const picked = shownRows(f).filter((e) => f.marks.has(e.path) && e.type === 'file');
+  closeFileScreen();
+  const files = [];
+  for (const entry of picked) {
+    const path = entry.path.replace(/^\/+/, '');
+    const bytes = await ioOf(place).readBinary(path);
+    if (!bytes || typeof bytes.base64 !== 'string') continue;
+    files.push({ name: entry.name, base64: bytes.base64, remove: () => ioOf(place).delete(path) });
+  }
+  if (files.length) await onAttach(files);
+  void heading;
+}
+
+/** Fills the list with the rows of the current folder. @param {FileScreen} f @param {HTMLElement} list */
+function fillList(f, list) {
+  list.textContent = '';
+  if (f.error) list.appendChild(div('padding:10px 12px;font-size:13px;color:#c0392b;', f.error));
+  else if (f.entries === null) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', 'Loading…'));
+  else {
+    const rows = shownRows(f);
+    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.filter.trim() ? `Nothing here matches “${f.filter.trim()}”.` : 'No files or folders here.'));
+    for (const entry of rows) list.appendChild(listRow(f, entry));
+  }
+}
+
+/** One row: the mark, the name (open it, or go into the folder) and the actions. @param {FileScreen} f @param {any} entry */
+function listRow(f, entry) {
+  const pickingFolder = !!f.transfer;
+  const row = div('display:flex;align-items:stretch;border-bottom:1px solid var(--border);');
+  row.dataset.row = entry.name;
+  if (!pickingFolder) {
+    const marked = f.marks.has(entry.path);
+    const flagged = f.flags.has(entry.path);
+    const mark = document.createElement('button');
+    mark.type = 'button';
+    mark.dataset.act = 'mark';
+    mark.setAttribute('aria-label', `${marked ? 'Unmark' : 'Mark'} ${entry.name}`);
+    mark.setAttribute('aria-pressed', String(marked));
+    mark.textContent = flagged ? 'D' : marked ? '✓' : '';
+    mark.style.cssText = `flex:0 0 auto;width:40px;min-height:var(--target);border:none;border-right:1px solid var(--border);background:${marked ? 'var(--accent-soft, var(--surface-solid))' : 'transparent'};color:${flagged ? '#c0392b' : 'var(--accent)'};font:inherit;font-weight:700;`;
+    mark.onclick = () => {
+      f.marks = marking.toggleOne(f.marks, entry.path);
+      renderFileScreen();
+    };
+    row.appendChild(mark);
+  }
+  const main = document.createElement('button');
+  main.type = 'button';
+  main.dataset.entry = entry.name;
+  const dead = pickingFolder && entry.type !== 'dir';
+  main.disabled = dead;
+  main.style.cssText = `display:flex;justify-content:space-between;align-items:center;gap:8px;flex:1 1 auto;min-width:0;min-height:var(--target);text-align:left;padding:8px 12px;border:none;background:transparent;color:var(--fg);font:inherit;font-size:14px;${dead ? 'opacity:.4;' : ''}`;
+  const name = document.createElement('span');
+  name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+  name.textContent = entry.name;
+  main.appendChild(name);
+  const tag = document.createElement('small');
+  tag.style.cssText = 'opacity:.6;flex:0 0 auto;';
+  tag.textContent = entry.type === 'dir' ? 'folder' : f.mode === 'saveas' && listedAsFile([entry], entry.path.replace(/^\/+/, '')) ? 'exists' : f.sort === 'date' && typeof entry.modified === 'number' ? new Date(entry.modified).toLocaleDateString() : sizeLabel(entry.size) || (isPlainTextFile(entry.name, 'github') ? 'text' : '');
+  main.appendChild(tag);
+  main.onclick = () => {
+    if (entry.type === 'dir') {
+      f.folder = entry.path.replace(/^\/+/, '');
+      loadListing();
+    } else if (f.attach) {
+      f.marks = marking.toggleOne(f.marks, entry.path);
+      renderFileScreen();
+    } else if (f.mode === 'open') openPath(entry.path);
+    else {
+      if (f.nameEl) f.nameEl.value = entry.name;
+      f.name = entry.name;
+    }
+  };
+  row.appendChild(main);
+  if (!pickingFolder && !f.attach) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.dataset.act = 'row-menu';
+    more.setAttribute('aria-label', `Actions for ${entry.name}`);
+    more.textContent = '⋯';
+    more.style.cssText = 'flex:0 0 auto;width:44px;min-height:var(--target);border:none;border-left:1px solid var(--border);background:transparent;color:var(--fg);font:inherit;font-size:18px;';
+    more.onclick = () => rowMenu(f, entry);
+    row.appendChild(more);
+  }
+  return row;
+}
+
+/** The filter field: kept across redraws so typing is not interrupted. @param {FileScreen} f @param {HTMLElement} list */
+function filterField(f, list) {
+  if (!f.filterEl) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.autocapitalize = 'off';
+    input.spellcheck = false;
+    input.placeholder = 'Filter by extension, e.g. org md';
+    input.setAttribute('aria-label', 'Filter by extension');
+    input.dataset.field = 'filter';
+    input.value = f.filter;
+    input.style.cssText = 'flex:1 1 120px;min-width:0;box-sizing:border-box;min-height:var(--target);padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--bg);color:var(--fg);font:inherit;';
+    f.filterEl = input;
+  }
+  f.filterEl.oninput = () => {
+    f.filter = f.filterEl.value;
+    fillList(f, list);
+  };
+  return f.filterEl;
 }
 
 /** @param {FileScreen} [f] */
@@ -270,60 +673,19 @@ function listBody(f) {
   const where = div('opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', `/${f.folder}`);
   crumb.appendChild(where);
   wrap.appendChild(crumb);
-  if (f.mode === 'open') {
-    // Org files only (the default) or every file: a diary, a notes.txt and a README.md open in the Text view
-    const filter = div('display:flex;border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow:hidden;flex:0 0 auto;');
-    filter.setAttribute('role', 'radiogroup');
-    filter.setAttribute('aria-label', 'Show');
-    for (const [all, label] of /** @type {[boolean, string][]} */ ([[false, 'Org files'], [true, 'All files']])) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.show = all ? 'all' : 'org';
-      b.setAttribute('role', 'radio');
-      b.setAttribute('aria-checked', String(!!f.all === all));
-      b.textContent = label;
-      b.style.cssText = `flex:1;min-height:var(--target);border:none;border-left:1px solid var(--border-strong);font:inherit;font-size:14px;color:var(--fg);background:${!!f.all === all ? 'var(--accent-soft, var(--surface-solid))' : 'transparent'};font-weight:${!!f.all === all ? 700 : 400};`;
-      b.onclick = () => {
-        f.all = all;
-        renderFileScreen();
-      };
-      filter.appendChild(b);
-    }
-    wrap.appendChild(filter);
-  }
   const list = div('border:1px solid var(--border-strong);border-radius:var(--radius-control);overflow-y:auto;overscroll-behavior:contain;min-height:80px;flex:1 1 auto;');
   list.dataset.part = 'files';
-  if (f.error) list.appendChild(div('padding:10px 12px;font-size:13px;color:#c0392b;', f.error));
-  else if (f.entries === null) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', 'Loading…'));
-  else {
-    const rows = visibleEntries(f.entries, !!f.all && f.mode === 'open');
-    if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.all && f.mode === 'open' ? 'No files or folders here.' : 'No .org files or folders here.'));
-    for (const entry of rows) {
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.dataset.entry = entry.name;
-      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:var(--target);text-align:left;padding:8px 12px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--fg);font:inherit;font-size:14px;';
-      const name = document.createElement('span');
-      name.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-      name.textContent = entry.name;
-      row.appendChild(name);
-      const tag = document.createElement('small');
-      tag.style.opacity = '.6';
-      tag.textContent = entry.type === 'dir' ? 'folder' : f.mode === 'saveas' && listedAsFile([entry], entry.path.replace(/^\/+/, '')) ? 'exists' : isPlainTextFile(entry.name, 'github') ? 'text' : '';
-      row.appendChild(tag);
-      row.onclick = () => {
-        if (entry.type === 'dir') {
-          f.folder = entry.path.replace(/^\/+/, '');
-          loadListing();
-        } else if (f.mode === 'open') openPath(entry.path);
-        else {
-          if (f.nameEl) f.nameEl.value = entry.name;
-          f.name = entry.name;
-        }
-      };
-      list.appendChild(row);
-    }
+  if (f.transfer) {
+    const word = f.transfer.kind === 'copy' ? 'Copy' : 'Move';
+    wrap.appendChild(div('font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-solid);', `${word} ${f.transfer.items.length === 1 ? `“${f.transfer.items[0].name}”` : `${f.transfer.items.length} items`}: open the folder to ${word.toLowerCase()} into${f.transfer.from !== f.place ? ` (from ${LABEL[f.transfer.from]})` : ''}, then tap ${word} here.`));
+  } else {
+    const tools = div('display:flex;flex-wrap:wrap;gap:6px;align-items:center;');
+    tools.appendChild(filterField(f, list));
+    wrap.appendChild(tools);
+    wrap.appendChild(toolBar(f));
+    if (f.marks.size) wrap.appendChild(markedBar(f));
   }
+  fillList(f, list);
   wrap.appendChild(list);
   return wrap;
 }
@@ -364,6 +726,7 @@ function field(f, which) {
 function placeDetail(f, place) {
   if (place === 'device') {
     const kind = deviceKind();
+    if (kind === 'dirpicker') return dirState.access === 'none' ? 'Choose a folder of this device' : dirState.access === 'granted' ? `The folder \u201c${dirState.name}\u201d` : `\u201c${dirState.name}\u201d \u2014 tap to allow access`;
     return kind === 'folder' ? 'The org-pwa folder' : kind === 'picker' ? 'Choose a file with the system chooser' : "Import a file (this browser can't keep a link to it)";
   }
   if (f.ready && f.ready[place] === false) return 'Not set up';
@@ -436,9 +799,9 @@ function mainBody(f, needsName) {
   const open = f.mode === 'open';
   if (browsable(f.place) && f.unconfigured) body.appendChild(unconfiguredBody(f));
   else if (browsable(f.place)) {
-    if (open) body.appendChild(field(f, 'pathEl'));
+    if (open && !f.attach) body.appendChild(field(f, 'pathEl'));
     body.appendChild(listBody(f));
-    if (f.place === 'device' && platform.localFiles.supported()) {
+    if (f.place === 'device' && platform.localFiles.supported() && !f.attach && !f.transfer) {
       // a file outside the org-pwa folder still comes from the system chooser
       const choose = menuButton(open ? 'Choose another file\u2026' : 'Save somewhere else\u2026', () => {
         closeFileScreen();
@@ -448,7 +811,15 @@ function mainBody(f, needsName) {
       choose.dataset.act = 'local';
       body.appendChild(choose);
     }
-  } else body.appendChild(localBody(f));
+    if (f.place === 'device' && deviceKind() === 'dirpicker' && !f.attach && !f.transfer) {
+      const change = menuButton('Choose another folder\u2026', () => pickDeviceFolder(f));
+      change.dataset.act = 'change-folder';
+      body.appendChild(change);
+    }
+  } else {
+    if (f.place === 'device' && deviceKind() === 'dirpicker' && !f.attach && !f.transfer) body.appendChild(dirPickerBody(f));
+    body.appendChild(localBody(f));
+  }
   if (needsName) body.appendChild(field(f, 'nameEl'));
   return body;
 }
@@ -467,7 +838,7 @@ export function renderFileScreen() {
   showModalOverlay(fileScreen);
   fileScreenBox.setAttribute('role', 'dialog');
   const open = f.mode === 'open';
-  const title = f.dired ? 'Files' : open ? 'Open' : 'Save As';
+  const title = f.attach ? `Attach to \u201c${f.attach.heading.title || '(untitled)'}\u201d` : f.dired ? 'Files' : open ? 'Open' : 'Save As';
   fileScreenBox.setAttribute('aria-label', title);
   const sideBySide = wide();
   fileScreenBox.style.maxWidth = sideBySide ? '860px' : '';
@@ -502,7 +873,23 @@ export function renderFileScreen() {
     save.dataset.act = 'save';
     buttons.appendChild(save);
   }
-  const cancel = menuButton('Cancel', () => closeFileScreen());
+  if (f.transfer) {
+    const here = menuButton(f.transfer.kind === 'copy' ? 'Copy here' : 'Move here', () => finishTransfer());
+    here.dataset.act = 'transfer-here';
+    here.disabled = !browsable(f.place) || f.unconfigured;
+    buttons.appendChild(here);
+  } else if (f.attach) {
+    const attach = menuButton(`Attach${f.marks.size ? ` (${f.marks.size})` : ''}`, () => attachMarked());
+    attach.dataset.act = 'attach';
+    attach.disabled = f.marks.size === 0;
+    buttons.appendChild(attach);
+  }
+  const cancel = menuButton(f.transfer ? 'Cancel ' + f.transfer.kind : 'Cancel', () => {
+    if (f.transfer) {
+      f.transfer = null;
+      renderFileScreen();
+    } else closeFileScreen();
+  });
   cancel.dataset.act = 'cancel';
   cancel.classList.add('ui-cancel');
   buttons.appendChild(cancel);

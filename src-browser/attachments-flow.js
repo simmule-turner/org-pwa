@@ -29,6 +29,7 @@ import { imageDataUrlCache, kv } from './singletons.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 import { platform } from './platform.js';
+import { openFileScreen } from './file-screen.js';
 import { saveOut } from './save-out.js';
 import { getUsePropertyInheritance } from '../src/local-variables.js';
 
@@ -95,6 +96,16 @@ export async function attachFileToHeading(heading, method = attachMethod(S.globa
   await pickAndUpload(heading, method);
 }
 
+/** `p`: attaches files chosen in the Files view (GitHub, WebDAV or the device folder) by `org-attach-method`. A move deletes the original after the copy, as for a picked file.
+ * @param {Heading} heading */
+export async function attachFromFiles(heading) {
+  if (!(await requireAttachmentStorage())) return;
+  const method = attachMethod(S.globalVariables);
+  await openFileScreen('open', {
+    attach: { heading, method, onAttach: (files) => attachPicked(heading, files, method === 'lns' ? 'ln' : method) },
+  });
+}
+
 /** Whether the platform can delete the file a person picked (`mv`) or keep a handle to it (`ln`).
  * @param {'mv' | 'ln'} method */
 function platformCan(method) {
@@ -115,7 +126,12 @@ async function pickAndUpload(heading, method) {
   } catch {
     return; // no file selected -- silently do nothing, matching every other cancel-a-picker path in this app
   }
-  const files = Array.isArray(picked) ? picked : [picked];
+  await attachPicked(heading, Array.isArray(picked) ? picked : [picked], wanted);
+}
+
+/** Attaches files already in hand (picked on the device, or chosen in the Files view) by `wanted`: copy, move or link, each falling back to a copy where the file cannot be moved or linked.
+ * @param {Heading} heading @param {{ name: string, base64: string, type?: string, uri?: string, remove?: () => Promise<void> }[]} files @param {'cp' | 'mv' | 'ln'} wanted */
+export async function attachPicked(heading, files, wanted) {
   for (const file of files) {
     const can = wanted === 'cp' || (wanted === 'mv' && (!!file.remove || (platformCan('mv') && !!file.uri))) || (wanted === 'ln' && platformCan('ln') && !!file.uri);
     if (!can) {
@@ -821,6 +837,7 @@ export function openAttachChoicePrompt(heading, { viaKeys = false } = {}) {
       { key: 'c', text: 'Attach a copy', onClick: () => attachFileToHeading(heading, 'cp') },
       ...(platformCan('mv') ? [{ key: 'm', text: 'Attach and move', onClick: () => attachFileToHeading(heading, 'mv') }] : []),
       ...(platformCan('ln') ? [{ key: 'l', text: 'Attach a link', onClick: () => attachFileToHeading(heading, 'ln') }] : []),
+      { key: 'p', text: 'Attach from Files', onClick: () => attachFromFiles(heading) },
       { key: 'u', text: 'Attach from URL', onClick: () => attachFromUrl(heading) },
       { key: 'r', text: 'Record audio', onClick: () => openAudioRecordingPanel(heading) },
       { key: 'b', text: 'Attach open document', onClick: () => attachOpenDocument(heading) },

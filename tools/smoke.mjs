@@ -108,7 +108,7 @@ function createDav() {
         const children = [...files.keys()].filter((n) => n.startsWith(prefix) && !n.slice(prefix.length).includes('/'));
         const items = [
           `<d:response><d:href>/dav/${prefix}</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>`,
-          ...children.map((n) => `<d:response><d:href>/dav/${prefix}${encodeURIComponent(n.slice(prefix.length))}</d:href><d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat></d:response>`),
+          ...children.map((n) => `<d:response><d:href>/dav/${prefix}${encodeURIComponent(n.slice(prefix.length))}</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>${Buffer.byteLength(files.get(n))}</d:getcontentlength></d:prop></d:propstat></d:response>`),
         ];
         res.writeHead(207, { 'Content-Type': 'application/xml' });
         return res.end(`<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">${items.join('')}</d:multistatus>`);
@@ -123,10 +123,12 @@ function createDav() {
         return res.end();
       }
       if (req.method === 'PROPFIND') {
+        const folders = new Set([...files.keys()].filter((n) => n.includes('/')).map((n) => n.split('/')[0]));
         const items = [
           '<d:response><d:href>/dav/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>',
-          ...[...files.keys()].map(
-            (n) => `<d:response><d:href>/dav/${encodeURIComponent(n)}</d:href><d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat></d:response>`
+          ...[...folders].map((n) => `<d:response><d:href>/dav/${encodeURIComponent(n)}/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>`),
+          ...[...files.keys()].filter((n) => !n.includes('/')).map(
+            (n) => `<d:response><d:href>/dav/${encodeURIComponent(n)}</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>${Buffer.byteLength(files.get(n))}</d:getcontentlength></d:prop></d:propstat></d:response>`
           ),
         ];
         res.writeHead(207, { 'Content-Type': 'application/xml' });
@@ -387,7 +389,6 @@ check('opening a plain-text file while another buffer is in Text view shows the 
   await viewMenu(page, 'Text');
   await page.locator('#document-text-edit-input').waitFor({ timeout: 8000 });
   await fileMenu(page, 'Open', 'WebDAV');
-  await page.locator('#fileScreenBox [data-show="all"]').click();
   await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
   await page.locator('#fileScreenBox [data-entry="diary"]').click();
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('diary'), null, { timeout: 8000 });
@@ -3493,6 +3494,78 @@ check('Open screen: where the app keeps an org-pwa folder, This device lists it,
   expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
 });
 
+check('Files view on the org-pwa folder: copy into a subfolder, rename and delete work through the folder service, and a new folder is made', async () => {
+  const { page, errors } = await freshPage();
+  await page.evaluate(async () => {
+    const { installPlatform } = await import('/src-browser/platform.js');
+    const files = new Map([['home.org', '* Home\n'], ['diary/d.org', '* D\n']]);
+    window.__folder = files;
+    installPlatform({
+      localFiles: { supported: () => true, pickOpen: async () => 'picked.org', pickNew: async (kv, n) => n, adapter: { async read() { return null; }, async write() {}, async exists() { return false; }, async access() { return 'none'; } } },
+      attachments: {
+        supported: () => true,
+        folder: async () => ({ name: 'org-pwa' }),
+        pickFolder: async () => ({ name: 'org-pwa' }),
+        adapter: {
+          list: async (folder) => {
+            const prefix = folder ? folder + '/' : '';
+            const out = new Map();
+            for (const [path, text] of files) {
+              if (!path.startsWith(prefix)) continue;
+              const rest = path.slice(prefix.length);
+              const [first, ...more] = rest.split('/');
+              if (more.length) out.set(first, { name: first, path: prefix + first, type: 'dir' });
+              else out.set(first, { name: first, path, type: 'file', size: text.length });
+            }
+            return [...out.values()];
+          },
+          readBinary: async (path) => (files.has(path) ? { base64: btoa(files.get(path)) } : null),
+          writeBinary: async (path, b64) => { files.set(path, atob(b64)); },
+          exists: async (path) => files.has(path),
+          delete: async (path) => { files.delete(path); },
+        },
+      },
+    });
+    (await import('/src-browser/app-state.js')).S.attachmentsFolder = 'org-pwa';
+  });
+  await newDocument(page, '* One\n');
+  const box = page.locator('#fileScreenBox');
+  const top = () => page.locator('body > .ui-overlay').last();
+  const choose = (label) => top().getByRole('button', { name: label, exact: true }).click();
+  const state = () => page.evaluate(() => [...window.__folder.keys()].sort().join(','));
+  await page.click('#fileMenuBtn');
+  await pick(page, '#fileMenuPanel', 'Open');
+  await choosePlace(page, 'device');
+  await box.locator('[data-entry="home.org"]').waitFor({ timeout: 8000 });
+
+  await box.locator('[data-row="home.org"] [data-act=row-menu]').click();
+  await choose('Copy to…');
+  await box.locator('[data-entry="diary"]').click();
+  await box.locator('[data-entry="d.org"]').waitFor();
+  await box.locator('[data-act=transfer-here]').click();
+  await page.waitForFunction(() => window.__folder.has('diary/home.org'), null, { timeout: 8000 });
+  expect((await state()) === 'diary/d.org,diary/home.org,home.org', `copied: ${await state()}`);
+
+  await box.locator('[data-row="home.org"] [data-act=row-menu]').click();
+  await choose('Rename…');
+  await top().locator('input').fill('renamed.org');
+  await top().getByRole('button', { name: 'Rename', exact: true }).click();
+  await page.waitForFunction(() => window.__folder.has('diary/renamed.org'), null, { timeout: 8000 });
+  expect((await state()) === 'diary/d.org,diary/renamed.org,home.org', `renamed, the old name gone: ${await state()}`);
+
+  await box.locator('[data-row="renamed.org"] [data-act=row-menu]').click();
+  await choose('Delete…');
+  await choose('Delete');
+  await page.waitForFunction(() => !window.__folder.has('diary/renamed.org'), null, { timeout: 8000 });
+
+  await box.locator('[data-act=new]').click();
+  await choose('Folder');
+  await top().locator('input').fill('inbox');
+  await top().getByRole('button', { name: 'Create', exact: true }).click();
+  await page.waitForFunction(() => window.__folder.has('diary/inbox/.gitkeep'), null, { timeout: 8000 });
+  expect(errors.length === 0, `page errors: ${errors.join('; ')}`);
+});
+
 check('Open / Save As screen: one screen with a place bar (GitHub, WebDAV, this device) that remembers the last place, Enter path opens, Save As asks before replacing, an unset backend says so, and a recent file can be removed', async () => {
   dav.reset({ 'notes.org': SAMPLE });
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -3551,6 +3624,159 @@ check('Open / Save As screen: one screen with a place bar (GitHub, WebDAV, this 
   await sure.getByText('Remove', { exact: true }).click();
   await page.waitForTimeout(300);
   expect((await page.locator('#fileMenuPanel').innerText()).includes('notes.org (WebDAV)') === false, 'the removed entry is gone from the list');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Files view: the extension filter and sort, marks by pattern, copy into a folder, rename, move and delete in WebDAV, a file open with unsaved changes is never deleted, and a saved one is asked about', async () => {
+  dav.reset({ 'a.org': '* A\n', 'b.org': '* B\n', 'n.txt': 'plain', 'sub/keep.org': '* K\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  const box = page.locator('#fileScreenBox');
+  const names = async () => box.locator('[data-entry]').evaluateAll((els) => els.map((e) => e.getAttribute('data-entry')));
+  const top = () => page.locator('body > .ui-overlay').last();
+  const choose = (label) => top().getByRole('button', { name: label, exact: true }).click();
+  const answer = async (text, button) => {
+    await top().locator('input').fill(text);
+    await top().getByRole('button', { name: button, exact: true }).click();
+  };
+  await fileMenu(page, 'Open', 'WebDAV');
+  await box.locator('[data-entry="a.org"]').waitFor({ timeout: 8000 });
+
+  // 1. everything is listed, folders first; the filter narrows by extension; a folder always stays
+  expect(JSON.stringify(await names()) === JSON.stringify(['sub', 'a.org', 'b.org', 'n.txt']), `listing: ${JSON.stringify(await names())}`);
+  await box.locator('[data-field="filter"]').fill('txt');
+  expect(JSON.stringify(await names()) === JSON.stringify(['sub', 'n.txt']), `filtered: ${JSON.stringify(await names())}`);
+  await box.locator('[data-field="filter"]').fill('');
+
+  // 2. Marks > Mark by pattern marks the .org files; a bad pattern marks nothing
+  await box.locator('[data-act=marks]').click();
+  await choose('Mark by pattern…');
+  await answer('\\.org$', 'Mark');
+  await box.locator('[data-part=marked]').waitFor();
+  expect((await box.locator('[data-part=marked]').innerText()).includes('2 marked'), 'two files should be marked');
+
+  // 3. Copy to... a folder: open it, copy here; the originals stay
+  await box.locator('[data-part=marked] [data-act=copy]').click();
+  await box.locator('[data-entry="sub"]').click();
+  await box.locator('[data-entry="keep.org"]').waitFor();
+  await box.locator('[data-act=transfer-here]').click();
+  await page.waitForFunction(() => document.querySelectorAll('#fileScreenBox [data-entry]').length >= 3, null, { timeout: 8000 });
+  expect(dav.get('sub/a.org') === '* A\n' && dav.get('sub/b.org') === '* B\n' && dav.get('a.org') === '* A\n', 'the copies are in sub and the originals remain');
+
+  // 4. Rename from the row menu
+  await box.locator('[data-act=up]').click();
+  await box.locator('[data-entry="n.txt"]').waitFor();
+  await box.locator('[data-row="n.txt"] [data-act=row-menu]').click();
+  await choose('Rename…');
+  await answer('m.txt', 'Rename');
+  await box.locator('[data-entry="m.txt"]').waitFor({ timeout: 8000 });
+  expect(dav.get('m.txt') === 'plain' && dav.get('n.txt') === undefined, 'renamed: the new name holds the text, the old one is gone');
+
+  // 5. Move onto an existing name asks; No leaves both alone
+  await box.locator('[data-row="b.org"] [data-act=row-menu]').click();
+  await choose('Move to…');
+  await box.locator('[data-entry="sub"]').click();
+  await box.locator('[data-entry="keep.org"]').waitFor();
+  await box.locator('[data-act=transfer-here]').click();
+  await page.locator('.ui-overlay', { hasText: 'already exists' }).waitFor();
+  await choose('No');
+  await page.waitForTimeout(400);
+  expect(dav.get('b.org') === '* B\n' && dav.get('sub/b.org') === '* B\n', 'No leaves both files alone');
+
+  // 6. Delete is asked about once and refuses nothing here; a saved open file's tab closes with its file
+  await box.locator('[data-act=up]').click().catch(() => {});
+  await box.locator('[data-entry="m.txt"]').waitFor();
+  await box.locator('[data-row="m.txt"] [data-act=row-menu]').click();
+  await choose('Delete…');
+  await page.locator('.ui-overlay', { hasText: 'Delete "m.txt"?' }).waitFor();
+  await choose('Delete');
+  await page.waitForFunction(() => !document.querySelector('#fileScreenBox [data-entry="m.txt"]'), null, { timeout: 8000 });
+  expect(dav.get('m.txt') === undefined, 'm.txt is deleted');
+
+  // 7. A file open with unsaved changes is never deleted; one that is open and saved is asked about and its tab closes
+  await box.locator('[data-entry="b.org"]').click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('b.org'), null, { timeout: 8000 });
+  await page.evaluate(async () => { (await import('/src-browser/app-state.js')).S.isDirty = true; });
+  await fileMenu(page, 'Open', 'WebDAV');
+  await box.locator('[data-row="b.org"] [data-act=row-menu]').click();
+  await choose('Delete\u2026');
+  await page.waitForTimeout(500);
+  expect(dav.get('b.org') === '* B\n', 'a file open with unsaved changes is not deleted');
+  await page.evaluate(async () => { (await import('/src-browser/app-state.js')).S.isDirty = false; });
+  await box.locator('[data-row="b.org"] [data-act=row-menu]').click();
+  await choose('Delete\u2026');
+  await page.locator('.ui-overlay', { hasText: 'is open; its tab will close' }).waitFor({ timeout: 8000 });
+  await choose('Delete');
+  await page.waitForFunction(() => !document.getElementById('modeline').innerText.includes('b.org'), null, { timeout: 8000 });
+  expect(dav.get('b.org') === undefined, 'the saved open file is deleted and its tab closed');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('device folder in a browser: This device offers to choose a folder where the browser can open one, and is the file chooser alone where it cannot', async () => {
+  const withPicker = await freshPage(main, { initScript: () => { window.showDirectoryPicker = async () => { throw new Error('not used here'); }; } });
+  await withPicker.page.setViewportSize({ width: 412, height: 900 });
+  await withPicker.page.click('#fileMenuBtn');
+  await pick(withPicker.page, '#fileMenuPanel', 'Open');
+  await choosePlace(withPicker.page, 'device');
+  const box = withPicker.page.locator('#fileScreenBox');
+  await box.locator('[data-act="device-folder"]').waitFor({ timeout: 8000 });
+  expect((await box.innerText()).includes('Choose a folder of this device'), 'the folder is offered');
+  expect((await box.locator('[data-act="local"]').count()) === 1, 'the file chooser stays beside it');
+  expect(withPicker.errors.length === 0, `page errors: ${withPicker.errors.join(' | ')}`);
+  await withPicker.context.close();
+  const without = await freshPage(main, { initScript: () => { delete window.showDirectoryPicker; } });
+  await without.page.setViewportSize({ width: 412, height: 900 });
+  await without.page.click('#fileMenuBtn');
+  await pick(without.page, '#fileMenuPanel', 'Open');
+  await choosePlace(without.page, 'device');
+  expect((await without.page.locator('#fileScreenBox [data-act="device-folder"]').count()) === 0, 'no folder is offered where the browser cannot open one');
+  await without.context.close();
+});
+
+check('attach from Files: the dispatcher’s Attach from Files lists the place, a marked file is attached by org-attach-method, and a move offers to delete the original', async () => {
+  dav.reset({ 'notes.org': '* Report\n', 'photo.txt': 'picture', 'other.txt': 'x' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'notes.org');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openAttachChoicePrompt } = await import('/src-browser/attachments-flow.js');
+    openAttachChoicePrompt(S.state.doc.children[0]);
+  });
+  await page.locator('body').getByText('Attach from Files', { exact: true }).click();
+  const box = page.locator('#fileScreenBox');
+  await box.locator('[data-entry="photo.txt"]').waitFor({ timeout: 8000 });
+  expect((await box.innerText()).includes('Attach to'), 'the screen says what it attaches to');
+  expect((await box.locator('[data-field="path"]').count()) === 0, 'there is no path field that would open a document');
+  expect(await box.locator('[data-act=attach]').isDisabled(), 'Attach waits for a file');
+  await box.locator('[data-row="photo.txt"] [data-act=mark]').click();
+  await box.locator('[data-act=attach]').click();
+  await page.waitForFunction(() => document.getElementById('fileScreenBox').children.length === 0 || getComputedStyle(document.getElementById('fileScreen')).display === 'none', null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById('status').innerText.length > 0, null, { timeout: 8000 });
+  await page.waitForTimeout(800);
+  const attached = [...dav.files.keys()].filter((n) => n.endsWith('/photo.txt'));
+  expect(attached.length === 1 && dav.get(attached[0]) === 'picture', `the file is copied into the heading's folder: ${[...dav.files.keys()].join(', ')}`);
+  expect(dav.get('photo.txt') === 'picture', 'the original stays (org-attach-method is cp)');
+
+  // with org-attach-method mv the original goes, but only after the copy is written and the person agrees
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { attachFromFiles } = await import('/src-browser/attachments-flow.js');
+    S.globalVariables = { ...(S.globalVariables || {}), 'org-attach-method': 'mv' };
+    attachFromFiles(S.state.doc.children[0]);
+  });
+  await box.locator('[data-entry="other.txt"]').waitFor({ timeout: 8000 });
+  await box.locator('[data-row="other.txt"] [data-act=mark]').click();
+  await box.locator('[data-act=attach]').click();
+  const ask = page.locator('.ui-overlay', { hasText: 'Delete the original' });
+  await ask.waitFor({ timeout: 8000 });
+  expect([...dav.files.keys()].some((n) => n.endsWith('/other.txt')), 'the copy is written before the original is offered for deletion');
+  expect(dav.get('other.txt') === 'x', 'the original is still there at the question');
+  await ask.getByText('Delete original', { exact: true }).click();
+  await page.waitForFunction(() => true);
+  await page.waitForTimeout(800);
+  expect(dav.get('other.txt') === undefined, 'the original is deleted after the answer');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -8440,7 +8666,7 @@ check('every command in the palette runs without a page error and does something
 
 // ---- runner -------------------------------------------------------------------
 
-check('text editor and diary file: All files lists a diary, a row of the Agenda opens it with the entry selected, Text view colors it and keeps indentation, Add entry writes at the end and saves, and the other views are refused for a plain file', async () => {
+check('text editor and diary file: the Files list shows a diary, a row of the Agenda opens it with the entry selected, Text view colors it and keeps indentation, Add entry writes at the end and saves, and the other views are refused for a plain file', async () => {
   const now = new Date();
   const md = `${now.getMonth() + 1}/${now.getDate()}`;
   const notes = ['* Notes', '# Local Variables:', '# org-agenda-include-diary: t', '# diary-file: webdav:diary', '# End:', ''].join('\n');
@@ -8449,13 +8675,15 @@ check('text editor and diary file: All files lists a diary, a row of the Agenda 
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
 
-  // the file browser: Org files by default, All files lists the diary as text
+  // the file browser lists every file; the extension filter narrows it to Org files and back
   await fileMenu(page, 'Open', 'WebDAV');
   await page.locator('#fileScreenBox [data-entry="notes.org"]').waitFor({ timeout: 8000 });
-  expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary is listed before All files is chosen');
-  await page.locator('#fileScreenBox [data-show="all"]').click();
   await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
-  expect((await page.locator('#fileScreenBox [data-entry="diary"]').innerText()).includes('text'), 'the diary should be tagged text');
+  await page.locator('#fileScreenBox [data-field="filter"]').fill('org');
+  expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary should be hidden by the org filter');
+  expect((await page.locator('#fileScreenBox [data-entry="notes.org"]').count()) === 1, 'notes.org should stay');
+  await page.locator('#fileScreenBox [data-field="filter"]').fill('');
+  await page.locator('#fileScreenBox [data-entry="diary"]').waitFor({ timeout: 8000 });
   await page.locator('#fileScreenBox [data-entry="notes.org"]').click();
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('notes.org'), null, { timeout: 8000 });
 

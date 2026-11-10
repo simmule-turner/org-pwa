@@ -1,16 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { joinPath, listedAsFile, parentFolder, visibleEntries } from '../src/file-screen-model.js';
+import { joinPath, listedAsFile, parentFolder } from '../src/file-screen-model.js';
 
-test('listing keeps folders and org files, folders first', () => {
-  const e = [
-    { name: 'b.org', path: 'b.org', type: 'file' },
-    { name: 'x.png', path: 'x.png', type: 'file' },
-    { name: 'a', path: 'a', type: 'dir' },
-    { name: 'old.org_archive', path: 'old.org_archive', type: 'file' },
-  ];
-  assert.deepEqual(visibleEntries(e).map((x) => x.name), ['a', 'b.org', 'old.org_archive']);
-});
 test('paths join under a folder; a leading slash starts at the root', () => {
   assert.equal(joinPath('work', 'a.org'), 'work/a.org');
   assert.equal(joinPath('', ' a.org '), 'a.org');

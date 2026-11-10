@@ -308,7 +308,7 @@ export function createGithubAdapter(getConfig) {
     const entries = Array.isArray(body) ? body : [body]; // a single file at this exact path is a valid (if unusual) thing to "list"
     return entries
       .filter((e) => (e.type === 'file' || e.type === 'dir') && typeof e.name === 'string' && e.name !== '' && e.name !== '.' && e.name !== '..' && !/[/\\\u0000-\u001f\u007f]/.test(e.name)) // a name from the API cannot climb out of the folder
-      .map((e) => ({ name: e.name, path: e.path, type: e.type }))
+      .map((e) => ({ name: e.name, path: e.path, type: e.type, ...(e.type === 'file' && typeof e.size === 'number' ? { size: e.size } : {}) }))
       .sort((a, b) => {
         if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
         return a.name.localeCompare(b.name);

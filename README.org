@@ -42,6 +42,7 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#extras-menu][Extras menu]]
 - [[#menu-customization][Menu customization]]
 - [[#file-management][File management]]
+- [[#files-view][Files view]]
 - [[#tabs][Tabs]]
 - [[#citations][Citations]]
 - [[#export][Export]]
@@ -80,7 +81,7 @@ It is not org-mode with full parity: Babel runs JavaScript, and the rest is a su
 
    - *GitHub*: browse a repo set up in Settings and tap a file. *Type a path instead…* is always there for a path the listing doesn't show.
    - *WebDAV*: the same, for a WebDAV server set up in Settings.
-   - *This device*: the browser's file picker. Save writes straight back to the same file. Needs File System Access (Chrome or Edge on desktop and Android). In the Android app, the org-pwa folder is listed here, and *Choose another file…* opens the system picker.
+   - *This device*: in Chrome or Edge on desktop, choose a folder once and its files are listed like the other places (the browser asks again for access in each new session). *Choose another file…* opens the system picker; Save writes straight back to the same file. In the Android app, the org-pwa folder is listed here.
    - *Import file* (instead of *This device* where File System Access is missing, such as iOS): reads a file once. Save downloads a new copy for you to put back (see [[#platform-support][Platform support]]).
 
    A place that is not set up says so and links to Settings; if the last place cannot be used, the list opens the most recent one that can and tells you. On a wide screen the places are listed beside the files.
@@ -1151,7 +1152,7 @@ Switching in lands near your last navigation (a search result, link or agenda it
 
 The text is colored (headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links, emphasis, and JavaScript or Lisp in source blocks). A row of tools sits above it: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, duplicates, deletes, moves, indents or outdents the selected lines, and has *Select all* and *Copy all*. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. Line numbers follow ~display-line-numbers-mode~ (see [[#line-numbers][Line numbers]]), wrapping follows ~org-startup-truncated~, and ~org-xx-text-font-size~ is the size; all three are at the end of Editing in [[#settings][Settings]].
 
-*Other files*: *File → Open → All files* lists every file. One that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only; ~.md~, ~.js~, ~.json~ and ~.el~ are colored.
+*Other files*: *File → Open* lists every file; filter by extension to narrow it. One that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only; ~.md~, ~.js~, ~.json~ and ~.el~ are colored.
 
 *Search* works on the live raw text, so it finds and replaces inside property drawers and blocks. *Regex* and *Replace* work as in Org view; replacements stay in the textarea until you leave or Save.
 
@@ -1726,8 +1727,8 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 *File menu*: New, Open, Save, Save As, Save Some Buffers. The 💾 button beside it is a one-tap *Save*, disabled when there is no document or nowhere to save yet.
 
 - *New* creates a document in memory. The tab shows ~*scratch*~ in the red unsaved style until the first heading gets a title, which becomes the label. *Save* stays disabled until *Save As* picks a destination. Handy as a scratch pad for a capture template or table formula.
-- *Open* and *Save As* share one screen with a *GitHub / Local file / WebDAV* picker (*Import file* / *Download* on iOS, where a file is read once). It opens on the type you used last. In Open, *Org files / All files* lists only ~.org~ files (default) or every file.
-- *GitHub and WebDAV show a folder listing*: tap a folder (📁) to enter it, *↑ Up* to go back; ~.org~ files (📄) and ~_archive~ files (🗄️) are listed. WebDAV needs ~PROPFIND~ (Nextcloud, ownCloud and Apache ~mod_dav~ have it). *Enter path…* opens a file by path, which also works when listing fails.
+- *Open* and *Save As* share the Files list: a place bar (*GitHub*, *WebDAV*, *This device*; *Import file* / *Download* where a file is read once) and the folder below it. Each place remembers its folder. The palette's ~dired~ opens the list in the folder of the current file. See [[#files-view][Files view]].
+- *GitHub and WebDAV show a folder listing*: tap a folder to enter it, *↑ Up* to go back. WebDAV needs ~PROPFIND~ (Nextcloud, ownCloud and Apache ~mod_dav~ have it). *Enter path…* opens a path the listing doesn't show.
 - *Save* writes back to the backend the file came from, without asking again.
 - *Save Some Buffers* (~save-some-buffers~, ~C-x s~) asks about each modified tab in the minibuffer: ~y~ or Space saves, ~n~ or Backspace skips, ~!~ saves this and the rest, ~.~ saves this and stops, ~q~ or Escape stops, ~d~ shows what changed. Each save is the same as *Save*. *File → Save Some Buffers* saves them all without asking; it is dimmed when nothing is modified and skips new unsaved documents.
 - *Revert Buffer* (palette, ~revert-buffer~) reads the open file again and drops the buffer's unsaved changes, after asking if there are any. *Undo* brings them back.
@@ -1740,6 +1741,24 @@ The real labels of each menu, as used in ~"menu:Label;alias"~:
 - *Recently opened* lists up to five files you opened or saved, kept across sessions. Long-press an entry to remove it, or the label to clear the list.
 
 -----
+
+** Files view
+:PROPERTIES:
+:CUSTOM_ID: files-view
+:END:
+
+The Files list manages files the way Dired does. It shows every file; the *filter* narrows it by extension (~org md~, or empty for all). *Sort* by name, date (newest first) or size (largest first); *Reverse the order* flips it. Folders come first.
+
+*Marks*: the box at the left of a row marks it. *Marks…* marks by regular expression (matched against the file name, case-folded), marks all shown, inverts, or unmarks. With files marked, *Copy to…*, *Move to…* and *Delete…* act on them; with none, a row's *⋯* menu acts on that row.
+
+- *Copy to…* / *Move to…*: open the folder to copy into (in any place) and tap *Copy here*. A name that is already there asks *Yes / No / Yes to all / Quit*. A move deletes the original only after the copy is written.
+- *Rename…* keeps the folder. *Flag for deletion* and *Delete the flagged* are ~d~ and ~x~ of Dired; *Delete…* asks once, and names a folder as such.
+- *New…* makes a file (opened for editing) or a folder. A new folder holds an empty ~.gitkeep~ so it exists in every place.
+- *Info* shows the path, size and modified time, where the place gives them.
+
+A file open with unsaved changes is never deleted, moved or replaced. One that is open and saved is asked about, its tab closes with a delete and follows a move.
+
+*Attach from Files*: in the Attach menu (~C-c C-a~), *Attach from Files* (~p~) lists a place; mark files and tap *Attach*. ~org-attach-method~ decides copy, move or link.
 
 ** Tabs
 :PROPERTIES:
@@ -2313,6 +2332,8 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 *Refile* (see [[#refile][Refile]]): the destination is an existing heading.
 
 *Attachments* (see [[#attachments][Attachments]]): the same folder model as ~org-attach~ (an ~ID~ or ~DIR~ folder and the ~:ATTACH:~ tag) and the dispatcher keys ~a~ ~b~ ~n~ ~o~ ~f~ ~d~ ~D~ ~s~ ~S~ ~z~, plus ~r~ to record audio. The Folder panel stands in for ~org-attach-dired~: select files, then open, save or delete them. Needs GitHub, WebDAV, or the org-pwa folder in the Android app.
+
+*Files view* (see [[#files-view][Files view]]): after Dired, with touch controls in place of keys. A copy or move reads the bytes and writes them at the new path (GitHub and WebDAV have no copy of their own), so a folder is copied file by file; GitHub has no empty folders, so a new folder holds a ~.gitkeep~. A listing gives a date only where the place does (WebDAV and the device, not GitHub). Attach from Files is on ~p~, which ~org-attach~ does not use.
 
 *Conflict resolution* (see [[#offline-behavior-and-sync][Offline behavior and sync]]): a three-way merge by lines, and by heading for a subtree moved on one side and edited on the other, with a region-by-region resolver for what remains.
 

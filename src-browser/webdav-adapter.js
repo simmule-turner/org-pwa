@@ -200,7 +200,10 @@ function parsePropfindResponse(xml) {
     if (!hrefMatch) continue;
     const href = decodeURIComponent(hrefMatch[1].trim());
     const isCollection = /<[\w-]*:?collection\s*\/?>/i.test(block);
-    entries.push({ href, isCollection });
+    const len = /<[\w-]*:?getcontentlength[^>]*>\s*(\d+)\s*<\/[\w-]*:?getcontentlength>/i.exec(block);
+    const mod = /<[\w-]*:?getlastmodified[^>]*>([^<]*)<\/[\w-]*:?getlastmodified>/i.exec(block);
+    const when = mod ? Date.parse(mod[1].trim()) : NaN;
+    entries.push({ href, isCollection, size: len ? Number(len[1]) : undefined, modified: Number.isFinite(when) ? when : undefined });
   }
   return entries;
 }
@@ -373,7 +376,7 @@ export function createWebdavAdapter(getConfig) {
     const res = await fetchWithHint(url, {
       method: 'PROPFIND',
       headers: { ...authHeader(config), Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
-      body: '<?xml version="1.0"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
+      body: '<?xml version="1.0"?><propfind xmlns="DAV:"><prop><resourcetype/><getcontentlength/><getlastmodified/></prop></propfind>',
     });
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(webdavErrorMessage(res));
@@ -391,7 +394,7 @@ export function createWebdavAdapter(getConfig) {
       if (!relative) continue; // defensive: an unexpected genuinely-empty entry, not a real child either way
       const name = relative.split('/').pop();
       if (!name || name === '.' || name === '..' || relative.split('/').some((part) => part === '.' || part === '..' || part === '') || /[\\\u0000-\u001f\u007f]/.test(relative)) continue; // a hostile server listing cannot name a file outside the folder
-      results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file' });
+      results.push({ name, path: relative, type: entry.isCollection ? 'dir' : 'file', ...(!entry.isCollection && entry.size !== undefined ? { size: entry.size } : {}), ...(!entry.isCollection && entry.modified !== undefined ? { modified: entry.modified } : {}) });
     }
     return results.sort((/** @type {any} */ a, b) => {
       if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;

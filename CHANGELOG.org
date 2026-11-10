@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v672 — Manage files from the Files list
+The Files list now manages files as Dired does: mark files by tapping or by pattern, then copy, move (also between GitHub, WebDAV and this device), rename, delete, flag for deletion, make files and folders, sort by name, date or size, and see a file's info. One extension filter replaces the Org / All switch and starts on everything. A file with unsaved changes is never deleted or moved, and a saved open one follows its move. Attach from Files joins the Attach menu, and Chrome and Edge on desktop can list a folder you choose.
+Verified: browser checks of marks, copy, move, rename, delete, the open-file rules, attach and the folder prompt.
+
 * v671 — One place to browse GitHub, WebDAV and this device
 Open and Save As now share one list with a place bar: tap it to switch between GitHub, WebDAV and this device, and each place remembers the folder you were last in. If the last place is not set up, the list opens the most recent one that works and says so. On a wide screen the places sit beside the files. The Files (Dired) command opens the list in the folder of the current file. The Extras button is as visible as the back button.
 Verified: browser checks for remembering folders, the fallback note, Dired's starting folder and the Android folder listing.
