@@ -8743,6 +8743,7 @@ check('text editor and diary file: the Files list shows a diary, a row of the Ag
   await page.locator('body > .ui-overlay').last().locator('input').fill('\\.org$');
   await page.locator('body > .ui-overlay').last().getByRole('button', { name: 'Find', exact: true }).click();
   await page.locator('#fileScreenBox [data-part="found"]').waitFor({ timeout: 8000 });
+  await page.waitForFunction(() => /files below/.test(document.querySelector('#fileScreenBox [data-part="found"]')?.innerText || ''), null, { timeout: 8000 }); // the search has finished
   expect((await page.locator('#fileScreenBox [data-entry="diary"]').count()) === 0, 'the diary does not match \\.org$');
   expect((await page.locator('#fileScreenBox [data-entry="notes.org"]').count()) === 1, 'notes.org matches');
   await page.locator('#fileScreenBox [data-act="find-close"]').click();

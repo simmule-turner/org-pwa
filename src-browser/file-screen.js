@@ -16,6 +16,7 @@ import { ensureConnectionsUnlocked } from './connection-protection.js';
 import { openFromFilesystem, openFromImport, openRemotePath, saveAsDeviceFolder, saveAsFilesystem, saveAsGithub, saveAsImport, saveAsWebdav, suggestedSaveAsName } from './documents-io.js';
 import { fileScreen, fileScreenBox, settingsBtn } from './dom.js';
 import { commitTextModeIfActive, setStatus } from './editing.js';
+import { chooseAttachmentsFolder } from './attachments-store.js';
 import { allowDeviceFolder, chooseDeviceFolder, deviceFolderState, deviceIo, dirPickerSupported, isFolderPath, loadKnownPaths, registerFolderFile } from './device-folder.js';
 import { collectFiles, ioOf } from './file-ops-io.js';
 import { deleteEntries, newFile, newFolder, renameEntry, transferTo } from './file-manage.js';
@@ -312,6 +313,24 @@ function dirPickerBody(f) {
     other.dataset.act = 'change-folder';
     box.appendChild(other);
   }
+  return box;
+}
+
+/** Whether the app can keep a folder of its own here (the Android app) but none is chosen yet. */
+const needsAppFolder = () => platform.attachments.supported() && !folderAvailable();
+
+/** The Android app has no folder yet: choose the org-pwa folder, which "This device" then lists. @param {FileScreen} f */
+function appFolderBody(f) {
+  const box = div('border:1px dashed var(--border-strong);border-radius:var(--radius-control);padding:16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;');
+  box.appendChild(div('font-weight:600;', 'Choose the org-pwa folder'));
+  box.appendChild(div('font-size:13px;opacity:.7;', 'A folder of this device where attachments and local files live. Its files are listed here and can be opened, saved and managed like the other places.'));
+  const btn = menuButton('Choose a folder\u2026', async () => {
+    const name = await chooseAttachmentsFolder();
+    if (name && S.fileScreen === f) setPlace('device', '');
+    else renderFileScreen();
+  });
+  btn.dataset.act = 'device-folder';
+  box.appendChild(btn);
   return box;
 }
 
@@ -813,7 +832,7 @@ function placeDetail(f, place) {
   if (place === 'device') {
     const kind = deviceKind();
     if (kind === 'dirpicker') return dirState.access === 'none' ? 'Choose a folder of this device' : dirState.access === 'granted' ? `The folder \u201c${dirState.name}\u201d` : `\u201c${dirState.name}\u201d \u2014 tap to allow access`;
-    return kind === 'folder' ? 'The org-pwa folder' : kind === 'picker' ? 'Choose a file with the system chooser' : "Import a file (this browser can't keep a link to it)";
+    return kind === 'folder' ? 'The org-pwa folder' : needsAppFolder() ? 'Choose the org-pwa folder' : kind === 'picker' ? 'Choose a file with the system chooser' : "Import a file (this browser can't keep a link to it)";
   }
   if (f.ready && f.ready[place] === false) return 'Not set up';
   return f.detail[place] || 'Tap to browse';
@@ -904,6 +923,7 @@ function mainBody(f, needsName) {
     }
   } else {
     if (f.place === 'device' && deviceKind() === 'dirpicker' && !f.attach && !f.transfer) body.appendChild(dirPickerBody(f));
+    if (f.place === 'device' && needsAppFolder() && !f.attach && !f.transfer) body.appendChild(appFolderBody(f));
     body.appendChild(localBody(f));
   }
   if (needsName) body.appendChild(field(f, 'nameEl'));

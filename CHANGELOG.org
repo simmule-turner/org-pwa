@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v674 — Choose the folder from "This device" in the Android app
+In the Android app, "This device" in the Files list now offers "Choose a folder…" when no org-pwa folder has been chosen yet, instead of only the file chooser; the folder you pick is listed straight away. Android Chrome (a web page) cannot open folders at all, so it still offers the file chooser only.
+Verified: type checks and the existing Files view browser checks; the folder chooser itself needs the Android app (not tested on a device).
+
 * v673 — Find files in the Files list
 The Files list gets Find, after Emacs's find-lisp-find-dired: type an Emacs regexp such as \.org$ and it lists the matching files in the folder and everything below it, each with its path. You can change the regexp without searching again, and mark, copy, move, rename, delete and attach from the results. This replaces the extension filter. GitHub is searched in one request. The Android app's folder listing now includes subfolders, sizes and dates (shell 0.7.11).
 Verified: browser checks of Find against the folder tree, case, Emacs syntax, a refused regexp and acting on results; regexps compared with Emacs 29.3.
