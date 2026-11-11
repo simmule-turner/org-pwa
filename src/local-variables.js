@@ -542,15 +542,16 @@ export function getDisplayTimeMode(vars) {
   return String(raw).trim() !== '0';
 }
 
-/** display-time-format: real Emacs's own actual variable controlling
- *  the modeline clock's own format-time-string pattern -- reuses the
- *  exact same %<FORMAT> subset capture templates already support (see
- *  capture-template.js's own formatTime), not a separate
- * @param {LocalVars} vars
- *  implementation. "%H:%M" is real Emacs's own actual default. */
+/** display-time-format: the format-time-string pattern of the modeline clock. When it is nil (as in Emacs by default) the clock is
+ *  `2:05PM`, or `14:05` when display-time-24hr-format is t.
+ * @param {LocalVars} vars */
 export function getDisplayTimeFormat(vars) {
-  const raw = (vars || {})['display-time-format'];
-  return raw !== undefined && raw !== null && String(raw).trim() !== '' ? String(raw) : '%H:%M';
+  const v = vars || {};
+  const raw = v['display-time-format'];
+  const text = raw !== undefined && raw !== null ? String(raw).trim() : '';
+  if (text !== '' && text !== 'nil') return String(raw);
+  const twentyFour = v['display-time-24hr-format'];
+  return twentyFour !== undefined && twentyFour !== null && String(twentyFour).trim() !== 'nil' && String(twentyFour).trim() !== '' ? '%H:%M' : '%-I:%M%p';
 }
 
 /** @param {LocalVars} vars */

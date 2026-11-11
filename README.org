@@ -510,12 +510,13 @@ A fixed two-row bar at the bottom of the screen, laid out like Emacs's frame: a 
 
 *The minibuffer*, below it, is one strip for the search box (see [[#searching][Searching]]), god-mode's chord echo (see [[#god-mode][God-mode]]) and the last status message, in that order of priority. A status message clears at your next keypress or tap.
 
-Two variables control it, set in Global or Local Variables or in Settings → Quick Settings → *Modeline*:
+Three variables control it, set in Global or Local Variables or the Lisp init; Settings → Quick Settings → *Modeline* has the first:
 
 | Variable | Default | Effect |
 |---+---+---|
 | ~display-time-mode~ | ~1~ (on) | Emacs's minor-mode toggle, with its ~1~ and ~0~ convention instead of ~t~ and ~nil~. ~0~ hides the date and time. |
-| ~display-time-format~ | ~"%H:%M"~ | Emacs's variable and default. Any ~format-time-string~ code that [[#capture-templates][Capture templates]] list works. |
+| ~display-time-24hr-format~ | ~nil~ | ~t~ shows the clock as ~14:05~ when ~display-time-format~ is ~nil~. Add ~(setq display-time-24hr-format t)~ to Global Variables. |
+| ~display-time-format~ | ~nil~ | Emacs's variable and default. ~nil~ shows ~2:05PM~, or ~14:05~ when ~display-time-24hr-format~ is ~t~; a string such as ~"%b%d %H:%M"~ is used as it is, with any ~format-time-string~ code that [[#capture-templates][Capture templates]] list. |
 
 -----
 
@@ -651,14 +652,20 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-mode~ | ~nil~ | ~t~ shows each row's line number in the file beside it in the outline, and in the Text view (see [[#line-numbers][Line numbers]]) |
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
-| ~large-file-warning-threshold~ | ~500KB~ | Ask before opening an Org file above this size, in bytes or as ~500KB~; ~nil~ never asks; also Settings → Sync and storage → Size limits |
+| ~display-time-24hr-format~ | ~nil~ | Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23; set in Global Variables or the Lisp init |
+| ~large-file-warning-threshold~ | ~500KB~ | Ask before opening an Org file above this size, in bytes or as ~500KB~; ~nil~ never asks |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
+| ~org-agenda-clock-consistency-checks~ | Emacs's own list | Limits for the clock consistency checks of the Agenda clock report (a property list); set in Global Variables or the Lisp init |
 | ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
 | ~org-agenda-custom-commands~ | unset | Saved queries that open from *Agenda commands*: ~(("w" "Urgent work" tags "work+urgent") ("b" "Budget" search "+budget -draft" ((org-agenda-sorting-strategy '((search alpha-up))))))~. Types: ~tags~, ~tags-todo~, ~search~, ~todo~, ~agenda~ and ~alltodo~, or a Lisp function (a name or a ~lambda~), as in ~("x" "Mine" my-fn "match")~: it is called with the match and what it writes (~princ~, ~insert~) or returns (a string, or a list of strings) is shown in an *Org Agenda* text buffer; the setting read is ~org-agenda-sorting-strategy~ (see [[#agenda-commands][Match and Keyword search views]]) |
 | ~org-agenda-effort-filter-preset~ | unset | Effort filter to start with, such as ~("+<2:00")~ (at most 2 hours; ~>~ is at least, ~=~ exactly) |
 | ~org-agenda-files~ | unset (current file only) | A list of file names, such as ~("github:notes.org" "webdav:work.org")~: more files for the Agenda and TODO views (see [[#agenda-files][Agenda Files]]) |
 | ~org-agenda-include-diary~ | ~nil~ | ~t~ adds the entries of ~diary-file~ to the Agenda (see [[#diary-file][Diary file]]) |
+| ~org-agenda-include-inactive-timestamps~ | ~nil~ | Non-nil means include inactive time stamps in agenda; set in Global Variables or the Lisp init |
+| ~org-agenda-log-mode-add-notes~ | ~t~ | Non-nil means add first line of notes to log entries in agenda views; set in Global Variables or the Lisp init |
+| ~org-agenda-log-mode-items~ | ~(closed clock)~ | List of items that should be shown in agenda log mode; set in Global Variables or the Lisp init |
 | ~org-agenda-max-effort~ | ~nil~ | Per-day effort limit the ⏱ panel starts with: minutes, such as ~240~, or ~((agenda . 240) (todo . 120))~ |
+| ~org-agenda-prefer-last-repeat~ | ~nil~ | Non-nil sets date for repeated entries to their last repeat; set in Global Variables or the Lisp init |
 | ~org-agenda-prefix-format~ | unset | Text before each row, such as ~"  %-12:c%?-12t% s"~, or an alist by view, ~((agenda . "…") (todo . "…"))~: ~%c~ category, ~%t~ time, ~%s~ Scheduled:/Deadline:, ~%e~ effort, ~%l~ a space for each outline level, ~%b~ the parents' titles with ~->~ after each, ~%(form)~ the text a Lisp form gives (it sees ~category~, ~time~, ~extra~, ~level~, ~effort~, ~tag~ and ~breadcrumbs~, and ~org-entry-get~ and the like work on the row's heading; an error stops the view and shows Emacs's message); ~%-12c~ pads right, ~%12c~ left, ~%?~ leaves the part out when empty. Unset keeps the usual row |
 | ~org-agenda-regexp-filter-preset~ | unset | Search chip to start with: ~("+rent" "-later")~; Emacs regular expressions; every ~+~ pattern must match, no ~-~ pattern may |
 | ~org-agenda-remove-times-when-in-prefix~ | ~t~ | Leave timestamps out of a heading's title in the agenda (~Do task <2026-10-11 Sun +14d>~ shows as ~Do task~; each day of a range shows ~(day 2/3)~). ~nil~ shows the title as written. Emacs removes only a time of day; this removes the whole stamp |
@@ -666,13 +673,30 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-search-view-force-full-words~ | ~nil~ | ~t~ makes the words of a Keyword search match whole words |
 | ~org-agenda-search-view-max-outline-level~ | ~0~ | A number above 0 limits Keyword search to headings down to that level; a heading at that level takes in the text below it |
 | ~org-agenda-show-all-dates~ | ~t~ | Whether days with nothing on them show in the Agenda; the *g* button toggles it for the session (see [[#agenda][Agenda]]); also Settings → Quick Settings → *Agenda* |
+| ~org-agenda-show-future-repeats~ | ~t~ | Whether repeating items show in the future part of the Agenda; also Settings → Quick Settings → *Agenda* |
 | ~org-agenda-show-inherited-tags~ | ~t~ | Whether Agenda and TODO list rows show inherited tags, dimmed after the title: ~t~ (when ~org-agenda-use-tag-inheritance~ covers the view), ~always~, ~nil~, or a list of views such as ~(todo agenda)~. The tag filter sees inherited tags in the same views |
+| ~org-agenda-skip-additional-timestamps-same-entry~ | ~nil~ | When nil, multiple same-day timestamps in entry make multiple agenda lines; set in Global Variables or the Lisp init |
 | ~org-agenda-skip-archived-trees~ | ~t~ | Exclude archived headings (tagged ~:ARCHIVE:~) from the agenda; ~nil~ includes them |
 | ~org-agenda-skip-comment-trees~ | ~t~ | Exclude commented headings (~** COMMENT draft~) from the agenda. They stay visible in the outline; ~nil~ includes them |
+| ~org-agenda-skip-deadline-prewarning-if-scheduled~ | ~nil~ | Non-nil means skip deadline prewarning when entry is also scheduled; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-function~ | ~nil~ | Function to be called at each match during agenda construction; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-function-global~ | ~nil~ | Function to be called at each match during agenda construction; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-scheduled-delay-if-deadline~ | ~nil~ | Non-nil means skip scheduled delay when entry also has a deadline; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-scheduled-if-deadline-is-shown~ | ~nil~ | Non-nil means skip scheduling line if same entry shows because of deadline; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-timestamp-if-deadline-is-shown~ | ~nil~ | Non-nil means skip timestamp line if same entry shows because of deadline; set in Global Variables or the Lisp init |
+| ~org-agenda-skip-timestamp-if-done~ | ~nil~ | Non-nil means don't select item by timestamp or -range if it is DONE; set in Global Variables or the Lisp init |
 | ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined-up~ and ~-down~ ask ~org-agenda-cmp-user-defined~ (no opinion while it is ~nil~) |
+| ~org-agenda-span~ | ~week~ | Number of days to include in overview display; set in Global Variables or the Lisp init |
+| ~org-agenda-start-day~ | ~nil~ | Start day for the agenda view; set in Global Variables or the Lisp init |
 | ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
+| ~org-agenda-start-with-log-mode~ | ~nil~ | The initial value of log-mode in a newly created agenda window; set in Global Variables or the Lisp init |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, a list of file names like ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
+| ~org-agenda-todo-ignore-deadlines~ | ~nil~ | Non-nil means ignore some deadline TODO items when making TODO list; set in Global Variables or the Lisp init |
+| ~org-agenda-todo-ignore-scheduled~ | ~nil~ | Non-nil means, ignore some scheduled TODO items when making TODO list; set in Global Variables or the Lisp init |
+| ~org-agenda-todo-ignore-timestamp~ | ~nil~ | Non-nil means don't show entries with a timestamp; set in Global Variables or the Lisp init |
+| ~org-agenda-todo-ignore-with-date~ | ~nil~ | Non-nil means don't show entries with a date in the global todo list; set in Global Variables or the Lisp init |
+| ~org-agenda-todo-list-sublevels~ | ~t~ | Non-nil means check also the sublevels of a TODO entry for TODO entries; set in Global Variables or the Lisp init |
 | ~org-agenda-use-tag-inheritance~ | ~(todo search agenda)~ | The views that use tag inheritance: ~t~, ~nil~, or a list of ~agenda~, ~todo~ and ~search~ |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
@@ -687,9 +711,10 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-clock-out-switch-to-state~ | ~nil~ | A TODO keyword to switch to when clocking out of an entry that has a state |
 | ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); it beeps if the file is not there, and in the browser |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
-| ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~); also Settings → Quick Settings → *Diary* |
+| ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~) |
 | ~org-contacts-files~ | unset (current file only) | A list of file names like ~org-agenda-files~: more files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
+| ~org-deadline-past-days~ | ~10000~ | Number of days to warn about missed deadlines; set in Global Variables or the Lisp init |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
 | ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. It must contain ~("min" . 1)~; an invalid value is ignored |
 | ~org-export-with-broken-links~ | ~nil~ | What export does with a link that leads nowhere (a heading, target, custom id or code reference that is not there): ~nil~ stops with "Unable to resolve link: …", ~t~ leaves the link out, ~mark~ writes ~[BROKEN LINK: path]~; also Settings → Export. A file's ~#+OPTIONS: broken-links:~ wins |
@@ -708,7 +733,16 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-html-postamble~ | ~auto~ | A quoted format string for the foot of every HTML export, or ~nil~ for none. A file's own ~#+OPTIONS: html-postamble:~ wins |
 | ~org-html-preamble~ | unset (none) | A quoted format string shown above the content of every HTML export (~%t~ title, ~%s~ subtitle, ~%a~ author, ~%d~ date, ~%e~ email). A file's own ~#+OPTIONS: html-preamble:~ wins |
 | ~org-icalendar-alarm-time~ | ~0~ | Minutes before a timed event that Calendar (.ics) export puts a display alarm; ~0~ for none (an ~:APPT_WARNTIME:~ property sets one for one heading) |
+| ~org-icalendar-categories~ | ~(local-tags category)~ | Items that should be entered into the "categories" field; set in Global Variables or the Lisp init |
+| ~org-icalendar-combined-description~ | ~""~ | Calendar description for the combined iCalendar (all agenda files); set in Global Variables or the Lisp init |
+| ~org-icalendar-combined-name~ | ~"OrgMode"~ | Calendar name for the combined iCalendar representing all agenda files; set in Global Variables or the Lisp init |
+| ~org-icalendar-date-time-format~ | ~":%Y%m%dT%H%M%S"~ | Format-string for exporting icalendar DATE-TIME; set in Global Variables or the Lisp init |
+| ~org-icalendar-deadline-summary-prefix~ | ~"DL: "~ | String prepended to exported headlines with a deadline; set in Global Variables or the Lisp init |
+| ~org-icalendar-exclude-tags~ | ~nil~ | Tags that exclude a tree from export; set in Global Variables or the Lisp init |
+| ~org-icalendar-force-alarm~ | ~nil~ | Non-nil means alarm will be created even if is set to zero; set in Global Variables or the Lisp init |
 | ~org-icalendar-include-todo~ | ~nil~ | Whether Calendar (.ics) export also writes TODO items as tasks: ~nil~, ~t~ (not done), ~'unblocked~ or ~'all~ |
+| ~org-icalendar-scheduled-summary-prefix~ | ~"S: "~ | String prepended to exported scheduled headlines; set in Global Variables or the Lisp init |
+| ~org-icalendar-timezone~ | the system zone | The time zone string for iCalendar export (the system zone by default); set in Global Variables or the Lisp init |
 | ~org-icalendar-use-deadline~ | ~(event-if-not-todo todo-due)~ | Which DEADLINEs become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's deadline is its due date (~todo-due~) |
 | ~org-icalendar-use-scheduled~ | ~(todo-start)~ | Which SCHEDULED dates become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's scheduled date is its start (~todo-start~) |
 | ~org-icalendar-with-timestamps~ | ~'active~ | Which timestamps in a heading's title and text become events: ~'active~, ~'inactive~, ~t~ or ~nil~ |
@@ -725,13 +759,15 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
 | ~org-priority-lowest~ | ~C~ | The lowest priority; the priority buttons, the cycle and the Agenda's Priority menu cover the range |
 | ~org-priority-start-cycle-with-default~ | ~t~ | Accepted for compatibility; as in Emacs 29.3 it does not change the cycle |
-| ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]); also Settings → Quick Settings → *Editing* |
+| ~org-refile-allow-creating-parent-nodes~ | ~nil~ | ~t~ lets Refile create a new heading under the chosen target and file into it; ~confirm~ asks first (see [[#refile][Refile]]) |
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
+| ~org-scheduled-past-days~ | ~10000~ | Number of days to continue listing scheduled items not marked DONE; set in Global Variables or the Lisp init |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-indented~ | ~nil~ | ~nil~ draws every line at the left edge, so tables and text have the most room; ~t~ (org-indent-mode) indents text, lists and tables under their heading's level; also ~#+STARTUP: indent~ and ~noindent~, and Settings → Quick Settings → *Startup* |
 | ~org-startup-truncated~ | ~t~ | ~t~ scrolls long lines of the Text view sideways; ~nil~ wraps them; also Settings → Quick Settings → *Editing* |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
+| ~org-stuck-projects~ | Emacs's own list | How to identify stuck projects; set in Global Variables or the Lisp init |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
 | ~org-tags-column~ | ~0~ | Where a heading's tags sit when the line is rewritten: ~0~ one space after the title, a negative number right-aligns them to that column, a positive one starts them at that column; also Settings → Editing |
 | ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~("private")~) or just words (~private archive~) |
@@ -746,18 +782,18 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
-| ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~off~ waits as long as the browser does; also Settings → Sync and storage → Size limits |
+| ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~off~ waits as long as the browser does |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-lisp-init~ | unset | (own) Emacs Lisp run like an init file: ~setq~ of any setting in this table, the ~holiday-*~ lists, capture templates, LaTeX and ODT styles, ~(load "github:file.el")~ to read more from a file (see [[#lisp-init][Lisp init]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
-| ~org-xx-size-limit-attachment~ | ~95MB~ | (own) Refuse an attachment above this size (GitHub refuses above 95MB whatever this is); ~off~ sets no limit; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-attachment-warn~ | ~20MB~ | (own) Ask before attaching a file above this size; ~off~ never asks; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-bibliography~ | ~5MB~ | (own) Refuse a ~#+BIBLIOGRAPHY:~ file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-image~ | ~3MB~ | (own) An inline image above this size shows its size and a *Load* link instead; ~off~ shows every image; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-include~ | ~2MB~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-org-file~ | ~2MB~ | (own) Refuse to open an Org file above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
-| ~org-xx-size-limit-setupfile~ | ~1MB~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~off~ sets no limit; also Settings → Sync and storage → Size limits |
+| ~org-xx-size-limit-attachment~ | ~95MB~ | (own) Refuse an attachment above this size (GitHub refuses above 95MB whatever this is); ~off~ sets no limit |
+| ~org-xx-size-limit-attachment-warn~ | ~20MB~ | (own) Ask before attaching a file above this size; ~off~ never asks |
+| ~org-xx-size-limit-bibliography~ | ~5MB~ | (own) Refuse a ~#+BIBLIOGRAPHY:~ file above this size; ~off~ sets no limit |
+| ~org-xx-size-limit-image~ | ~3MB~ | (own) An inline image above this size shows its size and a *Load* link instead; ~off~ shows every image |
+| ~org-xx-size-limit-include~ | ~2MB~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~off~ sets no limit |
+| ~org-xx-size-limit-org-file~ | ~2MB~ | (own) Refuse to open an Org file above this size; ~off~ sets no limit |
+| ~org-xx-size-limit-setupfile~ | ~1MB~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~off~ sets no limit |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-windowing-threshold~ | ~400~ | (own) Above this many rows an outline or agenda draws only the rows near the screen; ~0~ always draws every row |
@@ -958,7 +994,7 @@ In a ~# org-refile-targets:~ line of a Local Variables block, write the list wit
 
 An entry the app can't understand is skipped and listed with the reason at the top of the picker. Refiling to another file works on GitHub and WebDAV; a local file must have been opened once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works.
 
-With ~org-refile-allow-creating-parent-nodes~ set to ~t~ (or ~confirm~, which asks first; Settings → Quick Settings → *Editing*), choose a parent as usual, then type the new heading's name in the box under the details; it is made as the parent's last child and the subtree goes under it.
+With ~org-refile-allow-creating-parent-nodes~ set to ~t~ (or ~confirm~, which asks first), choose a parent as usual, then type the new heading's name in the box under the details; it is made as the parent's last child and the subtree goes under it.
 
 -----
 
@@ -1364,7 +1400,9 @@ In the diary's Text view, *Insert entry* writes a date, weekly, monthly, yearly,
 
 The Agenda, the diary, ~org-class~ and ~calendar-check-holidays~ use Emacs's ~calendar-holidays~: ~holiday-general-holidays~ (US), ~holiday-christian-holidays~, ~holiday-hebrew-holidays~, ~holiday-islamic-holidays~, ~holiday-bahai-holidays~, ~holiday-oriental-holidays~ (Chinese New Year, and with ~calendar-chinese-all-holidays-flag~ the other Chinese festivals) and ~holiday-solar-holidays~ (equinoxes, solstices, daylight saving changes), plus your own ~holiday-local-holidays~ and ~holiday-other-holidays~. The forms are Emacs's: see [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Holidays.html][Holidays]] in the Emacs manual.
 
-*Apropos variable…* (palette, ~apropos-variable~) asks for a word, a list of words (names with at least two of them) or a regexp, and lists the matching variables with their descriptions and values in a buffer named ~*Apropos*~. It covers the variables that have a place in Settings and the ones set in the Global Variables or the file's Local Variables.
+*Apropos variable…* (palette, ~apropos-variable~) asks for a word, a list of words (names with at least two of them) or an Emacs regexp, and opens a read-only buffer named ~*Apropos*~ with a heading for each matching variable: its description, its value now and a link. Search, filter and fold work on it as on any document. Example: ~^org-agenda-skip~ lists the agenda skip variables.
+
+The link is Org's ~[[elisp:(customize-variable 'NAME)]]~. It opens the variable's field in Settings, highlighted; a variable that has no control on a Settings page opens Global Variables with a ~(setq NAME VALUE)~ line ready to add. The Settings search box searches the same list as you type. Any variable can be set from Global Variables or the Lisp init, with or without a control.
 
 *List holidays…* (palette, ~list-holidays~) asks for a first and last year and lists the holidays in a new buffer, one to a line.
 

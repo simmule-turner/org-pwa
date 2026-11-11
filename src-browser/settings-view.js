@@ -36,6 +36,7 @@ import { platform } from './platform.js';
 import { saveOut } from './save-out.js';
 import { applyTheme, buildThemeColorCustomizationSection } from './settings-theme.js';
 import { buildExportCards } from './settings-export.js';
+import { takePrefill } from './settings-focus.js';
 import { buildFullyResolvedGlobalVariablesText, commitGlobalVariableChange, renderQuickSettingsGroups } from './settings-quick.js';
 import { renderSettingsShell } from './settings-shell.js';
 export { applyTheme, persistAndReapplyThemeColors, buildThemeColorCustomizationSection, applySidePanelWidth } from './settings-theme.js';
@@ -59,6 +60,12 @@ export { resolveQuickSettingValue, buildFullyResolvedGlobalVariablesText, commit
  *  platform-independent CSS/layout fact, not an iOS- or
  *  Android-specific quirk. This walks up to find whichever ancestor
  *  actually is scrolling right now, instead of assuming. */
+/** The Global Variables text with a line an `elisp:` link brought added at the end, if there is one. @param {string} text */
+function withPrefill(text) {
+  const line = takePrefill();
+  return line ? (text.trim() ? text.replace(/\s*$/, '\n') : '') + line + '\n' : text;
+}
+
 export async function renderSettingsView(target = S.settingsRenderTarget) {
   S.settingsRenderTarget = target;
   const scrollingEl = findScrollingAncestor(target);
@@ -420,7 +427,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     globalVarsTextarea.blur();
     openTextFieldPopup({
       label: 'Global Variables',
-      value: S.globalVariablesText,
+      value: withPrefill(S.globalVariablesText),
       defaultValue: DEFAULT_GLOBAL_VARIABLES,
       onSave: saveGlobalVariablesText,
       onReset:

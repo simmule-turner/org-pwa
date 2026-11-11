@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runInit } from '../src/lisp-init.js';
 import { settingsFromInit, boxText } from '../src-browser/lisp-settings.js';
-import { QUICK_SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
 
-const field = (key) => QUICK_SETTINGS_FIELDS.find((f) => f.key === key);
+const field = (key) => SETTINGS_FIELDS.find((f) => f.key === key);
 
 test('the init is Lisp: functions, let, loops and computed values', () => {
   const vars = runInit(`(defun double (n) (* 2 n))
@@ -105,4 +105,11 @@ test('the init sets an extras-menu entry whose OLP path has quotes in it, and th
   const { values } = settingsFromInit(String.raw`(setq org-xx-extra-menu '("t;Tracking" "[\"Bag - lists\", \"%<%Y-%m>\"];Current" "v;vCard"))`, {});
   assert.equal(values['org-xx-extra-menu'], '"t;Tracking" "["Bag - lists", "%<%Y-%m>"];Current" "v;vCard"');
   assert.deepEqual(parseExtraMenu(values['org-xx-extra-menu']).map((e) => e.type), ['capture', 'olp', 'capture']);
+});
+
+test('a variable with no setting of its own, one apropos-variable lists, is set from the init as Lisp text', async () => {
+  const { settingsFromInit } = await import('../src-browser/lisp-settings.js');
+  const { values, errors } = settingsFromInit("(setq org-agenda-span 'month)\n(setq org-icalendar-combined-name \"Mine\")\n(setq org-agenda-skip-timestamp-if-done t)\n(setq display-time-24hr-format t)\n(setq org-agenda-log-mode-items '(closed state))\n(setq my-own-variable 1)", {});
+  assert.deepEqual(errors, []);
+  assert.deepEqual(values, { 'org-agenda-span': 'month', 'org-icalendar-combined-name': '"Mine"', 'org-agenda-skip-timestamp-if-done': 't', 'display-time-24hr-format': 't', 'org-agenda-log-mode-items': '(closed state)' });
 });

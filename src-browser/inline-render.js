@@ -169,6 +169,19 @@ function largeImagePlaceholder(target, resolvedPath, cacheKey, bytes) {
 export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const label = node.description || node.target;
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
+  if (!linkContext && /^elisp:/i.test(node.target)) {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.textContent = label;
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      import('./customize-link.js').then((m) => m.followElispLink(node.target));
+    };
+    return a;
+  }
   const custom = linkContext ? null : customLink(node.target);
   if (custom && customLinks.open) {
     const a = document.createElement('a');

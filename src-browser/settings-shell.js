@@ -2,11 +2,16 @@
 // The frame of the Settings screen: a home list of categories (a sidebar when there is room), one page of cards per category,
 // a search box, and the "Order of settings" card that lets the person rearrange both. The cards themselves are built by
 // settings-view.js and handed in by id; this file only decides where they go.
+import { parseOrg } from '../src/org-parser.js';
+import { searchDocument } from '../src/search.js';
+import { entryText } from '../src/apropos-variable.js';
 import { moveInList, orderToStore, resolveSettingsLayout } from '../src/settings-layout.js';
 import { countExportItemsOn } from '../src/export-defaults.js';
 import { S } from './app-state.js';
-import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
+import { QUICK_SETTINGS_FIELDS, SETTINGS_FIELDS } from './settings-fields.js';
 import { setSettingsOrder } from './settings.js';
+import { settingsFocus } from './settings-focus.js';
+import { variableEntries } from './variable-entries.js';
 import { kv } from './singletons.js';
 import { menuButton } from './ui-widgets.js';
 
@@ -32,7 +37,7 @@ function customizedCount(category) {
   for (const id of category.cards) {
     if (id.startsWith('quick:')) {
       const group = id.slice('quick:'.length);
-      for (const field of QUICK_SETTINGS_FIELDS) if (field.section === group && S.globalVariables[field.key] !== undefined) n++;
+      for (const field of SETTINGS_FIELDS) if (field.section === group && S.globalVariables[field.key] !== undefined) n++;
     } else if (id === 'github') n += S.githubConfig && S.githubConfig.token ? 1 : 0;
     else if (id === 'webdav') n += S.webdavConfig && S.webdavConfig.baseUrl ? 1 : 0;
     else if (id === 'calendar') n += S.caldavConfig && (S.caldavConfig.url || S.caldavConfig.contactsUrl) ? 1 : 0;
@@ -186,6 +191,39 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
     if (updates) parent.appendChild(updates);
   }
 
+  /** The variables the search finds, as rows: the app's own search over the same Org text apropos-variable builds, so what it matches is what a search of *Apropos* would.
+   * @param {string} query @returns {HTMLElement[]} */
+  function variableRows(query) {
+    const entries = variableEntries();
+    const doc = parseOrg(entries.map(entryText).join(''));
+    /** @type {{ heading: { title: string } }[]} */ let results;
+    try {
+      results = searchDocument(doc, query);
+    } catch {
+      return [];
+    }
+    const byName = new Map(entries.map((e) => [e.name, e]));
+    const seen = new Set();
+    /** @type {HTMLElement[]} */ const rows = [];
+    for (const r of results) {
+      const e = byName.get(String(r.heading.title).trim());
+      if (!e || seen.has(e.name)) continue;
+      seen.add(e.name);
+      const row = document.createElement('div');
+      row.setAttribute('data-variable-result', e.name);
+      row.style.cssText = 'border: 1px solid var(--border-strong); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px';
+      row.appendChild(el(e.doc || '(not documented)', 'font-weight: 600'));
+      row.appendChild(el(e.name, 'font: 11px ui-monospace, monospace; opacity: 0.7'));
+      row.appendChild(el(`Value: ${e.value}`, 'font-size: 12px; margin: 2px 0 6px'));
+      const open = menuButton(e.control === 'field' ? 'Open in Settings' : 'Set in Global Variables', () => {
+        import('./customize-link.js').then((m) => m.followElispLink(`elisp:(customize-variable '${e.name})`));
+      });
+      row.appendChild(open);
+      rows.push(row);
+    }
+    return rows;
+  }
+
   function matches() {
     const q = place.query.trim().toLowerCase();
     /** @type {{ category: SettingsCategory, id: string }[]} */ const found = [];
@@ -213,8 +251,13 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
       frame.replaceChildren(page);
     }
     if (searching) {
-      const found = matches();
-      if (!found.length) page.appendChild(el('No setting matches that.', 'opacity: 0.7; padding: 8px 2px'));
+      const rows = variableRows(place.query);
+      const found = matches().filter(({ id }) => !id.startsWith('quick:'));
+      if (!rows.length && !found.length) page.appendChild(el('No setting matches that.', 'opacity: 0.7; padding: 8px 2px'));
+      if (rows.length) {
+        page.appendChild(el('Variables', 'font-size: 12px; font-weight: 600; opacity: 0.7; margin: 10px 2px 4px'));
+        for (const row of rows) page.appendChild(row);
+      }
       let last = '';
       for (const { category, id } of found) {
         if (category.id !== last) page.appendChild(el(category.title, 'font-size: 12px; font-weight: 600; opacity: 0.7; margin: 10px 2px 4px'));
@@ -257,4 +300,30 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
     }
   });
   draw();
+
+  // an elisp:(customize-variable ...) link: go to the field, or to Global Variables with a line ready
+  const wantKey = settingsFocus.key;
+  const wantLine = settingsFocus.line;
+  if (wantKey || wantLine) {
+    settingsFocus.key = null;
+    const field = wantKey ? QUICK_SETTINGS_FIELDS.find((f) => f.key === wantKey) : null;
+    const cardId = field ? 'quick:' + field.section : 'global-vars';
+    const category = layout.find((c) => c.cards.includes(cardId));
+    if (category) {
+      place.category = category.id;
+      place.query = '';
+      search.value = '';
+      draw();
+      const target = field ? page.querySelector(`[data-setting-key="${wantKey}"]`) : cards.get('global-vars');
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ block: 'center' });
+        target.style.outline = '2px solid var(--accent)';
+        setTimeout(() => { target.style.outline = ''; }, 2500);
+      }
+      if (wantLine) {
+        const box = cards.get('global-vars')?.querySelector('textarea');
+        if (box) box.focus();
+      }
+    }
+  }
 }

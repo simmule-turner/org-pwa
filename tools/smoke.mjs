@@ -4532,7 +4532,7 @@ check('the Text view: a blank row is as tall as a row of text even when its zero
   await context.close();
 });
 
-check('apropos-variable asks for a pattern and lists the matching variables with their values in *Apropos*', async () => {
+check('apropos-variable lists the matching variables as headings with an elisp: link, and the link opens the setting in Settings, highlighted', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 390, height: 844 });
   await newDocument(page, '* Notes\n');
@@ -4543,11 +4543,60 @@ check('apropos-variable asks for a pattern and lists the matching variables with
   });
   await page.waitForSelector('#minibufferPrompt input');
   expect((await page.locator('#minibufferPrompt').innerText()).includes('Apropos variable (word list or regexp)'), 'the prompt is Emacs\'s');
-  await page.fill('#minibufferPrompt input', 'org-log-done');
+  await page.fill('#minibufferPrompt input', '^org-log-\\(done\\|repeat\\)$');
   await page.press('#minibufferPrompt input', 'Enter');
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('*Apropos*'), null, { timeout: 8000 });
-  const text = await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.getElementById('document-text-edit-input')).value);
-  expect(text.includes('org-log-done\n  User option: Log completing a TODO\n  Value: time'), `the list: ${text.slice(0, 300)}`);
+  const text = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.state.doc.children.map((h) => h.title).join(','));
+  expect(text === 'org-log-done,org-log-repeat', `an Emacs regexp matched both, as headings: ${text}`);
+  expect((await page.locator('#outline').innerText()).includes('Value: time'), 'the value now is shown');
+  await page.locator('#outline a', { hasText: 'Open in Settings' }).first().click();
+  await page.waitForSelector('[data-setting-key="org-log-done"]', { timeout: 8000 });
+  expect(await page.locator('[data-setting-key="org-log-done"]').evaluate((e) => /** @type {HTMLElement} */ (e).style.outline !== ''), 'the field is highlighted');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Settings search: finds a variable by name, by words in any order or by its description; a result opens its field, or Global Variables with a (setq) line for a variable with no control', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  const search = page.locator('input[aria-label="Search settings"]');
+  const found = async (q) => {
+    await search.fill(q);
+    await page.waitForTimeout(200);
+    return page.locator('[data-variable-result]').evaluateAll((els) => els.map((e) => e.getAttribute('data-variable-result')));
+  };
+  expect((await found('org-tags-column')).includes('org-tags-column'), 'the variable name finds it');
+  expect((await found('tags column')).includes('org-tags-column'), 'words find it');
+  expect((await found('inline images')).includes('org-startup-with-inline-images'), 'the description finds it, whatever the order of the words');
+  expect((await found('org-agenda-span')).includes('org-agenda-span'), 'a variable with no control is found');
+  expect((await found('webdav')).length >= 0 && (await page.locator('.settings-section .panel-section-title', { hasText: 'WebDAV' }).count()) >= 1, 'a page card is still found');
+  // a hidden setting and a variable with no control open Global Variables with a (setq) line ready
+  await found('org-agenda-span');
+  await page.locator('[data-variable-result="org-agenda-span"] button').click();
+  await page.waitForSelector('.ui-overlay textarea', { timeout: 8000 });
+  const popup = await page.locator('.ui-overlay textarea').first().inputValue();
+  expect(popup.includes("(setq org-agenda-span 'week)"), `the line is ready: ${popup}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-agenda-show-future-repeats is a checkbox in the Agenda settings, on as in Emacs; turning it off is read by the Agenda', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  await settingsCategory(page, 'agenda');
+  const box = page.locator('[data-setting-key="org-agenda-show-future-repeats"] input[type=checkbox]');
+  await box.waitFor({ timeout: 8000 });
+  expect(await box.isChecked(), 'on by default');
+  await box.uncheck();
+  await page.waitForTimeout(300);
+  const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-agenda-show-future-repeats']);
+  expect(stored === 'nil', `stored as nil: ${stored}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5357,11 +5406,11 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
   await settingsCategory(page, 'advanced');
   await page.waitForFunction(() => document.body.textContent.includes('Search extra files'), null, { timeout: 8000 });
   const order = await page.evaluate(() => {
-    const wanted = ['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)'];
+    const wanted = ['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)']; // the Extras menu has no control now
     const leaves = [...document.querySelectorAll('*')].filter((e) => e.children.length === 0 && wanted.includes(e.textContent.trim()));
     return leaves.map((e) => e.textContent.trim());
   });
-  expect(JSON.stringify(order) === JSON.stringify(['Agenda files', 'Contacts files', 'Search extra files', 'Extras menu (\u2630)']), `the row order in Quick Settings: ${JSON.stringify(order)}`);
+  expect(JSON.stringify(order) === JSON.stringify(['Agenda files', 'Contacts files', 'Search extra files']), `the row order in Quick Settings: ${JSON.stringify(order)}`);
   await context.close();
 
   // a file listed as an agenda file AND as an extra file is searched once

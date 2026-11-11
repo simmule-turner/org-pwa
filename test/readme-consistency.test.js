@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { QUICK_SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
 
 // README.org is the user's reference. These checks keep it from drifting away from the code: the Contents list and the headings agree,
 // every link inside it lands somewhere, every variable it names exists, and every default it states is the default the app uses.
@@ -81,14 +81,14 @@ test('the variables table is alphabetical', () => {
 
 test('every setting in Quick Settings that is an org or Emacs variable is in the README table', () => {
   const documented = new Set(variableRows().map((r) => r.name));
-  const missing = QUICK_SETTINGS_FIELDS.map((f) => f.key).filter((k) => /^(org|calendar|diary|appt|buffer|holiday)-/.test(k) && !documented.has(k));
+  const missing = SETTINGS_FIELDS.map((f) => f.key).filter((k) => /^(org|calendar|diary|appt|buffer|holiday)-/.test(k) && !documented.has(k));
   assert.deepEqual(missing, []);
 });
 
 test('the default the README states for a variable is the default the setting has', () => {
   const rows = new Map(variableRows().map((r) => [r.name, r]));
   const wrong = [];
-  for (const f of QUICK_SETTINGS_FIELDS) {
+  for (const f of SETTINGS_FIELDS) {
     const row = rows.get(f.key);
     if (!row || f.default === undefined || f.type === 'hours24') continue; // a 24-hour switch, not the setting's own text
     const cell = /^~([^~]*)~/.exec(row.defaultCell);

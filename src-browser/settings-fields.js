@@ -34,9 +34,9 @@ import { DEFAULT_SIZE_LIMITS, FETCH_TIMEOUT_KEY, SIZE_KINDS, formatSize, validat
  *   - 'subsuper': org-use-sub-superscripts' own three-state value
  *     space (t / nil / {}), not a plain boolean.
  */
-/** @typedef {{ key: string, label: string, section: string, type: string, default?: any, helpAnchor?: string, [k: string]: any }} QuickSettingField */
+/** hidden: true is a setting with no control on any Settings page: it is still set from Global Variables and the Lisp init, with its type converting the value, and found by search. @typedef {{ key: string, label: string, section: string, type: string, default?: any, helpAnchor?: string, hidden?: boolean, [k: string]: any }} QuickSettingField */
 /** @type {QuickSettingField[]} */
-export const QUICK_SETTINGS_FIELDS = [
+export const SETTINGS_FIELDS = [
   {
     key: 'org-startup-folded',
     label: 'Initial heading visibility',
@@ -83,12 +83,13 @@ export const QUICK_SETTINGS_FIELDS = [
     label: 'Date/time format',
     section: 'Modeline',
     type: 'text',
-    default: '%H:%M',
+    hidden: true,
+    default: '',
     helpAnchor: '#modeline',
   },
   { key: 'org-log-done', label: 'Log completing a TODO', section: 'Progress logging', type: 'logdone', helpAnchor: '#progress-logging' },
   {
-    key: 'org-closed-keep-when-no-todo',
+    key: 'org-closed-keep-when-no-todo', hidden: true,
     label: 'Keep CLOSED when cycled to no TODO keyword',
     section: 'Progress logging',
     type: 'boolean',
@@ -96,7 +97,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#progress-logging',
   },
   {
-    key: 'org-clock-into-drawer',
+    key: 'org-clock-into-drawer', hidden: true,
     label: 'Clock lines go into a drawer',
     section: 'Clocking',
     type: 'text',
@@ -104,7 +105,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#clocking',
   },
   {
-    key: 'org-clock-out-switch-to-state',
+    key: 'org-clock-out-switch-to-state', hidden: true,
     label: 'Switch to this state when clocking out',
     section: 'Clocking',
     type: 'text',
@@ -112,7 +113,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#clocking',
   },
   {
-    key: 'org-clock-out-remove-zero-time-clocks',
+    key: 'org-clock-out-remove-zero-time-clocks', hidden: true,
     label: 'Remove clocks of zero minutes',
     section: 'Clocking',
     type: 'boolean',
@@ -127,12 +128,20 @@ export const QUICK_SETTINGS_FIELDS = [
     default: true,
     helpAnchor: '#agenda-behavior',
   },
+  {
+    key: 'org-agenda-show-future-repeats',
+    label: 'Show repeats in the future part of the Agenda',
+    section: 'Agenda',
+    type: 'boolean',
+    default: true,
+    helpAnchor: '#agenda-behavior',
+  },
   { key: 'org-habit-preceding-days', label: 'Habit graph: days before today', section: 'Agenda', type: 'number', default: 21, min: 0, max: 400, step: 1, helpAnchor: '#habits' },
   { key: 'org-habit-following-days', label: 'Habit graph: days after today', section: 'Agenda', type: 'number', default: 7, min: 0, max: 400, step: 1, helpAnchor: '#habits' },
   { key: 'org-habit-show-habits-only-for-today', label: 'Show habits only in today\u2019s Agenda', section: 'Agenda', type: 'boolean', default: true, helpAnchor: '#habits' },
   { key: 'org-habit-show-all-today', label: 'Show every habit today, even if not yet due', section: 'Agenda', type: 'boolean', default: false, helpAnchor: '#habits' },
   {
-    key: 'org-agenda-skip-archived-trees',
+    key: 'org-agenda-skip-archived-trees', hidden: true,
     label: 'Skip archived headings in Agenda',
     section: 'Agenda',
     type: 'boolean',
@@ -140,7 +149,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-behavior',
   },
   {
-    key: 'org-agenda-skip-comment-trees',
+    key: 'org-agenda-skip-comment-trees', hidden: true,
     label: 'Skip commented headings in Agenda',
     section: 'Agenda',
     type: 'boolean',
@@ -148,7 +157,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-behavior',
   },
   {
-    key: 'org-agenda-remove-times-when-in-prefix',
+    key: 'org-agenda-remove-times-when-in-prefix', hidden: true,
     label: 'Hide timestamps in Agenda titles',
     section: 'Agenda',
     type: 'boolean',
@@ -191,7 +200,7 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'diary-abbreviated-year-flag', label: 'Read a two-digit year as the year it ends', section: 'Diary', type: 'boolean', default: true, helpAnchor: '#diary-file' },
   { key: 'org-xx-diary-merge-rows', label: 'Rows as Org shows them (off: one row per entry)', section: 'Diary', type: 'boolean', default: true, helpAnchor: '#diary-file' },
   {
-    key: 'org-contacts-birthday-property',
+    key: 'org-contacts-birthday-property', hidden: true,
     label: 'Birthday property name (contacts)',
     section: 'Diary',
     type: 'text',
@@ -242,7 +251,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#agenda-diary-sexp',
   },
   {
-    key: 'org-weather-format',
+    key: 'org-weather-format', hidden: true,
     label: 'Format',
     section: 'Weather',
     type: 'text',
@@ -284,7 +293,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
-    key: 'org-cite-global-bibliography',
+    key: 'org-cite-global-bibliography', hidden: true,
     label: 'Bibliography files for every document',
     section: 'Citations',
     type: 'text',
@@ -292,7 +301,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#citations',
   },
   {
-    key: 'org-cite-basic-sorting-field',
+    key: 'org-cite-basic-sorting-field', hidden: true,
     label: 'Sort the bibliography by',
     section: 'Citations',
     type: 'text',
@@ -300,7 +309,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#citations',
   },
   {
-    key: 'org-cite-basic-author-year-separator',
+    key: 'org-cite-basic-author-year-separator', hidden: true,
     label: 'Between the references of one citation',
     section: 'Citations',
     type: 'text',
@@ -308,7 +317,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#citations',
   },
   {
-    key: 'org-footnote-section',
+    key: 'org-footnote-section', hidden: true,
     label: 'Heading that holds footnote definitions',
     section: 'Footnotes',
     type: 'text',
@@ -316,7 +325,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#footnotes',
   },
   {
-    key: 'org-footnote-auto-label',
+    key: 'org-footnote-auto-label', hidden: true,
     label: 'Label for a new footnote',
     section: 'Footnotes',
     type: 'select',
@@ -330,7 +339,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#footnotes',
   },
   {
-    key: 'org-footnote-auto-adjust',
+    key: 'org-footnote-auto-adjust', hidden: true,
     label: 'After adding or deleting a footnote',
     section: 'Footnotes',
     type: 'select',
@@ -344,7 +353,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#footnotes',
   },
   {
-    key: 'org-footnote-define-inline',
+    key: 'org-footnote-define-inline', hidden: true,
     label: 'Write new footnotes inline, where they are cited',
     section: 'Footnotes',
     type: 'boolean',
@@ -352,7 +361,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#footnotes',
   },
   {
-    key: 'org-tags-exclude-from-inheritance',
+    key: 'org-tags-exclude-from-inheritance', hidden: true,
     label: 'Tags that are not inherited',
     section: 'Search & tags',
     type: 'text',
@@ -360,7 +369,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
-    key: 'org-agenda-show-inherited-tags',
+    key: 'org-agenda-show-inherited-tags', hidden: true,
     label: 'Agenda and TODO lines show inherited tags (t, nil, always, or a list of agenda, todo, search)',
     section: 'Search & tags',
     type: 'text',
@@ -368,7 +377,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
-    key: 'org-agenda-use-tag-inheritance',
+    key: 'org-agenda-use-tag-inheritance', hidden: true,
     label: 'Views that use tag inheritance (t, nil, or a list of agenda, todo, search)',
     section: 'Search & tags',
     type: 'text',
@@ -384,7 +393,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#searching',
   },
   {
-    key: 'org-use-property-inheritance',
+    key: 'org-use-property-inheritance', hidden: true,
     label: 'Property search matches inherited values',
     section: 'Search & tags',
     type: 'boolean',
@@ -393,7 +402,7 @@ export const QUICK_SETTINGS_FIELDS = [
   },
   { key: 'org-tags-column', label: 'Tags column (0 = one space after the title, negative = right-aligned)', section: 'Editing', type: 'number', default: 0, min: -300, max: 300, step: 1, helpAnchor: '#configuration' },
   {
-    key: 'org-refile-allow-creating-parent-nodes',
+    key: 'org-refile-allow-creating-parent-nodes', hidden: true,
     label: 'Refile: create a new heading to file under',
     section: 'Editing',
     type: 'select',
@@ -422,7 +431,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#priorities',
   },
   {
-    key: 'org-priority-start-cycle-with-default',
+    key: 'org-priority-start-cycle-with-default', hidden: true,
     label: 'First priority step starts at the default',
     section: 'Editing',
     type: 'boolean',
@@ -430,7 +439,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#priorities',
   },
   {
-    key: 'org-priority-faces',
+    key: 'org-priority-faces', hidden: true,
     label: 'Priority colors, e.g. ((?A . error) (?B . "orange"))',
     section: 'Editing',
     type: 'text',
@@ -438,7 +447,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#priorities',
   },
   {
-    key: 'org-priority-default',
+    key: 'org-priority-default', hidden: true,
     label: 'Priority of headings without one (agenda ordering)',
     section: 'Editing',
     type: 'text',
@@ -447,7 +456,7 @@ export const QUICK_SETTINGS_FIELDS = [
   },
   { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper', helpAnchor: '#inline-text-markup' },
   {
-    key: 'org-table-duration-hour-zero-padding',
+    key: 'org-table-duration-hour-zero-padding', hidden: true,
     label: 'Zero-pad hours in duration formulas',
     section: 'Editing',
     type: 'boolean',
@@ -479,7 +488,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-export-with-broken-links',
+    key: 'org-export-with-broken-links', hidden: true,
     label: 'Links that lead nowhere',
     section: 'Export',
     type: 'select',
@@ -492,7 +501,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-html-doctype',
+    key: 'org-html-doctype', hidden: true,
     label: 'HTML export: document type',
     section: 'Export',
     type: 'select',
@@ -501,7 +510,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-html-checkbox-type',
+    key: 'org-html-checkbox-type', hidden: true,
     label: 'HTML export: checkbox style',
     section: 'Export',
     type: 'select',
@@ -514,7 +523,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-icalendar-include-todo',
+    key: 'org-icalendar-include-todo', hidden: true,
     label: 'Calendar export: tasks (VTODO)',
     section: 'Export',
     type: 'select',
@@ -529,7 +538,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-icalendar-use-scheduled',
+    key: 'org-icalendar-use-scheduled', hidden: true,
     label: 'Calendar export: SCHEDULED',
     section: 'Export',
     type: 'text',
@@ -537,7 +546,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-icalendar-use-deadline',
+    key: 'org-icalendar-use-deadline', hidden: true,
     label: 'Calendar export: DEADLINE',
     section: 'Export',
     type: 'text',
@@ -545,7 +554,7 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#export',
   },
   {
-    key: 'org-icalendar-with-timestamps',
+    key: 'org-icalendar-with-timestamps', hidden: true,
     label: 'Calendar export: timestamps in the text',
     section: 'Export',
     type: 'select',
@@ -559,7 +568,7 @@ export const QUICK_SETTINGS_FIELDS = [
     currentValue: (/** @type {string | undefined} */ raw) => (raw === undefined ? 'active' : raw.trim().replace(/^'/, '')),
     helpAnchor: '#export',
   },
-  { key: 'org-icalendar-alarm-time', label: 'Calendar export: alarm minutes before a timed event (0 for none)', section: 'Export', type: 'number', default: 0, min: 0, max: 1440, step: 1, helpAnchor: '#export' },
+  { key: 'org-icalendar-alarm-time', hidden: true, label: 'Calendar export: alarm minutes before a timed event (0 for none)', section: 'Export', type: 'number', default: 0, min: 0, max: 1440, step: 1, helpAnchor: '#export' },
   {
     key: 'org-xx-god-mode-button',
     label: 'Show the floating [g] god-mode button',
@@ -626,21 +635,21 @@ export const QUICK_SETTINGS_FIELDS = [
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-windowing-threshold', label: 'Long lists: draw only the rows on screen above this many rows (0 = always draw every row)', section: 'Editing', type: 'number', default: 400, min: 0, max: 100000, step: 50, helpAnchor: '#long-lists' },
   { key: 'org-xx-lisp-init', label: 'Lisp init (settings, holiday-* lists, capture templates)', section: 'Advanced (raw syntax)', type: 'longtext', lispString: true, helpAnchor: '#holidays' },
-  { key: 'org-agenda-sorting-strategy', label: 'Agenda row order, per view (default: ((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep)))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
-  { key: 'org-agenda-custom-commands', label: 'Agenda commands (saved queries: (("w" "Urgent work" tags "work+urgent")))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-commands' },
-  { key: 'org-modules', label: 'Modules (add org-inlinetask for inline tasks in exports)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
-  { key: 'org-inlinetask-min-level', label: 'Inline task level (default 15)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
+  { key: 'org-agenda-sorting-strategy', hidden: true, label: 'Agenda row order, per view (default: ((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep)))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda' },
+  { key: 'org-agenda-custom-commands', hidden: true, label: 'Agenda commands (saved queries: (("w" "Urgent work" tags "work+urgent")))', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-commands' },
+  { key: 'org-modules', hidden: true, label: 'Modules (add org-inlinetask for inline tasks in exports)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
+  { key: 'org-inlinetask-min-level', hidden: true, label: 'Inline task level (default 15)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#export' },
   { key: 'org-refile-targets', label: 'Refile targets', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#refile' },
-  { key: 'org-global-properties', label: 'Global properties', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#effort-all' },
+  { key: 'org-global-properties', hidden: true, label: 'Global properties', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#effort-all' },
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
   { key: 'org-contacts-files', label: 'Contacts files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#contacts-files' },
   { key: 'org-agenda-text-search-extra-files', label: 'Search extra files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#search-extra-files' },
-  { key: 'org-xx-extra-menu', label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu', entryTokenizer: tokenizeExtraMenuValue },
-  { key: 'org-xx-menu-aliases', label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
+  { key: 'org-xx-extra-menu', hidden: true, label: 'Extras menu (\u2630)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#extras-menu', entryTokenizer: tokenizeExtraMenuValue },
+  { key: 'org-xx-menu-aliases', hidden: true, label: 'Menu labels (File/More/Export/View)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#menu-customization', entryTokenizer: tokenizeMenuAliasValue },
   { key: 'diary-file', label: 'Diary file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
-  { key: 'diary-list-entries-hook', label: 'Diary hook (diary-include-other-diary-files, diary-sort-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
-  { key: 'diary-nongregorian-listing-hook', label: 'Hebrew, Islamic and Bahá\u2019í entries (diary-hebrew-list-entries, diary-islamic-list-entries, diary-bahai-list-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
-  { key: 'diary-date-forms', label: 'Diary date forms (Lisp list)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-list-entries-hook', hidden: true, label: 'Diary hook (diary-include-other-diary-files, diary-sort-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-nongregorian-listing-hook', hidden: true, label: 'Hebrew, Islamic and Bahá\u2019í entries (diary-hebrew-list-entries, diary-islamic-list-entries, diary-bahai-list-entries)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+  { key: 'diary-date-forms', hidden: true, label: 'Diary date forms (Lisp list)', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
   ...sizeLimitFields(),
 ];
 
@@ -661,11 +670,14 @@ function sizeLimitFields() {
     const info = SIZE_KINDS[kind];
     const limit = DEFAULT_SIZE_LIMITS[kind];
     if (info.warnKey && 'warn' in limit && limit.warn) {
-      fields.push({ key: info.warnKey, label: `${name}: ask before ${kind === 'attachment' ? 'attaching' : 'opening'} above (off = never ask)`, section: 'Size limits', type: 'text', default: formatSize(limit.warn).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
+      fields.push({ key: info.warnKey, label: `${name}: ask before ${kind === 'attachment' ? 'attaching' : 'opening'} above (off = never ask)`, section: 'Size limits', hidden: true, type: 'text', default: formatSize(limit.warn).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
     }
     const refuse = kind === 'image' ? 'show inline up to (a larger one waits for a tap on Load)' : 'refuse above (off = no limit)';
-    fields.push({ key: info.key, label: `${name}: ${refuse}`, section: 'Size limits', type: 'text', default: formatSize(limit.max).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
+    fields.push({ key: info.key, label: `${name}: ${refuse}`, section: 'Size limits', hidden: true, type: 'text', default: formatSize(limit.max).replace(' ', ''), validate: validateSizeSetting, helpAnchor: '#size-limits' });
   }
-  fields.push({ key: FETCH_TIMEOUT_KEY, label: 'Download timeout in seconds (off = none)', section: 'Size limits', type: 'text', default: String(DEFAULT_SIZE_LIMITS.fetchTimeoutSeconds), validate: validateTimeoutSetting, helpAnchor: '#size-limits' });
+  fields.push({ key: FETCH_TIMEOUT_KEY, label: 'Download timeout in seconds (off = none)', section: 'Size limits', hidden: true, type: 'text', default: String(DEFAULT_SIZE_LIMITS.fetchTimeoutSeconds), validate: validateTimeoutSetting, helpAnchor: '#size-limits' });
   return fields;
 }
+
+/** The settings that have a control on a Settings page. The rest of SETTINGS_FIELDS (`hidden`) are variables with no page: set from Global Variables or the Lisp init. */
+export const QUICK_SETTINGS_FIELDS = SETTINGS_FIELDS.filter((f) => !f.hidden);

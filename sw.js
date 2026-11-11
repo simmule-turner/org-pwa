@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v677';
+const CACHE_NAME = 'org-pwa-shell-v678';
 
 const SHELL_FILES = [
   './',
@@ -265,6 +265,9 @@ const SHELL_FILES = [
   './src/table-commands.js',
   './src/table-formula.js',
   './src/table-sort-lisp.js',
+  './src/variable-index.js',
+  './src/variable-catalog.js',
+  './src/elisp-link.js',
   './src/types.js',
   './src/settings-layout.js',
   './src/export-defaults.js',
@@ -371,6 +374,9 @@ const SHELL_FILES = [
   './src-browser/settings-export.js',
   './src-browser/table-edit.js',
   './src-browser/table-pad.js',
+  './src-browser/settings-focus.js',
+  './src-browser/customize-link.js',
+  './src-browser/variable-entries.js',
   './src-browser/table-recalc.js',
   './src-browser/tabs.js',
   './src-browser/todo-workflow.js',

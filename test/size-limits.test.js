@@ -16,7 +16,7 @@ import {
   validateSizeSetting,
   validateTimeoutSetting,
 } from '../src/size-limits.js';
-import { QUICK_SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { getSizeLimits } from '../src/size-limits.js';
 
@@ -82,7 +82,7 @@ test('settings validation says what is wrong and accepts good values', () => {
 });
 
 test('every Size limits setting is a text field with a default and a validator that accepts that default', () => {
-  const fields = QUICK_SETTINGS_FIELDS.filter((f) => f.section === 'Size limits');
+  const fields = SETTINGS_FIELDS.filter((f) => f.section === 'Size limits');
   assert.equal(fields.length, 9);
   for (const f of fields) {
     assert.equal(f.type, 'text');

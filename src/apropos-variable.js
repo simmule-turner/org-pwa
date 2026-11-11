@@ -1,53 +1,41 @@
 // @ts-check
 /**
- * apropos-variable: the variables whose names match a word, a list of words or a regexp, each with its description and value, as the
- * *Apropos* buffer of Emacs lists them. The pattern follows `apropos`: one word matches as a substring, a list of words matches the
- * names that hold at least two of them, and a pattern with regexp characters is a regexp. Case does not matter.
+ * apropos-variable: the variables whose names match a word, a list of words or a regexp, listed as an Org document with one heading per
+ * variable (its description, its value now, and a link to the setting), so the app's search, filter and fold work on the result. The
+ * pattern follows `apropos`: one word matches as a substring, a list of words matches the names that hold at least two of them, and a
+ * pattern with regexp characters is an Emacs regexp. Case does not matter.
  */
+import { compileFind } from './file-ops.js';
 
-/** @typedef {{ name: string, doc: string, value: string }} VariableEntry */
+/** @typedef {import('./variable-index.js').VariableEntry} VariableEntry */
+export { printedValue } from './variable-index.js';
 
 const REGEXP_CHARS = /[\\^$*+?.[\]]/;
 
-/** A name test for `pattern`; null when it is a regexp that does not compile.
+/** A name test for `pattern`; null when it is a regexp Emacs would refuse.
  * @param {string} pattern @returns {((name: string) => boolean) | null} */
 function matcher(pattern) {
   if (REGEXP_CHARS.test(pattern)) {
-    try {
-      const re = new RegExp(pattern, 'i');
-      return (name) => re.test(name);
-    } catch {
-      return null;
-    }
+    const compiled = compileFind(pattern);
+    return 'error' in compiled ? null : compiled.test;
   }
   const words = [...new Set(pattern.toLowerCase().split(/\s+/).filter(Boolean))];
   if (words.length <= 1) return (name) => words.length === 1 && name.toLowerCase().includes(words[0]);
   return (name) => words.filter((w) => name.toLowerCase().includes(w)).length >= 2;
 }
 
-/** The text with its words on lines of at most `width` columns, the lines after the first indented by `indent` spaces.
- * @param {string} text @param {number} indent @param {number} width */
-function fill(text, indent, width) {
-  const lines = [];
-  let line = '';
-  for (const word of text.split(/\s+/).filter(Boolean)) {
-    if (line && line.length + 1 + word.length > width) {
-      lines.push(line);
-      line = word;
-    } else line = line ? line + ' ' + word : word;
-  }
-  if (line) lines.push(line);
-  return lines.join('\n' + ' '.repeat(indent));
-}
+/** One line of text: newlines and runs of blanks become one space. @param {string} text */
+const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 
-/** A value as Emacs prints it: `'time` is the symbol `time`.
- * @param {string} raw */
-export function printedValue(raw) {
-  return raw.replace(/^'/, '');
+/** The Org text of one variable: a heading, its description and value, and the link that opens its setting.
+ * @param {VariableEntry} e */
+export function entryText(e) {
+  const link = e.control === 'field' ? 'Open in Settings' : 'Set in Global Variables';
+  return `* ${e.name}\nUser option: ${oneLine(e.doc) || '(not documented)'}\nValue: ${oneLine(e.value)}\n[[elisp:(customize-variable '${e.name})][${link}]]\n`;
 }
 
 /**
- * The text of the *Apropos* buffer for `pattern`, or null with the message Emacs gives when no variable matches.
+ * The Org text of the *Apropos* buffer for `pattern`, or the message Emacs gives when no variable matches.
  * @param {string} pattern @param {VariableEntry[]} entries
  * @returns {{ ok: true, text: string } | { ok: false, message: string }}
  */
@@ -56,6 +44,5 @@ export function aproposVariable(pattern, entries) {
   if (!test) return { ok: false, message: `Invalid regexp: ${pattern}` };
   const found = entries.filter((e) => test(e.name)).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   if (!found.length) return { ok: false, message: `No apropos matches for \`${pattern}'` };
-  const blocks = found.map((e) => `${e.name}\n  User option: ${fill(e.doc || '(not documented)', 15, 55)}\n  Value: ${e.value}`);
-  return { ok: true, text: `Type RET on a type label to view its full documentation.\n\n${blocks.join('\n')}\n` };
+  return { ok: true, text: `${found.map(entryText).join('')}\n# Local Variables:\n# buffer-read-only: t\n# End:\n` };
 }

@@ -15,7 +15,7 @@ import { S } from './app-state.js';
 import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
-import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
+import { QUICK_SETTINGS_FIELDS, SETTINGS_FIELDS } from './settings-fields.js';
 import { setGlobalVariables } from './settings.js';
 import { kv } from './singletons.js';
 import { entryFieldButtonStyle, menuButton, populateSelectOptions, settingsTextBox, textInputStyle } from './ui-widgets.js';
@@ -80,7 +80,7 @@ export function resolveQuickSettingValue(field) {
  *  the direction of being MORE complete, never less. */
 export function buildFullyResolvedGlobalVariablesText() {
   const resolved = { ...parseGlobalVariables(S.globalVariablesText) };
-  for (const field of QUICK_SETTINGS_FIELDS) {
+  for (const field of SETTINGS_FIELDS) {
     const value = resolveQuickSettingValue(field);
     if (value !== null) resolved[field.key] = value;
   }
@@ -134,6 +134,7 @@ onLispSettingsChange(() => {
 export function renderQuickSettingField(field) {
   const row = document.createElement('div');
   row.style.marginBottom = '10px';
+  row.dataset.settingKey = field.key;
 
   const headerRow = document.createElement('div');
   headerRow.style.display = 'flex';

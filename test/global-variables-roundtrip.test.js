@@ -3,7 +3,7 @@
 // init runs it here the same way), must come back as the setting's box text, and must not change when saved again.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { QUICK_SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
 import { settingsFromInit } from '../src-browser/lisp-settings.js';
 import { parseGlobalVariables, serializeGlobalVariables } from '../src-browser/global-variables-lisp.js';
 
@@ -27,7 +27,7 @@ function values(/** @type {any} */ f) {
   return [...out];
 }
 
-for (const f of QUICK_SETTINGS_FIELDS) {
+for (const f of SETTINGS_FIELDS) {
   if (OWN.has(f.key)) continue;
   test(`${f.key} goes through Global Variables text as Lisp and back`, () => {
     for (const v of values(f)) {

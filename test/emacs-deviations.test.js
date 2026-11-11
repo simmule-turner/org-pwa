@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { QUICK_SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
 
 const EMACS_CAPTURE_KEYWORDS = new Set([
   ':after-finalize', ':before-finalize', ':clock-in', ':clock-keep', ':clock-resume', ':empty-lines', ':empty-lines-after', ':empty-lines-before',
@@ -93,7 +93,7 @@ const EMACS_FORM = new Set([
 ]);
 
 test('every free-text setting is either written as Emacs writes it or is one of the app’s own (org-xx-)', () => {
-  const longtext = QUICK_SETTINGS_FIELDS.filter((f) => f.type === 'longtext').map((f) => f.key);
+  const longtext = SETTINGS_FIELDS.filter((f) => f.type === 'longtext').map((f) => f.key);
   assert.ok(longtext.length > 10);
   const unclassified = longtext.filter((k) => !EMACS_FORM.has(k) && !k.startsWith('org-xx-'));
   assert.deepEqual(unclassified, [], 'a free-text setting needs Emacs’s syntax (add it to EMACS_FORM once its value is read the way Emacs writes it) or an org-xx- name');

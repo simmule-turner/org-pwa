@@ -4,11 +4,11 @@
 // by the setting's type. Settings the app has no field for go through as typed.
 import { parseGlobalVariables as parseText, serializeGlobalVariables as serializeText } from '../src/global-variables.js';
 import { parseSize, formatSize } from '../src/size-limits.js';
-import { QUICK_SETTINGS_FIELDS } from './settings-fields.js';
+import { SETTINGS_FIELDS } from './settings-fields.js';
 
 /** @typedef {import('../src/global-variables.js').ValueCodec} ValueCodec */
 
-const FIELDS = new Map(QUICK_SETTINGS_FIELDS.map((f) => [f.key, f]));
+const FIELDS = new Map(SETTINGS_FIELDS.map((f) => [f.key, f]));
 /** Settings whose value is a string in Emacs (`nil` for none). */
 const STRINGS = /^(display-time-format|org-weather-format|org-contacts-birthday-property|org-footnote-section|org-cite-basic-author-year-separator|org-clock-out-switch-to-state|diary-file|org-xx-size-limit-.*|org-xx-fetch-timeout)$/;
 /** Settings whose value is a character (`?A`). */
