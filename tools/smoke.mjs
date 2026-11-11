@@ -9513,6 +9513,28 @@ check('table pad: the M-arrow, M-S-arrow, C-c - and C-c ^ chords act on a table,
   await context.close();
 });
 
+check('org-startup-indented: lines start at the left edge as in Emacs (a nested list still steps in); #+STARTUP: indent puts text, lists and tables under their heading', async () => {
+  const { context, page, errors } = await freshPage(main);
+  const lefts = () => page.evaluate(() => {
+    const at = (needle) => {
+      const hit = [...document.querySelectorAll('#outline *')].filter((e) => e.children.length === 0 && e.textContent.includes(needle))[0];
+      for (let e = hit; e && e.id !== 'outline'; e = e.parentElement) if (!/^(TD|TH)$/.test(e.tagName) && e.style && e.style.paddingLeft) return parseInt(e.style.paddingLeft, 10);
+      return -1;
+    };
+    return { heading: at('Deep'), text: at('A paragraph'), item: at('top item'), nested: at('nested item'), table: at('apple') };
+  });
+  const doc = ['* Top', '** Deep', 'A paragraph', '- top item', '  - nested item', '| apple | 3 |', ''];
+  await newDocument(page, doc.join('\n'));
+  let l = await lefts();
+  expect(l.heading === 8 && l.text === 8 && l.item === 8 && l.table === 8, `all at the edge: ${JSON.stringify(l)}`);
+  expect(l.nested === 24, `a nested list still steps in: ${JSON.stringify(l)}`);
+  await newDocument(page, ['#+STARTUP: indent'].concat(doc).join('\n'));
+  l = await lefts();
+  expect(l.heading === 24 && l.text === 40 && l.item === 40 && l.table === 40 && l.nested === 56, `under the heading with indent: ${JSON.stringify(l)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('table pad: C-c ^ asks for the kind of sort as Emacs does, and f asks for the key and compare functions by name', async () => {
   const { context, page, errors } = await freshPage(main);
   await newDocument(page, ['* T', '| fruit  | qty |', '|--------+-----|', '| apple  |   3 |', '| banana |  12 |', '| cherry |   7 |', ''].join('\n'));

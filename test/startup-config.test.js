@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg } from '../src/org-parser.js';
-import { parseStartupConfig, DEFAULT_STARTUP_CONFIG, getEffectiveVisibility, getEffectiveImageVisibility, showLevelsDepth } from '../src/startup-config.js';
+import { parseStartupConfig, DEFAULT_STARTUP_CONFIG, getEffectiveVisibility, getEffectiveImageVisibility, getEffectiveIndented, showLevelsDepth } from '../src/startup-config.js';
 
 test('defaults apply when there is no #+STARTUP line at all', () => {
   const doc = parseOrg('* A heading');
@@ -14,6 +14,7 @@ test('parses a single #+STARTUP line covering both categories', () => {
     visibility: 'overview',
     imageVisibility: 'inlineimages',
     logDone: null,
+    indented: false,
   });
 });
 
@@ -23,6 +24,7 @@ test('none, some, or both categories can be specified — unspecified ones keep 
     visibility: 'showeverything',
     imageVisibility: 'inlineimages',
     logDone: null,
+    indented: false,
   });
 });
 
@@ -42,6 +44,7 @@ test('multiple #+STARTUP lines can each set a different category without conflic
     visibility: 'overview',
     imageVisibility: 'inlineimages',
     logDone: null,
+    indented: false,
   });
 });
 
@@ -197,4 +200,13 @@ test('showLevelsDepth returns null for every other visibility keyword', () => {
 test('getEffectiveVisibility honors a showNlevels override from Local Variables', () => {
   const doc = parseOrg('* A heading');
   assert.equal(getEffectiveVisibility(doc, { 'org-startup-folded': 'show4levels' }, {}), 'show4levels');
+});
+
+test('org-startup-indented: off as in Emacs; #+STARTUP: indent turns it on and noindent off; the layers keep their order', () => {
+  assert.equal(getEffectiveIndented(parseOrg('* A')), false);
+  assert.equal(parseStartupConfig(parseOrg('#+STARTUP: indent\n* A')).indented, true);
+  assert.equal(parseStartupConfig(parseOrg('#+STARTUP: indent noindent\n* A')).indented, false);
+  assert.equal(getEffectiveIndented(parseOrg('* A'), null, { 'org-startup-indented': 't' }), true);
+  assert.equal(getEffectiveIndented(parseOrg('#+STARTUP: noindent\n* A'), null, { 'org-startup-indented': 't' }), false);
+  assert.equal(getEffectiveIndented(parseOrg('#+STARTUP: noindent\n* A'), { 'org-startup-indented': 't' }, null), true);
 });

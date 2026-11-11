@@ -553,6 +553,7 @@ Three layers set variables (Emacs Lisp variables or org directives), in org's ow
 | ~org-log-done~ | ~logdone~ (→ ~time~), ~lognotedone~ (→ ~note~), ~nologdone~ (→ ~nil~) |
 | ~org-log-into-drawer~ | ~logdrawer~ (→ ~t~), ~nologdrawer~ (→ ~nil~) |
 | ~org-log-repeat~ | ~logrepeat~ (→ ~time~), ~lognoterepeat~ (→ ~note~), ~nologrepeat~ (→ ~nil~) |
+| ~org-startup-indented~ | ~indent~ (→ ~t~), ~noindent~ (→ ~nil~) |
 | ~org-startup-folded~ | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ |
 | ~org-startup-with-inline-images~ | ~inlineimages~ (→ ~t~), ~noinlineimages~ (→ ~nil~) |
 
@@ -728,6 +729,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
+| ~org-startup-indented~ | ~nil~ | ~nil~ draws every line at the left edge, so tables and text have the most room; ~t~ (org-indent-mode) indents text, lists and tables under their heading's level; also ~#+STARTUP: indent~ and ~noindent~, and Settings → Quick Settings → *Startup* |
 | ~org-startup-truncated~ | ~t~ | ~t~ scrolls long lines of the Text view sideways; ~nil~ wraps them; also Settings → Quick Settings → *Editing* |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |

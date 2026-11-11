@@ -330,3 +330,8 @@ test('toggleHeadingTodo is a true two-state toggle when called repeatedly, not a
   assert.equal(toggleHeadingTodo(doc, heading, globalDefault), 'TODO');
   assert.equal(toggleHeadingTodo(doc, heading, globalDefault), null);
 });
+
+test('every row carries step, the indentation left with org-indent-mode off: 0 for headings and text, one per list level', () => {
+  const rows = flattenVisibleRows(parseOrg('* A\n** B\ntext\n- one\n  - two\n| x | y |\n'));
+  assert.deepEqual(rows.map((r) => [r.rowType, r.step]), [['heading', 0], ['heading', 0], ['paragraph', 0], ['list-item', 0], ['list-item', 1], ['table', 0]]);
+});

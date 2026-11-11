@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v677 — Org-indent-mode, and room between the table pad's arrows
+Headings, text, lists and tables now start at the left edge, as Emacs does with org-indent-mode off (its default), so a table shows more of its columns. ~org-startup-indented~ (also ~#+STARTUP: indent~ and ~noindent~, and Quick Settings → Startup) turns the old indentation under each heading back on. The four cursor arrows in the Table pad sit farther apart so a thumb lands on the one meant.
+Verified: browser check of both settings with headings, lists, a table and a nested list.
+
 * v676 — Table sort asks as Emacs does; Files closer to Dired
 Sorting a table (C-c ^, or Sort… in the Table pad) asks as org-table-sort-lines does: a, n, t or f, a capital to reverse; f takes the names of a key function and a compare function, run on the app's Lisp interpreter. In Files, Marks by pattern takes an Emacs regexp; folders sort in with files unless dired-listing-switches has --group-directories-first; Rename takes a path and moves (copy, then delete); a new folder in WebDAV or a browser's device folder is a real empty folder, with .gitkeep kept only for GitHub and the Android folder.
 Verified: sorts by function compared with Emacs 29.3; browser checks of the sort prompt and of Files in WebDAV.

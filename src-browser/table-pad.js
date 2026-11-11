@@ -34,17 +34,17 @@ export function renderTablePad(heading, table) {
   const pad = document.createElement('div');
   pad.dataset.tablePad = 'true';
   pad.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-control);';
-  /** @param {string} caption @returns {{ line: HTMLElement, add: (b: HTMLElement) => void }} */
-  const line = (caption) => {
+  /** @param {string} caption @param {number} [gap] @returns {{ line: HTMLElement, add: (b: HTMLElement) => void }} */
+  const line = (caption, gap = 4) => {
     const el = document.createElement('div');
-    el.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;';
+    el.style.cssText = `display:flex;flex-wrap:wrap;gap:${gap}px;align-items:center;`;
     const label = document.createElement('span');
     label.textContent = caption;
     label.style.cssText = 'font-size:11px;opacity:.7;min-width:56px;';
     el.appendChild(label);
     return { line: el, add: (b) => el.appendChild(b) };
   };
-  const cursor = line('Cursor');
+  const cursor = line('Cursor', 16); // the arrows sit apart so a thumb lands on the one meant
   for (const [text, name, dr, dc] of /** @type {[string, string, number, number][]} */ ([['←', 'Cell left', 0, -1], ['↑', 'Cell up', -1, 0], ['↓', 'Cell down', 1, 0], ['→', 'Cell right', 0, 1]])) {
     const b = smallButton(text, name);
     onPress(b, () => moveTableCellFocus(dr, dc));

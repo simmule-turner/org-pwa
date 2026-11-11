@@ -66,8 +66,9 @@ function flattenVisibleRows(doc) {
    * @param {any} headingNode
    * @param {number} depth
    * @param {string} keyPrefix
+   * @param {number} [step] how many lists deep: the indentation left when org-indent-mode is off
    */
-  function flattenListItems(items, headingNode, depth, keyPrefix) {
+  function flattenListItems(items, headingNode, depth, keyPrefix, step = 0) {
     let orderedCounter = 0;
     items.forEach((/** @type {any} */ item, /** @type {number} */ i) => {
       /** @type {number | null} */
@@ -77,9 +78,9 @@ function flattenVisibleRows(doc) {
         displayNumber = orderedCounter;
       }
       const key = `${keyPrefix}${i}`;
-      rows.push({ rowType: 'list-item', key, item, depth, heading: headingNode, displayNumber });
+      rows.push({ rowType: 'list-item', key, item, depth, step, heading: headingNode, displayNumber });
       for (const nestedList of item.children || []) {
-        flattenListItems(nestedList.items, headingNode, depth + 1, `${key}.`);
+        flattenListItems(nestedList.items, headingNode, depth + 1, `${key}.`, step + 1);
       }
     });
   }
@@ -95,7 +96,7 @@ function flattenVisibleRows(doc) {
       if (node.type === 'list') {
         flattenListItems(node.items, headingNode, depth, `${keyPrefix}${i}.`);
       } else {
-        rows.push({ rowType: node.type, key: `${keyPrefix}${i}`, node, depth, heading: headingNode });
+        rows.push({ rowType: node.type, key: `${keyPrefix}${i}`, node, depth, step: 0, heading: headingNode });
       }
     });
   }
@@ -110,7 +111,7 @@ function flattenVisibleRows(doc) {
       if (node.type !== 'heading') return;
       const key = `${keyPrefix}${i}`;
       const hasChildren = (node.children && node.children.length > 0) || (node.body && node.body.length > 0);
-      rows.push({ rowType: 'heading', key, node, depth, hasChildren });
+      rows.push({ rowType: 'heading', key, node, depth, step: 0, hasChildren });
 
       if (!node.collapsed) {
         if (!node.bodyHidden) flattenBody(node.body, node, depth + 1, `${key}.b`);

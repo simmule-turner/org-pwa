@@ -49,12 +49,14 @@ function showLevelsDepth(visibility) {
   return m ? Number(m[1]) : null;
 }
 const IMAGE_VISIBILITY_KEYWORDS = ['inlineimages', 'noinlineimages'];
+const INDENT_KEYWORDS = ['indent', 'noindent'];
 const LOG_DONE_KEYWORDS = { logdone: 'time', lognotedone: 'note' };
 
 const DEFAULT_STARTUP_CONFIG = {
   visibility: 'showeverything',
   imageVisibility: 'noinlineimages',
   logDone: null,
+  indented: false, // org-startup-indented is nil in Emacs
 };
 
 /** The raw #+STARTUP: values actually present in `doc`, with no
@@ -70,7 +72,7 @@ const DEFAULT_STARTUP_CONFIG = {
  * @param {Doc} doc
  *  must only win in the first case. */
 function parseStartupConfigRaw(doc) {
-  const raw = /** @type {{ visibility: string | null, imageVisibility: string | null, logDone: string | null }} */ ({ visibility: null, imageVisibility: null, logDone: null });
+  const raw = /** @type {{ visibility: string | null, imageVisibility: string | null, logDone: string | null, indented: boolean | null }} */ ({ visibility: null, imageVisibility: null, logDone: null, indented: null });
   for (const value of bufferKeywordValues(doc, 'STARTUP', true)) {
     for (const word of value.trim().split(/\s+/).filter(Boolean)) {
       const token = word.toLowerCase();
@@ -78,6 +80,8 @@ function parseStartupConfigRaw(doc) {
         raw.visibility = token;
       } else if (IMAGE_VISIBILITY_KEYWORDS.includes(token)) {
         raw.imageVisibility = token;
+      } else if (INDENT_KEYWORDS.includes(token)) {
+        raw.indented = token === 'indent';
       } else if (token in LOG_DONE_KEYWORDS) {
         raw.logDone = /** @type {any} */ (LOG_DONE_KEYWORDS)[token];
       }
@@ -97,6 +101,7 @@ export function parseStartupConfig(doc) {
     visibility: raw.visibility || DEFAULT_STARTUP_CONFIG.visibility,
     imageVisibility: raw.imageVisibility || DEFAULT_STARTUP_CONFIG.imageVisibility,
     logDone: raw.logDone,
+    indented: raw.indented === null ? DEFAULT_STARTUP_CONFIG.indented : raw.indented,
   };
 }
 
@@ -152,6 +157,21 @@ export function getEffectiveImageVisibility(doc, localVarsOnly, globalVarsOnly) 
   return DEFAULT_STARTUP_CONFIG.imageVisibility;
 }
 
+/** org-startup-indented (org-indent-mode on at startup): a file's Local Variables, then #+STARTUP: indent / noindent,
+ *  then the app-wide setting, then Emacs's default (nil).
+ * @param {Doc} doc
+ * @param {import('./types.js').LocalVars | null} [localVarsOnly]
+ * @param {import('./types.js').LocalVars | null} [globalVarsOnly] */
+export function getEffectiveIndented(doc, localVarsOnly, globalVarsOnly) {
+  const local = parseLispBooleanOrNull((localVarsOnly || {})['org-startup-indented']);
+  if (local !== null) return local;
+  const raw = parseStartupConfigRaw(doc);
+  if (raw.indented !== null) return raw.indented;
+  const global = parseLispBooleanOrNull((globalVarsOnly || {})['org-startup-indented']);
+  if (global !== null) return global;
+  return DEFAULT_STARTUP_CONFIG.indented;
+}
+
 /** Unlike local-variables.js's own parseLispBoolean, this returns null
  *  (rather than a fallback boolean) when unset/unrecognized -- needed
  *  here specifically so getEffectiveImageVisibility can tell "this
@@ -184,6 +204,7 @@ export function resolveEffectiveStartupConfig(doc, localVarsOnly, globalVarsOnly
     visibility: getEffectiveVisibility(doc, localVarsOnly, globalVarsOnly),
     imageVisibility: getEffectiveImageVisibility(doc, localVarsOnly, globalVarsOnly),
     logDone: parseStartupConfigRaw(doc).logDone,
+    indented: getEffectiveIndented(doc, localVarsOnly, globalVarsOnly),
   };
 }
 

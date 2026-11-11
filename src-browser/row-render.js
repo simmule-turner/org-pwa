@@ -181,6 +181,13 @@ export function renderActionMenu(actions, columns = 5) {
   return menu;
 }
 
+/** The left padding of a row: under its heading's level with org-indent-mode on, at the edge (a list's own nesting aside) with it off.
+ * @param {{ depth: number, step?: number }} row */
+function rowLeft(row) {
+  const indented = !!(S.state && S.state.startupConfig && S.state.startupConfig.indented);
+  return 8 + (indented ? row.depth : row.step || 0) * 16;
+}
+
 /**
  * @param {OutlineRow} row
  * @param {any} [todoSequence]
@@ -189,7 +196,7 @@ export function renderRow(row, todoSequence) {
   if (row.rowType === 'heading') {
     const el = document.createElement('div');
     el.className = 'row';
-    el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+    el.style.paddingLeft = rowLeft(row) + 'px';
     el.style.alignItems = 'flex-start';
     el.style.touchAction = 'pan-y';
     applyKeyboardFocusHighlight(el, row);
@@ -479,7 +486,7 @@ export function renderRow(row, todoSequence) {
   if (row.rowType === 'list-item') {
     const el = document.createElement('div');
     el.className = 'row';
-    el.style.paddingLeft = 8 + row.depth * 16 + 'px';
+    el.style.paddingLeft = rowLeft(row) + 'px';
     el.style.alignItems = 'flex-start';
     applyKeyboardFocusHighlight(el, row);
     if (row.item.checkbox !== null) {
@@ -621,7 +628,7 @@ export function renderRow(row, todoSequence) {
 
   const el = document.createElement('div');
   el.className = 'row';
-  el.style.paddingLeft = 8 + /** @type {{ depth: number }} */ (row).depth * 16 + 'px';
+  el.style.paddingLeft = rowLeft(row) + 'px';
   el.style.opacity = '0.6';
   el.style.fontStyle = 'italic';
   el.textContent = '[' + /** @type {{ rowType: string }} */ (row).rowType + ']';
@@ -631,7 +638,7 @@ export function renderRow(row, todoSequence) {
 /** @param {TableBodyRow} row */
 export function renderTableRow(row) {
   const wrap = document.createElement('div');
-  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.paddingLeft = rowLeft(row) + 'px';
   wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 
@@ -966,7 +973,7 @@ export function renderTableRow(row) {
     // here, which is why this calc() is asymmetric between the two
     // sides even though the visual RESULT (8px inset on each side) is
     // symmetric.
-    const indentPx = 8 + row.depth * 16; // matches wrap's own paddingLeft formula above exactly
+    const indentPx = rowLeft(row); // matches wrap's own paddingLeft formula above exactly
     const EDGE_MARGIN = 8; // matches the "8" base already used in that same formula and in .row's own padding elsewhere
     plotWrap.style.marginLeft = `calc(${EDGE_MARGIN}px - ${indentPx}px)`;
     plotWrap.style.width = `calc(100% + ${indentPx}px - ${EDGE_MARGIN * 2}px)`;
@@ -1015,7 +1022,7 @@ export function renderTableRow(row) {
  *  already cover for arbitrary raw content. */
 export function renderHrRow(row) {
   const wrap = document.createElement('div');
-  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.paddingLeft = rowLeft(row) + 'px';
   wrap.style.paddingRight = '8px';
   wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
@@ -1056,7 +1063,7 @@ function renderCaption(text, heading) {
 /** @param {ParagraphRow} row */
 export function renderParagraphRow(row) {
   const wrap = document.createElement('div');
-  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.paddingLeft = rowLeft(row) + 'px';
   wrap.style.margin = PARAGRAPH_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 
@@ -1296,7 +1303,7 @@ export function renderBlockContent(block, container, linkContext) {
 /** @param {BlockRow} row */
 export function renderBlockRow(row) {
   const wrap = document.createElement('div');
-  wrap.style.paddingLeft = 8 + row.depth * 16 + 'px';
+  wrap.style.paddingLeft = rowLeft(row) + 'px';
   wrap.style.margin = TABLES_MARGIN;
   applyKeyboardFocusHighlight(wrap, row);
 

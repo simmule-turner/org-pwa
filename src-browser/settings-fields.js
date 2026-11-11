@@ -47,6 +47,14 @@ export const QUICK_SETTINGS_FIELDS = [
     helpAnchor: '#folding-and-startup',
   },
   {
+    key: 'org-startup-indented',
+    label: 'Indent under headings (org-indent-mode)',
+    section: 'Startup',
+    type: 'boolean',
+    default: false,
+    helpAnchor: '#folding-and-startup',
+  },
+  {
     key: 'org-startup-with-inline-images',
     label: 'Show images inline on open',
     section: 'Startup',
