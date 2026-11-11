@@ -58,3 +58,15 @@ test('the modeline clock follows Emacs: nil is 2:05PM, display-time-24hr-format 
   assert.equal(getDisplayTimeFormat({ 'display-time-24hr-format': 'nil' }), '%-I:%M%p');
   assert.equal(getDisplayTimeFormat({ 'display-time-format': '"%b%d %H:%M"' }), '%b%d %H:%M');
 });
+
+test('the variables that have a Settings control and no catalog entry are in the index, each with the card that holds its control', async () => {
+  const { CARD_CONTROLS } = await import('../src-browser/settings-fields.js');
+  const { buildVariableIndex } = await import('../src/variable-index.js');
+  assert.ok(CARD_CONTROLS.length > 0);
+  const index = buildVariableIndex(CARD_CONTROLS, {});
+  for (const c of CARD_CONTROLS) {
+    const entry = index.find((e) => e.name === c.key);
+    assert.ok(entry, `${c.key} is listed`);
+    assert.ok(entry.card, `${c.key} names its card`);
+  }
+});

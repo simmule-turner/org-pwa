@@ -7,6 +7,11 @@
 /** @type {CatalogEntry[]} */
 export const VARIABLE_CATALOG = [
   {
+    "name": "buffer-read-only",
+    "doc": "Non-nil if this buffer is read-only.",
+    "default": "nil"
+  },
+  {
     "name": "calendar-bahai-all-holidays-flag",
     "doc": "If nil, show only major holidays from the Bahá’í calendar.",
     "default": "nil"

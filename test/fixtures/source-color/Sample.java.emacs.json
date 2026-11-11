@@ -1,0 +1,762 @@
+{
+ "lang": "java",
+ "mode": "java-mode",
+ "runs": [
+  [
+   "package",
+   "keyword"
+  ],
+  [
+   " com.",
+   null
+  ],
+  [
+   "example",
+   "constant"
+  ],
+  [
+   ";\n\n",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "java",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "util",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   ";\n\n",
+   null
+  ],
+  [
+   "/** Javadoc comment. */",
+   "doc"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "@Deprecated",
+   "c-annotation"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Sample",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "T",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Comparable",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "T",
+   "type"
+  ],
+  [
+   ">> ",
+   null
+  ],
+  [
+   "implements",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Runnable",
+   "type"
+  ],
+  [
+   " {\n    ",
+   null
+  ],
+  [
+   "// ",
+   "comment-delimiter"
+  ],
+  [
+   "line comment\n",
+   "comment"
+  ],
+  [
+   "    ",
+   null
+  ],
+  [
+   "/* ",
+   "comment-delimiter"
+  ],
+  [
+   "block comment",
+   "comment"
+  ],
+  [
+   " */",
+   "comment-delimiter"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "private",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "MAX",
+   "variable-name"
+  ],
+  [
+   " = 0xFF + 10L + 1_000;\n    ",
+   null
+  ],
+  [
+   "private",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "name",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "\"text \\\"q\\\" \\n\"",
+   "string"
+  ],
+  [
+   ";\n    ",
+   null
+  ],
+  [
+   "char",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "c",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "'x'",
+   "string"
+  ],
+  [
+   ";\n    ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "ok",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "true",
+   "constant"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "no",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "false",
+   "constant"
+  ],
+  [
+   ";\n    ",
+   null
+  ],
+  [
+   "Object",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "o",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "null",
+   "constant"
+  ],
+  [
+   ";\n\n    ",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " Sample(String name) { ",
+   null
+  ],
+  [
+   "this",
+   "keyword"
+  ],
+  [
+   ".name = name; }\n\n    ",
+   null
+  ],
+  [
+   "@Override",
+   "c-annotation"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "void",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "run",
+   "function-name"
+  ],
+  [
+   "() {\n        ",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   "> ",
+   null
+  ],
+  [
+   "xs",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "ArrayList",
+   "type"
+  ],
+  [
+   "<>();\n        ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   " = 0; i < 10; i++) { ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (i == 3) ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "else",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "break",
+   "keyword"
+  ],
+  [
+   "; }\n        ",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "throw",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "IllegalStateException",
+   "type"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"x\"",
+   "string"
+  ],
+  [
+   "); }\n        ",
+   null
+  ],
+  [
+   "catch",
+   "keyword"
+  ],
+  [
+   " (RuntimeException e) { System.out.println(e); }\n        ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   "; }\n    }\n\n    ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " <",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   "> ",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "id",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "u",
+   "variable-name"
+  ],
+  [
+   ") { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " u; }\n    ",
+   null
+  ],
+  [
+   "enum",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Color",
+   "type"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "RED",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "GREEN",
+   "variable-name"
+  ],
+  [
+   " }\n    ",
+   null
+  ],
+  [
+   "interface",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Thing",
+   "type"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "void",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "go",
+   "function-name"
+  ],
+  [
+   "(); }\n    ",
+   null
+  ],
+  [
+   "abstract",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "synchronized",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "void",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "m",
+   "function-name"
+  ],
+  [
+   "() ",
+   null
+  ],
+  [
+   "throws",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Exception",
+   "type"
+  ],
+  [
+   ";\n    ",
+   null
+  ],
+  [
+   "double",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "d",
+   "variable-name"
+  ],
+  [
+   " = 3.14e2f;\n    ",
+   null
+  ],
+  [
+   "var",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "v",
+   "variable-name"
+  ],
+  [
+   " = (",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   ") o ",
+   null
+  ],
+  [
+   "instanceof",
+   "keyword"
+  ],
+  [
+   " String;\n}\n",
+   null
+  ]
+ ]
+}

@@ -10,6 +10,7 @@ import { parseBody } from '../src/body-parser.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { guessImageMimeType, guessViewableMimeType, resolveAttachmentDirectory, resolveAttachmentTarget } from '../src/link-resolve.js';
 import { detectWebmHasVideoTrack } from '../src/webm-track-detect.js';
+import { VariableValueError } from '../src/variable-error.js';
 import { S } from './app-state.js';
 import { openAudioRecordingPanel } from './audio-recording.js';
 import { promptText, confirmDialog, openButtonChoiceModal, openGridChoiceModal, openMultiFieldPopup, openTextFieldPopup, pickBinaryFiles, showModalOverlay } from './dialogs.js';
@@ -571,12 +572,7 @@ export function setAttachmentDirectory(heading) {
     label: 'Attachment folder (DIR)',
     fields: [{ key: 'dir', label: 'Folder, relative to this file (start with / for the root)', type: 'text', value: getProperty(heading, 'DIR') || '', placeholder: 'e.g. files/report' }],
     onSave: async (/** @type {any} */ values) => {
-      const dir = attachmentDirFromProperty(values.dir, S.state.documentId);
-      if (!dir) {
-        setStatus('That is not a folder I can use (no empty names, "..", or backslashes).');
-        render();
-        return;
-      }
+      const dir = attachmentDirFromProperty(values.dir, S.state.documentId); // an unusable value is a VariableValueError that names DIR
       setProperty(heading, 'DIR', values.dir.trim());
       await syncAttachTag(heading);
       setStatus(`Attachments for this heading are now in ${dir}.`);
@@ -613,7 +609,12 @@ export async function unsetAttachmentDirectory(heading) {
     render();
     return;
   }
-  const dir = attachmentDirFromProperty(getProperty(heading, 'DIR'), S.state.documentId);
+  /** @type {string | null} */ let dir = null;
+  try {
+    dir = attachmentDirFromProperty(getProperty(heading, 'DIR'), S.state.documentId);
+  } catch (err) {
+    if (!(err instanceof VariableValueError)) throw err; // a DIR that names no folder holds nothing, and can still be removed
+  }
   const names = dir && attachmentsAvailable() ? (await listFolder(dir)) || [] : [];
   /** @param {string} message */
   const finish = async (message) => {

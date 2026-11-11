@@ -14,6 +14,8 @@ import { readStuckSettings, stuckProjectItems } from '../src/agenda-stuck.js';
 import { agendaSkipper } from '../src/agenda-skip.js';
 import { readLogSettings } from '../src/agenda-log.js';
 import { readDaySettings } from '../src/agenda-emacs-days.js';
+import { getDeadlineWarningDays } from '../src/local-variables.js';
+import { VariableValueError } from '../src/variable-error.js';
 
 // examples/agenda-settings.org shows the rows Emacs 29.3 gave for each scenario (tools/gen-agenda-settings-example.mjs). The app, given the
 // same settings, must give the same rows.
@@ -66,6 +68,11 @@ function isoWeek(date) {
 for (const c of SCENARIOS) {
   test(`agenda-settings.org: ${c.title}`, () => {
     const vars = c.vars;
+    if (c.id === 'unusable-value') { // Emacs stops with its own text (shown in the file); the app names the variable and the value
+      assert.deepEqual(shown(c.id), ['Wrong type argument: number-or-marker-p, soon']);
+      assert.throws(() => getDeadlineWarningDays(vars), (e) => e instanceof VariableValueError && /org-deadline-warning-days/.test(e.message) && /soon/.test(e.message));
+      return;
+    }
     if (c.kind === 'stuck') {
       const items = stuckProjectItems(weekDocs, readStuckSettings(vars['org-stuck-projects']), { ...keywords, now: new Date(2027, 2, 15) });
       assert.deepEqual(items.map((item) => flat(prefix(item, vars, 'tags', weekDocs) + ' ' + headline(item))), shown(c.id).map(flat));

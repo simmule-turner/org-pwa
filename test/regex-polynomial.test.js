@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { print, run } from '../src/elisp.js';
 import { toRegExp } from '../src/elisp-regex.js';
-import { guardFor, guardedSearch } from '../src/regex-guard.js';
+import { checkFailureStack, guardFor, guardedSearch } from '../src/regex-guard.js';
 
 // A pattern with two unbounded repetitions side by side (`.*.*.*x`) takes polynomial time to fail; on a long input the native
 // engine cannot be interrupted, so such a pattern runs in the step-limited matcher once the input is long.
@@ -54,5 +54,26 @@ test('a guarded polynomial pattern gives the native answer, groups included', ()
       assert.equal(got.end, want.index + want[0].length, re);
       for (let g = 1; g < want.length; g++) assert.deepEqual([got.caps[g * 2], got.caps[g * 2 + 1]], want.indices[g] ?? [-1, -1], `${re} group ${g}`);
     }
+  }
+});
+
+// Lazy loops over groups. Emacs 29.3 on a string of one repeated unit with no `c`: a lazy loop pushes nothing itself, 3 words a round for a
+// capture group around the body and 3 for a branch that has later branches to try; the stack holds 800,000 words. "overflow" below is what
+// string-match answered at 400,000 rounds (and, where listed, none at 200,000 / 100,000), "none" is no error up to 400,000.
+test('lazy loops over groups overflow Emacs\'s failure stack at the length Emacs does', { timeout: 60_000 }, () => {
+  const cases = [
+    ['\\\\(?:a\\\\|b\\\\)*?c', 'a', 280000, true], ['\\\\(?:a\\\\|b\\\\)*?c', 'a', 200000, false], ['\\\\(?:a\\\\|b\\\\)*?c', 'b', 400000, false],
+    ['\\\\(a\\\\|b\\\\)*?c', 'a', 150000, true], ['\\\\(a\\\\|b\\\\)*?c', 'a', 100000, false], ['\\\\(a\\\\|b\\\\)*?c', 'b', 280000, true],
+    ['\\\\(ab\\\\)*?c', 'ab', 280000, true], ['\\\\(?:ab\\\\)*?c', 'ab', 400000, false], ['\\\\(?:a\\\\|b\\\\)+?c', 'a', 280000, true],
+  ];
+  for (const [re, unit, rounds, overflows] of cases) {
+    // a failing search that does not overflow runs from every start position (quadratic, minutes in Emacs): those are checked on the walk only
+    if (!overflows) {
+      const rx = toRegExp(re.replace(/\\\\/g, '\\'));
+      assert.doesNotThrow(() => checkFailureStack(rx.source, rx.flags, unit.repeat(rounds), 0), `${re} on ${unit} x${rounds}`);
+      continue;
+    }
+    const r = lisp(`(condition-case e (string-match "${re}" (apply #'concat (make-list ${rounds} "${unit}"))) (error (cadr e)))`);
+    assert.deepEqual(r, { ok: true, value: '"Stack overflow in regexp matcher"' }, `${re} on ${unit} x${rounds}`);
   }
 });

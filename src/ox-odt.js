@@ -716,6 +716,10 @@ const FACE_COLORS = /** @type {Record<string, string>} */ ({
   'function-name': '#0000ff',
   'variable-name': '#b8860b',
   preprocessor: '#483d8b',
+  doc: '#8b2252',
+  'comment-delimiter': '#b22222',
+  warning: '#ff0000',
+  'c-annotation': '#5f9ea0',
 });
 
 // ---- elements --------------------------------------------------------------------------------------

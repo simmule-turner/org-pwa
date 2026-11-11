@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { VariableValueError } from '../src/variable-error.js';
 import {
   generateAttachmentId,
   splitAttachmentId,
@@ -313,17 +315,21 @@ test('shouldInsertAttachmentLink: media by default, everything when always, noth
   assert.equal(normalizeAttachLinkMode('never'), 'never');
 });
 
-test('attachmentDirFromProperty: relative to the document folder, "/" for the storage root, and nothing that could escape', () => {
-  assert.equal(attachmentDirFromProperty('files/report', 'org-pwa/foo.org'), 'org-pwa/files/report');
-  assert.equal(attachmentDirFromProperty('./files/', 'foo.org'), 'files');
-  assert.equal(attachmentDirFromProperty('/shared/docs', 'org-pwa/foo.org'), 'shared/docs');
-  for (const bad of ['', '   ', '..', 'a/../b', 'a//b', 'a\\b', '/', '.']) assert.equal(attachmentDirFromProperty(bad, 'foo.org'), null, `refused: ${JSON.stringify(bad)}`);
+test('attachmentDirFromProperty names the folder Emacs names, for a document in org-pwa/ (expand-file-name, asked of Emacs 29.3)', () => {
+  const oracle = JSON.parse(readFileSync(new URL('./fixtures/attach-dir-oracle.json', import.meta.url), 'utf8'));
+  for (const [dir, emacs] of Object.entries(oracle)) {
+    const want = emacs.replace(/^(\/\.\.)+/, '').replace(/^\//, ''); // above the top is the top (/../x is /x)
+    if (want === '') assert.throws(() => attachmentDirFromProperty(dir, 'org-pwa/foo.org'), /top of the storage/, dir);
+    else assert.equal(attachmentDirFromProperty(dir, 'org-pwa/foo.org'), want, dir);
+  }
+  assert.equal(attachmentDirFromProperty('../x', 'foo.org'), 'x', 'a document at the top of the storage');
 });
 
-test('ownAttachmentDirectory: DIR wins over ID, an unusable DIR falls back to the ID, neither gives null', () => {
+test('a DIR that cannot name a folder in the storage is an error that names DIR, never the ID folder', () => {
+  for (const bad of ['', '   ', 'a\\b', '~/files', '/']) assert.throws(() => attachmentDirFromProperty(bad, 'foo.org'), (e) => e instanceof VariableValueError && /^DIR is /.test(e.message), JSON.stringify(bad));
   const props = (object) => ({ properties: object, propertyOrder: Object.keys(object) });
+  assert.throws(() => ownAttachmentDirectory(props({ DIR: '~/x', ID: 'abcdef-1' }), 'foo.org'), /DIR is "~\/x": the home folder/);
   assert.equal(ownAttachmentDirectory(props({ DIR: 'files', ID: 'abcdef-1' }), 'foo.org'), 'files');
-  assert.equal(ownAttachmentDirectory(props({ DIR: '../x', ID: 'abcdef-1' }), 'foo.org'), 'data/ab/cdef-1');
   assert.equal(ownAttachmentDirectory(props({ ID: 'abcdef-1' }), 'org-pwa/foo.org'), 'org-pwa/data/ab/cdef-1');
   assert.equal(ownAttachmentDirectory(props({}), 'foo.org'), null);
 });

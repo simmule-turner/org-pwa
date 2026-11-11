@@ -13,6 +13,7 @@ import { links } from './extension-links.js';
 import { saveOut } from './save-out.js';
 import { applyEdits, snapshotDocument, snapshotStillMatches, validateEdits } from '../src/extension-edit.js';
 import { onExtensionEvent } from './extension-events.js';
+import { VariableValueError } from '../src/variable-error.js';
 import { EDIT_EVENTS, extensionsOn, hashScript, userSexpKey, userSexpResult, visibleVariableMap, usableSexpName } from '../src/extensions.js';
 import { getCalendarLatitude, getCalendarLongitude } from '../src/local-variables.js';
 import { setUserSexps } from '../src/sexp-eval.js';
@@ -171,7 +172,16 @@ export async function loadExtensions() {
   info.file = await getExtensionFile(kv);
   info.fileError = '';
   info.script = await getExtensionScript(kv);
-  if (info.file && extensionsOn(S.globalVariables)) {
+  /** @type {boolean} */ let enabled;
+  try {
+    enabled = extensionsOn(S.globalVariables);
+  } catch (err) {
+    if (!(err instanceof VariableValueError)) throw err;
+    info.state = 'failed'; // org-xx-extensions holds something that is not on or off: say so, and run nothing
+    info.message = err.message;
+    return;
+  }
+  if (info.file && enabled) {
     // The script is the tangled text of a document the person named; nothing else is ever read.
     try {
       info.script = await readScriptFromFile(info.file);
@@ -182,7 +192,7 @@ export async function loadExtensions() {
   }
   info.hash = info.script ? await hashScript(info.script) : '';
   info.message = '';
-  if (!extensionsOn(S.globalVariables)) {
+  if (!enabled) {
     info.state = 'off';
     return;
   }

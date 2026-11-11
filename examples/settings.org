@@ -1,0 +1,518 @@
+#+TITLE: Every setting, with its default
+#+STARTUP: showall
+
+Every variable the app reads, in alphabetical order, as it would stand in the Lisp init (Settings → Advanced → *Lisp init*) or in Global Variables. Each is a commented-out ~(setq NAME DEFAULT)~ with a one-line description: remove the two semicolons to set it. A ~*~ before a name means the variable has no control in Settings; it is set here, or in Global Variables, only. The defaults of Emacs's variables are Emacs 29.3's; a note says where the app starts from something else.
+
+Setting every line below to the value shown changes nothing.
+
+#+BEGIN_SRC emacs-lisp
+;; * buffer-read-only: Non-nil if this buffer is read-only.
+;; (setq buffer-read-only nil)
+
+;; * calendar-bahai-all-holidays-flag: If nil, show only major holidays from the Bahá’í calendar.
+;; (setq calendar-bahai-all-holidays-flag nil)
+
+;; * calendar-christian-all-holidays-flag: If nil, show only major holidays from the Christian calendar.
+;; (setq calendar-christian-all-holidays-flag nil)
+
+;;   calendar-date-style: Order of a date in diary entries: american, european or iso.
+;; (setq calendar-date-style 'american)
+
+;; * calendar-hebrew-all-holidays-flag: If nil, show only major holidays from the Hebrew calendar.
+;; (setq calendar-hebrew-all-holidays-flag nil)
+
+;; * calendar-islamic-all-holidays-flag: If nil, show only major holidays from the Islamic calendar.
+;; (setq calendar-islamic-all-holidays-flag nil)
+
+;;   calendar-latitude: Latitude for sun times and org-weather.
+;; (setq calendar-latitude nil)
+
+;;   calendar-longitude: Longitude for the same.
+;; (setq calendar-longitude nil)
+
+;;   calendar-time-display-form: How solar-time-string shows a time.
+;; (setq calendar-time-display-form '(12-hours ":" minutes am-pm (if time-zone " (") time-zone (if time-zone ")")))
+
+;;   diary-abbreviated-year-flag: Whether a two-digit year in a diary date is the year it ends.
+;; (setq diary-abbreviated-year-flag t)
+
+;; * diary-date-forms: List of pseudo-patterns describing the forms of date used in the diary.
+;; (setq diary-date-forms '((month "/" day "[^/0-9]") (month "/" day "/" year "[^0-9]") (monthname " *" day "[^,0-9]") (monthname " *" day ", *" year "[^0-9]") (dayname "\\W")))
+
+;;   diary-file: The diary: one github:, webdav: or local: file.
+;; (setq diary-file VALUE)   ; no diary; Emacs: "~/.emacs.d/diary"
+
+;; * diary-hebrew-sabbath-candles-minutes: Number of minutes before sunset for sabbath candle lighting.
+;; (setq diary-hebrew-sabbath-candles-minutes 18)
+
+;; * diary-include-string: The string indicating inclusion of another file of diary entries.
+;; (setq diary-include-string "#include")
+
+;; * diary-list-entries-hook: Hook run after diary file is culled for relevant entries.
+;; (setq diary-list-entries-hook nil)
+
+;; * diary-nongregorian-listing-hook: List of functions called for listing diary file and included files.
+;; (setq diary-nongregorian-listing-hook nil)
+
+;; * diary-nonmarking-symbol: Symbol indicating that a diary entry is not to be marked in the calendar.
+;; (setq diary-nonmarking-symbol "&")
+
+;; * diary-sexp-entry-symbol: The string used to indicate a sexp diary entry in `diary-file'.
+;; (setq diary-sexp-entry-symbol "%%")
+
+;;   diary-show-holidays-flag: Whether a day's holidays are listed with its diary entries.
+;; (setq diary-show-holidays-flag t)
+
+;;   display-line-numbers-mode: Whether each row shows its line number in the file.
+;; (setq display-line-numbers-mode nil)
+
+;;   display-line-numbers-type: How lines are numbered: t, relative or visual.
+;; (setq display-line-numbers-type t)
+
+;;   display-line-numbers-widen: Whether a narrowed outline keeps the file’s own line numbers.
+;; (setq display-line-numbers-widen nil)
+
+;; * display-time-24hr-format: Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23.
+;; (setq display-time-24hr-format nil)
+
+;; * display-time-format: String specifying format for displaying the time in the mode line.
+;; (setq display-time-format nil)
+
+;;   display-time-mode: Whether the mode line shows the date and time: 1 on, 0 off.
+;; (setq display-time-mode 1)   ; Emacs: nil
+
+;; * large-file-warning-threshold: Size in bytes above which an Org file asks before it opens (this app: 500KB; Emacs: 10000000).
+;; (setq large-file-warning-threshold 512000)
+
+;; * org-agenda-category-filter-preset: A preset of the category filter used for secondary agenda filtering.
+;; (setq org-agenda-category-filter-preset nil)
+
+;; * org-agenda-clock-consistency-checks: Limits for the clock consistency checks of the Agenda clock report (a property list).
+;; (setq org-agenda-clock-consistency-checks '(:max-duration "10:00" :min-duration 0 :max-gap "0:05" :gap-ok-around ("4:00") :default-face ((:background "DarkRed") (:foreground "white")) :overlap-face nil :gap-face nil :no-end-time-face nil :long-face nil :short-face nil))
+
+;; * org-agenda-cmp-user-defined: A function to define the comparison `user-defined'.
+;; (setq org-agenda-cmp-user-defined nil)
+
+;; * org-agenda-custom-commands: Custom commands for the agenda (this app has no built-in "n" command; Emacs has one).
+;; (setq org-agenda-custom-commands nil)
+
+;; * org-agenda-effort-filter-preset: A preset of the effort condition used for secondary agenda filtering.
+;; (setq org-agenda-effort-filter-preset nil)
+
+;;   org-agenda-files: More files for the Agenda and TODO views.
+;; (setq org-agenda-files nil)   ; nil: the open file only
+
+;;   org-agenda-include-diary: Whether the entries of diary-file are in the Agenda.
+;; (setq org-agenda-include-diary nil)
+
+;; * org-agenda-include-inactive-timestamps: Non-nil means include inactive time stamps in agenda.
+;; (setq org-agenda-include-inactive-timestamps nil)
+
+;; * org-agenda-log-mode-add-notes: Non-nil means add first line of notes to log entries in agenda views.
+;; (setq org-agenda-log-mode-add-notes t)
+
+;; * org-agenda-log-mode-items: List of items that should be shown in agenda log mode.
+;; (setq org-agenda-log-mode-items '(closed clock))
+
+;; * org-agenda-max-effort: Maximum cumulated effort duration for the agenda.
+;; (setq org-agenda-max-effort nil)
+
+;; * org-agenda-prefer-last-repeat: Non-nil sets date for repeated entries to their last repeat.
+;; (setq org-agenda-prefer-last-repeat nil)
+
+;; * org-agenda-prefix-format: Format specifications for the prefix of items in the agenda views.
+;; (setq org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t% s") (todo . " %i %-12:c") (tags . " %i %-12:c") (search . " %i %-12:c")))
+
+;; * org-agenda-regexp-filter-preset: A preset of the regexp filter used for secondary agenda filtering.
+;; (setq org-agenda-regexp-filter-preset nil)
+
+;; * org-agenda-remove-times-when-in-prefix: Non-nil means remove duplicate time specifications in agenda items.
+;; (setq org-agenda-remove-times-when-in-prefix t)
+
+;; * org-agenda-search-view-always-boolean: Non-nil means the search string is interpreted as individual parts.
+;; (setq org-agenda-search-view-always-boolean nil)
+
+;; * org-agenda-search-view-force-full-words: Non-nil means, search words must be matches as complete words.
+;; (setq org-agenda-search-view-force-full-words nil)
+
+;; * org-agenda-search-view-max-outline-level: Maximum outline level to display in search view.
+;; (setq org-agenda-search-view-max-outline-level 0)
+
+;;   org-agenda-show-all-dates: Whether days with nothing on them show in the Agenda.
+;; (setq org-agenda-show-all-dates t)
+
+;;   org-agenda-show-future-repeats: Whether repeating items show in the future part of the Agenda.
+;; (setq org-agenda-show-future-repeats t)
+
+;; * org-agenda-show-inherited-tags: Non-nil means show inherited tags in each agenda line.
+;; (setq org-agenda-show-inherited-tags t)
+
+;; * org-agenda-skip-additional-timestamps-same-entry: When nil, multiple same-day timestamps in entry make multiple agenda lines.
+;; (setq org-agenda-skip-additional-timestamps-same-entry nil)
+
+;; * org-agenda-skip-archived-trees: Non-nil means the agenda will skip any items located in archived trees.
+;; (setq org-agenda-skip-archived-trees t)
+
+;; * org-agenda-skip-comment-trees: Non-nil means skip trees that start with the COMMENT keyword.
+;; (setq org-agenda-skip-comment-trees t)
+
+;; * org-agenda-skip-deadline-prewarning-if-scheduled: Non-nil means skip deadline prewarning when entry is also scheduled.
+;; (setq org-agenda-skip-deadline-prewarning-if-scheduled nil)
+
+;; * org-agenda-skip-function: Function to be called at each match during agenda construction.
+;; (setq org-agenda-skip-function nil)
+
+;; * org-agenda-skip-function-global: Function to be called at each match during agenda construction.
+;; (setq org-agenda-skip-function-global nil)
+
+;; * org-agenda-skip-scheduled-delay-if-deadline: Non-nil means skip scheduled delay when entry also has a deadline.
+;; (setq org-agenda-skip-scheduled-delay-if-deadline nil)
+
+;; * org-agenda-skip-scheduled-if-deadline-is-shown: Non-nil means skip scheduling line if same entry shows because of deadline.
+;; (setq org-agenda-skip-scheduled-if-deadline-is-shown nil)
+
+;; * org-agenda-skip-timestamp-if-deadline-is-shown: Non-nil means skip timestamp line if same entry shows because of deadline.
+;; (setq org-agenda-skip-timestamp-if-deadline-is-shown nil)
+
+;; * org-agenda-skip-timestamp-if-done: Non-nil means don't select item by timestamp or -range if it is DONE.
+;; (setq org-agenda-skip-timestamp-if-done nil)
+
+;; * org-agenda-sorting-strategy: Sorting structure for the agenda items of a single day.
+;; (setq org-agenda-sorting-strategy '((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep) (tags priority-down category-keep) (search category-keep)))
+
+;; * org-agenda-span: Number of days to include in overview display.
+;; (setq org-agenda-span 'week)
+
+;; * org-agenda-start-day: Start day for the agenda view.
+;; (setq org-agenda-start-day nil)
+
+;;   org-agenda-start-on-weekday: The Week view's first day: 0 is Sunday through 6 Saturday.
+;; (setq org-agenda-start-on-weekday 1)
+
+;; * org-agenda-start-with-log-mode: The initial value of log-mode in a newly created agenda window.
+;; (setq org-agenda-start-with-log-mode nil)
+
+;; * org-agenda-tag-filter-preset: A preset of the tags filter used for secondary agenda filtering.
+;; (setq org-agenda-tag-filter-preset nil)
+
+;;   org-agenda-text-search-extra-files: More files for text search only.
+;; (setq org-agenda-text-search-extra-files nil)
+
+;; * org-agenda-todo-ignore-deadlines: Non-nil means ignore some deadline TODO items when making TODO list.
+;; (setq org-agenda-todo-ignore-deadlines nil)
+
+;; * org-agenda-todo-ignore-scheduled: Non-nil means, ignore some scheduled TODO items when making TODO list.
+;; (setq org-agenda-todo-ignore-scheduled nil)
+
+;; * org-agenda-todo-ignore-timestamp: Non-nil means don't show entries with a timestamp.
+;; (setq org-agenda-todo-ignore-timestamp nil)
+
+;; * org-agenda-todo-ignore-with-date: Non-nil means don't show entries with a date in the global todo list.
+;; (setq org-agenda-todo-ignore-with-date nil)
+
+;; * org-agenda-todo-list-sublevels: Non-nil means check also the sublevels of a TODO entry for TODO entries.
+;; (setq org-agenda-todo-list-sublevels t)
+
+;; * org-agenda-use-tag-inheritance: List of agenda view types where to use tag inheritance.
+;; (setq org-agenda-use-tag-inheritance '(todo search agenda))
+
+;;   org-ascii-charset: Characters used by ASCII export: ascii, latin1 or utf-8.
+;; (setq org-ascii-charset 'ascii)
+
+;;   org-ascii-text-width: Wrap width, in characters, for ASCII export.
+;; (setq org-ascii-text-width 72)
+
+;;   org-attach-method: What Attach does with a file: cp, mv, ln or lns.
+;; (setq org-attach-method 'cp)
+
+;;   org-babel-load-languages: Languages whose source blocks may run; (js . t) allows js.
+;; (setq org-babel-load-languages '((emacs-lisp . t)))
+
+;; * org-cite-basic-author-year-separator: String used to separate cites in an author-year configuration.
+;; (setq org-cite-basic-author-year-separator ", ")
+
+;; * org-cite-basic-sorting-field: Field used to sort bibliography items as a symbol, or nil.
+;; (setq org-cite-basic-sorting-field 'author)
+
+;; * org-cite-global-bibliography: List of bibliography files available in all documents.
+;; (setq org-cite-global-bibliography nil)
+
+;; * org-clock-idle-time: When non-nil, resolve open clocks if the user is idle more than X minutes.
+;; (setq org-clock-idle-time nil)
+
+;; * org-clock-into-drawer: Non-nil when clocking info should be wrapped into a drawer.
+;; (setq org-clock-into-drawer t)
+
+;; * org-clock-out-remove-zero-time-clocks: Non-nil means remove the clock line when the resulting time is zero.
+;; (setq org-clock-out-remove-zero-time-clocks nil)
+
+;; * org-clock-out-switch-to-state: Set task to a special todo state after clocking out.
+;; (setq org-clock-out-switch-to-state nil)
+
+;; * org-clock-sound: Sound to use for notifications.
+;; (setq org-clock-sound nil)
+
+;; * org-closed-keep-when-no-todo: Remove CLOSED: time-stamp when switching back to a non-todo state?
+;; (setq org-closed-keep-when-no-todo nil)
+
+;; * org-contacts-birthday-property: The property that holds a contact's birthday or anniversary (org-contacts).
+;; (setq org-contacts-birthday-property "BIRTHDAY")
+
+;;   org-contacts-files: More files for Contacts (.vcf) export.
+;; (setq org-contacts-files nil)
+
+;;   org-cycle-open-archived-trees: nil: an archived heading starts folded and swipe will not open it.
+;; (setq org-cycle-open-archived-trees nil)
+
+;; * org-deadline-past-days: Number of days to warn about missed deadlines.
+;; (setq org-deadline-past-days 10000)
+
+;;   org-deadline-warning-days: Days before its date that a DEADLINE starts to show.
+;; (setq org-deadline-warning-days 14)
+
+;; * org-duration-units: Conversion factor to minutes for a duration.
+;; (setq org-duration-units '(("min" . 1) ("h" . 60) ("d" . 1440) ("w" . 10080) ("m" . 43200) ("y" . 525960.0)))
+
+;; * org-export-with-broken-links: Non-nil means do not raise an error on broken links.
+;; (setq org-export-with-broken-links nil)
+
+;; * org-footnote-auto-adjust: Non-nil means automatically adjust footnotes after insert/delete.
+;; (setq org-footnote-auto-adjust nil)
+
+;; * org-footnote-auto-label: Non-nil means define automatically new labels for footnotes.
+;; (setq org-footnote-auto-label t)
+
+;; * org-footnote-define-inline: Non-nil means define footnotes inline, at reference location.
+;; (setq org-footnote-define-inline nil)
+
+;; * org-footnote-section: Outline heading containing footnote definitions.
+;; (setq org-footnote-section "Footnotes")
+
+;; * org-global-properties: List of property/value pairs that can be inherited by any entry.
+;; (setq org-global-properties nil)
+
+;;   org-habit-following-days: Days shown after today in a habit's strip.
+;; (setq org-habit-following-days 7)
+
+;;   org-habit-preceding-days: Days shown before today in a habit's strip.
+;; (setq org-habit-preceding-days 21)
+
+;;   org-habit-show-all-today: Whether every habit shows today, even one not yet due.
+;; (setq org-habit-show-all-today nil)
+
+;;   org-habit-show-habits-only-for-today: Whether habits appear only in today's Agenda.
+;; (setq org-habit-show-habits-only-for-today t)
+
+;; * org-html-checkbox-type: The type of checkboxes to use for HTML export.
+;; (setq org-html-checkbox-type 'ascii)
+
+;; * org-html-doctype: Document type definition to use for exported HTML files.
+;; (setq org-html-doctype "xhtml-strict")
+
+;;   org-html-head: Text added to the <head> of every HTML export.
+;; (setq org-html-head "")
+
+;;   org-html-postamble: The foot of every HTML export: auto, nil or a format string.
+;; (setq org-html-postamble 'auto)
+
+;;   org-html-preamble: Above the content of every HTML export: t, nil or a format string.
+;; (setq org-html-preamble nil)   ; Emacs: t
+
+;; * org-icalendar-alarm-time: Number of minutes for triggering an alarm for exported timed events.
+;; (setq org-icalendar-alarm-time 0)
+
+;; * org-icalendar-categories: Items that should be entered into the "categories" field.
+;; (setq org-icalendar-categories '(local-tags category))
+
+;; * org-icalendar-combined-description: Calendar description for the combined iCalendar (all agenda files).
+;; (setq org-icalendar-combined-description "")
+
+;; * org-icalendar-combined-name: Calendar name for the combined iCalendar representing all agenda files.
+;; (setq org-icalendar-combined-name "OrgMode")
+
+;; * org-icalendar-date-time-format: Format-string for exporting icalendar DATE-TIME.
+;; (setq org-icalendar-date-time-format ":%Y%m%dT%H%M%S")
+
+;; * org-icalendar-deadline-summary-prefix: String prepended to exported headlines with a deadline.
+;; (setq org-icalendar-deadline-summary-prefix "DL: ")
+
+;; * org-icalendar-exclude-tags: Tags that exclude a tree from export.
+;; (setq org-icalendar-exclude-tags nil)
+
+;; * org-icalendar-force-alarm: Non-nil means alarm will be created even if is set to zero.
+;; (setq org-icalendar-force-alarm nil)
+
+;; * org-icalendar-include-todo: Non-nil means create VTODO components from TODO items.
+;; (setq org-icalendar-include-todo nil)
+
+;; * org-icalendar-scheduled-summary-prefix: String prepended to exported scheduled headlines.
+;; (setq org-icalendar-scheduled-summary-prefix "S: ")
+
+;; * org-icalendar-timezone: The time zone string for iCalendar export (the system zone by default).
+;; (setq org-icalendar-timezone nil)
+
+;; * org-icalendar-use-deadline: Contexts where iCalendar export should use a deadline time stamp.
+;; (setq org-icalendar-use-deadline '(event-if-not-todo todo-due))
+
+;; * org-icalendar-use-scheduled: Contexts where iCalendar export should use a scheduling time stamp.
+;; (setq org-icalendar-use-scheduled '(todo-start))
+
+;; * org-icalendar-with-timestamps: Non-nil means make an event from plain time stamps.
+;; (setq org-icalendar-with-timestamps 'active)
+
+;; * org-inlinetask-min-level: Minimum level a headline must have before it is treated as an inline task.
+;; (setq org-inlinetask-min-level 15)
+
+;;   org-latex-compiler: pdflatex, xelatex or lualatex.
+;; (setq org-latex-compiler "pdflatex")
+
+;;   org-latex-default-class: The class of a LaTeX export whose file sets none.
+;; (setq org-latex-default-class "article")
+
+;;   org-log-done: 'time adds a CLOSED: stamp when a heading becomes DONE; 'note asks for a note too.
+;; (setq org-log-done nil)
+
+;; * org-log-into-drawer: Non-nil means insert state change notes and time stamps into a drawer.
+;; (setq org-log-into-drawer nil)
+
+;; * org-log-repeat: Non-nil means record moving through the DONE state when triggering repeat.
+;; (setq org-log-repeat 'time)
+
+;; * org-modules: Modules to load with org (this app reads only org-inlinetask; Emacs loads ten by default).
+;; (setq org-modules nil)
+
+;; * org-priority-default: The default priority of TODO items.
+;; (setq org-priority-default 66)
+
+;; * org-priority-faces: Faces for specific Priorities.
+;; (setq org-priority-faces nil)
+
+;; * org-priority-get-priority-function: Function to extract the priority from a string.
+;; (setq org-priority-get-priority-function nil)
+
+;;   org-priority-highest: The highest priority, a character or a number.
+;; (setq org-priority-highest ?A)
+
+;;   org-priority-lowest: The lowest priority.
+;; (setq org-priority-lowest ?C)
+
+;; * org-priority-start-cycle-with-default: Non-nil means start with default priority when starting to cycle.
+;; (setq org-priority-start-cycle-with-default t)
+
+;; * org-refile-allow-creating-parent-nodes: Non-nil means allow the creation of new nodes as refile targets.
+;; (setq org-refile-allow-creating-parent-nodes nil)
+
+;;   org-refile-targets: Which headings Refile offers.
+;; (setq org-refile-targets nil)   ; nil: the open file, top level
+
+;;   org-scheduled-delay-days: Days a scheduled item with no delay of its own waits before it shows.
+;; (setq org-scheduled-delay-days 0)
+
+;; * org-scheduled-past-days: Number of days to continue listing scheduled items not marked DONE.
+;; (setq org-scheduled-past-days 10000)
+
+;;   org-startup-folded: The initial visibility: overview, content, showall, showeverything or show2levels to show5levels.
+;; (setq org-startup-folded 'showeverything)
+
+;;   org-startup-indented: Whether text, lists and tables are indented under their heading (org-indent-mode).
+;; (setq org-startup-indented nil)
+
+;;   org-startup-truncated: Whether long lines of the Text view scroll sideways.
+;; (setq org-startup-truncated t)
+
+;;   org-startup-with-inline-images: Whether images render inline when a file opens.
+;; (setq org-startup-with-inline-images nil)
+
+;; * org-stuck-projects: How to identify stuck projects.
+;; (setq org-stuck-projects '("+LEVEL=2/-DONE" ("TODO" "NEXT" "NEXTACTION") nil ""))
+
+;; * org-table-duration-hour-zero-padding: Non-nil means hours in table duration computations should be zero-padded.
+;; (setq org-table-duration-hour-zero-padding t)
+
+;;   org-tags-column: Where a heading's tags sit: 0 one space after the title, negative right-aligns.
+;; (setq org-tags-column -77)
+
+;; * org-tags-exclude-from-inheritance: List of tags that should never be inherited.
+;; (setq org-tags-exclude-from-inheritance nil)
+
+;; * org-use-property-inheritance: Non-nil means properties apply also for sublevels.
+;; (setq org-use-property-inheritance nil)
+
+;;   org-use-sub-superscripts: How a_b and a^b are read: t, {} or nil.
+;; (setq org-use-sub-superscripts t)
+
+;;   org-use-tag-inheritance: Whether a tag search matches inherited tags.
+;; (setq org-use-tag-inheritance t)
+
+;; * org-weather-format: The template that %%(org-weather) fills in (this app's own).
+;; (setq org-weather-format "Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au")
+
+;;   org-weather-refresh-interval: never, or a refresh every 1, 2, 4, 6, 12 or 24 hours.
+;; (setq org-weather-refresh-interval 'never)
+
+;;   org-weather-speed-unit: km/h, m/s, mph or Knots.
+;; (setq org-weather-speed-unit "mph")
+
+;;   org-weather-temperature-unit: °C or °F.
+;; (setq org-weather-temperature-unit "°F")
+
+;;   org-xx-diary-merge-rows: Whether a diary line without a time joins the row before it, as Org's agenda does.
+;; (setq org-xx-diary-merge-rows t)
+
+;;   org-xx-drag-handle: Where the drag grip sits on a heading: right, left or off.
+;; (setq org-xx-drag-handle 'right)
+
+;;   org-xx-extensions: on lets the approved init script run.
+;; (setq org-xx-extensions 'off)
+
+;; * org-xx-extra-menu: The entries of the floating extras (☰) button's menu (this app's own); the button is hidden while it is unset.
+;; (setq org-xx-extra-menu nil)
+
+;; * org-xx-fetch-timeout: Seconds to wait for a download to start answering (this app's own; nil for no timeout).
+;; (setq org-xx-fetch-timeout 30)
+
+;;   org-xx-god-mode-button: Whether the floating [g] god-mode button is shown.
+;; (setq org-xx-god-mode-button t)
+
+;;   org-xx-indent-tables: With org-startup-indented on, whether tables are indented too.
+;; (setq org-xx-indent-tables t)
+
+;;   org-xx-lisp-init: Emacs Lisp run like an init file.
+;; (setq org-xx-lisp-init nil)
+
+;; * org-xx-menu-aliases: Relabels or hides buttons in the File, More, Export, Import and View menus (this app's own).
+;; (setq org-xx-menu-aliases nil)
+
+;;   org-xx-show-inherited-tags: Whether the outline shows inherited tags, dimmed.
+;; (setq org-xx-show-inherited-tags t)
+
+;; * org-xx-size-limit-attachment: Attachment: refuse above this size (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-attachment "95MB")
+
+;; * org-xx-size-limit-attachment-warn: Attachment: ask before attaching above this size (this app's own; nil to never ask).
+;; (setq org-xx-size-limit-attachment-warn "20MB")
+
+;; * org-xx-size-limit-bibliography: Bibliography file: skip above this size (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-bibliography "5MB")
+
+;; * org-xx-size-limit-image: Inline image: show up to this size; a larger one waits for a tap on Load (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-image "3MB")
+
+;; * org-xx-size-limit-include: #+INCLUDE file: skip above this size (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-include "2MB")
+
+;; * org-xx-size-limit-org-file: Org file: refuse above this size (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-org-file "2MB")
+
+;; * org-xx-size-limit-setupfile: #+SETUPFILE: skip above this size (this app's own; nil for no limit).
+;; (setq org-xx-size-limit-setupfile "1MB")
+
+;;   org-xx-startup-with-show-photos: Whether a contact's photo shows as a thumbnail when a file opens.
+;; (setq org-xx-startup-with-show-photos nil)
+
+;;   org-xx-text-font-size: The Text view's text size in pixels, 9 to 28.
+;; (setq org-xx-text-font-size 13)
+
+;;   org-xx-windowing-threshold: Above this many rows only the rows near the screen are drawn; 0 draws all.
+;; (setq org-xx-windowing-threshold 400)
+#+END_SRC

@@ -109,3 +109,12 @@ test('agenda source items are checked and repeats expanded', async () => {
   assert.equal(normalizeLine(null), null);
   assert.equal(normalizeLine(''), null);
 });
+
+test('org-xx-extensions: on/t is on, off/nil/unset is off, any other value is an error naming the variable', async () => {
+  const { extensionsOn } = await import('../src/extensions.js');
+  const { VariableValueError } = await import('../src/variable-error.js');
+  for (const v of ['on', 't', "'on"]) assert.equal(extensionsOn({ 'org-xx-extensions': v }), true, v);
+  for (const v of ['off', 'nil', "'off"]) assert.equal(extensionsOn({ 'org-xx-extensions': v }), false, v);
+  assert.equal(extensionsOn({}), false);
+  assert.throws(() => extensionsOn({ 'org-xx-extensions': 'yes' }), (e) => e instanceof VariableValueError && /org-xx-extensions/.test(e.message));
+});

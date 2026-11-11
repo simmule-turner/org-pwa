@@ -20,6 +20,7 @@ import {
   TIME_DISPLAY_FORM_24,
   getOrgWeatherFormat,
   getOrgWeatherSpeedUnit,
+  getDragHandle,
   getOrgWeatherTemperatureUnit,
   getOrgTableDurationHourZeroPadding,
   getAgendaFilesVar,
@@ -381,9 +382,10 @@ test('a non-numeric value is an error naming the variable', () => {
 
 // ---- calendar-latitude / calendar-longitude -----------------------------
 
-test('getCalendarLatitude/Longitude default to Durham, NC, as requested', () => {
-  assert.equal(getCalendarLatitude({}), 35.994);
-  assert.equal(getCalendarLongitude({}), -78.8986);
+test('getCalendarLatitude/Longitude are null (Emacs: nil) unless set', () => {
+  assert.equal(getCalendarLatitude({}), null);
+  assert.equal(getCalendarLongitude({}), null);
+  assert.equal(getCalendarLatitude({ 'calendar-latitude': 'nil' }), null);
 });
 
 test('getCalendarLatitude/Longitude read an explicit override', () => {
@@ -634,4 +636,10 @@ test('getDragHandle: right by default, left or off when set, anything else is an
   assert.equal(getDragHandle({ 'org-xx-drag-handle': 'Off' }), 'off');
   assert.equal(getDragHandle({ 'org-xx-drag-handle': 'nil' }), 'off');
   assert.throws(() => getDragHandle({ 'org-xx-drag-handle': 'sideways' }), /org-xx-drag-handle is "sideways", which is not one of right, left, off/);
+});
+
+test('this app\'s own multi-choice variables take the form an init file writes: a symbol, a quoted symbol or a string', () => {
+  for (const written of ['mph', "'mph", '"mph"']) assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': written }), 'mph', written);
+  for (const written of ['left', "'left", '"left"']) assert.equal(getDragHandle({ 'org-xx-drag-handle': written }), 'left', written);
+  assert.throws(() => getDragHandle({ 'org-xx-drag-handle': "'middle" }), /org-xx-drag-handle is "'middle"/);
 });

@@ -46,6 +46,11 @@ export async function loadCachedWeatherData() {
 export async function refreshWeather() {
   const latitude = getCalendarLatitude(S.state.localVariables);
   const longitude = getCalendarLongitude(S.state.localVariables);
+  if (latitude === null || longitude === null) {
+    setStatus('Set calendar-latitude and calendar-longitude to see the weather.');
+    render();
+    return;
+  }
   setStatus('Refreshing weather\u2026');
   render();
   try {

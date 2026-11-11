@@ -38,6 +38,7 @@
 
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { isSafeAttachmentName, ownAttachmentDirectory } from './attach.js';
+import { VariableValueError } from './variable-error.js';
 import { findDedicatedTargetHeading } from './targets.js';
 
 // Org's http:, https: and ftp: links, with or without the slashes; any other scheme:// is a text search, as in Org
@@ -167,8 +168,13 @@ export function normalizeStoragePath(path) {
 export function resolveAttachmentTarget(doc, heading, attachmentTarget, documentId, inherit = false) {
   const filename = attachmentTarget.replace(/^attachment:/i, '');
   if (!isSafeAttachmentName(filename)) return null; // a name that climbs out of the folder, or has a backslash or control character
-  const dir = resolveAttachmentDirectory(doc, heading, documentId, inherit);
-  return dir ? `${dir}/${filename}` : null;
+  try {
+    const dir = resolveAttachmentDirectory(doc, heading, documentId, inherit);
+    return dir ? `${dir}/${filename}` : null;
+  } catch (err) {
+    if (err instanceof VariableValueError) return null; // a DIR that names no folder: the link does not resolve (the attachment actions name DIR)
+    throw err;
+  }
 }
 
 /** The attachment folder for `heading`: the one its own DIR or :ID: names. As in Emacs, a parent's folder is used only when

@@ -91,6 +91,13 @@ export const SCENARIOS = [
     vars: { 'org-agenda-prefix-format': `'((agenda . "%(no-such-function category) %c"))` },
   },
   {
+    id: 'unusable-value',
+    title: 'A value that cannot be used',
+    text: 'A value of the wrong kind stops the Agenda with a message. =org-deadline-warning-days= is a number of days; here it is the symbol =soon=.',
+    kind: 'agenda',
+    vars: { 'org-agenda-prefix-format': `'((agenda . ${DEFAULT_PREFIX}))`, 'org-deadline-warning-days': "'soon" },
+  },
+  {
     id: 'sort-priority',
     title: 'The order of the rows',
     text: '=org-agenda-sorting-strategy= lists the keys to sort by, per view. Here the highest priority comes first and the rest keep their order in the file.',

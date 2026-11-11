@@ -164,7 +164,7 @@ export const SETTINGS_FIELDS = [
     label: 'Latitude (sun times and weather)',
     section: 'Diary',
     type: 'number',
-    default: 35.994,
+    default: '', // nil, as in Emacs: no place until one is set
     min: -90,
     max: 90,
     step: 0.0001,
@@ -175,7 +175,7 @@ export const SETTINGS_FIELDS = [
     label: 'Longitude (sun times and weather)',
     section: 'Diary',
     type: 'number',
-    default: -78.8986,
+    default: '',
     min: -180,
     max: 180,
     step: 0.0001,
@@ -223,7 +223,7 @@ export const SETTINGS_FIELDS = [
     default: true,
     helpAnchor: '#searching',
   },
-  { key: 'org-tags-column', label: 'Tags column (0 = one space after the title, negative = right-aligned)', section: 'Editing', type: 'number', default: 0, min: -300, max: 300, step: 1, helpAnchor: '#configuration' },
+  { key: 'org-tags-column', label: 'Tags column (0 = one space after the title, negative = right-aligned)', section: 'Editing', type: 'number', default: -77, min: -300, max: 300, step: 1, helpAnchor: '#configuration' },
   {
     key: 'org-priority-highest',
     label: 'Highest priority (a letter such as A, or a number such as 1)',
@@ -336,4 +336,16 @@ export const SETTINGS_FIELDS = [
   { key: 'org-contacts-files', label: 'Contacts files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#contacts-files' },
   { key: 'org-agenda-text-search-extra-files', label: 'Search extra files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#search-extra-files' },
   { key: 'diary-file', label: 'Diary file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
+];
+
+/** Variables whose control is a card of its own rather than a field of Quick Settings: listed by apropos-variable and the Settings search,
+ *  which open that card. `card` is the card's id. */
+export const CARD_CONTROLS = [
+  { key: 'org-attach-method', label: 'What Attach does with a file you pick (cp, mv, ln or lns)', section: 'Attachments', default: 'cp', card: 'attach' },
+  { key: 'org-html-head', label: 'Text added to the head of every HTML export', section: 'Export', default: '""', card: 'export-html' },
+  { key: 'org-html-postamble', label: 'The foot of every HTML export', section: 'Export', default: 'auto', card: 'export-html' },
+  { key: 'org-html-preamble', label: 'Above the content of every HTML export', section: 'Export', default: 'nil', card: 'export-html' },
+  { key: 'org-latex-compiler', label: 'LaTeX compiler: pdflatex, xelatex or lualatex', section: 'Export', default: '"pdflatex"', card: 'export-latex' },
+  { key: 'org-latex-default-class', label: 'The LaTeX class of a file that sets none', section: 'Export', default: '"article"', card: 'export-latex' },
+  { key: 'org-weather-refresh-interval', label: 'Automatic weather refresh: never, or every 1, 2, 4, 6, 12 or 24 hours', section: 'Weather', default: 'never', card: 'quick:Weather' },
 ];

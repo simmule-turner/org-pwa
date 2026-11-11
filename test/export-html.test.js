@@ -551,7 +551,7 @@ test('blocks: quote, center, verse, example, fixed-width, src with caption and l
   assert.ok(body('* A\n#+begin_example\n<x>\n#+end_example').includes('\n&lt;x&gt;\n</pre>') && /<pre class="example" id="[^"]+">/.test(body('* A\n#+begin_example\n<x>\n#+end_example')));
   assert.ok(body('* A\n: fixed\n:   more').includes('<pre class="example">\nfixed\n  more\n</pre>'));
   const src = body('* A\n#+CAPTION: Hello\n#+begin_src python -n\nprint(1)\n#+end_src');
-  assert.match(src, /<div class="org-src-container">\s*<label class="org-src-name"><span class="listing-number">Listing 1: <\/span>Hello<\/label><pre class="src src-python"><span class="linenr">1: <\/span><span class="org-builtin">print<\/span>\(<span class="org-constant">1<\/span>\)/);
+  assert.match(src, /<div class="org-src-container">\s*<label class="org-src-name"><span class="listing-number">Listing 1: <\/span>Hello<\/label><pre class="src src-python"><span class="linenr">1: <\/span><span class="org-builtin">print<\/span>\(1\)/);
 });
 
 test('special blocks become divs of that class; COMMENT blocks, comments and unknown keywords vanish; HTML export passes through', () => {
@@ -670,16 +670,16 @@ test('printing: preformatted text wraps and tables and figures avoid page breaks
 
 test('source blocks are coloured with htmlize\u2019s class names; unknown languages are left plain', () => {
   const out = body('* A\n#+begin_src js\n// c\nconst s = "x"; if (a < 1) {}\n#+end_src\n#+begin_src klingon\nconst <x>\n#+end_src');
-  assert.ok(out.includes('<span class="org-comment">// c</span>'));
+  assert.ok(out.includes('<span class="org-comment-delimiter">// </span><span class="org-comment">c</span>'));
   assert.ok(out.includes('<span class="org-keyword">const</span>'));
   assert.ok(out.includes('<span class="org-string">"x"</span>'));
-  assert.ok(out.includes('a &lt; <span class="org-constant">1</span>'));
+  assert.ok(out.includes('a &lt; 1')); // numbers are plain, as in Emacs
   assert.ok(out.includes('<pre class="src src-klingon">const &lt;x&gt;'));
 });
 
 test('a multi-line comment or string is coloured line by line, so line numbers stay intact', () => {
   const out = body('* A\n#+begin_src js -n\n/* a\nb */\nx\n#+end_src');
-  assert.ok(out.includes('<span class="linenr">1: </span><span class="org-comment">/* a</span>\n<span class="linenr">2: </span><span class="org-comment">b */</span>'));
+  assert.ok(out.includes('<span class="linenr">1: </span><span class="org-comment-delimiter">/* </span><span class="org-comment">a</span>\n<span class="linenr">2: </span><span class="org-comment">b</span><span class="org-comment-delimiter"> */</span>'));
 });
 
 test('pictures that the app could read are embedded; others keep their link', () => {

@@ -1546,6 +1546,9 @@ const PAGE_CSS = `
   .org-function-name { color: #795e26; }
   .org-variable-name { color: #001080; }
   .org-preprocessor { color: #af00db; }
+  .org-doc { color: #a31515; }
+  .org-warning { color: #e00; font-weight: 600; }
+  .org-c-annotation { color: #0b6e99; }
   .subtitle { text-align: center; font-weight: bold; margin-top: 0; }
   #postamble { margin-top: 3em; border-top: 1px solid #ddd; color: #666; }
   #postamble p, #preamble p { font-size: 90%; margin: 0.2em; }

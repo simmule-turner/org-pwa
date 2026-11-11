@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg, serializeHeadingSubtree, findHeadingLineNumber, findHeadingAtLine } from '../src/org-parser.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // these cases are written at org-tags-column 0
 
 const roundTrip = (text) => serializeOrg(parseOrg(text));
 

@@ -335,8 +335,15 @@ export function guardFor(source, flags, inputLength = 0) {
 //   .*c  [ab]*a  a*a   a  266665  3   a loop over one character pushes 3 words per character when what follows could
 //                                     also match that character (`.*c`, `[ab]*a`, `a*\(a\|b\)`), and nothing when it cannot (`[ab]*c`)
 //   no overflow up to 400,000: \(?:a\)*c  \(?:ab\)*c  [ab]*c  \(a\|b\)\{1,500000\}  (a plain character or fixed text repeated
-//   needs no stack, and neither does a counted loop). A lazy loop over a group (`\(?:a\|b\)*?c`) does push (3 words a round
-//   here) but is not followed: the native engine runs it.
+//   needs no stack, and neither does a counted loop).
+//
+// A lazy loop (`*?`, `+?`) pushes nothing for itself; a round costs 3 words for a capture group around the body and 3 more when the
+// branch taken has later branches to try (words per round, from the length at which Emacs overflowed, last column):
+//   \(?:a\|b\)*?c    a   3  266667      \(?:a\|b\)*?c   b   0  none up to 400,000
+//   \(a\|b\)*?c      a   6  133333      \(a\|b\)*?c     b   3  266667
+//   \(ab\)*?c        ab   3  266667      \(?:ab\)*?c     ab   0  none      \(?:a*b\)*?c  ab  0  none      a*?c  a  0  none
+//   \(?:a\|b\)+?c    a   3  266667
+// A lazy loop is walked until what follows it could start; a pattern whose follower is not known is left to the native engine.
 //
 // Only a loop that can overflow at all (over 800,000 / 9 characters) triggers the walk, so shorter input is untouched.
 
@@ -403,10 +410,10 @@ function hasFollowedCharLoop(node) {
   }
 }
 
-/** Whether a node holds a greedy unbounded loop over something that is not one character. @param {Node} node @returns {boolean} */
+/** Whether a node holds an unbounded loop (greedy or lazy) over something that is not one character. @param {Node} node @returns {boolean} */
 function hasLoopOverGroup(node) {
   switch (node.t) {
-    case 'rep': return (node.greedy && node.max === Infinity && node.min <= 1 && !(node.node.t === 'atom' && node.node.wide)) || hasLoopOverGroup(node.node);
+    case 'rep': return (node.max === Infinity && node.min <= 1 && !(node.node.t === 'atom' && node.node.wide)) || hasLoopOverGroup(node.node);
     case 'group': return hasLoopOverGroup(node.node);
     case 'seq': return node.items.some(hasLoopOverGroup);
     case 'alt': return node.branches.some(hasLoopOverGroup);
@@ -432,6 +439,8 @@ export function checkFailureStack(source, flags, s, start) {
   let steps = 0;
   /** What the item after the loop being walked can start with. @type {Set<number> | null} */
   let follower = null;
+  /** What the item after the lazy loop being walked can start with. @type {Set<number> | null} */
+  let lazyStop = null;
   /** @type {number[]} */
   let caps = [];
   /** @param {Extract<Node, { t: 'atom' }>} a @param {number} pos */
@@ -453,6 +462,11 @@ export function checkFailureStack(source, flags, s, start) {
         for (let k = 0; k < node.items.length; k++) {
           const item = node.items[k];
           follower = k + 1 < node.items.length && unboundedChar(item) ? followSet(node.items, k + 1) : null;
+          lazyStop = null;
+          if (item.t === 'rep' && !item.greedy && item.max === Infinity && !(item.node.t === 'atom' && item.node.wide)) {
+            lazyStop = k + 1 < node.items.length ? followSet(node.items, k + 1) : null;
+            if (!lazyStop) throw new Unsupported(); // where the loop ends depends on what follows: not known
+          }
           p = walk(item, p);
           if (p < 0) return -1;
         }
@@ -511,11 +525,14 @@ export function checkFailureStack(source, flags, s, start) {
           }
           return n < node.min ? -1 : p;
         }
+        const lazy = !node.greedy && node.max === Infinity && node.min <= 1 ? lazyStop : null;
+        lazyStop = null;
         const unbounded = node.greedy && node.max === Infinity && node.min <= 1;
         let p = pos;
         let n = 0;
-        const most = node.greedy ? (node.max === Infinity ? Infinity : node.max) : node.min;
+        const most = node.greedy ? (node.max === Infinity ? Infinity : node.max) : lazy ? Infinity : node.min;
         while (n < most) {
+          if (lazy && n >= node.min && p < s.length && lazy.has(/** @type {number} */ (s.codePointAt(p)))) break; // the rest may match here: Emacs tries it first
           const savedAlt = altWords;
           altWords = 0;
           const r = walk(body, p);
@@ -524,6 +541,9 @@ export function checkFailureStack(source, flags, s, start) {
           if (r < 0 || (r === p && n >= node.min)) break;
           if (unbounded) {
             depth += (body.t === 'group' ? 6 : plainText(body) ? 0 : 3) + round;
+            if (depth > FAILURE_WORDS) throw new Overflow();
+          } else if (lazy) {
+            depth += (body.t === 'group' ? 3 : 0) + round;
             if (depth > FAILURE_WORDS) throw new Overflow();
           }
           p = r;

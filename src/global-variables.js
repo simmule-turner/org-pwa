@@ -150,7 +150,11 @@ export function serializeGlobalVariables(vars, codec = null) {
  */
 export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   const merged = { ...(globalVars || {}), ...(localVars || {}) };
-  setTagsColumn(tagsColumnOf(merged)); // headings written again put their tags where org-tags-column says
+  try {
+    setTagsColumn(tagsColumnOf(merged)); // headings written again put their tags where org-tags-column says
+  } catch (err) {
+    if (!(err instanceof VariableValueError)) throw err; // a column that is not an integer is reported (variableProblems) and the column stays as it was
+  }
   try {
     setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused
   } catch (err) {

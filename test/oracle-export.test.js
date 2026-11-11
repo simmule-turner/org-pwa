@@ -15,6 +15,8 @@ import { exportOrgText } from '../src/export-org.js';
 import { htmlContent, latexBody, straightQuotes } from './support/export-canon.js';
 import { KNOWN_DEVIATIONS } from './support/oracle-export-known.js';
 
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // Emacs ran at org-tags-column 0
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/oracle-export.json', import.meta.url), 'utf8'));
 /** @typedef {{ name: string, org: string, [backend: string]: string }} Case */
 

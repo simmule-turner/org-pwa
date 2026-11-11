@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { exportOrgText } from '../src/export-org.js';
 import { cacheBibliography } from '../src/cite.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // Emacs ran at org-tags-column 0
 
 cacheBibliography('refs.bib', readFileSync(new URL('./fixtures/html/refs.bib', import.meta.url), 'utf8'));
 

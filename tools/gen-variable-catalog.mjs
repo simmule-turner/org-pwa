@@ -10,7 +10,7 @@ org-agenda-prefix-format org-agenda-regexp-filter-preset org-agenda-search-view-
 org-agenda-search-view-max-outline-level org-agenda-tag-filter-preset calendar-bahai-all-holidays-flag calendar-christian-all-holidays-flag
 calendar-hebrew-all-holidays-flag calendar-islamic-all-holidays-flag diary-hebrew-sabbath-candles-minutes diary-include-string
 diary-nonmarking-symbol diary-sexp-entry-symbol org-log-into-drawer org-log-repeat org-clock-idle-time org-clock-sound
-org-duration-units org-priority-get-priority-function
+org-duration-units org-priority-get-priority-function buffer-read-only
 org-agenda-clock-consistency-checks org-agenda-include-inactive-timestamps org-agenda-log-mode-add-notes org-agenda-log-mode-items
 org-agenda-prefer-last-repeat org-agenda-skip-additional-timestamps-same-entry org-agenda-skip-deadline-prewarning-if-scheduled
 org-agenda-skip-function org-agenda-skip-function-global org-agenda-skip-scheduled-delay-if-deadline

@@ -96,6 +96,19 @@ When a =%(form)= fails, the Agenda stops and shows the error in place of the row
 Symbol's function definition is void: no-such-function
 #+end_example
 
+* A value that cannot be used
+A value of the wrong kind stops the Agenda with a message. =org-deadline-warning-days= is a number of days; here it is the symbol =soon=.
+
+#+begin_src emacs-lisp
+(setq org-agenda-prefix-format '((agenda . "  %-12:c%?-12t% s")))
+(setq org-deadline-warning-days 'soon)
+#+end_src
+
+#+NAME: unusable-value
+#+begin_example
+Wrong type argument: number-or-marker-p, soon
+#+end_example
+
 * The order of the rows
 =org-agenda-sorting-strategy= lists the keys to sort by, per view. Here the highest priority comes first and the rest keep their order in the file.
 
@@ -305,4 +318,4 @@ Sunday     21 March 2027
 #+end_example
 
 * Where the app differs from Emacs
-Nothing in the examples above differs.
+One thing: with a value that cannot be used (the section above), Emacs stops with its own error text. The app says which variable holds the value and what it was, and skips what needed it; a variable that is not set keeps its default.

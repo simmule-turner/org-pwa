@@ -21,22 +21,15 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
-* Babel and attachments
-** [#C] =DIR= paths outside the storage
-
-* Export
-** [#C] ODT export: what is left after the port
-=src/ox-odt.js= follows ox-odt on the files checked with Emacs 29.3 (headings, lists, tables, blocks, links, footnotes, timestamps, table of contents, captions, planning, options). What is left:
-- Source coloring is the app's own highlighter, for the languages it knows; Emacs colors through =htmlfontify= and the major mode, so the faces can differ.
-- Impact: S.
-
 * Security
 Left from the security reviews. Each is small, none lets a document run code without the "Run code?" prompt.
 ** [#C] Dev dependency advisory
 =minimatch= (GHSA-g3hv-75wg-m249, denial of service) comes in through eslint, including the latest eslint 10; dev-only, no runtime code. Update when eslint releases a fix.
 - Effort: S. Impact: S.
-** [#C] Regexp lazy loops over groups
-Lazy loops over groups (such as =\(a\|b\)*?c=) on very long strings also overflow in Emacs with "Stack overflow in regexp matcher"; the app answers slowly instead.
+
+* Tests
+** [#C] Smoke check "local agenda files" crashes Chromium
+In =tools/smoke.mjs= the check "local agenda files" ends with Chromium crashing (the page process exits) rather than with an assertion; the other checks are unaffected. Find what the check opens that the headless build cannot, and make it run or split it.
 - Effort: S. Impact: S.
 
 * Order for the next release

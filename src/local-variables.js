@@ -28,6 +28,8 @@ import { parseBrokenLinks } from './broken-links.js';
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 import { readPriorityRange, prioritiesKeyword } from './priorities.js';
 import { sizeLimitsOf } from './size-limits.js';
+import { extensionsOn } from './extensions.js';
+import { tagsColumnOf } from './tags-column.js';
 import { parseExtraMenu } from './extra-menu.js';
 import { parseMenuAliases } from './menu-alias.js';
 import { parseDurationUnits } from './org-duration.js';
@@ -725,8 +727,9 @@ const DRAG_HANDLE_SIDES = new Set(['right', 'left', 'off']);
 /** One of a few fixed values (this app's own variables). Unset keeps `fallback`; anything else is a VariableValueError that lists them.
  * @param {string | undefined} raw @param {string} name @param {Set<string>} allowed @param {string} fallback */
 function oneOf(raw, name, allowed, fallback) {
-  const text = raw === undefined || raw === null ? '' : String(raw).trim();
-  if (text === '') return fallback;
+  const written = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (written === '') return fallback;
+  const text = written.replace(/^'/, '').replace(/^"([^"]*)"$/, '$1'); // a symbol, a quoted symbol or a string, as an init file writes them
   if (allowed.has(text)) return text;
   throw new VariableValueError(name, raw, `one of ${[...allowed].join(', ')}`);
 }
@@ -768,13 +771,19 @@ export function getContactsBirthdayProperty(vars) {
   return readLispString((vars || {})['org-contacts-birthday-property']) ?? 'BIRTHDAY';
 }
 
-/** calendar-latitude: real Emacs's own exact variable name and
- *  purpose -- the latitude the solar diary-sexp functions compute
- *  from. A non-numeric or out-of-range (-90 to 90) value falls back
+/** calendar-latitude: Emacs's variable, the latitude the sun times and the weather are for. nil (Emacs's default) means no place yet: null.
+ *  A value that is not a number is a VariableValueError; a number is used as given.
  * @param {LocalVars} vars
- *  to the default rather than producing a nonsensical calculation. */
+ * @returns {number | null} */
 export function getCalendarLatitude(vars) {
-  return parseLispNumber((vars || {})['calendar-latitude'], 35.994, 'calendar-latitude');
+  return locationNumber((vars || {})['calendar-latitude'], 'calendar-latitude');
+}
+
+/** calendar-latitude and calendar-longitude: a number, or null while nil, which is Emacs's default (there is no place until one is set).
+ * @param {unknown} raw @param {string} name @returns {number | null} */
+function locationNumber(raw, name) {
+  const text = raw === undefined || raw === null ? '' : String(raw).trim();
+  return text === '' || text === 'nil' ? null : parseLispNumber(text, 0, name); // the fallback is not used: text is a value
 }
 
 /** calendar-location-name when it is a plain string ("Home"); null means Emacs's default, such as "40.7N, 74.0W".
@@ -785,12 +794,11 @@ export function getCalendarLocationName(vars) {
   return m ? m[1].replace(/\\(.)/g, '$1') : null;
 }
 
-/** calendar-longitude: real Emacs's own exact variable name. A
- *  non-numeric or out-of-range (-180 to 180) value falls back to the
+/** calendar-longitude: Emacs's variable, the longitude for the same. nil (Emacs's default) is null; as calendar-latitude otherwise.
  * @param {LocalVars} vars
- *  default. */
+ * @returns {number | null} */
 export function getCalendarLongitude(vars) {
-  return parseLispNumber((vars || {})['calendar-longitude'], -78.8986, 'calendar-longitude');
+  return locationNumber((vars || {})['calendar-longitude'], 'calendar-longitude');
 }
 
 /** diary-hebrew-sabbath-candles-minutes: how many minutes before sunset the candles are lit (18 as in Emacs unless set to a number). @param {LocalVars} vars */
@@ -1017,7 +1025,7 @@ export function variableProblems(vars) {
     getAgendaStartOnWeekday, getDeadlineWarningDays, getScheduledDelayDays, getHabitOptions, getAsciiTextWidth, getCalendarLatitude, getCalendarLongitude,
     getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getPriorityRange, sizeLimitsOf,
     (/** @type {LocalVars} */ v) => v['org-duration-units'] && parseDurationUnits(v['org-duration-units']),
-    getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
+    extensionsOn, (/** @type {LocalVars} */ v) => tagsColumnOf(v), getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
   ];
   for (const read of readers) {
     try {

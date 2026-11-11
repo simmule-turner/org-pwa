@@ -1,0 +1,14 @@
+{
+ "files/report": "/org-pwa/files/report",
+ "./files/": "/org-pwa/files",
+ "files//report": "/org-pwa/files/report",
+ "sub/../x": "/org-pwa/x",
+ "../x": "/x",
+ "../../x": "/../x",
+ "../../../x": "/x",
+ "/shared/docs": "/shared/docs",
+ "a/./b": "/org-pwa/a/b",
+ "x/y/": "/org-pwa/x/y",
+ "..": "/",
+ ".": "/org-pwa"
+}

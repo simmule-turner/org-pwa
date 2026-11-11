@@ -1,27 +1,32 @@
 // @ts-check
 /**
- * `org-tags-column`: where the tags of a heading line sit when the line is written again. 0 puts them one space after the title
- * (the default here; Emacs's is -77), a positive number starts them at that column, a negative one ends them at that column
+ * `org-tags-column`: where the tags of a heading line sit when the line is written again. 0 puts them one space after the title,
+ * the default is Emacs's -77 (right-aligned at column 77), a positive number starts them at that column, a negative one ends them at that column
  * (right-aligned); a title too long for either keeps one space (`org-align-tags`).
  */
 
-let column = 0;
+import { VariableValueError } from './variable-error.js';
+
+let column = -77;
 
 /** @param {number} n */
 export function setTagsColumn(n) {
-  column = Number.isFinite(n) ? Math.trunc(n) : 0;
+  column = Number.isFinite(n) ? Math.trunc(n) : -77;
 }
 
 export function getTagsColumn() {
   return column;
 }
 
-/** The value of `org-tags-column` in a variables map (a number, or a string holding one); 0 when unset or unreadable.
+/** The value of `org-tags-column` in a variables map: an integer (a number, or a string holding one); -77, Emacs's default, when unset.
+ * Anything else is a VariableValueError naming the variable.
  * @param {Record<string, unknown> | null | undefined} vars */
 export function tagsColumnOf(vars) {
   const raw = vars ? vars['org-tags-column'] : undefined;
-  const n = typeof raw === 'number' ? raw : Number(String(raw ?? '').trim());
-  return raw === undefined || raw === '' || !Number.isFinite(n) ? 0 : Math.trunc(n);
+  if (raw === undefined || raw === null || String(raw).trim() === '') return -77;
+  const text = String(raw).trim();
+  if (!/^[-+]?\d+$/.test(text)) throw new VariableValueError('org-tags-column', text, 'an integer');
+  return Number(text);
 }
 
 /** Display width of a string, wide (CJK) characters counting two columns.

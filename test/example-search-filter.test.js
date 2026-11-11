@@ -9,6 +9,8 @@ import { searchViewItems } from '../src/agenda-queries.js';
 import { createQueryReplace } from '../src/query-replace.js';
 import { buildQueryReplacePattern } from '../src-browser/doc-helpers.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // its oracle ran at org-tags-column 0
 
 const text = readFileSync(new URL('../examples/search-filter.org', import.meta.url), 'utf8');
 const unescape = (/** @type {string} */ s) => s.replace(/^,(\*|#\+)/gm, '$1');

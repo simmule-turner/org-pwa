@@ -5,8 +5,13 @@
  * `org-variable-name`, `org-preprocessor`). It is a lexer, not a parser: comments, strings, numbers, keywords and
  * the like, which is what reads well on paper. Languages it does not know come out uncoloured.
  *
+ * emacs-lisp, python, js and java are colored as Emacs colors them (src/source-color.js; the faces also include `org-doc`, `org-comment-delimiter`,
+ * `org-operator`, `org-warning` and `org-c-annotation`, and numbers stay plain). The other languages use the tables below.
+ *
  * highlightToHtml(code, lang) -> HTML, one line per "\n" (a token that spans lines is closed and reopened on each).
  */
+
+import { highlightRuns, EMACS_ALIASES } from './source-color.js';
 
 /** @param {string} s */
 const words = (s) => new Set(s.split(/\s+/).filter(Boolean));
@@ -119,7 +124,7 @@ const ALIASES = {
   scss: 'css', less: 'css',
   jsonc: 'json',
   postgres: 'sql', mysql: 'sql', sqlite: 'sql', psql: 'sql',
-  cpp: 'c', 'c++': 'c', h: 'c', java: 'c', go: 'c', rust: 'c', rs: 'c', cs: 'c', csharp: 'c', kotlin: 'c', swift: 'c', php: 'c', dart: 'c', scala: 'c',
+  cpp: 'c', 'c++': 'c', h: 'c', go: 'c', rust: 'c', rs: 'c', cs: 'c', csharp: 'c', kotlin: 'c', swift: 'c', php: 'c', dart: 'c', scala: 'c',
   rb: 'ruby',
   yml: 'yaml',
   html: 'xml', htm: 'xml', svg: 'xml', xhtml: 'xml',
@@ -131,6 +136,7 @@ const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 /** Whether `lang` is a language this lexer colors. @param {string | null | undefined} lang */
 export function knowsLanguage(lang) {
   const name = String(lang || '').toLowerCase();
+  if (Object.hasOwn(EMACS_ALIASES, name)) return true;
   const key = Object.hasOwn(ALIASES, name) ? ALIASES[/** @type {keyof typeof ALIASES} */ (name)] : name;
   return Object.hasOwn(LANGS, key);
 }
@@ -201,6 +207,8 @@ function highlightXml(code) {
  * @param {any} [lang]
  */
 export function highlightToHtml(code, lang) {
+  const runs = highlightRuns(code, String(lang || ''));
+  if (runs) return runs.map(([text, face]) => span(face, text)).join('');
   const key = /** @type {any} */ (ALIASES)[String(lang || '').toLowerCase()] || String(lang || '').toLowerCase();
   const cfg = /** @type {any} */ (LANGS)[key];
   if (!cfg) return esc(code);

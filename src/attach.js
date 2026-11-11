@@ -2,6 +2,7 @@
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 import { checkSize, formatSize } from './size-limits.js';
+import { VariableValueError } from './variable-error.js';
 /**
  * Attachments -- this app's own extension, inspired by real org-mode's
  * own org-attach (there's no exact equivalent to match against
@@ -103,19 +104,33 @@ function attachmentDir(id, documentId) {
   return `${dir}data/${prefix}/${rest}`;
 }
 
-/** A DIR property value as a folder path, or null if it cannot be one. Relative to the document's own folder; a leading "/" means
+/**
+ * A DIR property value as a folder path. As in Emacs it is relative to the document's own folder and `.`, `..` and repeated slashes
+ * mean what they do there, so `../shared` is the folder beside the document's. A leading "/" starts at the root of the storage (the
+ * GitHub repository, the WebDAV root or the chosen device folder), the one place an absolute path can mean here. A path that is empty,
+ * starts at the home folder (`~`), has a backslash or is the top of the storage itself cannot name a folder to hold attachments
+ * here: it is a VariableValueError naming DIR, not a quiet switch to the ID folder.
  * @param {string | undefined} value
  * @param {string} documentId
- *  the root of the storage instead. Empty values, backslashes and ".." parts are refused, so a DIR can never point outside. */
+ * @returns {string}
+ */
 function attachmentDirFromProperty(value, documentId) {
-  let text = String(value || '').trim();
-  if (!text || text.includes('\\')) return null;
+  const text = String(value || '').trim();
+  /** @param {string} why */
+  const refuse = (why) => new VariableValueError('DIR', text, '', `DIR is ${JSON.stringify(text)}: ${why}`);
+  if (!text) throw refuse('it is empty');
+  if (text.includes('\\')) throw refuse('a backslash cannot be in a folder name here');
+  if (text.startsWith('~')) throw refuse('the home folder is not part of the storage');
   const fromRoot = text.startsWith('/');
-  text = text.replace(/^\/+/, '').replace(/^(\.\/)+/, '').replace(/\/+$/, '');
-  if (!text || text.split('/').some((part) => part === '' || part === '.' || part === '..')) return null;
-  if (fromRoot) return text;
   const lastSlash = documentId ? documentId.lastIndexOf('/') : -1;
-  return `${lastSlash === -1 ? '' : documentId.slice(0, lastSlash + 1)}${text}`;
+  /** @type {string[]} */ const parts = fromRoot || lastSlash === -1 ? [] : documentId.slice(0, lastSlash).split('/');
+  for (const part of text.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') parts.pop(); // above the top stays at the top, as `expand-file-name` has it
+    else parts.push(part);
+  }
+  if (parts.length === 0) throw refuse('it is the top of the storage, which cannot hold attachments');
+  return parts.join('/');
 }
 
 /** The folder a heading names itself: its DIR property, else the one its ID gives. Null if it has neither (it is not
@@ -125,10 +140,7 @@ function attachmentDirFromProperty(value, documentId) {
 function ownAttachmentDirectory(heading, documentId) {
   if (hasUnsafeAttachmentId(heading)) return null;
   const dirProperty = getProperty(heading, 'DIR');
-  if (dirProperty) {
-    const fromProperty = attachmentDirFromProperty(dirProperty, documentId);
-    if (fromProperty) return fromProperty;
-  }
+  if (dirProperty !== undefined && dirProperty !== null && dirProperty !== '') return attachmentDirFromProperty(dirProperty, documentId);
   const id = getProperty(heading, 'ID');
   return id ? attachmentDir(id, documentId) : null;
 }

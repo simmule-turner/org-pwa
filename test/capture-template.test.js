@@ -14,6 +14,8 @@ import {
   storageKindForScheme,
   computeNonCollidingKeys,
 } from '../src/capture-template.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // the headings here are written at org-tags-column 0
 
 // These tests look at the text itself, so the single newline that ends every expansion is dropped here;
 // capture-expand-oracle.test.js holds the whole result, newline included, to Emacs.

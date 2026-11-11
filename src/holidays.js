@@ -33,7 +33,8 @@ let userBindings = [];
 let cache = new Map();
 /** The time zone of the sun-related holidays (an IANA name): the device's, unless a test or a setting picks one. @type {string | null} */
 let zoneOverride = null;
-let latitude = 35.994;
+/** @type {number | null} calendar-latitude: nil in Emacs until it is set */
+let latitude = null;
 /** @type {string | undefined} */
 let timeDisplayForm;
 

@@ -1,0 +1,598 @@
+{
+ "lang": "js",
+ "mode": "js-mode",
+ "runs": [
+  [
+   "// ",
+   "comment-delimiter"
+  ],
+  [
+   "line comment\n",
+   "comment"
+  ],
+  [
+   "/* ",
+   "comment-delimiter"
+  ],
+  [
+   "block\n   comment",
+   "comment"
+  ],
+  [
+   " */",
+   "comment-delimiter"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "/** doc */",
+   "doc"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " { a, b as c } from ",
+   null
+  ],
+  [
+   "'./mod.js'",
+   "string"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "PI",
+   "variable-name"
+  ],
+  [
+   " = 3.14, ",
+   null
+  ],
+  [
+   "hex",
+   "variable-name"
+  ],
+  [
+   " = 0xFF, ",
+   null
+  ],
+  [
+   "big",
+   "variable-name"
+  ],
+  [
+   " = 10n, ",
+   null
+  ],
+  [
+   "e",
+   "variable-name"
+  ],
+  [
+   " = 1e-3;\n",
+   null
+  ],
+  [
+   "let",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "s",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "'single'",
+   "string"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "t",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "\"double \\\"q\\\"\"",
+   "string"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "u",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "`tpl ${a + 1} x`",
+   "string"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "re",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "/ab+c/",
+   "string"
+  ],
+  [
+   "gi;\n",
+   null
+  ],
+  [
+   "var",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "undef",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "undefined",
+   "constant"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "nul",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "null",
+   "constant"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "nan",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "NaN",
+   "constant"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "ok",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "true",
+   "constant"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "export",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "default",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " Foo ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " Bar {\n  ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " count = 0;\n  #priv = 1;\n  constructor(x) { ",
+   null
+  ],
+  [
+   "super",
+   "keyword"
+  ],
+  [
+   "(x); ",
+   null
+  ],
+  [
+   "this",
+   "constant"
+  ],
+  [
+   ".x = x; }\n  get value() { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "this",
+   "constant"
+  ],
+  [
+   ".x; }\n  ",
+   null
+  ],
+  [
+   "async",
+   "keyword"
+  ],
+  [
+   " run() { ",
+   null
+  ],
+  [
+   "await",
+   "keyword"
+  ],
+  [
+   " fetch(",
+   null
+  ],
+  [
+   "'/x'",
+   "string"
+  ],
+  [
+   "); }\n}\n",
+   null
+  ],
+  [
+   "function",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "add",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   " = 2) { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   " + ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   "; }\n",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "arrow",
+   "variable-name"
+  ],
+  [
+   " = (x) => x * 2;\nlabel: ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "k",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "of",
+   "keyword"
+  ],
+  [
+   " Object.keys(window)) { ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (!k) ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   " label; ",
+   null
+  ],
+  [
+   "else",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "break",
+   "keyword"
+  ],
+  [
+   "; }\n",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "throw",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Error",
+   "type"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"x\"",
+   "string"
+  ],
+  [
+   "); } ",
+   null
+  ],
+  [
+   "catch",
+   "keyword"
+  ],
+  [
+   " (err) { console.log(err); } ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   " {}\n",
+   null
+  ],
+  [
+   "switch",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "typeof",
+   "keyword"
+  ],
+  [
+   " s) { ",
+   null
+  ],
+  [
+   "case",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "'string'",
+   "string"
+  ],
+  [
+   ": ",
+   null
+  ],
+  [
+   "break",
+   "keyword"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "default",
+   "keyword"
+  ],
+  [
+   ": ",
+   null
+  ],
+  [
+   "void",
+   "keyword"
+  ],
+  [
+   " 0; }\ndocument.getElementById(",
+   null
+  ],
+  [
+   "\"a\"",
+   "string"
+  ],
+  [
+   ").addEventListener(",
+   null
+  ],
+  [
+   "\"click\"",
+   "string"
+  ],
+  [
+   ", () => {});\n",
+   null
+  ]
+ ]
+}

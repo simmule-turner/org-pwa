@@ -27,7 +27,8 @@ export async function followElispLink(target) {
     return;
   }
   const entry = /** @type {import('../src/variable-index.js').VariableEntry} */ (entries.find((e) => e.name === parsed.name));
-  settingsFocus.key = entry.control === 'field' ? entry.name : null;
+  settingsFocus.key = entry.control === 'field' && !entry.card ? entry.name : null;
+  settingsFocus.card = entry.card ?? null; // a setting whose control is a card of its own: open the card
   settingsFocus.line = entry.control === 'field' ? null : `(setq ${entry.name} ${setqValue(entry.value)})`;
   if (S.settingsOpen) await renderSettingsView();
   else settingsBtn.click();

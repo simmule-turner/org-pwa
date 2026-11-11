@@ -1,0 +1,358 @@
+{
+ "lang": "emacs-lisp",
+ "mode": "emacs-lisp-mode",
+ "runs": [
+  [
+   ";;; ",
+   "comment-delimiter"
+  ],
+  [
+   "sample.el --- a sample  -*- lexical-binding: t; -*-\n",
+   "comment"
+  ],
+  [
+   "\n(",
+   null
+  ],
+  [
+   "require",
+   "keyword"
+  ],
+  [
+   " '",
+   null
+  ],
+  [
+   "cl-lib",
+   "constant"
+  ],
+  [
+   ")\n(",
+   null
+  ],
+  [
+   "defvar",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-count",
+   "variable-name"
+  ],
+  [
+   " 0 ",
+   null
+  ],
+  [
+   "\"Number of things.\"",
+   "doc"
+  ],
+  [
+   ")\n(",
+   null
+  ],
+  [
+   "defconst",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-limit",
+   "variable-name"
+  ],
+  [
+   " 10)\n(",
+   null
+  ],
+  [
+   "defcustom",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-name",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"x\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"Doc string.\"",
+   "doc"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   ":type",
+   "builtin"
+  ],
+  [
+   " 'string ",
+   null
+  ],
+  [
+   ":group",
+   "builtin"
+  ],
+  [
+   " 'my)\n(",
+   null
+  ],
+  [
+   "defun",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-add",
+   "function-name"
+  ],
+  [
+   " (a ",
+   null
+  ],
+  [
+   "&optional",
+   "type"
+  ],
+  [
+   " b)\n  ",
+   null
+  ],
+  [
+   "\"Add A and B.\nSecond doc line.\"",
+   "doc"
+  ],
+  [
+   "\n  (",
+   null
+  ],
+  [
+   "let",
+   "keyword"
+  ],
+  [
+   " ((sum (+ a (",
+   null
+  ],
+  [
+   "or",
+   "keyword"
+  ],
+  [
+   " b 0))) (s ",
+   null
+  ],
+  [
+   "\"text \\\"q\\\" \\n\"",
+   "string"
+  ],
+  [
+   "))\n    (",
+   null
+  ],
+  [
+   "when",
+   "keyword"
+  ],
+  [
+   " (> sum 5) (message ",
+   null
+  ],
+  [
+   "\"big %d\"",
+   "string"
+  ],
+  [
+   " sum))\n    (",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "and",
+   "keyword"
+  ],
+  [
+   " sum t) nil (",
+   null
+  ],
+  [
+   "setq",
+   "keyword"
+  ],
+  [
+   " my-count (1+ my-count)))\n    (",
+   null
+  ],
+  [
+   "dolist",
+   "keyword"
+  ],
+  [
+   " (x '(1 2 3.5 #x1f ?a)) (",
+   null
+  ],
+  [
+   "push",
+   "keyword"
+  ],
+  [
+   " x s))\n    (",
+   null
+  ],
+  [
+   "condition-case",
+   "keyword"
+  ],
+  [
+   " err (car-safe s) (",
+   null
+  ],
+  [
+   "error",
+   "warning"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "signal",
+   "warning"
+  ],
+  [
+   " 'foo err)))\n    (",
+   null
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " (y) (* y 2))))\n(",
+   null
+  ],
+  [
+   "defmacro",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-mac",
+   "function-name"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "&rest",
+   "type"
+  ],
+  [
+   " body) `(",
+   null
+  ],
+  [
+   "progn",
+   "keyword"
+  ],
+  [
+   " ,@body))\n(",
+   null
+  ],
+  [
+   "cl-defun",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-key",
+   "function-name"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "&key",
+   "type"
+  ],
+  [
+   " foo) foo)\n(add-hook 'my-hook #'my-add) ",
+   null
+  ],
+  [
+   "; ",
+   "comment-delimiter"
+  ],
+  [
+   "trailing comment\n",
+   "comment"
+  ],
+  [
+   ";; ",
+   "comment-delimiter"
+  ],
+  [
+   "line comment\n",
+   "comment"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "provide",
+   "keyword"
+  ],
+  [
+   " '",
+   null
+  ],
+  [
+   "sample",
+   "constant"
+  ],
+  [
+   ")\n",
+   null
+  ]
+ ]
+}

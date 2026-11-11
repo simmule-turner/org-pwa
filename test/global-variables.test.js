@@ -134,3 +134,12 @@ test('a list is saved as a quoted list, and a variable with no control stays as 
   assert.equal(back['org-modules'], "'(org-habit org-id)");
   assert.equal(back['org-footnote-section'], 'nil');
 });
+
+test('org-tags-column: unset is Emacs’s -77, an integer is read, anything else is an error naming the variable', async () => {
+  const { tagsColumnOf } = await import('../src/tags-column.js');
+  const { VariableValueError } = await import('../src/variable-error.js');
+  assert.equal(tagsColumnOf({}), -77);
+  assert.equal(tagsColumnOf({ 'org-tags-column': '-80' }), -80);
+  assert.equal(tagsColumnOf({ 'org-tags-column': 0 }), 0);
+  assert.throws(() => tagsColumnOf({ 'org-tags-column': 'wide' }), (e) => e instanceof VariableValueError && /org-tags-column/.test(e.message));
+});

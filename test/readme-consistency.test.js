@@ -94,7 +94,7 @@ test('the default the README states for a variable is the default the setting ha
     const cell = /^~([^~]*)~/.exec(row.defaultCell);
     if (!cell) continue; // described in words
     const stated = cell[1].replace(/^'/, '');
-    const expected = typeof f.default === 'boolean' ? (f.default ? 't' : 'nil') : String(f.default);
+    const expected = typeof f.default === 'boolean' ? (f.default ? 't' : 'nil') : f.default === '' ? 'nil' : String(f.default);
     if (typeof f.default === 'string' && f.default.length > 24) continue; // a long text default is described, not compared
     if (stated !== expected) wrong.push(`${f.key}: README says ${stated}, the setting defaults to ${expected}`);
   }

@@ -219,6 +219,13 @@ export function renderQuickSettingField(field) {
       setStatus(err.message);
     }
     input.onchange = async () => {
+      if (input.value.trim() === '') { // an empty box is a variable that is not set
+        await commitGlobalVariableChange(field.key, null);
+        setStatus(`${field.label} is not set.`);
+        renderSettingsView();
+        render();
+        return;
+      }
       const n = Number(input.value);
       if (!Number.isFinite(n)) {
         setStatus(`${field.label}: not a valid number, ignored.`);

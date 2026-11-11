@@ -17,7 +17,7 @@ import { NORTH_SEASONS, SOUTH_SEASONS, seasonLocal } from './solar-holidays.js';
 /** @typedef {import('./calendar-conv.js').CalDate} CalDate */
 /** @typedef {{ date: CalDate, name: string }} Holiday */
 /**
- * @typedef {{ zone: string, latitude: number, timeString: (hours: number, zoneName: string) => string }} Solar  the time zone, calendar-latitude and solar-time-string for the sun-related holidays
+ * @typedef {{ zone: string, latitude: number | null, timeString: (hours: number, zoneName: string) => string }} Solar  the time zone, calendar-latitude and solar-time-string for the sun-related holidays
  * @typedef {{ month: number, year: number, vars: Map<string, Lisp>, sexp: ((expr: Lisp, name: Lisp, year: number) => Holiday | null) | null, solar?: Solar }} Window
  */
 
@@ -233,7 +233,7 @@ function solarEquinoxesSolstices(w) {
   const [m, y] = incrementMonth(w.month, w.year, w.month % 3 === 1 ? -1 : w.month % 3 === 2 ? 1 : 0);
   const k = Math.trunc(m / 3) - 1;
   const local = seasonLocal(w.solar.zone, k, y);
-  const names = w.solar.latitude < 0 ? SOUTH_SEASONS : NORTH_SEASONS;
+  const names = (w.solar.latitude ?? 0) < 0 ? SOUTH_SEASONS : NORTH_SEASONS;
   return [{ date: local.date, name: `${names[k]} ${w.solar.timeString(local.hours, local.name)}` }];
 }
 

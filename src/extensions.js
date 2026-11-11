@@ -8,6 +8,7 @@
  */
 
 import { Special, intern } from './elisp-data.js';
+import { VariableValueError } from './variable-error.js';
 
 /** True when the Lisp interpreter already has a function of this name (one a script registered does not count). @param {string} name */
 function definedByInterpreter(name) {
@@ -97,12 +98,18 @@ export async function hashScript(text) {
 }
 
 /**
- * Whether extension scripts may run: the Global Variables switch `org-xx-extensions`, never a file's own.
+ * Whether extension scripts may run: the Global Variables switch `org-xx-extensions` (`on` or `off`, or `t` or `nil`), never a file's own.
+ * Anything else is a VariableValueError naming the variable.
  * @param {any} [globalVars]
  */
 export function extensionsOn(globalVars) {
   const raw = (globalVars || {})['org-xx-extensions'];
-  return /^(on|yes|t|true)$/i.test(raw ? String(raw).trim() : '');
+  const written = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (written === '') return false;
+  const text = written.replace(/^'/, '').replace(/^"([^"]*)"$/, '$1').toLowerCase(); // a symbol, a quoted symbol or a string, as an init file writes them
+  if (text === 'on' || text === 't') return true;
+  if (text === 'off' || text === 'nil') return false;
+  throw new VariableValueError('org-xx-extensions', written, 'on or off');
 }
 
 // ---- agenda sources and header lines ---------------------------------------------------------------------

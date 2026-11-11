@@ -71,7 +71,7 @@ for (const c of SCENARIOS) {
 out.push(
   '',
   '* Where the app differs from Emacs',
-  'Nothing in the examples above differs.',
+  'One thing: with a value that cannot be used (the section above), Emacs stops with its own error text. The app says which variable holds the value and what it was, and skips what needed it; a variable that is not set keeps its default.',
   '',
 );
 fs.writeFileSync(new URL('../examples/agenda-settings.org', import.meta.url), out.join('\n'));

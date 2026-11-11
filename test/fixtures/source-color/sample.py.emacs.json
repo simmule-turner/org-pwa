@@ -1,0 +1,646 @@
+{
+ "lang": "python",
+ "mode": "python-mode",
+ "runs": [
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "!/usr/bin/env python\n",
+   "comment"
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "a comment\n",
+   "comment"
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " os, sys\n",
+   null
+  ],
+  [
+   "from",
+   "keyword"
+  ],
+  [
+   " typing ",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " List\n\n",
+   null
+  ],
+  [
+   "CONST",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 10\n",
+   null
+  ],
+  [
+   "@decorator",
+   "type"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "add",
+   "function-name"
+  ],
+  [
+   "(a: ",
+   null
+  ],
+  [
+   "int",
+   "builtin"
+  ],
+  [
+   ", b",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "2.5e3, ",
+   null
+  ],
+  [
+   "*",
+   "operator"
+  ],
+  [
+   "args, ",
+   null
+  ],
+  [
+   "**",
+   "operator"
+  ],
+  [
+   "kw) ",
+   null
+  ],
+  [
+   "->",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "builtin"
+  ],
+  [
+   ":\n    ",
+   null
+  ],
+  [
+   "\"\"\"Docstring\n    over lines.\"\"\"",
+   "doc"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "s",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "'single'",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"double \\\"q\\\" ",
+   "string"
+  ],
+  [
+   "\\n",
+   "constant"
+  ],
+  [
+   "\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " f",
+   null
+  ],
+  [
+   "\"f",
+   "string"
+  ],
+  [
+   "{a}",
+   null
+  ],
+  [
+   "\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " r",
+   null
+  ],
+  [
+   "\"raw\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " b",
+   null
+  ],
+  [
+   "\"bytes\"",
+   "string"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " a ",
+   null
+  ],
+  [
+   "is",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "not",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "None",
+   "constant"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "and",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "not",
+   "keyword"
+  ],
+  [
+   " b ",
+   null
+  ],
+  [
+   "or",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "True",
+   "constant"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "print",
+   "builtin"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "len",
+   "builtin"
+  ],
+  [
+   "(s), 0x1F, 0b101, 1_000, 3j)\n    ",
+   null
+  ],
+  [
+   "elif",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "False",
+   "constant"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " i ",
+   null
+  ],
+  [
+   "in",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "range",
+   "builtin"
+  ],
+  [
+   "(10):\n        ",
+   null
+  ],
+  [
+   "yield",
+   "keyword"
+  ],
+  [
+   " i\n    ",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "raise",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "ValueError",
+   "type"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"x\"",
+   "string"
+  ],
+  [
+   ")\n    ",
+   null
+  ],
+  [
+   "except",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "KeyError",
+   "type"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "TypeError",
+   "type"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "as",
+   "keyword"
+  ],
+  [
+   " e:\n        ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " x: x\n    ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "del",
+   "keyword"
+  ],
+  [
+   " s\n    ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ".value\n\n",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Foo",
+   "type"
+  ],
+  [
+   "(Base, metaclass",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "Meta):\n    ",
+   null
+  ],
+  [
+   "attr",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "None",
+   "constant"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "async def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "go",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   "):\n        ",
+   null
+  ],
+  [
+   "await",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ".run()\n        ",
+   null
+  ],
+  [
+   "with",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "open",
+   "builtin"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"f\"",
+   "string"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "as",
+   "keyword"
+  ],
+  [
+   " fh:\n            ",
+   null
+  ],
+  [
+   "global",
+   "keyword"
+  ],
+  [
+   " CONST\n        ",
+   null
+  ],
+  [
+   "assert",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "isinstance",
+   "builtin"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ", Foo)\n",
+   null
+  ]
+ ]
+}

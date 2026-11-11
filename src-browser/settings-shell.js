@@ -303,8 +303,24 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
 
   // an elisp:(customize-variable ...) link: go to the field, or to Global Variables with a line ready
   const wantKey = settingsFocus.key;
+  const wantCard = settingsFocus.card;
   const wantLine = settingsFocus.line;
-  if (wantKey || wantLine) {
+  if (wantCard) {
+    settingsFocus.card = null;
+    const category = layout.find((c) => c.cards.includes(wantCard));
+    if (category) {
+      place.category = category.id;
+      place.query = '';
+      search.value = '';
+      draw();
+      const target = cards.get(wantCard);
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ block: 'center' });
+        target.style.outline = '2px solid var(--accent)';
+        setTimeout(() => { target.style.outline = ''; }, 2500);
+      }
+    }
+  } else if (wantKey || wantLine) {
     settingsFocus.key = null;
     const field = wantKey ? SETTINGS_FIELDS.find((f) => f.key === wantKey) : null;
     const cardId = field ? 'quick:' + field.section : 'global-vars';

@@ -1,0 +1,10 @@
+{
+ "lang": "go",
+ "mode": "go-mode (not defined: plain text)",
+ "runs": [
+  [
+   "package main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n)\n\n// Line comment\n/* Block\ncomment */\nconst Pi = 3.14\nconst (\n\tA = iota\n\tB\n)\n\nvar count int = 0x1F\n\ntype Point struct {\n\tX, Y float64\n\tName string `json:\"name\"`\n}\n\ntype Shape interface {\n\tArea() float64\n}\n\nfunc (p *Point) Move(dx float64) { p.X += dx }\n\nfunc add(a int, b ...int) (int, error) {\n\ts := \"text \\\"q\\\" \\n\"\n\tr := 'x'\n\traw := `raw\nstring`\n\tm := map[string][]int{\"a\": {1, 2}}\n\tch := make(chan int, 3)\n\tgo func() { ch <- 1 }()\n\tdefer fmt.Println(s, r, raw, m, len(b), nil, true, false)\n\tfor i := range b {\n\t\tif i > 0 && b[i] != 1e3 {\n\t\t\tcontinue\n\t\t}\n\t}\n\tswitch x := interface{}(a).(type) {\n\tcase int:\n\t\treturn x, nil\n\tdefault:\n\t\treturn 0, os.ErrNotExist\n\t}\n}\n\nfunc main() { _, _ = add(1) }\n",
+   null
+  ]
+ ]
+}

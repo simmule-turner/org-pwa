@@ -12,6 +12,8 @@ import { appendRefiled, archiveInPlace, buildArchivedClone, endsDocument, getArc
 import { collectSubtreeHeadings, getRefileCandidates, parseRefileTargetsWithErrors } from '../src/refile.js';
 import { fileCapture, resolveOlpTarget } from '../src/capture-template.js';
 import { KNOWN, knownFor } from './support/oracle-capture-refile-known.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // Emacs ran at org-tags-column 0
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/oracle-capture-refile.json', import.meta.url), 'utf8'));
 const DIR = '/home/me/org';

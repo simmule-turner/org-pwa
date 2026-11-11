@@ -26,8 +26,8 @@ import { expandOrgAnniversaryOccurrences, expandOrgCyclicOccurrences, diaryFloat
  * @property {Date} [candidateDate]  the day being evaluated (default: today)
  * @property {Date} [today]
  * @property {string} [entryText]
- * @property {number} [calendarLatitude]
- * @property {number} [calendarLongitude]
+ * @property {number | null} [calendarLatitude]
+ * @property {number | null} [calendarLongitude]
  * @property {string | null} [calendarLocationName]
  * @property {string} [calendarDateStyle]
  * @property {number} [diaryHebrewSabbathCandlesMinutes]
@@ -39,15 +39,12 @@ import { expandOrgAnniversaryOccurrences, expandOrgCyclicOccurrences, diaryFloat
  * @property {string} [orgWeatherTemperatureUnit]
  * @property {string} [orgWeatherSpeedUnit]
   */
-/** @typedef {Context & { candidateDate: Date, today: Date, calendarLatitude: number, calendarLongitude: number }} Full  a Context with its defaults filled in */
+/** @typedef {Context & { candidateDate: Date, today: Date, calendarLatitude: number | null, calendarLongitude: number | null }} Full  a Context with its defaults filled in */
 
 /** One day's evaluation may not run longer than this many steps. */
 export const MAX_STEPS = 20000;
 /** Evaluation depth `emacs --batch --eval` already uses when a program starts. */
 const BASE_DEPTH = 20;
-/** Where the sun is computed for when a context names no place (the app's default location). */
-const DEFAULT_LATITUDE = 35.994;
-const DEFAULT_LONGITUDE = -78.8986;
 
 /** The context of the evaluation in progress: `{ candidateDate, today, calendarLatitude, ... }`. @type {Full | null} */
 let current = null;
@@ -154,8 +151,8 @@ export function withContext(context, fn) {
     ...context,
     today,
     candidateDate: context.candidateDate instanceof Date ? context.candidateDate : today,
-    calendarLatitude: context.calendarLatitude ?? DEFAULT_LATITUDE,
-    calendarLongitude: context.calendarLongitude ?? DEFAULT_LONGITUDE,
+    calendarLatitude: context.calendarLatitude ?? null,
+    calendarLongitude: context.calendarLongitude ?? null,
   };
   context = full;
   if (outer === null) {
@@ -229,6 +226,14 @@ function gregorianFromAbsolute(abs) {
   const t = new Date((abs - 719163) * 86400000);
   return [t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCFullYear()];
 }
+/** The place the sun is worked out for. Until calendar-latitude and calendar-longitude are set (Emacs's default is nil) there is none, and
+ *  the entry shows the error, as an Emacs program that needs a place stops where Emacs would ask for one.
+ * @param {Full} context @returns {[number, number]} */
+function sunPlace(context) {
+  if (context.calendarLatitude === null || context.calendarLongitude === null) throw signal('error', ['calendar-latitude and calendar-longitude are nil: set both to use sun times']);
+  return [context.calendarLatitude, context.calendarLongitude];
+}
+
 /** calendar-location-name's default: "40.7N, 74.0W". @param {number} lat @param {number} lon */
 function defaultLocationName(lat, lon) {
   return `${Math.abs(lat).toFixed(1)}${lat > 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(1)}${lon > 0 ? 'E' : 'W'}`;
@@ -429,7 +434,8 @@ defun('diary-hebrew-sabbath-candles', 0, -1, () => {
   const context = ctx();
   const day = startOfDay(context.candidateDate);
   if (!isFriday(day)) return NIL;
-  const sun = solarSunriseSunset(day, context.calendarLatitude, context.calendarLongitude);
+  const [lat, lon] = sunPlace(context);
+  const sun = solarSunriseSunset(day, lat, lon);
   if (sun.set === null) return NIL;
   const minutes = typeof context.diaryHebrewSabbathCandlesMinutes === 'number' ? context.diaryHebrewSabbathCandlesMinutes : 18;
   return `${solarTimeString(Math.round(sun.set * 60) / 60 - minutes / 60.0, sun.setZone, context)} Sabbath candle lighting`;
@@ -441,7 +447,8 @@ defun('solar-sunrise-sunset', 0, 2, ([date, height]) => {
   const [m, d, y] = date === undefined ? dateParts(dateList(ctx().candidateDate)) : dateParts(date);
   const day = realDate(y, m, d);
   if (!day) throw signal('error', ['Not a date']);
-  const sun = solarSunriseSunset(day, ctx().calendarLatitude, ctx().calendarLongitude, height === undefined ? undefined : numOf(height));
+  const [lat, lon] = sunPlace(ctx());
+  const sun = solarSunriseSunset(day, lat, lon, height === undefined ? undefined : numOf(height));
   return list([sun.rise === null ? NIL : fromJs([sun.rise, sun.riseZone]), sun.set === null ? NIL : fromJs([sun.set, sun.setZone]), sun.daylight]);
 });
 
@@ -451,9 +458,10 @@ defun('diary-entry-time', 0, 1, ([text]) => (typeof text === 'string' ? diaryEnt
 // solar-sunrise-sunset-string for the entry's day: "Sunrise 7:18am (EDT), sunset 6:01pm (EDT) at Home (10:42 hrs daylight)"
 defun('diary-sunrise-sunset', 0, -1, () => {
   const context = ctx();
-  const sun = solarSunriseSunset(context.candidateDate, context.calendarLatitude, context.calendarLongitude);
+  const [lat, lon] = sunPlace(context);
+  const sun = solarSunriseSunset(context.candidateDate, lat, lon);
   const at = (/** @type {number | null} */ t, /** @type {string} */ zone) => (t === null ? '' : solarTimeString(t, zone, context));
-  const place = typeof context.calendarLocationName === 'string' ? context.calendarLocationName : defaultLocationName(context.calendarLatitude, context.calendarLongitude);
+  const place = typeof context.calendarLocationName === 'string' ? context.calendarLocationName : defaultLocationName(lat, lon);
   return `${sun.rise === null ? 'No sunrise' : 'Sunrise ' + at(sun.rise, sun.riseZone)}, ${sun.set === null ? 'no sunset' : 'sunset ' + at(sun.set, sun.setZone)} at ${place} (${sun.daylight} hrs daylight)`;
 });
 

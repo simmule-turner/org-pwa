@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v682 — Emacs's defaults, and Emacs's colors
+~org-tags-column~ is -77 and ~calendar-latitude~/~calendar-longitude~ are nil, as in Emacs. DIR attachment paths resolve as in Emacs and a bad one is named. Lazy regexp loops overflow where Emacs's do. emacs-lisp, python, js and java source is colored face by face as Emacs does. ~org-xx-extensions~ and ~org-tags-column~ name an unusable value; own variables take init-file forms; apropos lists every variable with a control. ~examples/settings.org~ lists every variable with its default.
+Verified: colors, DIR and regexp limits against Emacs 29.3; the rest by tests.
+
 * v681 — No quiet defaults left
 Numbers outside the usual range do what Emacs does (weekday modulo 7, latitude and width as given, a reversed priority range gives Emacs's message). A list with a missing parenthesis, an unreadable stored setting, a Local Variables block Emacs cannot read, a skipped Extras or menu-alias entry, an unsupported diary-hook function and a non-property vCard line are each named in a message. ~org-duration-units~ is used as given. ~org-clock-sound~: a missing file plays nothing, ~t~ or an unplayable file gives two beeps.
 Verified: each case against Emacs 29.3; the rest by tests.

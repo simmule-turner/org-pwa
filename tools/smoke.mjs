@@ -6586,6 +6586,21 @@ check('drag handle setting: right by default, left or off from the variable, and
   await context.close();
 });
 
+check('calendar-latitude, calendar-longitude and org-tags-column start as Emacs has them: nil, nil and -77', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '* One\n');
+  const r = await page.evaluate(async () => {
+    const { SETTINGS_FIELDS } = await import('/src-browser/settings-fields.js');
+    const { getCalendarLatitude, getCalendarLongitude } = await import('/src/local-variables.js');
+    const { getTagsColumn } = await import('/src/tags-column.js');
+    const d = (k) => SETTINGS_FIELDS.find((f) => f.key === k)?.default;
+    return { lat: d('calendar-latitude'), lon: d('calendar-longitude'), col: d('org-tags-column'), gl: getCalendarLatitude({}), go: getCalendarLongitude({}), tc: getTagsColumn() };
+  });
+  expect(r.lat === '' && r.lon === '' && r.col === -77 && r.gl === null && r.go === null && r.tc === -77, JSON.stringify(r));
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const babelDoc = (...blocks) => ['* Code', '#+NAME: sales', '| q | n |', '|---+---|', '| Q1 | 10 |', '| Q2 | 20 |', '', ...blocks, ''].join('\n');
 // Playwright's own service-worker blocking script reads navigator.serviceWorker in every frame, which a sandboxed frame refuses.
 const sandboxErrors = (errors) => errors.filter((e) => !/allow-same-origin/.test(e));
@@ -8956,7 +8971,7 @@ check('clock reminder: a clock that has reached its effort says so once, in Orgâ
   await context.close();
 });
 
-check('org-clock-sound: a file name is played from the org-pwa folder where the platform has one (Android), and beeps where there is none or the file is missing', async () => {
+check('org-clock-sound: a file name is played from the org-pwa folder where the platform has one (Android) and plays nothing where there is none or the file is missing; t or a file that will not play beeps twice', async () => {
   const { context, page, errors } = await freshPage();
   const result = await page.evaluate(async () => {
     const { installPlatform } = await import('/src-browser/platform.js');
@@ -8967,8 +8982,10 @@ check('org-clock-sound: a file name is played from the org-pwa folder where the 
     window.AudioContext = class { constructor() { beeps.push(1); } createOscillator() { return { frequency: {}, connect() {}, start() {}, stop() {} }; } get destination() { return {}; } get currentTime() { return 0; } close() {} };
     const files = new Map([['ding.wav', 'UklGRg==']]);
     const out = {};
-    // a browser has no folder: the file name beeps
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 600)); // the second beep follows the first
+    // a browser has no folder to look in: the file is not there, so nothing plays
     await playClockSound('"~/sounds/ding.wav"');
+    await settle();
     out.browser = { played: played.length, beeps: beeps.length };
     installPlatform({ attachments: { supported: () => true, folder: async () => ({ name: 'org-pwa' }), adapter: { readBinary: async (path) => (files.has(path) ? { base64: files.get(path) } : null) } } });
     played.length = 0; beeps.length = 0;
@@ -8976,19 +8993,27 @@ check('org-clock-sound: a file name is played from the org-pwa folder where the 
     out.android = { played: played.slice(), beeps: beeps.length };
     played.length = 0; beeps.length = 0;
     await playClockSound('"missing.wav"');
+    await settle();
     out.missing = { played: played.length, beeps: beeps.length };
     played.length = 0; beeps.length = 0;
     await playClockSound('t');
+    await settle();
     out.t = { played: played.length, beeps: beeps.length };
+    played.length = 0; beeps.length = 0;
+    window.Audio = class { play() { return Promise.reject(new Error('cannot play')); } };
+    await playClockSound('"~/sounds/ding.wav"');
+    await settle();
+    out.unplayable = { played: played.length, beeps: beeps.length };
     played.length = 0; beeps.length = 0;
     await playClockSound('nil');
     out.nil = { played: played.length, beeps: beeps.length };
     return out;
   });
-  expect(result.browser.played === 0 && result.browser.beeps === 1, `a browser beeps: ${JSON.stringify(result.browser)}`);
+  expect(result.browser.played === 0 && result.browser.beeps === 0, `a browser plays nothing: ${JSON.stringify(result.browser)}`);
   expect(result.android.played.length === 1 && result.android.played[0] === 'data:audio/wav;base64,UklGRg==' && result.android.beeps === 0, `the folder's file is played: ${JSON.stringify(result.android)}`);
-  expect(result.missing.played === 0 && result.missing.beeps === 1, `a missing file beeps: ${JSON.stringify(result.missing)}`);
-  expect(result.t.played === 0 && result.t.beeps === 1, `t beeps: ${JSON.stringify(result.t)}`);
+  expect(result.missing.played === 0 && result.missing.beeps === 0, `a missing file plays nothing: ${JSON.stringify(result.missing)}`);
+  expect(result.t.played === 0 && result.t.beeps === 2, `t beeps twice: ${JSON.stringify(result.t)}`);
+  expect(result.unplayable.beeps === 2, `a file that will not play beeps twice: ${JSON.stringify(result.unplayable)}`);
   expect(result.nil.played === 0 && result.nil.beeps === 0, `nil is silent: ${JSON.stringify(result.nil)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();

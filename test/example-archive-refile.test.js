@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { buildArchivedClone, buildRestoredClone, getArchiveLocation, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, archiveInPlace, appendRefiled, shiftLevels } from '../src/archive-model.js';
 import { removeHeading } from '../src/heading-edit.js';
+import { setTagsColumn } from '../src/tags-column.js';
+setTagsColumn(0); // its oracle ran at org-tags-column 0
 
 const text = readFileSync(new URL('../examples/archive-refile.org', import.meta.url), 'utf8');
 const unescape = (/** @type {string} */ s) => s.replace(/^,(\*|#\+)/gm, '$1');
