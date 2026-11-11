@@ -50,7 +50,7 @@ test('a background read does not throw when access is missing or would be refuse
 
 test('an ordinary read that the person refuses still throws, as before', async () => {
   const h = fakeHandle({ state: { value: 'prompt' }, answer: 'denied' });
-  await assert.rejects(() => adapterFor(h).read('a.org'), /Permission denied reading "a\.org"/);
+  await assert.rejects(() => adapterFor(h).read('a.org'), /Access to "a\.org" has lapsed/);
 });
 
 test('a file with no stored handle reads as null either way', async () => {

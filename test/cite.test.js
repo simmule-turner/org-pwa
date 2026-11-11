@@ -113,7 +113,7 @@ test('without the bibliography file, keys have no author or year, as in Emacs', 
 
 test('the settings: global files, sorting field and separator', () => {
   assert.deepEqual(getCiteGlobalBibliography({ 'org-cite-global-bibliography': '("a.bib" "b.json")' }), ['a.bib', 'b.json']);
-  assert.deepEqual(getCiteGlobalBibliography({ 'org-cite-global-bibliography': 'a.bib, b.bib' }), ['a.bib', 'b.bib']);
+  assert.deepEqual(getCiteGlobalBibliography({ 'org-cite-global-bibliography': 'nil' }), []);
   assert.equal(getCiteSortingField({}), 'author');
   assert.equal(getCiteSortingField({ 'org-cite-basic-sorting-field': 'nil' }), null);
   assert.equal(getCiteSeparator({}), ', ');

@@ -166,8 +166,8 @@ function prefersInAppCamera(userAgent, maxTouchPoints) {
 
 const MB = 1024 * 1024;
 
-/** Whether a file is too big to attach, or big enough to confirm first, by the attachment size limits (Settings > Sync and
- *  storage > Size limits). `base64Length` is the encoded size; `backend` is the storage kind. GitHub's contents API takes up
+/** Whether a file is too big to attach, or big enough to confirm first, by the attachment size limits (org-xx-size-limit-attachment and
+ *  org-xx-size-limit-attachment-warn). `base64Length` is the encoded size; `backend` is the storage kind. GitHub's contents API takes up
  *  to 100MB, so a GitHub file is refused over 95MB whatever the limit. A large file is held in memory and uploaded in one go.
  *  Returns { refuse } or { warn } (each a sentence), or null.
  * @param {number} base64Length

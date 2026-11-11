@@ -2,6 +2,7 @@
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 import { setTagsColumn, tagsColumnOf } from './tags-column.js';
 import { setSizeLimits, sizeLimitsOf } from './size-limits.js';
+import { VariableValueError } from './variable-error.js';
 import { tokenize as tokenizeExtraMenu } from './extra-menu.js';
 import { tokenizeMenuAliasValue } from './menu-alias.js';
 /**
@@ -86,7 +87,7 @@ function formElements(form) {
 
 /** The variables whose value is a list of strings (one menu entry each) that the app keeps as its quoted entries, `"a" "b"`, with the
  *  tokenizer that reads them. In the text they are a quoted list of Lisp strings, as an init file has them: `'("a" "b")`. */
-const ENTRY_LISTS = /** @type {Record<string, (raw: string) => string[]>} */ ({
+export const ENTRY_LISTS = /** @type {Record<string, (raw: string) => string[]>} */ ({
   'org-xx-extra-menu': tokenizeExtraMenu,
   'org-xx-menu-aliases': tokenizeMenuAliasValue,
 });
@@ -95,16 +96,9 @@ const ENTRY_LISTS = /** @type {Record<string, (raw: string) => string[]>} */ ({
  *  source for a `(setq)` and `fromLisp` the box text for a source; each returns undefined for a variable it knows nothing about.
  * @typedef {{ toLisp: (name: string, box: string) => string | undefined, fromLisp: (name: string, source: string) => string | undefined }} ValueCodec */
 
-/** A value as it goes after the name in a `(setq NAME VALUE)` when nothing knows the setting: as typed, but several bare items become a
- *  quoted list, since setq would take them as more pairs.
- * @param {string} value */
-function plainSource(value) {
-  return formElements(`(${value})`).length > 1 ? `'(${value})` : value;
-}
-
 /** The entries of a quoted list of strings as the app keeps them: each string read as Lisp reads it, then quoted again with nothing escaped.
  * @param {string} value  `'("a" "b")`, `("a" "b")` or one string */
-function entriesOfList(value) {
+export function entriesOfList(value) {
   const source = value.replace(/^'/, '');
   const elements = source.startsWith('(') ? formElements(source) : [source];
   return elements.filter((e) => e.length >= 2 && e.startsWith('"') && e.endsWith('"')).map((e) => '"' + e.slice(1, -1).replace(/\\(["\\])/g, '$1') + '"').join(' ');
@@ -137,7 +131,7 @@ export function serializeGlobalVariables(vars, codec = null) {
   return Object.keys(vars)
     .filter((k) => vars[k] !== null && vars[k] !== undefined && vars[k] !== '')
     .sort()
-    .map((k) => `(setq ${k} ${k in ENTRY_LISTS ? listOfEntries(String(vars[k]), ENTRY_LISTS[k]) : (codec && codec.toLisp(k, String(vars[k]))) ?? plainSource(String(vars[k]))})`)
+    .map((k) => `(setq ${k} ${k in ENTRY_LISTS ? listOfEntries(String(vars[k]), ENTRY_LISTS[k]) : (codec && codec.toLisp(k, String(vars[k]))) ?? String(vars[k])})`)
     .join('\n');
 }
 
@@ -157,6 +151,10 @@ export function serializeGlobalVariables(vars, codec = null) {
 export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   const merged = { ...(globalVars || {}), ...(localVars || {}) };
   setTagsColumn(tagsColumnOf(merged)); // headings written again put their tags where org-tags-column says
-  setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused
+  try {
+    setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused
+  } catch (err) {
+    if (!(err instanceof VariableValueError)) throw err; // a limit that is not a size is reported (variableProblems) and the limits stay as they were
+  }
   return merged;
 }

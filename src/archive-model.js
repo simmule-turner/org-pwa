@@ -429,8 +429,8 @@ function buildRestoredClone(heading) {
   if (archiveTodo !== undefined) {
     clone.todo = archiveTodo;
   }
-  // a subtree archived inside its file took its inherited tags along (and :tag: was how older versions wrote the list)
-  const inherited = new Set((getProperty(clone, 'ARCHIVE_ITAGS') || '').split(/[:\s]+/).filter(Boolean));
+  // a subtree archived inside its file took its inherited tags along
+  const inherited = new Set((getProperty(clone, 'ARCHIVE_ITAGS') || '').split(/\s+/).filter(Boolean));
   if (inherited.size > 0) clone.tags = clone.tags.filter((t) => !inherited.has(t));
   for (const key of ['ARCHIVE_TIME', 'ARCHIVE_FILE', 'ARCHIVE_OLPATH', 'ARCHIVE_CATEGORY', 'ARCHIVE_TODO', 'ARCHIVE_ITAGS']) {
     deleteProperty(clone, key);

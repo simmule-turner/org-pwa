@@ -53,24 +53,27 @@
  * (possibly empty `{}`), for direct `result[menu][label]` lookup by any
  * call site. An unset/empty value returns all six as `{}`.
  * @param {string} rawValue
+ * @param {string[]} [skipped]  receives a description of each entry left out
  */
-function parseMenuAliases(rawValue) {
+function parseMenuAliases(rawValue, skipped) {
   const result = { file: {}, more: {}, export: {}, import: {}, view: {}, clocking: {} };
   if (!rawValue || !rawValue.trim()) return result;
 
   const tokens = tokenizeMenuAliasValue(rawValue);
   for (const token of tokens) {
     const colonIndex = token.indexOf(':');
-    if (colonIndex === -1) continue; // no "menu:" prefix at all -- malformed, skip rather than error
+    /** @param {string} why */
+    const skip = (why) => { if (skipped) skipped.push(`"${token}" ${why}`); };
+    if (colonIndex === -1) { skip('has no "menu:" before the label'); continue; }
     const menu = token.slice(0, colonIndex).trim();
-    if (!(menu in result)) continue; // not one of the six known menus -- skip
+    if (!(menu in result)) { skip(`names the menu "${menu}", which does not exist`); continue; }
 
     const rest = token.slice(colonIndex + 1);
     const semicolonIndex = rest.indexOf(';');
-    if (semicolonIndex === -1) continue; // no ";" at all -- malformed, skip rather than error
+    if (semicolonIndex === -1) { skip('has no ";" before the alias'); continue; }
     const label = rest.slice(0, semicolonIndex).trim();
     const alias = rest.slice(semicolonIndex + 1).trim();
-    if (!label) continue; // "menu:;alias" with nothing before the ";" -- nothing to attach this to
+    if (!label) { skip('has no label before the ";"'); continue; }
     /** @type {any} */ (result)[menu][label] = alias;
   }
   return result;

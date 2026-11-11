@@ -57,6 +57,7 @@ test('invalid input is null', () => {
 // org-duration-units, with the answers Emacs 29.3 gives (org-duration-to-minutes after org-duration-set-regexps).
 import { applyDurationVariables as applyUnits } from '../src/org-duration.js';
 import { parseOrgDuration as parseDur, parseDurationUnits } from '../src/org-duration.js';
+import { VariableValueError } from '../src/variable-error.js';
 
 test('org-duration-units: an 8-hour day changes d, w, m and y, as in Emacs', () => {
   applyUnits({ 'org-duration-units': '(("min" . 1) ("h" . 60) ("d" . 480) ("w" . 2400) ("m" . 9600) ("y" . 115200))' });
@@ -83,8 +84,29 @@ test('org-duration-units: custom names work and removed ones are invalid, as in 
   }
 });
 
-test('org-duration-units: an unusable value leaves Emacs’s default in force', () => {
-  for (const bad of ['', 'nil', '(("h" . 60))', '(("min" . 1) ("h" . 0))', '(("min" . 1) ("min" . 1))', '("min" "h")', '(("min" . 1)']) assert.equal(parseDurationUnits(bad), null, bad);
+test('org-duration-units is used as given, as Emacs 29.3 does (oracle): no "min" needed, nil is no units, a repeated name counts its first row', () => {
+  assert.deepEqual(parseDurationUnits('(("h" . 60))'), [['h', 60]]);
+  assert.deepEqual(parseDurationUnits('nil'), []);
+  assert.deepEqual(parseDurationUnits('(("min" . 1) ("min" . 1))'), [['min', 1]]);
+  assert.deepEqual(parseDurationUnits('(("min" . 1) ("h" . 0))'), [['min', 1], ['h', 0]]);
+  assert.deepEqual(parseDurationUnits('(("min" . 1) ("h" . -5))'), [['min', 1], ['h', -5]]);
   applyUnits({ 'org-duration-units': '(("h" . 60))' });
+  try {
+    assert.equal(parseDur('1:30'), 90);
+    assert.equal(parseDur('2h'), 120);
+    assert.equal(parseDur('1min'), null, 'a unit that is not in the list is an error in Emacs ("Unknown unit")');
+    applyUnits({ 'org-duration-units': 'nil' });
+    assert.equal(parseDur('2h'), null);
+  } finally {
+    applyUnits({});
+  }
+});
+
+test('org-duration-units that is not an alist is an error in Emacs\'s words, and the units stay as they were', () => {
+  assert.throws(() => parseDurationUnits('("min" "h")'), /org-duration-units: Wrong type argument: listp, "min"/);
+  assert.throws(() => parseDurationUnits('junk'), /Wrong type argument: listp, junk/);
+  assert.throws(() => parseDurationUnits('(("min" . 1)'), /End of file during parsing/);
+  assert.throws(() => applyUnits({ 'org-duration-units': '(("min" . x))' }), VariableValueError);
   assert.equal(parseDur('1d'), 1440);
 });
+

@@ -6,6 +6,7 @@ import { applyLispInit, lispSettings, onLispSettingsChange } from './lisp-init-l
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { parseGlobalVariables, serializeGlobalVariables } from './global-variables-lisp.js';
 import { getAgendaStartOnWeekday, isTimeDisplay24, TIME_DISPLAY_FORM_24, DEFAULT_TIME_DISPLAY_FORM, getUseSubSuperscripts, getWeatherRefreshInterval, parseLispBoolean, parseLispNumber, parseLocalVariables } from '../src/local-variables.js';
+import { VariableValueError } from '../src/variable-error.js';
 import { multiEntryDisplayTextToValue, multiEntryValueToDisplayText } from '../src/multi-entry-format.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { parseLogDoneLispValue } from '../src/progress-logging.js';
@@ -15,7 +16,7 @@ import { S } from './app-state.js';
 import { openTextFieldPopup } from './dialogs.js';
 import { setStatus } from './editing.js';
 import { render } from './render.js';
-import { QUICK_SETTINGS_FIELDS, SETTINGS_FIELDS } from './settings-fields.js';
+import { SETTINGS_FIELDS } from './settings-fields.js';
 import { setGlobalVariables } from './settings.js';
 import { kv } from './singletons.js';
 import { entryFieldButtonStyle, menuButton, populateSelectOptions, settingsTextBox, textInputStyle } from './ui-widgets.js';
@@ -48,7 +49,12 @@ export function resolveQuickSettingValue(field) {
     case 'boolean':
       return parseLispBoolean(rawValue, field.default) ? 't' : 'nil';
     case 'number':
-      return String(parseLispNumber(rawValue, field.default));
+      try {
+        return String(parseLispNumber(rawValue, field.default, field.key));
+      } catch (err) {
+        if (!(err instanceof VariableValueError)) throw err;
+        return String(rawValue); // shown as the person wrote it, so it can be fixed in Global Variables
+      }
     case 'text':
       return rawValue !== undefined ? rawValue : field.default;
     case 'longtext':
@@ -67,7 +73,7 @@ export function resolveQuickSettingValue(field) {
 }
 
 /** Builds a FULLY-RESOLVED copy of globalVariablesText for Export
- *  Settings specifically -- every QUICK_SETTINGS_FIELDS key's own
+ *  Settings specifically -- every SETTINGS_FIELDS key's own
  *  actual current value baked in explicitly (see
  *  resolveQuickSettingValue's own docs for exactly why), layered on
  *  top of whatever's already in globalVariablesText so any variable
@@ -204,7 +210,14 @@ export function renderQuickSettingField(field) {
     if (field.min !== undefined) input.min = String(field.min);
     if (field.max !== undefined) input.max = String(field.max);
     if (field.step !== undefined) input.step = String(field.step);
-    input.value = String(parseLispNumber(rawValue, field.default));
+    try {
+      input.value = String(parseLispNumber(rawValue, field.default, field.key));
+    } catch (err) {
+      if (!(err instanceof VariableValueError)) throw err;
+      input.value = ''; // the box stays empty; the error says what the variable holds
+      input.title = err.message;
+      setStatus(err.message);
+    }
     input.onchange = async () => {
       const n = Number(input.value);
       if (!Number.isFinite(n)) {
@@ -417,13 +430,13 @@ export function renderQuickSettingField(field) {
   return row;
 }
 
-/** Groups QUICK_SETTINGS_FIELDS by their own `section`, in first-
+/** Groups SETTINGS_FIELDS by their own `section`, in first-
  *  appearance order (not alphabetical -- "Progress logging" and
  *  "Agenda" first, "Advanced" last, matches how someone would
  *  actually want to scan this, not dictionary order). */
 export function renderQuickSettingsGroups() {
   const sections = [];
-  for (const field of QUICK_SETTINGS_FIELDS) {
+  for (const field of SETTINGS_FIELDS) {
     /** @type {any} */ let group = sections.find((s) => s.name === field.section);
     if (!group) {
       group = { name: field.section, fields: [] };

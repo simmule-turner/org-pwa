@@ -20,7 +20,6 @@ function values(/** @type {any} */ f) {
   if (f.type === 'onezero') ['1', '0'].forEach((v) => out.add(v));
   if (f.type === 'longtext' && f.key !== 'org-inlinetask-min-level' && f.key !== 'diary-file') TYPED.list.forEach((v) => out.add(v));
   if (f.key === 'diary-file') ['github:diary', 'webdav:my diary'].forEach((v) => out.add(v));
-  if (/^(display-time-format|org-weather-format|org-contacts-birthday-property|org-footnote-section|org-cite-basic-author-year-separator)$/.test(f.key)) TYPED.string.forEach((v) => out.add(v));
   out.delete('');
   out.delete('false'); // the default of a switch that is off: written as nil
   out.delete('true');
@@ -45,21 +44,17 @@ for (const f of SETTINGS_FIELDS) {
 test('a setting shown as it is in the box goes to the file as Lisp', () => {
   const text = serializeGlobalVariables({
     'org-startup-folded': 'overview', 'org-agenda-include-diary': 'true', 'display-time-mode': '0', 'org-priority-highest': 'A',
-    'org-use-sub-superscripts': '{}', 'org-modules': 'org-habit org-id', 'diary-file': 'github:diary', 'large-file-warning-threshold': '500KB',
-    'org-weather-temperature-unit': '°F', 'org-agenda-use-tag-inheritance': '(todo search agenda)', 'org-footnote-section': 'nil', 'org-log-done': 'time',
+    'org-use-sub-superscripts': '{}', 'diary-file': 'github:diary', 'org-weather-temperature-unit': '°F', 'org-log-done': 'time',
   });
   assert.equal(text, [
-    '(setq diary-file "github:diary")', '(setq display-time-mode nil)', '(setq large-file-warning-threshold 512000)', '(setq org-agenda-include-diary t)',
-    "(setq org-agenda-use-tag-inheritance '(todo search agenda))", '(setq org-footnote-section nil)', "(setq org-log-done 'time)", "(setq org-modules '(org-habit org-id))",
+    '(setq diary-file "github:diary")', '(setq display-time-mode nil)', '(setq org-agenda-include-diary t)', "(setq org-log-done 'time)",
     "(setq org-priority-highest ?A)", "(setq org-startup-folded 'overview)", "(setq org-use-sub-superscripts '{})", '(setq org-weather-temperature-unit "°F")',
   ].join('\n'));
   const back = parseGlobalVariables(text);
   assert.equal(back['org-startup-folded'], 'overview');
   assert.equal(back['display-time-mode'], '0');
   assert.equal(back['org-priority-highest'], 'A');
-  assert.equal(back['large-file-warning-threshold'], '500KB');
   assert.equal(back['org-use-sub-superscripts'], '{}');
-  assert.equal(back['org-modules'], 'org-habit org-id'.replace(/^/, '(').replace(/$/, ')'));
 });
 
 test('text written the old way, with bare words, still loads', () => {

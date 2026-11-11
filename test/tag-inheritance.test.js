@@ -44,9 +44,9 @@ test('tag inheritance: reads quoted, unquoted and quote-prefixed lists', () => {
   assert.equal(parseLispTagList('t'), null);
 });
 
-test('tag inheritance: the exclude list can be typed as plain words, as in a settings box', () => {
+test('tag inheritance: the exclude list is a Lisp list of tags', () => {
   const { child, parent } = tree();
-  assert.deepEqual(effectiveTagsOf(child, [parent], parseTagInheritance('t', 'home, proj_x')), ['own', 'work']);
+  assert.deepEqual(effectiveTagsOf(child, [parent], parseTagInheritance('t', '("home" "proj_x")')), ['own', 'work']);
 });
 
 import { buildAncestorIndex, inheritedOnly } from '../src/tag-inheritance.js';

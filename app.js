@@ -63,7 +63,7 @@ import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine
 import { handleAgendaRowKey } from './src-browser/agenda-row-focus.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
-import { render, updateSaveButtonState } from './src-browser/render.js';
+import { installVariableErrorReporting, render, updateSaveButtonState } from './src-browser/render.js';
 import { setupSidePanelResize } from './src-browser/row-render.js';
 import { wireSearchMenuButton } from './src-browser/search-chooser.js';
 import { advanceToNextFileOrFinish, finishQueryReplace, renderSearchPanel } from './src-browser/search-ui.js';
@@ -1084,6 +1084,7 @@ moreBtn.addEventListener('click', () => {
 });
 
 installUpdateLog();
+installVariableErrorReporting();
 
 if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   const updateBanner = /** @type {HTMLElement} */ (document.getElementById('updateBanner'));

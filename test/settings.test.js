@@ -509,3 +509,16 @@ test('the address book\u2019s sync state round-trips and defaults to nothing sen
   assert.deepEqual(await getCarddavSyncState(kv), state);
 });
 
+
+test('a stored setting that cannot be read is reported by name, once, and reads as not set', async () => {
+  const { takeUnreadableSettings } = await import('../src-browser/settings.js');
+  takeUnreadableSettings();
+  const kv = createInMemoryAdapter();
+  await kv.set('settings:github', '{not json');
+  const config = await getGithubConfig(kv);
+  assert.equal(config.token ?? '', '');
+  const messages = takeUnreadableSettings();
+  assert.equal(messages.length, 1);
+  assert.match(messages[0], /The stored setting "settings:github" could not be read/);
+  assert.deepEqual(takeUnreadableSettings(), []);
+});

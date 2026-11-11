@@ -139,12 +139,13 @@ function parseSpec(spec) {
  * entries: `{ type: 'separator' }` or
  * `{ type: 'capture' | 'olp' | 'function', label, ... }`. A token that
  * doesn't parse cleanly (malformed spec, missing label, unrecognized
- * function name) is silently skipped rather than aborting the whole
+ * function name) is left out (and named in `skipped`) rather than aborting the whole
  * menu -- one bad entry shouldn't take out every other one. An
  * unset/empty value returns an empty array, not an error.
  * @param {string} text
+ * @param {string[]} [skipped]  receives a description of each entry left out
  */
-function parseExtraMenu(text) {
+function parseExtraMenu(text, skipped) {
   if (!text || !text.trim()) return [];
   const entries = [];
   for (const token of tokenize(text)) {
@@ -153,9 +154,15 @@ function parseExtraMenu(text) {
       continue;
     }
     const split = splitSpecAndLabel(token);
-    if (!split || !split.label) continue;
+    if (!split || !split.label) {
+      if (skipped) skipped.push(`"${token}" has no label`);
+      continue;
+    }
     const spec = parseSpec(split.spec);
-    if (!spec) continue;
+    if (!spec) {
+      if (skipped) skipped.push(`"${token}" is not a template key, an OLP path or a quoted function`);
+      continue;
+    }
     entries.push({ ...spec, label: split.label });
   }
   return entries;

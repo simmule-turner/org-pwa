@@ -22,7 +22,7 @@ export function idleLimitMinutes(raw) {
   return n > 0 ? n : null;
 }
 
-/** org-clock-sound: 'none' for nil / unset, 'beep' for t, and 'file' for a file name (played where the app has the org-pwa folder, a beep elsewhere, as Emacs beeps when the file is missing).
+/** org-clock-sound: 'none' for nil / unset, 'beep' for t, and 'file' for a file name (played where the app has the org-pwa folder; nothing elsewhere or when the file is missing, as in Emacs).
  * @param {string | undefined} raw
  * @returns {'none' | 'beep' | 'file'} */
 export function soundKind(raw) {

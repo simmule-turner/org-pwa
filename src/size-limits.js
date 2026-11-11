@@ -1,9 +1,10 @@
 // @ts-check
+import { VariableValueError } from './variable-error.js';
 /**
  * Size limits: how large a file the app opens, shows or attaches before it asks or refuses. Opening a large Org file is slow
  * (a keystroke in the text editor takes about a second at 1 MB), an inline image costs time in proportion to its bytes, and a
  * big attachment is held in memory several times over, so each kind has a size to warn at and a size to refuse at. The
- * numbers are settings (`org-xx-size-limit-*`, Settings > Sync and storage > Size limits); `off` (or 0) removes a limit.
+ * numbers are settings (`org-xx-size-limit-*`, set in Global Variables); `off` (or 0) removes a limit.
  */
 
 const KB = 1024;
@@ -37,33 +38,20 @@ export const SIZE_KINDS = Object.freeze({
 export const FETCH_TIMEOUT_KEY = 'org-xx-fetch-timeout';
 
 /**
- * Bytes in a size such as `500KB`, `2 MB`, `1.5m` or `1048576`; 0 for `off`, `nil`, `none` or `0` (no limit); null for text that is
- * not a size.
+ * Bytes in a size such as `500KB`, `2 MB`, `1.5m` or `1048576` (a number or a string, as the variable holds it); 0 for `nil` or `0`
+ * (no limit); null for text that is not a size.
  * @param {unknown} text
  * @returns {number | null}
  */
 export function parseSize(text) {
   if (typeof text === 'number') return Number.isFinite(text) && text >= 0 ? Math.round(text) : null;
   const s = String(text ?? '').trim().toLowerCase().replace(/^["']|["']$/g, '');
-  if (s === 'off' || s === 'nil' || s === 'none' || s === 'no') return 0;
+  if (s === 'nil') return 0;
   const m = /^(\d+(?:\.\d+)?)\s*(b|k|kb|kib|m|mb|mib|g|gb|gib)?$/.exec(s);
   if (!m) return null;
   const unit = m[2] || 'b';
   const factor = unit[0] === 'k' ? KB : unit[0] === 'm' ? MB : unit[0] === 'g' ? 1024 * MB : 1;
   return Math.round(Number(m[1]) * factor);
-}
-
-/** Why a size setting cannot be used, or null when it can.
- * @param {string} text */
-export function validateSizeSetting(text) {
-  return parseSize(text) === null ? `"${text}" is not a size. Use a number with KB or MB (500KB, 2MB), or off for no limit.` : null;
-}
-
-/** Why a timeout setting cannot be used, or null when it can.
- * @param {string} text */
-export function validateTimeoutSetting(text) {
-  const t = text.trim().toLowerCase();
-  return t === 'off' || t === 'nil' || (/^\d+$/.test(t) && Number(t) <= 3600) ? null : `"${text}" is not a number of seconds (0 to 3600, or off for no timeout).`;
 }
 
 /** A size for people: `512 KB`, `2 MB`, `1.5 MB`; `off` for 0.
@@ -75,7 +63,7 @@ export function formatSize(bytes) {
   return `${rounded} ${unit}`;
 }
 
-/** The limits a variables map sets, the defaults for anything unset or unreadable.
+/** The limits a variables map sets, the defaults for anything unset; a value that is not a size is a VariableValueError.
  * @param {Record<string, unknown> | null | undefined} vars
  * @returns {SizeLimits} */
 export function sizeLimitsOf(vars) {
@@ -83,11 +71,13 @@ export function sizeLimitsOf(vars) {
     const raw = vars ? vars[key] : undefined;
     if (raw === undefined || raw === '') return fallback;
     const n = parseSize(raw);
-    return n === null ? fallback : n;
+    if (n === null) throw new VariableValueError(key, raw, 'a size such as "500KB", a number of bytes or nil');
+    return n;
   };
   const d = DEFAULT_SIZE_LIMITS;
   const timeoutRaw = vars ? vars[FETCH_TIMEOUT_KEY] : undefined;
-  const timeout = timeoutRaw === undefined || timeoutRaw === '' ? NaN : Number(String(timeoutRaw).trim().toLowerCase() === 'off' || String(timeoutRaw).trim().toLowerCase() === 'nil' ? 0 : timeoutRaw);
+  const timeout = timeoutRaw === undefined || timeoutRaw === '' ? d.fetchTimeoutSeconds : Number(String(timeoutRaw).trim() === 'nil' ? 0 : timeoutRaw);
+  if (!Number.isFinite(timeout) || timeout < 0) throw new VariableValueError(FETCH_TIMEOUT_KEY, timeoutRaw, 'a number of seconds or nil');
   return {
     orgFile: { warn: pick(SIZE_KINDS.orgFile.warnKey, d.orgFile.warn), max: pick(SIZE_KINDS.orgFile.key, d.orgFile.max) ?? d.orgFile.max },
     image: { max: pick(SIZE_KINDS.image.key, d.image.max) ?? d.image.max },
@@ -95,7 +85,7 @@ export function sizeLimitsOf(vars) {
     bibliography: { max: pick(SIZE_KINDS.bibliography.key, d.bibliography.max) ?? d.bibliography.max },
     setupfile: { max: pick(SIZE_KINDS.setupfile.key, d.setupfile.max) ?? d.setupfile.max },
     include: { max: pick(SIZE_KINDS.include.key, d.include.max) ?? d.include.max },
-    fetchTimeoutSeconds: Number.isFinite(timeout) && timeout >= 0 ? timeout : d.fetchTimeoutSeconds,
+    fetchTimeoutSeconds: timeout,
   };
 }
 
@@ -137,9 +127,8 @@ export function getSizeLimits() {
 export function checkSize(kind, bytes, limits = current.limits, name = '') {
   const limit = limits[kind];
   const what = name ? `"${name}"` : SIZE_KINDS[kind].label;
-  const where = 'Settings > Sync and storage > Size limits';
   if (limit.max > 0 && bytes > limit.max) {
-    return { ok: false, message: `${what} is ${formatSize(bytes)}, over the ${formatSize(limit.max)} limit for ${SIZE_KINDS[kind].label}. Change the limit in ${where}.` };
+    return { ok: false, message: `${what} is ${formatSize(bytes)}, over the ${formatSize(limit.max)} limit for ${SIZE_KINDS[kind].label}. Set ${SIZE_KINDS[kind].key} in Global Variables to change the limit.` };
   }
   if (limit.warn && limit.warn > 0 && bytes > limit.warn) {
     return { ok: 'warn', message: `${what} is ${formatSize(bytes)}. This is large and may be slow. Open anyway?` };
@@ -172,7 +161,7 @@ export function assertWithinLimit(kind, bytes, name = '', limits = current.limit
 export function assertWithinCeiling(bytes, name = '', limits = current.limits) {
   const ceiling = textCeiling(limits);
   if (ceiling > 0 && bytes > ceiling) {
-    throw new SizeLimitError(`${name ? `"${name}"` : 'The file'} is ${formatSize(bytes)}, over the ${formatSize(ceiling)} limit. Change the limit in Settings > Sync and storage > Size limits.`, 'orgFile', bytes);
+    throw new SizeLimitError(`${name ? `"${name}"` : 'The file'} is ${formatSize(bytes)}, over the ${formatSize(ceiling)} limit. Set the org-xx-size-limit-* variables in Global Variables to change the limits.`, 'orgFile', bytes);
   }
 }
 

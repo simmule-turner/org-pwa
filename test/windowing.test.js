@@ -100,10 +100,10 @@ test('sameRanges', () => {
   assert.ok(!sameRanges([[0, 5]], []));
 });
 
-test('org-xx-windowing-threshold: default 400, 0 turns it off, junk falls back', () => {
+test('org-xx-windowing-threshold: default 400, 0 turns it off, junk is an error', () => {
   assert.equal(getWindowingThreshold({}), 400);
   assert.equal(getWindowingThreshold({ 'org-xx-windowing-threshold': '0' }), 0);
   assert.equal(getWindowingThreshold({ 'org-xx-windowing-threshold': '150' }), 150);
-  assert.equal(getWindowingThreshold({ 'org-xx-windowing-threshold': 'many' }), 400);
+  assert.throws(() => getWindowingThreshold({ 'org-xx-windowing-threshold': 'many' }), /org-xx-windowing-threshold is "many"/);
   assert.equal(getWindowingThreshold({ 'org-xx-windowing-threshold': '-5' }), 0);
 });

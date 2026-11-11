@@ -8,7 +8,7 @@ import { entryText } from '../src/apropos-variable.js';
 import { moveInList, orderToStore, resolveSettingsLayout } from '../src/settings-layout.js';
 import { countExportItemsOn } from '../src/export-defaults.js';
 import { S } from './app-state.js';
-import { QUICK_SETTINGS_FIELDS, SETTINGS_FIELDS } from './settings-fields.js';
+import { SETTINGS_FIELDS } from './settings-fields.js';
 import { setSettingsOrder } from './settings.js';
 import { settingsFocus } from './settings-focus.js';
 import { variableEntries } from './variable-entries.js';
@@ -306,7 +306,7 @@ export function renderSettingsShell(container, cards, savedOrder, rerender) {
   const wantLine = settingsFocus.line;
   if (wantKey || wantLine) {
     settingsFocus.key = null;
-    const field = wantKey ? QUICK_SETTINGS_FIELDS.find((f) => f.key === wantKey) : null;
+    const field = wantKey ? SETTINGS_FIELDS.find((f) => f.key === wantKey) : null;
     const cardId = field ? 'quick:' + field.section : 'global-vars';
     const category = layout.find((c) => c.cards.includes(cardId));
     if (category) {

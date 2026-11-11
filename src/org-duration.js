@@ -20,7 +20,8 @@
  * Returns minutes as a number (fractional for decimals or seconds), or
  * null when `text` isn't a valid duration.
  */
-import { datum, listItems, readLisp, stringValue } from './lisp-read.js';
+import { datum, isNil, lispSyntaxError, listItems, readLisp, stringValue } from './lisp-read.js';
+import { VariableValueError } from './variable-error.js';
 
 /** org-duration-units as Emacs ships it: [name, minutes] in order. */
 const DEFAULT_UNITS = /** @type {[string, number][]} */ ([
@@ -34,7 +35,7 @@ const DEFAULT_UNITS = /** @type {[string, number][]} */ ([
 
 /** @param {[string, number][]} units */
 function unitTable(units) {
-  const names = units.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((x, y) => y.length - x.length).join('|');
+  const names = units.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).sort((x, y) => y.length - x.length).join('|') || '(?!)'; // no units: nothing matches
   const one = `[ \\t]*(\\d+(?:\\.\\d*)?)[ \\t]*(${names})`;
   return {
     minutes: new Map(units),
@@ -48,39 +49,49 @@ function unitTable(units) {
 /** The units in force; changed by org-duration-units (applyDurationVariables). */
 const current = { table: unitTable(DEFAULT_UNITS) };
 
-/**
- * The value of org-duration-units: an alist such as (("min" . 1) ("h" . 60) ("d" . 480)). Null when it is not a usable one
- * (not an alist of names and positive numbers, or "min" missing), so Emacs's default stays.
- * @param {string} text
- * @returns {[string, number][] | null}
- */
-function parseDurationUnits(text) {
-  const source = String(text == null ? '' : text);
-  const bare = source.replace(/"(?:[^"\\]|\\.)*"/g, '');
-  if (bare.split('(').length !== bare.split(')').length) return null; // the reader stops quietly at an unbalanced tail
-  const forms = readLisp(source);
-  if (forms.length !== 1) return null;
-  const data = datum(forms[0]) || forms[0];
-  const rows = listItems(data);
-  if (!rows || rows.length === 0) return null;
-  /** @type {[string, number][]} */ const units = [];
-  for (const row of rows) {
-    if (row.k !== 'list' || row.items.length !== 1 || !row.tail || row.tail.k !== 'num') return null;
-    const name = stringValue(row.items[0]);
-    const minutes = row.tail.v;
-    if (!name || !/^[^\s\d.]+$/.test(name) || !(minutes > 0) || units.some(([n]) => n === name)) return null;
-    units.push([name, minutes]);
-  }
-  return units.some(([n, m]) => n === 'min' && m === 1) ? units : null;
+/** A form as Lisp prints it, for the error. @param {import('./lisp-read.js').Lisp} f @returns {string} */
+function shownRow(f) {
+  if (f.k === 'str') return JSON.stringify(f.v);
+  if (f.k === 'list') return '(' + f.items.map(shownRow).join(' ') + (f.tail ? ' . ' + shownRow(f.tail) : '') + ')';
+  return String(f.v);
 }
 
 /**
- * Takes org-duration-units from the Global Variables, or Emacs's default when it is unset or not usable.
+ * The value of org-duration-units: an alist such as (("min" . 1) ("h" . 60) ("d" . 480)), used as given as Emacs uses it (nil is
+ * no units at all, "min" need not be there, a repeated name counts its first row). Anything that is not an alist of names and
+ * numbers is a VariableValueError in Emacs's words (wrong-type-argument listp).
+ * @param {string} text
+ * @returns {[string, number][]}
+ */
+function parseDurationUnits(text) {
+  const source = String(text == null ? '' : text);
+  const syntax = lispSyntaxError(source);
+  if (syntax) throw new VariableValueError('org-duration-units', source, 'a list', `org-duration-units: ${syntax}`);
+  const forms = readLisp(source);
+  const wrong = (/** @type {string} */ shown) => new VariableValueError('org-duration-units', source, 'a list of ("UNIT" . MINUTES)', `org-duration-units: Wrong type argument: listp, ${shown}`);
+  if (forms.length !== 1) throw wrong(source.trim() || 'nil');
+  const data = datum(forms[0]) || forms[0];
+  if (isNil(data)) return [];
+  const rows = listItems(data);
+  if (!rows) throw wrong(source.trim());
+  /** @type {[string, number][]} */ const units = [];
+  for (const row of rows) {
+    const name = row.k === 'list' && row.items.length === 1 ? stringValue(row.items[0]) : null;
+    const tail = row.k === 'list' ? row.tail : null;
+    if (name === null || !tail || tail.k !== 'num') throw wrong(shownRow(row));
+    if (!units.some(([n]) => n === name)) units.push([name, tail.v]);
+  }
+  return units;
+}
+
+/**
+ * Takes org-duration-units from the Global Variables; Emacs's default when it is unset. A value that cannot be used is a
+ * VariableValueError and the units stay as they were.
  * @param {Record<string, string> | undefined} vars
  */
 function applyDurationVariables(vars) {
   const raw = vars && vars['org-duration-units'];
-  current.table = unitTable((raw && parseDurationUnits(raw)) || DEFAULT_UNITS);
+  current.table = unitTable(raw === undefined || String(raw).trim() === '' ? DEFAULT_UNITS : parseDurationUnits(raw));
 }
 
 const BARE_NUMBER_RE = /^\d+(?:\.\d*)?$/;

@@ -35,6 +35,7 @@ export async function reloadCurrentDocumentFromDisk() {
     kvAdapter: kv,
     diskAdapter: activeDiskAdapter(),
   });
+  if (reopened.source === 'new') throw new Error(`"${S.state.documentId}" is no longer there, so there is nothing to reload.`);
   S.state.doc = reopened.doc;
   const rawLocalVars = parseLocalVariables(serializeOrg(S.state.doc));
   S.state.startupConfig = resolveEffectiveStartupConfig(S.state.doc, rawLocalVars, S.globalVariables);
@@ -147,7 +148,7 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
     overlay.appendChild(modal);
 
     const title = document.createElement('div');
-    title.textContent = `"${documentId}" changed elsewhere`;
+    title.textContent = plan.wholeFile ? `${documentId} changed on disk; keep your version or theirs?` : `"${documentId}" changed elsewhere`;
     title.style.fontWeight = '700';
     title.style.fontSize = '15px';
     title.style.flexShrink = '0';
@@ -159,7 +160,9 @@ export function openConflictResolver(/** @type {any} */ { documentId, plan }) {
     summary.style.flexShrink = '0';
     const n = conflicts.length;
     const places = `${n} place${n === 1 ? '' : 's'}`;
-    if (plan.hasBase) {
+    if (plan.wholeFile) {
+      summary.textContent = 'The two versions differ too much to compare line by line. Choose which whole file to keep.';
+    } else if (plan.hasBase) {
       const auto = plan.stats ? plan.stats.mineOnly + plan.stats.theirsOnly + plan.stats.identical : 0;
       summary.textContent =
         `Your unsaved changes and the other version both changed the same lines in ${places}, so you decide ${n === 1 ? 'that one' : 'those'}.` +

@@ -6,6 +6,7 @@ import { initText } from './lisp-init-text.js';
 import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults, lispStringValue } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
+import { noteMissingSetupFiles } from './setupfile.js';
 import { exportToHtml } from '../src/export-html.js';
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { exportToLatex, exportToBeamer } from '../src/export-latex.js';
@@ -89,6 +90,7 @@ export async function performExport(format, scope) {
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').replace(/[. ]+$/, '').trim() || 'export';
   if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
+    await noteMissingSetupFiles(S.state.doc, S.state.documentId, S.state.storageKind); // a #+SETUPFILE: that cannot be had is reported; the export goes on, as in Emacs
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
     const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus }));
     try {

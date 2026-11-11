@@ -774,7 +774,7 @@ function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
   }
   if (type === 'table-line') return placeTableLine(target, expandedText, prepend, opts);
 
-  // 'entry' and 'plain' (and the fallback for anything unrecognized -- filing the text as written is safer than discarding it)
+  // 'entry' and 'plain' (a type of any other name never gets here: captureInto refuses it)
   const text = expandedText;
   const fragment = parseOrg(text);
   if (fragment.children.length > 0) {

@@ -277,3 +277,12 @@ test('a heading a function makes last in a deeper level keeps every heading obje
   assert.ok(doc.children[0] === alpha && doc.children[1] === beta, 'the headings are the same objects');
   assert.equal(beta.collapsed, true, 'a heading the capture did not touch stays folded');
 });
+
+test('a template of a type Emacs does not know is refused with its name, and nothing is filed', () => {
+  const doc = file('* A\n');
+  const before = serializeOrg(doc);
+  const r = captureInto(doc, /** @type {any} */ ({ key: 'x', name: 'x', type: 'entyr', target: { kind: 'file', file: 'a.org' }, template: '* hi' }), { now: NOW, answers: [], context: {}, place: () => ({}) });
+  assert.equal(r.ok, false);
+  assert.match(/** @type {any} */ (r).message, /"entyr".*nothing was filed/);
+  assert.equal(serializeOrg(doc), before);
+});

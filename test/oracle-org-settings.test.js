@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { expandMacrosForExport } from '../src/export-macros.js';
-import { parseLocalVariables } from '../src/local-variables.js';
+import { BLOCK_PROBLEM, parseLocalVariables } from '../src/local-variables.js';
 import { parseExportOptions } from '../src/export-options.js';
 import { parseStartupConfig } from '../src/startup-config.js';
 import { startupLogWords } from '../src/log-settings.js';
@@ -31,7 +31,7 @@ function app(c) {
   }
   if (c.kind === 'locals') {
     const v = /** @type {Record<string, string>} */ (parseLocalVariables(c.src));
-    return Object.entries(v).filter(([k]) => k !== 'mode').map(([k, raw]) => {
+    return Object.entries(v).filter(([k]) => k !== 'mode' && k !== BLOCK_PROBLEM).map(([k, raw]) => {
       try { return `${k}=${print(new Reader(raw).read(), true)}`; } catch { return `${k}=ERROR`; }
     }).sort().join('\u0001');
   }

@@ -326,3 +326,11 @@ test('planConflict: versions too different to diff fall back to a whole-file rev
   assert.equal(plan.hasBase, false);
   assert.equal(plan.conflictCount, 1);
 });
+
+test('a merge that cannot be compared line by line is marked as the whole file, and the plan carries the mark', () => {
+  const a = Array.from({ length: 3000 }, (_, i) => 'a' + i).join('\n');
+  const b = Array.from({ length: 3000 }, (_, i) => 'b' + i).join('\n');
+  assert.equal(/** @type {any} */ (diff2Segments(a, b)).wholeFile, true);
+  assert.equal(/** @type {any} */ (planConflict(a, b, null)).wholeFile, true);
+  assert.equal(/** @type {any} */ (planConflict('x\ny', 'x\nz', null)).wholeFile, false);
+});

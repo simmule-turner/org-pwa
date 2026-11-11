@@ -17,7 +17,7 @@ import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, prom
 import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
 import { isJsBlock } from '../src/babel.js';
 import { isElispBlock } from '../src/babel-elisp.js';
-import { getDragHandle, parseLispBoolean } from '../src/local-variables.js';
+import { getDragHandle, getIndentTables, parseLispBoolean } from '../src/local-variables.js';
 import { allLogLines, parseLogbookEntries } from '../src/logbook.js';
 import { cycleHeadingTodo, cycleItemCheckbox, toggleFold } from '../src/outline-view-model.js';
 import { S } from './app-state.js';
@@ -181,11 +181,17 @@ export function renderActionMenu(actions, columns = 5) {
   return menu;
 }
 
+/** Whether org-indent-mode is on for the open file (org-startup-indented, #+STARTUP: indent). */
+function orgIndented() {
+  return !!(S.state && S.state.startupConfig && S.state.startupConfig.indented);
+}
+
 /** The left padding of a row: under its heading's level with org-indent-mode on, at the edge (a list's own nesting aside) with it off.
- * @param {{ depth: number, step?: number }} row */
+ *  A table stays at the edge even with it on when org-xx-indent-tables is nil.
+ * @param {{ depth: number, step?: number, rowType?: string }} row */
 function rowLeft(row) {
-  const indented = !!(S.state && S.state.startupConfig && S.state.startupConfig.indented);
-  return 8 + (indented ? row.depth : row.step || 0) * 16;
+  const underHeading = orgIndented() && !(row.rowType === 'table' && !getIndentTables(S.state.localVariables));
+  return 8 + (underHeading ? row.depth : row.step || 0) * 16;
 }
 
 /**
@@ -215,6 +221,14 @@ export function renderRow(row, todoSequence) {
       render();
     };
     el.appendChild(fold);
+
+    if (!orgIndented()) {
+      // org-indent-mode off: every heading starts at the edge with all its stars, so the level shows as it does in Emacs
+      const stars = document.createElement('span');
+      stars.className = 'heading-stars';
+      stars.textContent = '*'.repeat(row.depth + 1);
+      el.appendChild(stars);
+    }
 
     if (row.node.todo) {
       const badge = document.createElement('span');

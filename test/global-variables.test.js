@@ -121,17 +121,16 @@ test('the menu variables are written as a quoted list, quotes inside an entry es
 import { parseGlobalVariables as parseLisp, serializeGlobalVariables as serializeLisp } from '../src-browser/global-variables-lisp.js';
 
 test('a string setting with spaces is written as a Lisp string and read back as its text', () => {
-  const vars = { 'display-time-format': '%b%d %H:%M', 'org-weather-format': 'Weather: %desc, %tcur', 'org-footnote-section': 'Footnotes', 'org-deadline-warning-days': '14' };
+  const vars = { 'diary-file': 'webdav:my diary', 'org-deadline-warning-days': '14' };
   const text = serializeLisp(vars);
-  assert.equal(text, '(setq display-time-format "%b%d %H:%M")\n(setq org-deadline-warning-days 14)\n(setq org-footnote-section "Footnotes")\n(setq org-weather-format "Weather: %desc, %tcur")');
+  assert.equal(text, '(setq diary-file "webdav:my diary")\n(setq org-deadline-warning-days 14)');
   assert.deepEqual(parseLisp(text), vars);
-  assert.equal(parseLisp('(setq display-time-format %H:%M)')['display-time-format'], '%H:%M'); // unquoted still reads
 });
 
-test('a list typed bare is saved as a quoted list, and nil stays nil', () => {
-  const text = serializeLisp({ 'org-modules': 'org-habit org-id', 'org-contacts-files': '("github:c" "github:d")', 'org-footnote-section': 'nil', 'org-clock-out-switch-to-state': 'DONE' });
-  assert.equal(text, '(setq org-clock-out-switch-to-state "DONE")\n(setq org-contacts-files \'("github:c" "github:d"))\n(setq org-footnote-section nil)\n(setq org-modules \'(org-habit org-id))');
+test('a list is saved as a quoted list, and a variable with no control stays as it is written', () => {
+  const text = serializeLisp({ 'org-contacts-files': '("github:c" "github:d")', 'org-footnote-section': 'nil', 'org-modules': "'(org-habit org-id)" });
+  assert.equal(text, '(setq org-contacts-files \'("github:c" "github:d"))\n(setq org-footnote-section nil)\n(setq org-modules \'(org-habit org-id))');
   const back = parseLisp(text);
-  assert.equal(back['org-modules'], '(org-habit org-id)');
+  assert.equal(back['org-modules'], "'(org-habit org-id)");
   assert.equal(back['org-footnote-section'], 'nil');
 });

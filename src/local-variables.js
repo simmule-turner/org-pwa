@@ -27,10 +27,15 @@ import { parseBrokenLinks } from './broken-links.js';
 
 import { DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 import { readPriorityRange, prioritiesKeyword } from './priorities.js';
+import { sizeLimitsOf } from './size-limits.js';
+import { parseExtraMenu } from './extra-menu.js';
+import { parseMenuAliases } from './menu-alias.js';
+import { parseDurationUnits } from './org-duration.js';
 import { parseLispTagList, parsePropertyInheritance, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 import { Reader } from './elisp-read.js';
-import { readLisp, listItems, stringValue } from './lisp-read.js';
+import { VariableValueError } from './variable-error.js';
+import { readLisp, listItems, stringValue, lispSyntaxError } from './lisp-read.js';
 
 /** Real Emacs's OTHER, older/simpler local-variables mechanism: a
  *  "-*- var: val; var2: val2; -*-" cookie anywhere on the file's own
@@ -99,6 +104,9 @@ function readValue(text, pos) {
   return { raw: text.slice(from, reader.pos), start: from, next: reader.pos };
 }
 
+/** The entry a Local Variables block that Emacs cannot read leaves in the file's variables: its message (variableProblems reports it). Not a variable. */
+export const BLOCK_PROBLEM = 'local-variables-problem';
+
 /** @param {string} s */
 const quote = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -111,6 +119,8 @@ const quote = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function parseBlockOnly(text) {
   /** @type {Record<string, string>} */
   const vars = {};
+  /** A block Emacs cannot read gives no variables and a message in Emacs's words. @param {string} reason */
+  const broken = (reason) => ({ [BLOCK_PROBLEM]: `File mode specification error: (user-error ${reason})` });
   let from = Math.max(text.length - 3000, 0);
   const page = text.lastIndexOf('\n\f');
   if (page >= from) from = page;
@@ -125,6 +135,7 @@ function parseBlockOnly(text) {
   const start = lineEnd < text.length ? lineEnd + 1 : text.length;
   const endRe = new RegExp('^' + prefix + '[ \\t]*End:[ \\t]*' + suffix + '$', 'im');
   const found = endRe.exec(text.slice(start));
+  if (!found) return { [BLOCK_PROBLEM]: 'Local variables list is not properly terminated' };
   const region = found ? text.slice(start, start + found.index) : '';
   const lines = region.replace(/\r/g, '\n').split('\n');
   if (lines.length && lines[lines.length - 1] === '') lines.pop();
@@ -133,10 +144,10 @@ function parseBlockOnly(text) {
   const stripped = [];
   for (const line of lines) {
     const p = prefixRe.exec(line);
-    if (!p) return vars;
+    if (!p) return broken('Local variables entry is missing the prefix');
     const rest = line.slice(p[0].length);
     const sm = suffixRe.exec(rest);
-    if (!sm) return vars;
+    if (!sm) return broken('Local variables entry is missing the suffix');
     stripped.push(rest.slice(0, sm.index));
   }
   const body = stripped.join('\n') + (stripped.length ? '\n' : '');
@@ -146,7 +157,7 @@ function parseBlockOnly(text) {
   while (cursor < body.length) {
     VAR_RE.lastIndex = cursor;
     const m = VAR_RE.exec(body);
-    if (!m) return vars;
+    if (!m) return broken(`Malformed local variable line: "${body.slice(cursor).split('\n')[0]}"`);
     try {
       const { start, next } = readValue(body, VAR_RE.lastIndex);
       const nl = body.indexOf('\n', next);
@@ -155,7 +166,7 @@ function parseBlockOnly(text) {
       if (name !== 'coding' && name !== 'lexical-binding') found2[name] = raw;
       cursor = nl < 0 ? body.length : nl + 1;
     } catch {
-      return vars;
+      return { [BLOCK_PROBLEM]: 'File mode specification error: (end-of-file)' };
     }
   }
   return found2;
@@ -215,36 +226,33 @@ function joinContinuedLines(text) {
   return joined;
 }
 
-/** Emacs Lisp boolean convention: the symbol `t` is true, `nil` is
- *  false (and is also Lisp's empty list / "nothing", which is why nil
- *  reads as false) — not JavaScript truthiness, so this doesn't just
- * @param {null | undefined} raw
- *  coerce the raw string. Anything else falls back to `fallback`. */
+/** Emacs's truth: `nil` (or the empty list) is false and any other value is true. A variable that is not set keeps `fallback`.
+ * @param {string | boolean | null | undefined} raw
+ * @param {boolean} [fallback] */
 export function parseLispBoolean(raw, fallback = false) {
   if (raw === undefined || raw === null) return fallback;
-  const v = String(raw).trim().toLowerCase();
-  if (v === 't') return true;
-  if (v === 'nil') return false;
-  return fallback;
+  const v = String(raw).trim().replace(/^'/, '').toLowerCase();
+  return !(v === 'nil' || v === '()');
 }
 
-/**
- * @param {null | undefined} raw
+/** A number. A variable that is not set keeps `fallback`; a value that is not a number is a VariableValueError (Emacs: wrong-type-argument).
+ * @param {string | number | null | undefined} raw
  * @param {number} fallback
- */
-export function parseLispNumber(raw, fallback) {
-  if (raw === undefined || raw === null) return fallback;
-  const n = Number(String(raw).trim());
-  return Number.isFinite(n) ? n : fallback;
+ * @param {string} [name] the variable, for the error */
+export function parseLispNumber(raw, fallback, name = 'the variable') {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  const text = String(raw).trim().replace(/^'/, '');
+  const n = text === '' ? NaN : Number(text);
+  if (!Number.isFinite(n)) throw new VariableValueError(name, raw, 'a number');
+  return n;
 }
 
-/** org-agenda-start-on-weekday: 0=Sunday, 1=Monday (real org's own
- *  default), 2=Tuesday, ... 6=Saturday. Values outside 0-6 fall back to
- * @param {LocalVars} vars
- *  the default rather than producing a nonsensical week. */
+/** org-agenda-start-on-weekday: 0=Sunday, 1=Monday (real org's own default), 2=Tuesday, ... 6=Saturday. Any other number counts
+ *  modulo 7, as in Emacs (9 starts on Tuesday, -2 on Friday).
+ * @param {LocalVars} vars */
 export function getAgendaStartOnWeekday(vars) {
-  const n = parseLispNumber((vars || {})['org-agenda-start-on-weekday'], 1);
-  return n >= 0 && n <= 6 ? n : 1;
+  const n = Math.floor(parseLispNumber((vars || {})['org-agenda-start-on-weekday'], 1, 'org-agenda-start-on-weekday'));
+  return ((n % 7) + 7) % 7;
 }
 
 /** org-deadline-warning-days: how many days before its own due date a
@@ -259,7 +267,7 @@ export function getAgendaStartOnWeekday(vars) {
  * @param {LocalVars} vars
  *  default too, rather than producing a nonsensical negative window. */
 export function getDeadlineWarningDays(vars) {
-  return parseLispNumber((vars || {})['org-deadline-warning-days'], 14); // a negative number is used as its opposite, as Emacs does (org-get-wdays)
+  return parseLispNumber((vars || {})['org-deadline-warning-days'], 14, 'org-deadline-warning-days'); // a negative number is used as its opposite, as Emacs does (org-get-wdays)
 }
 
 /** org-scheduled-delay-days: SCHEDULED's own equivalent to
@@ -286,7 +294,7 @@ export function getDeadlineWarningDays(vars) {
  * @param {LocalVars} vars
  *  negative delay. */
 export function getScheduledDelayDays(vars) {
-  return parseLispNumber((vars || {})['org-scheduled-delay-days'], 0);
+  return parseLispNumber((vars || {})['org-scheduled-delay-days'], 0, 'org-scheduled-delay-days');
 }
 
 /** org-cycle-open-archived-trees: real org's default is nil (false) —
@@ -314,15 +322,15 @@ export function getAgendaShowAllDates(vars) {
  * @param {LocalVars} vars */
 export function getHabitOptions(vars) {
   const v = vars || {};
-  const preceding = parseLispNumber(v['org-habit-preceding-days'], 21);
-  const following = parseLispNumber(v['org-habit-following-days'], 7);
+  const preceding = parseLispNumber(v['org-habit-preceding-days'], 21, 'org-habit-preceding-days');
+  const following = parseLispNumber(v['org-habit-following-days'], 7, 'org-habit-following-days');
   return {
-    precedingDays: preceding >= 0 ? Math.min(preceding, 400) : 21,
-    followingDays: following >= 0 ? Math.min(following, 400) : 7,
+    precedingDays: preceding,
+    followingDays: following,
     onlyForToday: parseLispBoolean(v['org-habit-show-habits-only-for-today'], true),
     showAllToday: parseLispBoolean(v['org-habit-show-all-today'], false),
     doneAlwaysGreen: parseLispBoolean(v['org-habit-show-done-always-green'], false),
-    scheduledPastDays: v['org-habit-scheduled-past-days'] === undefined || /^nil$/i.test(String(v['org-habit-scheduled-past-days']).trim()) ? null : parseLispNumber(v['org-habit-scheduled-past-days'], 10000),
+    scheduledPastDays: v['org-habit-scheduled-past-days'] === undefined || /^nil$/i.test(String(v['org-habit-scheduled-past-days']).trim()) ? null : parseLispNumber(v['org-habit-scheduled-past-days'], 10000, 'org-habit-scheduled-past-days'),
   };
 }
 
@@ -359,13 +367,12 @@ export function getClosedKeepWhenNoTodo(vars) {
 
 /** org-ascii-text-width: the maximum line width (in characters) for
  *  wrapping paragraph text during ASCII export. Real org's own default
- *  is 72, matched here exactly. A non-positive or unparseable value
- *  falls back to that default rather than producing zero-or-negative-
- * @param {LocalVars} vars
- *  width wrapping. */
+ *  is 72, matched here exactly. A value of 0 or less
+ *  wraps every word onto its own line, as in Emacs.
+ * @param {LocalVars} vars */
 export function getAsciiTextWidth(vars) {
-  const n = parseLispNumber((vars || {})['org-ascii-text-width'], 72);
-  return n > 0 ? n : 72;
+  const n = parseLispNumber((vars || {})['org-ascii-text-width'], 72, 'org-ascii-text-width');
+  return n;
 }
 
 /**
@@ -374,7 +381,7 @@ export function getAsciiTextWidth(vars) {
  */
 export function getAsciiCharset(vars) {
   const v = String((vars || {})['org-ascii-charset'] || '').trim().replace(/^'/, '').toLowerCase();
-  return v === 'utf-8' || v === 'utf8' ? 'utf-8' : v === 'latin1' || v === 'latin-1' || v === 'iso-8859-1' ? 'latin1' : 'ascii';
+  return v === 'utf-8' ? 'utf-8' : v === 'latin1' ? 'latin1' : 'ascii'; // as in Emacs, any other charset writes ASCII
 }
 
 /**
@@ -542,16 +549,21 @@ export function getDisplayTimeMode(vars) {
   return String(raw).trim() !== '0';
 }
 
+/** The text of a Lisp string value (`"text"`), or null when the variable is unset or does not hold a string.
+ * @param {unknown} raw @returns {string | null} */
+function readLispString(raw) {
+  const form = typeof raw === 'string' ? readLisp(raw)[0] : undefined;
+  return form ? stringValue(form) : null;
+}
+
 /** display-time-format: the format-time-string pattern of the modeline clock. When it is nil (as in Emacs by default) the clock is
  *  `2:05PM`, or `14:05` when display-time-24hr-format is t.
  * @param {LocalVars} vars */
 export function getDisplayTimeFormat(vars) {
   const v = vars || {};
-  const raw = v['display-time-format'];
-  const text = raw !== undefined && raw !== null ? String(raw).trim() : '';
-  if (text !== '' && text !== 'nil') return String(raw);
-  const twentyFour = v['display-time-24hr-format'];
-  return twentyFour !== undefined && twentyFour !== null && String(twentyFour).trim() !== 'nil' && String(twentyFour).trim() !== '' ? '%H:%M' : '%-I:%M%p';
+  const format = readLispString(v['display-time-format']);
+  if (format !== null) return format;
+  return parseLispBoolean(v['display-time-24hr-format'], false) ? '%H:%M' : '%-I:%M%p';
 }
 
 /** @param {LocalVars} vars */
@@ -588,32 +600,27 @@ export function getAgendaUseTagInheritance(vars) {
   return parseAgendaUseTagInheritance((vars || {})['org-agenda-use-tag-inheritance']);
 }
 
-/** org-cite-global-bibliography: bibliography files every document uses, as a Lisp list of names or just names with spaces or
- *  commas between.
+/** org-cite-global-bibliography: bibliography files every document uses, as a Lisp list of names (nil for none).
  * @param {LocalVars} vars
  * @returns {string[]} */
 export function getCiteGlobalBibliography(vars) {
-  const text = String((vars || {})['org-cite-global-bibliography'] ?? '').trim();
-  if (!text || text.toLowerCase() === 'nil') return [];
-  return parseLispTagList(text) || text.split(/[\s,]+/).filter(Boolean);
+  return parseLispTagList(String((vars || {})['org-cite-global-bibliography'] ?? '')) || [];
 }
 
 /** org-cite-basic-sorting-field: the field the basic citation processor sorts by (author), nil for the order cited.
  * @param {LocalVars} vars
  * @returns {string | null} */
 export function getCiteSortingField(vars) {
-  const v = String((vars || {})['org-cite-basic-sorting-field'] ?? '').trim().replace(/^'/, '');
-  if (!v) return 'author';
-  return v.toLowerCase() === 'nil' ? null : v;
+  const raw = (vars || {})['org-cite-basic-sorting-field'];
+  if (raw === undefined || raw === null) return 'author';
+  const v = String(raw).trim().replace(/^'/, '');
+  return v === 'nil' ? null : v;
 }
 
 /** org-cite-basic-author-year-separator: what goes between the references of one citation (", ").
  * @param {LocalVars} vars */
 export function getCiteSeparator(vars) {
-  const raw = (vars || {})['org-cite-basic-author-year-separator'];
-  if (raw === undefined || raw === null || String(raw) === '') return ', ';
-  const m = /^"(.*)"$/s.exec(String(raw));
-  return m ? m[1].replace(/\\(.)/g, '$1') : String(raw);
+  return readLispString((vars || {})['org-cite-basic-author-year-separator']) ?? ', ';
 }
 
 /** org-footnote-section: the heading footnote definitions are collected under ("Footnotes"); nil defines them at the end of the
@@ -622,11 +629,8 @@ export function getCiteSeparator(vars) {
 export function getFootnoteSection(vars) {
   const raw = (vars || {})['org-footnote-section'];
   if (raw === undefined || raw === null) return 'Footnotes';
-  const text = String(raw).trim();
-  if (text.toLowerCase() === 'nil') return null;
-  const m = /^"(.*)"$/s.exec(text);
-  const name = (m ? m[1].replace(/\\(.)/g, '$1') : text).trim();
-  return name === '' ? 'Footnotes' : name;
+  if (String(raw).trim() === 'nil') return null;
+  return readLispString(raw) ?? 'Footnotes';
 }
 
 /** org-footnote-define-inline: write new footnotes as [fn:label:text] at the reference.
@@ -647,6 +651,13 @@ export function getFootnoteAutoLabel(vars) {
 export function getFootnoteAutoAdjust(vars) {
   const v = String((vars || {})['org-footnote-auto-adjust'] ?? 'nil').trim().replace(/^'/, '').toLowerCase();
   return v === 't' || v === 'renumber' || v === 'sort' ? v : 'nil';
+}
+
+/** org-xx-indent-tables (this app's own): with org-indent-mode on, whether a table is indented under its heading like the text around
+ *  it (t) or stays at the left edge with the most room (nil).
+ * @param {LocalVars} vars */
+export function getIndentTables(vars) {
+  return parseLispBoolean((vars || {})['org-xx-indent-tables'], true);
 }
 
 /** org-xx-show-inherited-tags (this app's own): whether outline headings show the tags they inherit, dimmed.
@@ -711,14 +722,22 @@ export function getGodModeButton(vars) {
 
 const DRAG_HANDLE_SIDES = new Set(['right', 'left', 'off']);
 
+/** One of a few fixed values (this app's own variables). Unset keeps `fallback`; anything else is a VariableValueError that lists them.
+ * @param {string | undefined} raw @param {string} name @param {Set<string>} allowed @param {string} fallback */
+function oneOf(raw, name, allowed, fallback) {
+  const text = raw === undefined || raw === null ? '' : String(raw).trim();
+  if (text === '') return fallback;
+  if (allowed.has(text)) return text;
+  throw new VariableValueError(name, raw, `one of ${[...allowed].join(', ')}`);
+}
+
 /** org-xx-drag-handle: where the drag grip sits on a heading row -- "right" (the default), "left", or "off" for none. This
  * @param {LocalVars} vars
- *  app's own variable (the org-xx- convention). Anything else, or nothing set, is the default. */
+ *  app's own variable (the org-xx- convention). Anything else is a VariableValueError; nothing set is "right". */
 export function getDragHandle(vars) {
   const raw = (vars || {})['org-xx-drag-handle'];
-  const trimmed = raw ? String(raw).trim().toLowerCase() : '';
-  if (trimmed === 'nil') return 'off';
-  return DRAG_HANDLE_SIDES.has(trimmed) ? trimmed : 'right';
+  if (raw !== undefined && String(raw).trim().toLowerCase() === 'nil') return 'off';
+  return oneOf(raw === undefined ? raw : String(raw).trim().toLowerCase(), 'org-xx-drag-handle', DRAG_HANDLE_SIDES, 'right');
 }
 
 /** Whether JavaScript source blocks may run: `(js . t)` in org-babel-load-languages, Org's own list of languages. Callers pass the
@@ -746,9 +765,7 @@ export function getBabelLisp(vars) {
  * @param {LocalVars} vars
  *  special parsing beyond trimming. */
 export function getContactsBirthdayProperty(vars) {
-  const raw = (vars || {})['org-contacts-birthday-property'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return trimmed || 'BIRTHDAY';
+  return readLispString((vars || {})['org-contacts-birthday-property']) ?? 'BIRTHDAY';
 }
 
 /** calendar-latitude: real Emacs's own exact variable name and
@@ -757,8 +774,7 @@ export function getContactsBirthdayProperty(vars) {
  * @param {LocalVars} vars
  *  to the default rather than producing a nonsensical calculation. */
 export function getCalendarLatitude(vars) {
-  const n = parseLispNumber((vars || {})['calendar-latitude'], 35.994);
-  return n >= -90 && n <= 90 ? n : 35.994;
+  return parseLispNumber((vars || {})['calendar-latitude'], 35.994, 'calendar-latitude');
 }
 
 /** calendar-location-name when it is a plain string ("Home"); null means Emacs's default, such as "40.7N, 74.0W".
@@ -774,14 +790,12 @@ export function getCalendarLocationName(vars) {
  * @param {LocalVars} vars
  *  default. */
 export function getCalendarLongitude(vars) {
-  const n = parseLispNumber((vars || {})['calendar-longitude'], -78.8986);
-  return n >= -180 && n <= 180 ? n : -78.8986;
+  return parseLispNumber((vars || {})['calendar-longitude'], -78.8986, 'calendar-longitude');
 }
 
 /** diary-hebrew-sabbath-candles-minutes: how many minutes before sunset the candles are lit (18 as in Emacs unless set to a number). @param {LocalVars} vars */
 export function getDiaryHebrewSabbathCandlesMinutes(vars) {
-  const n = parseLispNumber((vars || {})['diary-hebrew-sabbath-candles-minutes'], 18);
-  return n >= 0 && n <= 300 ? n : 18;
+  return parseLispNumber((vars || {})['diary-hebrew-sabbath-candles-minutes'], 18, 'diary-hebrew-sabbath-candles-minutes');
 }
 
 /** Emacs's own default calendar-time-display-form: 6:30am (EDT). */
@@ -821,9 +835,7 @@ export function getOrgTableDurationHourZeroPadding(vars) {
  * @param {LocalVars} vars
  *  formatWeatherLine and DEFAULT_ORG_WEATHER_FORMAT). */
 export function getOrgWeatherFormat(vars) {
-  const raw = (vars || {})['org-weather-format'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return trimmed || DEFAULT_ORG_WEATHER_FORMAT;
+  return readLispString((vars || {})['org-weather-format']) ?? DEFAULT_ORG_WEATHER_FORMAT;
 }
 
 const WEATHER_SPEED_UNITS = new Set(['km/h', 'm/s', 'mph', 'Knots']);
@@ -836,9 +848,7 @@ const WEATHER_SPEED_UNITS = new Set(['km/h', 'm/s', 'mph', 'Knots']);
  * @param {LocalVars} vars
  *  through to the formatted output. */
 export function getOrgWeatherSpeedUnit(vars) {
-  const raw = (vars || {})['org-weather-speed-unit'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return WEATHER_SPEED_UNITS.has(trimmed) ? trimmed : 'mph';
+  return oneOf((vars || {})['org-weather-speed-unit'], 'org-weather-speed-unit', WEATHER_SPEED_UNITS, 'mph');
 }
 
 const WEATHER_TEMPERATURE_UNITS = new Set(['\u00b0C', '\u00b0F']);
@@ -850,9 +860,7 @@ const WEATHER_TEMPERATURE_UNITS = new Set(['\u00b0C', '\u00b0F']);
  * @param {LocalVars} vars
  *  above. */
 export function getOrgWeatherTemperatureUnit(vars) {
-  const raw = (vars || {})['org-weather-temperature-unit'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return WEATHER_TEMPERATURE_UNITS.has(trimmed) ? trimmed : '\u00b0F';
+  return oneOf((vars || {})['org-weather-temperature-unit'], 'org-weather-temperature-unit', WEATHER_TEMPERATURE_UNITS, '\u00b0F');
 }
 
 const WEATHER_REFRESH_INTERVALS = new Set(['never', '1', '2', '4', '6', '12', '24']);
@@ -862,13 +870,11 @@ const WEATHER_REFRESH_INTERVALS = new Set(['never', '1', '2', '4', '6', '12', '2
  *  auto-refreshes on its own -- 'never' (the default) means only the
  *  manual "Refresh weather now" button/Agenda-view action ever
  *  refreshes it, no unprompted background network activity at all
- *  unless deliberately opted into. Same unrecognized-value fallback
+ *  unless deliberately opted into. Same unrecognized-value rule
  * @param {LocalVars} vars
  *  behavior as the other org-weather-* getters above. */
 export function getWeatherRefreshInterval(vars) {
-  const raw = (vars || {})['org-weather-refresh-interval'];
-  const trimmed = raw ? String(raw).trim() : '';
-  return WEATHER_REFRESH_INTERVALS.has(trimmed) ? trimmed : 'never';
+  return oneOf((vars || {})['org-weather-refresh-interval'], 'org-weather-refresh-interval', WEATHER_REFRESH_INTERVALS, 'never');
 }
 
 /** org-use-sub-superscripts: controls whether/how `_`/`^` are
@@ -935,7 +941,7 @@ export function getDiaryShowHolidaysFlag(vars) {
  * @param {'diary-nonmarking-symbol' | 'diary-sexp-entry-symbol' | 'diary-include-string' | 'diary-hebrew-entry-symbol' | 'diary-islamic-entry-symbol' | 'diary-bahai-entry-symbol'} name */
 export function getDiarySymbol(vars, name) {
   const fallback = /** @type {Record<string, string>} */ ({ 'diary-include-string': '#include', 'diary-nonmarking-symbol': '&', 'diary-sexp-entry-symbol': '%%', 'diary-hebrew-entry-symbol': 'H', 'diary-islamic-entry-symbol': 'I', 'diary-bahai-entry-symbol': 'B' })[name];
-  return parseLispString((vars || {})[name], fallback);
+  return readLispString((vars || {})[name]) ?? fallback;
 }
 
 /** diary-list-entries-hook: the functions it names that the diary understands (diary-include-other-diary-files, diary-sort-entries).
@@ -990,13 +996,54 @@ export function getTextWrap(vars) {
 /** org-xx-windowing-threshold: this app's own variable. A long outline or agenda draws only the rows near the screen once it has more rows than this; 0 never does. Default 400.
  * @param {LocalVars} vars */
 export function getWindowingThreshold(vars) {
-  const n = Math.round(parseLispNumber((vars || {})['org-xx-windowing-threshold'], 400));
+  const n = Math.round(parseLispNumber((vars || {})['org-xx-windowing-threshold'], 400, 'org-xx-windowing-threshold'));
   return Math.max(0, Math.min(1000000, n));
 }
 
 /** org-xx-text-font-size: this app's own variable. The Text view's text size in pixels, 9 to 28. Default 13.
  * @param {LocalVars} vars */
 export function getTextFontSize(vars) {
-  const n = Math.round(parseLispNumber((vars || {})['org-xx-text-font-size'], 13));
+  const n = Math.round(parseLispNumber((vars || {})['org-xx-text-font-size'], 13, 'org-xx-text-font-size'));
   return Math.max(9, Math.min(28, n));
+}
+
+/** Every variable among `vars` whose value cannot be used, each as its error message (a variable that is not set is not one).
+ * @param {LocalVars} vars
+ * @returns {string[]} */
+export function variableProblems(vars) {
+  /** @type {string[]} */ const messages = [];
+  if (vars && typeof vars[BLOCK_PROBLEM] === 'string') messages.push(vars[BLOCK_PROBLEM]);
+  const readers = [
+    getAgendaStartOnWeekday, getDeadlineWarningDays, getScheduledDelayDays, getHabitOptions, getAsciiTextWidth, getCalendarLatitude, getCalendarLongitude,
+    getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getPriorityRange, sizeLimitsOf,
+    (/** @type {LocalVars} */ v) => v['org-duration-units'] && parseDurationUnits(v['org-duration-units']),
+    getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
+  ];
+  for (const read of readers) {
+    try {
+      read(/** @type {any} */ (vars));
+    } catch (err) {
+      if (!(err instanceof VariableValueError)) throw err;
+      if (!messages.includes(err.message)) messages.push(err.message);
+    }
+  }
+  /** @type {string[]} */ const skipped = [];
+  if (vars && vars['org-xx-extra-menu']) {
+    parseExtraMenu(vars['org-xx-extra-menu'], skipped);
+    for (const why of skipped.splice(0)) messages.push(`org-xx-extra-menu: ${why}`);
+  }
+  if (vars && vars['org-xx-menu-aliases']) {
+    parseMenuAliases(vars['org-xx-menu-aliases'], skipped);
+    for (const why of skipped.splice(0)) messages.push(`org-xx-menu-aliases: ${why}`);
+  }
+  const hook = String((vars || {})['diary-list-entries-hook'] ?? '').replace(/^'?\(|\)$/g, '');
+  for (const fn of hook.split(/\s+/).filter(Boolean)) {
+    if (fn !== 'nil' && !/^(diary-include-other-diary-files|diary-sort-entries)$/.test(fn)) messages.push(`diary-list-entries-hook: ${fn} is not available here; only diary-include-other-diary-files and diary-sort-entries run`);
+  }
+  for (const [name, value] of Object.entries(vars || {})) {
+    if (name === BLOCK_PROBLEM || typeof value !== 'string' || !/^\s*'?[([]/.test(value)) continue;
+    const syntax = lispSyntaxError(value);
+    if (syntax) messages.push(`${name}: ${syntax}`);
+  }
+  return messages;
 }

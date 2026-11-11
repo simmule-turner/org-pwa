@@ -3,6 +3,7 @@
 // as in Emacs, where init.el overrides what was customized. Each value is turned into the text the setting's own box holds.
 import { readLisp } from '../src/lisp-read.js';
 import { runInit } from '../src/lisp-init.js';
+import { ENTRY_LISTS, entriesOfList } from '../src/global-variables.js';
 import { VARIABLE_CATALOG } from '../src/variable-catalog.js';
 import { SETTINGS_FIELDS } from './settings-fields.js';
 
@@ -99,6 +100,10 @@ export function settingsFromInit(text, stored) {
   /** @type {Map<string, Lisp>} */
   const initial = new Map();
   for (const f of fields) if (stored[f.key] !== undefined && stored[f.key] !== '') initial.set(f.key, startingValue(f, stored[f.key]));
+  for (const c of VARIABLE_CATALOG) {
+    const form = stored[c.name] && !(c.name in ENTRY_LISTS) ? readLisp(stored[c.name].trim().replace(/^'/, ''))[0] : undefined;
+    if (form) initial.set(c.name, form);
+  }
   const result = runInit(text, initial);
   for (const f of fields) {
     const value = result.get(f.key);
@@ -107,11 +112,10 @@ export function settingsFromInit(text, stored) {
     if (box !== null) values[f.key] = box;
     else result.errors.push(`${f.key}: the value ${printed(value)} does not fit this setting`);
   }
-  // the variables with no setting of their own (apropos-variable lists them): the value as Lisp text, which is how the app reads them
-  const withField = new Set(SETTINGS_FIELDS.map((f) => f.key));
+  // the variables with no control (apropos-variable lists them): the value as Lisp text, which is how the app reads them
   for (const c of VARIABLE_CATALOG) {
-    const value = withField.has(c.name) ? undefined : result.get(c.name);
-    if (value) values[c.name] = printed(value);
+    const value = result.get(c.name);
+    if (value && JSON.stringify(value) !== JSON.stringify(initial.get(c.name))) values[c.name] = c.name in ENTRY_LISTS ? entriesOfList(printed(value)) : printed(value);
   }
   return { values, errors: result.errors };
 }

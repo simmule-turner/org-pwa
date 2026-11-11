@@ -122,7 +122,7 @@ export function createFileSystemAccessAdapter(kvAdapter) {
       const ok = await verifyPermission(handle, 'read', { prompt });
       if (!ok) {
         if (!prompt) return null;
-        throw new Error(`Permission denied reading "${documentId}"`);
+        throw new Error(`Access to "${documentId}" has lapsed. Tap Open and allow access again to read it.`);
       }
       const file = await handle.getFile();
       assertWithinCeiling(file.size, documentId); // before any of it is read

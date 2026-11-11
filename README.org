@@ -269,7 +269,7 @@ Names start with a letter and use letters, digits and ~_~. A column name wins ov
 | ~T~, ~U~, ~t~ | Durations: cells like ~HH:MM[:SS]~ are read as durations, and the result is ~HH:MM:SS~, ~HH:MM~ or decimal hours. ~org-table-duration-hour-zero-padding~ pads hours |
 | ~F~ | Exact fractions, written with a colon as Calc does: ~1/3;F~ is ~1:3~ |
 
-An unrecognized flag is ignored.
+Text after the semicolon that is neither a flag nor a ~%~ format is written into the cell as it stands, as Emacs does.
 
 *Units*: ~uconv($1, "mi/hr", "m/s")~ converts with the mathjs unit library, including compound units (~kg/m^3~). Temperatures convert as readings (~0 degC~ is ~32 degF~). An incompatible pair or unknown unit gives ~#ERROR~. Units follow Calc's names; ~tsp~ and ~tbsp~ also work. The full list is at https://mathjs.org/docs/datatypes/units.html.
 
@@ -576,6 +576,8 @@ Set in *Settings → Global Variables*. This is the lowest layer, and the only o
 
 Settings you change in Quick Settings are saved here as Lisp (a symbol as ~'overview~, a toggle as ~t~ or ~nil~, a string in quotes, a list quoted), so the text can be pasted into a Lisp init. Every Local Variables variable works here too, at app-wide precedence. Changes take effect on *Save*, with no reload, and they are part of *Export Settings* and *Import Settings…* (see [[#file-management][File management]]).
 
+*A value that cannot be used*: a variable that is not set has its Emacs default. A variable that holds something the setting cannot use (text where a number belongs, a list with a missing parenthesis) shows a message naming the variable and its value, and the action that needed it is not done, as an Emacs command stops with an error.
+
 *Smart quotes are normalized*: iOS and many Android keyboards turn a typed straight quote into a curly one, but quoted values here (~org-xx-extra-menu~, ~org-xx-menu-aliases~) need straight quotes. Quick Settings and this text box convert them back on save; quotes in ordinary prose are untouched.
 
 -----
@@ -611,7 +613,7 @@ Cycling a heading to fully expanded always reveals its properties and blocks, wh
 :CUSTOM_ID: local-variables
 :END:
 
-Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cookie, and a ~# Local Variables: ... # End:~ block, conventionally at the end of the file. Both can appear in one file, and the block wins a conflict. Every line of the block starts with the same prefix as the ~Local Variables:~ line; a malformed block is ignored whole. Most variables below also have a labeled control in Settings → *Quick Settings* (see [[#settings][Settings]]) for the app-wide baseline.
+Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cookie, and a ~# Local Variables: ... # End:~ block, conventionally at the end of the file. Both can appear in one file, and the block wins a conflict. Every line of the block starts with the same prefix as the ~Local Variables:~ line; a block Emacs cannot read (a line without the prefix, a line that is not ~name: value~, a value that is cut off, no ~End:~) gives no variables, and the message shows in Emacs's words, such as ~Local variables list is not properly terminated~. Most variables below also have a labeled control in Settings → *Quick Settings* (see [[#settings][Settings]]) for the app-wide baseline.
 
 #+BEGIN_SRC
 # -*- buffer-read-only: t; -*-
@@ -626,7 +628,7 @@ Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cooki
 # End:
 #+END_SRC
 
-The recognized variables, alphabetically. Those marked "(own)" are this app's extensions, not real org variables. Booleans are Lisp ~t~ or ~nil~, not JavaScript truthiness: the string ~"true"~ is not ~t~.
+The recognized variables, alphabetically. Those marked "(own)" are this app's extensions, not real org variables. A boolean is ~nil~ (or ~()~) for off and any other value for on, as in Emacs.
 
 | Variable | Default | What it does |
 |---+---+---|
@@ -644,7 +646,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~diary-file~ | unset | The diary: one ~github:~, ~webdav:~ or ~local:~ file, shown in the Agenda when ~org-agenda-include-diary~ is ~t~ |
 | ~diary-hebrew-sabbath-candles-minutes~ | ~18~ | Minutes before sunset that ~(diary-hebrew-sabbath-candles)~ gives for lighting the Sabbath candles |
 | ~diary-include-string~ | ~"#include"~ | The word that starts a line naming another diary file |
-| ~diary-list-entries-hook~ | unset | ~diary-include-other-diary-files~ in the list follows ~#include~ lines; ~diary-sort-entries~ sorts a day's entries by time. Other names are ignored |
+| ~diary-list-entries-hook~ | unset | ~diary-include-other-diary-files~ in the list follows ~#include~ lines; ~diary-sort-entries~ sorts a day's entries by time. Any other name is reported in a message, and the function does not run |
 | ~diary-nongregorian-listing-hook~ | unset | ~diary-hebrew-list-entries~, ~diary-islamic-list-entries~ and ~diary-bahai-list-entries~ in the list show the diary's ~H~, ~I~ and ~B~ entries (see [[#diary-file][Diary file]]) |
 | ~diary-nonmarking-symbol~ | ~"&"~ | The character that may come before a date |
 | ~diary-sexp-entry-symbol~ | ~"%%"~ | What starts a sexp line |
@@ -653,7 +655,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-type~ | ~t~ | ~t~ numbers from the top of the file; ~relative~ counts file lines from the current line; ~visual~ counts the rows shown |
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~display-time-24hr-format~ | ~nil~ | Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23; set in Global Variables or the Lisp init |
-| ~large-file-warning-threshold~ | ~500KB~ | Ask before opening an Org file above this size, in bytes or as ~500KB~; ~nil~ never asks |
+| ~large-file-warning-threshold~ | ~512000~ | Ask before opening an Org file above this many bytes (500KB here; Emacs asks at 10000000); ~nil~ never asks; set in Global Variables or the Lisp init |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-clock-consistency-checks~ | Emacs's own list | Limits for the clock consistency checks of the Agenda clock report (a property list); set in Global Variables or the Lisp init |
 | ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
@@ -688,7 +690,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-sorting-strategy~ | unset | The order of the rows, per view, as in Emacs: ~((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep))~. Keys: ~time~, ~priority~, ~category~, ~tag~, ~todo-state~, ~effort~, ~deadline~, ~scheduled~, ~timestamp~, ~ts~, ~habit~ and ~alpha~, each ~-up~ or ~-down~, and ~category-keep~. The ~agenda~ entry orders each day's rows, ~todo~ the TODO list, ~tags~ the Match view and ~search~ the Keyword search view (their defaults are ~(tags priority-down category-keep)~ and ~(search category-keep)~). Unset is that default; a variable with no entry for a view keeps the rows as they are. ~user-defined-up~ and ~-down~ ask ~org-agenda-cmp-user-defined~ (no opinion while it is ~nil~) |
 | ~org-agenda-span~ | ~week~ | Number of days to include in overview display; set in Global Variables or the Lisp init |
 | ~org-agenda-start-day~ | ~nil~ | Start day for the agenda view; set in Global Variables or the Lisp init |
-| ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday. An out-of-range value falls back to Monday |
+| ~org-agenda-start-on-weekday~ | ~1~ (Monday) | The Week view's first day: ~0~ is Sunday through ~6~ Saturday; other numbers count modulo 7, as in Emacs |
 | ~org-agenda-start-with-log-mode~ | ~nil~ | The initial value of log-mode in a newly created agenda window; set in Global Variables or the Lisp init |
 | ~org-agenda-tag-filter-preset~ | unset | Tag chip to start with: ~("+work" "-later")~. Several ~+~ tags must all be present; a ~-~ tag hides its headings |
 | ~org-agenda-text-search-extra-files~ | unset | More files for text search only, a list of file names like ~org-agenda-files~ (see [[#search-extra-files][Search extra files]]) |
@@ -702,26 +704,26 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
 | ~org-attach-method~ | ~cp~ | What Attach does with a file you pick: ~cp~ copies it, ~mv~ asks to delete the original after copying, ~ln~ (or ~lns~) keeps a link to it; ~mv~ and ~ln~ copy where the app cannot do them (see [[#attachments][Attachments]]); also Settings → Attachments |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
-| ~org-cite-basic-author-year-separator~ | ~, ~ | Text between author and year in a citation |
+| ~org-cite-basic-author-year-separator~ | ~", "~ | Text between author and year in a citation, a string |
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
 | ~org-clock-idle-time~ | ~nil~ | A whole number of minutes. While a clock runs, after that long without a tap, key press or scroll in the app you are asked whether to keep the time, subtract it and keep clocking, or subtract it and clock out |
 | ~org-clock-into-drawer~ | ~t~ | Where clock lines go: ~t~ the ~:LOGBOOK:~ drawer, a drawer name, a number (a drawer once the entry holds that many clock lines), or ~nil~ (bare lines under the heading); also a ~CLOCK_INTO_DRAWER~ property. Settings → Clocking |
 | ~org-clock-out-remove-zero-time-clocks~ | ~nil~ | ~t~ removes a clock line that lasted zero minutes when you clock out |
 | ~org-clock-out-switch-to-state~ | ~nil~ | A TODO keyword to switch to when clocking out of an entry that has a state |
-| ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); it beeps if the file is not there, and in the browser |
+| ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); a file that is not there plays nothing, as in Emacs, and so does the browser, which has no folder to look in. ~t~, or a file that will not play, gives two beeps |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
-| ~org-contacts-birthday-property~ | ~BIRTHDAY~ | The property ~org-contacts-anniversaries~ reads, as a plain string (~# org-contacts-birthday-property: EVENT~) |
+| ~org-contacts-birthday-property~ | ~"BIRTHDAY"~ | The property ~org-contacts-anniversaries~ reads, as a string (~# org-contacts-birthday-property: "EVENT"~) |
 | ~org-contacts-files~ | unset (current file only) | A list of file names like ~org-agenda-files~: more files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-past-days~ | ~10000~ | Number of days to warn about missed deadlines; set in Global Variables or the Lisp init |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
-| ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. It must contain ~("min" . 1)~; an invalid value is ignored |
+| ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. A value that is not an alist shows an error naming it. The units are used as given: ~("min" . 1)~ need not be in the list, ~nil~ means no units, and the first of two entries with the same name is used |
 | ~org-export-with-broken-links~ | ~nil~ | What export does with a link that leads nowhere (a heading, target, custom id or code reference that is not there): ~nil~ stops with "Unable to resolve link: …", ~t~ leaves the link out, ~mark~ writes ~[BROKEN LINK: path]~; also Settings → Export. A file's ~#+OPTIONS: broken-links:~ wins |
 | ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
-| ~org-footnote-section~ | ~Footnotes~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
+| ~org-footnote-section~ | ~"Footnotes"~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
 | ~org-global-properties~ | unset | Properties that apply everywhere, as the alist Emacs takes. Only ~Effort_ALL~ is used, as in ~(("Effort_ALL" . "0:15 0:30 1:00 2:00"))~ (see [[#effort-all][Effort_ALL]]) |
 | ~org-habit-following-days~ | ~7~ | Days shown after today in a habit's strip, today included (see [[#habits][Habits]]); also Settings → Quick Settings → *Agenda* |
 | ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Quick Settings → *Agenda* |
@@ -753,7 +755,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-log-into-drawer~ | ~nil~ | ~t~ or a drawer name writes log items into ~:LOGBOOK:~ (any name is written as ~LOGBOOK~). ~#+STARTUP: logdrawer~ |
 | ~org-log-repeat~ | ~'time~ | ~'time~ logs a repeating task's completion and sets ~LAST_REPEAT~; ~'note~ asks for a note; ~nil~ does neither. ~#+STARTUP: logrepeat~, ~lognoterepeat~, ~nologrepeat~ |
 | ~org-modules~ | unset | Add ~org-inlinetask~ to read long headlines as inline tasks in exports. A Lisp init does the same with ~(add-to-list 'org-modules 'org-inlinetask)~ or ~(require 'org-inlinetask)~ |
-| ~org-priority-default~ | ~B~ | The priority of a heading without a cookie when rows are ordered by priority |
+| ~org-priority-default~ | ~?B~ | The priority of a heading without a cookie when rows are ordered by priority |
 | ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
 | ~org-priority-get-priority-function~ | unset | A function of the headline text (~"TODO [#A] Title :tag:"~) that returns the heading's priority number for ~priority-up~ and ~-down~, with the heading as the place ~org-entry-get~ reads; anything but a number keeps the cookie's rank |
 | ~org-priority-highest~ | ~A~ | The highest priority: a letter, or a number such as ~1~ for ~[#1]~ cookies |
@@ -764,15 +766,15 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Quick Settings → *Agenda* |
 | ~org-scheduled-past-days~ | ~10000~ | Number of days to continue listing scheduled items not marked DONE; set in Global Variables or the Lisp init |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
-| ~org-startup-indented~ | ~nil~ | ~nil~ draws every line at the left edge, so tables and text have the most room; ~t~ (org-indent-mode) indents text, lists and tables under their heading's level; also ~#+STARTUP: indent~ and ~noindent~, and Settings → Quick Settings → *Startup* |
+| ~org-startup-indented~ | ~nil~ | ~nil~ draws every line at the left edge, each heading with its stars, so tables and text have the most room; ~t~ (org-indent-mode) indents text, lists and tables under their heading's level; also ~#+STARTUP: indent~ and ~noindent~, and Settings → Quick Settings → *Startup* |
 | ~org-startup-truncated~ | ~t~ | ~t~ scrolls long lines of the Text view sideways; ~nil~ wraps them; also Settings → Quick Settings → *Editing* |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
 | ~org-stuck-projects~ | Emacs's own list | How to identify stuck projects; set in Global Variables or the Lisp init |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
 | ~org-tags-column~ | ~0~ | Where a heading's tags sit when the line is rewritten: ~0~ one space after the title, a negative number right-aligns them to that column, a positive one starts them at that column; also Settings → Editing |
-| ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~("private")~) or just words (~private archive~) |
-| ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter also match a value inherited from an ancestor (a heading's own value wins). A ~t~ or ~nil~ simplification of org's fuller value space |
-| ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org); see [[#inline-text-markup][Inline text markup]]. An unrecognized value falls back to ~t~ |
+| ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~'("private" "archive")~) |
+| ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter and an attachment folder use a value inherited from an ancestor (a heading's own value wins). A list of property names, or a regexp in quotes, limits inheritance to those properties |
+| ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org; any other value counts as ~t~); see [[#inline-text-markup][Inline text markup]] |
 | ~org-use-tag-inheritance~ | ~t~ | ~t~ lets a ~tag:~ search filter match a tag inherited from an ancestor; ~nil~ limits it to the heading's own tags; a list such as ~("work" "home")~ or a quoted regexp such as ~"^proj_"~ inherits only those tags. Applies to search, the Agenda tag filters and the tags shown on a heading |
 | ~org-weather-format~ | ~"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au"~ | (own) The template ~%%(org-weather)~ fills in (see [[#agenda-diary-sexp][Diary-sexp forms]]) |
 | ~org-weather-refresh-interval~ | ~never~ | (own) ~never~, or an automatic refresh every ~1~, ~2~, ~4~, ~6~, ~12~ or ~24~ hours |
@@ -782,23 +784,24 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Quick Settings → *Keyboard* |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ lets the approved init script run (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Quick Settings → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
-| ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~off~ waits as long as the browser does |
+| ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~nil~ waits as long as the browser does; set in Global Variables or the Lisp init |
 | ~org-xx-god-mode-button~ | ~t~ (shown) | (own) Whether the floating *[g]* god-mode button is shown (see [[#god-mode-mobile][God-mode without a hardware keyboard]]); also Settings → Quick Settings → *Keyboard* |
+| ~org-xx-indent-tables~ | ~t~ | (own) With ~org-startup-indented~ on, ~t~ indents a table under its heading like the text around it; ~nil~ keeps tables at the left edge with the most room; also Settings → Quick Settings → *Startup* |
 | ~org-xx-lisp-init~ | unset | (own) Emacs Lisp run like an init file: ~setq~ of any setting in this table, the ~holiday-*~ lists, capture templates, LaTeX and ODT styles, ~(load "github:file.el")~ to read more from a file (see [[#lisp-init][Lisp init]]); Settings → Advanced sets it |
 | ~org-xx-menu-aliases~ | unset (no relabeling) | (own) Relabel or hide buttons across the File, More, Export, Import and View menus (see [[#menu-customization][Menu customization]]) |
 | ~org-xx-show-inherited-tags~ | ~t~ | (own) Whether the outline shows inherited tags, dimmed with a dashed border, after a heading's own |
-| ~org-xx-size-limit-attachment~ | ~95MB~ | (own) Refuse an attachment above this size (GitHub refuses above 95MB whatever this is); ~off~ sets no limit |
-| ~org-xx-size-limit-attachment-warn~ | ~20MB~ | (own) Ask before attaching a file above this size; ~off~ never asks |
-| ~org-xx-size-limit-bibliography~ | ~5MB~ | (own) Refuse a ~#+BIBLIOGRAPHY:~ file above this size; ~off~ sets no limit |
-| ~org-xx-size-limit-image~ | ~3MB~ | (own) An inline image above this size shows its size and a *Load* link instead; ~off~ shows every image |
-| ~org-xx-size-limit-include~ | ~2MB~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~off~ sets no limit |
-| ~org-xx-size-limit-org-file~ | ~2MB~ | (own) Refuse to open an Org file above this size; ~off~ sets no limit |
-| ~org-xx-size-limit-setupfile~ | ~1MB~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~off~ sets no limit |
+| ~org-xx-size-limit-attachment~ | ~"95MB"~ | (own) Refuse an attachment above this size (GitHub refuses above 95MB whatever this is); ~nil~ sets no limit; a string such as ~"95MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-attachment-warn~ | ~"20MB"~ | (own) Ask before attaching a file above this size; ~nil~ never asks; a string such as ~"20MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-bibliography~ | ~"5MB"~ | (own) Refuse a ~#+BIBLIOGRAPHY:~ file above this size; ~nil~ sets no limit; a string such as ~"5MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-image~ | ~"3MB"~ | (own) An inline image above this size shows its size and a *Load* link instead; ~nil~ shows every image; a string such as ~"3MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-include~ | ~"2MB"~ | (own) Skip an ~#+INCLUDE:~ file above this size; ~nil~ sets no limit; a string such as ~"2MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-org-file~ | ~"2MB"~ | (own) Refuse to open an Org file above this size; ~nil~ sets no limit; a string such as ~"2MB"~, set in Global Variables or the Lisp init |
+| ~org-xx-size-limit-setupfile~ | ~"1MB"~ | (own) Refuse a ~#+SETUPFILE:~ above this size; ~nil~ sets no limit; a string such as ~"1MB"~, set in Global Variables or the Lisp init |
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-windowing-threshold~ | ~400~ | (own) Above this many rows an outline or agenda draws only the rows near the screen; ~0~ always draws every row |
 
-Any other ~# key: value~ line is parsed and ignored, so new variables can be added later without changing the format.
+A variable the app does not read is kept with the file's variables and has no effect here, as in Emacs.
 
 *** Lisp init
 :PROPERTIES:
@@ -978,7 +981,7 @@ Open the archive file (*File → Open* lists ~_archive~ files), tap the archived
 
 *Archive*, then pick a target in the lower part of the panel and tap *Refile* (~org-refile~, also in the palette) to move the subtree elsewhere in the outline or into another file. Targets show their outline path, with a search box (every word must match), your last five under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child with its levels adjusted.
 
-Targets come from ~org-refile-targets~, written as in Emacs; the default is the current file's top-level headings. Each entry is ~(FILES :KEY . VALUE)~:
+Targets come from ~org-refile-targets~, written as in Emacs; the default, also for ~nil~, is the current file's top-level headings. A value that cannot be read as a list names the variable. Each entry is ~(FILES :KEY . VALUE)~:
 
 #+BEGIN_SRC
 (setq org-refile-targets
@@ -1171,7 +1174,7 @@ Clock lines live in a ~:LOGBOOK:~ drawer from the first one (see [[#progress-log
 
 *Effort estimates*: *Set effort estimate* (~C-c C-x e~, ~org-set-effort~) prompts for the ~EFFORT~ of the open or focused heading. Any ~org-duration~ form works, stored as typed: ~1:30~, ~2h~, ~45min~, ~1d 3h~, ~2.35h~, or a bare number of minutes. Units are Emacs's: ~min~, ~h~, ~d~ (24 h), ~w~, ~m~ (a month of 30 days) and ~y~; ~org-duration-units~ changes them, for example ~(("min" . 1) ("h" . 60) ("d" . 480))~ for an eight-hour day. A blank value clears it; an invalid one is refused. The ~EFFORT~ shows beside the title as a ~⏱~ badge, and tapping it opens the same prompt. While that heading is clocked in, the modeline shows ~[⏱ 0:45 / 2:00] Heading title~, with a trailing ~!~ once the estimate is passed.
 
-*Reminder*: when a running clock first passes its estimate, the status line says "Task ‘Title’ should be finished by now. (2:00)", with a notification if you allowed them. ~org-clock-sound~ adds a beep (in the Android app, a file in the org-pwa folder).
+*Reminder*: when a running clock first passes its estimate, the status line says "Task ‘Title’ should be finished by now. (2:00)", with a notification if you allowed them. ~org-clock-sound~ adds a sound: two beeps, or a file in the org-pwa folder in the Android app.
 
 *Idle time*: with ~org-clock-idle-time~ set, a clock that has seen no activity in the app for that many minutes asks "Clocked in & idle for N mins" and offers Org's keys: ~i~ ignore, ~k~ keep some minutes, ~t~ keep until a time, ~g~ got back some minutes ago, ~s~ subtract the idle time, ~C~ cancel the clock, ~j~ jump to it; a capital (~K~ ~T~ ~G~ ~S~ ~J~) also clocks out.
 
@@ -1559,7 +1562,7 @@ It is a flat list in document order showing each item's keyword, title, category
 
 The palette's *Capture* command (or ~C-c c~) opens the templates of ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
 
-Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-templates.org=, =examples/capture-datetree.org=.
+Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-datetree.org=.
 
 #+BEGIN_SRC emacs-lisp
 (add-to-list 'org-capture-templates
@@ -1567,7 +1570,7 @@ Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(
     "%?" :empty-lines 1))
 #+END_SRC
 
-If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into the open file scrolls to the new row, item or heading. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init.
+If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into the open file scrolls to the new row, item or heading. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init. A template of a type other than ~entry~, ~item~, ~checkitem~, ~table-line~ or ~plain~ is refused with a message naming the type, so the text is not lost (Emacs files nothing).
 
 *A template* is ~("key" "description" type target "text" keyword value …)~:
 
@@ -1586,7 +1589,7 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
 - ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
 
-A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading the capture is filed under it, for every type; an entry is its last child, or its first with ~:prepend~. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). A target function or ~:prepare-finalize~ function can read the template with ~(org-capture-get :prepend)~ (also ~:key~, ~:description~, ~:type~, ~:template~ and any other keyword the template gives) and change it with ~org-capture-put~, for example to make a new month heading first or last as ~:prepend~ says. An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture. A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
+A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading the capture is filed under it, for every type; an entry is its last child, or its first with ~:prepend~. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). A target function or ~:prepare-finalize~ function can read the template with ~(org-capture-get :prepend)~ (also ~:key~, ~:description~, ~:type~, ~:template~ and any other keyword the template gives) and change it with ~org-capture-put~, for example to make a new month heading first or last as ~:prepend~ says. An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
 
 *Template text, the %-escape language* (local time):
 
@@ -1735,7 +1738,7 @@ In Settings → Global Variables the entries are a quoted list of strings, as in
 
 Five hyphens (~"-----"~) on their own are a visual separator rather than an item, for grouping related actions.
 
-A malformed entry (bad OLP JSON, an invalid function name, an unrecognized spec, a missing label) is skipped without breaking the rest of the menu.
+An entry with no label, or whose spec is not a template key, an OLP path or a quoted function, is left out of the menu and named in a message; the other entries stay. A quoted name that no command has is shown when it is tapped.
 
 -----
 
@@ -1763,7 +1766,7 @@ In Settings → Global Variables, a quoted list of strings:
         "more:Settings;⚙️ Settings"))
 #+END_SRC
 
-Export and Import are steps within the More menu with their own namespaces, ~export:~ and ~import:~. ~Label~ is a built-in button label (table below); an unknown label or menu is skipped, and a label never mentioned keeps its default.
+Export and Import are steps within the More menu with their own namespaces, ~export:~ and ~import:~. ~Label~ is a built-in button label (table below); an entry with no ~menu:~, no ~;~, no label or a menu that does not exist is named in a message; a label no button has changes nothing, and a label never mentioned keeps its default.
 
 *~alias~*, after the semicolon: non-empty text replaces the button's visible text (the original label becomes its accessible name); empty (~"export:HTML;"~) hides the button. ~more:Settings~ can never be hidden, because GitHub and WebDAV setup is reachable only from there.
 
@@ -1971,7 +1974,7 @@ The Lisp init reads ~org-beamer-frame-level~, ~org-beamer-theme~, ~org-beamer-fr
 
 *** Slides (HTML)
 
-More → Export → Slides (HTML) writes the same presentation as a web page of 16:9 slides. Open it in a browser or print it to PDF (also on a phone); each slide is one page. Emacs has no such export, so Beamer stays what Emacs's Beamer is.
+More → Export → Slides (HTML) writes the same presentation as a web page of 16:9 slides. Open it in a browser or print it to PDF (also on a phone); each slide is one page. Emacs has no such export; Beamer export is Emacs's own.
 
 The file is read as for Beamer (frame level, sections, blocks and ~BEAMER_env~, columns, ~fullframe~, notes, ~againframe~); ~toc:t~ adds an outline slide and ~#+TITLE:~ a title slide. Text, tables, code, links and math look as in HTML export, and ~*bold*~ is colored as ~\alert~ is. A slide is made for each overlay step: ~BEAMER_act~ on a block or column (~<2->~, ~<1,3>~, ~<-2>~), ~#+ATTR_BEAMER: :overlay <+->~ on a list, or ~- @@beamer:<2>@@ item~. An item not yet shown keeps its place; a block not yet shown takes none. ~#+BEAMER_THEME:~ names such as Madrid or Warsaw give a colored title bar, any other a plain page. The other Beamer themes, ~\setbeamertemplate~ and other LaTeX are not read, and a frame too tall for its page is cut at the edge.
 
@@ -2056,7 +2059,7 @@ There are no name, tag or property filters. *This file* respects an active narro
 | ~spouse~ | ~RELATED;TYPE=spouse~ | |
 | A contact's tags | ~CATEGORIES~ | ~:CATEGORIES_RAW:~ on the contact heading is preferred |
 
-Both styles cover the same set of fields, which is smaller than org-vcard's full mapping. ~:PREFERRED:~ is accepted but doesn't yet affect field order or add a ~PREF~ parameter.
+Both styles cover the same set of fields, which is smaller than org-vcard's full mapping. ~:PREFERRED:~ is read but does not change field order or add a ~PREF~ parameter.
 
 *** What is dropped
 
@@ -2076,7 +2079,7 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 - *Apple and Google labels*: ~itemN.~ grouping, with ~X-ABLabel~, becomes ~:EMAIL_LABEL:~, ~:PHONE_LABEL:~ or ~:URL_LABEL:~ (Flat) or a ~:LABEL:~ on the field heading (Tree). Apple's placeholder forms are reduced to their inner name.
 - *Clean data (Google, Apple)*, on by default: keeps Google's eighth ~ADR~ component alongside the seven so export can rebuild the original, and turns Google's ~\:~ back into ~:~.
 - *Flat* keeps one value per field type (the first), so use Tree to keep them all. In Tree each value is its own descendant heading; ~address-work~ and ~address-home~ keep ~TYPE=WORK~ and ~HOME~, and a value with newlines (a note, a multi-line address) becomes a fixed title with its text in a ~#+BEGIN_VERSE~ block.
-- Properties the importer doesn't know are listed once by name in the status message; a base64 ~PHOTO~ is kept as a ~data:~ URI and counted. A malformed line is skipped without aborting.
+- Properties the importer doesn't know are listed once by name in the status message; a base64 ~PHOTO~ is kept as a ~data:~ URI and counted. A line that is not a property is named in the same message, and the rest is imported.
 
 *iCalendar (.ics)* is the reverse of [[#export][Calendar (.ics) export]] and reads calendars from Google, Apple, Outlook or Nextcloud. Each event becomes a heading and each task a TODO heading.
 
@@ -2159,7 +2162,9 @@ An outline or agenda with more than 400 rows draws only the rows near the screen
 :CUSTOM_ID: size-limits
 :END:
 
-A large file can make the app slow, so each kind has a size at which it asks and one at which it refuses; *Settings → Sync and storage → Size limits* changes them, and ~off~ removes a limit. An Org file above 500KB asks "This is large and may be slow. Open anyway?" and above 2MB is not opened; the same limit applies to a file read for the Agenda, a refile or a capture. A picture above 3MB is not shown inline: it appears as its size with a *Load* link. An attachment above 20MB asks before it is attached, and above 95MB is refused. Bibliography, ~#+SETUPFILE:~ and ~#+INCLUDE:~ files above their limits are skipped, and the app says so. A download that has not started answering after 30 seconds stops with a message. Pasting into the Text view asks or refuses at the same Org file sizes, and ~#+INCLUDE:~ files together cannot grow a document past the limit. A calendar, CalDAV or WebDAV reply above 32MB is refused. Pictures linked from a web address are not limited.
+A size variable that holds something that is not a size shows a message naming the variable and its value, and the action that needed it is not done. One that is not set keeps its default.
+
+A large file can make the app slow, so each kind has a size at which it asks and one at which it refuses; the ~org-xx-size-limit-*~ variables change them in Global Variables, for example ~(setq org-xx-size-limit-org-file "4MB")~, and ~nil~ removes a limit. An Org file above 500KB asks "This is large and may be slow. Open anyway?" and above 2MB is not opened; the same limit applies to a file read for the Agenda, a refile or a capture. A picture above 3MB is not shown inline: it appears as its size with a *Load* link. An attachment above 20MB asks before it is attached, and above 95MB is refused. Bibliography, ~#+SETUPFILE:~ and ~#+INCLUDE:~ files above their limits are skipped, and the app says so. A download that has not started answering after 30 seconds stops with a message. Pasting into the Text view asks or refuses at the same Org file sizes, and ~#+INCLUDE:~ files together cannot grow a document past the limit. A calendar, CalDAV or WebDAV reply above 32MB is refused. Pictures linked from a web address are not limited.
 
 ** Platform support
 :PROPERTIES:
@@ -2180,7 +2185,7 @@ On unsupported platforms, *Import* replaces "Local": pick a file, edit it, and S
 The Android app is the same app in a native wrapper, with a few things done the Android way.
 
 - *Local files*: *File → Open → This device* lists the org-pwa folder, and *Choose another file…* uses Android's file picker; the app keeps access to a picked file, so Save writes straight back and the file reopens from the recent list. *Save As → This device* names a new one. The picker starts in ~Documents/org-pwa~, in the shared Documents folder where a file manager finds it, and you can choose any other folder. A file is known by its name, so two files with the same name from different folders replace each other.
-- *Agenda files*: ~local:name.org~ names a file in the org-pwa folder (below), like ~github:journal.org;local:home.org~. It loads silently, and Refile and Replace can write into it while a local file is open; a file you opened with *Open → Local file* works too, and so does one added with the command *Add a local file* (command palette), which remembers the file without opening it.
+- *Agenda files*: ~local:name.org~ names a file in the org-pwa folder (below), like ~github:journal.org;local:home.org~. It needs no prompt, and Refile and Replace can write into it while a local file is open; a file you opened with *Open → Local file* works too, and so does one added with the command *Add a local file* (command palette), which remembers the file without opening it.
 - *Attaching a file*: *Attach* opens Android's chooser with the camera apps beside your files, as the browser's does. Pick *Take a photo* or *Record a video*, and the result is attached. With ~org-attach-method~ ~mv~ or ~ln~ (or *Attach and move*, *Attach a link*) the document picker opens instead, with no camera: a move asks before deleting the original, and a link keeps reading the original file, so it stays where it is.
 - *Saving a file out*: exports and settings backups go straight into the *Downloads* folder, and the status line says so.
 - *The org-pwa folder*: the first time something needs it (a local file's first attachment, or a ~local:~ name that isn't found), the app asks you to choose a folder, starting at ~Documents/org-pwa~. Attachments go under ~data/~ inside it, as on GitHub and WebDAV, and ~local:~ files are found in it by name, anywhere a ~github:~ or ~webdav:~ file can be named: ~org-agenda-files~, ~org-contacts-files~, ~org-refile-targets~, a capture template's ~file~, a link or ~#+INCLUDE~. ~local:contacts.org~ is ~contacts.org~ in that folder, and ~local:areas/home.org~ is ~home.org~ in its ~areas~ folder. A file you opened with the file picker is found by its name first. *Choose the org-pwa folder* changes it.
@@ -2367,9 +2372,7 @@ In the Text view, *[g]* only shows the floating keyboard, with no god-mode: the 
 
 - *S* shifts the next key (~Tab~ becomes ~S-Tab~, ~g~ becomes ~G~, the Control+Meta prefix). After an arrow it stays on, so ~S~ then ~↑~ ~↑~ ~↑~ moves the focused heading up three places; tap *S* again to turn it off. It also shifts the next key typed on the phone keyboard, so ~gS-RET~ (~M-S-RET~, a TODO heading) is: tap ~g~, tap *S*, tap Return. A letter typed after *S* becomes its capital.
 - *⌨* hides or shows the device keyboard and changes nothing else. It is lit while the keyboard is up. After a popup closes, the keyboard doesn't return by itself; tap ⌨.
-- The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it.
-
-- The move area (⠿) drags the panel, and its position is remembered; tap it without dragging to minimize the panel to its handle. The panel sits above the mode line and the floating buttons, so the device keyboard never hides it.
+- The move area (⠿) drags the panel, and its position is remembered. Tap it without dragging to minimize the panel to its handle, and tap the handle to restore it. The panel sits above the mode line and the floating buttons, so the device keyboard never hides it.
 - god-mode and the panel end through *[g]*, ~Escape~ or another panel opening, never because the device keyboard went away.
 
 If a letter doesn't register on your keyboard app, the command palette reaches the same commands by name.
@@ -2384,17 +2387,17 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Interaction* (see [[#keybindings][Keybindings]]): touch first. The [[#command-palette][command palette]] is a curated list of commands, each with its Emacs name where it has one; your own capture templates and Extras entries join it. god-mode is described under [[#god-mode][god-mode]].
 
-*Inheritance* (see [[#local-variables][Local Variables]]): property inheritance is a boolean.
+*Inheritance* (see [[#local-variables][Local Variables]]): ~org-use-property-inheritance~ takes ~t~, ~nil~, a list of names or a regexp.
 
 *Tables* (see [[#table-formulas][Table formulas]]): formulas recalculate on command, not on every keystroke. Calc is not embedded: ~vvar~, ~vsdev~, ~vpvar~, ~vpsdev~ and ~vmeane~ over a vector holding a name can differ, because they need Calc's own simplifier.
 
-*Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and a sound file plays in the Android app only.
+*Clocking* (see [[#clocking][Clocking]]): idle time counts only activity inside the app, and ~org-clock-sound~ plays a file only in the Android app.
 
-*Agenda* (see [[#agenda][Agenda]]): The sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips the days in your holiday lists. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open.
+*Agenda* (see [[#agenda][Agenda]]): the sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips the days in your holiday lists. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open.
 
 *Babel*: ~emacs-lisp~ and ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Other languages are shown with syntax highlighting.
 
-*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for offline use. A web address is fetched only after you allow it: *Load once*, *Always load from this address* or *Never* (the same goes for a ~#+BIBLIOGRAPHY:~ address).
+*Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for the session. One that cannot be read is named in a message with Emacs's words ("Unable to fetch file from …") and the export goes on without it. A web address is fetched only after you allow it: *Load once*, *Always load from this address* or *Never* (the same goes for a ~#+BIBLIOGRAPHY:~ address).
 
 *Citations* (see [[#citations][Citations]]): LaTeX export honors ~natbib~ and ~biblatex~; every other export uses the ~basic~ processor, so ~csl~ is exported as ~basic~ and ~note~ styles print as ~text~. Set the processor per file with ~#+CITE_EXPORT:~.
 

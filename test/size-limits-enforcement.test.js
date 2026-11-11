@@ -92,7 +92,7 @@ test('attachments: nothing up to 20 MB, a question above, a refusal above 95 MB,
   const chars = (megabytes) => Math.ceil((megabytes * MB * 4) / 3);
   assert.equal(attachmentSizeCheck(chars(20), 'webdav'), null);
   assert.match(attachmentSizeCheck(chars(21), 'webdav').warn, /21 MB/);
-  assert.match(attachmentSizeCheck(chars(96), 'webdav').refuse, /96 MB.*Size limits/);
-  assert.equal(attachmentSizeCheck(chars(50), 'webdav', sizeLimitsOf({ 'org-xx-size-limit-attachment-warn': 'off' })), null);
+  assert.match(attachmentSizeCheck(chars(96), 'webdav').refuse, /96 MB.*org-xx-size-limit-attachment/);
+  assert.equal(attachmentSizeCheck(chars(50), 'webdav', sizeLimitsOf({ 'org-xx-size-limit-attachment-warn': 'nil' })), null);
   assert.match(attachmentSizeCheck(chars(30), 'webdav', sizeLimitsOf({ 'org-xx-size-limit-attachment': '25MB' })).refuse, /30 MB/);
 });

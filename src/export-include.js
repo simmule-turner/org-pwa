@@ -134,7 +134,7 @@ async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlev
   // cannot add up to a document larger than the app would open.
   const bytes = utf8Length(result.content);
   if (budget.max > 0 && budget.used + bytes > budget.max) {
-    if (!budget.warned) budget.onSkip?.(`Not included: "${directive.path}" would take the included files past ${formatSize(budget.max)} in all. Change the Org file limit in Settings > Sync and storage > Size limits.`);
+    if (!budget.warned) budget.onSkip?.(`Not included: "${directive.path}" would take the included files past ${formatSize(budget.max)} in all. Set org-xx-size-limit-org-file in Global Variables to change the limit.`);
     budget.warned = true;
     return null;
   }

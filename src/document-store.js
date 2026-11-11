@@ -28,10 +28,10 @@ function unwrap(result) {
 }
 
 /**
- * Opens `documentId`: reads from disk first, parses into an AST, and
- * refreshes the kv cache to match. Falls back to the cache only if disk
- * read doesn't succeed (no registered file handle yet, or some other
- * read failure) — not the other way around.
+ * Opens `documentId`: reads from disk, parses into an AST, and refreshes
+ * the kv cache to match. A read that fails throws (the caller shows the
+ * error); the cached copy is never shown in its place. A file that is not
+ * there opens as an empty new buffer, as in Emacs.
  *
  * This used to be cache-first, with disk as the fallback, on the
  * reasoning that disk "might be unreachable when offline". That reasoning
@@ -73,12 +73,7 @@ async function openDocument({ documentId, kvAdapter, diskAdapter, preferCache = 
     return { documentId, doc: parseOrg(diskEntry.content), source: 'disk' };
   }
 
-  const cached = await kvAdapter.get(cacheKey);
-  if (cached) {
-    return { documentId, doc: parseOrg(unwrap(cached)), source: 'cache' };
-  }
-
-  // Brand new, unsaved document.
+  // No file there: like Emacs's find-file, a missing file opens as an empty new buffer.
   return { documentId, doc: parseOrg(''), source: 'new' };
 }
 

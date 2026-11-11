@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { VariableValueError } from '../src/variable-error.js';
 import {
+  BLOCK_PROBLEM,
+  variableProblems,
   parseLocalVariables,
+  getIndentTables,
   getSearchExtraFilesVar,
   parseLispBoolean,
   parseLispNumber,
@@ -63,9 +67,11 @@ test('returns an empty object when there is no Local Variables block at all', ()
   assert.deepEqual(parseLocalVariables(null), {});
 });
 
-test('returns an empty object for a Local Variables block with no End: line (malformed, not half-applied)', () => {
+test('a Local Variables block with no End: line gives no variables and Emacs\'s message (not half-applied)', () => {
   const text = ['# Local Variables:', '# org-agenda-start-on-weekday: 0'].join('\n');
-  assert.deepEqual(parseLocalVariables(text), {});
+  const vars = parseLocalVariables(text);
+  assert.deepEqual(vars, { [BLOCK_PROBLEM]: 'Local variables list is not properly terminated' });
+  assert.deepEqual(variableProblems(vars), ['Local variables list is not properly terminated']);
 });
 
 test('is tolerant of extra whitespace around the values and the End: marker (every line carries the text before "Local Variables:", as Emacs needs)', () => {
@@ -86,7 +92,23 @@ test('a malformed line makes Emacs ignore the whole block (oracle-org-settings.t
     '# org-cycle-open-archived-trees: t',
     '# End:',
   ].join('\n');
-  assert.deepEqual(parseLocalVariables(text), {});
+  const vars = parseLocalVariables(text);
+  assert.deepEqual(vars, { [BLOCK_PROBLEM]: 'File mode specification error: (user-error Malformed local variable line: "this line has no colon")' });
+  assert.deepEqual(variableProblems(vars), [vars[BLOCK_PROBLEM]]);
+});
+
+test('Emacs\'s other block errors: a line without the prefix, an unreadable value', () => {
+  assert.deepEqual(variableProblems(parseLocalVariables(['# Local Variables:', 'no prefix: 1', '# End:'].join('\n'))), ['File mode specification error: (user-error Local variables entry is missing the prefix)']);
+  assert.deepEqual(variableProblems(parseLocalVariables(['# Local Variables:', '# fill-column: (1 2', '# End:'].join('\n'))), ['File mode specification error: (end-of-file)']);
+});
+
+test('skipped Extras and menu-alias entries and unavailable diary hook functions are reported by name', () => {
+  assert.deepEqual(variableProblems({ 'org-xx-extra-menu': '"x"', 'org-xx-menu-aliases': '"nomenu" "bogus:A;B"', 'diary-list-entries-hook': "'(diary-sort-entries no-such-fn)" }), [
+    'org-xx-extra-menu: "x" has no label',
+    'org-xx-menu-aliases: "nomenu" has no "menu:" before the label',
+    'org-xx-menu-aliases: "bogus:A;B" names the menu "bogus", which does not exist',
+    'diary-list-entries-hook: no-such-fn is not available here; only diary-include-other-diary-files and diary-sort-entries run',
+  ]);
 });
 
 test('an arbitrary/future variable name is captured too, not just the two currently acted on', () => {
@@ -96,19 +118,30 @@ test('an arbitrary/future variable name is captured too, not just the two curren
 
 // ---- parseLispBoolean / parseLispNumber ----------------------------------
 
-test('parseLispBoolean follows Lisp convention (t/nil), not JS truthiness', () => {
+test('parseLispBoolean follows Emacs: nil is false, any other value is true, unset keeps the default', () => {
   assert.equal(parseLispBoolean('t'), true);
   assert.equal(parseLispBoolean('nil'), false);
-  assert.equal(parseLispBoolean('T'), true); // case-insensitive
-  assert.equal(parseLispBoolean('true'), false); // NOT a Lisp boolean -- falls back
-  assert.equal(parseLispBoolean(undefined, true), true); // missing -> fallback
+  assert.equal(parseLispBoolean('()'), false);
+  assert.equal(parseLispBoolean('true'), true); // a symbol: non-nil
+  assert.equal(parseLispBoolean('1'), true);
+  assert.equal(parseLispBoolean(undefined, true), true);
+  assert.equal(parseLispBoolean(undefined), false);
 });
 
-test('parseLispNumber parses a numeric string, falling back on garbage', () => {
+test('parseLispNumber reads a number, keeps the default when unset, and names the variable and value when it is not a number', () => {
   assert.equal(parseLispNumber('0'), 0);
   assert.equal(parseLispNumber('  3  '), 3);
-  assert.equal(parseLispNumber('not-a-number', 42), 42);
   assert.equal(parseLispNumber(undefined, 7), 7);
+  assert.throws(() => parseLispNumber('not-a-number', 42, 'org-x'), (e) => e instanceof VariableValueError && e.variable === 'org-x' && e.value === 'not-a-number' && /org-x is "not-a-number", which is not a number/.test(e.message));
+});
+
+test('variableProblems lists each variable that cannot be used, and nothing for unset ones', () => {
+  assert.deepEqual(variableProblems({}), []);
+  const found = variableProblems({ 'org-deadline-warning-days': 'abc', 'org-xx-size-limit-image': 'big', 'org-priority-lowest': 'zz' });
+  assert.equal(found.length, 3);
+  assert.ok(found.some((m) => /org-deadline-warning-days is "abc"/.test(m)));
+  assert.ok(found.some((m) => /org-xx-size-limit-image is "big"/.test(m)));
+  assert.ok(found.some((m) => /org-priority-lowest is "zz"/.test(m)));
 });
 
 // ---- getAgendaStartOnWeekday / getCycleOpenArchivedTrees -----------------
@@ -122,9 +155,10 @@ test('getAgendaStartOnWeekday reads the configured value', () => {
   assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '2' }), 2);
 });
 
-test('getAgendaStartOnWeekday falls back to Monday for an out-of-range value', () => {
-  assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '9' }), 1);
-  assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '-1' }), 1);
+test('getAgendaStartOnWeekday counts modulo 7 as Emacs does (oracle: 9 starts the week on Tuesday, -2 on Friday)', () => {
+  assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '9' }), 2);
+  assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '-2' }), 5);
+  assert.equal(getAgendaStartOnWeekday({ 'org-agenda-start-on-weekday': '-1' }), 6);
 });
 
 test('getCycleOpenArchivedTrees defaults to false (nil/off), matching real org\'s own default', () => {
@@ -247,13 +281,13 @@ test('getAsciiTextWidth parses a set numeric value', () => {
   assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '100' }), 100);
 });
 
-test('getAsciiTextWidth falls back to 72 for a non-positive value rather than producing zero/negative-width wrapping', () => {
-  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '0' }), 72);
-  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '-10' }), 72);
+test('getAsciiTextWidth is used as given, even 0 or less (Emacs 29.3 then puts every word on its own line)', () => {
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '0' }), 0);
+  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': '-10' }), -10);
 });
 
-test('getAsciiTextWidth falls back to 72 for an unparseable value', () => {
-  assert.equal(getAsciiTextWidth({ 'org-ascii-text-width': 'garbage' }), 72);
+test('getAsciiTextWidth reports a value that is not a number', () => {
+  assert.throws(() => getAsciiTextWidth({ 'org-ascii-text-width': 'garbage' }), VariableValueError);
 });
 
 // ---- line continuation (trailing backslash) --------------------------------
@@ -322,8 +356,8 @@ test('a negative value is kept: Emacs (org-get-wdays) uses its opposite as the w
   assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': '-5' }), -5);
 });
 
-test('a non-numeric value falls back to the default', () => {
-  assert.equal(getDeadlineWarningDays({ 'org-deadline-warning-days': 'abc' }), 14);
+test('a non-numeric value is an error naming the variable', () => {
+  assert.throws(() => getDeadlineWarningDays({ 'org-deadline-warning-days': 'abc' }), /org-deadline-warning-days is "abc"/);
 });
 
 // ---- getScheduledDelayDays ---------------------------------------------------
@@ -341,8 +375,8 @@ test('a negative value is kept: Emacs (org-get-wdays) uses its opposite as the d
   assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': '-2' }), -2);
 });
 
-test('a non-numeric value falls back to 0', () => {
-  assert.equal(getScheduledDelayDays({ 'org-scheduled-delay-days': 'abc' }), 0);
+test('a non-numeric value is an error naming the variable', () => {
+  assert.throws(() => getScheduledDelayDays({ 'org-scheduled-delay-days': 'abc' }), /org-scheduled-delay-days is "abc"/);
 });
 
 // ---- calendar-latitude / calendar-longitude -----------------------------
@@ -376,32 +410,40 @@ test('THE FIX: getOrgWeatherFormat defaults to the exact format given in the ori
 });
 
 test('getOrgWeatherFormat reads an explicit override', () => {
-  assert.equal(getOrgWeatherFormat({ 'org-weather-format': '%icon %tcur%tu' }), '%icon %tcur%tu');
+  assert.equal(getOrgWeatherFormat({ 'org-weather-format': '"%icon %tcur%tu"' }), '%icon %tcur%tu');
 });
 
 test('THE FIX: getOrgWeatherSpeedUnit defaults to mph, matching what this app always fetches in', () => {
   assert.equal(getOrgWeatherSpeedUnit({}), 'mph');
 });
 
-test('getOrgWeatherSpeedUnit reads a valid override; an unrecognized value falls back to the default rather than passing a malformed unit through', () => {
+test('getOrgWeatherSpeedUnit reads a valid override; an unrecognized value is an error that names the variable', () => {
   assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'km/h' }), 'km/h');
   assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'm/s' }), 'm/s');
   assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'Knots' }), 'Knots');
-  assert.equal(getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'bogus' }), 'mph');
+  assert.equal(getOrgWeatherSpeedUnit({}), 'mph');
+  assert.throws(() => getOrgWeatherSpeedUnit({ 'org-weather-speed-unit': 'bogus' }), /org-weather-speed-unit is "bogus", which is not one of km\/h, m\/s, mph, Knots/);
 });
 
 test('THE FIX: getOrgWeatherTemperatureUnit defaults to \u00b0F, matching what this app always fetches in', () => {
   assert.equal(getOrgWeatherTemperatureUnit({}), '\u00b0F');
 });
 
-test('getOrgWeatherTemperatureUnit reads a valid override; an unrecognized value falls back to the default', () => {
+test('getOrgWeatherTemperatureUnit reads a valid override; an unrecognized value is an error that names the variable', () => {
   assert.equal(getOrgWeatherTemperatureUnit({ 'org-weather-temperature-unit': '\u00b0C' }), '\u00b0C');
-  assert.equal(getOrgWeatherTemperatureUnit({ 'org-weather-temperature-unit': 'bogus' }), '\u00b0F');
+  assert.equal(getOrgWeatherTemperatureUnit({}), '\u00b0F');
+  assert.throws(() => getOrgWeatherTemperatureUnit({ 'org-weather-temperature-unit': 'bogus' }), /org-weather-temperature-unit is "bogus"/);
 });
 
-test('an out-of-range latitude/longitude falls back to the default', () => {
-  assert.equal(getCalendarLatitude({ 'calendar-latitude': '95' }), 35.994);
-  assert.equal(getCalendarLongitude({ 'calendar-longitude': '200' }), -78.8986);
+test('latitude and longitude are used as given, in or out of the usual range (Emacs 29.3 computes with them)', () => {
+  assert.equal(getCalendarLatitude({ 'calendar-latitude': '95' }), 95);
+  assert.equal(getCalendarLongitude({ 'calendar-longitude': '200' }), 200);
+});
+
+test('a variable holding Lisp with unbalanced parentheses is reported with Emacs\'s words', () => {
+  assert.deepEqual(variableProblems({ 'org-refile-targets': '((nil :maxlevel . 3)' }), ['org-refile-targets: End of file during parsing']);
+  assert.deepEqual(variableProblems({ 'org-refile-targets': '(a))' }), ['org-refile-targets: Invalid read syntax: ")"']);
+  assert.deepEqual(variableProblems({ 'org-refile-targets': '((nil :maxlevel . 3))', 'org-x': '"(not a list"' }), []);
 });
 
 // ---- getAgendaFilesVar -------------------------------------------------------
@@ -527,6 +569,12 @@ test('getBufferReadOnly reads t/nil the same Lisp-boolean way every other variab
   assert.equal(getBufferReadOnly({ 'buffer-read-only': 'nil' }), false);
 });
 
+test('getIndentTables: tables are indented with the text unless org-xx-indent-tables is nil', () => {
+  assert.equal(getIndentTables({}), true);
+  assert.equal(getIndentTables({ 'org-xx-indent-tables': 't' }), true);
+  assert.equal(getIndentTables({ 'org-xx-indent-tables': 'nil' }), false);
+});
+
 // ---- getGodModeButton -----------------------------------------------------
 
 test('getGodModeButton defaults to on: the [g] button is shown unless someone turns it off', () => {
@@ -579,11 +627,11 @@ test('org-agenda-text-search-extra-files is read like the other file lists, and 
 });
 
 
-test('getDragHandle: right by default, left or off when set, anything else is the default', async () => {
+test('getDragHandle: right by default, left or off when set, anything else is an error', async () => {
   const { getDragHandle } = await import('../src/local-variables.js');
   assert.equal(getDragHandle({}), 'right');
   assert.equal(getDragHandle({ 'org-xx-drag-handle': 'left' }), 'left');
   assert.equal(getDragHandle({ 'org-xx-drag-handle': 'Off' }), 'off');
   assert.equal(getDragHandle({ 'org-xx-drag-handle': 'nil' }), 'off');
-  assert.equal(getDragHandle({ 'org-xx-drag-handle': 'sideways' }), 'right');
+  assert.throws(() => getDragHandle({ 'org-xx-drag-handle': 'sideways' }), /org-xx-drag-handle is "sideways", which is not one of right, left, off/);
 });

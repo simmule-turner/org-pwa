@@ -30,7 +30,7 @@
 import { resolveCaptureFileId } from './capture-template.js';
 import { emacsRegexToJs, EmacsRegexError } from './emacs-regex.js';
 import { serializeHeadingLine } from './org-parser.js';
-import { readLisp, listItems, stringValue, symbolName, isNil } from './lisp-read.js';
+import { readLisp, listItems, stringValue, symbolName, isNil, lispSyntaxError } from './lisp-read.js';
 
 /** @param {import('./lisp-read.js').Lisp} f  Emacs's `prin1` of the value
  * @returns {string} */
@@ -92,8 +92,11 @@ function parseRefileTargetsWithErrors(text) {
   /** @type {{ entry: string, message: string }[]} */ const errors = [];
   const fallback = () => ({ entries: /** @type {RefileEntry[]} */ ([{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }]), errors });
   if (!text || !text.trim()) return fallback();
+  const syntax = lispSyntaxError(text);
+  if (syntax) return { entries, errors: [{ entry: text.trim(), message: `org-refile-targets: ${syntax}` }] };
   const form = readLisp(text.trim().replace(/^'/, ''))[0];
-  if (!form || isNil(form)) return fallback();
+  if (!form) return { entries, errors: [{ entry: text.trim(), message: 'org-refile-targets could not be read as a Lisp value' }] };
+  if (isNil(form)) return fallback(); // nil: Emacs's own default, the level-1 headings of this file
   const list = listItems(form);
   if (!list) {
     errors.push({ entry: text.trim(), message: 'org-refile-targets is a list of (FILES :KEY . VALUE) entries, such as ((nil :maxlevel . 3))' });

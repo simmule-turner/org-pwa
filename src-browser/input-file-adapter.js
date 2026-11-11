@@ -96,14 +96,10 @@ export function createInputFileAdapter(kvAdapter, downloadFn = downloadFile) {
   return {
     /** @param {string} fileId */
     async read(fileId) {
-      try {
-        const result = await kvAdapter.get(importedFileKey(fileId));
-        if (!result) return null;
-        const content = unwrap(result);
-        return { content, hash: contentHash(content) };
-      } catch {
-        return null;
-      }
+      const result = await kvAdapter.get(importedFileKey(fileId));
+      if (!result) return null;
+      const content = unwrap(result);
+      return { content, hash: contentHash(content) };
     },
 
     /**

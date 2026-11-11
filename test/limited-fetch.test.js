@@ -68,7 +68,7 @@ test('fetchWithTimeout gives up when the server does not start answering, with a
   const real = globalThis.fetch;
   globalThis.fetch = (url, { signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))));
   try {
-    await assert.rejects(fetchWithTimeout('https://example.test/', {}, 0.05), /No answer from the server in 0\.05 seconds.*Size limits/);
+    await assert.rejects(fetchWithTimeout('https://example.test/', {}, 0.05), /No answer from the server in 0\.05 seconds.*org-xx-fetch-timeout/);
   } finally {
     globalThis.fetch = real;
   }

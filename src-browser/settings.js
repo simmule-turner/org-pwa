@@ -44,7 +44,6 @@ const KEYS = {
   lastActiveDocument: 'settings:lastActiveDocument',
   openTabs: 'settings:openTabs',
   recentFiles: 'settings:recentFiles',
-  fileScreenType: 'settings:fileScreenType',
   fileLocation: 'settings:fileLocation',
   globalVariables: 'settings:globalVariables',
 };
@@ -80,9 +79,17 @@ async function getJson(kvAdapter, key, fallback) {
     const raw = unwrap(result);
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     return parsed === undefined || parsed === null ? fallback : parsed;
-  } catch {
+  } catch (err) {
+    // A stored setting that cannot be read is not set; the person is told which one (takeUnreadableSettings), not left to wonder.
+    unreadableSettings.push(`The stored setting "${key}" could not be read (${err instanceof Error ? err.message : String(err)}), so it is not set.`);
     return fallback;
   }
+}
+
+/** Messages about stored settings that could not be read since the last call; the screen shows them once. */
+const unreadableSettings = /** @type {string[]} */ ([]);
+export function takeUnreadableSettings() {
+  return unreadableSettings.splice(0);
 }
 
 /**
@@ -694,14 +701,13 @@ export async function removeRecentFile(kvAdapter, documentId, storageKind) {
 }
 
 /**
- * Where the Open / Save As screen was last: the place, the folder in each place and the recent folders. An earlier version kept only
- * a storage type, which is read as the place.
+ * Where the Open / Save As screen was last: the place, the folder in each place and the recent folders.
  * @param {KvAdapter} kvAdapter
  * @returns {Promise<import('../src/file-places.js').Location>}
  */
 export async function getFileLocation(kvAdapter) {
   const stored = await getJson(kvAdapter, KEYS.fileLocation, null);
-  return normalizeLocation(stored ?? (await getJson(kvAdapter, KEYS.fileScreenType, null)));
+  return normalizeLocation(stored);
 }
 
 /**

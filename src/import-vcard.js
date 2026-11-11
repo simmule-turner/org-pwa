@@ -303,7 +303,10 @@ export function parseVcards(text, opts = /** @type {any} */ ({})) {
     if (!current) continue;
 
     const parsed = parseVcardLine(line, cleanMode);
-    if (!parsed) continue;
+    if (!parsed) {
+      if (line.trim()) warnUnmapped(`the line “${line.trim().slice(0, 30)}”`); // not a property: named, not dropped quietly
+      continue;
+    }
     switch (parsed.name) {
       case 'FN':
         current.fn = parsed.value;

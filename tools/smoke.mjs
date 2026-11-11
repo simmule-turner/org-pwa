@@ -6577,8 +6577,8 @@ check('drag handle setting: right by default, left or off from the variable, and
   await setDocumentText(page, withVar('off'));
   expect((await side()) === 'none', `off: ${await side()}`);
   await page.evaluate(async () => {
-    const { QUICK_SETTINGS_FIELDS } = await import('/src-browser/settings-fields.js');
-    window.__field = QUICK_SETTINGS_FIELDS.find((f) => f.key === 'org-xx-drag-handle');
+    const { SETTINGS_FIELDS } = await import('/src-browser/settings-fields.js');
+    window.__field = SETTINGS_FIELDS.find((f) => f.key === 'org-xx-drag-handle');
   });
   const field = await page.evaluate(() => ({ d: window.__field.default, o: window.__field.options.map((x) => x.value).join(',') }));
   expect(field.d === 'right' && field.o === 'right,left,off', `quick setting: ${JSON.stringify(field)}`);
@@ -9180,7 +9180,7 @@ check('size limits: a large org file asks, a huge one is refused', async () => {
   await pickDav('huge.org');
   await page.waitForFunction(() => /over the 2 MB limit/.test(document.getElementById('minibuffer').innerText), null, { timeout: 30000 });
   expect(!(await modeline()).includes('huge.org'), `the huge file is not opened: ${await modeline()}`);
-  expect((await status()).includes('Size limits'), `the refusal says where to change the limit: ${await status()}`);
+  expect((await status()).includes('org-xx-size-limit-org-file in Global Variables'), `the refusal says which variable changes the limit: ${await status()}`);
   expect((await page.getByText('Open anyway?').count()) === 0, 'a refused file asks nothing');
   await page.locator('#tabBar > div', { hasText: 'small.org' }).first().click(); // the app still switches buffers
   await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('small.org'), null, { timeout: 8000 });
@@ -9577,9 +9577,15 @@ check('org-startup-indented: lines start at the left edge as in Emacs (a nested 
   let l = await lefts();
   expect(l.heading === 8 && l.text === 8 && l.item === 8 && l.table === 8, `all at the edge: ${JSON.stringify(l)}`);
   expect(l.nested === 24, `a nested list still steps in: ${JSON.stringify(l)}`);
+  const stars = () => page.evaluate(() => [...document.querySelectorAll('#outline .heading-stars')].map((e) => e.textContent));
+  expect(JSON.stringify(await stars()) === '["*","**"]', `with indent off each heading shows its stars: ${JSON.stringify(await stars())}`);
   await newDocument(page, ['#+STARTUP: indent'].concat(doc).join('\n'));
   l = await lefts();
   expect(l.heading === 24 && l.text === 40 && l.item === 40 && l.table === 40 && l.nested === 56, `under the heading with indent: ${JSON.stringify(l)}`);
+  expect((await stars()).length === 0, 'with indent on the stars are not drawn');
+  await newDocument(page, ['#+STARTUP: indent'].concat(doc, ['# Local Variables:', '# org-xx-indent-tables: nil', '# End:', '']).join('\n'));
+  l = await lefts();
+  expect(l.text === 40 && l.item === 40 && l.table === 8, `org-xx-indent-tables nil keeps only the table at the edge: ${JSON.stringify(l)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

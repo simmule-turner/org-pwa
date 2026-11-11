@@ -113,6 +113,7 @@ export function buildHabitGraph(heading, isDone, today, opts = {}) {
   if (!spec) return null;
   const preceding = opts.precedingDays ?? HABIT_DEFAULTS.precedingDays;
   const following = opts.followingDays ?? HABIT_DEFAULTS.followingDays;
+  if (preceding < 0) return null; // Emacs draws no graph for a negative org-habit-preceding-days
   const alwaysGreen = !!opts.doneAlwaysGreen;
   const now = dayNumber(today);
   const sRepeat = spec.minDays;

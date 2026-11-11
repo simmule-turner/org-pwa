@@ -86,15 +86,11 @@ test('the Global Variables text is read as (setq ...) forms, not as the old name
 });
 
 /** Settings whose value is written as Emacs writes it: a Lisp list, alist or string. */
-const EMACS_FORM = new Set([
-  'org-agenda-sorting-strategy', 'org-agenda-custom-commands', 'org-modules', 'org-inlinetask-min-level', 'org-refile-targets', 'org-global-properties',
-  'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file', 'diary-list-entries-hook',
-  'diary-nongregorian-listing-hook', 'diary-date-forms',
-]);
+const EMACS_FORM = new Set(['org-refile-targets', 'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file']);
 
 test('every free-text setting is either written as Emacs writes it or is one of the app’s own (org-xx-)', () => {
   const longtext = SETTINGS_FIELDS.filter((f) => f.type === 'longtext').map((f) => f.key);
-  assert.ok(longtext.length > 10);
+  assert.ok(longtext.length > 5);
   const unclassified = longtext.filter((k) => !EMACS_FORM.has(k) && !k.startsWith('org-xx-'));
   assert.deepEqual(unclassified, [], 'a free-text setting needs Emacs’s syntax (add it to EMACS_FORM once its value is read the way Emacs writes it) or an org-xx- name');
   const gone = [...EMACS_FORM].filter((k) => !longtext.includes(k));

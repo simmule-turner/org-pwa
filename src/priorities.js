@@ -1,18 +1,20 @@
 // @ts-check
+import { VariableValueError } from './variable-error.js';
 // Priority cookies beyond A/B/C: org-priority-highest, org-priority-lowest and org-priority-default. Each is a character
 // (`?A`, or just `A`) or a number below 65 (`1`): a numeric range gives digit cookies ([#1] to [#9]). Pure functions.
 
 /** @typedef {{ highest: number, lowest: number, default: number }} PriorityRange  character codes, or numbers below 65 */
 
-/** One variable's value as a number: `?A`, `A`, `"A"`, `65` or `3`.
- * @param {string | number | null | undefined} raw
+/** One variable's value as a number: `?A`, `A`, `"A"`, `65` or `3`; null when it is not set, a VariableValueError when it is something else.
+ * @param {string | number | null | undefined} raw @param {string} name
  * @returns {number | null} */
-function readValue(raw) {
-  if (raw === undefined || raw === null) return null;
+function readValue(raw, name) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
   const text = String(raw).trim().replace(/^'/, '');
   if (/^\d+$/.test(text)) return Number(text);
   const char = /^\?(.)$/.exec(text) || /^"(.)"$/.exec(text) || /^([A-Za-z])$/.exec(text);
-  return char ? char[1].toUpperCase().charCodeAt(0) : null;
+  if (!char) throw new VariableValueError(name, raw, 'a character or a number');
+  return char[1].toUpperCase().charCodeAt(0);
 }
 
 /** The range from the three variables; anything unusable falls back to Emacs's A, C and B (a reversed range too).
@@ -20,13 +22,9 @@ function readValue(raw) {
  * @returns {PriorityRange} */
 export function readPriorityRange(vars) {
   const v = vars || {};
-  let highest = readValue(v['org-priority-highest']) ?? 65;
-  let lowest = readValue(v['org-priority-lowest']) ?? 67;
-  if (highest > lowest || highest < 0 || lowest > 90 || (highest < 65) !== (lowest < 65)) {
-    highest = 65;
-    lowest = 67;
-  }
-  let def = readValue(v['org-priority-default']);
+  const highest = readValue(v['org-priority-highest'], 'org-priority-highest') ?? 65;
+  const lowest = readValue(v['org-priority-lowest'], 'org-priority-lowest') ?? 67;
+  let def = readValue(v['org-priority-default'], 'org-priority-default');
   if (def === null || def < highest || def > lowest) def = Math.min(lowest, Math.max(highest, def === null ? 66 : def));
   return { highest, lowest, default: def };
 }
@@ -47,6 +45,7 @@ export function valueOf(cookie) {
  * @param {PriorityRange} range
  * @returns {string[]} */
 export function priorityCookies(range) {
+  if (range.highest > range.lowest) throw new VariableValueError('org-priority-highest', cookieOf(range.highest), 'not after org-priority-lowest', `Priority must be between \`${cookieOf(range.highest)}' and \`${cookieOf(range.lowest)}'`); // Emacs's message
   const out = [];
   for (let v = range.highest; v <= range.lowest; v++) out.push(cookieOf(v));
   return out;
@@ -88,7 +87,14 @@ export function prioritiesKeyword(text) {
   const m = /^[ \t]*#\+PRIORITIES:[ \t]*(\S+)[ \t]+(\S+)(?:[ \t]+(\S+))?[ \t]*$/im.exec(text || '');
   if (!m) return {};
   const [highest, lowest, def] = [m[1], m[2], m[3]];
-  if (readValue(highest) === null || readValue(lowest) === null || (def !== undefined && readValue(def) === null)) return {};
+  const read = (/** @type {string} */ text) => {
+    try {
+      return readValue(text, '#+PRIORITIES');
+    } catch {
+      return null; // a keyword line that is not a range is ignored
+    }
+  };
+  if (read(highest) === null || read(lowest) === null || (def !== undefined && read(def) === null)) return {};
   /** @type {Record<string, string>} */
   const out = { 'org-priority-highest': highest, 'org-priority-lowest': lowest };
   if (def !== undefined) out['org-priority-default'] = def;

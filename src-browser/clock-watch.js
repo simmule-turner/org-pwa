@@ -21,8 +21,8 @@ import { switchToTab } from './tabs.js';
 /** @type {{ key: string, shown: boolean, lastActive: number, dialog: HTMLElement | null }} */
 const watch = { key: '', shown: false, lastActive: Date.now(), dialog: null };
 
-/** A short beep (Emacs's `t`); a failure to make sound is not worth a message. */
-function beep() {
+/** One short beep; a failure to make sound is not worth a message. */
+function beepOnce() {
   try {
     const Context = window.AudioContext || /** @type {Record<string, typeof AudioContext>} */ (/** @type {unknown} */ (window)).webkitAudioContext;
     if (!Context) return;
@@ -31,36 +31,49 @@ function beep() {
     osc.frequency.value = 880;
     osc.connect(ctx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + 0.25);
+    osc.stop(ctx.currentTime + 0.2);
     osc.onended = () => ctx.close();
   } catch {
     /* no sound available */
   }
 }
 
+/** Emacs's `(beep t) (beep t)`: two short beeps. */
+function beepTwice() {
+  beepOnce();
+  setTimeout(beepOnce, 350);
+}
+
 /**
- * org-clock-sound: `t` beeps; a file name is played from the org-pwa folder where the platform has one (the Android app), and
- * beeps where there is none, or the file is missing or will not play, as Emacs beeps when it cannot play the file.
+ * org-clock-play-sound: `t` beeps twice. A file name is played from the org-pwa folder where the platform has one (the Android app).
+ * A file that is not there plays nothing, as in Emacs; a file that is there but will not play beeps twice.
  * @param {string | undefined} raw
  */
 export async function playClockSound(raw) {
   const kind = soundKind(raw);
   if (kind === 'none') return;
-  const name = soundFileName(raw);
-  if (name !== null && platform.attachments.supported() && platform.attachments.adapter) {
-    try {
-      // a sound is a small file: the image size limit applies (a longer one falls back to the beep)
-      const soundMax = getSizeLimits().image.max;
-      const file = await platform.attachments.adapter.readBinary(name, soundMax > 0 ? { maxBytes: soundMax } : undefined);
-      if (file && !file.tooLarge && file.base64 && !(soundMax > 0 && base64Bytes(file.base64) > soundMax)) {
-        await new Audio(`data:${guessAudioMimeType(name)};base64,${file.base64}`).play();
-        return;
-      }
-    } catch {
-      /* missing, unreadable or blocked: fall back to the beep */
-    }
+  if (kind === 'beep') {
+    beepTwice();
+    return;
   }
-  beep();
+  const name = soundFileName(raw);
+  if (name === null || !platform.attachments.supported() || !platform.attachments.adapter) return;
+  let file;
+  try {
+    // a sound is a small file: the image size limit applies
+    const soundMax = getSizeLimits().image.max;
+    file = await platform.attachments.adapter.readBinary(name, soundMax > 0 ? { maxBytes: soundMax } : undefined);
+  } catch {
+    return; // not there
+  }
+  if (!file) return;
+  try {
+    const soundMax = getSizeLimits().image.max;
+    if (file.tooLarge || !file.base64 || (soundMax > 0 && base64Bytes(file.base64) > soundMax)) throw new Error('too large to play');
+    await new Audio(`data:${guessAudioMimeType(name)};base64,${file.base64}`).play();
+  } catch {
+    beepTwice();
+  }
 }
 
 /** @param {string} text */

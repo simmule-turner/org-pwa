@@ -133,16 +133,21 @@ test('THE BUG THIS FIXES: a file edited outside the app is picked up on the next
   assert.equal(second.doc.children[0].title, 'Edited outside the app');
 });
 
-test('cache is still used as a fallback when disk read genuinely fails (no registered handle)', async () => {
+test('a copy kept in the cache is not shown in place of a file that is not there: it opens as a new empty buffer, as in Emacs', async () => {
   const kv = createInMemoryAdapter();
   const disk = createInMemoryDiskAdapter();
-  // Prime the cache directly, without ever writing anything to "disk" for
-  // this documentId — simulates a document with no file handle available.
   await kv.set('doc:orphaned.org', '* Cached-only content');
 
   const { doc, source } = await openDocument({ documentId: 'orphaned.org', kvAdapter: kv, diskAdapter: disk });
-  assert.equal(source, 'cache');
-  assert.equal(doc.children[0].title, 'Cached-only content');
+  assert.equal(source, 'new');
+  assert.deepEqual(doc.children, []);
+});
+
+test('a read that fails is an error, and the cached copy is not shown instead', async () => {
+  const kv = createInMemoryAdapter();
+  await kv.set('doc:a.org', '* Cached');
+  const disk = { read: async () => { throw new Error('disk gone'); }, write: async () => ({}), exists: async () => true };
+  await assert.rejects(() => openDocument({ documentId: 'a.org', kvAdapter: kv, diskAdapter: /** @type {any} */ (disk) }), /disk gone/);
 });
 
 test('opening a document that exists nowhere returns a fresh empty document', async () => {
@@ -178,7 +183,7 @@ test('saveDocument writes to the cache and enqueues an outbox entry, but does no
   assert.equal(await disk.exists('new.org'), false);
   assert.equal(await hasPendingChange(kv, 'new.org'), true);
 
-  const reopened = await openDocument({ documentId: 'new.org', kvAdapter: kv, diskAdapter: disk });
+  const reopened = await openDocument({ documentId: 'new.org', kvAdapter: kv, diskAdapter: disk, preferCache: true });
   assert.equal(reopened.source, 'cache');
   assert.equal(reopened.doc.children[0].title, 'Buy milk');
 });

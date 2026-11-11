@@ -7,56 +7,6 @@
 /** @type {CatalogEntry[]} */
 export const VARIABLE_CATALOG = [
   {
-    "name": "org-agenda-category-filter-preset",
-    "doc": "A preset of the category filter used for secondary agenda filtering.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-cmp-user-defined",
-    "doc": "A function to define the comparison `user-defined'.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-effort-filter-preset",
-    "doc": "A preset of the effort condition used for secondary agenda filtering.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-max-effort",
-    "doc": "Maximum cumulated effort duration for the agenda.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-prefix-format",
-    "doc": "Format specifications for the prefix of items in the agenda views.",
-    "default": "((agenda . \" %i %-12:c%?-12t% s\") (todo . \" %i %-12:c\") (tags . \" %i %-12:c\") (search ...."
-  },
-  {
-    "name": "org-agenda-regexp-filter-preset",
-    "doc": "A preset of the regexp filter used for secondary agenda filtering.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-search-view-always-boolean",
-    "doc": "Non-nil means the search string is interpreted as individual parts.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-search-view-force-full-words",
-    "doc": "Non-nil means, search words must be matches as complete words.",
-    "default": "nil"
-  },
-  {
-    "name": "org-agenda-search-view-max-outline-level",
-    "doc": "Maximum outline level to display in search view.",
-    "default": "0"
-  },
-  {
-    "name": "org-agenda-tag-filter-preset",
-    "doc": "A preset of the tags filter used for secondary agenda filtering.",
-    "default": "nil"
-  },
-  {
     "name": "calendar-bahai-all-holidays-flag",
     "doc": "If nil, show only major holidays from the Bahá’í calendar.",
     "default": "nil"
@@ -77,6 +27,11 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "diary-date-forms",
+    "doc": "List of pseudo-patterns describing the forms of date used in the diary.",
+    "default": "((month \"/\" day \"[^/0-9]\") (month \"/\" day \"/\" year \"[^0-9]\") (monthname \" *\" day \"[^,0-..."
+  },
+  {
     "name": "diary-hebrew-sabbath-candles-minutes",
     "doc": "Number of minutes before sunset for sabbath candle lighting.",
     "default": "18"
@@ -85,6 +40,16 @@ export const VARIABLE_CATALOG = [
     "name": "diary-include-string",
     "doc": "The string indicating inclusion of another file of diary entries.",
     "default": "\"#include\""
+  },
+  {
+    "name": "diary-list-entries-hook",
+    "doc": "Hook run after diary file is culled for relevant entries.",
+    "default": "nil"
+  },
+  {
+    "name": "diary-nongregorian-listing-hook",
+    "doc": "List of functions called for listing diary file and included files.",
+    "default": "nil"
   },
   {
     "name": "diary-nonmarking-symbol",
@@ -97,39 +62,44 @@ export const VARIABLE_CATALOG = [
     "default": "\"%%\""
   },
   {
-    "name": "org-log-into-drawer",
-    "doc": "Non-nil means insert state change notes and time stamps into a drawer.",
+    "name": "display-time-24hr-format",
+    "doc": "Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23.",
     "default": "nil"
   },
   {
-    "name": "org-log-repeat",
-    "doc": "Non-nil means record moving through the DONE state when triggering repeat.",
-    "default": "time"
-  },
-  {
-    "name": "org-clock-idle-time",
-    "doc": "When non-nil, resolve open clocks if the user is idle more than X minutes.",
+    "name": "display-time-format",
+    "doc": "String specifying format for displaying the time in the mode line.",
     "default": "nil"
   },
   {
-    "name": "org-clock-sound",
-    "doc": "Sound to use for notifications.",
-    "default": "nil"
+    "name": "large-file-warning-threshold",
+    "doc": "Size in bytes above which an Org file asks before it opens (this app: 500KB; Emacs: 10000000).",
+    "default": "512000"
   },
   {
-    "name": "org-duration-units",
-    "doc": "Conversion factor to minutes for a duration.",
-    "default": "((\"min\" . 1) (\"h\" . 60) (\"d\" . 1440) (\"w\" . 10080) (\"m\" . 43200) (\"y\" . 525960.0))"
-  },
-  {
-    "name": "org-priority-get-priority-function",
-    "doc": "Function to extract the priority from a string.",
+    "name": "org-agenda-category-filter-preset",
+    "doc": "A preset of the category filter used for secondary agenda filtering.",
     "default": "nil"
   },
   {
     "name": "org-agenda-clock-consistency-checks",
     "doc": "Limits for the clock consistency checks of the Agenda clock report (a property list).",
     "default": "(:max-duration \"10:00\" :min-duration 0 :max-gap \"0:05\" :gap-ok-around (\"4:00\") :default..."
+  },
+  {
+    "name": "org-agenda-cmp-user-defined",
+    "doc": "A function to define the comparison `user-defined'.",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-custom-commands",
+    "doc": "Custom commands for the agenda (this app has no built-in \"n\" command; Emacs has one).",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-effort-filter-preset",
+    "doc": "A preset of the effort condition used for secondary agenda filtering.",
+    "default": "nil"
   },
   {
     "name": "org-agenda-include-inactive-timestamps",
@@ -147,14 +117,64 @@ export const VARIABLE_CATALOG = [
     "default": "(closed clock)"
   },
   {
+    "name": "org-agenda-max-effort",
+    "doc": "Maximum cumulated effort duration for the agenda.",
+    "default": "nil"
+  },
+  {
     "name": "org-agenda-prefer-last-repeat",
     "doc": "Non-nil sets date for repeated entries to their last repeat.",
     "default": "nil"
   },
   {
+    "name": "org-agenda-prefix-format",
+    "doc": "Format specifications for the prefix of items in the agenda views.",
+    "default": "((agenda . \" %i %-12:c%?-12t% s\") (todo . \" %i %-12:c\") (tags . \" %i %-12:c\") (search ...."
+  },
+  {
+    "name": "org-agenda-regexp-filter-preset",
+    "doc": "A preset of the regexp filter used for secondary agenda filtering.",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-remove-times-when-in-prefix",
+    "doc": "Non-nil means remove duplicate time specifications in agenda items.",
+    "default": "t"
+  },
+  {
+    "name": "org-agenda-search-view-always-boolean",
+    "doc": "Non-nil means the search string is interpreted as individual parts.",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-search-view-force-full-words",
+    "doc": "Non-nil means, search words must be matches as complete words.",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-search-view-max-outline-level",
+    "doc": "Maximum outline level to display in search view.",
+    "default": "0"
+  },
+  {
+    "name": "org-agenda-show-inherited-tags",
+    "doc": "Non-nil means show inherited tags in each agenda line.",
+    "default": "t"
+  },
+  {
     "name": "org-agenda-skip-additional-timestamps-same-entry",
     "doc": "When nil, multiple same-day timestamps in entry make multiple agenda lines.",
     "default": "nil"
+  },
+  {
+    "name": "org-agenda-skip-archived-trees",
+    "doc": "Non-nil means the agenda will skip any items located in archived trees.",
+    "default": "t"
+  },
+  {
+    "name": "org-agenda-skip-comment-trees",
+    "doc": "Non-nil means skip trees that start with the COMMENT keyword.",
+    "default": "t"
   },
   {
     "name": "org-agenda-skip-deadline-prewarning-if-scheduled",
@@ -192,6 +212,11 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-agenda-sorting-strategy",
+    "doc": "Sorting structure for the agenda items of a single day.",
+    "default": "((agenda habit-down time-up priority-down category-keep) (todo priority-down category-k..."
+  },
+  {
     "name": "org-agenda-span",
     "doc": "Number of days to include in overview display.",
     "default": "week"
@@ -204,6 +229,11 @@ export const VARIABLE_CATALOG = [
   {
     "name": "org-agenda-start-with-log-mode",
     "doc": "The initial value of log-mode in a newly created agenda window.",
+    "default": "nil"
+  },
+  {
+    "name": "org-agenda-tag-filter-preset",
+    "doc": "A preset of the tags filter used for secondary agenda filtering.",
     "default": "nil"
   },
   {
@@ -232,19 +262,114 @@ export const VARIABLE_CATALOG = [
     "default": "t"
   },
   {
+    "name": "org-agenda-use-tag-inheritance",
+    "doc": "List of agenda view types where to use tag inheritance.",
+    "default": "(todo search agenda)"
+  },
+  {
+    "name": "org-cite-basic-author-year-separator",
+    "doc": "String used to separate cites in an author-year configuration.",
+    "default": "\", \""
+  },
+  {
+    "name": "org-cite-basic-sorting-field",
+    "doc": "Field used to sort bibliography items as a symbol, or nil.",
+    "default": "author"
+  },
+  {
+    "name": "org-cite-global-bibliography",
+    "doc": "List of bibliography files available in all documents.",
+    "default": "nil"
+  },
+  {
+    "name": "org-clock-idle-time",
+    "doc": "When non-nil, resolve open clocks if the user is idle more than X minutes.",
+    "default": "nil"
+  },
+  {
+    "name": "org-clock-into-drawer",
+    "doc": "Non-nil when clocking info should be wrapped into a drawer.",
+    "default": "t"
+  },
+  {
+    "name": "org-clock-out-remove-zero-time-clocks",
+    "doc": "Non-nil means remove the clock line when the resulting time is zero.",
+    "default": "nil"
+  },
+  {
+    "name": "org-clock-out-switch-to-state",
+    "doc": "Set task to a special todo state after clocking out.",
+    "default": "nil"
+  },
+  {
+    "name": "org-clock-sound",
+    "doc": "Sound to use for notifications.",
+    "default": "nil"
+  },
+  {
+    "name": "org-closed-keep-when-no-todo",
+    "doc": "Remove CLOSED: time-stamp when switching back to a non-todo state?",
+    "default": "nil"
+  },
+  {
+    "name": "org-contacts-birthday-property",
+    "doc": "The property that holds a contact's birthday or anniversary (org-contacts).",
+    "default": "\"BIRTHDAY\""
+  },
+  {
     "name": "org-deadline-past-days",
     "doc": "Number of days to warn about missed deadlines.",
     "default": "10000"
   },
   {
-    "name": "org-scheduled-past-days",
-    "doc": "Number of days to continue listing scheduled items not marked DONE.",
-    "default": "10000"
+    "name": "org-duration-units",
+    "doc": "Conversion factor to minutes for a duration.",
+    "default": "((\"min\" . 1) (\"h\" . 60) (\"d\" . 1440) (\"w\" . 10080) (\"m\" . 43200) (\"y\" . 525960.0))"
   },
   {
-    "name": "org-stuck-projects",
-    "doc": "How to identify stuck projects.",
-    "default": "(\"+LEVEL=2/-DONE\" (\"TODO\" \"NEXT\" \"NEXTACTION\") nil \"\")"
+    "name": "org-export-with-broken-links",
+    "doc": "Non-nil means do not raise an error on broken links.",
+    "default": "nil"
+  },
+  {
+    "name": "org-footnote-auto-adjust",
+    "doc": "Non-nil means automatically adjust footnotes after insert/delete.",
+    "default": "nil"
+  },
+  {
+    "name": "org-footnote-auto-label",
+    "doc": "Non-nil means define automatically new labels for footnotes.",
+    "default": "t"
+  },
+  {
+    "name": "org-footnote-define-inline",
+    "doc": "Non-nil means define footnotes inline, at reference location.",
+    "default": "nil"
+  },
+  {
+    "name": "org-footnote-section",
+    "doc": "Outline heading containing footnote definitions.",
+    "default": "\"Footnotes\""
+  },
+  {
+    "name": "org-global-properties",
+    "doc": "List of property/value pairs that can be inherited by any entry.",
+    "default": "nil"
+  },
+  {
+    "name": "org-html-checkbox-type",
+    "doc": "The type of checkboxes to use for HTML export.",
+    "default": "ascii"
+  },
+  {
+    "name": "org-html-doctype",
+    "doc": "Document type definition to use for exported HTML files.",
+    "default": "\"xhtml-strict\""
+  },
+  {
+    "name": "org-icalendar-alarm-time",
+    "doc": "Number of minutes for triggering an alarm for exported timed events.",
+    "default": "0"
   },
   {
     "name": "org-icalendar-categories",
@@ -282,6 +407,11 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-icalendar-include-todo",
+    "doc": "Non-nil means create VTODO components from TODO items.",
+    "default": "nil"
+  },
+  {
     "name": "org-icalendar-scheduled-summary-prefix",
     "doc": "String prepended to exported scheduled headlines.",
     "default": "\"S: \""
@@ -292,8 +422,143 @@ export const VARIABLE_CATALOG = [
     "default": "the system zone"
   },
   {
-    "name": "display-time-24hr-format",
-    "doc": "Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23.",
+    "name": "org-icalendar-use-deadline",
+    "doc": "Contexts where iCalendar export should use a deadline time stamp.",
+    "default": "(event-if-not-todo todo-due)"
+  },
+  {
+    "name": "org-icalendar-use-scheduled",
+    "doc": "Contexts where iCalendar export should use a scheduling time stamp.",
+    "default": "(todo-start)"
+  },
+  {
+    "name": "org-icalendar-with-timestamps",
+    "doc": "Non-nil means make an event from plain time stamps.",
+    "default": "active"
+  },
+  {
+    "name": "org-inlinetask-min-level",
+    "doc": "Minimum level a headline must have before it is treated as an inline task.",
+    "default": "15"
+  },
+  {
+    "name": "org-log-into-drawer",
+    "doc": "Non-nil means insert state change notes and time stamps into a drawer.",
     "default": "nil"
+  },
+  {
+    "name": "org-log-repeat",
+    "doc": "Non-nil means record moving through the DONE state when triggering repeat.",
+    "default": "time"
+  },
+  {
+    "name": "org-modules",
+    "doc": "Modules to load with org (this app reads only org-inlinetask; Emacs loads ten by default).",
+    "default": "nil"
+  },
+  {
+    "name": "org-priority-default",
+    "doc": "The default priority of TODO items.",
+    "default": "66"
+  },
+  {
+    "name": "org-priority-faces",
+    "doc": "Faces for specific Priorities.",
+    "default": "nil"
+  },
+  {
+    "name": "org-priority-get-priority-function",
+    "doc": "Function to extract the priority from a string.",
+    "default": "nil"
+  },
+  {
+    "name": "org-priority-start-cycle-with-default",
+    "doc": "Non-nil means start with default priority when starting to cycle.",
+    "default": "t"
+  },
+  {
+    "name": "org-refile-allow-creating-parent-nodes",
+    "doc": "Non-nil means allow the creation of new nodes as refile targets.",
+    "default": "nil"
+  },
+  {
+    "name": "org-scheduled-past-days",
+    "doc": "Number of days to continue listing scheduled items not marked DONE.",
+    "default": "10000"
+  },
+  {
+    "name": "org-stuck-projects",
+    "doc": "How to identify stuck projects.",
+    "default": "(\"+LEVEL=2/-DONE\" (\"TODO\" \"NEXT\" \"NEXTACTION\") nil \"\")"
+  },
+  {
+    "name": "org-table-duration-hour-zero-padding",
+    "doc": "Non-nil means hours in table duration computations should be zero-padded.",
+    "default": "t"
+  },
+  {
+    "name": "org-tags-exclude-from-inheritance",
+    "doc": "List of tags that should never be inherited.",
+    "default": "nil"
+  },
+  {
+    "name": "org-use-property-inheritance",
+    "doc": "Non-nil means properties apply also for sublevels.",
+    "default": "nil"
+  },
+  {
+    "name": "org-weather-format",
+    "doc": "The template that %%(org-weather) fills in (this app's own).",
+    "default": "\"Weather: %desc, %tcur(%tmin-%tmax)%tu, %p%pu, %h%hu, %s%su, %a%au\""
+  },
+  {
+    "name": "org-xx-extra-menu",
+    "doc": "The entries of the floating extras (☰) button's menu (this app's own); the button is hidden while it is unset.",
+    "default": "nil"
+  },
+  {
+    "name": "org-xx-fetch-timeout",
+    "doc": "Seconds to wait for a download to start answering (this app's own; nil for no timeout).",
+    "default": "30"
+  },
+  {
+    "name": "org-xx-menu-aliases",
+    "doc": "Relabels or hides buttons in the File, More, Export, Import and View menus (this app's own).",
+    "default": "nil"
+  },
+  {
+    "name": "org-xx-size-limit-attachment",
+    "doc": "Attachment: refuse above this size (this app's own; nil for no limit).",
+    "default": "\"95MB\""
+  },
+  {
+    "name": "org-xx-size-limit-attachment-warn",
+    "doc": "Attachment: ask before attaching above this size (this app's own; nil to never ask).",
+    "default": "\"20MB\""
+  },
+  {
+    "name": "org-xx-size-limit-bibliography",
+    "doc": "Bibliography file: skip above this size (this app's own; nil for no limit).",
+    "default": "\"5MB\""
+  },
+  {
+    "name": "org-xx-size-limit-image",
+    "doc": "Inline image: show up to this size; a larger one waits for a tap on Load (this app's own; nil for no limit).",
+    "default": "\"3MB\""
+  },
+  {
+    "name": "org-xx-size-limit-include",
+    "doc": "#+INCLUDE file: skip above this size (this app's own; nil for no limit).",
+    "default": "\"2MB\""
+  },
+  {
+    "name": "org-xx-size-limit-org-file",
+    "doc": "Org file: refuse above this size (this app's own; nil for no limit).",
+    "default": "\"2MB\""
+  },
+  {
+    "name": "org-xx-size-limit-setupfile",
+    "doc": "#+SETUPFILE: skip above this size (this app's own; nil for no limit).",
+    "default": "\"1MB\""
   }
 ];

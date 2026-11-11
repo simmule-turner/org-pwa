@@ -388,3 +388,21 @@ test('a local: file in org-refile-targets is accepted, and its file id is the ba
   assert.deepEqual(resolveEntryFileIds(entries[0], 'notes.org', []), ['inbox.org']);
   assert.deepEqual(resolveEntryFileIds(entries[1], 'notes.org', []), ['areas/home.org']);
 });
+
+test('org-refile-targets unset or nil keeps the level-1 headings of this file, as Emacs does; text that cannot be read is an error', () => {
+  for (const text of ['', '   ', 'nil']) {
+    const { entries, errors } = parseRefileTargetsWithErrors(text);
+    assert.deepEqual(errors, [], text);
+    assert.deepEqual(entries, [{ fileSpec: 'current', criteria: [{ kind: 'level', n: 1 }] }], text);
+  }
+  const bad = parseRefileTargetsWithErrors('42');
+  assert.deepEqual(bad.entries, []);
+  assert.equal(bad.errors.length, 1);
+  assert.match(bad.errors[0].message, /org-refile-targets/);
+});
+
+test('org-refile-targets with unbalanced parentheses is an error with Emacs\'s words, not a list closed for you', () => {
+  const r = parseRefileTargetsWithErrors('((nil :maxlevel . 3)');
+  assert.deepEqual(r.entries, []);
+  assert.equal(r.errors[0].message, 'org-refile-targets: End of file during parsing');
+});

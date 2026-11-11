@@ -18,12 +18,13 @@ test('priorityRank agrees with org-get-priority', () => {
   }
 });
 
-test('the range reads ?A, letters and numbers, and falls back to A, C, B', () => {
+test('the range reads ?A, letters and numbers, and is A, C, B when unset', () => {
   assert.deepEqual(priorityCookies(readPriorityRange({})), ['A', 'B', 'C']);
   assert.deepEqual(priorityCookies(readPriorityRange({ 'org-priority-highest': '?A', 'org-priority-lowest': '?E' })), ['A', 'B', 'C', 'D', 'E']);
   assert.deepEqual(priorityCookies(readPriorityRange({ 'org-priority-highest': '1', 'org-priority-lowest': '4', 'org-priority-default': '2' })), ['1', '2', '3', '4']);
-  assert.deepEqual(priorityCookies(readPriorityRange({ 'org-priority-highest': 'E', 'org-priority-lowest': 'A' })), ['A', 'B', 'C']); // reversed
-  assert.deepEqual(priorityCookies(readPriorityRange({ 'org-priority-highest': 'A', 'org-priority-lowest': '5' })), ['A', 'B', 'C']); // mixed
+  // a reversed range is Emacs's user-error when a priority is set (oracle: highest ?C, lowest ?A)
+  assert.throws(() => priorityCookies(readPriorityRange({ 'org-priority-highest': 'C', 'org-priority-lowest': 'A' })), (e) => e.message === "Priority must be between `C' and `A'");
+  assert.throws(() => priorityCookies(readPriorityRange({ 'org-priority-highest': 'A', 'org-priority-lowest': '5' })), /Priority must be between/);
 });
 
 test('cycling is org-priority-down: none, the highest, each lower one, none (Emacs 29.3)', () => {

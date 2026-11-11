@@ -3,7 +3,9 @@
 import { findContainer } from '../src/archive-model.js';
 import { findHeadingLineNumber, headingLineIndex, serializeHeadingSubtree, serializeOrg } from '../src/org-parser.js';
 import { beginRowMarks, finalizeMarks, nextMark, startMarks } from './line-marks.js';
-import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden, getWindowingThreshold } from '../src/local-variables.js';
+import { takeUnreadableSettings } from './settings.js';
+import { VariableValueError } from '../src/variable-error.js';
+import { variableProblems, getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden, getWindowingThreshold } from '../src/local-variables.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
@@ -19,7 +21,7 @@ import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js
 import { syncNonUtf8Banner } from './non-utf8-banner.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
-import { applyPendingCursorPosition, textViewBelongsToActive, textViewDocs, textViewOwner } from './editing.js';
+import { setStatus, applyPendingCursorPosition, textViewBelongsToActive, textViewDocs, textViewOwner } from './editing.js';
 import { forgetSparseNarrow, maybeRestoreNarrowState, maybeRestoreSparseNarrow, widen, widenSparseSearch } from './gestures-structure.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
@@ -34,7 +36,44 @@ import { scheduleBibliography } from './bibliography.js';
 import { draggedHeading } from './heading-drag.js';
 import { destroyWindow, mountWindow } from './windowing.js';
 
+/** The variables whose values were last checked, so a bad one is reported once, not at every redraw. */
+const checkedVariables = new WeakSet();
+
+/** Shows the message of a variable that cannot be used (VariableValueError) in place of the action that needed it. @param {unknown} err @returns {boolean} whether it was one */
+function reportVariableError(err) {
+  if (!(err instanceof VariableValueError)) return false;
+  setStatus(err.message);
+  return true;
+}
+
+/** Redraws the screen. A variable that cannot be read stops the redraw and its error is shown (Emacs: the command signals an error). */
 export function render() {
+  const vars = S.state && S.state.localVariables;
+  if (vars && !checkedVariables.has(vars)) {
+    checkedVariables.add(vars);
+    const problems = variableProblems(vars);
+    if (problems.length) setStatus(problems[0] + (problems.length > 1 ? ` (and ${problems.length - 1} more)` : ''));
+  }
+  const unreadable = takeUnreadableSettings();
+  if (unreadable.length) setStatus(unreadable.join(' '));
+  try {
+    renderNow();
+  } catch (err) {
+    if (!reportVariableError(err)) throw err;
+  }
+}
+
+/** Errors about variable values raised from a click, a key or a promise are shown the same way, and the action is skipped. */
+export function installVariableErrorReporting() {
+  window.addEventListener('error', (event) => {
+    if (reportVariableError(event.error)) event.preventDefault();
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    if (reportVariableError(event.reason)) event.preventDefault();
+  });
+}
+
+function renderNow() {
   noteUpdateOnce('first screen drawn');
   scheduleBibliography();
   S.radioTargetsCache = null;

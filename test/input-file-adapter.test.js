@@ -50,8 +50,8 @@ test('a fresh write to the same fileId overwrites the cached content', async () 
   assert.equal((await adapter.read('notes.org')).content, '* v2');
 });
 
-test('read fails open (returns null) rather than throwing on a corrupt/erroring kv adapter', async () => {
+test('a read that fails throws, so the file is not opened as an empty one', async () => {
   const badKv = { get: async () => { throw new Error('boom'); } };
   const adapter = createInputFileAdapter(badKv, () => {});
-  assert.equal(await adapter.read('notes.org'), null);
+  await assert.rejects(() => adapter.read('notes.org'), /boom/);
 });

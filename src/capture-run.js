@@ -192,6 +192,8 @@ export function bodyNodeAt(host, line) {
  * @typedef {{ node: object, heading: Heading | null, row: number | null }} Reveal
  */
 
+const CAPTURE_TYPES = new Set(['entry', 'item', 'checkitem', 'table-line', 'plain']);
+
 /** The new text of a plain capture a target function put at line `line` of the file. @param {Doc} doc @param {number} line @returns {Reveal | null} */
 export function revealAtLine(doc, line) {
   const heading = findHeadingAtLine(doc, line);
@@ -224,6 +226,8 @@ export function captureInto(doc, template, options) {
 /** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
 function captureIntoDoc(doc, template, options) {
   const { now, answers, context, place } = options;
+  // Emacs files nothing for a type it does not know; here the capture is refused and says why, so the text is never lost
+  if (!CAPTURE_TYPES.has(template.type)) return { ok: false, message: `The capture template type ${JSON.stringify(template.type)} is not one of entry, item, checkitem, table-line or plain, so nothing was filed.` };
   const prepend = template.type === 'table-line' ? false : !!template.prepend; // for a table row, :prepend is where the row goes, not where a new heading goes
   /** @type {Doc | Heading} */
   let target;

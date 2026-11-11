@@ -11,8 +11,7 @@
  * long file stay cheap -- unlike text-diff.js's O(n*m) table, which is
  * fine for comparing two undo snapshots but not for a large journal.
  * When two versions differ by more than MAX_EDIT_DISTANCE lines the
- * diff gives up (returns null) and callers fall back to a whole-file
- * choice, rather than spending unbounded time/memory.
+ * diff gives up (returns null) and callers ask which whole file to keep, as Emacs does when a file changed on disk, rather than spending unbounded time/memory.
  *
  * Merge: each side's changes are turned into hunks over `base`, then
  * grouped. A group touched by only one side is applied as-is. A group
@@ -309,8 +308,7 @@ function merge3(baseText, mineText, theirsText) {
  * The same segment shape for when there is NO common ancestor (a file
  * synced before this app began keeping one): every differing region
  * between `mineText` and `theirsText` becomes a conflict with no `base`.
- * Falls back to one whole-file conflict if the two differ too much to
- * diff.
+ * When the two differ too much to diff, the one conflict is the whole file (`wholeFile`).
  * @param {string} mineText
  * @param {string} theirsText
  */
@@ -319,7 +317,7 @@ function diff2Segments(mineText, theirsText) {
   const theirs = splitLines(theirsText);
   const hunks = diffHunksOfLines(mine, theirs);
   if (hunks === null) {
-    return { segments: [{ type: 'conflict', base: null, mine, theirs }], conflictCount: 1 };
+    return { segments: [{ type: 'conflict', base: null, mine, theirs }], conflictCount: 1, wholeFile: true };
   }
   const segments = [];
   let pos = 0;
@@ -391,7 +389,7 @@ function planConflict(mine, theirs, base) {
     }
   }
   const d = diff2Segments(mine, theirs);
-  return { kind: 'review', segments: d.segments, conflictCount: d.conflictCount, hasBase: false };
+  return { kind: 'review', segments: d.segments, conflictCount: d.conflictCount, hasBase: false, wholeFile: 'wholeFile' in d };
 }
 
 export { merge3, diff2Segments, resolveSegments, planConflict, diffHunksOfLines, MAX_EDIT_DISTANCE };

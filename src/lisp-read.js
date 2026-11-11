@@ -154,3 +154,31 @@ export function datum(f) {
 
 /** Plays an init text; see lisp-init.js. */
 export { runInit } from './lisp-init.js';
+
+/** What Emacs's `read` would complain about in `text`: an unclosed list or string ("End of file during parsing") or a stray closing
+ * parenthesis ("Invalid read syntax: \")\""). null when the parentheses balance. The reader above is lenient on purpose (it
+ * serves partial text in the editor); a variable's value is checked with this first.
+ * @param {string} text
+ * @returns {string | null} */
+export function lispSyntaxError(text) {
+  let depth = 0;
+  for (let at = 0; at < text.length; at++) {
+    const c = text[at];
+    if (c === ';') {
+      while (at < text.length && text[at] !== '\n') at++;
+    } else if (c === '"') {
+      for (at++; at < text.length && text[at] !== '"'; at++) if (text[at] === '\\') at++;
+      if (at >= text.length) return 'End of file during parsing';
+    } else if (c === '?') {
+      at += text[at + 1] === '\\' ? 2 : 1; // a character such as ?( or ?\)
+    } else if (c === '\\') {
+      at++;
+    } else if (c === '(' || c === '[') {
+      depth++;
+    } else if (c === ')' || c === ']') {
+      if (depth === 0) return `Invalid read syntax: "${c}"`;
+      depth--;
+    }
+  }
+  return depth > 0 ? 'End of file during parsing' : null;
+}

@@ -28,8 +28,7 @@ export function parseLispTagList(text) {
 export function parseTagInheritance(inheritanceRaw, excludeRaw) {
   const raw = inheritanceRaw === undefined || inheritanceRaw === null ? 't' : String(inheritanceRaw).trim();
   const excludeText = String(excludeRaw ?? '').trim();
-  // a Lisp list as Emacs writes it, or just the tags with spaces or commas between (what someone types into a settings box)
-  const excludeWords = parseLispTagList(excludeText) || (excludeText.toLowerCase() === 'nil' ? [] : excludeText.split(/[\s,]+/).filter(Boolean));
+  const excludeWords = parseLispTagList(excludeText) || []; // a Lisp list of tags, as Emacs writes it; nil for none
   const exclude = new Set(excludeWords);
   /** @type {Set<string> | RegExp | null} */ let only = null;
   if (raw.toLowerCase() === 'nil') return false;

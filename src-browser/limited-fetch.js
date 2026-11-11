@@ -1,6 +1,6 @@
 // @ts-check
 // Reading a download without letting it grow past a size or hang: the shared half of the size limits (src/size-limits.js).
-import { SizeLimitError, formatSize, getSizeLimits } from '../src/size-limits.js';
+import { SIZE_KINDS, SizeLimitError, formatSize, getSizeLimits } from '../src/size-limits.js';
 
 /** @typedef {import('../src/size-limits.js').SizeKind} SizeKind */
 
@@ -23,7 +23,7 @@ export async function fetchWithTimeout(url, options = {}, seconds = getSizeLimit
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (error) {
-    if (controller.signal.aborted && !(outer && outer.aborted)) throw new Error(`No answer from the server in ${seconds} seconds. Change the timeout in Settings > Sync and storage > Size limits.`);
+    if (controller.signal.aborted && !(outer && outer.aborted)) throw new Error(`No answer from the server in ${seconds} seconds. Set org-xx-fetch-timeout in Global Variables to change the timeout.`);
     throw error;
   } finally {
     clearTimeout(timer);
@@ -98,7 +98,7 @@ export async function readLimited(response, { maxBytes = 0, kind = 'orgFile', na
 function tooLarge(kind, bytes, max, name, atLeast = false) {
   const what = name ? `"${name}"` : 'The file';
   const size = atLeast ? `more than ${formatSize(max)}` : formatSize(bytes);
-  return new SizeLimitError(`${what} is ${size}, over the ${formatSize(max)} limit. Change the limit in Settings > Sync and storage > Size limits.`, kind, bytes, atLeast);
+  return new SizeLimitError(`${what} is ${size}, over the ${formatSize(max)} limit. Set ${SIZE_KINDS[kind].key} in Global Variables to change the limit.`, kind, bytes, atLeast);
 }
 
 /**

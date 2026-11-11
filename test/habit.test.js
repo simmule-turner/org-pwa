@@ -78,3 +78,11 @@ test('history: streak counts completions each within the last-chance gap, best r
   const late = buildHabitHistory(first(doc(text)), isDone, new Date(2026, 9, 20));
   assert.equal(late.streak, 0); // last done Oct 11, past the last-chance day
 });
+
+test('a negative org-habit-preceding-days draws no graph, as in Emacs 29.3', async () => {
+  const { buildHabitGraph } = await import('../src/habit.js');
+  const { parseOrg } = await import('../src/org-parser.js');
+  const doc = parseOrg('* TODO Habit\nSCHEDULED: <2026-11-11 Wed .+1d>\n:PROPERTIES:\n:STYLE: habit\n:END:\n');
+  assert.equal(buildHabitGraph(doc.children[0], (k) => k === 'DONE', new Date(2026, 10, 11), { precedingDays: -3, followingDays: 2 }), null);
+  assert.ok(buildHabitGraph(doc.children[0], (k) => k === 'DONE', new Date(2026, 10, 11), { precedingDays: 3, followingDays: 2 }));
+});

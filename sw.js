@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v678';
+const CACHE_NAME = 'org-pwa-shell-v681';
 
 const SHELL_FILES = [
   './',
@@ -267,6 +267,7 @@ const SHELL_FILES = [
   './src/table-sort-lisp.js',
   './src/variable-index.js',
   './src/variable-catalog.js',
+  './src/variable-error.js',
   './src/elisp-link.js',
   './src/types.js',
   './src/settings-layout.js',

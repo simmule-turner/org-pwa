@@ -13,23 +13,22 @@ import {
   sizeLimitsOf,
   textCeiling,
   utf8Length,
-  validateSizeSetting,
-  validateTimeoutSetting,
 } from '../src/size-limits.js';
-import { SETTINGS_FIELDS } from '../src-browser/settings-fields.js';
+import { VARIABLE_CATALOG } from '../src/variable-catalog.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
 import { getSizeLimits } from '../src/size-limits.js';
 
 const KB = 1024;
 const MB = 1024 * KB;
 
-test('parseSize reads sizes people type, and off', () => {
+test('parseSize reads the sizes a variable holds, and nil', () => {
   assert.equal(parseSize('500KB'), 500 * KB);
   assert.equal(parseSize('2 MB'), 2 * MB);
   assert.equal(parseSize('1.5m'), 1.5 * MB);
   assert.equal(parseSize('1048576'), MB);
-  for (const off of ['off', 'nil', 'none', 'no', '0']) assert.equal(parseSize(off), 0);
-  for (const bad of ['big', '-1MB', '2 parsecs', '']) assert.equal(parseSize(bad), null);
+  assert.equal(parseSize('"2MB"'), 2 * MB, 'a Lisp string');
+  for (const none of ['nil', '0']) assert.equal(parseSize(none), 0);
+  for (const bad of ['off', 'big', '-1MB', '2 parsecs', '']) assert.equal(parseSize(bad), null);
 });
 
 test('formatSize writes sizes back, off for 0', () => {
@@ -53,42 +52,35 @@ test('checkSize: ok up to and including the warn limit, then warn, then refuse a
   assert.equal(checkSize('orgFile', 2 * MB).ok, 'warn');
   const refuse = checkSize('orgFile', 2 * MB + 1, undefined, 'big.org');
   assert.equal(refuse.ok, false);
-  assert.match(refuse.message, /over the 2 MB limit.*Settings > Sync and storage > Size limits/);
+  assert.match(refuse.message, /over the 2 MB limit.*org-xx-size-limit-org-file in Global Variables/);
 });
 
-test('a limit set to off never warns or refuses', () => {
-  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'off', 'large-file-warning-threshold': 'off' });
+test('a limit set to nil never warns or refuses', () => {
+  const limits = sizeLimitsOf({ 'org-xx-size-limit-org-file': 'nil', 'large-file-warning-threshold': 'nil' });
   assert.equal(checkSize('orgFile', 500 * MB, limits).ok, true);
   assert.equal(textCeiling(limits), 0, 'no ceiling when a text kind has no limit');
 });
 
-test('sizeLimitsOf reads the settings and falls back to the default for anything unreadable', () => {
-  const limits = sizeLimitsOf({ 'org-xx-size-limit-image': '1MB', 'org-xx-size-limit-attachment-warn': 'banana', 'org-xx-fetch-timeout': '10' });
+test('sizeLimitsOf reads the settings, keeps the default for what is unset, and names a value that is not a size', () => {
+  const limits = sizeLimitsOf({ 'org-xx-size-limit-image': '1MB', 'org-xx-fetch-timeout': '10' });
   assert.equal(limits.image.max, MB);
   assert.equal(limits.attachment.warn, 20 * MB);
+  assert.throws(() => sizeLimitsOf({ 'org-xx-size-limit-attachment-warn': 'banana' }), /org-xx-size-limit-attachment-warn is "banana"/);
+  assert.throws(() => sizeLimitsOf({ 'org-xx-fetch-timeout': 'soon' }), /org-xx-fetch-timeout is "soon"/);
   assert.equal(limits.fetchTimeoutSeconds, 10);
-  assert.equal(sizeLimitsOf({ 'org-xx-fetch-timeout': 'off' }).fetchTimeoutSeconds, 0);
+  assert.equal(sizeLimitsOf({ 'org-xx-fetch-timeout': 'nil' }).fetchTimeoutSeconds, 0);
   assert.deepEqual(sizeLimitsOf(null), DEFAULT_SIZE_LIMITS);
 });
 
-test('settings validation says what is wrong and accepts good values', () => {
-  assert.equal(validateSizeSetting('3MB'), null);
-  assert.equal(validateSizeSetting('off'), null);
-  assert.match(validateSizeSetting('lots'), /lots/);
-  assert.equal(validateTimeoutSetting('30'), null);
-  assert.equal(validateTimeoutSetting('off'), null);
-  assert.match(validateTimeoutSetting('soon'), /soon/);
-  assert.match(validateTimeoutSetting('99999'), /99999/);
-});
-
-test('every Size limits setting is a text field with a default and a validator that accepts that default', () => {
-  const fields = SETTINGS_FIELDS.filter((f) => f.section === 'Size limits');
-  assert.equal(fields.length, 9);
-  for (const f of fields) {
-    assert.equal(f.type, 'text');
-    assert.equal(f.validate(f.default), null, f.key);
-    assert.match(f.key, /^(org-xx-(size-limit-|fetch-timeout)|large-file-warning-threshold$)/);
-  }
+test('the catalog prints the limits the app has by default', () => {
+  const by = Object.fromEntries(VARIABLE_CATALOG.map((c) => [c.name, c.default]));
+  const d = DEFAULT_SIZE_LIMITS;
+  for (const [name, bytes] of /** @type {[string, number][]} */ ([
+    ['large-file-warning-threshold', d.orgFile.warn], ['org-xx-size-limit-org-file', d.orgFile.max], ['org-xx-size-limit-image', d.image.max],
+    ['org-xx-size-limit-attachment-warn', d.attachment.warn], ['org-xx-size-limit-attachment', d.attachment.max],
+    ['org-xx-size-limit-bibliography', d.bibliography.max], ['org-xx-size-limit-setupfile', d.setupfile.max], ['org-xx-size-limit-include', d.include.max],
+  ])) assert.equal(parseSize(by[name]), bytes, name);
+  assert.equal(by['org-xx-fetch-timeout'], String(d.fetchTimeoutSeconds));
 });
 
 test('changing a setting changes the limits in force', () => {

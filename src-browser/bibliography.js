@@ -1,14 +1,12 @@
 // @ts-check
 // Bibliography files for org-cite: the files a document names with #+BIBLIOGRAPHY: (and org-cite-global-bibliography) are
-// fetched from the same place as the document, or from an http(s) URL, and kept in the key-value store for offline use. The
+// fetched from the same place as the document, or from an http(s) URL, and kept in memory for the session. The
 // citation code (src/cite.js) reads them synchronously from its cache.
 import { bibliographyFiles, cacheBibliography, citeDefaults, citeEntry, citeExportSetting, createCiteExport, hasBibliography, missingBibliographyFiles, segmentsText } from '../src/cite.js';
 import { getCiteGlobalBibliography, getCiteSeparator, getCiteSortingField } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { fetchOne } from './setupfile.js';
-import { kv } from './singletons.js';
 
-const kvKey = (/** @type {string} */ path) => 'bibliography:' + path;
 /** @type {Set<string>} files already asked for in this document, so a missing one is not fetched again on every redraw */
 const tried = new Set();
 
@@ -30,15 +28,10 @@ export async function prefetchBibliography(doc, documentId, storageKind, { again
     const id = documentId + '\n' + path;
     if (!again && tried.has(id)) continue;
     tried.add(id);
-    const text = await fetchOne(path, documentId, storageKind, kvKey, 'a bibliography', 'bibliography');
+    const text = await fetchOne(path, documentId, storageKind, 'a bibliography', 'bibliography');
     if (text == null) continue;
     cacheBibliography(path, text);
     got = true;
-    try {
-      await kv.set(kvKey(path), text);
-    } catch {
-      // not kept for offline; still used now
-    }
   }
   return got;
 }

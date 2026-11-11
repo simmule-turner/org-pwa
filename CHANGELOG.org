@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v681 — No quiet defaults left
+Numbers outside the usual range do what Emacs does (weekday modulo 7, latitude and width as given, a reversed priority range gives Emacs's message). A list with a missing parenthesis, an unreadable stored setting, a Local Variables block Emacs cannot read, a skipped Extras or menu-alias entry, an unsupported diary-hook function and a non-property vCard line are each named in a message. ~org-duration-units~ is used as given. ~org-clock-sound~: a missing file plays nothing, ~t~ or an unplayable file gives two beeps.
+Verified: each case against Emacs 29.3; the rest by tests.
+
+* v680 — Errors instead of quiet substitutes
+A setting that holds something unusable (text where a number belongs) now shows a message with the variable and its value and skips what needed it, as an Emacs command would; unset keeps the Emacs default, and any value but ~nil~ is true. A file that cannot be read shows the error, not its cached copy, and one that is missing opens empty. A setup file is kept for the session only; a merge too large to compare asks which whole file to keep, worded as Emacs's changed-on-disk prompt. A malformed ~org-refile-targets~ is reported, and a capture template of an unknown type is refused.
+Verified: Emacs's setup-file message and its export carrying on; the other cases by tests.
+
+* v679 — Stars when indent is off, and every hidden setting as plain Lisp
+With org-indent-mode off, headings show their stars at the left edge as in Emacs, so the level is visible. New: ~org-xx-indent-tables~ keeps tables at the left edge even with indent on. The settings that have no control are now plain Lisp variables with their Emacs defaults, set from Global Variables or the Lisp init and listed by ~apropos-variable~; size limits take ~nil~ for none, and their messages name the variable. The older-format and shorthand readers for them are gone.
+Verified: indent, stars and the table option in the browser; each moved variable read from its Lisp text.
+
 * v678 — Find any variable, and a quieter Settings
 Settings is shorter: 35 rarely used controls (size limits, tag and property inheritance, priority colors, the raw-syntax boxes and others) are gone from the pages, though each variable still works, and the Lisp init now sets any variable the app reads. ~apropos-variable~ lists matches as headings you can search, each with an ~elisp:~ link that opens the setting, or Global Variables when it has no control; the Settings search box uses the same list and finds names, not only labels. New: a Show repeats in the future Agenda checkbox. The modeline clock follows Emacs (~2:05PM~; ~display-time-24hr-format~ for 24-hour).
 Verified: browser checks of the search, the link and the new checkbox; every variable set from the init and Global Variables.
