@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DAY, INTRO, SAMPLE, SCENARIOS, WEEK } from './agenda-settings-cases.mjs';
+import { DAY, INTRO, OTHER, SAMPLE, SCENARIOS, WEEK } from './agenda-settings-cases.mjs';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agenda-settings-'));
 const sample = path.join(dir, 'agenda-settings.org');
@@ -45,6 +45,25 @@ const el = `
           (t (let ((out (with-output-to-string (funcall (eval (car (read-from-string (cdr (assq 'fn c)))) t) (cdr (assq 'match c))))))
                (princ (json-encode (vconcat (split-string (string-trim-right out) "\\n")))))))))
 `;
+fs.writeFileSync(path.join(dir, 'other.org'), OTHER);
+const commandEl = `
+(require 'org-agenda) (require 'json)
+(setq org-agenda-files (list (getenv "SAMPLE")) org-agenda-use-time-grid nil org-agenda-tags-column 0
+      org-agenda-window-setup 'current-window org-agenda-sticky nil inhibit-message t)
+(let ((org-agenda-files (list (getenv "SAMPLE")))) (ignore-errors (org-agenda-list nil "${DAY}" 'day)) (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*")))
+(eval (car (read-from-string (getenv "COMMANDS"))) t)
+(org-agenda nil "x")
+(with-current-buffer "*Org Agenda*"
+  (let (acc)
+    (goto-char (point-min))
+    (while (not (eobp))
+      (let ((line (string-trim-right (buffer-substring-no-properties (line-beginning-position) (line-end-position)))))
+        (unless (string-match-p "^\\(Press \`\\|  +([0-9]+)[A-Z]\\)" line) (push line acc)))
+      (forward-line 1))
+    (princ (json-encode (vconcat (nreverse acc))))))
+`;
+const commandElFile = path.join(dir, 'command.el');
+fs.writeFileSync(commandElFile, commandEl);
 const elFile = path.join(dir, 'run.el');
 fs.writeFileSync(elFile, el);
 
@@ -54,6 +73,21 @@ const setqForms = (c) => Object.entries(c.vars).map(([name, value]) => `(setq ${
 const out = [INTRO.trimEnd(), '', SAMPLE.trimEnd()];
 let weekShown = false;
 for (const c of SCENARIOS) {
+  if (c.kind === 'command') { // the whole *Org Agenda* buffer of a custom command, on Monday 15 March 2027
+    const commands = c.commands.replace(/"other\.org"/g, JSON.stringify(path.join(dir, 'other.org')));
+    const run = spawnSync('faketime', ['-f', '@2027-03-15 08:00:00', 'emacs', '--batch', '-Q', '-l', commandElFile], { env: { ...process.env, TZ: 'America/New_York', SAMPLE: weekSample, COMMANDS: commands }, encoding: 'utf8', input: '' });
+    if (run.status !== 0) throw new Error(`${c.id}\n${run.stderr}`);
+    const lines = JSON.parse(run.stdout.slice(run.stdout.indexOf('[')));
+    while (lines.length && lines[lines.length - 1] === '') lines.pop();
+    if (!weekShown) {
+      weekShown = true;
+      out.push('', '* A week of entries', 'The scenarios from here on use a second sample: the week of Monday 15 March 2027, and two projects for the stuck view. Its entries are in the block below.', '', '#+begin_src org', ...WEEK.trimEnd().split('\n'), '#+end_src');
+    }
+    out.push('', `* ${c.title}`, c.text, '', '#+begin_src emacs-lisp', ...c.commands.split('\n'), '#+end_src', '');
+    if (c.id === 'command-block') out.push('The file =other.org= is:', '', '#+begin_src org', ...OTHER.trimEnd().split('\n'), '#+end_src', '');
+    out.push(`#+NAME: ${c.id}`, '#+begin_example', ...lines, '#+end_example');
+    continue;
+  }
   const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, TZ: 'America/New_York', SAMPLE: c.sample === 'week' ? weekSample : sample, CASE: JSON.stringify({ ...c, startArg: c.vars['org-agenda-start-day'] ? '' : DAY, setq: setqForms(c) }) }, encoding: 'utf8', input: '' });
   if (r.status !== 0) throw new Error(`${c.id}\n${r.stderr}`);
   const rows = JSON.parse(r.stdout.slice(r.stdout.indexOf('[')));
@@ -71,7 +105,7 @@ for (const c of SCENARIOS) {
 out.push(
   '',
   '* Where the app differs from Emacs',
-  'One thing: with a value that cannot be used (the section above), Emacs stops with its own error text. The app says which variable holds the value and what it was, and skips what needed it; a variable that is not set keeps its default.',
+  'Three things. With a value that cannot be used (the section above), Emacs stops with its own error text; the app says which variable holds the value and what it was, and skips what needed it, and a variable that is not set keeps its default. A file a command names with =org-agenda-files= is written with its source in the app (=local:other.org=, =github:...=, =webdav:...=), where Emacs takes a path. The lines Emacs puts under the heading of a single command ("Press ..." with its keys) are not shown, and the text of a command is not the interactive Agenda: it has no keys.',
   '',
 );
 fs.writeFileSync(new URL('../examples/agenda-settings.org', import.meta.url), out.join('\n'));

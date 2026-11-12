@@ -5,7 +5,7 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 
 | File                    | Feature                                                                                                      | Checked against Emacs                             |
 |-------------------------+--------------------------------------------------------------------------------------------------------------+---------------------------------------------------|
-| agenda-settings.org     | custom commands, prefix formats, sort keys, span and start day, skip-if-done, log mode, stuck projects       | org-agenda, org-agenda-format-item                |
+| agenda-settings.org     | custom commands (composite blocks, stuck, agenda command settings, headers, per-command files), prefix formats, sort keys, span and start day, skip-if-done, log mode, stuck projects, a value that cannot be used | org-agenda, org-agenda-format-item                |
 | archive-refile.org      | archive locations, properties left behind, refile                                                            | org-archive-subtree, org-refile                   |
 | attachments.org         | attachment folders, =ATTACH_DIR=, =attachment:= links                                                        | org-attach                                        |
 | babel-elisp.org         | =emacs-lisp= blocks: results, header arguments from the outline, =:var= references, =:noweb=, =:wrap=        | ob-emacs-lisp, run in Emacs                       |
@@ -34,6 +34,7 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | outline-basics.org      | keywords, priorities, tags, properties, checkboxes                                                           | read the same way                                 |
 | plots.org               | =#+PLOT:= options and the data they draw                                                                     | org-plot                                          |
 | search-filter.org       | filter tokens, regex and Match search, replace with =\1=, =\&= and case rules                                | org-search-view, query-replace                    |
+| settings.org            | every variable the app reads, alphabetical, each as a commented =(setq NAME DEFAULT)=; =*= marks one with no control in Settings | Emacs 29.3's defaults                             |
 | sunrise-sunset.org      | sunrise and sunset from a shared =js= block with Noweb                                                       | app only                                          |
 | table-formulas.org      | =#+TBLFM:= formulas, ranges, parameters, dates, number literals, Calc                                        | results from Emacs                                |
 | todo-states.org         | what a TODO state change writes: repeats, =CLOSED:=, log items                                               | org-todo                                          |

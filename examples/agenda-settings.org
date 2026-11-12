@@ -3,7 +3,7 @@
 #+CATEGORY: work
 #+TODO: TODO NEXT | DONE
 
-Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, a Lisp function as a command, how many days show and where they start, finished entries, the log and stuck projects. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
+Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, a Lisp function as a command, how many days show and where they start, finished entries, the log, stuck projects, and commands made of blocks with settings, headers and files of their own. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
 
 * TODO [#A] Alpha deploy :ops:
 SCHEDULED: <2027-03-15 Mon 09:00>
@@ -317,5 +317,74 @@ Sunday     21 March 2027
   work:       Garden :project:
 #+end_example
 
+* A stuck command with its own setting
+A `stuck` command takes settings of its own after its description, and they apply to that command only. Here =org-stuck-projects= counts a project as stuck unless a child is NEXT or TODO, so Website, whose only child is NEXT, is stuck and Garden, with a TODO child, is not. The heading is Emacs's own.
+
+#+begin_src emacs-lisp
+(setq org-agenda-custom-commands
+      '(("x" "Stuck" stuck "" ((org-stuck-projects '("+LEVEL=1+project" ("TODO") nil ""))))))
+#+end_src
+
+#+NAME: command-stuck
+#+begin_example
+List of stuck projects:
+  work:       Website :project:
+#+end_example
+
+* An agenda command with its own settings
+An `agenda` command can set =org-agenda-span=, =org-agenda-start-day=, =org-deadline-warning-days=, =org-agenda-prefix-format= and the rest for itself: they go over the variables while the command runs. This one shows three days from Tuesday. It opens as the text of the *Org Agenda* buffer, as Emacs makes it.
+
+#+begin_src emacs-lisp
+(setq org-agenda-custom-commands
+      '(("x" "Three days" agenda "" ((org-agenda-span 3) (org-agenda-start-day "+1d")))))
+#+end_src
+
+#+NAME: command-agenda
+#+begin_example
+3 days-agenda (W11):
+Tuesday    16 March 2027
+  work:       DONE Ship release
+Wednesday  17 March 2027
+  work:       10:00...... Scheduled:  TODO Write report
+Thursday   18 March 2027
+#+end_example
+
+* A composite command: blocks, headers and files
+A command made of blocks shows each block under its own heading, with a line of `=` between blocks. The settings after the blocks are the whole command's and go over the variables for every block; a block's own settings come after that and go over those. =org-agenda-overriding-header= replaces a block's heading line, and =org-agenda-files= makes a block list those files only (here =other.org=). The agenda block shows its days, the todo block lists the TODO entries of the sample, and the last block lists the other file. In the app a file is written with its source, as =local:other.org=.
+
+#+begin_src emacs-lisp
+(setq org-agenda-custom-commands
+      '(("x" "Day and lists"
+         ((agenda "" ((org-agenda-span 'day) (org-agenda-overriding-header "Today")))
+          (todo "NEXT" ((org-agenda-overriding-header "Next actions")))
+          (tags-todo "garden" ((org-agenda-files '("other.org"))
+                               (org-agenda-overriding-header "Garden, from the other file"))))
+         ((org-agenda-prefix-format '((agenda . "  %-10c %?-12t") (todo . "  %-10c") (tags . "  %-10c")))))))
+#+end_src
+
+The file =other.org= is:
+
+#+begin_src org
+#+CATEGORY: home
+* TODO Mow the lawn :garden:
+SCHEDULED: <2027-03-16 Tue>
+* TODO Call the plumber
+#+end_src
+
+#+NAME: command-block
+#+begin_example
+Today
+Monday     15 March 2027 W11
+  work       TODO Plan sprint
+
+===============================================================================
+Next actions
+  work      NEXT Draft copy :project::
+
+===============================================================================
+Garden, from the other file
+  home      TODO Mow the lawn :garden:
+#+end_example
+
 * Where the app differs from Emacs
-One thing: with a value that cannot be used (the section above), Emacs stops with its own error text. The app says which variable holds the value and what it was, and skips what needed it; a variable that is not set keeps its default.
+Three things. With a value that cannot be used (the section above), Emacs stops with its own error text; the app says which variable holds the value and what it was, and skips what needed it, and a variable that is not set keeps its default. A file a command names with =org-agenda-files= is written with its source in the app (=local:other.org=, =github:...=, =webdav:...=), where Emacs takes a path. The lines Emacs puts under the heading of a single command ("Press ..." with its keys) are not shown, and the text of a command is not the interactive Agenda: it has no keys.

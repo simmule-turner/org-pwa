@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v683 — Custom commands as in Emacs
+Composite, stuck and ~agenda~ custom commands now open as Emacs's *Org Agenda* buffer: each block under its own heading (or ~org-agenda-overriding-header~), blocks separated by a rule, an agenda block showing its days. A command's own settings (span, start day, warning days, prefix format), ~org-agenda-files~ and filter presets apply to it alone. ~examples/agenda-settings.org~ shows stuck, agenda settings, composites and unusable values; ~examples/README.org~ lists ~settings.org~. The "local agenda files" smoke check no longer crashes Chromium.
+Verified: buffer text line by line against Emacs 29.3.
+
 * v682 — Emacs's defaults, and Emacs's colors
 ~org-tags-column~ is -77 and ~calendar-latitude~/~calendar-longitude~ are nil, as in Emacs. DIR attachment paths resolve as in Emacs and a bad one is named. Lazy regexp loops overflow where Emacs's do. emacs-lisp, python, js and java source is colored face by face as Emacs does. ~org-xx-extensions~ and ~org-tags-column~ name an unusable value; own variables take init-file forms; apropos lists every variable with a control. ~examples/settings.org~ lists every variable with its default.
 Verified: colors, DIR and regexp limits against Emacs 29.3; the rest by tests.

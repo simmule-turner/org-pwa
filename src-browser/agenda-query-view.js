@@ -4,13 +4,14 @@
 // sheets. The Search panel stays the quick finder and can open its query here.
 import { applyAgendaEffortView } from '../src/agenda.js';
 import { runFunctionCommand } from '../src/agenda-lisp.js';
-import { commandSections, parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
+import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
+import { commandBufferText } from '../src/agenda-buffer.js';
 import { agendaSkipper } from '../src/agenda-skip.js';
 import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getPropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
+import { aggregateAgendaDocs, aggregateSearchDocs, commandFilesDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded, loadCommandFiles } from './agenda-files.js';
 import { buildHeadingRow, buildTodoEffortChip, prefixFailure, prefixFailureNote } from './agenda-view.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { S } from './app-state.js';
@@ -286,23 +287,30 @@ export function openAgendaCommands() {
 /** @param {import('../src/agenda-commands.js').CustomCommand} c */
 export function runCommand(c) {
   if (c.type === 'function') return void runFunctionCommandView(c);
+  if (opensAsBuffer(c)) return void runSectionsCommandView(c);
   if (c.type === 'agenda') return switchToView('agenda');
-  if (c.type === 'stuck' || c.type === 'block') return void runSectionsCommandView(c);
   if (c.type === 'alltodo') return openTodoList(null);
   if (c.type === 'todo') return openTodoList(c.query);
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });
 }
 
-/** A stuck-projects or composite command: its sections (one per block) as an *Org Agenda* text, each under its own heading. @param {import('../src/agenda-commands.js').CustomCommand} c */
+/** The settings that only the *Org Agenda* text has room for: a heading of the command's own, files of its own, filter presets. */
+const BUFFER_SETTINGS = /^(org-agenda-overriding-header|org-agenda-files|org-agenda-(tag|category|regexp|effort)-filter-preset)$/;
+
+/** Whether a command opens as the *Org Agenda* text, as Emacs shows it: a stuck or composite command, an `agenda` command with settings, or any command with settings only that text can show. @param {import('../src/agenda-commands.js').CustomCommand} c */
+function opensAsBuffer(c) {
+  if (c.type === 'stuck' || c.type === 'block') return true;
+  if (c.type === 'agenda') return Object.keys(c.settings || {}).length > 0;
+  return Object.keys(c.settings || {}).some((name) => BUFFER_SETTINGS.test(name));
+}
+
+/** A command opened as the *Org Agenda* text: each block under its own heading, as Emacs puts it in the buffer. @param {import('../src/agenda-commands.js').CustomCommand} c */
 async function runSectionsCommandView(c) {
-  const sections = commandSections(c, aggregateAgendaDocs(), aggregateSearchDocs(), queryOptions());
-  const lines = [];
-  for (const { command, items } of sections) {
-    lines.push(command.type === 'stuck' ? 'List of stuck projects:' : command.type === 'agenda' ? 'Agenda (open the Agenda view for this block):' : `${command.type}${command.query ? `: ${command.query}` : ''}`);
-    for (const item of items) lines.push(`  ${item.category || ''}: ${item.todo ? `${item.todo} ` : ''}${item.title}`);
-    lines.push('');
-  }
-  await createNewUnsavedDocument(lines.join('\n'), c.description || c.key, '*Org Agenda*');
+  const named = [c, ...(c.blocks || [])].map((x) => (x.settings || {})['org-agenda-files']).filter((v) => v !== undefined);
+  const problems = await loadCommandFiles(named);
+  if (problems.length) setStatus(problems.join(' '));
+  const text = commandBufferText(c, { docs: aggregateAgendaDocs(), searchDocs: aggregateSearchDocs(), options: { ...queryOptions(), now: new Date() }, filesDocs: commandFilesDocs });
+  await createNewUnsavedDocument(text, c.description || c.key, '*Org Agenda*');
   switchToView('text');
 }
 

@@ -289,6 +289,51 @@ export function aggregateAgendaDocs({ writable = false } = {}) {
   return docs;
 }
 
+/** The files a custom command names with org-agenda-files, loaded for that command only: the Agenda's own list never holds them.
+ * @type {Map<string, { doc?: import('../src/types.js').Doc, documentId?: string, error?: string }>} */
+const commandFilesCache = new Map();
+
+/** Reads one file of a command's own list (github:, webdav: or local:); an entry with `error` says what is wrong. @param {string} key */
+async function readCommandFile(key) {
+  const colon = key.indexOf(':');
+  const scheme = key.slice(0, colon);
+  const path = key.slice(colon + 1);
+  try {
+    if (scheme === 'local') return await readLocalEntry(path, false);
+    const adapter = scheme === 'github' ? githubAdapter : webdavAdapter;
+    const result = await adapter.read(path);
+    const parsed = result ? parseOrg(result.content) : null;
+    const doc = parsed ? await prefetchSetupFiles(parsed, path, scheme) : null;
+    return doc ? { doc, documentId: path } : { error: `"${path}" not found.` };
+  } catch (err) {
+    return { error: `"${path}" could not be read: ${/** @type {Error} */ (err).message}` };
+  }
+}
+
+/**
+ * Loads the files a command names (the value of its org-agenda-files, a list of file names), each once per run. Returns what could not be
+ * read, one sentence each.
+ * @param {string[]} values the org-agenda-files values of the command and its blocks
+ * @returns {Promise<string[]>}
+ */
+export async function loadCommandFiles(values) {
+  const keys = [...new Set(values.flatMap((v) => parseAgendaFilesVar(v)))];
+  for (const key of keys) commandFilesCache.delete(key);
+  await Promise.all(keys.map(async (key) => commandFilesCache.set(key, await readCommandFile(key))));
+  return keys.map((key) => /** @type {{ error?: string }} */ (commandFilesCache.get(key)).error).filter((e) => !!e).map(String);
+}
+
+/** The documents of the files a command names, in the order it names them; the open document stands for its own file. @param {string} value  the command's org-agenda-files */
+export function commandFilesDocs(value) {
+  /** @type {{ documentId: string, doc: import('../src/types.js').Doc }[]} */ const docs = [];
+  for (const key of parseAgendaFilesVar(value)) {
+    const entry = commandFilesCache.get(key);
+    if (!entry || !entry.doc || !entry.documentId) continue;
+    docs.push({ documentId: entry.documentId, doc: entry.documentId === S.state.documentId ? S.state.doc : entry.doc });
+  }
+  return docs;
+}
+
 /** Recomputes contactsFilesConfig from whichever variable set is
  *  actually authoritative right now -- same reasoning and same file-
  *  local-override handling as syncAgendaFilesConfig above. Call this

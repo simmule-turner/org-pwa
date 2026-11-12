@@ -1,8 +1,8 @@
 // @ts-check
 // org-agenda-custom-commands: named queries that open in the Agenda by one key. Read here: `tags` (a Match view), `tags-todo` (a
 // Match view of the unfinished TODO entries) and `search` (a Search view), each with the setting org-agenda-sorting-strategy, and
-// `todo` (the TODO list for some keywords), `agenda` and `alltodo`, which open the built-in views, and a Lisp function (a name or a
-// lambda), which is called with the match and shows what it writes. Other command types are left out of the list.
+// `todo` (the TODO list for some keywords), `agenda`, `alltodo` and `stuck`, a list of blocks, and a Lisp function (a name or a lambda),
+// which is called with the match and shows what it writes. Settings of a command or block go over the variables (layeredVariables).
 import { datum, listItems, readLisp, stringValue, symbolName } from './lisp-read.js';
 import { buildTaskList } from './agenda.js';
 import { readTodoListSettings } from './agenda-todo-list.js';
@@ -142,6 +142,19 @@ export function withCustomCommand(raw, command) {
   return `'(${texts.join(' ')})`;
 }
 
+/** The variables a command runs under: the variables, then the global settings of its composite command, then its own. @param {Record<string, string> | undefined} local @param {Record<string, string>} inherited @param {Record<string, string> | undefined} own @returns {Record<string, string>} */
+export function layeredVariables(local, inherited, own) {
+  return { ...(local || {}), ...inherited, ...(own || {}) };
+}
+
+/** org-agenda-overriding-header under these variables: its text, "" for an empty one, null when it is not set. @param {Record<string, string>} vars @returns {string | null} */
+export function headerOverride(vars) {
+  const raw = vars['org-agenda-overriding-header'];
+  if (raw === undefined) return null;
+  const form = readLisp(String(raw).replace(/^'/, ''))[0];
+  return (form && stringValue(datum(form) || form)) ?? null;
+}
+
 /**
  * The rows a `tags`, `tags-todo`, `search`, `todo`, `alltodo` or `stuck` command lists. The command's own settings (and `inherited`, the
  * global settings of a composite command) go over the variables: its sorting strategy, org-agenda-skip-function, org-stuck-projects.
@@ -153,7 +166,7 @@ export function withCustomCommand(raw, command) {
  */
 export function commandItems(command, docs, searchDocs, options, inherited = {}) {
   if (command.type === 'function' || command.type === 'agenda' || command.type === 'block') return [];
-  const vars = { ...(options.localVariables || {}), ...inherited, ...(command.settings || {}) };
+  const vars = layeredVariables(options.localVariables, inherited, command.settings);
   const strategy = command.sortingStrategy ?? (vars['org-agenda-sorting-strategy'] ? vars['org-agenda-sorting-strategy'].replace(/^'/, '') : null);
   const keywords = { todoKeywords: options.todoKeywords, doneKeywords: options.doneKeywords };
   const merged = { ...options, sortingStrategy: strategy ?? options.sortingStrategy, localVariables: vars, skipEntry: agendaSkipper(vars, docs, keywords) ?? options.skipEntry };

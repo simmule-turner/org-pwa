@@ -14,9 +14,8 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] Match and Keyword search views: possible updates
-Where the two views and agenda commands differ from Emacs, or stop short of it:
-- Custom commands: =stuck= (needs =org-stuck-projects=, which the app does not read), composite blocks, and per-command settings (=org-agenda-files=, filter presets).
+** [#C] Custom commands as the live Agenda
+Composite, stuck and ~agenda~ commands with settings open as the text of the *Org Agenda* buffer, so they have none of the Agenda's keys (changing a TODO state, rescheduling), and a single command does not show the "Press ..." key lines Emacs puts under its heading.
 - Effort: M. Impact: S.
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
@@ -25,11 +24,6 @@ Where the two views and agenda commands differ from Emacs, or stop short of it:
 Left from the security reviews. Each is small, none lets a document run code without the "Run code?" prompt.
 ** [#C] Dev dependency advisory
 =minimatch= (GHSA-g3hv-75wg-m249, denial of service) comes in through eslint, including the latest eslint 10; dev-only, no runtime code. Update when eslint releases a fix.
-- Effort: S. Impact: S.
-
-* Tests
-** [#C] Smoke check "local agenda files" crashes Chromium
-In =tools/smoke.mjs= the check "local agenda files" ends with Chromium crashing (the page process exits) rather than with an assertion; the other checks are unaffected. Find what the check opens that the headless build cannot, and make it run or split it.
 - Effort: S. Impact: S.
 
 * Order for the next release

@@ -8,13 +8,16 @@ import { formatAgendaPrefix, agendaPrefixFormat, agendaClockText } from '../src/
 import { PrefixFormError, agendaLisp, headlineOf, prefixEvaluator, runFunctionCommand } from '../src/agenda-lisp.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { SCENARIOS, WEEK } from '../tools/agenda-settings-cases.mjs';
+import { OTHER, SCENARIOS, WEEK } from '../tools/agenda-settings-cases.mjs';
 import { parseSpan, readAgendaStartDay, spanRange } from '../src/agenda-span.js';
 import { readStuckSettings, stuckProjectItems } from '../src/agenda-stuck.js';
 import { agendaSkipper } from '../src/agenda-skip.js';
 import { readLogSettings } from '../src/agenda-log.js';
 import { readDaySettings } from '../src/agenda-emacs-days.js';
 import { getDeadlineWarningDays } from '../src/local-variables.js';
+import { commandBufferText } from '../src/agenda-buffer.js';
+import { parseCustomCommands } from '../src/agenda-commands.js';
+import { parseAgendaFilesVar } from '../src/local-variables.js';
 import { VariableValueError } from '../src/variable-error.js';
 
 // examples/agenda-settings.org shows the rows Emacs 29.3 gave for each scenario (tools/gen-agenda-settings-example.mjs). The app, given the
@@ -71,6 +74,23 @@ for (const c of SCENARIOS) {
     if (c.id === 'unusable-value') { // Emacs stops with its own text (shown in the file); the app names the variable and the value
       assert.deepEqual(shown(c.id), ['Wrong type argument: number-or-marker-p, soon']);
       assert.throws(() => getDeadlineWarningDays(vars), (e) => e instanceof VariableValueError && /org-deadline-warning-days/.test(e.message) && /soon/.test(e.message));
+      return;
+    }
+    if (c.kind === 'command') { // the whole *Org Agenda* text of a custom command; the app writes a file with its source (local:other.org)
+      const otherDocs = [{ documentId: 'other.org', doc: parseOrg(OTHER) }];
+      const forApp = /** @type {string} */ (c.commands).replace(/"other\.org"/g, '"local:other.org"');
+      const forms = parseCustomCommands(forApp.replace(/^\(setq org-agenda-custom-commands\s+'/, '').replace(/\)\s*$/, ''));
+      const command = forms.find((f) => f.key === 'x');
+      assert.ok(command, 'the command reads');
+      const built = commandBufferText(command, {
+        docs: weekDocs,
+        searchDocs: weekDocs,
+        options: { ...keywords, now: new Date(2027, 2, 15, 8, 0), localVariables: vars, documentOrder: [documentId, 'other.org'] },
+        filesDocs: (names) => parseAgendaFilesVar(names).map((k) => otherDocs.find((d) => d.documentId === k.replace(/^local:/, ''))).filter((d) => !!d),
+      });
+      const lines = built.split('\n').map((l) => l.trimEnd());
+      while (lines.length && lines[lines.length - 1] === '') lines.pop();
+      assert.deepEqual(lines, shown(c.id));
       return;
     }
     if (c.kind === 'stuck') {

@@ -4805,17 +4805,11 @@ check('local agenda files: a local: entry loads without any prompt when access i
     const w = await fh.createWritable();
     await w.write(`* TODO Local task\nSCHEDULED: ${stamp}\n`);
     await w.close();
-    await new Promise((resolve, reject) => {
-      const req = indexedDB.open('org-pwa');
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction('kv', 'readwrite');
-        tx.objectStore('kv').put(fh, 'filehandle:agenda-local.org');
-        tx.oncomplete = () => { db.close(); resolve(); };
-        tx.onerror = () => reject(tx.error);
-      };
-      req.onerror = () => reject(req.error);
-    });
+    // This Chromium build crashes when a handle from the private file system is read back out of IndexedDB, so the handle is
+    // given to the app where it would have read it: the kv store's get() for the key.
+    const { kv } = await import('/src-browser/singletons.js');
+    const realGet = kv.get.bind(kv);
+    kv.get = async (key, ...rest) => (key === 'filehandle:agenda-local.org' ? { value: fh } : realGet(key, ...rest));
     window.__perm = { query: 0, request: 0, state: 'prompt' };
     FileSystemHandle.prototype.queryPermission = async function () { window.__perm.query += 1; return window.__perm.state; };
     FileSystemHandle.prototype.requestPermission = async function () { window.__perm.request += 1; window.__perm.state = 'granted'; return 'granted'; };
@@ -9143,6 +9137,24 @@ check('lisp agenda settings: a function custom command shows its output, %(form)
   await page.waitForFunction(() => document.body.innerText.includes('Report for work!'), null, { timeout: 8000 });
   const prefix = await page.evaluate(async () => (await import('/src/agenda-prefix.js')).formatAgendaPrefix('%-6c%(concat "<" category ">")', { category: 'Home' }, () => '<Home>'));
   expect(prefix === 'Home  <Home>', `the prefix form fills in: ${prefix}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('custom commands: a composite command with an agenda block, a header and a per-command setting opens as the *Org Agenda* text', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO Alpha task :work:\nSCHEDULED: <2026-11-11 Wed>\n* TODO Beta task\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-agenda-custom-commands', "'((\"x\" \"Both\" ((agenda \"\" ((org-agenda-span 'week))) (todo \"TODO\" ((org-agenda-overriding-header \"Next up\"))))))");
+    const { parseCustomCommands } = await import('/src/agenda-commands.js');
+    const { runCommand } = await import('/src-browser/agenda-query-view.js');
+    const { S } = await import('/src-browser/app-state.js');
+    runCommand(parseCustomCommands(S.globalVariables['org-agenda-custom-commands'])[0]);
+  });
+  await page.waitForFunction(() => document.body.innerText.includes('Next up'), null, { timeout: 8000 });
+  const t = await page.evaluate(() => document.body.innerText);
+  expect(/Week-agenda/.test(t) && /={20}/.test(t) && t.includes('Next up') && t.includes('Beta task'), `the buffer: ${t.replace(/\s+/g, ' ').slice(0, 500)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

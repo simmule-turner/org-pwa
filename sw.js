@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v682';
+const CACHE_NAME = 'org-pwa-shell-v683';
 
 const SHELL_FILES = [
   './',
@@ -235,6 +235,7 @@ const SHELL_FILES = [
   './src/entities.js',
   './src/org-elements.js',
   './src/syntax-highlight.js',
+  './src/agenda-buffer.js',
   './src/source-color.js',
   './src/source-color-data.js',
   './src/export-html.js',

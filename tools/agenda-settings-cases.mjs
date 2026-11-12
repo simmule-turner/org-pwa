@@ -8,7 +8,7 @@ export const INTRO = `#+TITLE: Agenda settings
 #+CATEGORY: work
 #+TODO: TODO NEXT | DONE
 
-Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, a Lisp function as a command, how many days show and where they start, finished entries, the log and stuck projects. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
+Settings that shape the rows of the Agenda: what comes before each heading, the order of the rows, a priority of your own, a Lisp function as a command, how many days show and where they start, finished entries, the log, stuck projects, and commands made of blocks with settings, headers and files of their own. This file is its own sample: the four entries just below are the ones every section lists, for Monday 15 March 2027. Put a setting in Settings → Advanced → *Lisp init*, open this file as an Agenda File, and compare the rows with the ones under each section. The rows are what Emacs 29.3 (Org 9.6.15) showed, and a test in this project checks that the app shows the same. The last section says where the two differ.
 `;
 
 export const SAMPLE = `* TODO [#A] Alpha deploy :ops:
@@ -46,6 +46,13 @@ SCHEDULED: <2027-03-20 Sat>
 ** NEXT Draft copy
 * Garden :project:
 ** TODO Buy seeds
+`;
+
+/** The file a command names with org-agenda-files in the scenarios of kind `command` (written `other.org` here; the app writes `local:other.org`). */
+export const OTHER = `#+CATEGORY: home
+* TODO Mow the lawn :garden:
+SCHEDULED: <2027-03-16 Tue>
+* TODO Call the plumber
 `;
 
 const DEFAULT_PREFIX = '"  %-12:c%?-12t% s"';
@@ -194,5 +201,40 @@ export const SCENARIOS = [
     text: '=org-stuck-projects= says what a project is and what makes it not stuck: a matcher for the projects, TODO keywords or tags a next action carries, and a regular expression. A project with none of those under it is stuck. Website has a NEXT entry, Garden does not.',
     kind: 'stuck',
     vars: { 'org-stuck-projects': `'("+LEVEL=1+project" ("NEXT") nil "")` },
+  },
+  {
+    id: 'command-stuck',
+    sample: 'week',
+    title: 'A stuck command with its own setting',
+    text: 'A `stuck` command takes settings of its own after its description, and they apply to that command only. Here =org-stuck-projects= counts a project as stuck unless a child is NEXT or TODO, so Website, whose only child is NEXT, is stuck and Garden, with a TODO child, is not. The heading is Emacs\'s own.',
+    kind: 'command',
+    commands: `(setq org-agenda-custom-commands
+      '(("x" "Stuck" stuck "" ((org-stuck-projects '("+LEVEL=1+project" ("TODO") nil ""))))))`,
+    vars: {},
+  },
+  {
+    id: 'command-agenda',
+    sample: 'week',
+    title: 'An agenda command with its own settings',
+    text: 'An `agenda` command can set =org-agenda-span=, =org-agenda-start-day=, =org-deadline-warning-days=, =org-agenda-prefix-format= and the rest for itself: they go over the variables while the command runs. This one shows three days from Tuesday. It opens as the text of the *Org Agenda* buffer, as Emacs makes it.',
+    kind: 'command',
+    commands: `(setq org-agenda-custom-commands
+      '(("x" "Three days" agenda "" ((org-agenda-span 3) (org-agenda-start-day "+1d")))))`,
+    vars: {},
+  },
+  {
+    id: 'command-block',
+    sample: 'week',
+    title: 'A composite command: blocks, headers and files',
+    text: 'A command made of blocks shows each block under its own heading, with a line of `=` between blocks. The settings after the blocks are the whole command\'s and go over the variables for every block; a block\'s own settings come after that and go over those. =org-agenda-overriding-header= replaces a block\'s heading line, and =org-agenda-files= makes a block list those files only (here =other.org=). The agenda block shows its days, the todo block lists the TODO entries of the sample, and the last block lists the other file. In the app a file is written with its source, as =local:other.org=.',
+    kind: 'command',
+    commands: `(setq org-agenda-custom-commands
+      '(("x" "Day and lists"
+         ((agenda "" ((org-agenda-span 'day) (org-agenda-overriding-header "Today")))
+          (todo "NEXT" ((org-agenda-overriding-header "Next actions")))
+          (tags-todo "garden" ((org-agenda-files '("other.org"))
+                               (org-agenda-overriding-header "Garden, from the other file"))))
+         ((org-agenda-prefix-format '((agenda . "  %-10c %?-12t") (todo . "  %-10c") (tags . "  %-10c")))))))`,
+    vars: {},
   },
 ];
