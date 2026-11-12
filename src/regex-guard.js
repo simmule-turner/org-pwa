@@ -4,6 +4,13 @@
  * repetition or an overlapping alternation (`\(a+\)+`, `\(a\|aa\)*`). The browser's own engine cannot be interrupted, so such a
  * pattern runs here instead, with JavaScript's matching rules and a budget; running past it signals Emacs's own
  * "Stack overflow in regexp matcher". Every other pattern keeps the native engine.
+ *
+ * The handoff to the native engine: a Lisp search (`search` in src/elisp-lib.js, `cutMatch` and the buffer searches in
+ * src/elisp-buffer.js) first asks `checkFailureStack` (Emacs's own limit on a long input), then `guardFor(source, flags, length)`.
+ * `guardFor` returns the parsed pattern when it can backtrack without end (or, on an input over POLY_MIN_INPUT characters, in
+ * polynomial time) and the search runs in `guardedSearch`; it returns null for every other pattern, and for one the parser does
+ * not support (`Unsupported`), and the search then runs on the native RegExp. The app's own searches (Find, agenda search,
+ * filters: `emacsRegexToJs`) do not pass through here and always use the native engine.
  */
 import { signal } from './elisp-data.js';
 

@@ -1,0 +1,246 @@
+{
+ "lang": "java",
+ "mode": "java-mode",
+ "runs": [
+  [
+   "package",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "com",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "Example",
+   "constant"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Pairs",
+   "type"
+  ],
+  [
+   " {\n    Pairs(",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   ") { }\n    Pairs(",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   "> ",
+   null
+  ],
+  [
+   "names",
+   "variable-name"
+  ],
+  [
+   ", String s) { }\n    Pairs(",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " String s) { }\n    ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "test",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "n",
+   "variable-name"
+  ],
+  [
+   ") {\n        ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "x",
+   "variable-name"
+  ],
+  [
+   " = i < ",
+   null
+  ],
+  [
+   "n",
+   "type"
+  ],
+  [
+   ";\n        ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "y",
+   "variable-name"
+  ],
+  [
+   " = i<",
+   null
+  ],
+  [
+   "MAX",
+   "type"
+  ],
+  [
+   " && n <= MAX;\n        ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "z",
+   "variable-name"
+  ],
+  [
+   " = i < ",
+   null
+  ],
+  [
+   "Foo",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "BAR",
+   "type"
+  ],
+  [
+   " || i << 2 > 0 || foo() < MAX;\n        ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " x;\n    }\n}\n",
+   null
+  ]
+ ]
+}

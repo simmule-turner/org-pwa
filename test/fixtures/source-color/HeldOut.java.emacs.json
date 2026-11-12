@@ -1,0 +1,914 @@
+{
+ "lang": "java",
+ "mode": "java-mode",
+ "runs": [
+  [
+   "package",
+   "keyword"
+  ],
+  [
+   " com.example.",
+   null
+  ],
+  [
+   "app",
+   "constant"
+  ],
+  [
+   ";\n\n",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "java",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "util",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "java",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "util",
+   "constant"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "Map",
+   "type"
+  ],
+  [
+   ";\n\n",
+   null
+  ],
+  [
+   "/** A thing. */",
+   "doc"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "@SuppressWarnings",
+   "c-annotation"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"unchecked\"",
+   "string"
+  ],
+  [
+   ")\n",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Thing",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "T",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Comparable",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "T",
+   "type"
+  ],
+  [
+   ">> ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Base",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "implements",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Runnable",
+   "type"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "Serializable",
+   "type"
+  ],
+  [
+   " {\n    ",
+   null
+  ],
+  [
+   "private",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "MAX",
+   "variable-name"
+  ],
+  [
+   " = 0xFF + 10L;\n    ",
+   null
+  ],
+  [
+   "private",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "final",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Map",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   "<",
+   null
+  ],
+  [
+   "T",
+   "type"
+  ],
+  [
+   ">> ",
+   null
+  ],
+  [
+   "items",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "HashMap",
+   "type"
+  ],
+  [
+   "<>();\n    ",
+   null
+  ],
+  [
+   "protected",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "volatile",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "done",
+   "variable-name"
+  ],
+  [
+   ";\n\n    ",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " Thing(",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "n",
+   "variable-name"
+  ],
+  [
+   ") { ",
+   null
+  ],
+  [
+   "super",
+   "keyword"
+  ],
+  [
+   "(n); ",
+   null
+  ],
+  [
+   "this",
+   "keyword"
+  ],
+  [
+   ".done = ",
+   null
+  ],
+  [
+   "false",
+   "constant"
+  ],
+  [
+   "; }\n\n    ",
+   null
+  ],
+  [
+   "@Override",
+   "c-annotation"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "public",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "synchronized",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "void",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "run",
+   "function-name"
+  ],
+  [
+   "() ",
+   null
+  ],
+  [
+   "throws",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "InterruptedException",
+   "type"
+  ],
+  [
+   " {\n        ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "int",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   " = 0; i < ",
+   null
+  ],
+  [
+   "MAX",
+   "type"
+  ],
+  [
+   "; i++) {\n            ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (items.isEmpty() || i % 2 == 0) { ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   "; }\n            ",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   " {\n                ",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "s",
+   "variable-name"
+  ],
+  [
+   " = (",
+   null
+  ],
+  [
+   "String",
+   "type"
+  ],
+  [
+   ") lookup(",
+   null
+  ],
+  [
+   "\"k\"",
+   "string"
+  ],
+  [
+   " + i);\n                ",
+   null
+  ],
+  [
+   "var",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "x",
+   "variable-name"
+  ],
+  [
+   " = s.length() > 3 ? s : ",
+   null
+  ],
+  [
+   "null",
+   "constant"
+  ],
+  [
+   ";\n            } ",
+   null
+  ],
+  [
+   "catch",
+   "keyword"
+  ],
+  [
+   " (IllegalStateException | NullPointerException e) {\n                ",
+   null
+  ],
+  [
+   "throw",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "RuntimeException",
+   "type"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "\"bad\"",
+   "string"
+  ],
+  [
+   ", e);\n            } ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   " { done = ",
+   null
+  ],
+  [
+   "true",
+   "constant"
+  ],
+  [
+   "; }\n        }\n        ",
+   null
+  ],
+  [
+   "switch",
+   "keyword"
+  ],
+  [
+   " (MAX) { ",
+   null
+  ],
+  [
+   "case",
+   "keyword"
+  ],
+  [
+   " 1: ",
+   null
+  ],
+  [
+   "break",
+   "keyword"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "default",
+   "keyword"
+  ],
+  [
+   ": ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   "; }\n    }\n\n    ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " <",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   "> ",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "first",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "List",
+   "type"
+  ],
+  [
+   "<? ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "U",
+   "type"
+  ],
+  [
+   "> ",
+   null
+  ],
+  [
+   "xs",
+   "variable-name"
+  ],
+  [
+   ") { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " xs.get(0); }\n    ",
+   null
+  ],
+  [
+   "enum",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Color",
+   "type"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "RED",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "GREEN",
+   "variable-name"
+  ],
+  [
+   " }\n    ",
+   null
+  ],
+  [
+   "interface",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Shape",
+   "type"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "double",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "area",
+   "function-name"
+  ],
+  [
+   "(); }\n    ",
+   null
+  ],
+  [
+   "// ",
+   "comment-delimiter"
+  ],
+  [
+   "trailing\n",
+   "comment"
+  ],
+  [
+   "    ",
+   null
+  ],
+  [
+   "char",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "c",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "'x'",
+   "string"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "double",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "d",
+   "variable-name"
+  ],
+  [
+   " = 1.5e3; ",
+   null
+  ],
+  [
+   "Object",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "o",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "null",
+   "constant"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "boolean",
+   "type"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "this",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "instanceof",
+   "keyword"
+  ],
+  [
+   " Thing;\n}\n",
+   null
+  ]
+ ]
+}

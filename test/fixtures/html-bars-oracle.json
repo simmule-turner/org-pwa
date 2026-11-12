@@ -1,5 +1,55 @@
 [
  {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:auto\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes (<a href=\"mailto:e@x.org\">e@x.org</a>)</p>\n<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: creator:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: author:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: date:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"email\">Email: <a href=\"mailto:e@x.org\">e@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: timestamp:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"author\">Author: Estes</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:t creator:t email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes (<a href=\"mailto:e@x.org\">e@x.org</a>)</p>\n<p class=\"date\">Date: 2026-01-02</p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: creator:t author:nil date:nil timestamp:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
   "src": "#+TITLE: Ttl\n#+SUBTITLE: Sub\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+DATE: 2026-01-02\n#+OPTIONS: html-postamble:\"%a\"\n* H\nbody\n",
   "preamble": null,
   "postamble": "Estes"
@@ -198,5 +248,405 @@
   "src": "#+TITLE: Bare\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
   "preamble": null,
   "postamble": "<p class=\"author\">Author: root</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "<p>Ttl by Estes</p>",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%t by %a</p>"
+   ],
+   [
+    "de",
+    "<p>DE %t</p>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:nil\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%t by %a</p>"
+   ],
+   [
+    "de",
+    "<p>DE %t</p>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:\"own %t\"\n* H\nbody\n",
+  "preamble": "own Ttl",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%t by %a</p>"
+   ],
+   [
+    "de",
+    "<p>DE %t</p>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: de\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "<p>DE Ttl</p>",
+  "postamble": "<p class=\"author\">Autor: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%t by %a</p>"
+   ],
+   [
+    "de",
+    "<p>DE %t</p>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: fr\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "<p>Ttl by Estes</p>",
+  "postamble": "<p class=\"author\">Auteur: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%t by %a</p>"
+   ],
+   [
+    "de",
+    "<p>DE %t</p>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "<p><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>\n<hr>",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "<p>%v</p>\n<hr>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:\"%v\"\n* H\nbody\n",
+  "preamble": "<p><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>\n<hr>",
+  "postamble": "<a href=\"https://validator.w3.org/check?uri=referer\">Validate</a>",
+  "formats": [
+   [
+    "en",
+    "<p>%v</p>\n<hr>"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "   \n"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "line",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "line\n"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:\"%t\\n\"\n* H\nbody\n",
+  "preamble": "Ttl",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "formats": [
+   [
+    "en",
+    "line\n"
+   ]
+  ]
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-preamble:t\n* H\nbody\n",
+  "preamble": "<a href=\"/v\">V</a>",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"/v\">V</a></p>",
+  "formats": [
+   [
+    "en",
+    "%v"
+   ]
+  ],
+  "validationLink": "<a href=\"/v\">V</a>"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": "<p>Ttl|en|Estes</p>",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"<p>%s|%s|%s</p>\" (org-export-data (plist-get info :title) info) (plist-get info :language) (org-export-data (plist-get info :author) info)))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) nil)"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) \"  \")"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": "<b>x</b>",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) \"<b>x</b>\n\")"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p>Estes on </p>",
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "<p>%a on %d</p>"
+    ],
+    [
+     "de",
+     "<p>DE %a</p>"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:auto\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "<p>%a on %d</p>"
+    ],
+    [
+     "de",
+     "<p>DE %a</p>"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: de\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p>DE Estes</p>",
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "<p>%a on %d</p>"
+    ],
+    [
+     "de",
+     "<p>DE %a</p>"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: fr\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p>Estes on </p>",
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "<p>%a on %d</p>"
+    ],
+    [
+     "de",
+     "<p>DE %a</p>"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a>|<a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)|2026-03-04 Wed 05:06</p>",
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "<p>%v|%c|%C</p>"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null,
+  "defaults": {
+   "postambleFormats": [
+    [
+     "en",
+     "  \n"
+    ]
+   ]
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: de\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Autor: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: de\n#+OPTIONS: email:t creator:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Autor: Estes</p>\n<p class=\"email\">Email: <a href=\"mailto:e@x.org\">e@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: fr\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Auteur: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: fr\n#+OPTIONS: email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Auteur: Estes</p>\n<p class=\"email\">Email: <a href=\"mailto:e@x.org\">e@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: es\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Autor: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+LANGUAGE: es\n#+OPTIONS: email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Autor: Estes</p>\n<p class=\"email\">Email: <a href=\"mailto:e@x.org\">e@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {}
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes (<a href=\"mailto:e@x.org\">e@x.org</a>)</p>\n<p class=\"date\">Date: </p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "postamble": true
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:auto\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "postamble": true
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>",
+  "defaults": {
+   "validationLink": ""
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes (<a href=\"mailto:e@x.org\">e@x.org</a>)</p>\n<p class=\"date\">Date: </p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"></p>",
+  "defaults": {
+   "validationLink": ""
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null,
+  "defaults": {
+   "postamble": false
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: html-postamble:auto\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "postamble": false
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Ann Lee</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "userFullName": "Ann Lee",
+   "userMailAddress": "ann@x.org"
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+OPTIONS: email:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Ann Lee</p>\n<p class=\"email\">Email: <a href=\"mailto:ann@x.org\">ann@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "userFullName": "Ann Lee",
+   "userMailAddress": "ann@x.org"
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+OPTIONS: html-postamble:\"%a %e\"\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "Ann Lee <a href=\"mailto:ann@x.org\">ann@x.org</a>",
+  "defaults": {
+   "userFullName": "Ann Lee",
+   "userMailAddress": "ann@x.org"
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+OPTIONS: html-postamble:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p class=\"author\">Author: Ann Lee (<a href=\"mailto:ann@x.org\">ann@x.org</a>)</p>\n<p class=\"date\">Date: </p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "defaults": {
+   "userFullName": "Ann Lee",
+   "userMailAddress": "ann@x.org"
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": "<p>en|Estes</p>",
+  "defaults": {
+   "postamble": {
+    "fn": "(lambda (info) (format \"<p>%s|%s</p>\" (plist-get info :language) (org-export-data (plist-get info :author) info)))"
+   }
+  }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": null,
+  "postamble": null,
+  "defaults": {
+   "postamble": {
+    "fn": "(lambda (info) nil)"
+   }
+  }
  }
 ]

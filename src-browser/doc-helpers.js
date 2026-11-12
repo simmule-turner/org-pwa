@@ -7,7 +7,7 @@
 /** @typedef {import('../src/types.js').CaptureTemplate} CaptureTemplate */
 // Extracted from app.js: doc helpers. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
-import { emacsRegexToJs } from '../src/emacs-regex.js';
+import { emacsRegexToJs } from '../src/elisp-regex.js';
 
 /** The raw table.rows array index (which, like editingCell's own
  *  existing convention, INCLUDES rule/hline entries) of the first

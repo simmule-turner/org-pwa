@@ -79,7 +79,7 @@ Setting every line below to the value shown changes nothing.
 ;; (setq display-time-format nil)
 
 ;;   display-time-mode: Whether the mode line shows the date and time: 1 on, 0 off.
-;; (setq display-time-mode 1)   ; Emacs: nil
+;; (setq display-time-mode nil)
 
 ;; * large-file-warning-threshold: Size in bytes above which an Org file asks before it opens (this app: 500KB; Emacs: 10000000).
 ;; (setq large-file-warning-threshold 512000)
@@ -312,11 +312,20 @@ Setting every line below to the value shown changes nothing.
 ;;   org-html-head: Text added to the <head> of every HTML export.
 ;; (setq org-html-head "")
 
-;;   org-html-postamble: The foot of every HTML export: auto, nil or a format string.
+;;   org-html-postamble: The foot of every HTML export: auto (date, author, email, Created, validation link), nil, t (org-html-postamble-format), a format string or a function.
 ;; (setq org-html-postamble 'auto)
 
+;; * org-html-postamble-format: Alist of languages and format strings for the HTML postamble.
+;; (setq org-html-postamble-format '(("en" "<p class=\"author\">Author: %a (%e)</p>)
+
 ;;   org-html-preamble: Above the content of every HTML export: t, nil or a format string.
-;; (setq org-html-preamble nil)   ; Emacs: t
+;; (setq org-html-preamble t)   ; t uses org-html-preamble-format, which is empty by default: nothing is added above the content
+
+;; * org-html-preamble-format: Alist of languages and format strings for the HTML preamble.
+;; (setq org-html-preamble-format '(("en" "")))
+
+;; * org-html-validation-link: Link to HTML validation service.
+;; (setq org-html-validation-link "<a href=\"https://validator.w3.org/check?uri=referer\">Validate</a>")
 
 ;; * org-icalendar-alarm-time: Number of minutes for triggering an alarm for exported timed events.
 ;; (setq org-icalendar-alarm-time 0)
@@ -515,4 +524,7 @@ Setting every line below to the value shown changes nothing.
 
 ;;   org-xx-windowing-threshold: Above this many rows only the rows near the screen are drawn; 0 draws all.
 ;; (setq org-xx-windowing-threshold 400)
+
+;;   recentf-max-saved-items: How many files Recently opened keeps.
+;; (setq recentf-max-saved-items 20)
 #+END_SRC

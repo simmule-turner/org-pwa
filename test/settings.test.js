@@ -35,6 +35,7 @@ import {
   getRecentFiles,
   recordRecentFile,
   clearRecentFiles,
+  removeRecentFile,
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
@@ -317,15 +318,25 @@ test('THE FEATURE: a blank documentId is never recorded', async () => {
   assert.deepEqual(await getRecentFiles(kv), []);
 });
 
-test('THE FEATURE: the stored list is capped, oldest entries dropped first', async () => {
+test('THE FEATURE: the stored list is capped at recentf-max-saved-items (20), oldest entries dropped first', async () => {
   const kv = createInMemoryAdapter();
   for (let i = 0; i < 35; i++) {
     await recordRecentFile(kv, `file${i}.org`, 'github');
   }
   const recent = await getRecentFiles(kv);
-  assert.ok(recent.length <= 30, `expected the stored list capped at 30, got ${recent.length}`);
+  assert.equal(recent.length, 20);
   assert.equal(recent[0].documentId, 'file34.org'); // most recent survives
-  assert.ok(!recent.some((f) => f.documentId === 'file0.org')); // oldest was evicted
+  assert.ok(!recent.some((f) => f.documentId === 'file14.org')); // the ones past twenty were dropped
+});
+
+test('recordRecentFile says which entries the limit took out, and removeRecentFile and clearRecentFiles do too', async () => {
+  const kv = createInMemoryAdapter();
+  await recordRecentFile(kv, 'a.org', 'github', 2);
+  await recordRecentFile(kv, 'b.org', 'github', 2);
+  const dropped = await recordRecentFile(kv, 'c.org', 'github', 2);
+  assert.deepEqual(dropped.map((f) => f.documentId), ['a.org']);
+  assert.deepEqual((await removeRecentFile(kv, 'b.org', 'github')).map((f) => f.documentId), ['b.org']);
+  assert.deepEqual((await clearRecentFiles(kv)).map((f) => f.documentId), ['c.org']);
 });
 
 test('clearRecentFiles empties the list', async () => {

@@ -5,18 +5,15 @@
 import { applyAgendaEffortView } from '../src/agenda.js';
 import { runFunctionCommand } from '../src/agenda-lisp.js';
 import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
-import { commandBufferText } from '../src/agenda-buffer.js';
-import { agendaSkipper } from '../src/agenda-skip.js';
 import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
-import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getPropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
-import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs, aggregateSearchDocs, commandFilesDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded, loadCommandFiles } from './agenda-files.js';
+import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
 import { buildHeadingRow, buildTodoEffortChip, prefixFailure, prefixFailureNote } from './agenda-view.js';
+import { openCommandView } from './command-view.js';
+import { queryOptions } from './query-options.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { S } from './app-state.js';
 import { openContentSheet, openFormSheet } from './bottom-sheet.js';
-import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { createNewUnsavedDocument } from './documents-io.js';
 import { outlineEl } from './dom.js';
 import { setStatus } from './editing.js';
@@ -61,28 +58,6 @@ export function openQueryView(kind, options = {}) {
   const view = kind === 'tags' ? 'match' : 'searchview';
   if (S.currentView === view) render();
   else switchToView(view);
-}
-
-/** What the queries need of the settings and the open files. */
-function queryOptions() {
-  const vars = S.state.localVariables;
-  const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const truthy = (/** @type {string | undefined} */ v) => !!v && v.trim() !== 'nil' && v.trim() !== '';
-  return {
-    skipArchived: getAgendaSkipArchivedTrees(vars),
-    skipCommented: getAgendaSkipCommentTrees(vars),
-    doneKeywords: sequence.doneKeywords,
-    todoKeywords: sequence.todoKeywords,
-    tagInheritance: getUseTagInheritance(vars),
-    propertyInheritance: getPropertyInheritance(vars),
-    sortingStrategy: vars['org-agenda-sorting-strategy'] || null,
-    localVariables: vars,
-    skipEntry: agendaSkipper(vars, aggregateAgendaDocs(), { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }),
-    documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
-    alwaysBoolean: truthy(vars['org-agenda-search-view-always-boolean']),
-    forceFullWords: truthy(vars['org-agenda-search-view-force-full-words']),
-    maxLevel: Math.max(0, parseInt(vars['org-agenda-search-view-max-outline-level'] || '0', 10) || 0),
-  };
 }
 
 export function renderQueryView() {
@@ -287,31 +262,21 @@ export function openAgendaCommands() {
 /** @param {import('../src/agenda-commands.js').CustomCommand} c */
 export function runCommand(c) {
   if (c.type === 'function') return void runFunctionCommandView(c);
-  if (opensAsBuffer(c)) return void runSectionsCommandView(c);
+  if (opensAsCommandView(c)) return void openCommandView(c);
   if (c.type === 'agenda') return switchToView('agenda');
   if (c.type === 'alltodo') return openTodoList(null);
   if (c.type === 'todo') return openTodoList(c.query);
   openQueryView(c.type === 'search' ? 'search' : 'tags', { query: c.query, todoOnly: c.type === 'tags-todo', sortingStrategy: c.sortingStrategy, title: c.description });
 }
 
-/** The settings that only the *Org Agenda* text has room for: a heading of the command's own, files of its own, filter presets. */
-const BUFFER_SETTINGS = /^(org-agenda-overriding-header|org-agenda-files|org-agenda-(tag|category|regexp|effort)-filter-preset)$/;
+/** The settings that only a screen of the command's own has room for: a heading of its own, files of its own, filter presets. */
+const COMMAND_SETTINGS = /^(org-agenda-overriding-header|org-agenda-files|org-agenda-(tag|category|regexp|effort)-filter-preset)$/;
 
-/** Whether a command opens as the *Org Agenda* text, as Emacs shows it: a stuck or composite command, an `agenda` command with settings, or any command with settings only that text can show. @param {import('../src/agenda-commands.js').CustomCommand} c */
-function opensAsBuffer(c) {
+/** Whether a command opens as a screen of its own, with its blocks one under the other: a stuck or composite command, an `agenda` command with settings, or any command with settings the Match, Search and TODO screens have no room for. @param {import('../src/agenda-commands.js').CustomCommand} c */
+function opensAsCommandView(c) {
   if (c.type === 'stuck' || c.type === 'block') return true;
   if (c.type === 'agenda') return Object.keys(c.settings || {}).length > 0;
-  return Object.keys(c.settings || {}).some((name) => BUFFER_SETTINGS.test(name));
-}
-
-/** A command opened as the *Org Agenda* text: each block under its own heading, as Emacs puts it in the buffer. @param {import('../src/agenda-commands.js').CustomCommand} c */
-async function runSectionsCommandView(c) {
-  const named = [c, ...(c.blocks || [])].map((x) => (x.settings || {})['org-agenda-files']).filter((v) => v !== undefined);
-  const problems = await loadCommandFiles(named);
-  if (problems.length) setStatus(problems.join(' '));
-  const text = commandBufferText(c, { docs: aggregateAgendaDocs(), searchDocs: aggregateSearchDocs(), options: { ...queryOptions(), now: new Date() }, filesDocs: commandFilesDocs });
-  await createNewUnsavedDocument(text, c.description || c.key, '*Org Agenda*');
-  switchToView('text');
+  return Object.keys(c.settings || {}).some((name) => COMMAND_SETTINGS.test(name));
 }
 
 /** A command that is a Lisp function: it is called with the match, and what it writes is shown in an *Org Agenda* buffer. @param {import('../src/agenda-commands.js').CustomCommand} c */

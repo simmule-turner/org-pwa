@@ -88,7 +88,7 @@ All three can be written by a user. Sunrise/sunset works with Phase 1 as designe
 ** API additions
 
 - =org.location.get()= asks permission on first use, per script. A Web Worker has no geolocation, so the page brokers it and passes back ={lat, lon, accuracy, time}=. On Android the Capacitor geolocation plugin is used.
-- =org.vars.get(name)= is a read-only view of the effective variables (Local Variables, then Quick Settings, then defaults), so a script reads =calendar-latitude= exactly as the built-in diary sexps do. Properties come from the =org.document= snapshot.
+- =org.vars.get(name)= is a read-only view of the effective variables (Local Variables, then the Settings screen, then defaults), so a script reads =calendar-latitude= exactly as the built-in diary sexps do. Properties come from the =org.document= snapshot.
 - =org.cache.get(key, maxAgeMs)= / =org.cache.set(key, value)= is per-script storage with an age limit, so weather refetches only when stale and shows the last result offline.
 - =org.agenda.source(fn)= (Phase 2) is given a date range and returns =[{date, time, title, tag, link}]=, which merge into the agenda like any file's entries.
 - =org.ui.line(text)= and =org.ui.table(rows)= (Phase 2) are declarative output for a modeline or agenda header slot. Scripts never touch the DOM.
@@ -126,7 +126,7 @@ return [["Sunrise", time(s.rise)], ["Sunset", time(s.set)]];
 ,#+END_SRC
 #+end_src
 
-For the phone's position, a later release adds =org.location.get()=; until then the two variables come from Quick Settings (which can fill them from the device's location).
+For the phone's position, a later release adds =org.location.get()=; until then the two variables come from the Settings screen (Agenda, diary and weather → Diary, which can fill them from the device's location).
 
 ** Example: weather (uses =org.fetch= and =org.location=, shipped in v475)
 

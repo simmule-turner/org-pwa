@@ -4,6 +4,16 @@ import { SIZE_KINDS, SizeLimitError, formatSize, getSizeLimits } from '../src/si
 
 /** @typedef {import('../src/size-limits.js').SizeKind} SizeKind */
 
+/** Marks an error as "the server could not be reached" (no connection, or no answer in time) and returns it. @template {Error} E @param {E} error */
+export function markUnreachable(error) {
+  return Object.assign(error, { unreachable: true });
+}
+
+/** Whether an error says the server could not be reached. @param {unknown} error */
+export function isUnreachable(error) {
+  return error instanceof Error && 'unreachable' in error && error.unreachable === true;
+}
+
 /**
  * fetch, giving up when no answer has started within `seconds` (0 or less: no timeout). The request is not cut off once the
  * answer is coming, so a long download is not killed halfway; readLimited stops a download that stalls.
@@ -12,7 +22,13 @@ import { SIZE_KINDS, SizeLimitError, formatSize, getSizeLimits } from '../src/si
  * @param {number} [seconds] defaults to the download timeout setting
  */
 export async function fetchWithTimeout(url, options = {}, seconds = getSizeLimits().fetchTimeoutSeconds) {
-  if (!(seconds > 0)) return fetch(url, options);
+  if (!(seconds > 0)) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      throw error instanceof TypeError ? markUnreachable(error) : error; // fetch rejects with a TypeError when there is no connection
+    }
+  }
   const controller = new AbortController();
   const outer = options.signal;
   if (outer) {
@@ -23,8 +39,8 @@ export async function fetchWithTimeout(url, options = {}, seconds = getSizeLimit
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (error) {
-    if (controller.signal.aborted && !(outer && outer.aborted)) throw new Error(`No answer from the server in ${seconds} seconds. Set org-xx-fetch-timeout in Global Variables to change the timeout.`);
-    throw error;
+    if (controller.signal.aborted && !(outer && outer.aborted)) throw markUnreachable(new Error(`No answer from the server in ${seconds} seconds. Set org-xx-fetch-timeout in Global Variables to change the timeout.`));
+    throw error instanceof TypeError ? markUnreachable(error) : error;
   } finally {
     clearTimeout(timer);
   }

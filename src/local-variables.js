@@ -30,6 +30,7 @@ import { readPriorityRange, prioritiesKeyword } from './priorities.js';
 import { sizeLimitsOf } from './size-limits.js';
 import { extensionsOn } from './extensions.js';
 import { tagsColumnOf } from './tags-column.js';
+import { recentMaxOf } from './recent-files.js';
 import { parseExtraMenu } from './extra-menu.js';
 import { parseMenuAliases } from './menu-alias.js';
 import { parseDurationUnits } from './org-duration.js';
@@ -535,20 +536,15 @@ export function getExtraMenu(vars) {
  *  docs for the full "menu:Label;alias" syntax and semantics. Just
  *  the raw string here, same as getExtraMenu; parsing lives in that
  *  module's own parseMenuAliases. */
-/** display-time-mode: whether the modeline shows the current date/time
- *  -- real Emacs's own actual minor-mode toggle, including its own
- *  1/0 convention (not this app's usual t/nil) -- confirmed directly
- *  against the Emacs manual: `(display-time-mode 1)` enables,
- *  `(display-time-mode 0)` disables. Enabled by default (real Emacs's
- *  own default is actually disabled, but a modeline clock is
- *  something most people expect to just be there, so this app starts
- *  it on) -- any value other than exactly "0" counts as enabled,
- * @param {LocalVars} vars
- *  including simply never setting it at all. */
+/** display-time-mode: whether the modeline shows the current date/time -- Emacs's own minor-mode toggle, with its own 1/0
+ *  convention (not this app's usual t/nil): `(display-time-mode 1)` enables, `(display-time-mode 0)` disables. Off unless set, as in
+ *  Emacs; `1` or `t` turns it on, `0` or `nil` off.
+ * @param {LocalVars} vars */
 export function getDisplayTimeMode(vars) {
   const raw = (vars || {})['display-time-mode'];
-  if (raw === undefined || raw === null) return true;
-  return String(raw).trim() !== '0';
+  if (raw === undefined || raw === null) return false;
+  const text = String(raw).trim();
+  return text !== '' && text !== '0' && text !== 'nil';
 }
 
 /** The text of a Lisp string value (`"text"`), or null when the variable is unset or does not hold a string.
@@ -1025,7 +1021,7 @@ export function variableProblems(vars) {
     getAgendaStartOnWeekday, getDeadlineWarningDays, getScheduledDelayDays, getHabitOptions, getAsciiTextWidth, getCalendarLatitude, getCalendarLongitude,
     getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getPriorityRange, sizeLimitsOf,
     (/** @type {LocalVars} */ v) => v['org-duration-units'] && parseDurationUnits(v['org-duration-units']),
-    extensionsOn, (/** @type {LocalVars} */ v) => tagsColumnOf(v), getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
+    extensionsOn, (/** @type {LocalVars} */ v) => tagsColumnOf(v), recentMaxOf, getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
   ];
   for (const read of readers) {
     try {

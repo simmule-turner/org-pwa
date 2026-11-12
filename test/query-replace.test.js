@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { emacsRegexToJs } from '../src/emacs-regex.js';
+import { emacsRegexToJs } from '../src/elisp-regex.js';
 import { createQueryReplace, createTextQueryReplace, collectReplaceTargets, countBlockOnlyMatches } from '../src/query-replace.js';
 
 function doc(lines) {

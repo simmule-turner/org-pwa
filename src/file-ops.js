@@ -6,7 +6,7 @@
 /** @typedef {import('./file-screen-model.js').BrowseEntry} BrowseEntry */
 /** @typedef {BrowseEntry & { size?: number, modified?: number }} FileEntry */
 /** @typedef {'name' | 'date' | 'size'} SortKey */
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 
 /** The path without a leading slash, which is how every place names a file. @param {string} path */
 export const cleanPath = (path) => path.replace(/^\/+/, '');

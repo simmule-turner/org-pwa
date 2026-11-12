@@ -57,7 +57,7 @@ import { propertyInherits, tagInherits, effectiveTagsOf } from './tag-inheritanc
  * all driving this particular result).
  */
 
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { headingPreambleLines } from './org-parser.js';
 import { makeTagsMatcher, parseTagGroups } from './tags-match.js';
 

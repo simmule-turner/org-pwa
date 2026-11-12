@@ -1,0 +1,898 @@
+{
+ "lang": "python",
+ "mode": "python-mode",
+ "runs": [
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " os, sys\n",
+   null
+  ],
+  [
+   "from",
+   "keyword"
+  ],
+  [
+   " collections ",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " defaultdict ",
+   null
+  ],
+  [
+   "as",
+   "keyword"
+  ],
+  [
+   " dd\n",
+   null
+  ],
+  [
+   "from",
+   "keyword"
+  ],
+  [
+   " typing ",
+   null
+  ],
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " Optional, List\n\n",
+   null
+  ],
+  [
+   "CONST_LIMIT",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 0x1F ",
+   null
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " 1_000\n\n",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Account",
+   "type"
+  ],
+  [
+   "(Base, metaclass",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "Meta):\n    ",
+   null
+  ],
+  [
+   "\"\"\"Holds a balance.\"\"\"",
+   "doc"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "rate",
+   "variable-name"
+  ],
+  [
+   ": ",
+   null
+  ],
+  [
+   "float",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 0.05\n\n    ",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "__init__",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ", owner: ",
+   null
+  ],
+  [
+   "str",
+   "builtin"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "*",
+   "operator"
+  ],
+  [
+   "args, ",
+   null
+  ],
+  [
+   "**",
+   "operator"
+  ],
+  [
+   "kwargs) ",
+   null
+  ],
+  [
+   "->",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "None",
+   "constant"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "super",
+   "builtin"
+  ],
+  [
+   "().__init__()\n        ",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "owner",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " owner\n        ",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ".",
+   null
+  ],
+  [
+   "_balance",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 0\n\n    @",
+   null
+  ],
+  [
+   "property",
+   "builtin"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "balance",
+   "function-name"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "->",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "builtin"
+  ],
+  [
+   ":\n        ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "self",
+   "keyword"
+  ],
+  [
+   "._balance\n\n    @",
+   null
+  ],
+  [
+   "staticmethod",
+   "builtin"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "async def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "fetch",
+   "function-name"
+  ],
+  [
+   "(url, timeout",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "3.5):\n        ",
+   null
+  ],
+  [
+   "async with",
+   "keyword"
+  ],
+  [
+   " session.get(url) ",
+   null
+  ],
+  [
+   "as",
+   "keyword"
+  ],
+  [
+   " r:\n            ",
+   null
+  ],
+  [
+   "data",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "await",
+   "keyword"
+  ],
+  [
+   " r.json()\n        ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " [x ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " x ",
+   null
+  ],
+  [
+   "in",
+   "keyword"
+  ],
+  [
+   " data ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " x ",
+   null
+  ],
+  [
+   "is",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "not",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "None",
+   "constant"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "and",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "not",
+   "keyword"
+  ],
+  [
+   " x.hidden]\n\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "main",
+   "function-name"
+  ],
+  [
+   "(argv: List[",
+   null
+  ],
+  [
+   "str",
+   "builtin"
+  ],
+  [
+   "]) ",
+   null
+  ],
+  [
+   "->",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "builtin"
+  ],
+  [
+   ":\n    ",
+   null
+  ],
+  [
+   "total",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 0\n    ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " i, name ",
+   null
+  ],
+  [
+   "in",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "enumerate",
+   "builtin"
+  ],
+  [
+   "(argv):\n        ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " name.startswith(",
+   null
+  ],
+  [
+   "\"--\"",
+   "string"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "or",
+   "keyword"
+  ],
+  [
+   " name ",
+   null
+  ],
+  [
+   "in",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "'-h'",
+   "string"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "\"-v\"",
+   "string"
+  ],
+  [
+   "):\n            ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   "\n        ",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   ":\n            ",
+   null
+  ],
+  [
+   "total",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "+=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "int",
+   "builtin"
+  ],
+  [
+   "(name) ",
+   null
+  ],
+  [
+   "**",
+   "operator"
+  ],
+  [
+   " 2 ",
+   null
+  ],
+  [
+   "//",
+   "operator"
+  ],
+  [
+   " 3 ",
+   null
+  ],
+  [
+   "%",
+   "operator"
+  ],
+  [
+   " 4\n        ",
+   null
+  ],
+  [
+   "except",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "ValueError",
+   "type"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "TypeError",
+   "type"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "as",
+   "keyword"
+  ],
+  [
+   " exc:\n            ",
+   null
+  ],
+  [
+   "print",
+   "builtin"
+  ],
+  [
+   "(f",
+   null
+  ],
+  [
+   "\"bad ",
+   "string"
+  ],
+  [
+   "{name!r}",
+   null
+  ],
+  [
+   ": ",
+   "string"
+  ],
+  [
+   "{exc}",
+   null
+  ],
+  [
+   "\"",
+   "string"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "file",
+   "builtin"
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "sys.stderr)\n            ",
+   null
+  ],
+  [
+   "raise",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "SystemExit",
+   "type"
+  ],
+  [
+   "(1) ",
+   null
+  ],
+  [
+   "from",
+   "keyword"
+  ],
+  [
+   " exc\n        ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   ":\n            ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "lam",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "2: a ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " a ",
+   null
+  ],
+  [
+   ">",
+   "operator"
+  ],
+  [
+   " b ",
+   null
+  ],
+  [
+   "else",
+   "keyword"
+  ],
+  [
+   " b\n    ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " total  ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "done\n",
+   "comment"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "__name__",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "==",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"__main__\"",
+   "string"
+  ],
+  [
+   ":\n    sys.",
+   null
+  ],
+  [
+   "exit",
+   "constant"
+  ],
+  [
+   "(main(sys.argv[1:]))\n",
+   null
+  ]
+ ]
+}

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import { parseOrg } from '../src/org-parser.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { parseCustomCommands } from '../src/agenda-commands.js';
-import { commandBufferText } from '../src/agenda-buffer.js';
+import { blockPlan, commandBufferText } from '../src/agenda-buffer.js';
 import { parseAgendaFilesVar } from '../src/local-variables.js';
 import { CASES, FILES } from '../tools/command-text-cases.mjs';
 
@@ -29,7 +29,7 @@ for (const [id, commands, vars] of CASES) {
     try {
       const command = parseCustomCommands(forApp(commands)).find((c) => c.key === 'x');
       assert.ok(command, 'the command reads');
-      const text = commandBufferText(command, {
+      const ctx = {
         docs: mini,
         searchDocs: mini,
         options: { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords, now: new Date(2026, 9, 11, 16, 30), localVariables: vars, documentOrder: ['mini.org', 'other.org'] },
@@ -37,10 +37,14 @@ for (const [id, commands, vars] of CASES) {
           const keys = parseAgendaFilesVar(names).map((k) => k.replace(/^local:/, ''));
           return docs.filter((d) => keys.includes(d.documentId)).sort((a, b) => keys.indexOf(a.documentId) - keys.indexOf(b.documentId));
         },
-      });
+      };
+      const text = commandBufferText(command, ctx);
       const lines = text.split('\n').map((l) => l.trimEnd());
       while (lines.length && lines[lines.length - 1] === '') lines.pop();
       assert.deepEqual(lines, want.lines);
+      // the hint under the heading of a single command, which the live screen shows
+      const plan = command.type === 'block' ? null : blockPlan(command, {}, true, ctx);
+      assert.equal(plan && !plan.agenda ? plan.hint : '', want.hint ?? '');
     } finally {
       if (savedTz === undefined) delete process.env.TZ;
       else process.env.TZ = savedTz;

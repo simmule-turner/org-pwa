@@ -654,9 +654,9 @@ test('a subtree export is titled after its heading and numbers its children from
   assert.ok(html.includes('intro') && !html.includes('Whole Doc') && !html.includes('Other'));
 });
 
-test('postamble shows the date, author and email when present; the page declares its language and meta', () => {
+test('postamble shows the date, author and email when present, in the document\u2019s language; the page declares its language and meta', () => {
   const out = body('#+TITLE: T\n#+AUTHOR: Me\n#+EMAIL: me@x.org\n#+DATE: 2026-10-11\n#+DESCRIPTION: D\n#+LANGUAGE: de\n#+OPTIONS: email:t\n* A');
-  assert.match(out, /<div id="postamble" class="status">\s*<p class="date">Date: 2026-10-11<\/p>\s*<p class="author">Author: Me<\/p>\s*<p class="email">Email: <a href="mailto:me@x.org">me@x.org<\/a><\/p>/);
+  assert.match(out, /<div id="postamble" class="status">\s*<p class="date">Datum: 2026-10-11<\/p>\s*<p class="author">Autor: Me<\/p>\s*<p class="email">Email: <a href="mailto:me@x.org">me@x.org<\/a><\/p>/);
   assert.match(out, /<html xmlns="http:\/\/www.w3.org\/1999\/xhtml" lang="de" xml:lang="de">/);
   assert.match(out, /<meta name="description" content="D" \/>/);
   assert.ok(!body('#+AUTHOR: Me\n#+OPTIONS: author:nil\n* A').includes('Author: Me'));

@@ -67,7 +67,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda and todo",
@@ -92,7 +93,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda block week",
@@ -117,7 +119,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global span",
@@ -142,7 +145,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global span, block overrides",
@@ -159,7 +163,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda",
@@ -179,7 +184,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda span week",
@@ -199,7 +205,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda span 3",
@@ -215,7 +222,8 @@
     "  mini:        9:30...... Scheduled:  TODO [#A] C tomorrow timed :work:",
     "Tuesday    13 October 2026",
     "  mini:       Deadline:   NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda span fortnight",
@@ -244,7 +252,8 @@
     "Friday     16 October 2026",
     "Saturday   17 October 2026",
     "Sunday     18 October 2026"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda start day",
@@ -254,7 +263,8 @@
     "  mini:        9:30...... Scheduled:  TODO [#A] C tomorrow timed :work:",
     "Tuesday    13 October 2026",
     "  mini:       Deadline:   NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single agenda start day offset",
@@ -264,7 +274,8 @@
     "  mini:        9:30...... Scheduled:  TODO [#A] C tomorrow timed :work:",
     "Tuesday    13 October 2026",
     "  mini:       Deadline:   NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda warning days",
@@ -283,7 +294,8 @@
     "  mini:       Scheduled:  TODO A today sched :work:",
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda warning days 0",
@@ -302,7 +314,8 @@
     "  mini:       Scheduled:  TODO A today sched :work:",
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda skip function",
@@ -321,7 +334,8 @@
     "  mini:       Scheduled:  TODO A today sched :work:",
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda sorting",
@@ -341,7 +355,8 @@
     "  mini:       Sched. 3x:  TODO E overdue sched",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:",
     "  mini:       Scheduled:  TODO A today sched :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda prefix",
@@ -361,7 +376,8 @@
     "notes   |TODO M under notes :work:",
     "mini    |TODO F overdue deadline :home:",
     "mini    |NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda prefix alist",
@@ -381,7 +397,8 @@
     " notes  Scheduled:  TODO M under notes :work:",
     " mini    2 d. ago:  TODO F overdue deadline :home:",
     " mini   In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "agenda show all dates nil",
@@ -397,7 +414,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "header on agenda",
@@ -417,7 +435,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "header empty on agenda",
@@ -436,7 +455,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "block headers",
@@ -461,7 +481,8 @@
     "Stuck",
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "block header empty",
@@ -480,7 +501,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global header",
@@ -494,7 +516,8 @@
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       TODO F overdue deadline :home:",
     "  mini:       WAIT K child two :work::home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single stuck",
@@ -502,7 +525,8 @@
     "List of stuck projects:",
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "stuck settings",
@@ -511,7 +535,8 @@
     "  mini:       TODO J child one :work::",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "stuck header",
@@ -519,7 +544,8 @@
     "None moving",
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "files todo",
@@ -533,7 +559,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "files agenda",
@@ -560,7 +587,8 @@
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "files tags and stuck",
@@ -570,7 +598,8 @@
     "",
     "===============================================================================",
     "List of stuck projects:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "files global",
@@ -583,7 +612,8 @@
     "===============================================================================",
     "Headlines with TAGS match: +work",
     "  other:      TODO Z other file :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "files both",
@@ -614,7 +644,8 @@
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:",
     "  other:      TODO Z other file :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "tag preset in a block is not used",
@@ -646,7 +677,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global tag preset",
@@ -682,7 +714,8 @@
     "List of stuck projects:",
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global tag preset exclude",
@@ -700,14 +733,16 @@
     "  mini:       TODO J child one :work::",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global tag preset two",
    "lines": [
     "Global list of TODO items of type: ALL",
     "  mini:       WAIT K child two :work::home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global tag preset inherited",
@@ -717,7 +752,8 @@
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global category preset",
@@ -735,14 +771,16 @@
     "Saturday   10 October 2026",
     "Sunday     11 October 2026",
     "  notes:      Scheduled:  TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global category preset exclude",
    "lines": [
     "Global list of TODO items of type: ALL",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global regexp preset",
@@ -760,7 +798,8 @@
     "Friday      9 October 2026",
     "Saturday   10 October 2026",
     "Sunday     11 October 2026"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global regexp preset exclude",
@@ -773,7 +812,8 @@
     "  mini:       TODO E overdue sched",
     "  mini:       TODO F overdue deadline :home:",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global effort preset",
@@ -791,7 +831,8 @@
     "Saturday   10 October 2026",
     "Sunday     11 October 2026",
     "  mini:       Scheduled:  TODO A today sched :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global effort preset greater",
@@ -805,14 +846,16 @@
     "  mini:       TODO J child one :work::",
     "  mini:       WAIT K child two :work::home:",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single tags preset",
    "lines": [
     "Headlines with TAGS match: TODO=\"TODO\"",
     "  mini:       TODO F overdue deadline :home:"
-   ]
+   ],
+   "hint": "Press `C-u r' to search again"
   },
   {
    "id": "single todo preset",
@@ -824,7 +867,8 @@
     "  mini:       TODO E overdue sched",
     "  mini:       TODO J child one :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": "Press `N r' (e.g. `0 r') to search again: (0)[ALL] (1)DONE (2)WAIT (3)NEXT (4)TODO"
   },
   {
    "id": "single agenda preset",
@@ -840,21 +884,24 @@
     "Sunday     11 October 2026",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single stuck preset",
    "lines": [
     "List of stuck projects:",
     "  mini:       WAIT K child two :work::home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "single category preset",
    "lines": [
     "Global list of TODO items of type: ALL",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": "Press `N r' (e.g. `0 r') to search again: (0)[ALL] (1)DONE (2)WAIT (3)NEXT (4)TODO"
   },
   {
    "id": "preset variable",
@@ -876,7 +923,8 @@
     "Sunday     11 October 2026",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "block sorting",
@@ -893,7 +941,8 @@
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "todo prefix",
@@ -913,7 +962,8 @@
     "  mini:       WAIT K child two :work::home:",
     "  mini:       L plain child :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "tags prefix alist",
@@ -933,7 +983,8 @@
     "G mini  WAIT K child two :work::home:",
     "G mini  L plain child :work::",
     "G notes TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "empty tags",
@@ -944,7 +995,8 @@
     "Global list of TODO items of type: NEXT",
     "  mini:       NEXT B deadline soon :home:",
     "  mini:       NEXT D next no date :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "todo several keywords",
@@ -962,7 +1014,8 @@
     "  mini:       TODO F overdue deadline :home:",
     "  mini:       TODO J child one :work::",
     "  notes:      TODO M under notes :work:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global variables span",
@@ -982,7 +1035,8 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
   },
   {
    "id": "global variable overridden",
@@ -994,7 +1048,137 @@
     "  notes:      Scheduled:  TODO M under notes :work:",
     "  mini:        2 d. ago:  TODO F overdue deadline :home:",
     "  mini:       In   2 d.:  NEXT B deadline soon :home:"
-   ]
+   ],
+   "hint": ""
+  },
+  {
+   "id": "hint tags",
+   "lines": [
+    "Headlines with TAGS match: +work",
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       DONE H finished :work:",
+    "  mini:       Project :work:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  mini:       L plain child :work::",
+    "  notes:      TODO M under notes :work:"
+   ],
+   "hint": "Press `C-u r' to search again"
+  },
+  {
+   "id": "hint tags-todo",
+   "lines": [
+    "Headlines with TAGS match: +work",
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  notes:      TODO M under notes :work:"
+   ],
+   "hint": "Press `C-u r' to search again"
+  },
+  {
+   "id": "hint search",
+   "lines": [
+    "Search words: deadline",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       TODO F overdue deadline :home:"
+   ],
+   "hint": "Press `[', `]' to add/sub word, `{', `}' to add/sub regexp, `C-u r' for a fresh search"
+  },
+  {
+   "id": "hint todo",
+   "lines": [
+    "Global list of TODO items of type: NEXT",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       NEXT D next no date :work:"
+   ],
+   "hint": "Press `N r' (e.g. `0 r') to search again: (0)[ALL] (1)DONE (2)WAIT (3)NEXT (4)TODO"
+  },
+  {
+   "id": "hint alltodo",
+   "lines": [
+    "Global list of TODO items of type: ALL",
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       TODO E overdue sched",
+    "  mini:       TODO F overdue deadline :home:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  notes:      TODO M under notes :work:"
+   ],
+   "hint": "Press `N r' (e.g. `0 r') to search again: (0)[ALL] (1)DONE (2)WAIT (3)NEXT (4)TODO"
+  },
+  {
+   "id": "hint stuck",
+   "lines": [
+    "List of stuck projects:",
+    "  mini:       WAIT K child two :work::home:",
+    "  mini:       L plain child :work::"
+   ],
+   "hint": ""
+  },
+  {
+   "id": "hint with header",
+   "lines": [
+    "Mine",
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       DONE H finished :work:",
+    "  mini:       Project :work:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  mini:       L plain child :work::",
+    "  notes:      TODO M under notes :work:"
+   ],
+   "hint": ""
+  },
+  {
+   "id": "hint with empty header",
+   "lines": [
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       TODO E overdue sched",
+    "  mini:       TODO F overdue deadline :home:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  notes:      TODO M under notes :work:"
+   ],
+   "hint": ""
+  },
+  {
+   "id": "hint in a block",
+   "lines": [
+    "Headlines with TAGS match: +work",
+    "  mini:       TODO [#A] C tomorrow timed :work:",
+    "  mini:       TODO A today sched :work:",
+    "  mini:       NEXT D next no date :work:",
+    "  mini:       DONE H finished :work:",
+    "  mini:       Project :work:",
+    "  mini:       TODO J child one :work::",
+    "  mini:       WAIT K child two :work::home:",
+    "  mini:       L plain child :work::",
+    "  notes:      TODO M under notes :work:",
+    "",
+    "===============================================================================",
+    "Search words: deadline",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       TODO F overdue deadline :home:",
+    "",
+    "===============================================================================",
+    "Global list of TODO items of type: NEXT",
+    "  mini:       NEXT B deadline soon :home:",
+    "  mini:       NEXT D next no date :work:"
+   ],
+   "hint": ""
   }
  ]
 }

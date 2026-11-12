@@ -1,12 +1,12 @@
 // @ts-check
 // Find on the Agenda, TODO, Match and Keyword search screens: Emacs's incremental search in an agenda buffer. Every match in the rows on
 // screen is highlighted, one is current, and C-s / C-r (or the arrows) move between them; nothing is hidden and nothing leaves the screen.
-import { emacsRegexToJs, EmacsRegexError } from '../src/emacs-regex.js';
+import { emacsRegexToJs, EmacsRegexError } from '../src/elisp-regex.js';
 import { S } from './app-state.js';
 import { focusRowOfMark } from './agenda-row-focus.js';
 import { outlineEl } from './dom.js';
 
-const ROW_VIEWS = ['agenda', 'tasklist', 'match', 'searchview'];
+const ROW_VIEWS = ['agenda', 'tasklist', 'match', 'searchview', 'command'];
 // controls and headings of the screen itself are not rows
 const SKIP = 'button, input, textarea, select, label, h2, [data-view-filter], [data-query-count], [data-find-skip]';
 const HIT = 'find-hit';

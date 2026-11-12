@@ -5,7 +5,7 @@
 // (^&?<form>) and searched through the whole file. The same regexps are used (through emacsRegexToJs) so that the small
 // rules in them -- "the date must not be followed by another digit", "a year may be written with two digits" -- come out
 // as they do in Emacs without being rewritten here.
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { holidaysOn } from './holidays.js';
 import { LISTERS, nonGregorianDate } from './diary-nongregorian.js';
 import { absoluteFromGregorian as absGreg, dayOfWeek } from './calendar-conv.js';
@@ -120,12 +120,12 @@ function formRegexp(form, date, opts) {
 
 /** Emacs reads the diary with `*` and `:` as word characters (diary-syntax-table), which `\W` and `\<` in the date forms follow. */
 const WORD = '\\p{L}\\p{N}*:';
+/** What the diary's syntax table adds to the standard word characters. */
+const DIARY_WORD_EXTRA = '*:';
 
-/** The regexp (JS) for a date form in the Emacs syntax: `\W` and `\<` follow the diary's idea of a word.
- * @param {string} emacsSource */
+/** The regexp (JS) for a date form in the Emacs syntax, with the diary's idea of a word (`*` and `:` are word characters). @param {string} emacsSource */
 function compileForm(emacsSource) {
-  const base = emacsRegexToJs(emacsSource, 'gim').source;
-  return new RegExp(base.replaceAll('\\b(?=\\w)', `(?<![${WORD}])(?=[${WORD}])`).replaceAll('\\W', `[^${WORD}]`), 'gimu');
+  return emacsRegexToJs(emacsSource, 'gi', DIARY_WORD_EXTRA);
 }
 
 /** The start of the word that ends at or just before `pos` (Emacs's `(re-search-backward "\\<" nil t)`: a match at `pos` itself

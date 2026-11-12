@@ -43,8 +43,10 @@
  "org-tags-column": "-77",
  "org-use-sub-superscripts": "t",
  "org-use-tag-inheritance": "t",
+ "recentf-max-saved-items": "20",
  "diary-date-forms": "((month \"/\" day \"[^/0-9]\") (month \"/\" day \"/\" year \"[^0-9]\") (monthname \" *\" day \"[^,0-9]\") (monthname \" *\" day \", *\" year \"[^0-9]\") (dayname \"\\\\W\"))",
  "org-agenda-clock-consistency-checks": "(:max-duration \"10:00\" :min-duration 0 :max-gap \"0:05\" :gap-ok-around (\"4:00\") :default-face ((:background \"DarkRed\") (:foreground \"white\")) :overlap-face nil :gap-face nil :no-end-time-face nil :long-face nil :short-face nil)",
  "org-agenda-prefix-format": "((agenda . \" %i %-12:c%?-12t% s\") (todo . \" %i %-12:c\") (tags . \" %i %-12:c\") (search . \" %i %-12:c\"))",
- "org-agenda-sorting-strategy": "((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep) (tags priority-down category-keep) (search category-keep))"
+ "org-agenda-sorting-strategy": "((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep) (tags priority-down category-keep) (search category-keep))",
+ "org-html-postamble-format": "((\"en\" \"<p class=\\\"author\\\">Author: %a (%e)</p>"
 }

@@ -4,7 +4,7 @@
 import { describeTaskDate, sortTasksByDate, taskDateInfo, viewFilterActive } from '../src/agenda-filter.js';
 import { readTodoListSettings } from '../src/agenda-todo-list.js';
 import { agendaSkipper } from '../src/agenda-skip.js';
-import { readLogSettings } from '../src/agenda-log.js';
+import { clockIssues, logModeName, readClockChecks, readLogSettings } from '../src/agenda-log.js';
 import { readDaySettings } from '../src/agenda-emacs-days.js';
 import { applyAgendaEffortView, buildAgendaItems, buildTaskList, endOfDay, itemEffortText, rangeView, stripTitleStamps } from '../src/agenda.js';
 import { parseSpan, readAgendaSpan, readAgendaStartDay, readStartOnWeekday, spanKey, spanName, spanRange, startingDayForSpan } from '../src/agenda-span.js';
@@ -297,11 +297,13 @@ export function prefixFailureNote(message) {
   return note;
 }
 
-export function renderAgendaView() {
+/** @param {HTMLElement} [host]  where the days go: the screen, or (a block of a custom command) one part of it */
+export function renderAgendaView(host = outlineEl) {
+  const embedded = host !== outlineEl;
   applyInitialSpan();
   seedAgendaDefaults();
   ensureAgendaFilesLoaded();
-  outlineEl.innerHTML = '';
+  if (!embedded) host.innerHTML = '';
   const container = document.createElement('div');
   container.style.padding = '8px 12px';
   // Extends the swipe-capture area (attachAgendaSwipeNav, below) across
@@ -312,7 +314,7 @@ export function renderAgendaView() {
   // layout) has a real, JS-computed pixel height; a CSS percentage here
   // doesn't work, since #outline itself (this container's own direct
   // parent) has no defined height in narrow layout at all.
-  container.style.minHeight = contentAreaEl.clientHeight + 'px';
+  if (!embedded) container.style.minHeight = contentAreaEl.clientHeight + 'px';
 
   const effectiveShowAllDates = S.agendaShowAllDatesOverride !== null ? S.agendaShowAllDatesOverride : getAgendaShowAllDates(S.state.localVariables);
 
@@ -448,23 +450,32 @@ export function renderAgendaView() {
   rangeLabel.textContent = formatAgendaRangeLabel(S.agendaViewType, start, end);
   rangeRow.appendChild(rangeLabel);
 
+  // org-agenda-log-mode: `l` toggles, `C-u l` shows every kind, `C-u C-u l` only the log items, `v c` checks the clocking
   const logToggle = document.createElement('label');
   logToggle.style.display = 'flex';
   logToggle.style.alignItems = 'center';
   logToggle.style.gap = '4px';
   logToggle.style.fontSize = '12px';
   logToggle.style.opacity = '0.8';
-  logToggle.style.cursor = 'pointer';
   logToggle.style.flexShrink = '0';
-  const logCheckbox = document.createElement('input');
-  logCheckbox.type = 'checkbox';
-  logCheckbox.checked = S.agendaLogMode;
-  logCheckbox.onchange = () => {
-    S.agendaLogMode = logCheckbox.checked;
+  logToggle.appendChild(document.createTextNode('Log'));
+  const logSelect = document.createElement('select');
+  logSelect.setAttribute('data-agenda-log-mode', '');
+  logSelect.style.fontSize = '12px';
+  const logChoices = /** @type {[string, string][]} */ ([['off', 'Off'], ['on', 'On'], ['all', 'LogAll'], ['only', 'Only'], ['clockcheck', 'ClkCk']]);
+  for (const [value, label] of logChoices) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    logSelect.appendChild(option);
+  }
+  logSelect.value = logModeName(S.state.localVariables, S.agendaLogMode); // until chosen here, org-agenda-start-with-log-mode
+  logSelect.onchange = () => {
+    const v = logSelect.value;
+    S.agendaLogMode = v === 'off' ? false : v === 'on' ? true : v === 'all' ? ['closed', 'clock', 'state'] : /** @type {'only' | 'clockcheck'} */ (v);
     render();
   };
-  logToggle.appendChild(logCheckbox);
-  logToggle.appendChild(document.createTextNode('Log'));
+  logToggle.appendChild(logSelect);
   rangeRow.appendChild(logToggle);
 
   container.appendChild(rangeRow);
@@ -517,9 +528,10 @@ export function renderAgendaView() {
   // occurrence that actually falls within what's being displayed.
   const todoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
   const agendaDocs = aggregateAgendaDocs();
+  const logSettings = readLogSettings(S.state.localVariables, S.agendaLogMode); // log mode: org-agenda-log-mode-items, add-notes
   const items = buildAgendaItems(agendaDocs, {
     contactsDocs: contactsDocsForAgenda(agendaDocs), // org-contacts-files, as in Emacs (null: scan the agenda's own documents)
-    logSettings: readLogSettings(S.state.localVariables, S.agendaLogMode ? true : null), // log mode: org-agenda-log-mode-items, add-notes
+    logSettings,
     skipEntry: agendaSkipper(S.state.localVariables, agendaDocs, { todoKeywords: todoSequence.todoKeywords, doneKeywords: todoSequence.doneKeywords }),
     // Real org's default is to skip both commented headings (title
     // starts with COMMENT) and archived ones (:ARCHIVE: tag) in agenda
@@ -564,7 +576,7 @@ export function renderAgendaView() {
   );
   if (failure) {
     container.appendChild(prefixFailureNote(failure));
-    outlineEl.appendChild(container);
+    host.appendChild(container);
     return;
   }
 
@@ -828,16 +840,42 @@ export function renderAgendaView() {
     }
   }
 
+  if (logSettings.mode === 'clockcheck') addClockIssues(entries);
   container.style.touchAction = 'pan-y';
   attachAgendaSwipeNav(container);
-  outlineEl.appendChild(container);
+  host.appendChild(container);
   // A long agenda draws only the rows near the screen (see windowing.js); a short one is built in full, as always.
   const threshold = getWindowingThreshold(/** @type {Record<string, string>} */ (S.state.localVariables || S.globalVariables || {}));
-  if (threshold > 0 && entries.length > threshold) {
+  if (!embedded && threshold > 0 && entries.length > threshold) {
     mountWindow(container, entries, { forced: () => entries.filter((entry) => agendaRowIsFocused(entry.key)).map((entry) => entry.key) });
   } else {
     destroyWindow();
     for (const entry of entries) container.appendChild(entry.build());
+  }
+}
+
+/**
+ * org-agenda-show-clocking-issues: a line above each Clocked row that has an issue (very long or short, overlapping, a gap, no end
+ * time), in Emacs's default face (white on dark red), checked against org-agenda-clock-consistency-checks.
+ * @param {import('./windowing.js').WindowItem[]} entries the rows in the order they are shown
+ */
+function addClockIssues(entries) {
+  const clocks = entries.map((e) => /** @type {import('../src/agenda.js').AgendaItem} */ (e.key)).map((k) => (k.logType === 'clock' ? { clockStart: k.clockStart ?? null, clockEnd: k.clockEnd ?? null } : { clockStart: null, clockEnd: null }));
+  const issues = clockIssues(clocks, readClockChecks(S.state.localVariables), new Date());
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const issue = issues[i];
+    if (!issue) continue;
+    entries.splice(i, 0, {
+      key: {},
+      kind: 'body',
+      build: () => {
+        const row = document.createElement('div');
+        row.setAttribute('data-clock-issue', '');
+        row.textContent = ` ${issue}`.padEnd(43);
+        row.style.cssText = 'white-space: pre; font-family: var(--mono, monospace); font-size: 12px; background: darkred; color: white; padding: 1px 4px';
+        return row;
+      },
+    });
   }
 }
 

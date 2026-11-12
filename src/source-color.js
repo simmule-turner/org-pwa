@@ -30,9 +30,10 @@ class Paint {
     for (let i = a; i < b; i++) this.faces[i] = face;
   }
 
-  /** @param {number} a @param {number} b @param {string} face */
+  /** Paints the range only when none of it has a face yet, as font-lock does for a rule that does not override (font-lock-apply-highlight). @param {number} a @param {number} b @param {string} face */
   fill(a, b, face) {
-    for (let i = a; i < b; i++) if (this.faces[i] === null) this.faces[i] = face;
+    for (let i = a; i < b; i++) if (this.faces[i] !== null) return;
+    for (let i = a; i < b; i++) this.faces[i] = face;
   }
 
   /** @param {string} code @returns {[string, Face][]} */
@@ -119,7 +120,23 @@ function quoted(code, i, multiline) {
 
 // ---- emacs-lisp -----------------------------------------------------------------------------------------
 
-/** @typedef {{ head: string | null, count: number, quoted: boolean }} Form */
+/**
+ * A list or vector being read: its head atom (the first element, when it is a symbol), where it opens, the end of each element
+ * so far (for the position rules of lisp--el-funcall-position-p), and the form around it.
+ * @typedef {{ head: string | null, headAt: number, count: number, quoted: boolean, open: number, openChar: string, parent: Form | null, ends: number[] }} Form
+ */
+
+/** The span of the group that matched in a match made with the `d` flag. @param {RegExpMatchArray} m @returns {[number, number]} */
+function groupSpan(m) {
+  const indices = /** @type {RegExpMatchArray & { indices: ([number, number] | undefined)[] }} */ (m).indices;
+  return /** @type {[number, number]} */ (indices.slice(1).find(Boolean));
+}
+
+/** The characters of `lisp-mode-symbol` in Emacs's Lisp syntax table: word and symbol constituents, and any character after a backslash. */
+const EL_SYMBOL = '(?:[^\\s()\\[\\]"\'`,;#\\\\\u2018\u2019]|\\\\[\\s\\S])+';
+/** The doc-string markup lisp-el-font-lock-keywords-2 colors: `\\[command]` and `\\`C-x a'` are constants, `\\<map>` and `\\{map}` variable names, and `name' or ‘name’ a constant. */
+const EL_DOC_CONSTANT = new RegExp(`\\\\\\\\(?:\\[(${EL_SYMBOL})\\]|\`(${EL_SYMBOL}(?: ${EL_SYMBOL})*)')|[\`\u2018](${EL_SYMBOL})['\u2019]`, 'dg');
+const EL_DOC_VARIABLE = new RegExp(`\\\\\\\\(?:<(${EL_SYMBOL})>|\\{(${EL_SYMBOL})\\})`, 'dg');
 
 /** @param {string} code @returns {[string, Face][]} */
 function elisp(code) {
@@ -151,16 +168,19 @@ function elisp(code) {
       const index = element();
       const docAt = top && top.head !== null && Object.hasOwn(EL_DOC_ELT, top.head) ? EL_DOC_ELT[top.head] : -1;
       paint.set(i, stop, index === docAt ? 'doc' : 'string');
+      if (top) top.ends.push(stop);
       pendingQuote = false;
       i = stop;
     } else if (c === '(' || c === '[') {
       const parent = stack[stack.length - 1];
       element();
-      stack.push({ head: null, count: 0, quoted: pendingQuote || (parent ? parent.quoted : false) });
+      stack.push({ head: null, headAt: -1, count: 0, quoted: pendingQuote || (parent ? parent.quoted : false), open: i, openChar: c, parent: parent ?? null, ends: [] });
       pendingQuote = false;
       i++;
     } else if (c === ')' || c === ']') {
       stack.pop();
+      const outer = stack[stack.length - 1];
+      if (outer) outer.ends.push(i + 1);
       i++;
     } else if (c === "'" || c === '`' || c === ',') {
       if (c === "'") pendingQuote = true;
@@ -175,6 +195,8 @@ function elisp(code) {
         while (j < n && /[\w-]/.test(code[j]) && !/[\s()]/.test(code[j])) j++;
       } else j += 1;
       element();
+      const outer = stack[stack.length - 1];
+      if (outer) outer.ends.push(j);
       pendingQuote = false;
       i = j;
     } else {
@@ -185,7 +207,13 @@ function elisp(code) {
       const index = element();
       const text = code.slice(i, j);
       atoms.push({ s: i, e: j, text, index, form, direct: pendingQuote });
-      if (form && index === 0) form.head = text;
+      if (form) {
+        form.ends.push(j);
+        if (index === 0) {
+          form.head = text;
+          form.headAt = i;
+        }
+      }
       pendingQuote = false;
       i = j;
     }
@@ -202,10 +230,27 @@ function elisp(code) {
     }
   }
   for (const a of atoms) if (headAfterParen(a) && /^(?:cl-assert|cl-check-type|error|signal|user-error|warn)$/.test(a.text)) paint.fill(a.s, a.e, 'warning');
+  /** lisp--el-funcall-position-p: whether the list `form` is evaluated, rather than the arguments of a defun, the bindings of a let or a handler of condition-case. @param {Form} form */
+  const evaluated = (form) => {
+    const parent = form.parent;
+    if (!parent) return true;
+    const outer = parent.parent;
+    if (outer && outer.openChar === '(' && parent.openChar === '(' && outer.headAt === outer.open + 1 && /^let\*?$/.test(outer.head ?? '')) {
+      return outer.ends[1] !== undefined && form.open >= outer.ends[1]; // inside the bindings of the let
+    }
+    if (parent.openChar !== '(' || parent.head === null || parent.headAt !== parent.open + 1) return true;
+    switch (parent.head) {
+      case 'declare': return false;
+      case 'defun': case 'defmacro': case 'cl-defun': case 'cl-defmethod': return parent.ends[2] !== undefined && form.open >= parent.ends[2]; // after the name and the arguments
+      case 'condition-case': return parent.parent !== null || (parent.ends[2] !== undefined && form.open < parent.ends[2]); // the handlers are not calls
+      default: return true;
+    }
+  };
   for (const a of atoms) { // a macro or special form in function position
     if (!headAfterParen(a) || !EL_KEYWORDS.has(a.text)) continue;
     const before = code[a.s - 2];
     if (before === "'" || (a.form && a.form.quoted)) continue; // quoted data, not a call
+    if (a.form && !evaluated(a.form)) continue;
     paint.fill(a.s, a.e, 'keyword');
   }
   for (const a of atoms) { // (require 'feature)
@@ -213,6 +258,14 @@ function elisp(code) {
     paint.fill(a.s, a.e, 'keyword');
     const arg = atoms.find((b) => b.form === a.form && b.index === 1);
     if (arg && /^[ \t']*$/.test(code.slice(a.e, arg.s))) paint.fill(arg.s, arg.e, 'constant');
+  }
+  for (const m of code.matchAll(EL_DOC_CONSTANT)) { // `name', \\[command]: wherever they stand, as in a doc string
+    const at = groupSpan(m);
+    paint.set(at[0], at[1], 'constant');
+  }
+  for (const m of code.matchAll(EL_DOC_VARIABLE)) { // \\<map>, \\{map}
+    const at = groupSpan(m);
+    paint.set(at[0], at[1], 'variable-name');
   }
   for (const a of atoms) {
     if (/^:[^\s:]/.test(a.text) && a.text.length > 1) paint.fill(a.s, a.e, 'builtin'); // :keyword
@@ -293,16 +346,20 @@ function python(code) {
   for (const l of lines) { startOf.push(off); off += l.length + 1; }
   /** @type {number[]} */
   const depthAt = new Array(lines.length).fill(0);
+  /** The bracket depth before each character (and after the last). @type {number[]} */
+  const depthBefore = new Array(n + 1).fill(0);
   {
     let depth = 0;
     let line = 0;
     for (let k = 0; k < n; k++) {
+      depthBefore[k] = depth;
       while (line + 1 < lines.length && startOf[line + 1] <= k) { line++; depthAt[line] = depth; }
       if (paint.faces[k] !== null && paint.faces[k] !== 'constant') continue;
       if (paint.faces[k] === 'constant') continue;
       if ('([{'.includes(code[k])) depth++;
       else if (')]}'.includes(code[k])) depth = Math.max(0, depth - 1);
     }
+    depthBefore[n] = depth;
   }
   const lineOf = (/** @type {number} */ idx) => { let lo = 0; let hi = lines.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (startOf[mid] <= idx) lo = mid; else hi = mid - 1; } return lo; };
   // docstrings: a string alone on its statement, first in the body of a def or class (or first in the file)
@@ -339,6 +396,18 @@ function python(code) {
     if (m && depthAt[L] === 0) paint.fill(startOf[L] + m[0].length - m[1].length, startOf[L] + m[0].length, 'type');
   }
   for (const a of toks) if (PY_EXCEPTIONS.has(a.text)) paint.fill(a.s, a.e, 'type');
+  // a, b = ... (also after another `=`, as in `f = lambda a, b=2: ...`: the rule has no line start), outside brackets; the point goes back one character so a chained `=` is found too
+  const many = /((?:[([][ \t]*)?\*?(?:\w+\.)*\w+(?:[ \t]*,[ \t]*\*?(?:\w+\.)*\w+)+[ \t]*[)\]]?)[ \t]*((?:\*\*|\/\/|<<|>>|[%&*+/|^-])?=)(?!=)/g;
+  for (let m = many.exec(code); m; m = many.exec(code)) {
+    const end = m.index + m[0].length;
+    many.lastIndex = end - 1;
+    if (depthBefore[end] !== 0) continue;
+    for (const w of m[1].matchAll(/\*?(?:\w+\.)*(\w+)/g)) {
+      const at = m.index + (w.index ?? 0) + w[0].length - w[1].length;
+      paint.fill(at, at + w[1].length, 'variable-name');
+    }
+    paint.fill(end - m[2].length, end, 'operator');
+  }
   for (let L = 0; L < lines.length; L++) { // NAME = ..., NAME: type = ..., a, b = ...
     if (depthAt[L] !== 0 || (L > 0 && /\\$/.test(lines[L - 1]))) continue;
     const base = startOf[L];
@@ -350,16 +419,6 @@ function python(code) {
       if (target) paint.fill(base + nameEnd - target[0].length, base + nameEnd - target[0].length + target[1].length, 'variable-name');
       paint.fill(base + nameEnd, base + nameEnd + one[3].length, 'operator');
       continue;
-    }
-    const many = /^[ \t]*((?:[([][ \t]*)?\*?(?:\w+\.)*\w+(?:[ \t]*,[ \t]*\*?(?:\w+\.)*\w+)+[ \t]*[)\]]?)[ \t]*((?:\*\*|\/\/|<<|>>|[%&*+/|^-])?=)(?!=)/.exec(line);
-    if (many) {
-      const from = line.indexOf(many[1]);
-      for (const w of many[1].matchAll(/\*?(?:\w+\.)*(\w+)/g)) {
-        const at = from + (w.index ?? 0) + w[0].length - w[1].length;
-        paint.fill(base + at, base + at + w[1].length, 'variable-name');
-      }
-      const opAt = many[0].length - many[2].length;
-      paint.fill(base + opAt, base + opAt + many[2].length, 'operator');
     }
   }
   const OP = /!=|\*\*|\/\/|<[<=]|==|>[=>]|[%&*+/<=>|~^-]/y;
@@ -559,7 +618,7 @@ function java(code) {
     parts.forEach((p, idx) => {
       const last = idx === parts.length - 1;
       if (isImport) paint.fill(p.s, p.e, last && p.text !== '*' && /^[A-Z]/.test(p.text) ? 'type' : p.text === '*' ? 'type' : 'constant');
-      else if (idx > 0) paint.fill(p.s, p.e, 'constant'); // Emacs leaves the first part of a package name plain
+      else if (last || /^[A-Z]/.test(parts[parts.length - 1].text)) paint.fill(p.s, p.e, 'constant'); // Emacs colors the last part of a package name, and all of them when the last starts with a capital
     });
     if (isImport && parts.length && parts[parts.length - 1].text === '*') paint.set(parts[parts.length - 1].s, parts[parts.length - 1].e, null);
   }
@@ -595,6 +654,31 @@ function java(code) {
       type(k + 1, true);
     }
   }
+  /**
+   * The parameters of the list that opens at token `open`: each is [final] [@annotations] Type name. `strict` (a constructor, which has no
+   * return type to show it is a declaration, and looks like a call) paints only a parameter that is surely a declaration: a primitive
+   * type or one with type arguments, followed by its name, as Emacs does.
+   * @param {number} open @param {boolean} strict
+   */
+  const params = (open, strict) => {
+    const endParams = close(open);
+    let p = open + 1;
+    while (p < (endParams < 0 ? 0 : endParams - 1)) {
+      while (toks[p] && (toks[p].text === 'final' || paint.faces[toks[p].s] === 'c-annotation')) p++;
+      const pEnd = type(p, false);
+      const pn = pEnd >= 0 ? (toks[pEnd].text === '...' ? toks[pEnd + 1] : toks[pEnd]) : undefined;
+      const sure = JAVA_TYPES.has(toks[p].text) || (toks[p + 1] !== undefined && toks[p + 1].text === '<');
+      if (!strict || (sure && pn && name(pn))) {
+        if (pEnd >= 0 && toks[pEnd] && toks[pEnd].text === '...') {
+          type(p, true);
+          p = pEnd + 1;
+        } else if (pEnd >= 0) type(p, true);
+        if (pn && name(pn)) paint.fill(pn.s, pn.e, 'variable-name');
+      }
+      while (p < endParams - 1 && toks[p].text !== ',') p += toks[p].text === '<' || toks[p].text === '(' ? Math.max(1, close(p) - p) : 1;
+      p++;
+    }
+  };
   // declarations: [modifiers] [<T>] Type name followed by ( = ; , or :
   const gate = (/** @type {number} */ k) => k === 0 || /^[{};)(]$/.test(toks[k - 1].text) || paint.faces[toks[k - 1].s] === 'c-annotation';
   for (let k = 0; k < toks.length; k++) {
@@ -609,26 +693,17 @@ function java(code) {
     const tEnd = type(j, false);
     if (tEnd < 0) continue;
     const nameTok = toks[tEnd];
+    if (nameTok && nameTok.text === '(' && name(toks[j]) && /^[\p{Lu}]/u.test(toks[j].text)) { // a constructor: Name(Type name, ...)
+      params(tEnd, true);
+      continue;
+    }
     if (!name(nameTok)) continue;
     const next = toks[tEnd + 1];
     if (!next) continue;
     if (next.text === '(') {
       type(j, true);
       paint.fill(nameTok.s, nameTok.e, 'function-name');
-      const endParams = close(tEnd + 1);
-      let p = tEnd + 2;
-      while (p < (endParams < 0 ? 0 : endParams - 1)) { // each parameter: [final] [@annotations] Type name
-        while (toks[p] && (toks[p].text === 'final' || paint.faces[toks[p].s] === 'c-annotation')) p++;
-        const pEnd = type(p, false);
-        if (pEnd >= 0 && toks[pEnd] && toks[pEnd].text === '...') {
-          type(p, true);
-          p = pEnd + 1;
-        } else if (pEnd >= 0) type(p, true);
-        const pn = pEnd >= 0 ? (toks[pEnd].text === '...' ? toks[pEnd + 1] : toks[pEnd]) : undefined;
-        if (pn && name(pn)) paint.fill(pn.s, pn.e, 'variable-name');
-        while (p < endParams - 1 && toks[p].text !== ',') p += toks[p].text === '<' || toks[p].text === '(' ? Math.max(1, close(p) - p) : 1;
-        p++;
-      }
+      params(tEnd + 1, false);
     } else if (/^[=;,:]$/.test(next.text)) {
       type(j, true);
       paint.fill(nameTok.s, nameTok.e, 'variable-name');
@@ -650,6 +725,16 @@ function java(code) {
     if (word(before) || before.text === ')' || before.text === ']') continue;
     const after = toks[k + 3];
     if (after && (name(after) || /^["'\d(]/.test(after.text) || /^[\d]/.test(after.text) || paint.faces[after.s] === 'string')) paint.fill(toks[k + 1].s, toks[k + 1].e, 'type');
+  }
+  // `x < NAME`: cc-mode reads `<` after a name as the start of type arguments, so the last name after it is a type
+  for (let k = 1; k + 1 < toks.length; k++) {
+    if (toks[k].text !== '<' || !name(toks[k - 1]) || toks[k + 1].text === '=' || toks[k + 1].text === '<') continue;
+    let j = k + 1;
+    while (name(toks[j]) && toks[j + 1] && toks[j + 1].text === '.' && name(toks[j + 2])) {
+      if (/^[A-Z]/.test(toks[j].text)) paint.fill(toks[j].s, toks[j].e, 'constant'); // a capitalized qualifier
+      j += 2;
+    }
+    if (name(toks[j])) paint.fill(toks[j].s, toks[j].e, 'type');
   }
   for (const t of toks) {
     if (JAVA_KEYWORDS.has(t.text)) paint.fill(t.s, t.e, 'keyword');

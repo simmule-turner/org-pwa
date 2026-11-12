@@ -71,11 +71,22 @@ export function switchToView(view) {
     renderSearchPanel();
   }
 
+  if (view !== 'command' && S.currentView === 'command') leaveCommandView(); // the Agenda gets its own span and day back
   if (view !== 'tasklist') S.taskKeywords = null; // a TODO list for some keywords lasts until the screen is left
   S.currentView = view;
   S.viewMenuOpen = false;
   renderViewMenu();
   render();
+}
+
+/** Gives the Agenda back the span and day it had before a command's screen. Called when the screen is left. */
+function leaveCommandView() {
+  const view = S.commandView;
+  if (!view) return;
+  S.agendaViewType = view.saved.viewType;
+  S.agendaAnchorDate = view.saved.anchor;
+  S.agendaInitialSpanApplied = view.saved.applied;
+  S.commandView = undefined;
 }
 
 export function renderViewMenu() {

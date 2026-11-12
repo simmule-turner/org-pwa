@@ -3,15 +3,18 @@
 // The items are Org's own variables, set in the Global Variables. Off unless set. A value written in the file
 // itself (#+OPTIONS:, #+HTML_HEAD:) always wins over these.
 
-/** @typedef {{ preamble?: string, postamble?: string | false, head?: string, doctype?: string, checkbox?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} HtmlExportDefaults */
+/** @typedef {{ fn: string }} ExportFunction a function given as a value: a symbol's name or a (lambda ...) form, as text */
+/** @typedef {{ preamble?: string | boolean | ExportFunction, preambleFormats?: [string, string][], validationLink?: string, postamble?: string | boolean | 'auto' | ExportFunction, postambleFormats?: [string, string][], userFullName?: string, userMailAddress?: string, head?: string, doctype?: string, checkbox?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks }} HtmlExportDefaults */
 
 /** The items, with the text offered before the person has typed anything. `key` is the Global Variable that holds the text.
  *  The items are Org's own variables (org-html-preamble, -postamble, -head): the value is a quoted string and being set
  *  means being on. */
 import { latexClassNames } from './latex-config.js';
+import { run } from './elisp.js';
+import { toArray } from './elisp-data.js';
 export const EXPORT_DEFAULT_ITEMS = /** @type {const} */ ([
-  { id: 'preamble', key: 'org-html-preamble', text: '%t : %s' },
-  { id: 'postamble', key: 'org-html-postamble', text: 'Prepared by %a, %d' },
+  { id: 'preamble', key: 'org-html-preamble', text: '' },
+  { id: 'postamble', key: 'org-html-postamble', text: '' },
   { id: 'head', key: 'org-html-head', text: '<style>\n  body { max-width: 46rem; margin: 2rem auto; font-family: Georgia, serif; line-height: 1.5 }\n</style>' },
 ]);
 
@@ -39,7 +42,7 @@ export function lispStringValue(raw) {
   return v.slice(1, -1).replace(/\\(.)/gs, (_m, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
 }
 
-/** The defaults to apply: the items that are on and not empty. `org-html-postamble` set to `nil` means no postamble.
+/** The defaults to apply: the items that are on and not empty. `org-html-postamble` is nil, t, auto (Emacs's own default), a string or a function.
  * @param {Record<string, string> | null | undefined} vars
  * @returns {HtmlExportDefaults} */
 export function htmlExportDefaults(vars) {
@@ -48,12 +51,43 @@ export function htmlExportDefaults(vars) {
     const s = exportItemState(vars, item);
     if (s.on && s.text.trim() !== '') /** @type {Record<string, string>} */ (out)[item.id] = s.text;
   }
-  if (out.postamble === undefined && String((vars || {})['org-html-postamble'] ?? '').trim().toLowerCase() === 'nil') out.postamble = false;
+  for (const id of /** @type {const} */ (['preamble', 'postamble'])) {
+    const raw = String((vars || {})[`org-html-${id}`] ?? '').trim();
+    if (/^nil$/i.test(raw)) out[id] = false;
+    else if (raw === 't') out[id] = true;
+    else if (raw === 'auto' && id === 'postamble') out[id] = 'auto';
+    else if (raw !== '' && lispStringValue(raw) === null) out[id] = { fn: raw.replace(/^#?'/, '') }; // a function: a symbol or a lambda form
+    const formats = languageFormats((vars || {})[`org-html-${id}-format`]);
+    if (formats) out[`${id}Formats`] = formats;
+  }
+  for (const [key, field] of /** @type {const} */ ([['user-full-name', 'userFullName'], ['user-mail-address', 'userMailAddress']])) {
+    const value = lispStringValue((vars || {})[key]);
+    if (value) out[field] = value;
+  }
+  const link = lispStringValue((vars || {})['org-html-validation-link']);
+  if (link !== null) out.validationLink = link;
+  else if (/^nil$/i.test(String((vars || {})['org-html-validation-link'] ?? '').trim())) out.validationLink = ''; // no validation link
   const doctype = String((vars || {})['org-html-doctype'] ?? '').trim().replace(/^"(.*)"$/s, '$1').replace(/^'/, '');
   if (doctype && doctype.toLowerCase() !== 'nil') out.doctype = doctype;
   const checkbox = String((vars || {})['org-html-checkbox-type'] ?? '').trim().replace(/^'/, '');
   if (checkbox === 'unicode' || checkbox === 'html') out.checkbox = checkbox;
   return out;
+}
+
+/**
+ * `org-html-preamble-format` or `org-html-postamble-format`: an alist of a language and its format string. Null when the variable is not set or is not such a list.
+ * @param {string | undefined} raw
+ * @returns {[string, string][] | null}
+ */
+function languageFormats(raw) {
+  const text = (raw ?? '').trim().replace(/^'/, '');
+  if (!text) return null;
+  const result = run(`(mapcar (lambda (e) (list (car e) (cadr e))) (quote ${text}))`);
+  if (!result.ok || result.value === null || typeof result.value !== 'object') return result.ok && String(result.value) === 'nil' ? [] : null;
+  return toArray(result.value).map((entry) => {
+    const [lang, format] = toArray(entry);
+    return [String(lang ?? ''), format === undefined || String(format) === 'nil' ? '' : String(format)];
+  });
 }
 
 /** How many items are switched on, for the "N set" count.

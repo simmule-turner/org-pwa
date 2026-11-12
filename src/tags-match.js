@@ -16,7 +16,7 @@
  * Text that does not fit the language is left unread, as Emacs leaves it: `work+!!` is `work`.
  */
 
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 
 /**
  * What the matcher asks of a heading.

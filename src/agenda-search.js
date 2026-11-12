@@ -3,7 +3,7 @@
 // whitespace) or, when it starts with + - or {, a Boolean list of words, "quoted phrases" and {regexps}; a leading * searches headlines
 // only, then ! limits it to TODO entries, then : makes the words match whole words. An entry is the heading, its planning line, drawers
 // and text up to the next heading of any level; entries come back in file order.
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { headingPreambleLines } from './org-parser.js';
 
 /** @typedef {import('./types.js').Doc} Doc */

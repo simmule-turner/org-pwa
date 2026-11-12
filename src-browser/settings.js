@@ -20,6 +20,7 @@ import { normalizeLocation } from '../src/file-places.js';
 import { normalizeApptSettings } from '../src/appt.js';
 import { openConnection, sealForStore } from './connection-vault.js';
 import { normalizeAttachLinkMode } from '../src/attach.js';
+import { RECENTF_MAX_SAVED_ITEMS, droppedRecent, pushRecent, removeRecent } from '../src/recent-files.js';
 
 const KEYS = {
   github: 'settings:github',
@@ -673,31 +674,35 @@ export async function setOpenTabs(kvAdapter, tabs, activeIndex) {
 
 // ---- recently opened files ------------------------------------------------
 
-const RECENT_FILES_STORE_LIMIT = 6; // the five shown plus the open file, which is never listed; a removed entry must not be replaced by an older one
-
-/** @param {KvAdapter} kvAdapter @returns {Promise<{ documentId: string, storageKind: string, openedAt: number }[]>} */
+/** @param {KvAdapter} kvAdapter @returns {Promise<import('../src/recent-files.js').RecentFile[]>} */
 export async function getRecentFiles(kvAdapter) {
   return getJson(kvAdapter, KEYS.recentFiles, []);
 }
 
 /**
+ * Adds or moves a file to the front of the list (recentf-add-file), keeping `max` entries.
  * @param {KvAdapter} kvAdapter
  * @param {string} documentId
  * @param {string | null | undefined} storageKind
+ * @param {number | null} [max] recentf-max-saved-items (null keeps the whole list)
+ * @param {boolean} [freshText] whether the saved copy of the text matches the file as of now
+ * @returns {Promise<import('../src/recent-files.js').RecentFile[]>} the entries this took out of the list
  */
-export async function recordRecentFile(kvAdapter, documentId, storageKind) {
-  if (!documentId || !storageKind) return;
+export async function recordRecentFile(kvAdapter, documentId, storageKind, max = RECENTF_MAX_SAVED_ITEMS, freshText = true) {
+  if (!documentId || !storageKind) return [];
   const existing = await getRecentFiles(kvAdapter);
-  const deduped = existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind));
-  deduped.unshift({ documentId, storageKind, openedAt: Date.now() });
-  await setJson(kvAdapter, KEYS.recentFiles, deduped.slice(0, RECENT_FILES_STORE_LIMIT));
+  const next = pushRecent(existing, { documentId, storageKind }, max, Date.now(), freshText);
+  await setJson(kvAdapter, KEYS.recentFiles, next);
+  return droppedRecent(existing, next);
 }
 
-/** Drops one entry from the recently opened list.
+/** Drops one entry from the recently opened list; returns the entries it took out.
  * @param {KvAdapter} kvAdapter @param {string} documentId @param {string} storageKind */
 export async function removeRecentFile(kvAdapter, documentId, storageKind) {
   const existing = await getRecentFiles(kvAdapter);
-  await setJson(kvAdapter, KEYS.recentFiles, existing.filter((f) => !(f.documentId === documentId && f.storageKind === storageKind)));
+  const next = removeRecent(existing, { documentId, storageKind });
+  await setJson(kvAdapter, KEYS.recentFiles, next);
+  return droppedRecent(existing, next);
 }
 
 /**
@@ -720,7 +725,9 @@ export async function setFileLocation(kvAdapter, location) {
 
 /** @param {KvAdapter} kvAdapter */
 export async function clearRecentFiles(kvAdapter) {
+  const existing = await getRecentFiles(kvAdapter);
   await setJson(kvAdapter, KEYS.recentFiles, []);
+  return existing;
 }
 
 export {

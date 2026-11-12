@@ -1,6 +1,6 @@
 // @ts-check
 // Extracted from app.js: search ui.
-import { EmacsRegexError } from '../src/emacs-regex.js';
+import { EmacsRegexError } from '../src/elisp-regex.js';
 import { getPropertyInheritance, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { countBlockOnlyMatches, createQueryReplace, createTextQueryReplace } from '../src/query-replace.js';
 import { searchDocuments, searchDocumentsByMatchQuery } from '../src/search.js';

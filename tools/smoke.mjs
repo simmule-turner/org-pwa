@@ -76,7 +76,7 @@ function createDav() {
   const auths = []; // and the Authorization header each carried, as { request, authorization }
   const etag = (text) => '"' + crypto.createHash('md5').update(text).digest('hex') + '"';
   // For checks of a slow or racing save: putDelay holds back each PUT's answer; beforePut runs once, just before the next PUT is judged.
-  const hooks = { putDelay: 0, beforePut: /** @type {null | ((name: string) => void)} */ (null) };
+  const hooks = { putDelay: 0, beforePut: /** @type {null | ((name: string) => void)} */ (null), down: false }; // down: the server drops every connection, as when there is no network
   return {
     files,
     hooks,
@@ -89,12 +89,14 @@ function createDav() {
       collections = null;
       hooks.putDelay = 0;
       hooks.beforePut = null;
+      hooks.down = false;
       requests.length = 0;
       auths.length = 0;
       files.clear();
       for (const [name, text] of Object.entries(initial)) files.set(name, text);
     },
     handle(req, res, name, body) {
+      if (hooks.down) return req.socket.destroy();
       requests.push(`${req.method} ${name}`);
       auths.push({ request: `${req.method} ${name}`, authorization: req.headers.authorization || '' });
       const has = files.has(name);
@@ -3944,6 +3946,63 @@ check('Recently opened: menu rows cannot be text-selected, so a long press over 
   await context.close();
 });
 
+check('Recently opened: newest first, 20 kept, the list scrolls; the current and open files are marked and a closed one shows "view"; Cancel closes the menu', async () => {
+  dav.reset({ 'a.org': '* A\n', 'b.org': '* B\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.evaluate(async () => {
+    const { trackRecent } = await import('/src-browser/recent-files.js');
+    for (let n = 1; n <= 25; n++) await trackRecent(`f${n}.org`, 'github');
+  });
+  await openDav(page, 'a.org');
+  await openDav(page, 'b.org');
+  const rows = () => page.evaluate(() => [...document.querySelectorAll('#fileMenuPanel [data-recent-list] [role=menuitem]')].map((r) => r.textContent));
+  await page.click('#fileMenuBtn');
+  await page.locator('#fileMenuPanel [data-recent-list]').waitFor();
+  let now = await rows();
+  expect(now.length === 20, `twenty kept, got ${now.length}`);
+  expect(now[0] === 'b.org (WebDAV)current' && now[1] === 'a.org (WebDAV)open' && now[2] === 'f25.org (GitHub)', `newest first, with marks: ${JSON.stringify(now.slice(0, 3))}`);
+  expect(now[19] === 'f8.org (GitHub)', `the oldest of twenty is last: ${now[19]}`);
+  expect(await page.locator('#fileMenuPanel [data-recent-list]').evaluate((el) => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto'), 'the list scrolls');
+  await page.locator('#fileMenuPanel button', { hasText: 'Cancel' }).click();
+  expect(!(await page.locator('#fileMenuPanel').isVisible()), 'Cancel closes the File menu');
+  await page.locator('#tabBar [aria-label^="Close tab: a.org"]').click();
+  await page.click('#fileMenuBtn');
+  await page.locator('#fileMenuPanel [data-recent-list]').waitFor();
+  now = await rows();
+  expect(now[0] === 'b.org (WebDAV)current' && now[1] === 'a.org (WebDAV)view', `closing leaves the order as it was, and the closed file shows view: ${JSON.stringify(now.slice(0, 2))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Recently opened: a closed file whose server cannot be reached offers its saved copy read-only; Cancel opens nothing', async () => {
+  dav.reset({ 'a.org': '* Saved copy of A\n', 'b.org': '* B\n' });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openDav(page, 'a.org');
+  await openDav(page, 'b.org');
+  await page.locator('#tabBar [aria-label^="Close tab: a.org"]').click();
+  dav.files.set('a.org', '* A changed on the server\n');
+  dav.hooks.down = true;
+  const asked = () => page.locator('.ui-overlay', { hasText: 'View the saved version of' });
+  await page.click('#fileMenuBtn');
+  await page.locator('#fileMenuPanel [role=menuitem]', { hasText: 'a.org (WebDAV)' }).click();
+  await asked().waitFor();
+  expect((await asked().innerText()).includes('Couldn\u2019t reach WebDAV'), 'it says the server could not be reached');
+  await asked().getByText('Cancel', { exact: true }).click();
+  await page.waitForTimeout(300);
+  expect(!(await page.evaluate(() => document.getElementById('modeline').innerText.includes('a.org'))), 'Cancel opened nothing');
+  await page.click('#fileMenuBtn');
+  await page.locator('#fileMenuPanel [role=menuitem]', { hasText: 'a.org (WebDAV)' }).click();
+  await asked().waitFor();
+  await asked().getByText('View', { exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.includes('a.org'), null, { timeout: 8000 });
+  const shown = await page.evaluate(() => ({ text: document.body.innerText, line: document.getElementById('modeline').innerText }));
+  expect(shown.text.includes('Saved copy of A') && !shown.text.includes('changed on the server'), 'the saved copy is shown, not the server\u2019s newer text');
+  expect(shown.line.includes('%%'), `the buffer is read-only: ${shown.line}`);
+  dav.hooks.down = false;
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('save: a slow save follows its own tab -- switching tabs mid-save, or typing during it, leaves the right tabs modified', async () => {
   dav.reset({ 'a.org': '* A one\n', 'b.org': '* B one\n' });
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -4597,6 +4656,54 @@ check('org-agenda-show-future-repeats is a checkbox in the Agenda settings, on a
   await page.waitForTimeout(300);
   const stored = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.globalVariables['org-agenda-show-future-repeats']);
   expect(stored === 'nil', `stored as nil: ${stored}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Agenda log mode: the variable sets where it starts (ClkCk), the Log choice changes it; in ClkCk a Clocked row with an issue has its line above it, in white on dark red, as Emacs shows it; Off removes it', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 412, height: 900 });
+  const day = await page.evaluate(() => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return { iso: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] }; });
+  const stamp = (t) => `[${day.iso} ${day.dow} ${t}]`;
+  await newDocument(page, ['* Long one', ':LOGBOOK:', `CLOCK: ${stamp('06:00')}--${stamp('21:00')} =>  15:00`, ':END:', '* Fine one', ':LOGBOOK:', `CLOCK: ${stamp('21:02')}--${stamp('22:00')} =>  0:58`, ':END:', ''].join('\n'));
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.state.localVariables = { ...S.state.localVariables, 'org-agenda-start-with-log-mode': "'clockcheck" };
+  });
+  await viewMenu(page, 'Agenda');
+  await page.locator('[data-clock-issue]').first().waitFor({ timeout: 8000 });
+  const issues = await page.locator('[data-clock-issue]').allInnerTexts();
+  expect(issues.length === 1 && issues[0].trim() === 'Clocking interval is very long: 15:00', `one issue, for the long clock: ${JSON.stringify(issues)}`);
+  const colors = await page.locator('[data-clock-issue]').first().evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, fg: getComputedStyle(el).color }));
+  expect(colors.bg === 'rgb(139, 0, 0)' && colors.fg === 'rgb(255, 255, 255)', `dark red with white text: ${JSON.stringify(colors)}`);
+  expect((await page.locator('[data-agenda-log-mode]').inputValue()) === 'clockcheck', 'the choice shows ClkCk, as the variable sets');
+  await page.locator('[data-agenda-log-mode]').selectOption('off');
+  await page.waitForFunction(() => !document.querySelector('[data-clock-issue]'), null, { timeout: 8000 });
+  await page.locator('[data-agenda-log-mode]').selectOption('on');
+  expect(await page.locator('[data-clock-issue]').count() === 0, 'plain Log shows no clock issues');
+  await page.locator('[data-agenda-log-mode]').selectOption('clockcheck');
+  await page.locator('[data-clock-issue]').first().waitFor({ timeout: 8000 });
+  // the keys, as Emacs binds them: l toggles, C-u l is LogAll, C-u C-u l is Only, v c toggles ClkCk
+  const mode = () => page.locator('[data-agenda-log-mode]').inputValue();
+  const press = async (...keys) => { await page.evaluate(() => document.activeElement && document.activeElement.blur()); for (const k of keys) await page.keyboard.press(k); };
+  await press('l');
+  expect((await mode()) === 'off', `l turns the log off from ClkCk: ${await mode()}`);
+  await press('l');
+  expect((await mode()) === 'on', `l turns it on: ${await mode()}`);
+  await press('Control+u', 'l');
+  expect((await mode()) === 'all', `C-u l is LogAll: ${await mode()}`);
+  await press('Control+u', 'Control+u', 'l');
+  expect((await mode()) === 'only', `C-u C-u l is Only: ${await mode()}`);
+  await press('v', 'c');
+  expect((await mode()) === 'clockcheck', `v c is ClkCk: ${await mode()}`);
+  await page.locator('[data-clock-issue]').first().waitFor({ timeout: 8000 });
+  await press('v', 'c');
+  expect((await mode()) === 'off', `v c again turns it off: ${await mode()}`);
+  // the palette has them too
+  await openPalette(page);
+  await page.keyboard.type('Agenda: check clock issues');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-agenda-log-mode]')?.value === 'clockcheck', null, { timeout: 8000 });
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -5354,7 +5461,7 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
   await context.close();
 });
 
-check('Search extra files: text search also looks in org-agenda-text-search-extra-files and names a file it cannot load, the agenda does not use them, a result opens its file, a file in both lists is searched once, and the Quick Settings row sits right after Contacts files', async () => {
+check('Search extra files: text search also looks in org-agenda-text-search-extra-files and names a file it cannot load, the agenda does not use them, a result opens its file, a file in both lists is searched once, and the Settings row sits right after Contacts files', async () => {
   const extra = ['* TODO Extra heading', `SCHEDULED: <${calDay(1)}>`, 'a unicornword lives only here', ''].join('\n');
   const notes = (vars) => ['* Notes', 'plain text', '# Local Variables:', ...vars, '# End:', ''].join('\n');
   dav.reset({ 'notes.org': notes(['# org-agenda-text-search-extra-files: ("webdav:extra.org" "webdav:missing.org")']), 'extra.org': extra });
@@ -5394,7 +5501,7 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
   }
   expect(openId === 'extra.org', `the result really opened extra.org (the open document is ${openId}; the status line says: ${await page.locator('#minibuffer').innerText()})`);
 
-  // the Quick Settings row: right after Contacts files, labelled Search extra files
+  // the Settings row: right after Contacts files, labelled Search extra files
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await settingsCategory(page, 'advanced');
@@ -5404,7 +5511,7 @@ check('Search extra files: text search also looks in org-agenda-text-search-extr
     const leaves = [...document.querySelectorAll('*')].filter((e) => e.children.length === 0 && wanted.includes(e.textContent.trim()));
     return leaves.map((e) => e.textContent.trim());
   });
-  expect(JSON.stringify(order) === JSON.stringify(['Agenda files', 'Contacts files', 'Search extra files']), `the row order in Quick Settings: ${JSON.stringify(order)}`);
+  expect(JSON.stringify(order) === JSON.stringify(['Agenda files', 'Contacts files', 'Search extra files']), `the row order in Settings: ${JSON.stringify(order)}`);
   await context.close();
 
   // a file listed as an agenda file AND as an extra file is searched once
@@ -5981,14 +6088,14 @@ check('settings: Export has ASCII and HTML in that order, every box starts untic
   expect((await boxes.count()) === 3, 'three items (there is no General card)');
   for (let i = 0; i < 3; i++) expect(!(await boxes.nth(i).isChecked()), `box ${i} starts unticked`);
   const pre = page.locator('[data-export-item="preamble"]');
-  expect((await pre.locator('textarea').inputValue()) === '%t : %s', 'the preamble offers %t : %s');
+  expect((await pre.locator('textarea').inputValue()) === '', 'the preamble starts empty, as org-html-preamble-format does');
   expect(await pre.locator('textarea').evaluate((t) => t.readOnly), 'the small box is read-only; the text is edited in the large editor');
   const editor = page.locator('.ui-overlay textarea').last();
   await pre.locator('textarea').click();
   expect((await page.getByText('Reset', { exact: true }).count()) === 0, 'no Reset while the text is still the default');
   await editor.fill('Typed then cancelled');
   await page.getByText('Cancel', { exact: true }).last().click();
-  expect((await pre.locator('textarea').inputValue()) === '%t : %s', 'Cancel keeps the old text');
+  expect((await pre.locator('textarea').inputValue()) === '', 'Cancel keeps the old text');
   await pre.locator('textarea').click();
   await editor.fill('Hello %a');
   await page.getByText('OK', { exact: true }).last().click();
@@ -6553,7 +6660,7 @@ check('drag from a left-hand grip: the range starts at the outermost level and m
   await context.close();
 });
 
-check('drag handle setting: right by default, left or off from the variable, and the Quick Settings choice is offered', async () => {
+check('drag handle setting: right by default, left or off from the variable, and the Settings choice is offered', async () => {
   const withVar = (value) => ['* One', '** Two', '', '# Local Variables:', ...(value ? [`# org-xx-drag-handle: ${value}`] : []), '# End:', ''].join('\n');
   const { context, page, errors } = await freshPage(main);
   const side = async () =>
@@ -9141,20 +9248,40 @@ check('lisp agenda settings: a function custom command shows its output, %(form)
   await context.close();
 });
 
-check('custom commands: a composite command with an agenda block, a header and a per-command setting opens as the *Org Agenda* text', async () => {
+check('custom commands: a composite command (an agenda block with a span, a TODO block with a header) opens as live rows, a single command shows its Press hint, leaving gives the Agenda its span back', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* TODO Alpha task :work:\nSCHEDULED: <2026-11-11 Wed>\n* TODO Beta task\n');
   await page.evaluate(async () => {
     const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
-    await commitGlobalVariableChange('org-agenda-custom-commands', "'((\"x\" \"Both\" ((agenda \"\" ((org-agenda-span 'week))) (todo \"TODO\" ((org-agenda-overriding-header \"Next up\"))))))");
+    await commitGlobalVariableChange('org-agenda-custom-commands', "'((\"x\" \"Both\" ((agenda \"\" ((org-agenda-span 'day))) (todo \"TODO\" ((org-agenda-overriding-header \"Next up\"))))) (\"y\" \"Work\" tags \"work\" ((org-agenda-files '(\"local:none.org\")))) (\"z\" \"Stuck\" stuck \"\"))");
     const { parseCustomCommands } = await import('/src/agenda-commands.js');
     const { runCommand } = await import('/src-browser/agenda-query-view.js');
     const { S } = await import('/src-browser/app-state.js');
-    runCommand(parseCustomCommands(S.globalVariables['org-agenda-custom-commands'])[0]);
+    window.__run = (key) => runCommand(parseCustomCommands(S.globalVariables['org-agenda-custom-commands']).find((c) => c.key === key));
+    window.__run('x');
   });
   await page.waitForFunction(() => document.body.innerText.includes('Next up'), null, { timeout: 8000 });
-  const t = await page.evaluate(() => document.body.innerText);
-  expect(/Week-agenda/.test(t) && /={20}/.test(t) && t.includes('Next up') && t.includes('Beta task'), `the buffer: ${t.replace(/\s+/g, ' ').slice(0, 500)}`);
+  const blocks = await page.locator('[data-command-block]').evaluateAll((els) => els.map((e) => e.getAttribute('data-command-block')));
+  expect(blocks.join() === 'agenda,todo', `two blocks: ${blocks}`);
+  const live = await page.locator('[data-command-block="todo"] [data-agenda-row]').count();
+  expect(live === 2, `the TODO block's rows are live Agenda rows (${live})`);
+  const state = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return { type: S.agendaViewType, view: S.currentView }; });
+  expect(state.view === 'command' && state.type === 'day', `the block's span is day: ${JSON.stringify(state)}`);
+  // keys work on the live rows: j focuses the first row, t asks for a state
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('j');
+  await page.locator('.agenda-row-focused').first().waitFor({ timeout: 3000 }).catch(() => {});
+  expect(await page.locator('.agenda-row-focused').count() >= 1, `j focuses a row of the command screen (${await page.locator('[data-agenda-row]').count()} rows, ${await page.evaluate(() => document.activeElement && document.activeElement.tagName)})`);
+  await page.evaluate(async () => { const { switchToView } = await import('/src-browser/views.js'); switchToView('agenda'); });
+  const after = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.agendaViewType; });
+  expect(after === 'week', `the Agenda is back to its own span: ${after}`);
+  // a single command with settings of its own: its heading and the hint Emacs puts under it
+  await page.evaluate(() => window.__run('y'));
+  await page.waitForFunction(() => document.body.innerText.includes('Headlines with TAGS match: work'), null, { timeout: 8000 });
+  const text = await page.evaluate(() => document.body.innerText);
+  expect(text.includes("Press `C-u r' to search again"), `the hint: ${text.slice(0, 300)}`);
+  await page.evaluate(() => window.__run('z'));
+  await page.waitForFunction(() => document.body.innerText.includes('List of stuck projects'), null, { timeout: 8000 });
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

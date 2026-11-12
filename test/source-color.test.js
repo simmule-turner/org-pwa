@@ -7,7 +7,8 @@ import { highlightRuns } from '../src/source-color.js';
 // Emacs 29.3 colored each sample (tools/gen-source-color-oracle.mjs; the major mode Org's export uses, then font-lock-ensure). The
 // highlighter must give the same face to every character. A line break is not part of a span, so it is not compared.
 const DIR = new URL('./fixtures/source-color/', import.meta.url);
-const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java']];
+const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java'],
+  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java']];
 /** Where the app differs from Emacs on a sample, as `character index: emacs face`; empty when nothing differs. */
 const KNOWN_DEVIATIONS = /** @type {Record<string, string[]>} */ ({});
 

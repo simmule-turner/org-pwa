@@ -31,7 +31,6 @@
   "src/diary-sexp.js": 14,
   "src/document-store.js": 1,
   "src/effort-values.js": 2,
-  "src/emacs-regex.js": 3,
   "src/export-html.js": 38,
   "src/export-icalendar.js": 17,
   "src/export-include.js": 11,

@@ -1,0 +1,154 @@
+{
+ "lang": "emacs-lisp",
+ "mode": "emacs-lisp-mode",
+ "runs": [
+  [
+   "(",
+   null
+  ],
+  [
+   "defun",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-f",
+   "function-name"
+  ],
+  [
+   " (cond when) ",
+   null
+  ],
+  [
+   "\"Doc with `",
+   "doc"
+  ],
+  [
+   "name",
+   "constant"
+  ],
+  [
+   "' and \\\\[",
+   "doc"
+  ],
+  [
+   "some-command",
+   "constant"
+  ],
+  [
+   "] and \\\\<",
+   "doc"
+  ],
+  [
+   "my-map",
+   "variable-name"
+  ],
+  [
+   "> and \\\\{",
+   "doc"
+  ],
+  [
+   "other-map",
+   "variable-name"
+  ],
+  [
+   "}.\"",
+   "doc"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " cond when))\n(",
+   null
+  ],
+  [
+   "let",
+   "keyword"
+  ],
+  [
+   " ((if 1) (when 2)) (",
+   null
+  ],
+  [
+   "when",
+   "keyword"
+  ],
+  [
+   " if when))\n(",
+   null
+  ],
+  [
+   "cl-defun",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-g",
+   "function-name"
+  ],
+  [
+   " (unless) (",
+   null
+  ],
+  [
+   "unless",
+   "keyword"
+  ],
+  [
+   " unless 1))\n(",
+   null
+  ],
+  [
+   "condition-case",
+   "keyword"
+  ],
+  [
+   " e (",
+   null
+  ],
+  [
+   "when",
+   "keyword"
+  ],
+  [
+   " e 1) (when 2) (",
+   null
+  ],
+  [
+   "error",
+   "warning"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " e 1)))\n(",
+   null
+  ],
+  [
+   "declare",
+   "keyword"
+  ],
+  [
+   " (if 1))\n'(if x)\n",
+   null
+  ]
+ ]
+}

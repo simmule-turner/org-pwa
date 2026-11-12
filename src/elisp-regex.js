@@ -3,14 +3,16 @@
  * Emacs regexps translated to JavaScript ones: groups, alternation, repetition (also stacked, as in `a**`), classes, anchors,
  * word boundaries and the syntax classes `\s-` `\sw`. Matching follows JavaScript's backtracking, which agrees with Emacs's
  * except for odd cases such as a group repeated over an empty match (`\(a*\)*`).
+ *
+ * Two entry points: `toRegExp` (the Lisp side: errors are Lisp `invalid-regexp` signals) and `emacsRegexToJs` (the rest of the
+ * app: errors are `EmacsRegexError`s with the same message, and `^`/`$` are line anchors, as in an Emacs buffer).
  */
-import { signal } from './elisp-data.js';
+import { Cons, LispSignal, signal } from './elisp-data.js';
 import { classBody } from './emacs-classes.js';
 
 /** The decoded class `name`; the tables are generated, so a missing one is a build error. @param {string} name */
 const table = (name) => /** @type {string} */ (classBody(name));
 const W = table('syntax:w');
-const SYMBOL = W + table('syntax:_');
 /** The inside of a character class for `[[:NAME:]]`, or undefined. @param {string} name */
 export function posixClass(name) {
   switch (name) {
@@ -24,16 +26,17 @@ export function posixClass(name) {
     default: return undefined;
   }
 }
-const WORD_BOUNDARY = `(?:(?<=[${W}])(?![${W}])|(?<![${W}])(?=[${W}])|(?<![\\s\\S])|(?![\\s\\S]))`;
+/** The word-boundary assertion for a word set. @param {string} w */
+const wordBoundary = (w) => `(?:(?<=[${w}])(?![${w}])|(?<![${w}])(?=[${w}])|(?<![\\s\\S])|(?![\\s\\S]))`;
 
 /** @type {Map<string, { source: string, groups: number, nums: number[], size: number }>} */
 const cache = new Map();
 
-/** The characters of a syntax class `\sC`, as the inside of a character class (an empty one matches nothing). @param {string} k */
-function syntaxSet(k) {
+/** The characters of a syntax class `\sC`, as the inside of a character class (an empty one matches nothing). @param {string} k @param {string} w the word characters */
+function syntaxSet(k, w) {
   switch (k) {
     case '-': case ' ': return table('space');
-    case 'w': return W;
+    case 'w': return w;
     case '_': return table('syntax:_');
     case '.': return table('syntax:.');
     case '(': return table('syntax:(');
@@ -58,10 +61,18 @@ function categorySet(k) {
 /** A character class from a body; an empty body matches nothing, an empty negated one everything. @param {string} body @param {boolean} neg */
 const charClass = (body, neg) => (neg ? `[^${body}]` : `[${body}]`);
 
-/** Translates an Emacs regexp; `groups` counts its capture groups. @param {string} re */
-export function translate(re) {
-  const hit = cache.get(re);
+/**
+ * Translates an Emacs regexp; `groups` counts its capture groups. `extraWord` lists characters the syntax table in force makes word
+ * constituents on top of the standard ones (the diary reads `*` and `:` so), for `\w`, `\<`, `\>`, `\b` and `\sw`.
+ * @param {string} re @param {string} [extraWord]
+ */
+export function translate(re, extraWord = '') {
+  const key = extraWord ? `${extraWord}\u0000${re}` : re;
+  const hit = cache.get(key);
   if (hit) return hit;
+  const W = table('syntax:w') + extraWord;
+  const SYMBOL = W + table('syntax:_');
+  const WORD_BOUNDARY = wordBoundary(W);
   let out = '';
   let groups = 0;
   /** The Emacs number of each JS capture group, and the highest number given so far. @type {number[]} */
@@ -174,7 +185,7 @@ export function translate(re) {
         case 'c': case 'C': atomOut(charClass(categorySet(re[i++]), d === 'C')); continue;
         case 's': case 'S': {
           const k = re[i++];
-          atomOut(charClass(syntaxSet(k), d === 'S'));
+          atomOut(charClass(syntaxSet(k, W), d === 'S'));
           continue;
         }
         case 'b': assertion(WORD_BOUNDARY); continue;
@@ -262,7 +273,7 @@ export function translate(re) {
   }
   if (stack.length) throw signal('invalid-regexp', ['Unmatched ( or \\(']);
   const result = { source: out, groups, nums, size: counter };
-  cache.set(re, result);
+  cache.set(key, result);
   return result;
 }
 
@@ -278,3 +289,28 @@ export function toRegExp(re, fold, global = false) {
 
 /** Escapes `s` for use in a regexp (`regexp-quote`). @param {string} s */
 export const regexpQuote = (s) => s.replace(/[[*.\\?+^$]/g, '\\$&');
+
+/** A pattern the app cannot use: the message is Emacs's own (`Unmatched ( or \\(`, `Invalid back reference`, ...). */
+export class EmacsRegexError extends Error {}
+
+/**
+ * A native RegExp for an Emacs regexp, for the app's own searches. `flags` are the usual JS ones; `m` (line anchors, as in a
+ * buffer) and `u` are always on, and `i` is the caller's decision. `extraWord`: see `translate`. Throws EmacsRegexError for a malformed pattern.
+ * @param {string} emacsPattern @param {string} [flags] @param {string} [extraWord]
+ */
+export function emacsRegexToJs(emacsPattern, flags = '', extraWord = '') {
+  let source;
+  try {
+    ({ source } = translate(emacsPattern, extraWord));
+  } catch (err) {
+    if (!(err instanceof LispSignal)) throw err;
+    const first = err.data instanceof Cons ? err.data.car : null;
+    throw new EmacsRegexError(typeof first === 'string' || first instanceof String ? String(first) : 'Invalid regexp');
+  }
+  const all = new Set((flags + 'mu').split(''));
+  try {
+    return new RegExp(source, [...all].join(''));
+  } catch {
+    throw new EmacsRegexError('Invalid regexp');
+  }
+}

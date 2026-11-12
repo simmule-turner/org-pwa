@@ -39,8 +39,6 @@ export const SIDE_PANEL_MIN_WIDTH = 280;
  *  a whole-file fallback conflict can be thousands of lines long. */
 export const CONFLICT_PREVIEW_LINES = 40;
 
-export const RECENT_FILES_DISPLAY_LIMIT = 5;
-
 export const HELP_DOCUMENT_ID = '\u0000help-README.org';
 
 export const SEARCH_TYPE_ICON = {

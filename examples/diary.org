@@ -4,7 +4,7 @@
 The diary is a plain text file of dated lines. Each line says "on this day, show this", and the Agenda lists the lines that fall on each day, with that day's holidays. It is Emacs's own diary, so a diary file written for Emacs works here as it is.
 
 * Turn it on
-Set two things in Settings → Quick Settings → *Diary*: tick *Include the diary file in the Agenda* (=org-agenda-include-diary=) and give the file in =diary-file= (=github:diary=, =webdav:diary= or =local:diary=). Or put both in the Lisp init (Settings → Advanced):
+Set two things in Settings → Agenda, diary and weather → *Diary*: tick *Include the diary file in the Agenda* (=org-agenda-include-diary=) and give the file in =diary-file= (=github:diary=, =webdav:diary= or =local:diary=). Or put both in the Lisp init (Settings → Advanced):
 
 #+begin_example
 (setq org-agenda-include-diary t

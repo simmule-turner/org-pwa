@@ -1,0 +1,6 @@
+(defun my-f (cond when) "Doc with `name' and \\[some-command] and \\<my-map> and \\{other-map}." (if cond when))
+(let ((if 1) (when 2)) (when if when))
+(cl-defun my-g (unless) (unless unless 1))
+(condition-case e (when e 1) (when 2) (error (if e 1)))
+(declare (if 1))
+'(if x)

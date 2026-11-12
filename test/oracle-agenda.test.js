@@ -17,7 +17,7 @@ import { parseSpan, readAgendaStartDay, spanRange } from '../src/agenda-span.js'
 import { clockIssues, readClockChecks, readLogSettings } from '../src/agenda-log.js';
 import { matchViewItems } from '../src/agenda-queries.js';
 import { readStuckSettings, stuckProjectItems } from '../src/agenda-stuck.js';
-import { commandSections, parseCustomCommands } from '../src/agenda-commands.js';
+import { commandItems, parseCustomCommands } from '../src/agenda-commands.js';
 import { agendaSkipper } from '../src/agenda-skip.js';
 import { agendaKnown } from './support/oracle-agenda-known.js';
 
@@ -77,7 +77,9 @@ function ours(s) {
     const command = parseCustomCommands(vars['org-agenda-custom-commands']).find((c) => c.key === s.key);
     if (!command) return { rows: [], days: [] };
     const options = { doneKeywords: sequence.doneKeywords, todoKeywords: sequence.todoKeywords, now: new Date(2026, 9, 11, 16, 30), localVariables: vars };
-    const rows = commandSections(command, docs, docs, options).flatMap((section) => section.items.map(appRow));
+    // a composite command runs its blocks in order, each under the global settings and its own
+    const blocks = command.type === 'block' ? (command.blocks || []).map((b) => commandItems(b, docs, docs, options, command.settings || {})) : [commandItems(command, docs, docs, options)];
+    const rows = blocks.flatMap((items) => items.map(appRow));
     return { rows, days: [] };
   }
   if (s.view === 'stuck') {

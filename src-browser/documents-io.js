@@ -42,7 +42,11 @@ import { pickAndImportFile } from './input-file-adapter.js';
 import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
-import { getGithubConfig, getWebdavConfig, recordRecentFile, setLastActiveDocument } from './settings.js';
+import { getGithubConfig, getWebdavConfig, setLastActiveDocument } from './settings.js';
+import { trackRecent } from './recent-files.js';
+import { isUnreachable } from './limited-fetch.js';
+import { savedCopyTime } from '../src/recent-files.js';
+import { hasPendingChange } from '../src/outbox.js';
 import { kv } from './singletons.js';
 import { ALWAYS_KEEP_MINE, replaceOnlyWhatWasSeen, resolvePendingChangeChoice } from './sync-helpers.js';
 import { persistOpenTabsInBackground, renderTabBar, saveSessionSnapshot, switchToTab } from './tabs.js';
@@ -69,7 +73,7 @@ function openedStatus(message) {
  * @param {Doc} doc
  * @param {string | null} [storageKind]
  *  backend it came from. */
-export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false } = {}) {
+export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false, savedCopy = false } = {}) {
   if (!replaceCurrentTab) {
     const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((/** @type {TabSession} */ s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
     if (alreadyOpenTab && alreadyOpenTab.tabId !== S.activeTabId) {
@@ -120,7 +124,7 @@ export async function afterDocumentLoaded(documentId, doc, storageKind, resumedF
   // the only place that actually says what happened.
   S.isDirty = resumedFromCache;
   await setLastActiveDocument(kv, documentId, storageKind);
-  await recordRecentFile(kv, documentId, storageKind);
+  await trackRecent(documentId, storageKind, !resumedFromCache && !savedCopy); // the saved text matches the file only when it was just read from it
   S.currentView = plainText ? 'text' : 'org';
   S.agendaAnchorDate = new Date();
   /** @type {HTMLButtonElement} */ (viewMenuBtn).disabled = false;
@@ -238,8 +242,9 @@ export async function openFromImport() {
  * @param {string} kind
  * @param {DiskAdapter} diskAdapter
  * @param {string} label
+ * @param {{ savedCopyAt?: number | null }} [options] savedCopyAt: when the saved copy dates from, for a file opened from the recent list (a copy is offered when the server cannot be reached)
  *  messages ("GitHub" / "WebDAV"). */
-export async function openRemotePath(path, kind, diskAdapter, label) {
+export async function openRemotePath(path, kind, diskAdapter, label, { savedCopyAt = null } = {}) {
   try {
     const { preferCache } = await resolvePendingChangeChoice(path);
     setStatus(`Loading from ${label}\u2026`);
@@ -262,8 +267,33 @@ export async function openRemotePath(path, kind, diskAdapter, label) {
       )
     );
   } catch (err) {
+    // The server could not be reached: a file opened from the recent list can be viewed from its saved copy, if the person says so.
+    if (savedCopyAt !== null && isUnreachable(err) && (await viewSavedCopy(path, kind, label, savedCopyAt))) return;
     setStatus(`Could not open from ${label}: ` + err.message);
   }
+}
+
+/**
+ * Asks, and opens the saved copy of a file read-only. The copy is the text the app cached the last time the file was read from
+ * the server or saved to it; a file with changes not yet saved to the server is not offered (its changes are the open choice).
+ * @param {string} path @param {'github' | 'webdav' | string} kind @param {string} label the server's name @param {number} at when the copy dates from
+ * @returns {Promise<boolean>} whether a copy was offered (the person's answer ends the open either way)
+ */
+async function viewSavedCopy(path, kind, label, at) {
+  const cached = await kv.get('doc:' + path);
+  const text = cached && typeof cached === 'object' && 'value' in cached ? cached.value : cached;
+  if (typeof text !== 'string' || (await hasPendingChange(kv, path))) return false;
+  const when = savedCopyTime(at, Date.now());
+  if (!(await confirmDialog(`Couldn\u2019t reach ${label}. View the saved version of \u201c${path}\u201d from ${when}, read-only?`, { confirmLabel: 'View', cancelLabel: 'Cancel', danger: false }))) {
+    setStatus(`Could not open from ${label}: it could not be reached.`);
+    return true;
+  }
+  await markDocumentOpen(kv, path);
+  await afterDocumentLoaded(path, parseOrg(text), kind, false, { savedCopy: true });
+  S.isBufferReadOnly = true;
+  render();
+  setStatus(`Viewing the saved version of "${path}" from ${when} \u2014 read-only; ${label} could not be reached.`);
+  return true;
 }
 
 /**
@@ -487,6 +517,7 @@ export async function saveTab(tabId) {
       savedText = serializeOrg(S.state.doc);
     }
     markTabSaved(tabId, savedText);
+    trackRecent(documentId, storageKind).catch((/** @type {Error} */ err) => console.error('Failed to record the saved file:', err)); // a save puts the file first in the recently opened list, as in Emacs
     if (!isPlainTextFile(documentId, storageKind)) void rememberIds(tabId === S.activeTabId ? S.state.doc : doc, storageKind, documentId);
     diarySaved(documentId, storageKind);
     setStatus(result.resolution === 'merged' ? 'Saved \u2014 merged with the changes made elsewhere.' : 'Saved (' + result.status + ').');
@@ -537,7 +568,7 @@ export async function saveAsFilesystem() {
       return;
     }
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
-    await recordRecentFile(kv, documentId, 'filesystem');
+    await trackRecent(documentId, 'filesystem');
     setStatus('Saved as ' + documentId + '.');
     closeFileMenu();
     render();
@@ -630,7 +661,7 @@ export async function saveAsGithub(chosenPath, seenFromScreen) {
     }
     written = true;
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
-    await recordRecentFile(kv, path, 'github');
+    await trackRecent(path, 'github');
     setStatus('Saved to GitHub as ' + path + '.');
     closeFileMenu();
     render();
@@ -690,7 +721,7 @@ export async function saveAsWebdav(chosenPath, seenFromScreen) {
     }
     written = true;
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
-    await recordRecentFile(kv, path, 'webdav');
+    await trackRecent(path, 'webdav');
     setStatus('Saved to WebDAV as ' + path + '.');
     closeFileMenu();
     render();
@@ -732,7 +763,7 @@ export async function saveAsDeviceFolder(chosenPath, seenFromScreen) {
     }
     written = true;
     markTabSaved(saveAsTab, saveAsText);
-    await recordRecentFile(kv, path, 'filesystem');
+    await trackRecent(path, 'filesystem');
     setStatus('Saved as ' + path + '.');
     closeFileMenu();
     render();
@@ -765,7 +796,7 @@ export async function saveAsImport(chosenName) {
       resolveConflict: ALWAYS_KEEP_MINE,
     });
     markTabSaved(saveAsTab, saveAsText); // the tab that was saved, which a slow save may have left
-    await recordRecentFile(kv, name, 'input');
+    await trackRecent(name, 'input');
     setStatus('Downloaded as ' + name + '.');
     closeFileMenu();
     render();

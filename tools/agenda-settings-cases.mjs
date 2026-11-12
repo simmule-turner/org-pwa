@@ -216,7 +216,7 @@ export const SCENARIOS = [
     id: 'command-agenda',
     sample: 'week',
     title: 'An agenda command with its own settings',
-    text: 'An `agenda` command can set =org-agenda-span=, =org-agenda-start-day=, =org-deadline-warning-days=, =org-agenda-prefix-format= and the rest for itself: they go over the variables while the command runs. This one shows three days from Tuesday. It opens as the text of the *Org Agenda* buffer, as Emacs makes it.',
+    text: 'An `agenda` command can set =org-agenda-span=, =org-agenda-start-day=, =org-deadline-warning-days=, =org-agenda-prefix-format= and the rest for itself: they go over the variables while the command runs. This one shows three days from Tuesday. It opens as a screen of its own, as Emacs opens its own buffer, and its rows have the keys of the Agenda.',
     kind: 'command',
     commands: `(setq org-agenda-custom-commands
       '(("x" "Three days" agenda "" ((org-agenda-span 3) (org-agenda-start-day "+1d")))))`,
@@ -226,7 +226,7 @@ export const SCENARIOS = [
     id: 'command-block',
     sample: 'week',
     title: 'A composite command: blocks, headers and files',
-    text: 'A command made of blocks shows each block under its own heading, with a line of `=` between blocks. The settings after the blocks are the whole command\'s and go over the variables for every block; a block\'s own settings come after that and go over those. =org-agenda-overriding-header= replaces a block\'s heading line, and =org-agenda-files= makes a block list those files only (here =other.org=). The agenda block shows its days, the todo block lists the TODO entries of the sample, and the last block lists the other file. In the app a file is written with its source, as =local:other.org=.',
+    text: 'A command made of blocks shows each block under its own heading, with a line of `=` between blocks. The settings after the blocks are the whole command\'s and go over the variables for every block; a block\'s own settings come after that and go over those. =org-agenda-overriding-header= replaces a block\'s heading line, and =org-agenda-files= makes a block list those files only (here =other.org=). The agenda block shows its days, the todo block lists the TODO entries of the sample, and the last block lists the other file. In the app a file is written with its source, as =local:other.org=. The app shows the blocks as one screen, one under the other, with live rows: change a state, set a priority or open the heading as in the Agenda, and an agenda block keeps its own span and day buttons.',
     kind: 'command',
     commands: `(setq org-agenda-custom-commands
       '(("x" "Day and lists"

@@ -53,6 +53,7 @@ import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
+import { agendaClockcheckKey, agendaLogKey, agendaShowing } from './agenda-log-keys.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
@@ -320,6 +321,11 @@ export const GOD_MODE_ACTIONS = {
   },
   'C-c C-l': () => godModeNotSupported('there\u2019s no dedicated link-insertion command -- type or paste a URL directly'),
   'C-c C-o': () => godModeNotSupported('links are tappable directly -- there\u2019s no keyboard-cursor concept to open one from'),
+  // the Agenda's log keys (typed literally: Space, then l), as org-agenda-mode binds them
+  'l': () => void (agendaLogKey(0) || setStatus('l works in the Agenda.')),
+  'C-u l': () => void (agendaLogKey(1) || setStatus('C-u l works in the Agenda.')),
+  'C-u C-u l': () => void (agendaLogKey(2) || setStatus('C-u C-u l works in the Agenda.')),
+  'v c': () => void (agendaClockcheckKey() || setStatus('v c works in the Agenda.')),
   // C-c a waits for a second key, as in Emacs: the agenda dispatcher
   'C-c a a': () => {
     if (S.state.doc) switchToView('agenda');
@@ -452,6 +458,7 @@ export function toggleBufferReadOnly() {
 /** Why a command can't run right now, or null if it can. */
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
+  agenda: () => (agendaShowing() ? null : 'open the Agenda first'),
   heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   nonUtf8: () => (isNonUtf8(S.state.documentId) ? null : 'this file is already UTF-8, or was not read as text'),
   writable: () => (S.isBufferReadOnly ? (isNonUtf8(S.state.documentId) ? 'the file is not valid UTF-8 \u2014 run Convert to UTF-8\u2026' : 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)') : null),
@@ -673,6 +680,10 @@ export function paletteCommandList() {
     { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
     { id: 'tags-view', label: 'Match tags, properties and TODO state', orgName: 'org-tags-view', keys: 'C-c a m', group: 'View', keywords: ['tags', 'match', 'find', 'query'], needs: ['doc'], run: chord('C-c a m') },
     { id: 'search-view', label: 'Search for keywords in the agenda files', orgName: 'org-search-view', keys: 'C-c a s', group: 'View', keywords: ['find', 'words', 'phrase'], needs: ['doc'], run: chord('C-c a s') },
+    { id: 'agenda-log', label: 'Agenda: toggle the log', orgName: 'org-agenda-log-mode', keys: 'l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('l') },
+    { id: 'agenda-log-all', label: 'Agenda: show all log entries (LogAll)', keys: 'C-u l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('C-u l') },
+    { id: 'agenda-log-only', label: 'Agenda: show only log entries', keys: 'C-u C-u l', group: 'View', keywords: ['log', 'only'], needs: ['agenda'], run: chord('C-u C-u l') },
+    { id: 'agenda-clockcheck', label: 'Agenda: check clock issues (ClkCk)', keys: 'v c', group: 'View', keywords: ['clock', 'check', 'gap', 'overlap', 'issues'], needs: ['agenda'], run: chord('v c') },
     { id: 'agenda-commands', label: 'Agenda commands', orgName: 'org-agenda-custom-commands', group: 'View', keywords: ['saved', 'queries', 'dispatcher'], needs: ['doc'], run: () => openAgendaCommands() },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },

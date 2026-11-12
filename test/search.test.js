@@ -220,7 +220,7 @@ test('a heading with both SCHEDULED and DEADLINE produces two separate planning 
 
 test('planning search respects regex mode too', () => {
   const doc = parseOrg('* A task\nSCHEDULED: <2026-05-15 Fri +1y>');
-  const results = searchDocument(doc, '\\+\\d+y', { useRegex: true });
+  const results = searchDocument(doc, '\\+[0-9]+y', { useRegex: true });
   const planningResult = results.find((r) => r.type === 'line');
   assert.ok(planningResult);
 });

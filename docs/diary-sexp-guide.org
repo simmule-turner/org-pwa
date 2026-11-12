@@ -148,7 +148,7 @@ The app knows a list of holidays and can show them on the agenda, or use them in
 Emacs's US list: New Year's Day, Martin Luther King Day, President's Day, Memorial Day, Independence Day, Labor Day, Columbus Day, Veteran's Day, Thanksgiving, and the lesser days Emacs lists (Groundhog Day, Valentine's Day, St. Patrick's Day, April Fools' Day, Mother's Day, Father's Day, Flag Day, Halloween). Plus the Christian ones: Ash Wednesday, Good Friday, Easter Sunday and Christmas. Hebrew, Islamic and other calendars' holidays are not included; for those, or for your country's days, add them yourself with ~org-date~ or ~diary-date~ (below).
 
 ** Show each holiday on its day
-Add this to the body of any heading in a file listed in your agenda files (Settings → Quick Settings → Agenda files). A heading called "Holidays" keeps them together:
+Add this to the body of any heading in a file listed in your agenda files (Settings → Advanced → Advanced (raw syntax) → Agenda files). A heading called "Holidays" keeps them together:
 #+BEGIN_EXAMPLE
   * Holidays
   %%(let ((h (calendar-check-holidays date))) (and h (car h)))

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v683';
+const CACHE_NAME = 'org-pwa-shell-v687';
 
 const SHELL_FILES = [
   './',
@@ -62,6 +62,8 @@ const SHELL_FILES = [
   './src/elisp-core.js',
   './src/elisp-lib.js',
   './src/elisp-regex.js',
+  './src/format-spec.js',
+  './src/export-lisp.js',
   './src/repeater-shift.js',
   './src/list-edit.js',
   './src/log-settings.js',
@@ -129,7 +131,6 @@ const SHELL_FILES = [
   './src/command-palette.js',
   './src/history-store.js',
   './src/query-replace.js',
-  './src/emacs-regex.js',
   './src/export-org.js',
   './src/org-interpret.js',
   './src/ox-icalendar.js',
@@ -190,6 +191,7 @@ const SHELL_FILES = [
   './src/logbook.js',
   './src/heading-edit.js',
   './src/tags-column.js',
+  './src/recent-files.js',
   './src/help-lookup.js',
   './src/agenda-stuck.js',
   './src/agenda-skip.js',
@@ -293,6 +295,9 @@ const SHELL_FILES = [
   './src-browser/adapters.js',
   './src-browser/agenda-files.js',
   './src-browser/agenda-actions.js',
+  './src-browser/agenda-log-keys.js',
+  './src-browser/command-view.js',
+  './src-browser/query-options.js',
   './src-browser/agenda-row-focus.js',
   './src-browser/apropos-variable.js',
   './src-browser/holiday-list.js',
@@ -353,6 +358,7 @@ const SHELL_FILES = [
   './src-browser/navigation.js',
   './src-browser/refile-flow.js',
   './src-browser/render.js',
+  './src-browser/recent-files.js',
   './src-browser/babel-flow.js',
   './src-browser/extension-events.js',
   './src-browser/extension-flow.js',

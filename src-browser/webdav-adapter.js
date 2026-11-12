@@ -4,7 +4,7 @@ import { writeConflict } from '../src/sync-engine.js';
 import { assertSafeStoragePath } from '../src/storage-path.js';
 import { decodeText, refuseNonUtf8Write } from '../src/utf8.js';
 import { SizeLimitError, getSizeLimits, textCeiling } from '../src/size-limits.js';
-import { REPLY_CAP_BYTES, fetchWithTimeout, readLimited, readTextCapped } from './limited-fetch.js';
+import { REPLY_CAP_BYTES, fetchWithTimeout, markUnreachable, readLimited, readTextCapped } from './limited-fetch.js';
 /**
  * WebDAV-backed storage adapter — the same { read(fileId), write(fileId,
  * content), exists(fileId) } shape as the GitHub and local File System
@@ -113,12 +113,14 @@ async function fetchWithHint(url, opts) {
     // a GET waits at most the configured time for the server to answer; an upload (PUT) has no total time limit
     return opts && (opts.method === 'GET' || opts.method === 'PROPFIND') ? await fetchWithTimeout(url, opts) : await fetch(url, opts);
   } catch (err) {
-    throw new Error(
-      'Could not reach the WebDAV server. This is often a CORS configuration issue on the ' +
-        'server (WebDAV servers don\u2019t always allow cross-origin browser requests by default) ' +
-        'rather than a problem with the request itself or your credentials. ' +
-        'Original error: ' +
-        err.message
+    throw markUnreachable(
+      new Error(
+        'Could not reach the WebDAV server. This is often a CORS configuration issue on the ' +
+          'server (WebDAV servers don\u2019t always allow cross-origin browser requests by default) ' +
+          'rather than a problem with the request itself or your credentials. ' +
+          'Original error: ' +
+          err.message
+      )
     );
   }
 }

@@ -8,7 +8,8 @@ import { highlightToHtml } from '../src/syntax-highlight.js';
 
 const DIR = new URL('../test/fixtures/source-color/', import.meta.url);
 /** language (an Org src block language), sample file */
-const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java'], ['go', 'sample.go']];
+const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java'], ['go', 'sample.go'],
+  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java']];
 
 /** Runs of equal face in Emacs for one sample: [[text, face|null], ...]; face is the first face symbol without font-lock-/-face. */
 function emacsRuns(lang, file) {

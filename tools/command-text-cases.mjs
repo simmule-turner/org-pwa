@@ -104,4 +104,14 @@ export const CASES = [
   ['todo several keywords', '(("x" "B" ((todo "NEXT|WAIT") (todo "TODO"))))', {}],
   ['global variables span', '(("x" "A" agenda ""))', { 'org-agenda-span': "'week" }],
   ['global variable overridden', `(("x" "A" agenda "" ((org-agenda-span 'day))))`, { 'org-agenda-span': "'week" }],
+  // the "Press ..." hints under the heading of a single command
+  ['hint tags', '(("x" "T" tags "+work"))', {}],
+  ['hint tags-todo', '(("x" "T" tags-todo "+work"))', {}],
+  ['hint search', '(("x" "T" search "deadline"))', {}],
+  ['hint todo', '(("x" "T" todo "NEXT"))', {}],
+  ['hint alltodo', '(("x" "T" alltodo ""))', {}],
+  ['hint stuck', '(("x" "T" stuck ""))', {}],
+  ['hint with header', '(("x" "T" tags "+work" ((org-agenda-overriding-header "Mine"))))', {}],
+  ['hint with empty header', '(("x" "T" todo "" ((org-agenda-overriding-header ""))))', {}],
+  ['hint in a block', '(("x" "T" ((tags "+work") (search "deadline") (todo "NEXT"))))', {}],
 ];

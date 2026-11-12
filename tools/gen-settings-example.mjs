@@ -16,7 +16,7 @@ const CONTROLLED = [
   ['diary-abbreviated-year-flag', 'Whether a two-digit year in a diary date is the year it ends.'],
   ['diary-file', 'The diary: one github:, webdav: or local: file.', { none: 'no diary', note: 'Emacs: "~/.emacs.d/diary"' }],
   ['diary-show-holidays-flag', "Whether a day's holidays are listed with its diary entries."],
-  ['display-time-mode', "Whether the mode line shows the date and time: 1 on, 0 off.", { app: '1', note: 'Emacs: nil' }],
+  ['display-time-mode', "Whether the mode line shows the date and time: 1 on, 0 off."],
   ['display-line-numbers-mode', "Whether each row shows its line number in the file."],
   ['display-line-numbers-type', 'How lines are numbered: t, relative or visual.', { emacs: 't' }],
   ['display-line-numbers-widen', 'Whether a narrowed outline keeps the file’s own line numbers.'],
@@ -38,8 +38,8 @@ const CONTROLLED = [
   ['org-habit-show-all-today', 'Whether every habit shows today, even one not yet due.'],
   ['org-habit-show-habits-only-for-today', "Whether habits appear only in today's Agenda."],
   ['org-html-head', 'Text added to the <head> of every HTML export.'],
-  ['org-html-postamble', 'The foot of every HTML export: auto, nil or a format string.'],
-  ['org-html-preamble', 'Above the content of every HTML export: t, nil or a format string.', { app: 'nil', note: 'Emacs: t' }],
+  ['org-html-postamble', 'The foot of every HTML export: auto (date, author, email, Created, validation link), nil, t (org-html-postamble-format), a format string or a function.'],
+  ['org-html-preamble', 'Above the content of every HTML export: t, nil or a format string.', { note: 't uses org-html-preamble-format, which is empty by default: nothing is added above the content' }],
   ['org-latex-compiler', 'pdflatex, xelatex or lualatex.'],
   ['org-latex-default-class', 'The class of a LaTeX export whose file sets none.'],
   ['org-log-done', "'time adds a CLOSED: stamp when a heading becomes DONE; 'note asks for a note too."],
@@ -67,6 +67,7 @@ const CONTROLLED = [
   ['org-xx-startup-with-show-photos', "Whether a contact's photo shows as a thumbnail when a file opens.", { own: 'nil' }],
   ['org-xx-text-font-size', "The Text view's text size in pixels, 9 to 28.", { own: '13' }],
   ['org-xx-windowing-threshold', 'Above this many rows only the rows near the screen are drawn; 0 draws all.', { own: '400' }],
+  ['recentf-max-saved-items', 'How many files Recently opened keeps.'],
 ];
 
 /** @param {string} lisp a value as Emacs prints it, @returns {string} as it is written after a quote in a setq */
@@ -79,7 +80,7 @@ const cut = VARIABLE_CATALOG.filter((c) => c.default.endsWith('...')).map((c) =>
 const emacsNames = [...CONTROLLED.filter(([, , o]) => !o || !o.own).map(([n]) => n), ...cut];
 const askEmacs = () => {
   const forms = emacsNames.map((n) => `(princ (format "%s\\t%s\\n" '${n} (if (boundp '${n}) (let ((print-length nil) (print-level nil)) (prin1-to-string (default-value '${n}))) "UNBOUND")))`).join('');
-  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-habit org-attach ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob)) (require f)) ${forms})`], { encoding: 'utf8' });
+  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-habit org-attach ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob recentf)) (require f)) ${forms})`], { encoding: 'utf8' });
   const defaults = {};
   for (const line of out.split('\n')) {
     const m = /^(\S+)\t([\s\S]*)$/.exec(line);

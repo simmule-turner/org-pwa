@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emacsRegexToJs, EmacsRegexError } from '../src/emacs-regex.js';
+import { emacsRegexToJs, EmacsRegexError } from '../src/elisp-regex.js';
 
 // ---- THE core behavior: unescaped ( ) { } | are literal ------------------
 
@@ -163,11 +163,10 @@ test('a malformed interval body throws a clear error', () => {
   assert.throws(() => emacsRegexToJs('a\\{abc\\}'), EmacsRegexError);
 });
 
-test('syntax-table-dependent escapes throw a clear, specific error rather than silently miscompiling', () => {
-  assert.throws(() => emacsRegexToJs('\\s<'), EmacsRegexError);
-  assert.throws(() => emacsRegexToJs('\\s>'), EmacsRegexError);
-  assert.throws(() => emacsRegexToJs('\\sc'), EmacsRegexError);
-  assert.throws(() => emacsRegexToJs('\\Sc'), EmacsRegexError);
+test('syntax classes follow the standard syntax table; an unknown designator is an error with the Emacs message', () => {
+  assert.equal(emacsRegexToJs('\\s<').test(';'), true); // comment starter
+  assert.equal(emacsRegexToJs('\\s>').test('\n'), true); // comment ender
+  assert.throws(() => emacsRegexToJs('\\sQ'), (e) => e instanceof EmacsRegexError && /Invalid syntax designator/.test(e.message));
   assert.equal(emacsRegexToJs('\\S-+').test('ab'), true); // \S- and \S  are the complement of whitespace
 });
 

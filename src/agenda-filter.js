@@ -4,7 +4,7 @@
 // The filter row shared by the Agenda and the TODO view (tag, TODO state, category), and the date the TODO view shows on a
 // row. Pure functions: the views in src-browser/ draw them.
 import { startOfDay } from './agenda.js';
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { parseOrgTimestamp } from './org-timestamp.js';
 
 /**

@@ -32,6 +32,19 @@ export function readLogSettings(vars, view = null) {
   return { mode: raw !== null && raw !== false, kinds: /** @type {LogKind[]} */ (configured), addNotes: notes };
 }
 
+/**
+ * The log mode as the mode line of an Emacs agenda names it: off, on (` Log`), all (` LogAll`: `org-agenda-show-log` is a list), only
+ * or clockcheck (` ClkCk`).
+ * @param {Record<string, string> | undefined} vars @param {boolean | 'only' | 'clockcheck' | LogKind[] | null} [view]
+ * @returns {'off' | 'on' | 'all' | 'only' | 'clockcheck'}
+ */
+export function logModeName(vars, view = null) {
+  const raw = view !== null && view !== undefined ? view : lispValue((vars || {})['org-agenda-start-with-log-mode']);
+  if (Array.isArray(raw)) return 'all';
+  if (raw === 'only' || raw === 'clockcheck') return raw;
+  return raw !== null && raw !== false ? 'on' : 'off';
+}
+
 /** @param {string[]} words */
 const alternatives = (words) => words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
 

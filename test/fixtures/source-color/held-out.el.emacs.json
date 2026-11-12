@@ -1,0 +1,390 @@
+{
+ "lang": "emacs-lisp",
+ "mode": "emacs-lisp-mode",
+ "runs": [
+  [
+   ";;; ",
+   "comment-delimiter"
+  ],
+  [
+   "sample.el --- demo  -*- lexical-binding: t; -*-\n",
+   "comment"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "require",
+   "keyword"
+  ],
+  [
+   " '",
+   null
+  ],
+  [
+   "cl-lib",
+   "constant"
+  ],
+  [
+   ")\n(",
+   null
+  ],
+  [
+   "defvar",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-var",
+   "variable-name"
+  ],
+  [
+   " 42 ",
+   null
+  ],
+  [
+   "\"A documented variable.\"",
+   "doc"
+  ],
+  [
+   ")\n(",
+   null
+  ],
+  [
+   "defcustom",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-opt",
+   "variable-name"
+  ],
+  [
+   " nil ",
+   null
+  ],
+  [
+   "\"Option.\"",
+   "doc"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   ":type",
+   "builtin"
+  ],
+  [
+   " 'boolean ",
+   null
+  ],
+  [
+   ":group",
+   "builtin"
+  ],
+  [
+   " 'demo)\n(",
+   null
+  ],
+  [
+   "defconst",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-const",
+   "variable-name"
+  ],
+  [
+   " '(1 2 3))\n(",
+   null
+  ],
+  [
+   "defmacro",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-when",
+   "function-name"
+  ],
+  [
+   " (cond ",
+   null
+  ],
+  [
+   "&rest",
+   "type"
+  ],
+  [
+   " body) ",
+   null
+  ],
+  [
+   "\"Doc.\"",
+   "doc"
+  ],
+  [
+   " `(",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " ,cond (",
+   null
+  ],
+  [
+   "progn",
+   "keyword"
+  ],
+  [
+   " ,@body)))\n(",
+   null
+  ],
+  [
+   "defun",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "my-fn",
+   "function-name"
+  ],
+  [
+   " (a ",
+   null
+  ],
+  [
+   "&optional",
+   "type"
+  ],
+  [
+   " b ",
+   null
+  ],
+  [
+   "&rest",
+   "type"
+  ],
+  [
+   " c)\n  ",
+   null
+  ],
+  [
+   "\"Docstring with `",
+   "doc"
+  ],
+  [
+   "quoted",
+   "constant"
+  ],
+  [
+   "' and \\\\[",
+   "doc"
+  ],
+  [
+   "command",
+   "constant"
+  ],
+  [
+   "].\"",
+   "doc"
+  ],
+  [
+   "\n  (",
+   null
+  ],
+  [
+   "interactive",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"p\"",
+   "string"
+  ],
+  [
+   ")\n  (",
+   null
+  ],
+  [
+   "let*",
+   "keyword"
+  ],
+  [
+   " ((x (+ a 1)) (y (",
+   null
+  ],
+  [
+   "or",
+   "keyword"
+  ],
+  [
+   " b 2.5)))\n    (",
+   null
+  ],
+  [
+   "when",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "and",
+   "keyword"
+  ],
+  [
+   " x (> y 0))\n      (message ",
+   null
+  ],
+  [
+   "\"x=%d y=%s\"",
+   "string"
+  ],
+  [
+   " x y)\n      (",
+   null
+  ],
+  [
+   "condition-case",
+   "keyword"
+  ],
+  [
+   " err\n          (",
+   null
+  ],
+  [
+   "cl-loop",
+   "keyword"
+  ],
+  [
+   " for i from 1 to 10 collect (* i i))\n        (",
+   null
+  ],
+  [
+   "error",
+   "warning"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "signal",
+   "warning"
+  ],
+  [
+   " 'my-error (list err)))))\n    (",
+   null
+  ],
+  [
+   "unless",
+   "keyword"
+  ],
+  [
+   " t (",
+   null
+  ],
+  [
+   "error",
+   "warning"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"never\"",
+   "string"
+  ],
+  [
+   "))\n    (",
+   null
+  ],
+  [
+   "setq",
+   "keyword"
+  ],
+  [
+   " my-var (",
+   null
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " (z) (funcall #'identity z)))\n    ",
+   null
+  ],
+  [
+   ":keyword",
+   "builtin"
+  ],
+  [
+   " ?a ?\\n 'sym ",
+   null
+  ],
+  [
+   "\"str\\n\"",
+   "string"
+  ],
+  [
+   " nil t))\n",
+   null
+  ],
+  [
+   ";; ",
+   "comment-delimiter"
+  ],
+  [
+   "comment\n",
+   "comment"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "provide",
+   "keyword"
+  ],
+  [
+   " '",
+   null
+  ],
+  [
+   "sample",
+   "constant"
+  ],
+  [
+   ")\n",
+   null
+  ]
+ ]
+}

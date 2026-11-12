@@ -179,14 +179,3 @@ export function commandItems(command, docs, searchDocs, options, inherited = {})
   }
   return matchViewItems(docs, command.query, { ...merged, todoOnly: command.type === 'tags-todo' });
 }
-
-/**
- * What a command lists, as sections: one for a simple command, one per block of a composite command (the blocks run in order, each under
- * the global settings and its own). An `agenda` block is the built-in Agenda and has no rows here.
- * @param {CustomCommand} command @param {Parameters<typeof commandItems>[1]} docs @param {Parameters<typeof commandItems>[2]} searchDocs @param {import('./agenda-queries.js').QueryOptions} options
- * @returns {{ command: CustomCommand, items: ReturnType<typeof commandItems> }[]}
- */
-export function commandSections(command, docs, searchDocs, options) {
-  if (command.type !== 'block') return [{ command, items: commandItems(command, docs, searchDocs, options) }];
-  return (command.blocks || []).map((block) => ({ command: block, items: commandItems(block, docs, searchDocs, options, command.settings || {}) }));
-}

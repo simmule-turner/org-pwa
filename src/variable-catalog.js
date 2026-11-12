@@ -372,6 +372,21 @@ export const VARIABLE_CATALOG = [
     "default": "\"xhtml-strict\""
   },
   {
+    "name": "org-html-postamble-format",
+    "doc": "Alist of languages and format strings for the HTML postamble.",
+    "default": "((\"en\" \"<p class=\\\"author\\\">Author: %a (%e)</p> <p class=\\\"date\\\">Date: %d</p> <p class..."
+  },
+  {
+    "name": "org-html-preamble-format",
+    "doc": "Alist of languages and format strings for the HTML preamble.",
+    "default": "((\"en\" \"\"))"
+  },
+  {
+    "name": "org-html-validation-link",
+    "doc": "Link to HTML validation service.",
+    "default": "\"<a href=\\\"https://validator.w3.org/check?uri=referer\\\">Validate</a>\""
+  },
+  {
     "name": "org-icalendar-alarm-time",
     "doc": "Number of minutes for triggering an alarm for exported timed events.",
     "default": "0"

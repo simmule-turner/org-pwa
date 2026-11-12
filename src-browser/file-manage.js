@@ -83,7 +83,7 @@ const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 /** Closes the tabs of the open documents, or follows them to new paths. @param {Place} reopenIn @param {{ path: string, tabId: number | null }[]} docs @param {((path: string) => string | null) | null} follow */
 async function settleTabs(reopenIn, docs, follow) {
   for (const doc of docs) {
-    if (doc.tabId != null) await closeTab(doc.tabId);
+    if (doc.tabId != null) await closeTab(doc.tabId); // the file was deleted or moved
     const next = follow ? follow(doc.path) : null;
     if (next) await openInPlace(reopenIn, next);
   }

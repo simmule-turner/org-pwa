@@ -1,7 +1,7 @@
 #+TITLE: Calendar
 #+PROPERTY: header-args:js :noweb yes :results table :tangle no
 
-Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Quick Settings → Editing.
+Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Editing and startup → Editing.
 
 * This month
 No network. Today is shown in brackets.

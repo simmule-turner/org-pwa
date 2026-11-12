@@ -3,7 +3,7 @@
 // whose subtree holds a next action -- a heading with one of some TODO keywords or tags, or text a regexp finds. Emacs runs a tags view
 // with a skip function that passes over every project in which the search finds one of those; the same is done here.
 import { datum, listItems, readLisp, stringValue, symbolName } from './lisp-read.js';
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { matchViewItems } from './agenda-queries.js';
 import { subtreeLines } from './agenda-skip.js';
 

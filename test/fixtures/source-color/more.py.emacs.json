@@ -1,0 +1,214 @@
+{
+ "lang": "python",
+ "mode": "python-mode",
+ "runs": [
+  [
+   "@",
+   null
+  ],
+  [
+   "property",
+   "builtin"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "a",
+   "function-name"
+  ],
+  [
+   "(): ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n@",
+   null
+  ],
+  [
+   "staticmethod",
+   "builtin"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "b",
+   "function-name"
+  ],
+  [
+   "(): ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "@app.route",
+   "type"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "c",
+   "function-name"
+  ],
+  [
+   "(): ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "@Exception",
+   "type"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "d",
+   "function-name"
+  ],
+  [
+   "(): ",
+   null
+  ],
+  [
+   "pass",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "f",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "2: a\n",
+   null
+  ],
+  [
+   "y",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " z ",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   " 1\ng(a, b",
+   null
+  ],
+  [
+   "=",
+   "operator"
+  ],
+  [
+   "3)\n",
+   null
+  ]
+ ]
+}

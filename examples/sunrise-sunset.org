@@ -1,7 +1,7 @@
 #+TITLE: Sunrise and sunset
 #+PROPERTY: header-args:js :noweb yes :results table :tangle no
 
-Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Quick Settings → Editing.
+Run a block with its Run button (or C-c C-c). JavaScript blocks must be turned on in Settings → Editing and startup → Editing.
 
 The calculation is written once, in the block named =sun=; the others pull it in with =<<sun>>=.
 
@@ -34,7 +34,7 @@ const length = (s) => {
 #+end_src
 
 * Today, at the place set in Settings
-Uses =calendar-latitude= and =calendar-longitude= (Quick Settings can fill them in from the device).
+Uses =calendar-latitude= and =calendar-longitude= (Settings → Agenda, diary and weather → Diary can fill them in from the device).
 
 #+begin_src js
 <<sun>>

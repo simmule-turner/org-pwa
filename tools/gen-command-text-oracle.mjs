@@ -27,6 +27,16 @@ const el = `
             (unless (string-match-p "^\\\\(Press \`\\\\|  +([0-9]+)[A-Z]\\\\)" line) (push line acc))))
         (forward-line 1))
       (nreverse acc))))
+(defun hint-text ()
+  (with-current-buffer "*Org Agenda*"
+    (let (acc)
+      (goto-char (point-min))
+      (while (not (eobp))
+        (let ((line (string-trim-right (buffer-substring-no-properties (line-beginning-position) (line-end-position)))))
+          (cond ((string-match-p "^Press \\\`" line) (push line acc))
+                ((and acc (string-match-p "^ +([0-9]+)[A-Z]" line)) (setcar acc (concat (car acc) " " (string-trim line))))))
+        (forward-line 1))
+      (mapconcat #'identity (nreverse acc) "\n"))))
 (let* ((cases (with-temp-buffer (insert-file-contents (getenv "ORACLE_IN")) (json-parse-string (buffer-string) :object-type 'alist :array-type 'list :null-object nil)))
        (out '()))
   (ignore-errors (let ((org-agenda-files (list (expand-file-name "mini.org")))) (org-agenda-list nil "2026-10-11" 'day)) (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*")))
@@ -38,7 +48,7 @@ const el = `
       (condition-case e
           (progn
             (eval \`(let ,binds (org-agenda nil "x")) t)
-            (push (list (cons 'id (cdr (assq 'id c))) (cons 'lines (vconcat (visible-lines)))) out))
+            (push (list (cons 'id (cdr (assq 'id c))) (cons 'lines (vconcat (visible-lines))) (cons 'hint (hint-text))) out))
         (error (push (list (cons 'id (cdr (assq 'id c))) (cons 'error (error-message-string e))) out)))
       (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*"))))
   (with-temp-file (getenv "ORACLE_OUT") (insert (json-encode (vconcat (nreverse out))))))

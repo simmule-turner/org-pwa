@@ -14,11 +14,16 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] Custom commands as the live Agenda
-Composite, stuck and ~agenda~ commands with settings open as the text of the *Org Agenda* buffer, so they have none of the Agenda's keys (changing a TODO state, rescheduling), and a single command does not show the "Press ..." key lines Emacs puts under its heading.
-- Effort: M. Impact: S.
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
+
+** [#C] Clock issue faces and the *Org Agenda* text
+=org-agenda-clock-consistency-checks= takes a face per kind of issue (=:default-face=, =:long-face=, =:short-face=, =:overlap-face=, =:gap-face=, =:no-end-time-face=); the Agenda view draws every issue white on dark red. Emacs's issue lines are overlays, so the =*Org Agenda*= text has none.
+- Effort: S. Impact: S.
+
+** [#C] HTML preamble and postamble functions: the rest of the export options
+A function given as =org-html-preamble= or =org-html-postamble= gets =:title=, =:subtitle=, =:author=, =:date=, =:email=, =:language= and =:creator=; Emacs's property list has every export option, and a title with markup is a list of objects rather than the text already turned into HTML.
+- Effort: M. Impact: S.
 
 * Security
 Left from the security reviews. Each is small, none lets a document run code without the "Run code?" prompt.

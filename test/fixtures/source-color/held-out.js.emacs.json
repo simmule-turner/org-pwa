@@ -1,0 +1,566 @@
+{
+ "lang": "js",
+ "mode": "js-mode",
+ "runs": [
+  [
+   "import",
+   "keyword"
+  ],
+  [
+   " React, { useState } from ",
+   null
+  ],
+  [
+   "'react'",
+   "string"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "export",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "default",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "class",
+   "keyword"
+  ],
+  [
+   " Widget ",
+   null
+  ],
+  [
+   "extends",
+   "keyword"
+  ],
+  [
+   " Base {\n  ",
+   null
+  ],
+  [
+   "static",
+   "keyword"
+  ],
+  [
+   " count = 0;\n  #secret = 42;\n  constructor(props) { ",
+   null
+  ],
+  [
+   "super",
+   "keyword"
+  ],
+  [
+   "(props); ",
+   null
+  ],
+  [
+   "this",
+   "constant"
+  ],
+  [
+   ".state = { open: ",
+   null
+  ],
+  [
+   "false",
+   "constant"
+  ],
+  [
+   ", items: [] }; }\n  ",
+   null
+  ],
+  [
+   "async",
+   "keyword"
+  ],
+  [
+   " load(url = ",
+   null
+  ],
+  [
+   "\"/api\"",
+   "string"
+  ],
+  [
+   ", { retries = 3 } = {}) {\n    ",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " (",
+   null
+  ],
+  [
+   "let",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   " = 0; i < retries; i++) {\n      ",
+   null
+  ],
+  [
+   "try",
+   "keyword"
+  ],
+  [
+   " {\n        ",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "res",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "await",
+   "keyword"
+  ],
+  [
+   " fetch(",
+   null
+  ],
+  [
+   "`${url}?n=${i}`",
+   "string"
+  ],
+  [
+   ");\n        ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (!res.ok) ",
+   null
+  ],
+  [
+   "throw",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Error",
+   "type"
+  ],
+  [
+   "(",
+   null
+  ],
+  [
+   "'bad '",
+   "string"
+  ],
+  [
+   " + res.status);\n        ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "await",
+   "keyword"
+  ],
+  [
+   " res.json();\n      } ",
+   null
+  ],
+  [
+   "catch",
+   "keyword"
+  ],
+  [
+   " (e) { console.error(e); } ",
+   null
+  ],
+  [
+   "finally",
+   "keyword"
+  ],
+  [
+   " { ",
+   null
+  ],
+  [
+   "this",
+   "constant"
+  ],
+  [
+   ".done = ",
+   null
+  ],
+  [
+   "true",
+   "constant"
+  ],
+  [
+   "; }\n    }\n  }\n}\n",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "re",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "/ab+c\\/d[a-z]*/",
+   "string"
+  ],
+  [
+   "gi, ",
+   null
+  ],
+  [
+   "n",
+   "variable-name"
+  ],
+  [
+   " = 0xFF + 1.5e3, ",
+   null
+  ],
+  [
+   "t",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "true",
+   "constant"
+  ],
+  [
+   " ? ",
+   null
+  ],
+  [
+   "null",
+   "constant"
+  ],
+  [
+   " : ",
+   null
+  ],
+  [
+   "undefined",
+   "constant"
+  ],
+  [
+   ";\n",
+   null
+  ],
+  [
+   "function",
+   "keyword"
+  ],
+  [
+   "* ",
+   null
+  ],
+  [
+   "gen",
+   "function-name"
+  ],
+  [
+   "(a, b) { ",
+   null
+  ],
+  [
+   "yield",
+   "keyword"
+  ],
+  [
+   " a; ",
+   null
+  ],
+  [
+   "yield",
+   "keyword"
+  ],
+  [
+   "* b; }\n",
+   null
+  ],
+  [
+   "const",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "arrow",
+   "variable-name"
+  ],
+  [
+   " = (x) => x ** 2, ",
+   null
+  ],
+  [
+   "obj",
+   "variable-name"
+  ],
+  [
+   " = { key: ",
+   null
+  ],
+  [
+   "'v'",
+   "string"
+  ],
+  [
+   ", [computed]: ",
+   null
+  ],
+  [
+   "typeof",
+   "keyword"
+  ],
+  [
+   " x === ",
+   null
+  ],
+  [
+   "'number'",
+   "string"
+  ],
+  [
+   ", get g() { ",
+   null
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " 1; } };\nlabel: ",
+   null
+  ],
+  [
+   "while",
+   "keyword"
+  ],
+  [
+   " (!done) { ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " (x ",
+   null
+  ],
+  [
+   "instanceof",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Y",
+   "type"
+  ],
+  [
+   ") ",
+   null
+  ],
+  [
+   "break",
+   "keyword"
+  ],
+  [
+   " label; ",
+   null
+  ],
+  [
+   "else",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   "; }\n",
+   null
+  ],
+  [
+   "/* ",
+   "comment-delimiter"
+  ],
+  [
+   "block comment",
+   "comment"
+  ],
+  [
+   " */",
+   "comment-delimiter"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "// ",
+   "comment-delimiter"
+  ],
+  [
+   "line\n",
+   "comment"
+  ],
+  [
+   "let",
+   "keyword"
+  ],
+  [
+   " { a, b: [c, d] } = obj;\n",
+   null
+  ],
+  [
+   "var",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "s",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Set",
+   "type"
+  ],
+  [
+   "(), ",
+   null
+  ],
+  [
+   "m",
+   "variable-name"
+  ],
+  [
+   " = ",
+   null
+  ],
+  [
+   "new",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Map",
+   "type"
+  ],
+  [
+   "(); ",
+   null
+  ],
+  [
+   "delete",
+   "keyword"
+  ],
+  [
+   " obj.key; ",
+   null
+  ],
+  [
+   "void",
+   "keyword"
+  ],
+  [
+   " 0;\n",
+   null
+  ]
+ ]
+}

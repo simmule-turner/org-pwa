@@ -358,7 +358,14 @@
       max-height: 80vh; border-radius: var(--radius-container) var(--radius-container) 0 0; border-bottom: 0;
       padding: var(--space-2) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom, 0px)); box-shadow: 0 0 0 100vmax var(--scrim); z-index: 9990; }
     .popup-menu::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto var(--space-2); }
+    /* the File menu, like Open: a title under the grip and 14px at the sides; with a recent files list it is as tall as Open's file list */
+    #fileMenuPanel .menu-sheet-title { display: block; font-weight: 650; font-size: var(--text-title); margin: 0 0 10px; }
+    #fileMenuPanel { padding-left: 14px; padding-right: 14px; }
+    #fileMenuPanel.has-recents { height: 92vh; max-height: 92vh; }
   }
+  .menu-sheet-title { display: none; }
+  #fileMenuPanel.has-recents { flex-direction: column; }
+  #fileMenuPanel.has-recents > .menu-list-item { flex: 0 0 auto; }
   /* Hover only on devices that genuinely support it (a mouse) -- on a
      touch device, :hover fires on tap with no reliable way to clear
      it again until something else is tapped, which would leave a

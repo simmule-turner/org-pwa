@@ -117,9 +117,9 @@ export const GROUPS = [
   },
   {
     id: 'org', title: 'Org functions',
-    intro: 'The read-only Org functions an agenda setting, skip function or capture template may call.',
+    intro: 'The read-only Org functions an agenda setting, skip function, capture template or HTML preamble function may call.',
     note: 'They work on the entry being processed, as when Emacs runs them with the cursor on a heading.',
-    names: 'org-agenda-skip-entry-if org-agenda-skip-if org-agenda-skip-subtree-if org-entry-get org-entry-get-with-inheritance org-entry-is-done-p org-entry-is-todo-p org-get-category org-get-heading org-get-tags org-get-todo-state org-link-escape org-link-make-string org-outline-level orgtbl-ascii-draw',
+    names: 'org-agenda-skip-entry-if org-agenda-skip-if org-agenda-skip-subtree-if org-entry-get org-entry-get-with-inheritance org-entry-is-done-p org-entry-is-todo-p org-get-category org-get-heading org-get-tags org-get-todo-state org-link-escape org-link-make-string org-outline-level orgtbl-ascii-draw org-export-data',
   },
   {
     id: 'calendar', title: 'Calendar, diary and holiday functions',

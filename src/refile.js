@@ -28,7 +28,7 @@
  */
 
 import { resolveCaptureFileId } from './capture-template.js';
-import { emacsRegexToJs, EmacsRegexError } from './emacs-regex.js';
+import { emacsRegexToJs, EmacsRegexError } from './elisp-regex.js';
 import { serializeHeadingLine } from './org-parser.js';
 import { readLisp, listItems, stringValue, symbolName, isNil, lispSyntaxError } from './lisp-read.js';
 

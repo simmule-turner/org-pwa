@@ -58,9 +58,10 @@ import { scheduleSync } from './src-browser/mirror-sync.js';
 import { loadAttachmentsFolder } from './src-browser/attachments-store.js';
 import { syncCaptureShortcuts } from './src-browser/capture-shortcuts.js';
 import { platform } from './src-browser/platform.js';
-import { acceptNativeLaunches, handleLaunchParams } from './src-browser/launch-params.js';
+import { acceptNativeLaunches, handleLaunchParams, reportLaunchError } from './src-browser/launch-params.js';
 import { clearStaleKeyboardFocusIfClickedElsewhere, enterInsertModeAtCurrentLine, moveKeyboardFocus, moveLineFocus, resyncKeyboardFocusToBodyRow, setKeyboardFocusToHeading } from './src-browser/keyboard-focus.js';
 import { handleAgendaRowKey } from './src-browser/agenda-row-focus.js';
+import { handleAgendaLogKey } from './src-browser/agenda-log-keys.js';
 import { renderExtraMenu, renderMoreMenu } from './src-browser/menus.js';
 import { navigateBack, toggleActionMenu } from './src-browser/navigation.js';
 import { installVariableErrorReporting, render, updateSaveButtonState } from './src-browser/render.js';
@@ -396,6 +397,7 @@ document.addEventListener('keydown', (e) => {
   // keystrokes reach god-mode; it holds no text of its own to protect
   if ((activeTag === 'INPUT' || activeTag === 'TEXTAREA') && document.activeElement !== godModeKeyboardInput) return;
 
+  if (e.ctrlKey && !e.metaKey && handleAgendaLogKey(e)) return; // C-u before l, in the Agenda
   if (e.metaKey || e.ctrlKey) return; // Cmd/Ctrl combinations are the browser's own territory (new tab, save, find, ...) -- never treated as one of these shortcuts, avoiding a silent double-action
 
   if (statusEl.textContent) setStatus('');
@@ -477,6 +479,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  if (handleAgendaLogKey(e)) return; // the Agenda's l and v c
   if (handleAgendaRowKey(e)) return; // the Agenda, TODO, Match and Keyword search screens: move among rows, act on one
 
   if (S.currentView !== 'org' || !S.state.doc) return; // everything below acts on the outline specifically
@@ -605,7 +608,7 @@ S.viewMenuOpen = false;
 S.agendaViewType = 'week'; // 'day' | 'week' | 'month'
 S.agendaAnchorDate = new Date();
 S.agendaInitialSpanApplied = false;
-S.agendaLogMode = false; // whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
+S.agendaLogMode = null; // the log mode chosen in the Agenda (null: org-agenda-start-with-log-mode decides; whether LOGBOOK entries (state-change/note timestamps) show alongside SCHEDULED/DEADLINE/etc. -- off by default, matching real org's own org-agenda-log-mode convention exactly (a toggle, not always-on, so daily task-scanning doesn't get cluttered by default)
 
 // Effort sorting / filtering / per-day limit for the Agenda -- session state,
 // like the Log toggle (see the panel built by buildAgendaEffortPanel).
@@ -1323,7 +1326,7 @@ if (window.matchMedia) {
 // bootstrap() has several ways out (a restored set of tabs, a resumed document, a fresh start), so a share or an icon
 // shortcut that asked for Capture is acted on here, once whichever of them finished (see launch-params.js).
 bootstrap().then(() => {
-  handleLaunchParams().catch(() => {});
+  handleLaunchParams().catch(reportLaunchError);
   acceptNativeLaunches(); // a native shell's shares that arrived while the app was starting
   syncCaptureShortcuts(); // the launcher's long-press list follows the capture templates
   loadAttachmentsFolder(); // and the attachments folder chosen earlier, if the platform keeps one

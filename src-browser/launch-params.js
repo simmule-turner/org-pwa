@@ -10,6 +10,12 @@ import { setStatus } from './editing.js';
 import { openApptDay } from './appt-flow.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 
+/** A launch that failed is said in the status line and the console, not dropped. @param {unknown} err */
+export function reportLaunchError(err) {
+  console.error('Launch failed:', err);
+  setStatus(`Could not act on the launch: ${err instanceof Error ? err.message : String(err)}`);
+}
+
 /** Acts on the launch URL, once, after startup has restored everything. A URL with nothing for Capture does nothing. */
 export async function handleLaunchParams() {
   const apptDay = new URLSearchParams(window.location.search).get('appt-day'); // tapping a reminder with the app closed
@@ -61,6 +67,6 @@ export async function runLaunch(params) {
  */
 export function acceptNativeLaunches() {
   const queued = Array.isArray(/** @type {any} */ (globalThis).orgPwaLaunchQueue) ? /** @type {any} */ (globalThis).orgPwaLaunchQueue.splice(0) : [];
-  /** @type {any} */ (globalThis).orgPwaLaunch = (/** @type {any} */ payload) => runLaunch(launchFromShare(payload)).catch(() => {});
+  /** @type {any} */ (globalThis).orgPwaLaunch = (/** @type {any} */ payload) => runLaunch(launchFromShare(payload)).catch(reportLaunchError);
   for (const payload of queued) /** @type {any} */ (globalThis).orgPwaLaunch(payload);
 }

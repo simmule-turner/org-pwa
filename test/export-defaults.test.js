@@ -35,7 +35,7 @@ test('the defaults reach the page, and the file wins', () => {
 test("Org's own org-html-head, org-html-preamble and org-html-postamble variables set the defaults", () => {
   assert.deepEqual(htmlExportDefaults({ 'org-html-head': '"<style>p{}</style>"', 'org-html-preamble': '"%t by %a"', 'org-html-postamble': '"Made %d"' }), { head: '<style>p{}</style>', preamble: '%t by %a', postamble: 'Made %d' });
   assert.deepEqual(htmlExportDefaults({ 'org-html-postamble': 'nil' }), { postamble: false });
-  assert.deepEqual(htmlExportDefaults({ 'org-html-postamble': 'auto', 'org-html-preamble': 't', 'org-html-head': 'nil' }), {});
+  assert.deepEqual(htmlExportDefaults({ 'org-html-postamble': 'auto', 'org-html-preamble': 't', 'org-html-head': 'nil' }), { preamble: true, postamble: 'auto' });
   assert.deepEqual(htmlExportDefaults({ 'org-xx-html-preamble': 'old', 'org-xx-html-preamble-on': 't' }), {}, 'the retired variables do nothing');
   assert.ok(!exportToHtml(doc('* A\nbody\n'), null, { defaults: htmlExportDefaults({ 'org-html-postamble': 'nil' }) }).includes('class="postamble"'));
   assert.ok(exportToHtml(doc('* A\nbody\n'), null, { defaults: htmlExportDefaults({ 'org-html-postamble': '"Made by me"' }) }).includes('Made by me'));
@@ -96,4 +96,12 @@ test('org-use-sub-superscripts also reaches ASCII and ODT export, and the file\'
   assert.match(odt(org, '{}'), /Effort_ALL: values/);
   assert.match(odt(org, 't'), /Effort<text:span text:style-name="OrgSubscript">ALL<\/text:span>/);
   assert.match(odt('#+OPTIONS: ^:t\n' + org, '{}'), /Effort<text:span text:style-name="OrgSubscript">ALL/);
+});
+
+test('org-html-preamble: nil, t, a string or a function; org-html-preamble-format and org-html-validation-link are read', () => {
+  assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': 'nil' }), { preamble: false });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': "'my-preamble" }), { preamble: { fn: 'my-preamble' } });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-preamble': '(lambda (info) "x")' }), { preamble: { fn: '(lambda (info) "x")' } });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-preamble-format': '(("en" "<p>%t</p>") ("de" "<p>DE %a</p>"))' }), { preambleFormats: [['en', '<p>%t</p>'], ['de', '<p>DE %a</p>']] });
+  assert.deepEqual(htmlExportDefaults({ 'org-html-validation-link': '"<a href=\\"/v\\">V</a>"' }), { validationLink: '<a href="/v">V</a>' });
 });

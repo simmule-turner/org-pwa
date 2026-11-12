@@ -273,6 +273,7 @@ export function localAgendaFilesWritable() {
 }
 
 export function aggregateAgendaDocs({ writable = false } = {}) {
+  if (commandScope.docs && !writable) return commandScope.docs; // an agenda block of a custom command drawn with org-agenda-files of its own
   const docs = [{ documentId: S.state.documentId, doc: S.state.doc }];
   const seen = new Set([S.state.documentId]);
   for (const [key, entry] of agendaFilesCache.entries()) {
@@ -288,6 +289,9 @@ export function aggregateAgendaDocs({ writable = false } = {}) {
   }
   return docs;
 }
+
+/** The documents an `agenda` block of a custom command is drawn from while it is drawn (null otherwise). @type {{ docs: { documentId: string, doc: import('../src/types.js').Doc }[] | null }} */
+export const commandScope = { docs: null };
 
 /** The files a custom command names with org-agenda-files, loaded for that command only: the Agenda's own list never holds them.
  * @type {Map<string, { doc?: import('../src/types.js').Doc, documentId?: string, error?: string }>} */

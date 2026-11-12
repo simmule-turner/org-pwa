@@ -8,7 +8,7 @@ import { NIL, Cons, Sym, signal, toArray } from './elisp-data.js';
 import { defun } from './elisp-core.js';
 import { currentHeading } from './org-lisp.js';
 import { callSkipSetting, skipSetting } from './agenda-lisp.js';
-import { emacsRegexToJs } from './emacs-regex.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { entryLines } from './agenda-log.js';
 
 /** @typedef {import('./types.js').Heading} Heading */

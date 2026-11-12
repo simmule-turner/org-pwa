@@ -197,13 +197,26 @@ function headingOf(block) {
   return '';
 }
 
+/** The "Press ..." line Emacs puts under the heading of a single command, how to search again; empty for a command without one. @param {CustomCommand} block @param {string[]} keywords  every TODO keyword, in the order the files declare them */
+function hintOf(block, keywords) {
+  if (block.type === 'tags' || block.type === 'tags-todo') return "Press `C-u r' to search again";
+  if (block.type === 'search') return "Press `[', `]' to add/sub word, `{', `}' to add/sub regexp, `C-u r' for a fresh search";
+  if (block.type === 'todo' || block.type === 'alltodo') return `Press \`N r' (e.g. \`0 r') to search again: (0)[ALL] ${[...keywords].reverse().map((k, i) => `(${i + 1})${k}`).join(' ')}`;
+  return '';
+}
+
+/** @typedef {{ agenda: true, vars: Record<string, string>, presets: Record<string, string>, docs: Docs, keywords: Keywords }} AgendaPlan */
+/** @typedef {{ agenda: false, heading: string, hint: string, view: Exclude<View, 'agenda'>, items: import('./agenda.js').AgendaItem[], vars: Record<string, string>, docs: Docs, keywords: Keywords }} RowsPlan */
+
 /**
- * The lines of one block of a command (or of a command that is one block).
+ * What one block of a command shows: for an `agenda` block the settings it runs under; for the others the heading, the hint under it
+ * (a single command only), and the rows the filter presets leave. Both the *Org Agenda* text and the live screen are made from this.
  * @param {CustomCommand} block @param {Record<string, string>} inherited  the settings of the composite command around it
  * @param {boolean} single  the command is not a composite one: its own settings hold the filter presets
  * @param {{ docs: Docs, searchDocs: Docs, options: import('./agenda-queries.js').QueryOptions & { now?: Date }, filesDocs?: (names: string) => Docs | null }} ctx
+ * @returns {AgendaPlan | RowsPlan}
  */
-function blockLines(block, inherited, single, ctx) {
+export function blockPlan(block, inherited, single, ctx) {
   const options = ctx.options;
   const vars = layeredVariables(options.localVariables, inherited, block.settings);
   const named = layeredVariables(undefined, inherited, block.settings)['org-agenda-files']; // from the command, not from the document's own settings
@@ -213,12 +226,18 @@ function blockLines(block, inherited, single, ctx) {
   const keywords = { todoKeywords: options.todoKeywords || [], doneKeywords: options.doneKeywords || [] };
   // Emacs applies the presets when the buffer is done, under the settings of the whole command: a block's own are no longer set
   const presets = single ? vars : layeredVariables(options.localVariables, inherited, undefined);
-  if (block.type === 'agenda') return agendaLines(vars, presets, docs, keywords, options.now ?? new Date());
+  if (block.type === 'agenda') return { agenda: true, vars, presets, docs, keywords };
   const override = headerOverride(vars);
-  const heading = override ?? headingOf(block);
-  const view = block.type === 'search' ? 'search' : block.type === 'todo' || block.type === 'alltodo' ? 'todo' : 'tags';
+  const view = /** @type {Exclude<View, 'agenda'>} */ (block.type === 'search' ? 'search' : block.type === 'todo' || block.type === 'alltodo' ? 'todo' : 'tags');
   const items = applyPresets(commandItems(block, docs, searchDocs, options, inherited), presets, docs, view);
-  return [...(heading !== '' ? [heading] : []), ...items.map((item) => rowText(item, vars, view, docs, keywords))];
+  return { agenda: false, heading: override ?? headingOf(block), hint: single && override === null ? hintOf(block, [...keywords.todoKeywords, ...keywords.doneKeywords]) : '', view, items, vars, docs, keywords };
+}
+
+/** The lines of one block of a command: see blockPlan. @param {Parameters<typeof blockPlan>} args */
+function blockLines(...args) {
+  const plan = blockPlan(...args);
+  if (plan.agenda) return agendaLines(plan.vars, plan.presets, plan.docs, plan.keywords, args[3].options.now ?? new Date());
+  return [...(plan.heading !== '' ? [plan.heading] : []), ...plan.items.map((item) => rowText(item, plan.vars, plan.view, plan.docs, plan.keywords))];
 }
 
 /**
