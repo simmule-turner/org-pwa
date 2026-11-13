@@ -62,6 +62,7 @@ export function installUpdateLog() {
     responseEndMs: nav ? Math.round(nav.responseEnd) : '?',
     online: navigator.onLine,
   });
+  noteCaches();
   document.addEventListener('visibilitychange', () => noteUpdate('page ' + document.visibilityState));
   window.addEventListener('pagehide', () => noteUpdate('pagehide'));
   window.addEventListener('pageshow', (e) => noteUpdate('pageshow', { fromCache: e.persisted }));
@@ -81,6 +82,25 @@ export function installUpdateLog() {
       );
       return result;
     };
+  }
+}
+
+/** Which version each cache on this device holds (the version its src-browser/version.js names): a cache from an earlier version
+ *  still present, or one holding other files than its name says, shows here. */
+async function noteCaches() {
+  try {
+    const names = await caches.keys();
+    const held = [];
+    for (const name of names) {
+      const cache = await caches.open(name);
+      const stamp = await cache.match('./src-browser/version.js');
+      const text = stamp ? await stamp.text() : '';
+      const version = /org-pwa-shell-v\d+/.exec(text);
+      held.push(`${name.replace('org-pwa-shell-', '')} holds ${version ? version[0].replace('org-pwa-shell-', '') : 'no version file'}`);
+    }
+    noteUpdate('caches', { count: names.length, held });
+  } catch {
+    noteUpdate('caches could not be read');
   }
 }
 

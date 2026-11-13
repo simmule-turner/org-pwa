@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v691 — The newest version now actually runs
+On an iPhone the app could keep running an old version (v677) while a newer one was installed, because the worker took files from whichever stored copy was oldest; it now uses only its own version's files. The Reload button on "this page is running an older version" now tells a waiting newer version to take over instead of only reloading. The update log also records what each stored copy holds, so a stale one is visible.
+Verified: a test that a leftover older copy is never used, and a smoke check for the new log line.
+
 * v690 — Move through search results, and close the search
 In the Org view, the search bar now has ▲ and ▼, and Enter, the arrow keys, ~C-s~ and ~C-r~ move through the results: the current one is marked, the count reads "N of M results", and the document scrolls to it when it is in the open file. A phone has no Esc key, so ⋯ now shows a ✕ under it that closes the search. The Home Screen icon on iOS is now declared the way iOS expects, so a fresh install gets the unicorn instead of a letter.
 Verified: smoke checks for stepping through results and for Close.

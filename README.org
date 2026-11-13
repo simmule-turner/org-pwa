@@ -2459,7 +2459,7 @@ The one exception is ~src/vendor/mathjs/mathjs-custom.min.js~, a tree-shaken cus
 npm test
 #+END_SRC
 
-The tests run with a frozen clock, so they give the same result on any day. ~npm run test:zones~ runs them in five time zones.
+The tests run with a frozen clock, so they give the same result on any day. ~npm run test:zones~ runs them in three time zones at once.
 
 Behavior that Emacs defines is held to Emacs itself. ~tools/gen-repeat-oracle.mjs~ and ~tools/gen-agenda-oracle.mjs~ ask Emacs 29.3 (with ~faketime~) what completing a repeating task does and which days the agenda lists; ~tools/gen-diary-oracle.mjs~ does the same for diary rows, ~tools/gen-latex-oracle.mjs~ for LaTeX export, and ~tools/latex-compile-check.mjs~ compiles the output. The answers are stored under ~test/fixtures/~; the tests compare the app with them.
 

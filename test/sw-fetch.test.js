@@ -10,8 +10,8 @@ function loadWorker({ cacheHit } = {}) {
   const fetchCalls = [];
   const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, skipWaiting() {}, clients: { claim() {} } };
   const caches = {
-    match: async (request, options) => { matchCalls.push({ request, options }); return cacheHit; },
-    open: async () => ({ addAll: async () => {}, put: async () => {} }),
+    match: async () => { throw new Error('caches.match searches every version\'s cache; the worker must use its own'); },
+    open: async () => ({ match: async (request, options) => { matchCalls.push({ request, options }); return cacheHit; }, addAll: async () => {}, put: async () => {} }),
     keys: async () => [],
     delete: async () => true,
   };
@@ -52,7 +52,7 @@ test('a miss still falls through to the network, navigation or not', async () =>
 test('a request to another server, or one that is not a GET, is left to the network and never held by the worker', async () => {
   const handlers = {};
   const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, clients: { claim() {} }, location: { origin: 'https://example.test' } };
-  const caches = { match: async () => 'cached', open: async () => ({ addAll: async () => {} }), keys: async () => [], delete: async () => true };
+  const caches = { open: async () => ({ match: async () => 'cached', addAll: async () => {} }), keys: async () => [], delete: async () => true };
   vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: async () => 'net', console, URL, Promise });
   const answered = (request) => {
     let used = false;
@@ -63,4 +63,21 @@ test('a request to another server, or one that is not a GET, is left to the netw
   assert.equal(answered({ method: 'GET', mode: 'cors', url: 'https://pi.example.ts.net/dav/cal/' }), false, 'another server is not');
   assert.equal(answered({ method: 'PROPFIND', mode: 'cors', url: 'https://example.test/dav' }), false, 'a PROPFIND is not');
   assert.equal(answered({ method: 'PUT', mode: 'cors', url: 'https://example.test/dav/a' }), false, 'a PUT is not');
+});
+
+test('files come only from this version\'s own cache, never from a leftover cache of an earlier version', async () => {
+  const handlers = {};
+  const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, clients: { claim() {} } };
+  const opened = [];
+  const caches = {
+    match: async () => 'stale-file-from-old-version',
+    open: async (name) => { opened.push(name); return { match: async () => 'file-from-this-version', addAll: async () => {} }; },
+    keys: async () => [],
+    delete: async () => true,
+  };
+  vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: async () => 'net', console, URL, Promise });
+  let responded;
+  handlers.fetch({ request: { mode: 'cors', url: 'https://example.test/app/src-browser/version.js' }, respondWith: (p) => { responded = p; } });
+  assert.equal(await responded, 'file-from-this-version');
+  assert.match(opened[0], /^org-pwa-shell-v\d+$/);
 });

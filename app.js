@@ -1130,6 +1130,14 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
           syncContentOffset();
           noteUpdate('banner: this page is older than the worker', { page: APP_VERSION, worker: version });
           updateReloadBtn.onclick = () => {
+            // A newer worker may be waiting behind the one in charge: it has to take over first (the page reloads when it does),
+            // or a plain reload would start the same older worker again.
+            const waiting = S.swRegistration?.waiting;
+            if (waiting) {
+              noteUpdate('Reload tapped: asking the waiting worker to take over', { workerState: waiting.state });
+              waiting.postMessage('SKIP_WAITING');
+              return;
+            }
             noteUpdate('Reload tapped: reloading the page');
             window.location.reload();
           };

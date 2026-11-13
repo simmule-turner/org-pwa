@@ -8782,6 +8782,16 @@ check('search results: Org view steps through results with Enter, arrows and but
   await context.close();
 });
 
+check('update log: the page start notes which version each cache on the device holds', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.waitForTimeout(800);
+  const log = await page.evaluate(() => localStorage.getItem('org-pwa-update-log') || '');
+  expect(/caches count=\d+/.test(log), `the log has a caches line: ${log.slice(0, 300)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);

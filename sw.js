@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v690';
+const CACHE_NAME = 'org-pwa-shell-v691';
 
 const SHELL_FILES = [
   './',
@@ -541,7 +541,12 @@ self.addEventListener('fetch', (event) => {
   // A launch from the share sheet or an icon shortcut is a navigation to index.html?capture=... . The cache holds
   // index.html without a query string, so match navigations ignoring it, or such a launch would need the network.
   const options = event.request.mode === 'navigate' ? { ignoreSearch: true } : undefined;
+  // Only this version's own cache answers. caches.match(...) on its own searches every cache, oldest first, so a leftover cache
+  // from an earlier version would win and the page would run old code under a new version's name.
   event.respondWith(
-    caches.match(event.request, options).then((cached) => cached || fetch(event.request))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.match(event.request, options))
+      .then((cached) => cached || fetch(event.request))
   );
 });

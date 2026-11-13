@@ -60,9 +60,8 @@ if (hash === last && !smoke) {
   console.log('Source unchanged since the last green run: skipping the tests.');
   progress.total = 1;
 } else {
-  // tests, zones, scope, lint, type check, optional smoke, then the zip
-  progress.total = 3 + (fs.existsSync('node_modules/.bin/eslint') ? 1 : 0) + (fs.existsSync('node_modules/.bin/tsc') ? 1 : 0) + (smoke ? 1 : 0) + (checkOnly ? 0 : 1);
-  run('npm', ['test', '--silent']);
+  // the unit tests in three time zones (America/New_York is npm test's own zone), scope, lint, type check, optional smoke, then the zip
+  progress.total = 2 + (fs.existsSync('node_modules/.bin/eslint') ? 1 : 0) + (fs.existsSync('node_modules/.bin/tsc') ? 1 : 0) + (smoke ? 1 : 0) + (checkOnly ? 0 : 1);
   run('node', ['tools/test-zones.mjs']);
   run('node', ['tools/check-scope.mjs']);
   // lint and type-check when they are installed (npm install --no-save eslint @eslint/js globals typescript)
