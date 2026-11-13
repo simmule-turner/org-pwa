@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v690 — Move through search results, and close the search
+In the Org view, the search bar now has ▲ and ▼, and Enter, the arrow keys, ~C-s~ and ~C-r~ move through the results: the current one is marked, the count reads "N of M results", and the document scrolls to it when it is in the open file. A phone has no Esc key, so ⋯ now shows a ✕ under it that closes the search. The Home Screen icon on iOS is now declared the way iOS expects, so a fresh install gets the unicorn instead of a letter.
+Verified: smoke checks for stepping through results and for Close.
+
 * v689 — A tidier, steadier search bar
 Find in View → Text now behaves like ~C-s~ in Emacs: it searches from where you began, so deleting a letter goes back to the earlier match, and Enter moves on from the match reached. The search bar is cleaned up: the field and the next, previous and more buttons share one height, nothing touches an edge, option labels are centered, and query-replace takes two lines of shorter buttons. The bottom bar no longer scrolls the text or the page when dragged.
 Verified: smoke checks for Find in the Text view, the search bar spacing, and edits above the first heading.

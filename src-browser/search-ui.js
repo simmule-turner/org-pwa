@@ -24,6 +24,14 @@ import { VH_UNIT, appendSnippetWithHighlight, tableActionButton as tableActionBu
 import { promptText } from './dialogs.js';
 import { openQueryView, saveQueryAsCommand } from './agenda-query-view.js';
 
+/** Ends the search like Escape does: the query goes, and in the Text view the last match stays selected. */
+function closeSearch() {
+  S.searchOpen = false;
+  S.searchQuery = '';
+  render();
+  renderSearchPanel();
+}
+
 export function renderMinibufferSearch() {
   minibufferSearchEl.innerHTML = '';
   minibufferSearchEl.style.display = 'flex';
@@ -79,18 +87,24 @@ export function renderMinibufferSearch() {
         return;
       }
     }
+    if (S.currentView !== 'text' && !isRowFindView()) {
+      // the same keys over the results list: Enter, Down or C-s next; Shift+Enter, Up or C-r previous
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || (ctrl && (e.key === 's' || e.key === 'r'))) {
+        e.preventDefault();
+        stepOrgResult(e.key === 'r' || e.key === 'ArrowUp' || e.shiftKey ? -1 : 1);
+        return;
+      }
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      S.searchOpen = false;
-      S.searchQuery = '';
-      render();
-      renderSearchPanel();
+      closeSearch();
     }
   });
   topRow.appendChild(input);
 
-  if (isRowFindView() || S.currentView === 'text') {
+  {
     for (const [label, aria, delta] of /** @type {[string, string, number][]} */ ([['\u25b2', 'Previous match', -1], ['\u25bc', 'Next match', 1]])) {
       const step = document.createElement('button');
       step.textContent = label;
@@ -98,7 +112,8 @@ export function renderMinibufferSearch() {
       step.style.cssText = 'flex-shrink:0;min-width:38px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
       step.onclick = () => {
         if (S.currentView === 'text') stepTextFind(delta);
-        else stepRowFind(delta);
+        else if (isRowFindView()) stepRowFind(delta);
+        else stepOrgResult(delta);
         input.focus({ preventScroll: true });
       };
       topRow.appendChild(step);
@@ -111,8 +126,8 @@ export function renderMinibufferSearch() {
   optionsBtn.style.position = 'relative';
   optionsBtn.style.fontSize = '18px';
   optionsBtn.style.height = '38px';
-  optionsBtn.style.minWidth = '38px';
-  optionsBtn.style.padding = '0 10px';
+  optionsBtn.style.width = '38px';
+  optionsBtn.style.padding = '0';
   optionsBtn.style.borderRadius = '8px';
   optionsBtn.style.border = '1px solid var(--border-strong)';
   optionsBtn.style.background = 'transparent';
@@ -144,9 +159,24 @@ export function renderMinibufferSearch() {
     minibufferSearchEl.appendChild(count);
     queueMicrotask(updateRowFindCount);
   }
+  // the options wrap on the left; Close sits in a column of its own at the right, directly under the options button
+  const optionsArea = document.createElement('div');
+  optionsArea.id = 'search-options-area';
+  optionsArea.style.cssText = 'display:none;align-items:flex-start;gap:8px;';
   const optionsRow = document.createElement('div');
   optionsRow.id = 'search-options-row';
-  minibufferSearchEl.appendChild(optionsRow);
+  optionsRow.style.flex = '1';
+  optionsRow.style.minWidth = '0';
+  optionsRow.style.marginTop = '2px'; // 34px buttons centered against the 38px Close beside the first row
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'search-close-btn';
+  closeBtn.textContent = '\u2715';
+  closeBtn.setAttribute('aria-label', 'Close search');
+  closeBtn.style.cssText = 'flex-shrink:0;width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
+  closeBtn.onclick = closeSearch;
+  optionsArea.appendChild(optionsRow);
+  optionsArea.appendChild(closeBtn);
+  minibufferSearchEl.appendChild(optionsArea);
 
   input.focus({ preventScroll: true }); // the bar is already above the keyboard: nothing needs scrolling into view
   renderSearchOptionsMenu();
@@ -170,6 +200,8 @@ export function renderSearchOptionsMenu() {
   const optionsRow = document.getElementById('search-options-row');
   if (!optionsRow) return;
   optionsRow.innerHTML = '';
+  const area = document.getElementById('search-options-area');
+  if (area) area.style.display = S.searchOptionsMenuOpen ? 'flex' : 'none';
   if (!S.searchOptionsMenuOpen) return;
 
   optionsRow.style.display = 'flex';
@@ -679,6 +711,49 @@ export function renderTextModeSearchResults() {
   refreshTextFind(true);
 }
 
+/** The cross-file results list in the Org view: the current result (the one Enter, the arrows and C-s/C-r move between) is marked. */
+/** @type {{ key: string, index: number, rows: HTMLElement[], results: Array<{ documentId: string, type: string, heading: unknown, node?: unknown }>, label: HTMLElement | null }} */
+const resultNav = { key: '', index: -1, rows: [], results: [], label: null };
+
+function markCurrentResult() {
+  resultNav.rows.forEach((row, i) => {
+    row.style.background = i === resultNav.index ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : '';
+  });
+  if (resultNav.label) {
+    const total = resultNav.results.length;
+    resultNav.label.textContent = resultNav.index >= 0 ? `${resultNav.index + 1} of ${total} result${total === 1 ? '' : 's'}` : `${total} result${total === 1 ? '' : 's'}`;
+  }
+  resultNav.rows[resultNav.index]?.scrollIntoView({ block: 'nearest' });
+}
+
+/** Opens a result: the search closes and the document goes to it. */
+function openResult(/** @type {{ documentId: string, type: string, heading: unknown, node?: unknown }} */ result, /** @type {boolean} */ keepSearch) {
+  const heading = /** @type {Parameters<typeof outlinePathForHeadingInDocument>[1]} */ (result.heading);
+  if (!keepSearch) {
+    S.searchOpen = false;
+    renderSearchPanel();
+  }
+  const outlinePath = outlinePathForHeadingInDocument(result.documentId, heading);
+  if (outlinePath) {
+    navigateToHeadingByPath(result.documentId, outlinePath, {
+      revealOwnBody: result.type !== 'heading',
+      targetNode: /** @type {object | undefined} */ (result.node),
+      pushToBackStack: !keepSearch, // stepping through results does not fill the Back list
+    });
+  }
+}
+
+/** Enter, the arrows, C-s and C-r and the next and previous buttons: the next or previous result, wrapping around, and the document
+ *  follows when the result is in the open file. */
+export function stepOrgResult(/** @type {number} */ delta) {
+  const total = resultNav.results.length;
+  if (total === 0) return;
+  resultNav.index = resultNav.index < 0 ? (delta > 0 ? 0 : total - 1) : (resultNav.index + delta + total) % total;
+  markCurrentResult();
+  const result = resultNav.results[resultNav.index];
+  if (result.documentId === S.state.documentId) openResult(result, true);
+}
+
 export function renderSearchResults() {
   if (S.currentView === 'text') {
     renderTextModeSearchResults();
@@ -694,6 +769,12 @@ export function renderSearchResults() {
   const resultsEl = document.getElementById('search-results');
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
+  resultNav.rows = [];
+  resultNav.results = [];
+  resultNav.label = null;
+  const navKey = `${S.searchQuery}\u0000${S.searchUseRegex}\u0000${S.searchUseMatch}`;
+  if (navKey !== resultNav.key) resultNav.index = -1; // a new query starts again before the first result
+  resultNav.key = navKey;
 
   if (!S.searchQuery.trim() || !S.state.doc) {
     searchPanel.style.display = 'none';
@@ -746,8 +827,10 @@ export function renderSearchResults() {
     return;
   }
 
+  resultNav.results = results;
+  if (resultNav.index >= results.length) resultNav.index = -1;
   const currentDocMatches = results.filter((r) => r.documentId === S.state.documentId).map((r) => r.heading);
-  if (currentDocMatches.length > 0) {
+  {
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.alignItems = 'center';
@@ -759,10 +842,10 @@ export function renderSearchResults() {
     countLabel.style.fontSize = '12px';
     countLabel.style.color = 'var(--fg)';
     countLabel.style.opacity = '0.7';
-    const distinctCount = new Set(currentDocMatches).size;
-    countLabel.textContent = `${distinctCount} match${distinctCount === 1 ? '' : 'es'} in this file`;
+    resultNav.label = countLabel;
     header.appendChild(countLabel);
 
+    if (currentDocMatches.length > 0) {
     const narrowBtn = document.createElement('button');
     narrowBtn.textContent = 'Narrow';
     narrowBtn.style.fontFamily = 'monospace';
@@ -776,6 +859,7 @@ export function renderSearchResults() {
     narrowBtn.style.flexShrink = '0';
     narrowBtn.onclick = () => narrowToSparseMatches(new Set(currentDocMatches.filter((h) => /** @type {{ type: string }} */ (h).type === 'heading')));
     header.appendChild(narrowBtn);
+    }
 
     resultsEl.appendChild(header);
   }
@@ -822,17 +906,9 @@ export function renderSearchResults() {
     if (result.type !== 'heading') text.appendChild(snippetLine);
     row.appendChild(text);
 
-    row.onclick = () => {
-      S.searchOpen = false;
-      renderSearchPanel();
-      const outlinePath = outlinePathForHeadingInDocument(result.documentId, result.heading);
-      if (outlinePath) {
-        navigateToHeadingByPath(result.documentId, outlinePath, {
-          revealOwnBody: result.type !== 'heading',
-          targetNode: result.node,
-        });
-      }
-    };
+    row.onclick = () => openResult(result, false);
+    resultNav.rows.push(row);
     resultsEl.appendChild(row);
   }
+  markCurrentResult();
 }

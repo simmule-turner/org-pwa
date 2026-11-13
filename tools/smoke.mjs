@@ -8739,6 +8739,49 @@ check('search bar: the field, next, previous and more share one height with the 
   await context.close();
 });
 
+check('search results: Org view steps through results with Enter, arrows and buttons, Close ends the search, and the page declares an apple-touch-icon', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 700 });
+  const lines = [];
+  for (let i = 1; i <= 12; i++) lines.push('* Heading ' + i, 'filler ' + i, i % 3 === 0 ? 'a quokka lives here ' + i : 'nothing');
+  await newDocument(page, lines.join('\n') + '\n');
+  expect(await page.evaluate(() => document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href')) === 'icons/icon-192.png', 'apple-touch-icon link');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.waitForTimeout(200);
+  const label = () => page.evaluate(() => document.querySelector('#search-results > div')?.firstChild?.textContent);
+  expect((await label()) === '4 results', `count: ${await label()}`);
+  const steps = [['Enter', '1 of 4 results'], ['ArrowDown', '2 of 4 results'], ['Shift+Enter', '1 of 4 results'], ['ArrowUp', '4 of 4 results'], ['Control+s', '1 of 4 results'], ['Control+r', '4 of 4 results']];
+  for (const [key, want] of steps) {
+    await page.press('#search-query-input', key);
+    await page.waitForTimeout(150);
+    expect((await label()) === want, `${key}: ${await label()}, wanted ${want}`);
+  }
+  await page.click('[aria-label="Next match"]');
+  await page.waitForTimeout(150);
+  expect((await label()) === '1 of 4 results', `next button: ${await label()}`);
+  expect(await page.evaluate(() => document.activeElement?.id) === 'search-query-input', 'the field keeps focus');
+  const g = await page.evaluate(() => {
+    const r = (id) => { const b = document.querySelector(id).getBoundingClientRect(); return [Math.round(b.right), Math.round(b.width), Math.round(b.height), Math.round(b.top)]; };
+    return { more: r('#search-options-btn'), closeShown: getComputedStyle(document.getElementById('search-options-area')).display };
+  });
+  expect(g.closeShown === 'none', 'Close is hidden until the options are open');
+  await page.click('#search-options-btn');
+  await page.waitForTimeout(200);
+  const h = await page.evaluate(() => {
+    const r = (id) => { const b = document.querySelector(id).getBoundingClientRect(); return [Math.round(b.right), Math.round(b.width), Math.round(b.height), Math.round(b.top)]; };
+    return { more: r('#search-options-btn'), close: r('#search-close-btn') };
+  });
+  expect(h.more[0] === h.close[0] && h.more[1] === h.close[1] && h.more[2] === h.close[2] && h.close[3] > h.more[3], `Close sits under the options button at the same size: ${JSON.stringify(h)}`);
+  await page.click('#search-close-btn');
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('minibufferSearch')).display) === 'none', 'Close ends the search');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);
