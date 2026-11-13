@@ -88,12 +88,13 @@ function collectTagUsage(docs) {
  * Suggestions for the tag being typed. `query` is what's in the box (may be
  * empty); `applied` the heading's current tags. Best first: a tag that
  * STARTS with the query, then one that merely contains it; within each, the
- * most used first, then alphabetical. Empty query: the most used tags.
+ * most used first, then alphabetical. Empty query: the most used tags. `listed` is what org-tag-alist and org-tag-persistent-alist name.
  */
-function suggestTags(/** @type {any} */ { docs, applied = /** @type {string[]} */ ([]), query = '', limit = 10 }) {
+function suggestTags(/** @type {any} */ { docs, listed = /** @type {string[]} */ ([]), applied = /** @type {string[]} */ ([]), query = '', limit = 10 }) {
   const usage = collectTagUsage(docs);
   const candidates = new Set(usage.keys());
   for (const doc of docs) for (const tag of declaredTagsOf(doc)) candidates.add(tag);
+  for (const tag of listed) candidates.add(tag); // org-tag-alist and org-tag-persistent-alist
   for (const tag of applied) candidates.delete(tag);
 
   const q = String(query).trim().replace(/:/g, '').toLowerCase();

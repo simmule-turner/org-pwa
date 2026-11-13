@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v700 — The agenda reads your agenda files, as Emacs does
+The Agenda, TODO list, Match, Search, the calendar and appointment reminders now read only your agenda files; the file you have open counts when it is one of them. To look at one file or subtree, press *<* in Agenda commands, or lock every command with ~C-c C-x <~ and lift it with ~C-c C-x >~. With no agenda files the views say so. Tag completion follows Emacs too: the open file, or your agenda files from an agenda view, plus ~org-tag-alist~ and ~org-tag-persistent-alist~.
+Verified: an Emacs 29.3 check of how a tag alist is read, and a smoke check of the restriction, the lock and the empty case.
+
 * v698 — A normal sync clears events of files that are no longer agenda files
 Events the app put in your calendar for a file that is not in your agenda files (such as README.org from before v697) are now removed by the next ordinary sync, as Emacs's export would drop them; no Rebuild needed. Events of an agenda file that failed to load stay until it loads.
 Verified: a test that a file no longer configured loses its events while a configured file that failed to load keeps them.

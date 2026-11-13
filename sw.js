@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v699';
+const CACHE_NAME = 'org-pwa-shell-v700';
 
 const SHELL_FILES = [
   './',
@@ -218,6 +218,7 @@ const SHELL_FILES = [
   './src/link-string.js',
   './src/id-locations.js',
   './src/tag-inheritance.js',
+  './src/tag-alist.js',
   './src/targets.js',
   './src/setupfile.js',
   './src/cite.js',
@@ -305,6 +306,7 @@ const SHELL_FILES = [
   './src-browser/view-filter-ui.js',
   './src-browser/agenda-view.js',
   './src-browser/agenda-query-view.js',
+  './src-browser/agenda-scope-note.js',
   './src-browser/search-chooser.js',
   './src-browser/find-in-view.js',
   './src-browser/diary-file-load.js',

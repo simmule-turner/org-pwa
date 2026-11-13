@@ -5,7 +5,7 @@ import { MONTH_NAMES, buildDayMarkers, buildMonthGrid, stepMonth, stepYear } fro
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees } from '../src/local-variables.js';
 import { dateKey } from '../src/org-timestamp.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs, contactsDocsForAgenda } from './agenda-files.js';
+import { agendaFileDocs, contactsDocsForAgenda } from './agenda-files.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -56,7 +56,7 @@ export function renderCalendarPanel() {
 
   // One agenda computation for the whole visible month, reusing the
   // exact same pipeline the main Agenda view uses (buildAgendaItems
-  // over aggregateAgendaDocs' own cross-file doc list, the same
+  // over agendaFileDocs' own cross-file doc list, the same
   // done/commented/archived filtering) so a day's own color here
   // always matches what Agenda would actually show for it -- not a
   // separate, potentially-drifting computation. "Other event" here
@@ -67,7 +67,7 @@ export function renderCalendarPanel() {
   const monthRangeStart = new Date(S.calendarViewYear, S.calendarViewMonth, 1);
   const monthRangeEnd = new Date(S.calendarViewYear, S.calendarViewMonth + 1, 0);
   const monthTodoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const monthAgendaDocs = aggregateAgendaDocs();
+  const monthAgendaDocs = agendaFileDocs();
   const monthItems = buildAgendaItems(monthAgendaDocs, {
     contactsDocs: contactsDocsForAgenda(monthAgendaDocs),
     todoFilter: (/** @type {any} */ todo) => !monthTodoSequence.doneKeywords.includes(todo),

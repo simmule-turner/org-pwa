@@ -438,6 +438,12 @@ Setting every line below to the value shown changes nothing.
 ;; * org-table-duration-hour-zero-padding: Non-nil means hours in table duration computations should be zero-padded.
 ;; (setq org-table-duration-hour-zero-padding t)
 
+;;   org-tag-alist: Tags to offer when you tag a heading.
+;; (setq org-tag-alist nil)
+
+;;   org-tag-persistent-alist: Tags to offer in every file, whatever the file's own org-tag-alist says.
+;; (setq org-tag-persistent-alist nil)
+
 ;;   org-tags-column: Where a heading's tags sit: 0 one space after the title, negative right-aligns.
 ;; (setq org-tags-column -77)
 

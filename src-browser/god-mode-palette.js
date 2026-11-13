@@ -66,6 +66,7 @@ import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 import { openAgendaCommands, openQueryView } from './agenda-query-view.js';
+import { lockAgenda, unlockAgenda } from './agenda-scope-note.js';
 
 export function globalCycleFold() {
   if (!S.state.doc) return;
@@ -340,6 +341,11 @@ export const GOD_MODE_ACTIONS = {
   'C-c a s': () => {
     if (S.state.doc) openQueryView('search');
   },
+  'C-c a <': () => {
+    if (S.state.doc) openAgendaCommands({ restrictToFile: true }); // the dispatcher's `<`, then the command's key
+  },
+  'C-c C-x <': () => lockAgenda(),
+  'C-c C-x >': () => unlockAgenda(),
   'C-c c': () => {
     S.godModeActive = false;
     closeAllOverlayPanels();
@@ -687,6 +693,9 @@ export function paletteCommandList() {
     { id: 'agenda-log-all', label: 'Agenda: show all log entries (LogAll)', keys: 'C-u l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('C-u l') },
     { id: 'agenda-log-only', label: 'Agenda: show only log entries', keys: 'C-u C-u l', group: 'View', keywords: ['log', 'only'], needs: ['agenda'], run: chord('C-u C-u l') },
     { id: 'agenda-clockcheck', label: 'Agenda: check clock issues (ClkCk)', keys: 'v c', group: 'View', keywords: ['clock', 'check', 'gap', 'overlap', 'issues'], needs: ['agenda'], run: chord('v c') },
+    { id: 'agenda-restrict', label: 'Agenda commands, restricted to this file', orgName: 'org-agenda-get-restriction-and-command', keys: 'C-c a <', group: 'View', keywords: ['restrict', 'restriction', 'agenda', 'current file'], needs: ['doc'], run: () => openAgendaCommands({ restrictToFile: true }) },
+    { id: 'agenda-lock', label: 'Lock the agenda to this subtree or file', orgName: 'org-agenda-set-restriction-lock', keys: 'C-c C-x <', group: 'View', keywords: ['restrict', 'restriction', 'agenda', 'narrow'], needs: ['doc'], run: () => lockAgenda() },
+    { id: 'agenda-unlock', label: 'Remove the agenda lock', orgName: 'org-agenda-remove-restriction-lock', keys: 'C-c C-x >', group: 'View', keywords: ['restrict', 'restriction', 'agenda'], needs: ['doc'], run: () => unlockAgenda() },
     { id: 'agenda-commands', label: 'Agenda commands', orgName: 'org-agenda-custom-commands', group: 'View', keywords: ['saved', 'queries', 'dispatcher'], needs: ['doc'], run: () => openAgendaCommands() },
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },

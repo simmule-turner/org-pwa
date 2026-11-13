@@ -5,7 +5,7 @@
 // `agenda` block is the Agenda's own days, drawn with the command's settings as Emacs lets them over the variables for that block.
 import { readAgendaSpan, readAgendaStartDay, spanKey } from '../src/agenda-span.js';
 import { blockPlan } from '../src/agenda-buffer.js';
-import { aggregateAgendaDocs, aggregateSearchDocs, commandFilesDocs, commandScope, ensureAgendaFilesLoaded, loadCommandFiles } from './agenda-files.js';
+import { agendaScopeDocs, agendaSearchDocs, commandFilesDocs, commandScope, ensureAgendaFilesLoaded, loadCommandFiles } from './agenda-files.js';
 import { renderAgendaView, buildHeadingRow, prefixFailure, prefixFailureNote } from './agenda-view.js';
 import { seedAgendaDefaults } from './agenda-seed.js';
 import { S } from './app-state.js';
@@ -80,7 +80,7 @@ export function renderCommandView() {
   title.setAttribute('data-command-title', '');
   title.style.cssText = 'margin:4px 0 10px;font-size:20px;font-weight:700;';
   container.appendChild(title);
-  const ctx = { docs: aggregateAgendaDocs(), searchDocs: aggregateSearchDocs(), options: { ...queryOptions(), now: new Date() }, filesDocs: commandFilesDocs };
+  const ctx = { docs: agendaScopeDocs(), searchDocs: agendaSearchDocs(), options: { ...queryOptions(), now: new Date() }, filesDocs: commandFilesDocs };
   const inherited = command.type === 'block' ? command.settings || {} : {};
   const today = new Date();
   blocksOf(command).forEach((block, i) => {

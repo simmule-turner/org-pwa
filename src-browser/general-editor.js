@@ -4,7 +4,8 @@
 // Extracted from app.js: general editor.
 import { deleteTable, insertTable, lastTableInBody } from '../src/body-edit.js';
 import { getPlainTimestampInTitle, setHeadingTags, setPlainTimestampInTitle, setPriority } from '../src/heading-edit.js';
-import { S } from './app-state.js';
+import { S, isAgendaFamilyView } from './app-state.js';
+import { agendaScopeDocs } from './agenda-files.js';
 import { attachmentFiles, openAttachChoicePrompt, performAttachmentAction } from './attachments-flow.js';
 import { attachmentsAvailable } from './attachments-store.js';
 import { confirmDialog, lockBackgroundScroll, openButtonChoiceModal } from './dialogs.js';
@@ -12,16 +13,19 @@ import { commitAndRender } from './editing.js';
 import { buildPriorityFieldGroup, buildTimestampFieldGroup } from './field-groups.js';
 import { withKeyboardFocusPreserved } from './keyboard-focus.js';
 import { keepOverlayInVisibleViewport, menuButton, tableActionButton, textInputStyle, wizardButton } from './ui-widgets.js';
-import { aggregateAgendaDocs } from './agenda-files.js';
 import { suggestTags, suggestPropertyKeys } from '../src/completion.js';
+import { tagsOfTagAlist } from '../src/tag-alist.js';
 
-/** The documents completion draws on: the open one plus every agenda file already loaded. */
+/** The documents completion draws on, as Emacs's: the current buffer's, and from an agenda view (an `org-agenda-mode` buffer) the agenda files'. */
 function completionDocs() {
-  try {
-    return aggregateAgendaDocs().map((entry) => entry.doc);
-  } catch {
-    return [];
-  }
+  if (isAgendaFamilyView(S.currentView)) return agendaScopeDocs().map((entry) => entry.doc);
+  return S.state.doc ? [S.state.doc] : [];
+}
+
+/** The tags org-tag-alist and org-tag-persistent-alist list, from the file's own variables and the settings. */
+function listedTags() {
+  // a file's own value replaces the setting, as a buffer-local variable does in Emacs
+  return ['org-tag-alist', 'org-tag-persistent-alist'].flatMap((name) => tagsOfTagAlist((S.state.localVariables || {})[name] ?? (S.globalVariables || {})[name]));
 }
 
 /** Structured tag editor: existing tags shown as removable chips, plus
@@ -100,7 +104,7 @@ export function buildTagsFieldGroup(heading) {
   wrap.appendChild(suggestionsRow);
   function renderSuggestions() {
     suggestionsRow.innerHTML = '';
-    for (const tag of suggestTags({ docs: docsForCompletion, applied: currentTags, query: addInput.value })) {
+    for (const tag of suggestTags({ docs: docsForCompletion, listed: listedTags(), applied: currentTags, query: addInput.value })) {
       const chip = document.createElement('button');
       chip.textContent = '+ ' + tag;
       chip.setAttribute('data-tag-suggestion', tag);

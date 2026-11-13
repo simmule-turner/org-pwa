@@ -5,7 +5,7 @@
 // reminders arrive with the app closed. Everything is off until appt-activate is on.
 import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getContactsBirthdayProperty } from '../src/local-variables.js';
 import { dueReminders, modeLineText, plannedNotifications, pruneFired, reminderBody, reminderSlot, reminderText, upcomingAppointments } from '../src/appt.js';
-import { aggregateAgendaDocs, ensureAgendaFilesLoadedAndWait, syncAgendaFilesConfig } from './agenda-files.js';
+import { agendaFileDocs, ensureAgendaFilesLoadedAndWait, syncAgendaFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { renderModeline } from './chrome.js';
 import { setStatus } from './editing.js';
@@ -82,7 +82,7 @@ export async function scanAppointments(now = new Date()) {
     await ensureAgendaFilesLoadedAndWait().catch(() => {});
     const vars = currentVars();
     const options = { birthdayProperty: getContactsBirthdayProperty(vars), includeArchived: !getAgendaSkipArchivedTrees(vars), includeCommented: !getAgendaSkipCommentTrees(vars) };
-    const docs = aggregateAgendaDocs();
+    const docs = agendaFileDocs();
     const horizon = platform.notifications.scheduled ? SCHEDULE_HOURS : SCAN_HOURS;
     const all = upcomingAppointments(docs, now, { ...options, hours: horizon });
     runtime.appointments = all;

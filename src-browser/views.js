@@ -5,7 +5,8 @@ import { getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg } from '../src/org-parser.js';
 import { isPlainTextFile } from '../src/plain-file.js';
-import { S } from './app-state.js';
+import { S, isAgendaFamilyView } from './app-state.js';
+import { agendaRestriction } from './agenda-files.js';
 import { closeAllOverlayPanels, scrollContainer } from './chrome.js';
 import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { afterDocumentLoaded } from './documents-io.js';
@@ -44,6 +45,8 @@ export function switchToView(view) {
     setStatus('This is a plain text file \u2014 it opens in Text view only.');
     return;
   }
+
+  if (isAgendaFamilyView(S.currentView) && !isAgendaFamilyView(view)) agendaRestriction.pending = null; // what `<` chose holds while the agenda views are open
 
   if (S.currentView === 'text') {
     commitTextModeIfActive();

@@ -336,6 +336,8 @@ export const SETTINGS_FIELDS = [
   { key: 'org-agenda-files', label: 'Agenda files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#agenda-files' },
   { key: 'org-contacts-files', label: 'Contacts files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#contacts-files' },
   { key: 'org-agenda-text-search-extra-files', label: 'Search extra files', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#search-extra-files' },
+  { key: 'org-tag-alist', label: 'Tags', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#editing-your-outline' },
+  { key: 'org-tag-persistent-alist', label: 'Tags kept for every file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#editing-your-outline' },
   { key: 'diary-file', label: 'Diary file', section: 'Advanced (raw syntax)', type: 'longtext', helpAnchor: '#diary-file' },
 ];
 

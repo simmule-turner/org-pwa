@@ -15,7 +15,8 @@ import { DEFAULT_EFFORT_FILTER_VALUES, getAllowedEffortValues } from '../src/eff
 import { getAgendaHideTitleStamps, getAgendaShowAllDates, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getAgendaStartOnWeekday, getContactsBirthdayProperty, getDeadlineWarningDays, getGlobalProperties, getHabitOptions, getScheduledDelayDays } from '../src/local-variables.js';
 import { parseOrgDuration } from '../src/org-duration.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { aggregateAgendaDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
+import { agendaScopeNote } from './agenda-scope-note.js';
+import { agendaScopeDocs, contactsDocsForAgenda, ensureAgendaFilesLoaded, refreshAgendaFiles } from './agenda-files.js';
 import { extensionAgendaItems, extensionAgendaLines } from './extension-flow.js';
 import { clickIsGestureEnd, withRowActions } from './agenda-actions.js';
 import { PrefixFormError, agendaLisp, prefixEvaluator } from '../src/agenda-lisp.js';
@@ -77,8 +78,8 @@ function applySortingStrategy(items, view) {
     localVariables: S.state.localVariables,
     todoKeywords: [...sequence.todoKeywords, ...sequence.doneKeywords],
     doneKeywords: sequence.doneKeywords,
-    documentOrder: aggregateAgendaDocs().map((d) => d.documentId),
-    lisp: agendaLisp(S.state.localVariables, aggregateAgendaDocs(), { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }),
+    documentOrder: agendaScopeDocs().map((d) => d.documentId),
+    lisp: agendaLisp(S.state.localVariables, agendaScopeDocs(), { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }),
   });
 }
 
@@ -269,7 +270,7 @@ function rowPrefix(item, view) {
   const level = item.heading ? ' '.repeat(parents.length + 1) : '';
   const breadcrumbs = parents.length ? parents.join('->') + '->' : '';
   const uses = (/** @type {string} */ letter) => new RegExp('%\\??[-+]?\\d*(\\.\\d+)?[ .;,:!?=|/<>]?' + letter).test(format);
-  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }, /%\??[-+]?\d*(\.\d+)?[ .;,:!?=|/<>]?\(/.test(format) ? prefixEvaluator(item, aggregateAgendaDocs(), { category: item.category || '', time, extra: scheduling, level, effort, tag: (item.tags || []).join(':'), breadcrumbs, 'category-icon': '' }, todoDone()) : undefined), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
+  return { text: formatAgendaPrefix(format, { category: item.category, time, scheduling, effort, level, breadcrumbs }, /%\??[-+]?\d*(\.\d+)?[ .;,:!?=|/<>]?\(/.test(format) ? prefixEvaluator(item, agendaScopeDocs(), { category: item.category || '', time, extra: scheduling, level, effort, tag: (item.tags || []).join(':'), breadcrumbs, 'category-icon': '' }, todoDone()) : undefined), usesTime: uses('t'), usesScheduling: uses('s'), usesEffort: uses('e') };
 }
 
 /**
@@ -501,6 +502,8 @@ export function renderAgendaView(host = outlineEl) {
     container.appendChild(diaryLine);
   }
 
+  const scopeNote = agendaScopeNote();
+  if (scopeNote) container.appendChild(scopeNote);
   if (S.agendaFilesConfig.length > 0) {
     const entries = S.agendaFilesConfig.map((f) => agendaFilesCache.get(f));
     const loadingCount = entries.filter((e) => e && e.loading).length;
@@ -527,7 +530,7 @@ export function renderAgendaView(host = outlineEl) {
   // any repeating SCHEDULED/DEADLINE timestamp expands into every
   // occurrence that actually falls within what's being displayed.
   const todoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const agendaDocs = aggregateAgendaDocs();
+  const agendaDocs = agendaScopeDocs();
   const logSettings = readLogSettings(S.state.localVariables, S.agendaLogMode); // log mode: org-agenda-log-mode-items, add-notes
   const items = buildAgendaItems(agendaDocs, {
     contactsDocs: contactsDocsForAgenda(agendaDocs), // org-contacts-files, as in Emacs (null: scan the agenda's own documents)
@@ -955,7 +958,7 @@ export function buildClocktableSection() {
     const until = lastDay ? dateInputValue(lastDay) : '';
     if (S.clocktableParams.trim()) {
       try {
-        const files = aggregateAgendaDocs().map(({ documentId, doc }) => ({ name: documentId, doc }));
+        const files = agendaScopeDocs().map(({ documentId, doc }) => ({ name: documentId, doc }));
         rendered = buildClockReport({ files, params: S.clocktableParams.trim(), now: new Date(), origin: S.narrowedHeading });
       } catch (error) {
         if (!(error instanceof ClockReportError)) throw error;
@@ -1257,10 +1260,12 @@ export function renderTaskListView() {
   const heading = document.createElement('div');
   heading.style.fontSize = '12px';
   heading.style.opacity = '0.65';
-  heading.textContent = S.taskKeywords ? `Global list of TODO items of type: ${S.taskKeywords === '*' ? 'every state' : S.taskKeywords}` : 'Every active TODO in this file, regardless of date — matching real org\u2019s own global TODO list.';
+  heading.textContent = S.taskKeywords ? `Global list of TODO items of type: ${S.taskKeywords === '*' ? 'every state' : S.taskKeywords}` : 'Every active TODO in the agenda files, regardless of date — matching real org\u2019s own global TODO list.';
   headingRow.appendChild(heading);
 
   container.appendChild(headingRow);
+  const taskScopeNote = agendaScopeNote();
+  if (taskScopeNote) container.appendChild(taskScopeNote);
   container.appendChild(buildClocktableSection());
 
   // Same exclusion rules as Agenda (completed items, archived, commented
@@ -1268,7 +1273,7 @@ export function renderTaskListView() {
   // consistent with Agenda rather than a separate, different notion of
   // "done" or "should this show up at all".
   const todoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const items = buildTaskList(aggregateAgendaDocs(), {
+  const items = buildTaskList(agendaScopeDocs(), {
     isDone: (/** @type {any} */ todo) => todoSequence.doneKeywords.includes(todo),
     includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
     includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
@@ -1276,7 +1281,7 @@ export function renderTaskListView() {
     today: new Date(),
     deadlineWarningDays: getDeadlineWarningDays(S.state.localVariables),
     todoListSettings: readTodoListSettings(S.state.localVariables), // org-agenda-todo-ignore-*, org-agenda-todo-list-sublevels
-    skipEntry: agendaSkipper(S.state.localVariables, aggregateAgendaDocs(), { todoKeywords: todoSequence.todoKeywords, doneKeywords: todoSequence.doneKeywords }), // org-agenda-skip-function
+    skipEntry: agendaSkipper(S.state.localVariables, agendaScopeDocs(), { todoKeywords: todoSequence.todoKeywords, doneKeywords: todoSequence.doneKeywords }), // org-agenda-skip-function
   });
 
   if (items.length === 0) {

@@ -86,7 +86,7 @@ test('the Global Variables text is read as (setq ...) forms, not as the old name
 });
 
 /** Settings whose value is written as Emacs writes it: a Lisp list, alist or string. */
-const EMACS_FORM = new Set(['org-refile-targets', 'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file']);
+const EMACS_FORM = new Set(['org-refile-targets', 'org-tag-alist', 'org-tag-persistent-alist', 'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file']);
 
 test('every free-text setting is either written as Emacs writes it or is one of the app’s own (org-xx-)', () => {
   const longtext = SETTINGS_FIELDS.filter((f) => f.type === 'longtext').map((f) => f.key);

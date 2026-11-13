@@ -307,6 +307,11 @@ async function newDocument(page, text) {
   await fileMenu(page, 'New');
   await page.waitForFunction(() => !document.getElementById('viewMenuBtn').disabled, null, { timeout: 8000 });
   await setDocumentText(page, text);
+  // the agenda commands read the agenda files only, as Emacs: a new buffer is none of them, so it is looked at with the lock (C-c C-x <)
+  if (!text.includes('org-agenda-files')) await page.evaluate(async () => {
+    const { agendaRestriction, restrictionHere } = await import('/src-browser/agenda-files.js');
+    agendaRestriction.lock = restrictionHere(false);
+  });
 }
 
 /** Defines the capture templates the way a person does: org-capture-templates in the Lisp init. */
@@ -348,6 +353,13 @@ async function openDav(page, name) {
   await page.locator('#fileScreenBox').getByText(name, { exact: false }).first().click(); // the list, not a link to the file in the open document
   await page.waitForFunction((n) => document.getElementById('modeline').innerText.includes(n), name, { timeout: 8000 });
   await page.waitForTimeout(300);
+}
+
+/** Opens `text` as a WebDAV file that lists itself in org-agenda-files: the appointment scan and the exports read the agenda files only,
+ *  as Emacs, and an unsaved buffer is none of them. */
+async function openAsAgendaFile(page, text) {
+  dav.reset({ 'agenda.org': `${text}# Local Variables:\n# org-agenda-files: ("webdav:agenda.org")\n# End:\n` });
+  await openDav(page, 'agenda.org');
 }
 
 /** Starts opening a WebDAV file without waiting for it to open (a question may come first). */
@@ -5426,7 +5438,7 @@ check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERS
 });
 
 check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s events for the sync window, beside the file and heading scopes, which write every dated item', async () => {
-  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, '* Far away', 'SCHEDULED: <2031-05-01 Thu>', '* DONE Finished', `SCHEDULED: <${calDay(1)}>`, ''].join('\n');
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, '* Far away', 'SCHEDULED: <2031-05-01 Thu>', '* DONE Finished', `SCHEDULED: <${calDay(1)}>`, '# Local Variables:', '# org-agenda-files: ("webdav:notes.org")', '# End:', ''].join('\n');
   dav.reset({ 'notes.org': notes });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.evaluate(async () => {
@@ -5464,7 +5476,7 @@ check('Export > Calendar (.ics) > Agenda (as displayed) writes the agenda\u2019s
 
 check('Search extra files: text search also looks in org-agenda-text-search-extra-files and names a file it cannot load, the agenda does not use them, a result opens its file, a file in both lists is searched once, and the Settings row sits right after Contacts files', async () => {
   const extra = ['* TODO Extra heading', `SCHEDULED: <${calDay(1)}>`, 'a unicornword lives only here', ''].join('\n');
-  const notes = (vars) => ['* Notes', 'plain text', '# Local Variables:', ...vars, '# End:', ''].join('\n');
+  const notes = (vars) => ['* Notes', 'plain text', '# Local Variables:', '# org-agenda-files: ("webdav:notes.org")', ...vars, '# End:', ''].join('\n');
   dav.reset({ 'notes.org': notes(['# org-agenda-text-search-extra-files: ("webdav:extra.org" "webdav:missing.org")']), 'extra.org': extra });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await page.setViewportSize({ width: 412, height: 900 });
@@ -6906,8 +6918,8 @@ check('extensions: a script adds a diary function; it runs only once approved, a
 });
 
 check('extensions: a script-defined function in a <%%(…)> line is in Export > Calendar > Agenda (as displayed) even when the agenda was never opened (the export waits for the script)', async () => {
-  const { context, page, errors } = await freshPage(main);
-  await newDocument(page, ['* <%%(when (today-p) (garden-note))>', ''].join('\n'));
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await openAsAgendaFile(page, ['* <%%(when (today-p) (garden-note))>', ''].join('\n'));
   const flow = (fn, ...args) => page.evaluate(async ([name, a]) => (await import('/src-browser/extension-flow.js'))[name](...a), [fn, args]);
   await page.evaluate(async () => {
     const { S } = await import('/src-browser/app-state.js');
@@ -7789,12 +7801,12 @@ check('agenda notifications: an appointment inside its warning time gets a syste
       static requestPermission() { return Promise.resolve('granted'); }
     };
   };
-  const { context, page, errors } = await freshPage(main, { initScript: stub });
+  const { context, page, errors } = await freshPage(main, { initScript: stub, withDav: true });
   const pad = (n) => String(n).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const soon = new Date(Date.now() + 8 * 60000);
   const stamp = `<${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]} ${pad(soon.getHours())}:${pad(soon.getMinutes())}>`;
-  await newDocument(page, `* Dentist ${stamp}\nbring the insurance card\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
+  await openAsAgendaFile(page, `* Dentist ${stamp}\nbring the insurance card\n* No time of day <${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]}>\n`);
   await page.click('#moreBtn');
   await pick(page, '#morePanel', 'Settings');
   await settingsCategory(page, 'agenda');
@@ -7859,12 +7871,12 @@ check('agenda notifications: an appointment inside its warning time gets a syste
 });
 
 check('agenda notifications on a shell: a reminder swiped away in the shade (reported by the shell) stops the appointment’s reminders from being scheduled again, and what is kept about started appointments is dropped', async () => {
-  const { context, page, errors } = await freshPage(main);
+  const { context, page, errors } = await freshPage(main, { withDav: true });
   const pad = (n) => String(n).padStart(2, '0');
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const soon = new Date(Date.now() + 60 * 60000);
   const stamp = `<${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())} ${days[soon.getDay()]} ${pad(soon.getHours())}:${pad(soon.getMinutes())}>`;
-  await newDocument(page, `* Dentist ${stamp}\n* Lunch ${stamp}\n`);
+  await openAsAgendaFile(page, `* Dentist ${stamp}\n* Lunch ${stamp}\n`);
   await page.evaluate(async () => {
     window.__held = [];
     window.__swiped = [];
@@ -8918,6 +8930,63 @@ check('calendar sync: it is made from the agenda files alone, as in Emacs; the o
   expect(r.none.sync.length === 0 && r.none.agenda.length === 1, `with no agenda files the sync has nothing, the agenda still has the open document: ${JSON.stringify(r.none)}`);
   expect(JSON.stringify(r.one.sync) === '["plan.org"]' && r.one.agenda.length === 2, `with one agenda file the sync has only it: ${JSON.stringify(r.one)}`);
   expect(r.openIsLive, 'an open agenda file is read from its live buffer');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('agenda files only: the Agenda reads org-agenda-files and not the open file, < restricts to this file, C-c C-x < locks and > lifts it, with no agenda files it says so, and a tag listed in org-tag-alist is offered', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const vars = (lines) => ['# Local Variables:', ...lines, '# End:', ''];
+  dav.reset({
+    'open.org': ['* TODO Only in the open file', `SCHEDULED: <${today}>`, ...vars(['# org-agenda-files: ("webdav:listed.org")', '# org-tag-alist: (("urgent" . ?u) "someday")'])].join('\n'),
+    'listed.org': ['* TODO In the agenda file', `SCHEDULED: <${today}>`, ''].join('\n'),
+    'none.org': ['* TODO Nothing lists me', `SCHEDULED: <${today}>`, ''].join('\n'),
+  });
+  const { context, page, errors } = await freshPage(main, { withDav: true });
+  await page.setViewportSize({ width: 412, height: 900 });
+  const text = async () => (await page.locator('#outline').innerText());
+  await openDav(page, 'open.org');
+  await viewMenu(page, 'Agenda');
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('In the agenda file'), null, { timeout: 10000 });
+  let t = await text();
+  expect(!t.includes('Only in the open file'), `the open file is not an agenda file, so it is not read: ${t.slice(0, 200)}`);
+
+  // < in Agenda commands: the next command reads this file only
+  await page.evaluate(async () => (await import('/src-browser/agenda-query-view.js')).openAgendaCommands());
+  await page.waitForSelector('[data-restrict]');
+  await page.locator('[data-restrict]').click();
+  expect((await page.locator('[data-restrict]').innerText()).includes('Restricted to file open.org'), 'the < row says what it chose');
+  await page.locator('[data-bottom-sheet] button', { hasText: 'Global TODO list' }).first().click();
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('Only in the open file'), null, { timeout: 8000 });
+  t = await text();
+  expect(!t.includes('In the agenda file') && t.includes('Restricted to file open.org'), `restricted to this file, and the view says so: ${t.slice(0, 300)}`);
+  await page.locator('[data-agenda-scope="restricted"] button', { hasText: 'Clear' }).click();
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('In the agenda file'), null, { timeout: 8000 });
+
+  // the lock holds for every agenda command until it is lifted, and C-c C-x < again lifts it
+  await page.evaluate(async () => (await import('/src-browser/agenda-scope-note.js')).lockAgenda());
+  await viewMenu(page, 'Agenda');
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('Restricted to'), null, { timeout: 8000 });
+  t = await text();
+  expect(t.includes('Only in the open file') && !t.includes('In the agenda file'), `the lock restricts the Agenda: ${t.slice(0, 300)}`);
+  await page.evaluate(async () => (await import('/src-browser/agenda-scope-note.js')).lockAgenda()); // again: lifts it
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('In the agenda file'), null, { timeout: 8000 });
+
+  // tags: the ones org-tag-alist lists are offered although nothing uses them
+  const offered = await page.evaluate(async () => {
+    const { suggestTags } = await import('/src/completion.js');
+    const { tagsOfTagAlist } = await import('/src/tag-alist.js');
+    const { S } = await import('/src-browser/app-state.js');
+    return suggestTags({ docs: [S.state.doc], listed: tagsOfTagAlist(S.state.localVariables['org-tag-alist']) });
+  });
+  expect(offered.includes('urgent') && offered.includes('someday'), `listed tags are offered: ${JSON.stringify(offered)}`);
+
+  // no agenda files at all
+  await openDav(page, 'none.org');
+  await viewMenu(page, 'Agenda');
+  await page.waitForFunction(() => document.getElementById('outline').innerText.includes('No agenda files'), null, { timeout: 8000 });
+  t = await text();
+  expect(!t.includes('Nothing lists me'), `with no agenda files the open file is not shown: ${t.slice(0, 200)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -9987,7 +10056,7 @@ check('windowing: threshold 0 renders every row as before', async () => {
 
 check('windowing: a long agenda draws only the rows near the screen, and j/k walk through all of them', async () => {
   const today = new Date().toISOString().slice(0, 10);
-  const doc = Array.from({ length: 900 }, (_, i) => `* TODO Task ${i}\nSCHEDULED: <${today}>\n`).join('');
+  const doc = Array.from({ length: 900 }, (_, i) => `* TODO Task ${i}\nSCHEDULED: <${today}>\n`).join('') + '# Local Variables:\n# org-agenda-files: ("webdav:busy.org")\n# End:\n';
   dav.reset({ 'busy.org': doc });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'busy.org');

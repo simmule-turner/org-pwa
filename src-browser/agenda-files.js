@@ -318,6 +318,70 @@ export function agendaFileDocs() {
   return docs;
 }
 
+/** The restriction on the agenda commands, as Emacs's `<` (the next command only) and `C-c C-x <` (a lock, until `C-c C-x >`):
+ *  the open file, or a subtree of it named by its outline path. `pending` is what `<` chose and holds while the agenda views stay open.
+ * @typedef {{ kind: 'file' | 'subtree', documentId: string, path: string[] }} AgendaRestriction
+ * @type {{ lock: AgendaRestriction | null, pending: AgendaRestriction | null }} */
+export const agendaRestriction = { lock: null, pending: null };
+
+/** The restriction now in force: the one `<` chose, else the lock. */
+export function activeAgendaRestriction() {
+  return agendaRestriction.pending || agendaRestriction.lock;
+}
+
+/** The titles from the top level down to `target` in `children`, or null. @param {import('../src/types.js').Heading[]} children @param {import('../src/types.js').Heading} target @returns {string[] | null} */
+function titlePathTo(children, target) {
+  for (const child of children) {
+    if (child === target) return [child.title];
+    const below = titlePathTo(child.children, target);
+    if (below) return [child.title, ...below];
+  }
+  return null;
+}
+
+/** The heading at an outline path of titles, or null. @param {import('../src/types.js').Heading[]} children @param {string[]} path @returns {import('../src/types.js').Heading | null} */
+function headingAtTitlePath(children, path) {
+  const [first, ...rest] = path;
+  const found = children.find((h) => h.title === first);
+  if (!found) return null;
+  return rest.length ? headingAtTitlePath(found.children, rest) : found;
+}
+
+/** The restriction for the open file: the file, or the subtree at point, which is the focused heading (else the one the outline is narrowed to). Null when there is none.
+ * @param {boolean} subtree @returns {AgendaRestriction | null} */
+export function restrictionHere(subtree) {
+  if (!S.state.doc) return null;
+  if (!subtree) return { kind: 'file', documentId: S.state.documentId, path: [] };
+  const at = S.keyboardFocusedHeading || S.narrowedHeading;
+  const path = at ? titlePathTo(S.state.doc.children, at) : null;
+  return path ? { kind: 'subtree', documentId: S.state.documentId, path } : null;
+}
+
+/** What a restriction names, as the line the agenda says it with. @param {AgendaRestriction} r */
+export function describeRestriction(r) {
+  return r.kind === 'file' ? `file ${r.documentId}` : `subtree ${r.path.join(' / ')} of ${r.documentId}`;
+}
+
+/** The documents a restriction leaves: its file as it is open now (or in another tab), or a copy of it holding only the subtree (the
+ *  headings are the real ones, so a change made from the agenda lands in the document). @param {AgendaRestriction} r */
+function restrictedDocs(r) {
+  const entry = agendaFileDocs().find((d) => d.documentId === r.documentId);
+  const tab = S.documentSessions.find((/** @type {Record<string, any>} */ t) => t.state && t.state.documentId === r.documentId);
+  const doc = r.documentId === S.state.documentId ? S.state.doc : entry ? entry.doc : tab ? tab.state.doc : null;
+  if (!doc) return [];
+  if (r.kind === 'file') return [{ documentId: r.documentId, doc }];
+  const heading = headingAtTitlePath(doc.children, r.path);
+  return heading ? [{ documentId: r.documentId, doc: { ...doc, bodyLines: [], body: [], children: [heading] } }] : [];
+}
+
+/** The documents the agenda commands read, as Emacs's `org-agenda-files`: the agenda files and no others, whatever file is open, or the
+ *  restriction (`<`, or the lock) when there is one. A command of your own with org-agenda-files draws from that list. */
+export function agendaScopeDocs() {
+  if (commandScope.docs) return commandScope.docs;
+  const restriction = activeAgendaRestriction();
+  return restriction ? restrictedDocs(restriction) : agendaFileDocs();
+}
+
 /** The documents an `agenda` block of a custom command is drawn from while it is drawn (null otherwise). @type {{ docs: { documentId: string, doc: import('../src/types.js').Doc }[] | null }} */
 export const commandScope = { docs: null };
 
@@ -475,11 +539,21 @@ export function ensureSearchExtraFilesLoaded() {
   }
 }
 
-/** The documents text search looks in: the agenda's own (the open file and the agenda files) and then the extra files, each once
- *  (a file in both lists is searched once, and the open file stands in for its own extra-file entry, unsaved edits included). The
- *  agenda, TODO and tag views do NOT use this: extra files are for search only. */
+/** The documents the Search panel looks in: the open file, the agenda files and then the extra files, each once (a file in both lists
+ *  is searched once, and the open file stands in for its own extra-file entry, unsaved edits included). */
 export function aggregateSearchDocs() {
-  const docs = aggregateAgendaDocs();
+  return withExtraFiles(aggregateAgendaDocs());
+}
+
+/** The documents the agenda's keyword Search reads, as Emacs's org-search-view: the agenda files (or what `<` or the lock restricts it
+ *  to) and org-agenda-text-search-extra-files. The Match and TODO views do NOT use the extra files. */
+export function agendaSearchDocs() {
+  return withExtraFiles(agendaScopeDocs());
+}
+
+/** @param {{ documentId: string, doc: import('../src/types.js').Doc }[]} base */
+function withExtraFiles(base) {
+  const docs = [...base];
   const seen = new Set(docs.map((d) => d.documentId));
   for (const entry of searchExtraFilesCache.values()) {
     if (!entry.doc || seen.has(entry.documentId)) continue;

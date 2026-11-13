@@ -24,7 +24,7 @@ import { getAsciiTextWidth, getAsciiCharset, getContactsBirthdayProperty, getMen
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { parseOrg } from '../src/org-parser.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
-import { aggregateAgendaDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { agendaFileDocs, aggregateContactsDocs, ensureContactsFilesLoadedAndWait, loadContactsDocsForSync, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { collectExportImages } from './export-images.js';
 import { exportAgendaToIcalendar } from '../src/calendar-from-agenda.js';
 import { agendaSexpOptions, calendarAlarmMinutes } from './agenda-settings.js';
@@ -164,7 +164,7 @@ export async function performExport(format, scope) {
     let ics;
     if (scope === 'agenda') {
       // what View > Agenda shows, in the window the CalDAV mirror uses (see calendar-from-agenda.js)
-      const agendaDocs = aggregateAgendaDocs().filter((d) => d.doc);
+      const agendaDocs = agendaFileDocs().filter((d) => d.doc);
       const contactsDocs = await loadContactsDocsForSync(agendaDocs);
       const build = () => exportAgendaToIcalendar(agendaDocs, { birthdayProperty, agendaOptions: agendaSexpOptions(), alarmMinutes: calendarAlarmMinutes(), contactsDocs });
       if (hasUserSexps()) {
@@ -173,7 +173,7 @@ export async function performExport(format, scope) {
       }
       ics = build();
     } else {
-      const docs = scope === 'agenda-files' ? aggregateAgendaDocs() : [{ documentId: S.state.documentId, doc: S.state.doc, name: baseName }];
+      const docs = scope === 'agenda-files' ? agendaFileDocs() : [{ documentId: S.state.documentId, doc: S.state.doc, name: baseName }];
       const icsScope = scope && typeof scope === 'object' ? scope : null;
       // for the agenda files, the contacts are those of org-contacts-files, as in the agenda
       const contactsDocs = scope === 'agenda-files' ? await loadContactsDocsForSync(docs.filter((d) => d.doc)) : null;

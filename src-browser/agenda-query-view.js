@@ -7,7 +7,8 @@ import { runFunctionCommand } from '../src/agenda-lisp.js';
 import { parseCustomCommands, withCustomCommand } from '../src/agenda-commands.js';
 import { planSearch } from '../src/agenda-search.js';
 import { matchViewItems, searchViewItems } from '../src/agenda-queries.js';
-import { aggregateAgendaDocs, aggregateSearchDocs, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
+import { agendaScopeNote } from './agenda-scope-note.js';
+import { agendaRestriction, agendaScopeDocs, agendaSearchDocs, describeRestriction, restrictionHere, ensureAgendaFilesLoaded, ensureSearchExtraFilesLoaded } from './agenda-files.js';
 import { buildHeadingRow, buildTodoEffortChip, prefixFailure, prefixFailureNote } from './agenda-view.js';
 import { openCommandView } from './command-view.js';
 import { queryOptions } from './query-options.js';
@@ -81,6 +82,8 @@ export function renderQueryView() {
   title.setAttribute('data-query-title', '');
   title.style.cssText = 'margin:4px 0 10px;font-size:20px;font-weight:700;';
   container.appendChild(title);
+  const scopeNote = agendaScopeNote();
+  if (scopeNote) container.appendChild(scopeNote);
 
   // the query on a line of its own, full width; Commands and Save… under it, with TODO only (Match) at the right
   const input = document.createElement('input');
@@ -157,7 +160,7 @@ export function renderQueryView() {
     if (q.sortingStrategy) options.sortingStrategy = q.sortingStrategy;
     let items;
     try {
-      items = isMatch ? matchViewItems(aggregateAgendaDocs(), q.query, options) : searchViewItems(aggregateSearchDocs(), q.query, options);
+      items = isMatch ? matchViewItems(agendaScopeDocs(), q.query, options) : searchViewItems(agendaSearchDocs(), q.query, options);
     } catch (err) {
       return note(String(/** @type {Error} */ (err).message || err), true);
     }
@@ -207,8 +210,10 @@ export function renderQueryView() {
 }
 
 /** The sheet of agenda commands: the built-in views and the ones in org-agenda-custom-commands. */
-export function openAgendaCommands() {
+export function openAgendaCommands({ restrictToFile = false } = {}) {
   const commands = parseCustomCommands(S.state.localVariables[VARIABLE]);
+  /** What `<` chose, as in Emacs: nothing, this file, or (when the outline is narrowed) its subtree. It applies to the command picked next. @type {import('./agenda-files.js').AgendaRestriction | null} */
+  let choice = restrictToFile ? restrictionHere(false) : null;
   /** @type {() => void} */ let close = () => {};
   close = openContentSheet({
     title: 'Agenda commands',
@@ -231,9 +236,11 @@ export function openAgendaCommands() {
         }
         b.onclick = () => {
           close();
+          agendaRestriction.pending = choice;
           run();
         };
         panel.appendChild(b);
+        return b;
       };
       /** @param {string} text */
       const group = (text) => {
@@ -242,6 +249,26 @@ export function openAgendaCommands() {
         g.style.cssText = 'font-size:12px;font-weight:700;opacity:0.6;margin:12px 4px 4px;text-transform:uppercase;letter-spacing:.04em;';
         panel.appendChild(g);
       };
+      group('Restrict');
+      const restrictRow = document.createElement('button');
+      restrictRow.setAttribute('data-restrict', '');
+      restrictRow.style.cssText = 'display:flex;gap:12px;align-items:center;width:100%;min-height:52px;text-align:left;padding:6px 8px;';
+      const restrictKey = document.createElement('span');
+      restrictKey.textContent = '<';
+      restrictKey.style.cssText = 'min-width:28px;text-align:center;font:700 15px ui-monospace,Menlo,monospace;border:1px solid var(--border-strong);border-radius:8px;padding:4px 0;';
+      const restrictText = document.createElement('span');
+      restrictRow.append(restrictKey, restrictText);
+      const showChoice = () => {
+        restrictText.textContent = choice ? `Restricted to ${describeRestriction(choice)}` : 'Restrict the next command to this file';
+      };
+      showChoice();
+      restrictRow.onclick = () => {
+        // as Emacs's `<`, pressed again: the file, then the subtree at point (the focused heading, else the narrowed one), then nothing
+        const subtree = restrictionHere(true);
+        choice = !choice ? restrictionHere(false) : choice.kind === 'file' && subtree ? subtree : null;
+        showChoice();
+      };
+      panel.appendChild(restrictRow);
       group('Built in');
       row('a', 'Agenda', '', () => switchToView('agenda'));
       row('t', 'Global TODO list', '', () => openTodoList(null));
