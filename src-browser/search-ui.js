@@ -500,7 +500,7 @@ export function renderSearchPanel() {
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
-  resultsEl.style.maxHeight = `30${VH_UNIT}`; // leaves most of the screen to the document, which follows the current result
+  resultsEl.style.maxHeight = `40${VH_UNIT}`;
   resultsEl.style.overflowY = 'auto';
   resultsEl.style.overscrollBehavior = 'contain';
   searchPanel.appendChild(resultsEl);
@@ -564,10 +564,10 @@ export function renderQueryReplacePrompt() {
   buttons.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
   const row = document.createElement('div');
   row.className = 'panel-row';
-  row.style.cssText = 'display:flex;gap:8px;';
+  row.style.cssText = 'display:flex;flex-wrap:nowrap;gap:8px;margin:0;'; // .panel-row wraps and has margins: neither here, so a row is always one line
   const row2 = document.createElement('div');
   row2.className = 'panel-row';
-  row2.style.cssText = 'display:flex;gap:8px;';
+  row2.style.cssText = 'display:flex;flex-wrap:nowrap;gap:8px;margin:0;';
   buttons.appendChild(row);
   buttons.appendChild(row2);
   /** the same size as the option buttons of the search bar: 34px tall, label centered, 8px corners
@@ -732,35 +732,38 @@ function markCurrentResult() {
     const total = resultNav.results.length;
     resultNav.label.textContent = resultNav.index >= 0 ? `${resultNav.index + 1} of ${total} result${total === 1 ? '' : 's'}` : `${total} result${total === 1 ? '' : 's'}`;
   }
-  resultNav.rows[resultNav.index]?.scrollIntoView({ block: 'nearest' });
+  // scrolls the list itself only (scrollIntoView would also move the page and the bars around it)
+  const row = resultNav.rows[resultNav.index];
+  const list = document.getElementById('search-results');
+  if (row && list) {
+    const above = row.getBoundingClientRect().top - list.getBoundingClientRect().top;
+    const below = row.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom;
+    if (above < 0) list.scrollTop += above;
+    else if (below > 0) list.scrollTop += below;
+  }
 }
 
 /** Opens a result: the search closes and the document goes to it. */
-function openResult(/** @type {{ documentId: string, type: string, heading: unknown, node?: unknown }} */ result, /** @type {boolean} */ keepSearch) {
+function openResult(/** @type {{ documentId: string, type: string, heading: unknown, node?: unknown }} */ result) {
   const heading = /** @type {Parameters<typeof outlinePathForHeadingInDocument>[1]} */ (result.heading);
-  if (!keepSearch) {
-    S.searchOpen = false;
-    renderSearchPanel();
-  }
+  S.searchOpen = false;
+  renderSearchPanel();
   const outlinePath = outlinePathForHeadingInDocument(result.documentId, heading);
   if (outlinePath) {
     navigateToHeadingByPath(result.documentId, outlinePath, {
       revealOwnBody: result.type !== 'heading',
       targetNode: /** @type {object | undefined} */ (result.node),
-      pushToBackStack: !keepSearch, // stepping through results does not fill the Back list
     });
   }
 }
 
-/** Enter, the arrows, C-s and C-r and the next and previous buttons: the next or previous result, wrapping around, and the document
- *  follows when the result is in the open file. */
+/** Enter, the arrows, C-s and C-r and the next and previous buttons: the next or previous result, wrapping around. Only the results
+ *  list moves; the document stays where it is until a result is tapped. */
 export function stepOrgResult(/** @type {number} */ delta) {
   const total = resultNav.results.length;
   if (total === 0) return;
   resultNav.index = resultNav.index < 0 ? (delta > 0 ? 0 : total - 1) : (resultNav.index + delta + total) % total;
   markCurrentResult();
-  const result = resultNav.results[resultNav.index];
-  if (result.documentId === S.state.documentId) openResult(result, true);
 }
 
 export function renderSearchResults() {
@@ -778,6 +781,7 @@ export function renderSearchResults() {
   const resultsEl = document.getElementById('search-results');
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
+  document.getElementById('search-results-header')?.remove();
   resultNav.rows = [];
   resultNav.results = [];
   resultNav.label = null;
@@ -846,8 +850,7 @@ export function renderSearchResults() {
     header.style.justifyContent = 'space-between';
     header.style.gap = '8px';
     header.style.padding = '4px 2px 8px';
-    // stays at the top of the list while the results scroll: the count and Narrow are always in view
-    header.style.cssText += 'position:sticky;top:0;z-index:1;background:var(--bg);';
+    header.id = 'search-results-header';
 
     const countLabel = document.createElement('div');
     countLabel.style.fontSize = '12px';
@@ -872,7 +875,9 @@ export function renderSearchResults() {
     header.appendChild(narrowBtn);
     }
 
-    resultsEl.appendChild(header);
+    // above the list, not in it: the count and Narrow stay put while the results scroll
+    document.getElementById('search-results-header')?.remove();
+    resultsEl.before(header);
   }
 
   for (const result of results) {
@@ -885,7 +890,6 @@ export function renderSearchResults() {
     row.style.boxSizing = 'border-box';
     row.style.borderBottom = '1px solid var(--border)';
     row.style.cursor = 'pointer';
-    row.style.scrollMarginTop = '48px'; // clear of the sticky header when scrolled to
 
     const icon = document.createElement('span');
     icon.textContent = /** @type {any} */ (SEARCH_TYPE_ICON)[result.type] || '\u2022';
@@ -918,7 +922,7 @@ export function renderSearchResults() {
     if (result.type !== 'heading') text.appendChild(snippetLine);
     row.appendChild(text);
 
-    row.onclick = () => openResult(result, false);
+    row.onclick = () => openResult(result);
     resultNav.rows.push(row);
     resultsEl.appendChild(row);
   }

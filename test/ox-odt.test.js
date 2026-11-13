@@ -140,7 +140,8 @@ try {
 test('LibreOffice opens the file and keeps headings, text, list items, table cells and the formula', { skip: !haveLibreOffice && 'LibreOffice not available in this environment', timeout: 120000 }, () => {
   loadKatex();
   const dir = unpack(exportToOdt(parseOrg('#+TITLE: Round\n* Head\nSome *bold* text and $x^2$.\n- item one\n- item two\n\n| a | b |\n|---+---|\n| 1 | 2 |\n')));
-  execFileSync('soffice', ['--headless', '--convert-to', 'txt:Text', path.join(dir, 't.odt'), '--outdir', dir], { timeout: 100000 });
+  // a profile of its own: LibreOffice runs that share one profile collide when they start together (the three time-zone runs do)
+  execFileSync('soffice', ['-env:UserInstallation=file://' + path.join(dir, 'lo-profile'), '--headless', '--convert-to', 'txt:Text', path.join(dir, 't.odt'), '--outdir', dir], { timeout: 100000 });
   const txt = readFileSync(path.join(dir, 't.txt'), 'utf8');
   for (const piece of ['Round', 'Head', 'Some bold text', 'item one', 'item two']) assert.ok(txt.includes(piece), piece + '\n' + txt);
   assert.match(txt, /a\s+b/);

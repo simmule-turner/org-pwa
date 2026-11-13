@@ -8721,6 +8721,11 @@ check('search bar: the field, next, previous and more share one height with the 
   await page.waitForTimeout(300);
   const lines = await page.evaluate(() => { const tops = {}; for (const b of document.querySelectorAll('#searchPanel .panel-row button')) { const t = Math.round(b.getBoundingClientRect().top); (tops[t] = tops[t] || []).push(b.textContent.trim()[0]); } return Object.values(tops); });
   expect(JSON.stringify(lines) === '[["y","n","q"],[".","!"]]', `query-replace buttons at 320px: ${JSON.stringify(lines)}`);
+  // a wider font must not change the two rows
+  await page.addStyleTag({ content: '#searchPanel button { letter-spacing: 1px !important; font-family: Georgia, serif !important; }' });
+  await page.waitForTimeout(200);
+  const wide = await page.evaluate(() => { const tops = {}; for (const b of document.querySelectorAll('#searchPanel .panel-row button')) { const t = Math.round(b.getBoundingClientRect().top); (tops[t] = tops[t] || []).push(b.textContent.trim()[0]); } return Object.values(tops); });
+  expect(JSON.stringify(wide) === '[["y","n","q"],[".","!"]]', `query-replace buttons with a wider font at 320px: ${JSON.stringify(wide)}`);
   // a drag that starts on the bar is cancelled, so it cannot scroll the text or the page
   const prevented = await page.evaluate(() => {
     const bar = document.getElementById('modelineBar');
@@ -8751,7 +8756,7 @@ check('search results: Org view steps through results with Enter, arrows and but
   await page.waitForSelector('#search-query-input');
   await page.fill('#search-query-input', 'quokka');
   await page.waitForTimeout(200);
-  const label = () => page.evaluate(() => document.querySelector('#search-results > div')?.firstChild?.textContent);
+  const label = () => page.evaluate(() => document.getElementById('search-results-header')?.firstChild?.textContent);
   expect((await label()) === '4 results', `count: ${await label()}`);
   const steps = [['Enter', '1 of 4 results'], ['ArrowDown', '2 of 4 results'], ['Shift+Enter', '1 of 4 results'], ['ArrowUp', '4 of 4 results'], ['Control+s', '1 of 4 results'], ['Control+r', '4 of 4 results']];
   for (const [key, want] of steps) {
@@ -8792,7 +8797,7 @@ check('update log: the page start notes which version each cache on the device h
   await context.close();
 });
 
-check('search results: the count and Narrow stay at the top of the list while it scrolls, and the document shows the current result between the list and the bottom bar', async () => {
+check('search results: stepping scrolls only the results list; the count and Narrow stay in place above it in the panel\'s own color, and the document, bars and panel do not move', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);
   await page.setViewportSize({ width: 390, height: 700 });
@@ -8803,21 +8808,24 @@ check('search results: the count and Narrow stay at the top of the list while it
   await page.waitForSelector('#search-query-input');
   await page.fill('#search-query-input', 'quokka');
   await page.waitForTimeout(300);
+  const still = () => page.evaluate(() => ({ y: Math.round(window.scrollY), bar: Math.round(document.getElementById('minibuffer').getBoundingClientRect().top), modeline: Math.round(document.getElementById('modelineBar').getBoundingClientRect().top), panelTop: Math.round(document.getElementById('searchPanel').getBoundingClientRect().top), header: Math.round(document.getElementById('search-results-header').getBoundingClientRect().top), doc: Math.round(document.getElementById('contentArea').scrollTop) }));
+  const before = await still();
   for (let i = 0; i < 12; i++) {
     await page.press('#search-query-input', 'Enter');
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(i < 6 ? 60 : 300); // quick presses one after another, then slower ones
+    expect(JSON.stringify(await still()) === JSON.stringify(before), `only the list scrolls (step ${i + 1}): ${JSON.stringify(await still())} vs ${JSON.stringify(before)}`);
   }
   const g = await page.evaluate(() => {
-    const r = (el) => { const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; };
     const results = document.getElementById('search-results');
-    const header = results.firstElementChild;
-    const flash = [...document.querySelectorAll('#outline *')].find((e) => e.style.backgroundColor.includes('255, 214'));
-    return { scrolled: results.scrollTop, results: r(results), header: r(header), narrow: !!header.querySelector('button'), label: header.firstChild.textContent, panel: r(document.getElementById('searchPanel')), modeline: r(document.getElementById('modelineBar')), flash: flash ? r(flash) : null };
+    const header = document.getElementById('search-results-header');
+    const row = results.children[11];
+    const rb = row.getBoundingClientRect();
+    const lb = results.getBoundingClientRect();
+    return { scrolled: results.scrollTop, headerInList: results.contains(header), narrow: !!header.querySelector('button'), label: header.firstChild.textContent, headerBg: getComputedStyle(header).backgroundColor, panelBg: getComputedStyle(document.getElementById('searchPanel')).backgroundColor, rowVisible: rb.top >= lb.top - 1 && rb.bottom <= lb.bottom + 1 };
   });
-  expect(g.scrolled > 0, `the list scrolled: ${g.scrolled}`);
-  expect(Math.abs(g.header.top - g.results.top) <= 1 && g.narrow && /^12 of 60 results$/.test(g.label), `the count and Narrow stay at the top: ${JSON.stringify(g)}`);
-  expect(g.flash && g.flash.top >= g.panel.bottom && g.flash.bottom <= g.modeline.top, `the current result is on screen below the list: ${JSON.stringify(g)}`);
-  expect(g.modeline.top - g.panel.bottom >= 200, `the document keeps room: ${JSON.stringify(g)}`);
+  expect(g.scrolled > 0 && g.rowVisible, `the list scrolled to the current result: ${JSON.stringify(g)}`);
+  expect(!g.headerInList && g.narrow && g.label === '12 of 60 results', `the count and Narrow are above the list: ${JSON.stringify(g)}`);
+  expect(g.headerBg === 'rgba(0, 0, 0, 0)' || g.headerBg === g.panelBg, `the header has the panel's own color: ${JSON.stringify(g)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v694 — Stepping through search results only moves the list
+In the Org view, Enter and the arrows now scroll only the results list, so the document, the modeline and the search bar stay still; tapping a result still opens it. "N of M results" and Narrow sit above the list in the panel's own color, so the scrollbar starts below them. The query-replace buttons are two rows that never wrap, whatever the font.
+Verified: a smoke check that twelve steps, the first six in quick succession, move nothing but the list, and that the query-replace rows hold with a wider font.
+
 * v693 — Search results stay in view
 In the Org view the list of results is shorter, so the document has room to show the current result, and "N of M results" and Narrow stay at the top of the list while it scrolls instead of scrolling away.
 Verified: a smoke check that stepping through twelve results keeps the count and Narrow in place and the current result on screen.
