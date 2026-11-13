@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v695 — The results list fits the room above the keyboard
+With the keyboard open on a phone, the list of search results was sized from the whole window and its bottom ended up under the modeline and search bar, so stepping past the first few results scrolled the current one out of sight. The list is now sized from the room actually visible above the modeline, and re-measured when the keyboard opens or closes.
+Verified: smoke checks for both ways a keyboard changes the screen (the bars lifted above it, and the window itself shrinking) that step through fourteen results; the first fails without the change.
+
 * v694 — Stepping through search results only moves the list
 In the Org view, Enter and the arrows now scroll only the results list, so the document, the modeline and the search bar stay still; tapping a result still opens it. "N of M results" and Narrow sit above the list in the panel's own color, so the scrollbar starts below them. The query-replace buttons are two rows that never wrap, whatever the font.
 Verified: a smoke check that twelve steps, the first six in quick succession, move nothing but the list, and that the query-replace rows hold with a wider font.

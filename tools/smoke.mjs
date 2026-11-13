@@ -8830,6 +8830,69 @@ check('search results: stepping scrolls only the results list; the count and Nar
   await context.close();
 });
 
+check('search results: with a keyboard up (the bars lifted above it, the window as tall as before) the current result stays above the modeline', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 750 });
+  const lines = [];
+  for (let i = 1; i <= 60; i++) lines.push('* Heading ' + i, 'filler text ' + i, 'a quokka lives here ' + i, 'more filler');
+  await newDocument(page, lines.join('\n') + '\n');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.waitForTimeout(300);
+  // what iOS does: the window keeps its height and the bottom bar is lifted by the keyboard's height
+  // (a transform, because the app puts the bar's own bottom back at once)
+  await page.addStyleTag({ content: '#modelineBar { transform: translateY(-330px) !important; }' });
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await page.waitForTimeout(150);
+  for (let i = 0; i < 14; i++) {
+    await page.press('#search-query-input', 'Enter');
+    await page.waitForTimeout(60);
+    const g = await page.evaluate(() => {
+      const list = document.getElementById('search-results');
+      const row = [...list.children].find((r) => r.style.background);
+      const modeline = document.getElementById('modelineBar').getBoundingClientRect().top;
+      const rb = row.getBoundingClientRect();
+      const lb = list.getBoundingClientRect();
+      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline: Math.round(modeline) };
+    });
+    expect(g.listBottom <= g.modeline && g.rowBottom <= g.modeline && g.rowTop >= g.listTop - 1, `step ${i + 1}: the list and the current result are above the modeline: ${JSON.stringify(g)}`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('search results: when the window itself shrinks for a keyboard (an Android window), the list and the current result stay above the modeline', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 780 });
+  const lines = [];
+  for (let i = 1; i <= 60; i++) lines.push('* Heading ' + i, 'filler text ' + i, 'a quokka lives here ' + i, 'more filler');
+  await newDocument(page, lines.join('\n') + '\n');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.waitForTimeout(300);
+  await page.setViewportSize({ width: 390, height: 430 });
+  await page.waitForTimeout(500);
+  for (let i = 0; i < 14; i++) {
+    await page.press('#search-query-input', 'Enter');
+    await page.waitForTimeout(60);
+    const g = await page.evaluate(() => {
+      const list = document.getElementById('search-results');
+      const row = [...list.children].find((r) => r.style.background);
+      const modeline = Math.round(document.getElementById('modelineBar').getBoundingClientRect().top);
+      const rb = row.getBoundingClientRect();
+      const lb = list.getBoundingClientRect();
+      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline };
+    });
+    expect(g.listBottom <= g.modeline && g.rowBottom <= g.modeline && g.rowTop >= g.listTop - 1, `step ${i + 1}: ${JSON.stringify(g)}`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);

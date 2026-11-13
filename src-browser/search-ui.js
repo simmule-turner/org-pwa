@@ -11,7 +11,7 @@ import { renderMinibuffer } from './chrome.js';
 import { SEARCH_TYPE_ICON } from './constants.js';
 import { buildQueryReplacePattern } from './doc-helpers.js';
 import { openRemotePath } from './documents-io.js';
-import { minibufferSearchEl, searchPanel } from './dom.js';
+import { minibufferSearchEl, modelineBarEl, searchPanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { paintTextMatches } from './text-view.js';
 import { isRowFindView, refreshRowFind, stepRowFind, stopRowFind, updateRowFindCount } from './find-in-view.js';
@@ -724,7 +724,27 @@ export function renderTextModeSearchResults() {
 /** @type {{ key: string, index: number, rows: HTMLElement[], results: Array<{ documentId: string, type: string, heading: unknown, node?: unknown }>, label: HTMLElement | null }} */
 const resultNav = { key: '', index: -1, rows: [], results: [], label: null };
 
+/** The results list gets at most 60% of the room really visible between its top and the modeline above the search bar (the document
+ *  gets the rest). A share of the window height is wrong once a keyboard is up: iOS keeps the window as tall as before, lifts the bars
+ *  above the keyboard, and the bottom of a list sized from the window ends up underneath them. */
+function fitResultsList() {
+  const list = document.getElementById('search-results');
+  if (!list) return;
+  const panel = document.getElementById('searchPanel');
+  const panelPadding = panel ? parseFloat(getComputedStyle(panel).paddingBottom) || 0 : 0;
+  const room = modelineBarEl.getBoundingClientRect().top - list.getBoundingClientRect().top - panelPadding - 1;
+  list.style.maxHeight = Math.max(60, Math.min(room * 0.6, window.innerHeight * 0.4)) + 'px';
+}
+// after the page's own resize handlers have moved the bars (they run in the same event), so the bar's position measured is the new one
+const fitSoon = () => setTimeout(fitResultsList, 0);
+window.addEventListener('resize', fitSoon);
+window.visualViewport?.addEventListener('resize', fitSoon);
+window.visualViewport?.addEventListener('scroll', fitSoon);
+document.addEventListener('focusin', () => setTimeout(fitResultsList, 350)); // the keyboard has finished opening
+document.addEventListener('focusout', () => setTimeout(fitResultsList, 350));
+
 function markCurrentResult() {
+  fitResultsList();
   resultNav.rows.forEach((row, i) => {
     row.style.background = i === resultNav.index ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : '';
   });
