@@ -8792,6 +8792,36 @@ check('update log: the page start notes which version each cache on the device h
   await context.close();
 });
 
+check('search results: the count and Narrow stay at the top of the list while it scrolls, and the document shows the current result between the list and the bottom bar', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 700 });
+  const lines = [];
+  for (let i = 1; i <= 60; i++) lines.push('* Heading ' + i, 'filler text ' + i, 'a quokka lives here ' + i, 'more filler', 'even more');
+  await newDocument(page, lines.join('\n') + '\n');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.waitForTimeout(300);
+  for (let i = 0; i < 12; i++) {
+    await page.press('#search-query-input', 'Enter');
+    await page.waitForTimeout(600);
+  }
+  const g = await page.evaluate(() => {
+    const r = (el) => { const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; };
+    const results = document.getElementById('search-results');
+    const header = results.firstElementChild;
+    const flash = [...document.querySelectorAll('#outline *')].find((e) => e.style.backgroundColor.includes('255, 214'));
+    return { scrolled: results.scrollTop, results: r(results), header: r(header), narrow: !!header.querySelector('button'), label: header.firstChild.textContent, panel: r(document.getElementById('searchPanel')), modeline: r(document.getElementById('modelineBar')), flash: flash ? r(flash) : null };
+  });
+  expect(g.scrolled > 0, `the list scrolled: ${g.scrolled}`);
+  expect(Math.abs(g.header.top - g.results.top) <= 1 && g.narrow && /^12 of 60 results$/.test(g.label), `the count and Narrow stay at the top: ${JSON.stringify(g)}`);
+  expect(g.flash && g.flash.top >= g.panel.bottom && g.flash.bottom <= g.modeline.top, `the current result is on screen below the list: ${JSON.stringify(g)}`);
+  expect(g.modeline.top - g.panel.bottom >= 200, `the document keeps room: ${JSON.stringify(g)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);

@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v693 — Search results stay in view
+In the Org view the list of results is shorter, so the document has room to show the current result, and "N of M results" and Narrow stay at the top of the list while it scrolls instead of scrolling away.
+Verified: a smoke check that stepping through twelve results keeps the count and Narrow in place and the current result on screen.
+
+* v692 — Query-replace buttons stay on two lines
+The query-replace buttons (y, n, q, . and !) are now two fixed rows, y n q and then . and !, sharing each row's width, so a slightly wider font no longer pushes them onto a third line on a narrow phone.
+Verified: the search bar check, also with a deliberately wider font.
+
 * v691 — The newest version now actually runs
 On an iPhone the app could keep running an old version (v677) while a newer one was installed, because the worker took files from whichever stored copy was oldest; it now uses only its own version's files. The Reload button on "this page is running an older version" now tells a waiting newer version to take over instead of only reloading. The update log also records what each stored copy holds, so a stale one is visible.
 Verified: a test that a leftover older copy is never used, and a smoke check for the new log line.

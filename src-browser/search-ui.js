@@ -500,7 +500,7 @@ export function renderSearchPanel() {
 
   const resultsEl = document.createElement('div');
   resultsEl.id = 'search-results';
-  resultsEl.style.maxHeight = `50${VH_UNIT}`;
+  resultsEl.style.maxHeight = `30${VH_UNIT}`; // leaves most of the screen to the document, which follows the current result
   resultsEl.style.overflowY = 'auto';
   resultsEl.style.overscrollBehavior = 'contain';
   searchPanel.appendChild(resultsEl);
@@ -558,14 +558,23 @@ export function renderQueryReplacePrompt() {
   prompt.textContent = 'Query replace (y, n, q, ., !): ';
   wrap.appendChild(prompt);
 
+  // Two rows made by hand, y n q and then . and !, rather than left to wrap: where a row wrapped depended on the font's widths, and
+  // a slightly wider font gave three lines. Each button grows to share its row.
+  const buttons = document.createElement('div');
+  buttons.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
   const row = document.createElement('div');
   row.className = 'panel-row';
-  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+  row.style.cssText = 'display:flex;gap:8px;';
+  const row2 = document.createElement('div');
+  row2.className = 'panel-row';
+  row2.style.cssText = 'display:flex;gap:8px;';
+  buttons.appendChild(row);
+  buttons.appendChild(row2);
   /** the same size as the option buttons of the search bar: 34px tall, label centered, 8px corners
    *  @param {string} text @param {() => void} onClick */
   const tableActionButton = (text, onClick) => {
     const btn = tableActionButtonBase(text, onClick);
-    btn.style.cssText += 'height:34px;min-height:34px;padding:0 14px;font-size:14px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0;';
+    btn.style.cssText += 'height:34px;min-height:34px;padding:0 8px;font-size:14px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0;flex:1 1 auto;min-width:0;white-space:nowrap;';
     return btn;
   };
   row.appendChild(
@@ -586,20 +595,20 @@ export function renderQueryReplacePrompt() {
       finishQueryReplace();
     })
   );
-  row.appendChild(
+  row2.appendChild(
     tableActionButton('. - replace, stop', () => {
       controller.replace();
       finishQueryReplace();
     })
   );
-  row.appendChild(
+  row2.appendChild(
     tableActionButton('! - replace all', () => {
       controller.replaceAll();
       if (inTextMode) finishQueryReplace();
       else advanceToNextFileOrFinish();
     })
   );
-  wrap.appendChild(row);
+  wrap.appendChild(buttons);
 
   searchPanel.appendChild(wrap);
 }
@@ -837,6 +846,8 @@ export function renderSearchResults() {
     header.style.justifyContent = 'space-between';
     header.style.gap = '8px';
     header.style.padding = '4px 2px 8px';
+    // stays at the top of the list while the results scroll: the count and Narrow are always in view
+    header.style.cssText += 'position:sticky;top:0;z-index:1;background:var(--bg);';
 
     const countLabel = document.createElement('div');
     countLabel.style.fontSize = '12px';
@@ -874,6 +885,7 @@ export function renderSearchResults() {
     row.style.boxSizing = 'border-box';
     row.style.borderBottom = '1px solid var(--border)';
     row.style.cursor = 'pointer';
+    row.style.scrollMarginTop = '48px'; // clear of the sticky header when scrolled to
 
     const icon = document.createElement('span');
     icon.textContent = /** @type {any} */ (SEARCH_TYPE_ICON)[result.type] || '\u2022';
