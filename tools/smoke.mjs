@@ -5086,8 +5086,9 @@ const calDay = (offset) => {
 };
 
 check('calendar mirror: the agenda reaches a CalDAV calendar through the palette, edits follow a save, an event the app did not make is never touched, switching files removes nothing, and Rebuild cleans only the app\u2019s own', async () => {
-  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)} -2d>`, '* DONE Call dentist', `SCHEDULED: <${calDay(-1)}>`, '* Standup', `SCHEDULED: <${calDay(1)} 09:30 +1d>`, '* Just a note', ''].join('\n');
-  const other = ['* Other file task', `SCHEDULED: <${calDay(5)}>`, ''].join('\n');
+  const agendaVars = ['# Local Variables:', '# org-agenda-files: ("webdav:notes.org" "webdav:other.org")', '# End:']; // the calendar is made from the agenda files only
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)} -2d>`, '* DONE Call dentist', `SCHEDULED: <${calDay(-1)}>`, '* Standup', `SCHEDULED: <${calDay(1)} 09:30 +1d>`, '* Just a note', ...agendaVars, ''].join('\n');
+  const other = ['* Other file task', `SCHEDULED: <${calDay(5)}>`, ...agendaVars, ''].join('\n');
   dav.reset({ 'notes.org': notes, 'other.org': other });
   const { context, page, errors } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
@@ -5120,14 +5121,14 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   }, `${main.base}/dav/cal/`);
   dav.requests.length = 0;
   await runCommand('sync agenda to calendar');
-  await until(() => ours().length === 2, 'two events on the server');
-  expect(JSON.stringify(summaries()) === JSON.stringify(['Pay rent', 'Standup']), `the agenda items arrived, and the completed one (not on the agenda) did not: ${JSON.stringify(summaries())}`);
+  await until(() => ours().length === 3, 'three events on the server');
+  expect(JSON.stringify(summaries()) === JSON.stringify(['Other file task', 'Pay rent', 'Standup']), `the items of both agenda files arrived, and the completed one (not on the agenda) did not: ${JSON.stringify(summaries())}`);
   const all = ours().map(([, t]) => t).join('\n');
   expect(!all.includes('Call dentist'), 'a completed item is not in the calendar, as it is not on the agenda');
   expect(all.includes('RRULE:FREQ=DAILY'), 'a repeating item is one event with a recurrence rule');
   expect(all.includes('BEGIN:VALARM') && all.includes('TRIGGER:-P2D'), 'a deadline\u2019s warning delay became an alarm');
-  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Calendar synced: 2 sent'), null, { timeout: 8000 }).catch(() => {});
-  expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 2 sent'), 'and the status line says what happened');
+  await page.waitForFunction(() => document.getElementById('minibuffer').innerText.includes('Calendar synced: 3 sent'), null, { timeout: 8000 }).catch(() => {});
+  expect((await page.locator('#minibuffer').innerText()).includes('Calendar synced: 3 sent'), 'and the status line says what happened');
 
   // an event somebody else put in this calendar
   dav.set('cal/personal.ics', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:mine\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:My own event\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n');
@@ -5136,7 +5137,7 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
   await setDocumentText(page, notes.replace('* Standup', '* Brand new item').replace(`SCHEDULED: <${calDay(1)} 09:30 +1d>`, `SCHEDULED: <${calDay(2)}>`));
   await fileMenu(page, 'Save');
   await waitForStatus(page, 'Saved');
-  await until(() => JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Pay rent']), 'the calendar to follow the save');
+  await until(() => JSON.stringify(summaries()) === JSON.stringify(['Brand new item', 'Other file task', 'Pay rent']), 'the calendar to follow the save');
   expect(dav.files.has('cal/personal.ics'), 'the event the app did not create is untouched');
 
   // a second sync with nothing changed sends nothing
@@ -5161,7 +5162,7 @@ check('calendar mirror: the agenda reaches a CalDAV calendar through the palette
 });
 
 check('calendar mirror: a calendar that does not exist is reported clearly, automatic runs then stop asking until the settings change, and a manual sync tries again', async () => {
-  dav.reset({ 'notes.org': ['* Task', `SCHEDULED: <${calDay(1)}>`, ''].join('\n') });
+  dav.reset({ 'notes.org': ['* Task', `SCHEDULED: <${calDay(1)}>`, '# Local Variables:', '# org-agenda-files: ("webdav:notes.org")', '# End:', ''].join('\n') });
   dav.setCollections(['cal/']); // only cal/ exists
   const { context, page } = await freshPage(main, { withDav: true });
   await openDav(page, 'notes.org');
@@ -5343,7 +5344,7 @@ check('contacts mirror: with an address set but no org-contacts-files, a manual 
 });
 
 check('Settings > Sync syncs the calendar and the contacts and says how each went in one line, an error in one is not hidden by the other, and the three buttons wrap on a narrow phone instead of overflowing', async () => {
-  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, ...contactsVars('("webdav:people.org")'), ''].join('\n');
+  const notes = ['* TODO Pay rent', `DEADLINE: <${calDay(3)}>`, ...contactsVars('("webdav:people.org")').slice(0, 2), '# org-agenda-files: ("webdav:notes.org")', '# End:', ''].join('\n');
   dav.reset({ 'notes.org': notes, 'people.org': peopleFile() });
   dav.setCollections(['cal/', 'card/']);
   const { context, page, errors } = await freshPage(main, { withDav: true });
@@ -5391,7 +5392,7 @@ check('Settings > Sync syncs the calendar and the contacts and says how each wen
 
 check('contacts in the agenda and the calendar: a birthday line and an "ANNIVERSARY" line, in two files, show both from org-contacts-files (which need not be agenda files), with Emacs\u2019s titles, and the calendar gets the same entries', async () => {
   const md = (n) => calDay(n).slice(5, 10); // MM-DD; today, so the Week view always shows it (a day or two ahead falls into next week on a Saturday or Sunday)
-  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(0)}`, ':END:', '# Local Variables:', '# org-contacts-files: ("webdav:contacts.org")', '# org-agenda-files: ("webdav:anniv.org")', '# End:', ''].join('\n');
+  const notes = ['* Birthdays', '%%(org-contacts-anniversaries)', '* Not a contacts file person', ':PROPERTIES:', `:BIRTHDAY: 1980-${md(0)}`, ':END:', '# Local Variables:', '# org-contacts-files: ("webdav:contacts.org")', '# org-agenda-files: ("webdav:anniv.org" "webdav:notes.org")', '# End:', ''].join('\n');
   const anniv = ['* Anniversaries', '%%(org-contacts-anniversaries "ANNIVERSARY")', ''].join('\n');
   const contacts = ['* Jane Doe', ':PROPERTIES:', `:BIRTHDAY: 1990-${md(0)}`, `:ANNIVERSARY: 1998-${md(0)}`, ':SPOUSE: John Doe', ':END:', ''].join('\n');
   dav.reset({ 'notes.org': notes, 'anniv.org': anniv, 'contacts.org': contacts });
