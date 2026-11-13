@@ -51,6 +51,8 @@ import { parseBody } from './body-parser.js';
  *   { rowType: 'heading', key, node, depth, hasChildren }
  *   { rowType: 'list-item', key, item, depth, heading, displayNumber }
  *   { rowType: 'paragraph' | 'table' | 'block', key, node, depth, heading }
+ *   { rowType: 'keyword', key, keyword, depth, heading: doc }   a `#+KEY: value` line before the first heading
+ * The rows of the text before the first heading come first, with the document itself as their `heading`.
  *
  * `displayNumber` is the item's position for rendering an ordered list's
  * numbering (null for unordered items) — computed per items-array (each
@@ -120,8 +122,48 @@ function flattenVisibleRows(doc) {
     });
   }
 
+  // The text before the first heading, with the `#+KEY:` lines among it where the file has them: Emacs shows all of it whatever the
+  // startup visibility. The keyword lines are rows of their own (the app edits them in the Text view); the rest are the document's body.
+  const keywords = preambleKeywords(doc);
+  let nextKeyword = 0;
+  /** @param {number} upTo  the keywords that come before this body line */
+  const emitKeywords = (upTo) => {
+    for (; nextKeyword < keywords.length && (keywords[nextKeyword].bodyLineIndex ?? 0) <= upTo; nextKeyword++) {
+      rows.push({ rowType: 'keyword', key: `k${nextKeyword}`, keyword: keywords[nextKeyword], node: keywords[nextKeyword], depth: 0, step: 0, heading: doc });
+    }
+  };
+  (doc.body || []).forEach((/** @type {import("./types.js").BodyNode} */ node, /** @type {number} */ i) => {
+    const lined = /** @type {{ lineIndex: number, items?: Array<{ lineIndex: number }> }} */ (/** @type {unknown} */ (node));
+    emitKeywords(node.type === 'list' ? (lined.items?.[0] ? lined.items[0].lineIndex : lined.lineIndex) : lined.lineIndex);
+    flattenBody([node], doc, 0, `p${i}.`);
+  });
+  emitKeywords(Infinity);
+
   walk(doc.children, 0, '');
   return rows;
+}
+
+/** The `#+KEY: value` lines of a document in the order serializeOrg writes them: by the body line each comes before, then as read.
+ * @param {Doc} doc */
+export function preambleKeywords(doc) {
+  return doc.keywords
+    .filter((kw) => !kw.virtual)
+    .map((kw, originalIndex) => ({ kw, originalIndex }))
+    .sort((a, b) => ((a.kw.bodyLineIndex ?? 0) - (b.kw.bodyLineIndex ?? 0)) || a.originalIndex - b.originalIndex)
+    .map(({ kw }) => kw);
+}
+
+/**
+ * The 0-based line of a row of the text before the first heading, in the file: its own line among the body lines, and the `#+KEY:`
+ * lines written before it. -1 for a row that is not one of those.
+ * @param {Doc} doc @param {import("./types.js").OutlineRow} row
+ */
+export function preambleFileLine(doc, row) {
+  const keywords = preambleKeywords(doc);
+  if (row.rowType === 'keyword') return (row.keyword.bodyLineIndex ?? 0) + keywords.indexOf(row.keyword);
+  const own = row.rowType === 'list-item' ? row.item.lineIndex : /** @type {{ lineIndex?: number }} */ (/** @type {unknown} */ (row.node)).lineIndex;
+  if (own === undefined) return -1;
+  return own + keywords.filter((kw) => (kw.bodyLineIndex ?? 0) <= own).length;
 }
 
 // ---- gesture handlers ---------------------------------------------------

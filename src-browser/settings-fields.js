@@ -42,10 +42,10 @@ export const SETTINGS_FIELDS = [
     options: VISIBILITY_KEYWORDS.map((v) => ({ value: v, label: v })),
     helpAnchor: '#folding-and-startup',
   },
-  { key: 'recentf-max-saved-items', label: 'Recently opened files kept (recentf-max-saved-items)', section: 'Startup', type: 'number', default: 20, step: 1, helpAnchor: '#files-and-storage' },
+  { key: 'recentf-max-saved-items', label: 'Recently opened files kept', section: 'Startup', type: 'number', default: 20, step: 1, helpAnchor: '#files-and-storage' },
   {
     key: 'org-startup-indented',
-    label: 'Indent under headings (org-indent-mode)',
+    label: 'Indent text and lists under headings',
     section: 'Startup',
     type: 'boolean',
     default: false,
@@ -53,7 +53,7 @@ export const SETTINGS_FIELDS = [
   },
   {
     key: 'org-xx-indent-tables',
-    label: 'Indent tables too (with org-indent-mode on)',
+    label: 'Indent tables too, when indenting is on',
     section: 'Startup',
     type: 'boolean',
     default: true,

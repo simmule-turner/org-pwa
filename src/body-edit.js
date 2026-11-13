@@ -132,6 +132,22 @@ export function allTablesInBody(heading) {
 
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
 
+/**
+ * The text before the first heading is the document's own body, and its `#+KEY:` lines are kept apart, each with the body line it
+ * comes before. When lines are replaced there, the keywords after them move with the text, so none changes place in the file.
+ * @param {Heading} heading  a heading, or the document
+ * @param {number} lineIndex @param {number} removed @param {number} added
+ */
+function keepKeywordsInPlace(heading, lineIndex, removed, added) {
+  const keywords = /** @type {{ bodyLineIndex?: number }[] | undefined} */ (/** @type {{ keywords?: { bodyLineIndex?: number }[] }} */ (heading).keywords);
+  if (!keywords) return;
+  for (const kw of keywords) {
+    const at = kw.bodyLineIndex ?? 0;
+    if (at >= lineIndex + removed) kw.bodyLineIndex = at + added - removed;
+    else if (at > lineIndex) kw.bodyLineIndex = lineIndex + Math.min(at - lineIndex, added);
+  }
+}
+
 /** Replaces `heading.bodyLines[lineIndex, lineIndex+lineCount)` with
  *  `newLines`, then fully reparses `heading.body` from the updated
  *  bodyLines. This is the one place that keeps the derived tree and the
@@ -142,6 +158,7 @@ export function allTablesInBody(heading) {
  * @param {string[]} newLines
  *  calling this rather than mutating heading.body directly. */
 export function commitLines(heading, lineIndex, lineCount, newLines) {
+  keepKeywordsInPlace(heading, lineIndex, lineCount, newLines.length);
   heading.bodyLines.splice(lineIndex, lineCount, ...newLines);
   heading.body = parseBody(heading.bodyLines);
 }
@@ -394,6 +411,7 @@ export function insertListItem(heading, afterItem, text = '', withCheckbox = fal
  * @param {Heading} heading @param {'bodyLines' | 'logbookLines' | 'preLogLines'} key
  * @param {number} lineIndex @param {number} lineCount @param {string[]} newLines */
 function commitLinesIn(heading, key, lineIndex, lineCount, newLines) {
+  if (key === 'bodyLines') keepKeywordsInPlace(heading, lineIndex, lineCount, newLines.length);
   (heading[key] || (heading[key] = [])).splice(lineIndex, lineCount, ...newLines);
   if (key === 'bodyLines') heading.body = parseBody(heading.bodyLines);
 }

@@ -13,6 +13,7 @@ import { buildQueryReplacePattern } from './doc-helpers.js';
 import { openRemotePath } from './documents-io.js';
 import { minibufferSearchEl, searchPanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
+import { paintTextMatches } from './text-view.js';
 import { isRowFindView, refreshRowFind, stepRowFind, stopRowFind, updateRowFindCount } from './find-in-view.js';
 import { narrowToSparseMatches } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
@@ -63,6 +64,11 @@ export function renderMinibufferSearch() {
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
+    if (S.currentView === 'text' && (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'r')))) {
+      e.preventDefault();
+      stepTextFind(e.key === 'r' || e.shiftKey ? -1 : 1);
+      return;
+    }
     if (isRowFindView()) {
       // Emacs's incremental search keys: Enter or C-s next, Shift+Enter or C-r previous
       if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'r'))) {
@@ -82,14 +88,15 @@ export function renderMinibufferSearch() {
   });
   topRow.appendChild(input);
 
-  if (isRowFindView()) {
+  if (isRowFindView() || S.currentView === 'text') {
     for (const [label, aria, delta] of /** @type {[string, string, number][]} */ ([['\u25b2', 'Previous match', -1], ['\u25bc', 'Next match', 1]])) {
       const step = document.createElement('button');
       step.textContent = label;
       step.setAttribute('aria-label', aria);
       step.style.cssText = 'flex-shrink:0;min-width:40px;min-height:40px;padding:0 8px;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
       step.onclick = () => {
-        stepRowFind(delta);
+        if (S.currentView === 'text') stepTextFind(delta);
+        else stepRowFind(delta);
         input.focus({ preventScroll: true });
       };
       topRow.appendChild(step);
@@ -441,6 +448,8 @@ export function renderSearchPanel() {
   searchPanel.innerHTML = '';
   if (!S.searchOpen) {
     stopRowFind();
+    const textBox = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+    if (textBox) paintTextMatches(textBox, [], -1); // the Text view's shading goes; the last match stays selected
     searchPanel.style.display = 'none';
     if (S.activeQueryReplace) finishQueryReplace();
     if (S.searchOptionsMenuOpen) {
@@ -553,43 +562,98 @@ export function renderQueryReplacePrompt() {
   searchPanel.appendChild(wrap);
 }
 
-/** The Text-mode counterpart to renderSearchResults' own structured
- *  results list -- just a live match count against the textarea's own
- *  current value, since there's no parsed document (and so no
- *  per-match "heading"/"paragraph" context) to show anything richer
- *  than that yet. Match mode is deliberately not offered in Text mode
- *  at all: it's a structured, tag/property-based concept that needs a
- *  parsed document, which doesn't exist for content still being
- *  edited as plain text. */
-export function renderTextModeSearchResults() {
+/** The matches of the search box's query in the Text view's text, as [start, end] offsets (an empty match is not one).
+ * @param {string} text @returns {Array<[number, number]>} */
+function textMatchRanges(text) {
+  const pattern = buildQueryReplacePattern(S.searchQuery, S.searchUseRegex);
+  const globalPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+  /** @type {Array<[number, number]>} */ const ranges = [];
+  for (const m of text.matchAll(globalPattern)) if (m[0].length > 0) ranges.push([m.index, m.index + m[0].length]);
+  return ranges;
+}
+
+/** The find in the Text view: the matches, which one is current, and the line that says so. */
+const textFind = { ranges: /** @type {Array<[number, number]>} */ ([]), index: -1 };
+
+/** Shows "N of M matches" in the results panel, shades the matches in the text and, when `select`, makes the first match from the
+ *  cursor the current one (selected, scrolled into view). The text box keeps its own cursor and selection: closing the search leaves
+ *  the last match selected, as Emacs leaves point on it.
+ *  @param {boolean} select */
+function refreshTextFind(select) {
   const resultsEl = document.getElementById('search-results');
+  const textarea = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
-
+  textFind.ranges = [];
+  textFind.index = -1;
   if (!S.searchQuery.trim()) {
     searchPanel.style.display = 'none';
+    if (textarea) paintTextMatches(textarea, [], -1);
     return;
   }
   searchPanel.style.display = 'block';
-
-  const textarea = document.getElementById('document-text-edit-input');
-  const text = textarea ? /** @type {any} */ (textarea).value : '';
-
   const info = document.createElement('div');
+  info.id = 'text-find-info';
   info.style.fontSize = '13px';
   info.style.padding = '6px 2px';
+  info.style.opacity = '0.7';
+  resultsEl.appendChild(info);
+  if (!textarea) return;
   try {
-    const pattern = buildQueryReplacePattern(S.searchQuery, S.searchUseRegex);
-    const globalPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
-    const count = (text.match(globalPattern) || []).length;
-    info.style.opacity = '0.7';
-    info.textContent = count === 0 ? 'No matches.' : count + ' match' + (count === 1 ? '' : 'es') + ' in this text.';
+    textFind.ranges = textMatchRanges(textarea.value);
   } catch (err) {
     const message = err instanceof EmacsRegexError ? err.message : String(err.message || err);
     info.style.color = '#c0392b';
+    info.style.opacity = '1';
     info.textContent = 'Invalid regex: ' + message;
+    paintTextMatches(textarea, [], -1);
+    return;
   }
-  resultsEl.appendChild(info);
+  const { ranges } = textFind;
+  if (ranges.length > 0) {
+    const from = textarea.selectionStart;
+    const next = ranges.findIndex(([a]) => a >= from);
+    textFind.index = next === -1 ? 0 : next; // past the last match it wraps to the first
+    if (select) {
+      const [a, b] = ranges[textFind.index];
+      textarea.setSelectionRange(a, b);
+    }
+  }
+  paintTextMatches(textarea, ranges, textFind.index);
+  showTextFindCount();
+  if (!textarea.dataset.findWatch) {
+    textarea.dataset.findWatch = '1';
+    textarea.addEventListener('input', () => {
+      if (S.searchOpen && S.currentView === 'text' && S.searchQuery.trim()) refreshTextFind(false);
+    });
+  }
+}
+
+function showTextFindCount() {
+  const info = document.getElementById('text-find-info');
+  if (!info || info.style.color) return;
+  const n = textFind.ranges.length;
+  info.textContent = n === 0 ? 'No matches.' : `${textFind.index + 1} of ${n} match${n === 1 ? '' : 'es'}`;
+}
+
+/** Enter or C-s: the next match; Shift+Enter or C-r: the previous one; both wrap round, as in Emacs.
+ * @param {number} delta 1 or -1 */
+export function stepTextFind(delta) {
+  const textarea = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+  const n = textFind.ranges.length;
+  if (!textarea || n === 0) return;
+  textFind.index = (textFind.index + delta + n) % n;
+  const [a, b] = textFind.ranges[textFind.index];
+  textarea.setSelectionRange(a, b);
+  paintTextMatches(textarea, textFind.ranges, textFind.index);
+  showTextFindCount();
+}
+
+/** The Text-mode counterpart to renderSearchResults' own structured results list: the matches counted, shaded and stepped through
+ *  in the text box itself, since there is no parsed document to list headings from. Match mode is not offered in Text mode at all:
+ *  it is a tag/property concept that needs a parsed document, which doesn't exist for content still being edited as plain text. */
+export function renderTextModeSearchResults() {
+  refreshTextFind(true);
 }
 
 export function renderSearchResults() {
@@ -687,7 +751,7 @@ export function renderSearchResults() {
     narrowBtn.style.background = 'transparent';
     narrowBtn.style.color = 'var(--fg)';
     narrowBtn.style.flexShrink = '0';
-    narrowBtn.onclick = () => narrowToSparseMatches(new Set(currentDocMatches));
+    narrowBtn.onclick = () => narrowToSparseMatches(new Set(currentDocMatches.filter((h) => /** @type {{ type: string }} */ (h).type === 'heading')));
     header.appendChild(narrowBtn);
 
     resultsEl.appendChild(header);
@@ -720,7 +784,7 @@ export function renderSearchResults() {
     if (result.type === 'heading' && result.snippet && result.snippet.text) {
       appendSnippetWithHighlight(headingLine, result.snippet);
     } else {
-      headingLine.appendChild(document.createTextNode(result.heading.title || '(untitled)'));
+      headingLine.appendChild(document.createTextNode(/** @type {{ type: string }} */ (result.heading).type === 'document' ? 'Top of the file' : result.heading.title || '(untitled)'));
     }
     if (result.documentId !== S.state.documentId) {
       headingLine.appendChild(document.createTextNode(' \u2014 ' + result.documentId));

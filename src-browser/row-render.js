@@ -639,13 +639,30 @@ export function renderRow(row, todoSequence) {
   if (row.rowType === 'paragraph') return renderParagraphRow(row);
   if (row.rowType === 'block') return renderBlockRow(row);
   if (row.rowType === 'hr') return renderHrRow(row);
+  if (row.rowType === 'keyword') return renderKeywordRow(row);
 
   const el = document.createElement('div');
   el.className = 'row';
   el.style.paddingLeft = rowLeft(row) + 'px';
   el.style.opacity = '0.6';
   el.style.fontStyle = 'italic';
-  el.textContent = '[' + /** @type {{ rowType: string }} */ (row).rowType + ']';
+  el.textContent = '[' + /** @type {{ rowType: string }} */ (/** @type {unknown} */ (row)).rowType + ']';
+  return el;
+}
+
+/** A `#+KEY: value` line before the first heading, as the text it is in the file (the Text view edits it).
+ * @param {{ keyword: { key: string, value: string } }} row */
+function renderKeywordRow(row) {
+  const el = document.createElement('div');
+  el.className = 'row';
+  el.setAttribute('data-preamble-keyword', row.keyword.key);
+  el.style.paddingLeft = '8px';
+  el.style.fontFamily = 'var(--mono, monospace)';
+  el.style.fontSize = '13px';
+  el.style.opacity = '0.7';
+  el.style.whiteSpace = 'pre-wrap';
+  el.style.overflowWrap = 'anywhere';
+  el.textContent = `#+${row.keyword.key}: ${row.keyword.value}`;
   return el;
 }
 

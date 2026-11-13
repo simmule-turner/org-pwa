@@ -697,3 +697,13 @@ test('editing two body nodes in sequence, always re-reading from heading.body, k
   const doc2 = parseOrg(text);
   assert.equal(doc2.children[0].body[0].lines[0], 'A much longer paragraph than before.');
 });
+
+test('editing the text before the first heading keeps #+KEY lines where they were', async () => {
+  const { parseOrg: parse, serializeOrg: out } = await import('../src/org-parser.js');
+  const { commitLines: commit } = await import('../src/body-edit.js');
+  const doc = parse('#+TITLE: Notes\nIntro line.\n#+AUTHOR: Me\n\nTail.\n');
+  commit(doc, 0, 1, ['One.', 'Two.', 'Three.']);
+  assert.equal(out(doc), '#+TITLE: Notes\nOne.\nTwo.\nThree.\n#+AUTHOR: Me\n\nTail.\n');
+  commit(doc, 0, 3, ['Only.']);
+  assert.equal(out(doc), '#+TITLE: Notes\nOnly.\n#+AUTHOR: Me\n\nTail.\n');
+});

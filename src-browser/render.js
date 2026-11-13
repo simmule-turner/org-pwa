@@ -6,7 +6,7 @@ import { beginRowMarks, finalizeMarks, nextMark, startMarks } from './line-marks
 import { takeUnreadableSettings } from './settings.js';
 import { VariableValueError } from '../src/variable-error.js';
 import { variableProblems, getDisplayLineNumbersMode, getDisplayLineNumbersType, getDisplayLineNumbersWiden, getWindowingThreshold } from '../src/local-variables.js';
-import { flattenVisibleRows } from '../src/outline-view-model.js';
+import { flattenVisibleRows, preambleFileLine } from '../src/outline-view-model.js';
 import { repairBodyFocus, rowMatchesKeyboardFocus } from './keyboard-focus.js';
 import { collectSubtreeHeadings } from '../src/refile.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
@@ -408,6 +408,7 @@ function renderNow() {
 /** The object a row stands for: the list item, or the heading, paragraph, table or block node.
  * @param {import('../src/types.js').OutlineRow} row */
 function rowObject(row) {
+  if (row.rowType === 'keyword') return row.keyword;
   return row.rowType === 'list-item' ? row.item : row.node;
 }
 
@@ -446,6 +447,7 @@ function displayLineNumbering(rows) {
       const at = index.lines.get(row.node);
       return at ? at.line + 1 : 0;
     }
+    if (row.rowType === 'keyword' || /** @type {unknown} */ (row.heading) === S.state.doc) return preambleFileLine(S.state.doc, row) + 1; // before the first heading
     const at = index.lines.get(row.heading);
     const own = row.rowType === 'list-item' ? row.item.lineIndex : row.node.lineIndex;
     return at && own !== undefined ? at.bodyStart + own + 1 : 0;

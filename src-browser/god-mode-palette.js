@@ -40,6 +40,7 @@ import { lockBackgroundScroll } from './dialogs.js';
 import { createNewUnsavedDocument, saveCurrent } from './documents-io.js';
 import { openFileScreen } from './file-screen.js';
 import { isRowFindView, stepRowFind } from './find-in-view.js';
+import { stepTextFind } from './search-ui.js';
 import { moreBtn, outlineEl, searchBtn, settingsBtn } from './dom.js';
 import { commitAndRender, commitTextModeIfActive, performRedo, performUndo, renderHistoryPanel, setStatus, startEditingTitle } from './editing.js';
 import { deleteFootnoteCommand, footnoteActionCommand, insertFootnoteCommand, normalizeFootnotesCommand, renumberFootnotesCommand, sortFootnotesCommand } from './footnotes-ui.js';
@@ -368,10 +369,12 @@ export const GOD_MODE_ACTIONS = {
   // C-s again in a search on the Agenda, TODO, Match or Keyword search screen is the next match, as in Emacs
   'C-s': () => {
     if (S.searchOpen && isRowFindView()) stepRowFind(1);
+    else if (S.searchOpen && S.currentView === 'text') stepTextFind(1);
     else searchBtn.click();
   },
   'C-r': () => {
     if (S.searchOpen && isRowFindView()) stepRowFind(-1);
+    else if (S.searchOpen && S.currentView === 'text') stepTextFind(-1);
     else if (!S.searchOpen) searchBtn.click();
   },
   '<up>': () => moveArrowVertical(-1),

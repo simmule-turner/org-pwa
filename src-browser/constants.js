@@ -50,5 +50,6 @@ export const SEARCH_TYPE_ICON = {
   block: '\u2318',
   property: '\ud83c\udff7\ufe0f',
   planning: '\ud83d\udcc5',
+  keyword: '#',
 };
 

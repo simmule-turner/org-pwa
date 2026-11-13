@@ -5,7 +5,7 @@
 
 This file shows the parts of an outline: keywords, priorities, tags, properties, checkboxes and progress cookies. Emacs 29.3 (Org 9.6.15) reads it the same way; nothing here differs.
 
-Try: tap a TODO badge to step through the sequence, tick a checkbox and watch the cookie in its heading change, and open a heading's ⋯ menu to edit its tags and properties.
+Try: tap a TODO badge to step through the sequence, tick a checkbox and watch the cookie in its heading change, and open a heading's ⋯ menu to edit its tags and properties. The keyword lines and these two paragraphs, above the first heading, show at the top of the Org view too: tap the text to edit it (the keyword lines are edited in View → Text), and Search finds them like any heading.
 
 * Keywords and priorities
 ** TODO [#A] Pay the electric bill

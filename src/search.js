@@ -650,8 +650,32 @@ function searchOneDocument(doc, filters, keywordMatchers, useRegex, useTagInheri
     }
   }
 
+  // the text before the first heading is searched like a heading's own text, but only by plain words: a tag, todo or property filter
+  // describes headings, and the file's top has none
+  if (filters.length > 0 && includeKeywords.length === filters.length) {
+    for (const kw of includeKeywords) searchFrontMatter(results, doc, kw.value, /** @type {Matcher} */ (keywordMatchers.get(kw.value)), useRegex);
+  }
   walk(doc.children, []);
   return results;
+}
+
+/** The text before the first heading: its paragraphs, lists, tables and blocks, and the `#+KEY: value` lines, each a result whose
+ *  `heading` is the document itself (the Org view shows it above the first heading).
+ *  @param {SearchResult[]} results @param {Doc} doc @param {string} q @param {Matcher} matches @param {boolean} useRegex */
+function searchFrontMatter(results, doc, q, matches, useRegex) {
+  const keywords = (doc.keywords || []).filter((k) => !k.virtual);
+  const doc_ = /** @type {Heading} */ (/** @type {unknown} */ (doc)); // a result's heading is the document itself
+  if ('sees' in matches) { // a regexp looks through the text, one hit on its first matching line, as in a heading
+    const lines = [...keywords.map((k) => `#+${k.key}: ${k.value}`), ...(doc.bodyLines || [])];
+    const line = lines.find((l) => matches(l));
+    if (line !== undefined) results.push({ type: 'line', heading: doc_, node: doc_, snippet: makeSnippet(line, q, useRegex) });
+    return;
+  }
+  for (const k of keywords) {
+    const text = `#+${k.key}: ${k.value}`;
+    if (matches(text)) results.push({ type: 'keyword', heading: doc_, node: k, snippet: makeSnippet(text, q, useRegex) });
+  }
+  walkBodyForMatches(results, doc_, doc.body || [], q, matches, useRegex);
 }
 
 /** Builds a value -> matcher Map for every keyword filter in `filters`,

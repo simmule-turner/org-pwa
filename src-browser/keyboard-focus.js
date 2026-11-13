@@ -58,16 +58,19 @@ export function rowMatchesKeyboardFocus(row) {
  * @param {OutlineRow} row
  *  cell-by-cell stepping (moveTableCellFocus) then moves from. */
 export function setKeyboardFocusToRow(row) {
+  if (row.rowType === 'keyword') return; // a #+KEY: line is not focused: the Text view edits it
+  // the text before the first heading belongs to the document, which no heading action applies to
+  const owner = row.rowType === 'heading' || row.heading.type === 'document' ? null : row.heading;
   if (row.rowType === 'heading') {
     S.keyboardFocusedHeading = row.node;
     S.keyboardFocusedBodyRow = null;
     S.keyboardFocusedCellPos = null;
   } else if (row.rowType === 'table') {
-    S.keyboardFocusedHeading = row.heading;
+    S.keyboardFocusedHeading = owner;
     S.keyboardFocusedBodyRow = row;
     S.keyboardFocusedCellPos = { rowIndex: firstDataRowIndex(row.node), colIndex: 0 };
   } else {
-    S.keyboardFocusedHeading = row.heading;
+    S.keyboardFocusedHeading = owner;
     S.keyboardFocusedBodyRow = row;
     S.keyboardFocusedCellPos = null;
   }

@@ -86,6 +86,7 @@ const hasWord = (data, word) => new RegExp(`\\b${word}\\b`).test(data);
  * @param {number} total
  */
 function writeCookies(heading, checked, total) {
+  if (typeof heading.title !== 'string') return false; // the text before the first heading has no title
   const before = heading.title;
   heading.title = before.replace(COOKIE_RE, (cookie) => formatCookie(cookie, checked, total));
   return heading.title !== before;

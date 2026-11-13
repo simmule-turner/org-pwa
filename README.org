@@ -117,6 +117,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, wh
 
   Existing properties also show as a small read-only line under the heading while drawers are visible for it (~#+STARTUP: showeverything~, or manually cycled to fully expanded; see [[#folding-and-startup][Folding and #+STARTUP]]). Tapping it opens the action menu.
 
+- *Text above the first heading*: the paragraphs, lists and tables before the first heading, and the file's ~#+KEY: value~ lines, show at the top of the Org view, whatever ~#+STARTUP~ says (as in Emacs, where that text is never folded). The text edits like any other, and the ~#+~ lines keep their place; the ~#+~ lines themselves are read-only here and are edited in View → Text. A file with no headings shows only this.
 - *Block content* (~#+BEGIN_SRC~, ~#+BEGIN_QUOTE~, ~#+BEGIN_EXAMPLE~ and so on) is shown read-only, under the same drawer-visibility rule as properties. Folded, it shows a "collapsed block" label: tap it to reveal the content, and tap it again to re-fold. Edit blocks in [[#the-plain-text-editor][Text view]]. Any ~#+BEGIN_NAME~ and ~#+END_NAME~ pair works, and three names are displayed specially:
   - ~QUOTE~: inline markup is interpreted, and the block is indented on both margins with a left border.
   - ~VERSE~: inline markup is interpreted, and every source line stays its own line.
@@ -402,6 +403,10 @@ F &= ma
 
 Tap the *Search* button in the top bar (see [[#search-button][The Search button]]), or open the command palette's *Search* (or god-mode's ~s~, see [[#keybindings][Keybindings]]) to search the open document, case-insensitively: headings, tags, TODO keyword, priority, properties (key or value), SCHEDULED and DEADLINE timestamps, paragraphs, list items, table cells and block content. When any are configured it also searches every file in ~org-agenda-files~.
 
+Search also finds the text above the first heading and the file's ~#+KEY: value~ lines (shown as *Top of the file*); tapping a result opens the Org view there. Tag, TODO, priority and property filters and Match queries describe headings, so they leave it out.
+
+In View → Text, Find marks every match in the text and selects the first one from the cursor; Enter, ▼ or ~C-s~ goes to the next, Shift+Enter, ▲ or ~C-r~ to the previous, wrapping round, with "N of M matches" shown. Closing Find leaves the last match selected. The Regex option works as elsewhere.
+
 On the Agenda, TODO, Match and Keyword search screens Find works in place, as ~C-s~ does in an agenda buffer: every match in the rows on screen is highlighted and the current one is marked more strongly. Enter or ▼ (~C-s~) goes to the next, Shift+Enter or ▲ (~C-r~) to the previous, wrapping round. A lower-case query ignores case and a capital letter makes it exact; ⋯ has Regex. Closing the search clears the marks and leaves the row of the current match focused. On these screens ~n~ and ~p~ (or ~j~, ~k~ and the arrow keys) move the focus, ~t~ changes the row's state, a comma sets its priority, Enter goes to its heading and Space opens its actions.
 
 Results update as you type, grouped under their heading with the match highlighted, and fill in as each agenda file loads; a result from another file shows its name. Search covers the whole document whatever the fold state, and tapping a result reveals it, switching file first if needed. The query box and its options live in the minibuffer (see [[#modeline][Modeline and minibuffer]]). Examples with Emacs's results: =examples/search-filter.org= and =examples/match-queries.org=.
@@ -592,6 +597,7 @@ org-pwa applies ~#+STARTUP:~ directives, typically on the first line. They can s
 | Category | Keywords | Default |
 |---+---+---|
 | Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ | ~showeverything~ |
+| Indentation | ~indent~, ~noindent~ | ~noindent~ |
 | Inline images | ~inlineimages~, ~noinlineimages~ | ~noinlineimages~ |
 | Progress logging on DONE | ~logdone~, ~lognotedone~, ~nologdone~ | none |
 | Log into the drawer | ~logdrawer~, ~nologdrawer~ | ~nologdrawer~ |
@@ -602,6 +608,7 @@ org-pwa applies ~#+STARTUP:~ directives, typically on the first line. They can s
 - ~content~: every heading line shown, but body text (paragraphs, lists, tables) and properties hidden until you open a heading.
 - ~showall~: body text, lists and tables shown. Property drawers (~:PROPERTIES:~) and blocks (~#+BEGIN_SRC~, ~#+BEGIN_QUOTE~ and the like) stay folded, one line each.
 - ~showeverything~: ~showall~ plus drawers and blocks fully expanded.
+- ~indent~, ~noindent~: set ~org-startup-indented~; ~indent~ indents text and lists under their headings (tables too unless ~org-xx-indent-tables~ is ~nil~), ~noindent~ draws everything at the left edge.
 - ~logdone~, ~lognotedone~, ~nologdone~, ~logdrawer~, ~nologdrawer~, ~logrepeat~, ~lognoterepeat~, ~nologrepeat~: set ~org-log-done~, ~org-log-into-drawer~ and ~org-log-repeat~ (see [[#progress-logging][Progress logging]]).
 
 Cycling a heading to fully expanded always reveals its properties and blocks, whatever ~#+STARTUP:~ says, and collapsing hides them again. With no ~#+STARTUP~ line everything is shown, as in org.

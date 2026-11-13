@@ -370,7 +370,7 @@ test('THE FEATURE: keyword search covers the same full breadth as everything els
   assert.equal(searchDocument(tag, '+budget').length, 1);
 
   const todo = parseOrg('#+TODO: BUDGET DONE\n* BUDGET Something\n');
-  assert.equal(searchDocument(todo, '+budget').length, 1);
+  assert.deepEqual(searchDocument(todo, '+budget').map((r) => r.type), ['keyword', 'heading']); // the #+TODO line is found too, as the file's top text
 
   const property = parseOrg('* A\n:PROPERTIES:\n:category: budget\n:END:\n');
   assert.equal(searchDocument(property, '+budget').length, 1);
@@ -781,4 +781,15 @@ test('a search looks through the whole text of an entry: drawers, logbook notes 
   assert.deepEqual(searchDocument(doc, 'zebras').map((r) => r.heading.title), ['A']);
   assert.deepEqual(searchDocument(doc, 'giraffe', { useRegex: true }).map((r) => r.heading.title), ['B']);
   assert.deepEqual(searchDocument(doc, ':LOGBOOK:', { useRegex: true }).map((r) => r.heading.title), ['A']);
+});
+
+test('search finds the text before the first heading and its #+ lines, like a heading', async () => {
+  const { searchDocuments } = await import('../src/search.js');
+  const doc = parseOrg('#+TITLE: Zebra notes\nQuokka intro.\n- [ ] quokka item\n\n* One\nbody quokka\n');
+  const docs = [{ documentId: 'a.org', doc }];
+  const found = searchDocuments(docs, 'quokka').map((r) => [r.type, r.heading.type]);
+  assert.deepEqual(found, [['paragraph', 'document'], ['list-item', 'document'], ['paragraph', 'heading']]);
+  assert.deepEqual(searchDocuments(docs, 'Zebra').map((r) => r.type), ['keyword']);
+  assert.deepEqual(searchDocuments(docs, 'zebra', { useRegex: true }).map((r) => r.type), ['line']);
+  assert.deepEqual(searchDocuments(docs, 'Zebra tag:x'), []); // a tag filter describes headings only
 });

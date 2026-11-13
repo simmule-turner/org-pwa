@@ -94,7 +94,8 @@
  * @typedef {{ rowType: 'block', key: string, node: Block, depth: number, heading: Heading }} BlockRow
  * @typedef {{ rowType: 'hr', key: string, node: Hr, depth: number, heading: Heading }} HrRow
  * @typedef {ListItemRow | ParagraphRow | TableBodyRow | BlockRow | HrRow} BodyRow
- * @typedef {HeadingRow | BodyRow} OutlineRow
+ * @typedef {{ rowType: 'keyword', key: string, keyword: Keyword, node: Keyword, depth: number, heading: Doc }} KeywordRow  a `#+KEY: value` line before the first heading
+ * @typedef {HeadingRow | BodyRow | KeywordRow} OutlineRow
  */
 
 /** The key sequence being typed in god mode: the chord so far, a pending `g`/`G` prefix, and the sticky literal and C-c flags. */

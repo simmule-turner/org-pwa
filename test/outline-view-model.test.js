@@ -335,3 +335,22 @@ test('every row carries step, the indentation left with org-indent-mode off: 0 f
   const rows = flattenVisibleRows(parseOrg('* A\n** B\ntext\n- one\n  - two\n| x | y |\n'));
   assert.deepEqual(rows.map((r) => [r.rowType, r.step]), [['heading', 0], ['heading', 0], ['paragraph', 0], ['list-item', 0], ['list-item', 1], ['table', 0]]);
 });
+
+test('front matter: the text before the first heading and its #+KEY lines are rows, in file order, before the headings', async () => {
+  const { parseOrg: parse } = await import('../src/org-parser.js');
+  const { flattenVisibleRows: rowsOf, preambleKeywords, preambleFileLine } = await import('../src/outline-view-model.js');
+  const doc = parse('#+TITLE: Notes\nIntro line.\n#+AUTHOR: Me\n\n- [ ] first\n\n* One\nbody\n');
+  const rows = rowsOf(doc);
+  assert.deepEqual(rows.slice(0, 4).map((r) => r.rowType), ['keyword', 'paragraph', 'keyword', 'list-item']);
+  assert.equal(rows[4].rowType, 'heading');
+  assert.equal(preambleKeywords(doc).length, 2);
+  assert.deepEqual(rows.slice(0, 4).map((r) => preambleFileLine(doc, r)), [0, 1, 2, 4]);
+});
+
+test('front matter: a file with only text and keyword lines still has rows', async () => {
+  const { parseOrg: parse } = await import('../src/org-parser.js');
+  const { flattenVisibleRows: rowsOf } = await import('../src/outline-view-model.js');
+  assert.equal(rowsOf(parse('#+TITLE: Only\n')).length, 1);
+  assert.equal(rowsOf(parse('Just text.\n')).length, 1);
+  assert.equal(rowsOf(parse('')).length, 0);
+});

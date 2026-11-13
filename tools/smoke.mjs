@@ -941,7 +941,7 @@ check('list-holidays asks for two years and lists the holidays between them in *
   await page.fill('#search-query-input', 'columbus');
   await page.waitForTimeout(400);
   const found = await page.evaluate(() => document.getElementById('searchPanel')?.innerText || document.body.innerText.slice(0, 400));
-  expect(/1 match in this text/.test(found), `Find finds Columbus Day in the list: ${found.slice(0, 300)}`);
+  expect(/1 of 1 match/.test(found), `Find finds Columbus Day in the list: ${found.slice(0, 300)}`);
   expect(errors.length === 0, `page errors: ${errors}`);
   await context.close();
 });
@@ -8566,6 +8566,86 @@ check('footnotes: outline: the Footnote button in the paragraph editor inserts a
     expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
     await context.close();
   }
+});
+
+check('text find: Find in the Text view selects the match from the cursor, steps with Enter, Shift+Enter and the Next and Previous buttons, wraps, counts "N of M", shades every match, and leaves the match selected when closed', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const lines = [];
+  for (let i = 0; i < 60; i++) lines.push(i % 20 === 5 ? `line ${i} has a Quokka here` : `line ${i} plain`);
+  await newDocument(page, '* One\n' + lines.join('\n') + '\n');
+  await viewMenu(page, 'Text');
+  await page.waitForSelector('#document-text-edit-input');
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.focus(); t.setSelectionRange(0, 0); });
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.waitForTimeout(300);
+  const state = () => page.evaluate(() => {
+    const t = document.getElementById('document-text-edit-input');
+    return {
+      sel: t.value.slice(t.selectionStart, t.selectionEnd),
+      line: t.value.slice(0, t.selectionStart).split('\n').length,
+      info: document.getElementById('text-find-info')?.innerText,
+      marks: document.querySelectorAll('.te-find mark').length,
+      cur: document.querySelectorAll('.te-find mark.te-cur').length,
+      scroll: t.scrollTop,
+    };
+  });
+  let st = await state();
+  expect(st.sel === 'Quokka' && st.info === '1 of 3 matches' && st.marks === 3 && st.cur === 1, `first match: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Enter');
+  st = await state();
+  expect(st.info === '2 of 3 matches' && st.sel === 'Quokka', `Enter: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Enter');
+  await page.press('#search-query-input', 'Enter');
+  st = await state();
+  expect(st.info === '1 of 3 matches', `wraps to the first: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Shift+Enter');
+  st = await state();
+  expect(st.info === '3 of 3 matches' && st.line === 47, `previous wraps to the last: ${JSON.stringify(st)}`);
+  expect(st.scroll > 0, `scrolled the match into view: ${JSON.stringify(st)}`);
+  await page.click('[aria-label="Next match"]');
+  st = await state();
+  expect(st.info === '1 of 3 matches', `the Next button steps and wraps: ${JSON.stringify(st)}`);
+  await page.click('[aria-label="Previous match"]');
+  st = await state();
+  expect(st.info === '3 of 3 matches', `the Previous button steps back and wraps: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Escape');
+  await page.waitForTimeout(200);
+  st = await state();
+  expect(st.sel === 'Quokka' && st.marks === 0, `closing keeps the selection and removes the shading: ${JSON.stringify(st)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '#+TITLE: Notes\nIntro line here.\n#+AUTHOR: Me\n\n- [ ] first\n- [ ] second\n\n* One\nbody\n');
+  const text = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return serializeOrg(S.state.doc);
+  });
+  const shown = await page.evaluate(() => document.querySelector('#outline').innerText);
+  expect(/#\+TITLE: Notes/.test(shown) && /Intro line here\./.test(shown) && /#\+AUTHOR: Me/.test(shown) && /first/.test(shown), `front matter shown: ${shown}`);
+  await page.click('#outline >> text=Intro line here.');
+  await page.click('[aria-label="Edit text"]');
+  await page.waitForSelector('#paragraph-edit-popup textarea', { timeout: 5000 });
+  await page.fill('#paragraph-edit-popup textarea', 'Intro one.\nIntro two.\nIntro three.');
+  await page.locator('#paragraph-edit-popup button', { hasText: /^ok$/i }).first().click();
+  await page.waitForFunction(() => !document.querySelector('#paragraph-edit-popup'), null, { timeout: 5000 });
+  const t = await text();
+  expect(t.startsWith('#+TITLE: Notes\nIntro one.\nIntro two.\nIntro three.\n#+AUTHOR: Me\n'), `after paragraph edit: ${JSON.stringify(t)}`);
+  await page.locator('#outline .checkbox-row > span').first().click();
+  await page.waitForTimeout(500);
+  const t2 = await text();
+  expect(/\n- \[X\] first\n/.test(t2) && t2.includes('#+AUTHOR: Me\n'), `checkbox toggled: ${JSON.stringify(t2)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
 });
 
 check('footnotes: heading text: the Edit heading text popup has the Footnote button and inserts at the cursor', async () => {

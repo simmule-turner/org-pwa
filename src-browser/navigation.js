@@ -76,6 +76,14 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
   scrollNodeIntoView(targetNode, within);
 }
 
+/** Opens the Org view at the text before the first heading.
+ *  @param {{ targetNode?: object }} [opts] */
+function showFrontMatter(opts = {}) {
+  if (S.currentView !== 'org') switchToView('org');
+  render();
+  scrollNodeIntoView(opts.targetNode || S.state.doc.keywords?.[0] || {});
+}
+
 /**
  * After the next frame, scrolls the row drawn for `targetNode` to the middle of the screen and flashes it. `within` picks a part of
  * that row to show instead (the line of a table), given the row's element.
@@ -138,6 +146,7 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
       ? S.state.doc
       : [...Array.from(agendaFilesCache.values()), ...Array.from(searchExtraFilesCache.values())].find((e) => e.documentId === documentId)?.doc;
   if (!doc) return null;
+  if (/** @type {unknown} */ (heading) === doc) return []; // the text before the first heading
   return [...(findAncestorPath(doc, heading) || []).map((/** @type {any} */ h) => h.title), heading.title];
 }
 
@@ -158,6 +167,7 @@ export function outlinePathForHeadingInDocument(documentId, heading) {
  *  already handled the same way a plain internal link jump is. */
 export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}) {
   if (documentId === S.state.documentId) {
+    if (Array.isArray(outlinePath) && outlinePath.length === 0) return showFrontMatter(opts);
     const heading = findHeadingByOutlinePath(S.state.doc, outlinePath);
     if (heading) navigateToHeading(heading, opts);
     return;
@@ -186,6 +196,7 @@ export async function navigateToHeadingByPath(documentId, outlinePath, opts = {}
   if (S.navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) S.navigationBackStack.shift();
   syncNavBackButtonVisibility();
 
+  if (Array.isArray(outlinePath) && outlinePath.length === 0) return showFrontMatter(opts);
   const heading = findHeadingByOutlinePath(S.state.doc, outlinePath);
   if (heading) {
     navigateToHeading(heading, { ...opts, pushToBackStack: false });

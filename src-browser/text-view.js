@@ -32,6 +32,15 @@ const SVG = {
 const refreshers = new WeakMap();
 /** @type {WeakMap<HTMLTextAreaElement, (text: string) => void>} */
 const statusLines = new WeakMap();
+/** @type {WeakMap<HTMLTextAreaElement, (ranges: Array<[number, number]>, current: number) => void>} */
+const matchPainters = new WeakMap();
+
+/** Shades the matches of a find in the Text view's text: every match softly, the current one strongly, and scrolls the current one into view.
+ * @param {HTMLTextAreaElement} textarea @param {Array<[number, number]>} ranges @param {number} current index into `ranges`, or -1 */
+export function paintTextMatches(textarea, ranges, current) {
+  const paint = matchPainters.get(textarea);
+  if (paint) paint(ranges, current);
+}
 
 /** Selects the lines `landing` names in the Text view that is showing, and says where they came from.
  * @param {NonNullable<import('../src/types.js').AppState['textLanding']>} landing
@@ -233,7 +242,10 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   back.className = 'te-back';
   back.setAttribute('aria-hidden', 'true');
   textarea.classList.add('te-input');
-  wrap.append(gutter, back, textarea);
+  const find = document.createElement('div'); // the matches of a find, drawn under the colored text with the same layout as the textarea
+  find.className = 'te-find';
+  find.setAttribute('aria-hidden', 'true');
+  wrap.append(gutter, find, back, textarea);
 
   /** @type {{ text: string | null, lines: Array<Array<{ cls?: string, text: string }>> | null }} */
   const drawn = { text: null, lines: null };
@@ -271,7 +283,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     gutter.style.display = numbers ? 'block' : 'none';
     gutter.style.width = numbers ? `calc(${digits}ch + 12px)` : '0';
     const padLeft = numbers ? 'calc(var(--te-gutter) + 8px)' : '10px';
-    for (const el of [back, textarea]) {
+    for (const el of [back, find, textarea]) {
       el.style.padding = `10px 10px 10px ${padLeft}`;
       el.style.whiteSpace = wrapOn ? 'pre-wrap' : 'pre';
       el.style.overflowWrap = wrapOn ? 'break-word' : 'normal';
@@ -284,11 +296,15 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     back.style.boxSizing = 'border-box';
     back.style.width = wrapOn ? `${textarea.clientWidth}px` : 'max-content';
     back.style.minWidth = wrapOn ? '' : '100%';
+    find.style.width = back.style.width;
+    find.style.minWidth = back.style.minWidth;
+    find.style.whiteSpace = wrapOn ? 'pre-wrap' : 'pre';
     sync();
   }
 
   function sync() {
     back.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
+    find.style.transform = back.style.transform;
   }
 
   function draw() {
@@ -497,6 +513,38 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     status.hidden = false;
   };
   statusLines.set(textarea, say);
+  matchPainters.set(textarea, (ranges, current) => {
+    const text = textarea.value;
+    const frag = document.createDocumentFragment();
+    let at = 0;
+    /** @type {HTMLElement | null} */ let currentEl = null;
+    ranges.forEach(([a, b], i) => {
+      if (a < at || b > text.length) return;
+      frag.append(text.slice(at, a));
+      const mark = document.createElement('mark');
+      mark.textContent = text.slice(a, b);
+      if (i === current) {
+        mark.className = 'te-cur';
+        currentEl = mark;
+      }
+      frag.append(mark);
+      at = b;
+    });
+    frag.append(text.slice(at));
+    find.replaceChildren(frag);
+    if (!currentEl) return;
+    const el = /** @type {HTMLElement} */ (currentEl);
+    const top = el.offsetTop;
+    const height = el.offsetHeight || 20;
+    if (top < textarea.scrollTop + height || top + height > textarea.scrollTop + textarea.clientHeight - height) {
+      textarea.scrollTop = Math.max(0, top - textarea.clientHeight / 2);
+    }
+    if (textarea.wrap === 'off') {
+      const left = el.offsetLeft;
+      if (left < textarea.scrollLeft || left + el.offsetWidth > textarea.scrollLeft + textarea.clientWidth) textarea.scrollLeft = Math.max(0, left - textarea.clientWidth / 2);
+    }
+    sync();
+  });
   return { root, status: say };
 }
 

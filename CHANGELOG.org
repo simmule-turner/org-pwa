@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v688 — Text above the first heading, and Find in the Text view
+The Org view now shows, and edits, the text and ~#+KEY:~ lines before the first heading (a file with no headings was blank); Search finds them. Find in View → Text selects the match from the cursor, shades every match, steps with Enter and ~C-s~ / ~C-r~, and says "N of M matches". Three Settings labels are plainer ("Indent text and lists under headings", "Indent tables too, when indenting is on", "Recently opened files kept"), and ~indent~ / ~noindent~ are in the ~#+STARTUP~ section of the README.
+Verified: unit tests and smoke checks for front-matter editing and Text find.
+
 * v687 — The HTML postamble and custom commands, as Emacs has them
 The HTML postamble follows Emacs: ~auto~ (the default) writes the date, author, email, "Created" time and validation link in the document's language, ~t~ uses ~org-html-postamble-format~, a function is called with the export options, and ~user-full-name~ and ~user-mail-address~ stand in for a missing author and email. Composite, ~stuck~ and ~agenda~ custom commands open as live Agenda rows instead of text, and a single command shows Emacs's "Press …" hint.
 Verified: the postamble over 89 Emacs 29.3 export cases; the hints over 64 command cases.
