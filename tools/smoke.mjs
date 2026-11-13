@@ -8620,6 +8620,125 @@ check('text find: Find in the Text view selects the match from the cursor, steps
   await context.close();
 });
 
+check('front matter: editing a list item and a table cell above the first heading keeps the #+ lines in place', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '#+TITLE: Notes\n- alpha\n#+AUTHOR: Me\n\n| a | b |\n|---+---|\n| 1 | 2 |\n\n* One\nbody\n');
+  const text = () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { serializeOrg } = await import('/src/org-parser.js');
+    return serializeOrg(S.state.doc);
+  });
+  await page.click('#outline >> text=alpha');
+  await page.click('[aria-label="Edit text"]');
+  const box = page.locator('textarea:visible').last();
+  await box.fill('alpha beta');
+  await page.locator('button:visible', { hasText: /^ok$/i }).last().click();
+  await page.waitForTimeout(400);
+  let t = await text();
+  expect(t.startsWith('#+TITLE: Notes\n- alpha beta\n#+AUTHOR: Me\n'), `list item edited: ${JSON.stringify(t)}`);
+  await page.locator('#outline td', { hasText: '1' }).first().dispatchEvent('mousedown');
+  await page.waitForSelector('#cell-edit-input');
+  await page.fill('#cell-edit-input', '10');
+  await page.press('#cell-edit-input', 'Enter');
+  await page.waitForTimeout(400);
+  t = await text();
+  expect(t.includes('#+AUTHOR: Me\n') && /\| 10 +\| 2 +\|/.test(t) && t.startsWith('#+TITLE: Notes\n- alpha beta\n#+AUTHOR: Me\n'), `table cell edited: ${JSON.stringify(t)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('text find: typing and deleting letters follows the search from where it began, and Enter moves that start to the match reached', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const lines = [];
+  for (let i = 0; i < 60; i++) lines.push(`line ${i} plain`);
+  await newDocument(page, '* One\n' + lines.join('\n') + '\n');
+  await viewMenu(page, 'Text');
+  await page.waitForSelector('#document-text-edit-input');
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.focus(); t.setSelectionRange(0, 0); });
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  const at = () => page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return t.value.slice(t.selectionStart, t.selectionEnd) + '@' + t.value.slice(0, t.selectionStart).split('\n').length; });
+  await page.fill('#search-query-input', 'line 4');
+  expect((await at()) === 'line 4@6', `first match: ${await at()}`);
+  await page.fill('#search-query-input', 'line 45');
+  expect((await at()) === 'line 45@47', `longer query: ${await at()}`);
+  await page.fill('#search-query-input', 'line 4');
+  expect((await at()) === 'line 4@6', `deleting a letter goes back to where the search began: ${await at()}`);
+  await page.press('#search-query-input', 'Enter');
+  expect((await at()) === 'line 4@42', `Enter: ${await at()}`);
+  await page.fill('#search-query-input', 'line 4');
+  expect((await at()) === 'line 4@42', `the start moved to the match reached: ${await at()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('search bar: the field, next, previous and more share one height with the same space above and below, option buttons are centered, query-replace shows two lines of buttons, and a drag on the bar scrolls nothing', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  for (const w of [390, 320]) {
+    await page.setViewportSize({ width: w, height: 844 });
+    await newDocument(page, '* One\nQuokka here\n* Two\nmore quokka\n');
+    await viewMenu(page, 'Text');
+    await page.waitForSelector('#document-text-edit-input');
+    await page.evaluate(() => document.getElementById('searchBtn').click());
+    await page.waitForSelector('#search-query-input');
+    await page.fill('#search-query-input', 'quokka');
+    await page.click('#search-options-btn');
+    await page.waitForTimeout(300);
+    const g = await page.evaluate(() => {
+      const box = (e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: Math.round(r.height), left: r.left, right: r.right }; };
+      const bar = box(document.getElementById('modelineBar'));
+      const field = box(document.getElementById('search-query-input'));
+      const next = box(document.querySelector('[aria-label="Next match"]'));
+      const more = box(document.getElementById('search-options-btn'));
+      const opts = [...document.querySelectorAll('#search-options-row button')].map((b) => ({ ...box(b), label: b.textContent, pad: [getComputedStyle(b).justifyContent] }));
+      const last = opts[opts.length - 1];
+      return { bar, field, next, more, opts, gapTop: Math.round(field.top - document.getElementById('minibuffer').getBoundingClientRect().top), gapBottom: Math.round(bar.bottom - last.bottom) };
+    });
+    expect(g.field.h === 38 && g.next.h === 38 && g.more.h === 38, `one height: ${JSON.stringify([g.field.h, g.next.h, g.more.h])}`);
+    expect(g.opts.length >= 2 && g.opts.every((o) => o.h === 34 && o.pad[0] === 'center'), `option buttons: ${JSON.stringify(g.opts)}`);
+    expect(Math.abs(g.gapTop - 8) <= 1, `space above the field: ${g.gapTop}`);
+    expect(g.gapBottom >= 8 && g.gapBottom <= 10, `space below the last row: ${g.gapBottom}`);
+  }
+  // query replace: the buttons take two lines
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { createTextQueryReplace } = await import('/src/query-replace.js');
+    const { renderSearchPanel } = await import('/src-browser/search-ui.js');
+    const pattern = /quokka/gi;
+    const textarea = document.getElementById('document-text-edit-input');
+    S.activeQueryReplace = { controller: createTextQueryReplace(textarea.value, pattern, 'wombat'), replacementText: 'wombat', walkText: 'wombat', findPattern: 'quokka', pattern, inTextMode: true };
+    renderSearchPanel();
+  });
+  await page.waitForTimeout(300);
+  const lines = await page.evaluate(() => { const tops = {}; for (const b of document.querySelectorAll('#searchPanel .panel-row button')) { const t = Math.round(b.getBoundingClientRect().top); (tops[t] = tops[t] || []).push(b.textContent.trim()[0]); } return Object.values(tops); });
+  expect(JSON.stringify(lines) === '[["y","n","q"],[".","!"]]', `query-replace buttons at 320px: ${JSON.stringify(lines)}`);
+  // a drag that starts on the bar is cancelled, so it cannot scroll the text or the page
+  const prevented = await page.evaluate(() => {
+    const bar = document.getElementById('modelineBar');
+    const e = new Event('touchmove', { bubbles: true, cancelable: true });
+    bar.dispatchEvent(e);
+    return { onBar: e.defaultPrevented, touchAction: getComputedStyle(bar).touchAction };
+  });
+  expect(prevented.onBar && prevented.touchAction === 'none', `drag on the bar: ${JSON.stringify(prevented)}`);
+  const inField = await page.evaluate(() => {
+    const e = new Event('touchmove', { bubbles: true, cancelable: true });
+    document.getElementById('search-query-input').dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(!inField, 'a drag inside the search field is left alone');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('front matter: the Org view shows the text and keyword lines before the first heading, edits the text in place and keeps the keyword lines where they were', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);

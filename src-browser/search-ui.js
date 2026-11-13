@@ -20,7 +20,7 @@ import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navi
 import { render } from './render.js';
 import { agendaFilesCache } from './singletons.js';
 import { switchToTab } from './tabs.js';
-import { VH_UNIT, appendSnippetWithHighlight, tableActionButton } from './ui-widgets.js';
+import { VH_UNIT, appendSnippetWithHighlight, tableActionButton as tableActionButtonBase } from './ui-widgets.js';
 import { promptText } from './dialogs.js';
 import { openQueryView, saveQueryAsCommand } from './agenda-query-view.js';
 
@@ -30,7 +30,8 @@ export function renderMinibufferSearch() {
   minibufferSearchEl.style.flexDirection = 'column';
   minibufferSearchEl.style.flex = '1';
   minibufferSearchEl.style.minWidth = '0';
-  minibufferSearchEl.style.gap = '6px';
+  minibufferSearchEl.style.gap = '8px';
+  minibufferSearchEl.style.padding = '8px 0'; // the same space above the field and below the last row, so nothing touches an edge
 
   const topRow = document.createElement('div');
   topRow.style.display = 'flex';
@@ -45,13 +46,14 @@ export function renderMinibufferSearch() {
   input.value = S.searchQuery;
   input.style.flex = '1';
   input.style.minWidth = '0';
-  input.style.height = '26px';
+  input.style.height = '38px';
   input.style.boxSizing = 'border-box';
   input.style.font = 'inherit';
   input.style.fontSize = '16px';
-  input.style.padding = '4px 8px';
+  input.style.padding = '8px 12px';
+  input.style.lineHeight = '20px';
   input.style.border = '1px solid var(--border-strong)';
-  input.style.borderRadius = '4px';
+  input.style.borderRadius = '8px';
   input.style.background = 'var(--bg)';
   input.style.color = 'var(--fg)';
   input.style.resize = 'none';
@@ -93,7 +95,7 @@ export function renderMinibufferSearch() {
       const step = document.createElement('button');
       step.textContent = label;
       step.setAttribute('aria-label', aria);
-      step.style.cssText = 'flex-shrink:0;min-width:40px;min-height:40px;padding:0 8px;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
+      step.style.cssText = 'flex-shrink:0;min-width:38px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
       step.onclick = () => {
         if (S.currentView === 'text') stepTextFind(delta);
         else stepRowFind(delta);
@@ -108,7 +110,9 @@ export function renderMinibufferSearch() {
   optionsBtn.setAttribute('aria-label', 'Search options');
   optionsBtn.style.position = 'relative';
   optionsBtn.style.fontSize = '18px';
-  optionsBtn.style.padding = '3px 10px';
+  optionsBtn.style.height = '38px';
+  optionsBtn.style.minWidth = '38px';
+  optionsBtn.style.padding = '0 10px';
   optionsBtn.style.borderRadius = '8px';
   optionsBtn.style.border = '1px solid var(--border-strong)';
   optionsBtn.style.background = 'transparent';
@@ -169,7 +173,7 @@ export function renderSearchOptionsMenu() {
   if (!S.searchOptionsMenuOpen) return;
 
   optionsRow.style.display = 'flex';
-  optionsRow.style.gap = '6px';
+  optionsRow.style.gap = '8px';
   optionsRow.style.flexWrap = 'wrap';
 
   /**
@@ -182,21 +186,18 @@ export function renderSearchOptionsMenu() {
     const btn = document.createElement('button');
     btn.style.display = 'flex';
     btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
     btn.style.gap = '5px';
-    btn.style.fontSize = '13px';
-    btn.style.padding = '5px 10px';
+    btn.style.fontSize = '14px';
+    btn.style.height = '34px';
+    btn.style.padding = '0 14px';
     btn.style.border = '1px solid var(--border-strong)';
     btn.style.borderRadius = '8px';
     btn.style.background = checked ? 'var(--fill-ghost-selected, rgba(127,127,127,0.15))' : 'transparent';
     btn.style.color = 'var(--fg)';
     btn.disabled = !!disabled;
     btn.style.opacity = disabled ? '0.4' : '1';
-    const check = document.createElement('span');
-    check.style.width = '12px';
-    check.style.display = 'inline-block';
-    check.textContent = checked ? '\u2713' : '';
-    btn.appendChild(check);
-    btn.appendChild(document.createTextNode(label));
+    btn.appendChild(document.createTextNode((checked ? '\u2713\u00a0' : '') + label)); // a check only on an option that is on, so a label is centered
     if (!disabled) btn.onclick = onClick;
     return btn;
   }
@@ -450,6 +451,7 @@ export function renderSearchPanel() {
     stopRowFind();
     const textBox = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
     if (textBox) paintTextMatches(textBox, [], -1); // the Text view's shading goes; the last match stays selected
+    textFind.anchor = null;
     searchPanel.style.display = 'none';
     if (S.activeQueryReplace) finishQueryReplace();
     if (S.searchOptionsMenuOpen) {
@@ -493,8 +495,8 @@ export function renderQueryReplacePrompt() {
   context.style.fontSize = '13px';
   context.style.padding = '6px 8px';
   context.style.border = '1px solid var(--border)';
-  context.style.borderRadius = '4px';
-  context.style.marginBottom = '6px';
+  context.style.borderRadius = '8px';
+  context.style.marginBottom = '8px';
   context.style.overflowWrap = 'break-word';
   const radius = 40;
   const start = Math.max(0, match.index - radius);
@@ -526,35 +528,43 @@ export function renderQueryReplacePrompt() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
+  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+  /** the same size as the option buttons of the search bar: 34px tall, label centered, 8px corners
+   *  @param {string} text @param {() => void} onClick */
+  const tableActionButton = (text, onClick) => {
+    const btn = tableActionButtonBase(text, onClick);
+    btn.style.cssText += 'height:34px;min-height:34px;padding:0 14px;font-size:14px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0;';
+    return btn;
+  };
   row.appendChild(
-    tableActionButton('y \u2014 replace', () => {
+    tableActionButton('y - replace', () => {
       controller.replace();
       renderSearchPanel();
     })
   );
   row.appendChild(
-    tableActionButton('n \u2014 skip', () => {
+    tableActionButton('n - skip', () => {
       controller.skip();
       renderSearchPanel();
     })
   );
   row.appendChild(
-    tableActionButton('. \u2014 replace & stop', () => {
+    tableActionButton('q - quit', () => {
+      controller.quit();
+      finishQueryReplace();
+    })
+  );
+  row.appendChild(
+    tableActionButton('. - replace, stop', () => {
       controller.replace();
       finishQueryReplace();
     })
   );
   row.appendChild(
-    tableActionButton('! \u2014 replace all', () => {
+    tableActionButton('! - replace all', () => {
       controller.replaceAll();
       if (inTextMode) finishQueryReplace();
       else advanceToNextFileOrFinish();
-    })
-  );
-  row.appendChild(
-    tableActionButton('q \u2014 quit', () => {
-      controller.quit();
-      finishQueryReplace();
     })
   );
   wrap.appendChild(row);
@@ -573,7 +583,13 @@ function textMatchRanges(text) {
 }
 
 /** The find in the Text view: the matches, which one is current, and the line that says so. */
-const textFind = { ranges: /** @type {Array<[number, number]>} */ ([]), index: -1 };
+const textFind = {
+  ranges: /** @type {Array<[number, number]>} */ ([]),
+  index: -1,
+  /** where the search began, as in Emacs's isearch: every change of the query searches from here, so deleting a letter goes back to the
+   *  earlier match; Enter or C-s moves it to the match reached. null until the first query. */
+  anchor: /** @type {number | null} */ (null),
+};
 
 /** Shows "N of M matches" in the results panel, shades the matches in the text and, when `select`, makes the first match from the
  *  cursor the current one (selected, scrolled into view). The text box keeps its own cursor and selection: closing the search leaves
@@ -587,6 +603,7 @@ function refreshTextFind(select) {
   textFind.ranges = [];
   textFind.index = -1;
   if (!S.searchQuery.trim()) {
+    textFind.anchor = null; // an emptied query is back at the start, with the cursor where the search began
     searchPanel.style.display = 'none';
     if (textarea) paintTextMatches(textarea, [], -1);
     return;
@@ -611,7 +628,8 @@ function refreshTextFind(select) {
   }
   const { ranges } = textFind;
   if (ranges.length > 0) {
-    const from = textarea.selectionStart;
+    if (textFind.anchor === null) textFind.anchor = textarea.selectionStart;
+    const from = textFind.anchor;
     const next = ranges.findIndex(([a]) => a >= from);
     textFind.index = next === -1 ? 0 : next; // past the last match it wraps to the first
     if (select) {
@@ -624,7 +642,11 @@ function refreshTextFind(select) {
   if (!textarea.dataset.findWatch) {
     textarea.dataset.findWatch = '1';
     textarea.addEventListener('input', () => {
+      textFind.anchor = null; // the text changed: the search begins again from the cursor
       if (S.searchOpen && S.currentView === 'text' && S.searchQuery.trim()) refreshTextFind(false);
+    });
+    textarea.addEventListener('pointerdown', () => {
+      textFind.anchor = null; // the cursor was put somewhere else
     });
   }
 }
@@ -645,6 +667,7 @@ export function stepTextFind(delta) {
   textFind.index = (textFind.index + delta + n) % n;
   const [a, b] = textFind.ranges[textFind.index];
   textarea.setSelectionRange(a, b);
+  textFind.anchor = a;
   paintTextMatches(textarea, textFind.ranges, textFind.index);
   showTextFindCount();
 }

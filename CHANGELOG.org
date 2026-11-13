@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v689 — A tidier, steadier search bar
+Find in View → Text now behaves like ~C-s~ in Emacs: it searches from where you began, so deleting a letter goes back to the earlier match, and Enter moves on from the match reached. The search bar is cleaned up: the field and the next, previous and more buttons share one height, nothing touches an edge, option labels are centered, and query-replace takes two lines of shorter buttons. The bottom bar no longer scrolls the text or the page when dragged.
+Verified: smoke checks for Find in the Text view, the search bar spacing, and edits above the first heading.
+
 * v688 — Text above the first heading, and Find in the Text view
 The Org view now shows, and edits, the text and ~#+KEY:~ lines before the first heading (a file with no headings was blank); Search finds them. Find in View → Text selects the match from the cursor, shades every match, steps with Enter and ~C-s~ / ~C-r~, and says "N of M matches". Three Settings labels are plainer ("Indent text and lists under headings", "Indent tables too, when indenting is on", "Recently opened files kept"), and ~indent~ / ~noindent~ are in the ~#+STARTUP~ section of the README.
 Verified: unit tests and smoke checks for front-matter editing and Text find.

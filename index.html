@@ -219,6 +219,7 @@
     width: 100%; z-index: 52; background: var(--bg);
     border-top: 1px solid var(--border-strong);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    touch-action: none; /* a drag that starts on the bar scrolls nothing: the bar stays put */
   }
 
   /* Opt-in reading-width limit (see Settings → Appearance) -- applies in

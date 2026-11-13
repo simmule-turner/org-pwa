@@ -151,6 +151,18 @@ export function renderMinibuffer() {
   }
 }
 
+// The bottom bar stays where it is: a drag that starts on it scrolls neither the text nor the page (a fixed bar has no scroller of its
+// own, so the browser would hand the gesture to the page). Dragging inside the search box is left alone, so the caret and the selection
+// handles still work there.
+modelineBarEl.addEventListener(
+  'touchmove',
+  (e) => {
+    const target = /** @type {Element} */ (e.target);
+    if (e.cancelable && !target.closest('input, textarea')) e.preventDefault();
+  },
+  { passive: false }
+);
+
 export function syncContentOffset() {
   const barHeight = topBarEl.offsetHeight;
   const vv = window.visualViewport;

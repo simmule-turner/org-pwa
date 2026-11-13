@@ -405,7 +405,7 @@ Tap the *Search* button in the top bar (see [[#search-button][The Search button]
 
 Search also finds the text above the first heading and the file's ~#+KEY: value~ lines (shown as *Top of the file*); tapping a result opens the Org view there. Tag, TODO, priority and property filters and Match queries describe headings, so they leave it out.
 
-In View → Text, Find marks every match in the text and selects the first one from the cursor; Enter, ▼ or ~C-s~ goes to the next, Shift+Enter, ▲ or ~C-r~ to the previous, wrapping round, with "N of M matches" shown. Closing Find leaves the last match selected. The Regex option works as elsewhere.
+In View → Text, Find marks every match in the text and selects the first one from the cursor; Enter, ▼ or ~C-s~ goes to the next, Shift+Enter, ▲ or ~C-r~ to the previous, wrapping round, with "N of M matches" shown. Find searches from where you began, so deleting a letter of the query goes back to the earlier match. Closing Find leaves the last match selected. The Regex option works as elsewhere.
 
 On the Agenda, TODO, Match and Keyword search screens Find works in place, as ~C-s~ does in an agenda buffer: every match in the rows on screen is highlighted and the current one is marked more strongly. Enter or ▼ (~C-s~) goes to the next, Shift+Enter or ▲ (~C-r~) to the previous, wrapping round. A lower-case query ignores case and a capital letter makes it exact; ⋯ has Regex. Closing the search clears the marks and leaves the row of the current match focused. On these screens ~n~ and ~p~ (or ~j~, ~k~ and the arrow keys) move the focus, ~t~ changes the row's state, a comma sets its priority, Enter goes to its heading and Space opens its actions.
 
