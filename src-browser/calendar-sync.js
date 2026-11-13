@@ -9,7 +9,7 @@ import { getContactsBirthdayProperty } from '../src/local-variables.js';
 import { S } from './app-state.js';
 import { agendaSexpOptions, calendarAlarmMinutes } from './agenda-settings.js';
 import { hasUserSexps, settleUserSexps } from './extension-flow.js';
-import { aggregateAgendaDocs, loadContactsDocsForSync, unloadedAgendaFiles, waitForAgendaFilesLoaded } from './agenda-files.js';
+import { agendaFileDocs, loadContactsDocsForSync, unloadedAgendaFiles, unloadedContactsFiles, waitForAgendaFilesLoaded } from './agenda-files.js';
 import { setStatus } from './editing.js';
 import { withConnections } from './connection-protection.js';
 import { currentCaldav, currentWebdav } from './connection-vault.js';
@@ -74,9 +74,9 @@ async function runCalendarSync({ manual, rebuild, report }) {
     await client.check(); // one cheap request that gives a clear answer for a wrong address or password
 
     await waitForAgendaFilesLoaded();
-    const docs = aggregateAgendaDocs().filter((d) => d.doc);
+    const docs = agendaFileDocs().filter((d) => d.doc); // the agenda files only, as in Emacs: opening some other file never changes the calendar
     if (docs.length === 0) {
-      if (manual) report('Nothing to sync: no document is open and no agenda files are loaded.');
+      if (manual) report('Nothing to sync: no agenda files are loaded (org-agenda-files).');
       return;
     }
     // The contacts are those of org-contacts-files, as in the agenda. An event made from a contacts file is only ever removed when
@@ -88,7 +88,9 @@ async function runCalendarSync({ manual, rebuild, report }) {
       await settleUserSexps();
     }
     const wanted = build();
-    const loadedDocs = new Set([...docs, ...(contactsDocs || [])].map((d) => d.documentId));
+    // Events of a file that is no longer an agenda file are removed, as Emacs's export would drop them; those of a configured file that did not load stay.
+    const loaded = new Set([...docs, ...(contactsDocs || [])].map((d) => d.documentId));
+    const keepDocs = new Set([...unloadedAgendaFiles(), ...unloadedContactsFiles()].map((key) => key.slice(key.indexOf(':') + 1)).filter((path) => !loaded.has(path)));
 
     const stored = await getCaldavSyncState(kv);
     let previous = stored.url === config.url ? stored.resources || {} : {}; // a different calendar: nothing was sent to it
@@ -100,7 +102,7 @@ async function runCalendarSync({ manual, rebuild, report }) {
       await setCaldavSyncState(kv, { url: config.url, resources: {} });
     }
 
-    const plan = planCalendarSync(wanted, previous, { loadedDocs });
+    const plan = planCalendarSync(wanted, previous, { keepDocs });
     let done = 0;
     const total = plan.puts.length + plan.deletes.length;
     const tick = () => {

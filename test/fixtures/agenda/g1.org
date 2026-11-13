@@ -1,0 +1,38 @@
+* A code
+Text ~<2026-10-12 Mon>~ end.
+* B verbatim
+Text =<2026-10-13 Tue>= end.
+* C bold
+Text *<2026-10-14 Wed>* end.
+* D italic
+Text /<2026-10-15 Thu>/ end.
+* E strike
+Text +<2026-10-16 Fri>+ end.
+* F link description
+Text [[https://x.test][see <2026-10-17 Sat>]] end.
+* G table plain
+| a | <2026-10-18 Sun> |
+* H table code
+| a | ~<2026-10-19 Mon>~ |
+* I quote
+#+BEGIN_QUOTE
+in quote <2026-10-20 Tue>
+#+END_QUOTE
+* J list plain
+- item <2026-10-21 Wed>
+* K list code
+- item ~<2026-10-22 Thu>~
+* L code with words and a repeater
+Text ~Do task <2026-10-23 Fri +14d>~ end.
+* M plain after code
+Text ~code~ and <2026-10-24 Sat> end.
+* N code in the title ~<2026-10-25 Sun>~
+* O code across two lines
+Text ~start of code
+<2026-10-26 Mon> end~ done.
+* P a tilde that is not code
+Cost is ~5 and <2026-10-27 Tue> then 6~ later.
+* Q equals in a formula
+x=1 and <2026-10-28 Wed> and y=2
+* R verbatim with punctuation after
+See =<2026-10-29 Thu>=, then more.

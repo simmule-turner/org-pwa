@@ -724,16 +724,16 @@ export function renderTextModeSearchResults() {
 /** @type {{ key: string, index: number, rows: HTMLElement[], results: Array<{ documentId: string, type: string, heading: unknown, node?: unknown }>, label: HTMLElement | null }} */
 const resultNav = { key: '', index: -1, rows: [], results: [], label: null };
 
-/** The results list gets at most 60% of the room really visible between its top and the modeline above the search bar (the document
- *  gets the rest). A share of the window height is wrong once a keyboard is up: iOS keeps the window as tall as before, lifts the bars
- *  above the keyboard, and the bottom of a list sized from the window ends up underneath them. */
+/** The results list extends down to the modeline: all the room really visible between its top and the modeline above the search bar.
+ *  A share of the window height is wrong once a keyboard is up: iOS keeps the window as tall as before, lifts the bars above the
+ *  keyboard, and the bottom of a list sized from the window ends up underneath them (or, sized as a smaller share, stops short). */
 function fitResultsList() {
   const list = document.getElementById('search-results');
   if (!list) return;
   const panel = document.getElementById('searchPanel');
   const panelPadding = panel ? parseFloat(getComputedStyle(panel).paddingBottom) || 0 : 0;
   const room = modelineBarEl.getBoundingClientRect().top - list.getBoundingClientRect().top - panelPadding - 1;
-  list.style.maxHeight = Math.max(60, Math.min(room * 0.6, window.innerHeight * 0.4)) + 'px';
+  list.style.maxHeight = Math.max(60, room) + 'px';
 }
 // after the page's own resize handlers have moved the bars (they run in the same event), so the bar's position measured is the new one
 const fitSoon = () => setTimeout(fitResultsList, 0);

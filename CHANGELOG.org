@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v698 — A normal sync clears events of files that are no longer agenda files
+Events the app put in your calendar for a file that is not in your agenda files (such as README.org from before v697) are now removed by the next ordinary sync, as Emacs's export would drop them; no Rebuild needed. Events of an agenda file that failed to load stay until it loads.
+Verified: a test that a file no longer configured loses its events while a configured file that failed to load keeps them.
+
+* v697 — The calendar follows your agenda files, and example timestamps are not reminders
+The calendar sync now uses only your agenda files, as Emacs does, so a file you merely have open can no longer put entries in your phone's calendar. A timestamp written inside ~code~, =verbatim= markup or a link's text no longer counts as a reminder either, which had filled a calendar with the README's own examples; only a timestamp in ordinary text counts, as in Emacs.
+Verified: a fixture made by Emacs 29.3 covering fifteen kinds of inline markup, a test that README.org gives the agenda nothing, and a smoke check that the sync is made from agenda files alone.
+
+* v696 — The results list reaches the modeline
+With the keyboard up, the list of search results stopped after about three rows and left a strip of the document showing above the modeline. The list now uses all the room down to the modeline.
+Verified: the keyboard smoke checks now also require the panel to reach the modeline.
+
 * v695 — The results list fits the room above the keyboard
 With the keyboard open on a phone, the list of search results was sized from the whole window and its bottom ended up under the modeline and search bar, so stepping past the first few results scrolled the current one out of sight. The list is now sized from the room actually visible above the modeline, and re-measured when the keyboard opens or closes.
 Verified: smoke checks for both ways a keyboard changes the screen (the bars lifted above it, and the window itself shrinking) that step through fourteen results; the first fails without the change.

@@ -256,6 +256,14 @@ export function unloadedAgendaFiles() {
   });
 }
 
+/** Configured contacts files with no loaded doc. */
+export function unloadedContactsFiles() {
+  return S.contactsFilesConfig.filter((/** @type {string} */ key) => {
+    const entry = contactsFilesCache.get(key);
+    return !(entry && entry.doc);
+  });
+}
+
 /** The full docs list for agenda/TODO aggregation: the currently open
  *  document plus every successfully-loaded configured agenda file,
  *  deduplicated by documentId -- if the current file also happens to
@@ -272,6 +280,17 @@ export function localAgendaFilesWritable() {
   return platform.attachments.supported() && S.state.storageKind === 'filesystem';
 }
 
+/** The document an agenda file is read from right now: a file open in another tab, or the open document itself, is read from its buffer
+ *  (what was captured or refiled into it shows before it is saved), otherwise the loaded copy. @param {string} key @param {string | undefined} documentId @param {import('../src/types.js').Doc} loaded */
+function agendaFileBuffer(key, documentId, loaded) {
+  const colon = key.indexOf(':');
+  const scheme = colon === -1 ? key : key.slice(0, colon);
+  const storageKind = scheme === 'local' ? 'filesystem' : scheme;
+  if (documentId === S.state.documentId && S.state.storageKind === storageKind && S.state.doc) return S.state.doc;
+  const openTab = S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === documentId && s.state.storageKind === storageKind);
+  return openTab ? openTab.state.doc : loaded;
+}
+
 export function aggregateAgendaDocs({ writable = false } = {}) {
   if (commandScope.docs && !writable) return commandScope.docs; // an agenda block of a custom command drawn with org-agenda-files of its own
   const docs = [{ documentId: S.state.documentId, doc: S.state.doc }];
@@ -279,13 +298,22 @@ export function aggregateAgendaDocs({ writable = false } = {}) {
   for (const [key, entry] of agendaFilesCache.entries()) {
     if (writable && entry.readOnly && !(entry.local && localAgendaFilesWritable())) continue; // `writable`: only for callers that write back (Refile, Replace); see localAgendaFilesWritable
     if (entry.doc && !seen.has(entry.documentId)) {
-      const colon = key.indexOf(':');
-      const scheme = colon === -1 ? key : key.slice(0, colon);
-      const storageKind = scheme === 'local' ? 'filesystem' : scheme;
-      const openTab = S.documentSessions.find((/** @type {Record<string, any>} */ s) => s.tabId !== S.activeTabId && s.state && s.state.documentId === entry.documentId && s.state.storageKind === storageKind);
-      docs.push({ documentId: entry.documentId, doc: openTab ? openTab.state.doc : entry.doc });
+      docs.push({ documentId: entry.documentId, doc: agendaFileBuffer(key, entry.documentId, entry.doc) });
       seen.add(entry.documentId);
     }
+  }
+  return docs;
+}
+
+/** The agenda files alone, as Emacs's org-agenda-files: what goes outside the app (the calendar sync) is made from them and not from
+ *  whatever file happens to be open. The open document counts only when it is one of them, and then as it is now, unsaved edits included. */
+export function agendaFileDocs() {
+  const docs = [];
+  const seen = new Set();
+  for (const [key, entry] of agendaFilesCache.entries()) {
+    if (!entry.doc || seen.has(entry.documentId)) continue;
+    docs.push({ documentId: entry.documentId, doc: agendaFileBuffer(key, entry.documentId, entry.doc) });
+    seen.add(entry.documentId);
   }
   return docs;
 }

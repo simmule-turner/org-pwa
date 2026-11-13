@@ -12,8 +12,9 @@ const read = (name) => fs.readFileSync(new URL(`./fixtures/agenda/${name}`, impo
 const STAMPS = /\s*[<[][^>\]]*[>\]](--[<[][^>\]]*[>\]])?/g;
 
 // a1: repeaters, overdue and warnings. b1: where in a heading's entry a time stamp counts (title, body, drawers, blocks).
+// g1: inline markup (a time stamp inside ~code~, =verbatim= or a link's text is not a reminder; one in bold, italic, a table, a quote or a list is).
 // The app leaves completed headings out of the agenda (its default), so Emacs's DONE entries are not compared.
-for (const name of ['a1', 'b1', 'f1']) test(`${name}: every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does`, () => {
+for (const name of ['a1', 'b1', 'f1', 'g1']) test(`${name}: every day lists the same headings, as scheduled, deadline or time stamp, and as overdue or upcoming on today, as Emacs does`, () => {
   const oracle = JSON.parse(read(`${name}.expected.json`));
   const savedTz = process.env.TZ;
   process.env.TZ = oracle.tz;

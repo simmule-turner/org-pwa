@@ -8855,9 +8855,10 @@ check('search results: with a keyboard up (the bars lifted above it, the window 
       const modeline = document.getElementById('modelineBar').getBoundingClientRect().top;
       const rb = row.getBoundingClientRect();
       const lb = list.getBoundingClientRect();
-      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline: Math.round(modeline) };
+      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline: Math.round(modeline), panelBottom: Math.round(document.getElementById('searchPanel').getBoundingClientRect().bottom) };
     });
     expect(g.listBottom <= g.modeline && g.rowBottom <= g.modeline && g.rowTop >= g.listTop - 1, `step ${i + 1}: the list and the current result are above the modeline: ${JSON.stringify(g)}`);
+    expect(g.panelBottom >= g.modeline - 2, `step ${i + 1}: the panel extends down to the modeline: ${JSON.stringify(g)}`);
   }
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
@@ -8885,10 +8886,37 @@ check('search results: when the window itself shrinks for a keyboard (an Android
       const modeline = Math.round(document.getElementById('modelineBar').getBoundingClientRect().top);
       const rb = row.getBoundingClientRect();
       const lb = list.getBoundingClientRect();
-      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline };
+      return { rowTop: Math.round(rb.top), rowBottom: Math.round(rb.bottom), listTop: Math.round(lb.top), listBottom: Math.round(lb.bottom), modeline, panelBottom: Math.round(document.getElementById('searchPanel').getBoundingClientRect().bottom) };
     });
     expect(g.listBottom <= g.modeline && g.rowBottom <= g.modeline && g.rowTop >= g.listTop - 1, `step ${i + 1}: ${JSON.stringify(g)}`);
+    expect(g.panelBottom >= g.modeline - 2, `step ${i + 1}: the panel extends down to the modeline: ${JSON.stringify(g)}`);
   }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('calendar sync: it is made from the agenda files alone, as in Emacs; the open document counts only when it is one of them', async () => {
+  const { context, page, errors } = await freshPage();
+  page.setDefaultTimeout(4000);
+  await newDocument(page, '* Notes <2026-10-12 Mon>\n');
+  const r = await page.evaluate(async () => {
+    const { agendaFileDocs, aggregateAgendaDocs } = await import('/src-browser/agenda-files.js');
+    const { agendaFilesCache } = await import('/src-browser/singletons.js');
+    const { parseOrg } = await import('/src/org-parser.js');
+    const { S } = await import('/src-browser/app-state.js');
+    agendaFilesCache.clear();
+    const none = { sync: agendaFileDocs().map((d) => d.documentId), agenda: aggregateAgendaDocs().map((d) => d.documentId) };
+    agendaFilesCache.set('local:plan.org', { doc: parseOrg('* Plan <2026-10-13 Tue>\n'), documentId: 'plan.org' });
+    const one = { sync: agendaFileDocs().map((d) => d.documentId), agenda: aggregateAgendaDocs().map((d) => d.documentId) };
+    // the open document is one of the agenda files: its own buffer is used, edits not yet saved included
+    S.state.storageKind = 'filesystem'; // a local file, as an open agenda file of `local:` would be
+    agendaFilesCache.set('local:open.org', { doc: parseOrg('* Stale\n'), documentId: S.state.documentId });
+    const both = agendaFileDocs().find((d) => d.documentId === S.state.documentId);
+    return { none, one, openIsLive: !!both && both.doc === S.state.doc };
+  });
+  expect(r.none.sync.length === 0 && r.none.agenda.length === 1, `with no agenda files the sync has nothing, the agenda still has the open document: ${JSON.stringify(r.none)}`);
+  expect(JSON.stringify(r.one.sync) === '["plan.org"]' && r.one.agenda.length === 2, `with one agenda file the sync has only it: ${JSON.stringify(r.one)}`);
+  expect(r.openIsLive, 'an open agenda file is read from its live buffer');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

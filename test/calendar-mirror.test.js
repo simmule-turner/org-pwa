@@ -311,3 +311,9 @@ test('a birthday and an anniversary on the SAME day are two events with two diff
   assert.equal(new Set([...m.values()].map((r) => r.uid)).size, 2, 'distinct ids, so a server keeps both');
   assert.deepEqual(summaries(m), ['Anniversary: Jane Doe & John Doe (16th)', 'Birthday: Jane Doe (36th)']);
 });
+
+test('keepDocs: events of a file no longer configured are removed, those of a configured file that failed to load stay', () => {
+  const previous = prevOf({ fromReadme: ['h1', 'README.org'], fromDown: ['h2', 'down.org'], fromA: ['h3', 'a.org'] });
+  const plan = planCalendarSync(wantedOf({ fromA: ['h3', 'a.org'] }), previous, { keepDocs: new Set(['down.org']) });
+  assert.deepEqual(plan.deletes, ['fromReadme']);
+});

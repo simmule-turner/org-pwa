@@ -82,18 +82,19 @@ function buildCalendarResources(allDocs, opts = {}) {
  * What to do to bring the server in line with `wanted`, given what was last sent (`previous`: name -> { hash, doc }).
  * An event is deleted only if this device sent it AND its file (`doc`) is among `loadedDocs`, the files actually
  * loaded in this run: an event for a file that did not load would otherwise look like one that was removed.
- * `loadedDocs` null means every file counts as loaded.
+ * `loadedDocs` null means every file counts as loaded. `keepDocs` lists files whose events are never deleted (configured files
+ * that did not load), so events of files no longer configured are removed and those of a failed file are not.
  * @param {any} [wanted]
  * @param {any} [previous]
  */
-function planCalendarSync(wanted, previous, { loadedDocs = /** @type {Set<any> | null} */ (null) } = {}) {
+function planCalendarSync(wanted, previous, { loadedDocs = /** @type {Set<any> | null} */ (null), keepDocs = /** @type {Set<any> | null} */ (null) } = {}) {
   const puts = [];
   let unchanged = 0;
   for (const [name, resource] of wanted) {
     if (previous[name] && previous[name].hash === resource.hash) unchanged++;
     else puts.push(name);
   }
-  const deletes = Object.keys(previous).filter((name) => !wanted.has(name) && (!loadedDocs || loadedDocs.has(previous[name].doc)));
+  const deletes = Object.keys(previous).filter((name) => !wanted.has(name) && (!loadedDocs || loadedDocs.has(previous[name].doc)) && !(keepDocs && keepDocs.has(previous[name].doc)));
   return { puts, deletes, unchanged };
 }
 

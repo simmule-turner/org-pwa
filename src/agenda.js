@@ -741,7 +741,22 @@ function entryTimestampText(heading) {
     if (/^\s*#(\s|$|\+)/.test(body[i])) continue;
     lines.push(body[i]);
   }
-  return lines.join('\n');
+  return withoutInlineLiterals(lines.join('\n'));
+}
+
+// ~code~ and =verbatim= as Org reads them (org-emphasis-regexp-components: the opening mark follows a space, a line start or one of
+// - ( ' " {; neither border is a space; at most one line break inside; the closing mark is followed by a space, a line end or one of
+// - . , : ! ? ; ' " ) } \ [), and a link ([[target]] or [[target][description]]). Emacs's agenda does not take a time stamp from
+// inside any of them, checked against Emacs 29.3 in test/fixtures/agenda/g1.org.
+const LITERAL_RE = /(^|[\s\-('"{])([=~])(\S(?:[^\n]*\n?[^\n]*\S)?)\2(?=$|[\s\-.,:!?;'")}\\[])/gm;
+const LINK_RE = /\[\[[^\]\n]*\](?:\[[^\]\n]*\])?\]/g;
+
+/** @param {string} text */
+function withoutInlineLiterals(text) {
+  const blank = (/** @type {string} */ s) => s.replace(/[^\n]/g, ' ');
+  return text
+    .replace(LINK_RE, blank)
+    .replace(LITERAL_RE, (all, pre) => pre + blank(all.slice(pre.length)));
 }
 
 /** The category label shown as a prefix before each agenda item --
