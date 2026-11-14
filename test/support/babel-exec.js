@@ -4,8 +4,9 @@ import { parseOrg, serializeOrg } from '../../src/org-parser.js';
 import { collectDocumentBlocks } from '../../src/babel-blocks.js';
 import { expandNoweb, nowebAllows } from '../../src/noweb.js';
 import { runElisp, formatElispResult } from '../../src/babel-elisp.js';
+import { readHeaderValue } from '../../src/babel-args.js';
 import { parseBody } from '../../src/body-parser.js';
-import { evalAllowed, existingResultsHash, formatError, parseResultsSpec, placeResults, resolveVars } from '../../src/babel.js';
+import { evalAllowed, existingResultsHash, formatError, parseResultsSpec, pickedNames, placeResults, resolveVars } from '../../src/babel.js';
 import { referenceLookup } from '../../src/babel-ref.js';
 import { cacheInput } from '../../src/babel-cache.js';
 
@@ -32,8 +33,9 @@ export function executed(text, index) {
     return serializeOrg({ ...doc, children: swap(doc.children) });
   };
   let vars;
+  /** @type {import('../../src/babel.js').TableNames} */ const names = {};
   try {
-    vars = resolveVars(args.var, referenceLookup(doc, all), { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines });
+    vars = resolveVars(args.var, referenceLookup(doc, all), { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines, names });
   } catch (err) {
     return 'ERROR ' + /** @type {Error} */ (err).message; // Emacs stops with the error and writes nothing
   }
@@ -50,9 +52,9 @@ export function executed(text, index) {
     hash = createHash('sha1').update(cacheInput({ lang: info.lang, args, vars, code: body })).digest('hex');
     if (existingResultsHash(heading.bodyLines, block) === hash) return text;
   }
-  const outcome = runElisp({ code, vars, spec, lexical: args.lexical });
+  const outcome = runElisp({ code, vars, spec, lexical: args.lexical, names: pickedNames(args, names) });
   if (!outcome.ok) return 'ERROR ' + outcome.message; // Emacs stops with the error and writes nothing
-  const lines = formatElispResult(/** @type {any} */ (outcome.value), spec, { wrap: args.wrap === undefined ? null : args.wrap, file: args.file === undefined ? null : args.file });
+  const lines = formatElispResult(/** @type {any} */ (outcome.value), spec, { wrap: args.wrap === undefined ? null : args.wrap, file: args.file === undefined ? null : args.file, fileDesc: args['file-desc'] === undefined ? null : readHeaderValue(args['file-desc']) });
   if (spec.silent) return text;
   return place(lines, spec.handling);
 }

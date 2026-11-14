@@ -252,4 +252,61 @@ add(T([['a', 'b'], '-', ['', '5'], ['', '7']], '$1=@#-1'));
 add('|   | 5 |\n|---+---|\n|   | 7 |\n#+TBLFM: $1=@#-1');
 add('|   | 5 |\n|   | 7 |\n#+TBLFM: $1=@#');
 
+
+// string(), typeof(), subvec() and vlen(), with the fields pasted into quoted text as Org does
+for (const e of ['string("")', 'string("a b")', 'string([97,98])', 'string(5)', 'string($1)', 'typeof($1)', 'typeof($2)', 'typeof(1.5)', 'typeof(2.)', 'typeof(nan)', 'typeof(inf)', 'typeof(-inf)', 'typeof([1,2])', 'typeof([[1,2],[3,4]])', 'typeof("a")', 'subvec([1,2,3,4],2,4)', 'subvec([1,2,3,4],2)', 'subvec([1,2,3,4],-2)', 'subvec([1,2,3,4],0,0)', 'subvec([1,2,3,4],5)', 'subvec([1,2,3],-1,0)', 'subvec("$1",1,2)', 'string(subvec("$1", 2, vlen("$1")))', 'vlen("abc")', 'vlen("$1")', 'vlen(5)', 'vlen([])', 'vlen([[1,2],[3,4]])', 'vlen($1..$2)', 'if(typeof($1) == 12, string(""), $1)', 'if("$1" == "(1)", string("one"), string("other"))', 'if("$2" == "nan", string(""), $2 + 1)', '"$1" == "(1)"', '"$1..$2" == "[1,2]"', '"@0$1..@0$2" == "[1,2]"', '"$#" == "3"', 'if(1, x, string(""))', 'if(0, x, string(""))']) {
+  add(T(NUM, `$3=${e}`));
+  add(T([['1', '', ''], ['', '2', ''], ['', '', '']], `$3=${e}; E`));
+  add(T([['1', '', ''], ['', '2', ''], ['', '', '']], `$3=${e}; EN`));
+  add(T([['1', '', ''], ['', '2', ''], ['', '', '']], `$3=${e}; N`));
+}
+// empty fields in range references with E, and Lisp formulas with the L, N and E flags
+for (const e of ["if(typeof(vmean($1..$2)) == 12, string(\"\"), vmean($1..$2))", "if(\"$1..$2\" == \"[]\", string(\"\"), vmean($1..$2))", 'vlen($1..$2)', 'vsum($1..$2)', 'vmean(@0$1..@0$2)']) {
+  for (const flags of ['', '; E', '; N', '; EN']) add(T([['1', '2', ''], ['', '4', ''], ['', '', '']], `$3=${e}${flags}`));
+}
+for (const e of ["'(identity $1)", "'(+ $1 $2)", "'(+ $1..$2)", "'(length '($1..$2))", "'(type-of $1)", "'(type-of @1)", "'(identity @1)", "'(if (eq \"$1\" \"\") \"\" (1+ $1))", "'(concat \"$1\" \"-\" \"$2\")", "'(@0$1)", "'(org-lookup-first $1 '($1 $2) '(7 8))"]) {
+  for (const flags of ['', '; L', '; N', '; E', '; EN', '; EL']) add(T([['1', '2', ''], ['', '4', ''], ['z', '', ''], ['', '', '']], `$3=${e}${flags}`));
+}
+add('| nil | (list) | \'() |\n|-----+--------+-----|\n| r | r | r |\n| r | r | r |\n#+TBLFM: @2$<<..@2$> = \'(type-of @1) :: @3$<<..@3$> = \'(identity @1); L');
+add('| type-of @1 | nil | (list) | \'() |\n| identity "@1" | nil | (list) | \'() |\n| identity @1 | nil | (list) | \'() |\n#+TBLFM: @<<$2..@>$> = \'(@0$1); L');
+// the sub-total example of the Org manual
+add('|-------+---------+---------|\n| Item  |    Item | Sub-    |\n| name  |   value | total   |\n|-------+---------+---------|\n| a1    |     4.1 | replace |\n| a2    |     8.2 | replace |\n| a3    |         | replace |\n|-------+---------+---------|\n| b1    |    16.0 | replace |\n|-------+---------+---------|\n| c1    |      32 | replace |\n| c2    |      64 | replace |\n|-------+---------+---------|\n| Total | replace | replace |\n|-------+---------+---------|\n#+TBLFM: @>$2 = vsum(@II..@>>) :: $3 = if(vlen(@0..@+I) == 1, vsum(@-I$2..@+I$2) +.0, string("")); EN f-1 :: @>$3 = string("")');
+for (const f of ['$3=vlen(@0..@+I)', '$3=vlen(@II..@>>)', '@>$3=vlen(@-I$2..@+I$2)', '@2$3=vlen(@I..@II)', '@>$3=vlen(@II..@>>);N']) add('|-----+---+---|\n| a | 1 | |\n|-----+---+---|\n| b | 2 | |\n| c | | |\n|-----+---+---|\n| d | 3 | |\n#+TBLFM: ' + f);
+// where the header ends: a hline at the top starts none, and one with no row below ends none
+add('|---+---|\n| a | |\n| b | |\n#+TBLFM: $2=1');
+add('| a | |\n|---+---|\n#+TBLFM: $2=1');
+add('|---+---|\n| a | |\n|---+---|\n| b | |\n#+TBLFM: $2=1');
+add('| a | |\n|---+---|\n| b | |\n#+TBLFM: $2=1');
+// $PROP_name: a property of the entry, inherited, and the #+PROPERTY: lines
+add('* H\n  :PROPERTIES:\n  :time_constant: 08:00:00\n  :END:\n\n  |  |\n  #+TBLFM: $1=2*$PROP_time_constant;T');
+add('* H\n  :PROPERTIES:\n  :time_constant: 08:00:00\n  :END:\n\n  |  |\n  #+TBLFM: $1=2*$PROP_time_constant;t');
+add('* H\n  :PROPERTIES:\n  :Factor: 3\n  :END:\n** Child\n   | 2 |  |\n   #+TBLFM: $2=$1*$PROP_factor');
+add('#+PROPERTY: factor 5\n* H\n| 2 |  |\n#+TBLFM: $2=$1*$PROP_factor');
+add('* H\n  :PROPERTIES:\n  :Factor: 3\n  :Factor+: 4\n  :END:\n| 2 |  |\n#+TBLFM: $2=$PROP_factor');
+add('* H\n| 2 |  |\n#+TBLFM: $2=$PROP_nothere');
+add('* H\n  :PROPERTIES:\n  :txt: abc\n  :END:\n| 2 |  |\n#+TBLFM: $2=$PROP_txt');
+add('* H\n  :PROPERTIES:\n  :n: 1.5\n  :END:\n| 2 |  |\n#+TBLFM: $2=$PROP_n + $1');
+add("* H\n  :PROPERTIES:\n  :n: 7\n  :END:\n| 2 |  |\n#+TBLFM: $2='(+ 1 $PROP_n)");
+add('#+CONSTANTS: n=9\n* H\n  :PROPERTIES:\n  :n: 7\n  :END:\n| 2 |  |\n#+TBLFM: $2=$PROP_n+$n');
+add("#+CONSTANTS: n=9\n| 2 |  |\n#+TBLFM: $2='(+ 1 $n)");
+add("| 2 |  |\n#+TBLFM: $2='(+ 1 $nothere)");
+// org-lookup-first, org-lookup-last and org-lookup-all
+for (const e of ['(org-lookup-first "b" \'("a" "b" "b") \'(1 2 3))', '(org-lookup-last "b" \'("a" "b" "b") \'(1 2 3))', '(org-lookup-all "b" \'("a" "b" "b") \'(1 2 3))', '(org-lookup-first "b" \'("a" "b" "b"))', '(org-lookup-all 2 \'(1 2 3) nil \'<)', '(org-lookup-first 2 \'(1 2 3) nil \'<)', '(org-lookup-last 2 \'(1 2 3) nil \'<)', '(org-lookup-first "x" \'("a" "b"))', '(org-lookup-all 5 \'(5 5) \'(1))']) add('| 1 | |\n#+TBLFM: $2=\'' + e);
+add('#+NAME: data\n| Purchase | Product | Shop | Rating |\n|----------+---------+------+--------|\n| a        | p1      | s1   |      1 |\n| b        | p1      | s2   |      4 |\n| c        | p2      | s1   |      2 |\n| d        | p3      | s2   |      8 |\n\n| Product | Rating  | Ranking |\n|---------+---------+---------|\n| p1      | replace | replace |\n| p2      | replace | replace |\n| p3      | replace | replace |\n#+TBLFM: $2 = \'(let ((all (org-lookup-all \'$1 \'(remote(data, @I$2..@>$2)) \'(remote(data, @I$4..@>$4))))) (/ (apply \'+ all) (length all) 1.0)); L :: $3 = \'(+ 1 (length (org-lookup-all $2 \'(@I$2..@>$2) nil \'<))); N');
+// remote references: by a field of this table, a table named with digits, and in a Lisp formula
+for (const f of ['@2$2 = remote($1, @>$1)', '@2$2 = remote(@<$1, @2$1)', "@2$2 = '(identity remote($1, @2$1)); N", "@2$2 = '(+ remote(t2012, @2$1..@>$1)); N", "@2$2 = '(identity remote(t2012, @2$1)); L", "@2$2 = '(identity remote(t2012, @2$1))", "@2$2 = '(length '(remote(t2012, @1$1..@>$1)))", '@2$2 = remote(nope, @1$1)', '@2$2 = remote($9, @1$1)']) {
+  add('#+NAME: t2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n\n#+NAME: 2012\n| amount |\n|--------|\n|      5 |\n|      6 |\n\n| t2012 | replace |\n| 2012  | replace |\n#+TBLFM: ' + f);
+}
+add('#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: summary\n|  year | amount  |\n|-------+---------|\n|  2012 | replace |\n|  2013 | replace |\n|-------+---------|\n| total | replace |\n#+TBLFM: @<<$2..@>>$2 = remote($<, @>$1) :: @>$2 = vsum(@I..@II)');
+add('#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n\n#+NAME: summary\n| year   |    2012 |    2013 | total   |\n|--------+---------+---------+---------|\n| amount | replace | replace | replace |\n#+TBLFM: @2$<<..@2$>> = remote(@<, @>$1) :: @2$> = vsum($<<..$>>)');
+add('#+NAME: tt\n| 3 | 4 |\n| 5 | 6 |\n\n| a | b |\n#+TBLFM: $1=remote(tt, @2$2) ::  $2=vsum(remote(tt, @1$1..@2$2))');
+// a field formula outside the table: Emacs refuses (org-table-formula-create-columns is nil), a column formula adds the column
+add('| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5');
+add('| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15');
+// Calc algebra of text (chosen deviations, see test/support/oracle-tables-known.js)
+add('| 0 | replace |\n| z | replace |\n|   | replace |\n| nan | replace |\n#+TBLFM: $2 = if("$1" == "nan", string(""), $1 + 1); E');
+add('| 0 | replace |\n| a b | replace |\n| c   d | replace |\n|   | replace |\n| 2012-12 | replace |\n#+TBLFM: $2 = if("$1" == "nan", string(""), $1); E');
+add('| 1.5 A/B | 2.0 B | |\n#+TBLFM: $3=$1*$2;u');
+add('#+NAME: table\n|   | x   42 |   |\n\n| replace | replace |\n#+TBLFM: $2 = 2 * remote(table, @1$2)');
+
 export const CASES = cases.filter((c) => !/=now\b|float-time|=daysto|=weekday|\$0=|\$0'/.test(c));

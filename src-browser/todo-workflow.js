@@ -10,14 +10,15 @@ import { serializeOrg } from '../src/org-parser.js';
 import { cycleHeadingTodo } from '../src/outline-view-model.js';
 import { readLogSettings } from '../src/log-settings.js';
 import { applyTransitionEffects, writePendingNote } from '../src/todo-transition.js';
-import { resolveTodoSequence, resolveTodoSequences, setTodoState } from '../src/todo-cycle.js';
+import { resolveTodoSequence, resolveTodoSequences, findSequenceForHeading, setTodoState } from '../src/todo-cycle.js';
+import { RepeatError } from '../src/repeater-shift.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { showModalOverlay } from './dialogs.js';
 import { doneNotePanel, doneNotePanelBox, refilePanel, refilePanelBox } from './dom.js';
-import { commitAndRender } from './editing.js';
+import { commitAndRender, setStatus } from './editing.js';
 import { render } from './render.js';
 import { autoGrowTextarea, hideModalOverlay, menuButton } from './ui-widgets.js';
 
@@ -57,14 +58,22 @@ function headingPath(doc, heading) {
  */
 export function applyTodoTransition(heading, performChange, options = {}) {
   const fromTodo = heading.todo;
+  const ownSequence = findSequenceForHeading(resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT), heading); // the sequence the state came from
   performChange();
 
   const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
   const fileLocalVarsOnly = parseLocalVariables(serializeOrg(S.state.doc));
   const settings = readLogSettings(S.state.doc, fileLocalVarsOnly, S.globalVariables, headingPath(S.state.doc, heading));
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(S.state.localVariables);
-  const pendingNote = applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now: new Date(), inhibitLogging: options.inhibitLogging });
-  if (pendingNote) S.pendingLogNote = pendingNote;
+  try {
+    const pendingNote = applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now: new Date(), inhibitLogging: options.inhibitLogging, ownSequence });
+    if (pendingNote) S.pendingLogNote = pendingNote;
+  } catch (err) {
+    // Emacs signals a user error (an hour repeater on a time stamp without a time): the state has changed, the entry has not moved on
+    if (!(err instanceof RepeatError)) throw err;
+    if (err.pendingNote) S.pendingLogNote = err.pendingNote;
+    setStatus(err.message);
+  }
 
   // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"
   // cookie on some ancestor counts -- this transition may have just

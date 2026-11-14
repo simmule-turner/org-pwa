@@ -39,6 +39,12 @@ export const BABEL_RULES = [
     match: (c) => /#\+begin_src (?:js|javascript)\b[^\n]*:var /i.test(c.text) || /header-args(?::js(?:avascript)?)?\+?:? [^\n]*:var /i.test(c.text),
   },
   {
+    kind: 'exec',
+    id: 'var-comma',
+    reason: 'Chosen (existing capability kept): the app reads `:var a=1, b=2` as two variables; Emacs 29.3 stops with "Reference `1,\' not found" because the comma stays on the value.',
+    match: (c) => /:var [^\n]*\w=[^\s,]+, /.test(c.text),
+  },
+  {
     kind: 'noweb',
     id: 'js-block-called-from-reference',
     reason: 'Infeasible here: `<<name()>>` on a JavaScript block runs it; the app runs JavaScript in an asynchronous sandbox that Noweb expansion cannot wait for, so it reports an error. Emacs Lisp blocks are run.',

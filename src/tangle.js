@@ -11,8 +11,9 @@
  * exist is simply created (the files are delivered together, usually as a zip).
  */
 import { collectDocumentBlocks, headingSearchText, removeIndentation, fullPreambleLines } from './babel-blocks.js';
-import { resolveVars, findNamedTable, headerText, parseResultsSpec } from './babel.js';
-import { runElisp } from './babel-elisp.js';
+import { resolveVars, headerText } from './babel.js';
+import { toLisp } from './babel-elisp.js';
+import { plainVariables, referenceLookup } from './babel-ref.js';
 import { print } from './elisp-data.js';
 import { expandNoweb, nowebAllows } from './noweb.js';
 import { serializeOrg } from './org-parser.js';
@@ -75,19 +76,6 @@ const orgTrim = (s) => s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
   if (v === null || v === undefined) return 'nil';
   if (v === true) return 't';
   if (typeof v === 'string') return JSON.stringify(v).replace(/\\n/g, '\\n');
-  return String(v);
-}
-
-/**
- * A value as Lisp prints it (`prin1`), for the `(let ((x '5)) ...)` ob-emacs-lisp wraps around a block that has `:var`.
- * @param {unknown} v
- * @returns {string}
- */
-function lispValue(v) {
-  if (Array.isArray(v)) return '(' + v.map(lispValue).join(' ') + ')';
-  if (v === null || v === undefined || v === false || v === '') return v === '' ? '""' : 'nil';
-  if (v === true) return 't';
-  if (typeof v === 'string') return '"' + v.replace(/[\\"]/g, '\\$&') + '"';
   return String(v);
 }
 
@@ -193,7 +181,7 @@ function linkFor(block, documentName, targetPath) {
   const depth = targetPath.split('/').length - 1;
   const rel = '../'.repeat(depth) + documentName;
   let search;
-  if (block.name) search = block.name;
+  if (block.name) search = block.name.replace(/[[\]]/g, (/** @type {string} */ c) => '\\' + c);
   else if (block.heading) search = '*' + headingSearchText(block.heading.title).replace(/[[\]]/g, (c) => '\\' + c);
   else search = (block.beginLineText || '').trim().replace(/^#/, '');
   return `file:${rel}::${search}`;
@@ -207,20 +195,7 @@ function linkFor(block, documentName, targetPath) {
  */
 export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
   const blocks = collectDocumentBlocks(doc);
-  /** @param {string} name */
-  const lookupTable = (name) => {
-    /** @param {any} [list] */
-    const walk = (list) => {
-      for (const h of list) {
-        const rows = findNamedTable(h.bodyLines || [], name);
-        if (rows) return rows;
-        /** @type {any} */ const inner = walk(h.children || []);
-        if (inner) return inner;
-      }
-      return null;
-    };
-    return findNamedTable(doc.bodyLines || [], name) || walk(doc.children || []);
-  };
+  const lookupTable = referenceLookup(doc, blocks); // what a `:var` can name, as when the block is run
   // `:comments noweb`: a referenced block is wrapped in begin and end comments naming it
   /**
    * @param {any} ref
@@ -229,7 +204,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
    */
   const wrapChunk = (ref, text, host) => {
     let target;
-    if (ref.name) target = ref.name;
+    if (ref.name) target = ref.name.replace(/[[\]]/g, (/** @type {string} */ c) => '\\' + c);
     else if (ref.heading) target = '*' + headingSearchText(ref.heading.title).replace(/[[\]]/g, (c) => '\\' + c);
     else target = ((ref.heading ? ref.heading.bodyLines : doc.bodyLines)[ref.beginIndex] || '').trim().replace(/^#/, '');
     const name = ref.name || '';
@@ -249,28 +224,18 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
       let body = nowebAllows(b.args, 'tangle') ? expandNoweb(doc, blocks, b, { context: 'tangle', wrapChunk }) : b.body;
       if (!('no-expand' in b.args)) {
         const parts = [];
-        if (b.args.prologue) parts.push(headerText(b.args.prologue));
+        const elisp = b.lang === 'emacs-lisp' || b.lang === 'elisp'; // ob-emacs-lisp has no :prologue or :epilogue
+        if (b.args.prologue && !elisp) parts.push(headerText(b.args.prologue));
         if (b.args.var.length) {
           if (b.lang === 'js' || b.lang === 'javascript') {
             const vars = resolveVars(b.args.var, lookupTable, { colnames: b.args.colnames, rownames: b.args.rownames, hlines: b.args.hlines });
-            for (const [name, value] of Object.entries(vars)) parts.push(`var ${name}=${jsValue(value)};`);
-          } else if (b.lang === 'emacs-lisp' || b.lang === 'elisp') {
+            for (const [name, value] of Object.entries(plainVariables(vars))) parts.push(`var ${name}=${jsValue(value)};`);
+          } else if (elisp) {
             // ob-emacs-lisp: the body goes inside a `let` binding each variable to its quoted value
             let bindings = null;
             try {
-              // a value that is Lisp (`(+ 1 2)`, `'(a b)`) is evaluated, as Emacs does; anything else is a number, string or table
-              bindings = b.args.var.map((/** @type {string} */ spec) => {
-                const eq = spec.indexOf('=');
-                const name = spec.slice(0, eq);
-                const text = spec.slice(eq + 1);
-                if (/^['(]/.test(text)) {
-                  const run = runElisp({ code: text, spec: parseResultsSpec('') });
-                  if (!run.ok) throw new Error(run.message);
-                  return `(${name} '${print(run.value)})`;
-                }
-                const vars = resolveVars([spec], lookupTable, { colnames: b.args.colnames, rownames: b.args.rownames, hlines: b.args.hlines });
-                return `(${name} '${lispValue(vars[name])})`;
-              });
+              const vars = resolveVars(b.args.var, lookupTable, { colnames: b.args.colnames, rownames: b.args.rownames, hlines: b.args.hlines });
+              bindings = Object.entries(vars).map(([name, value]) => `(${name} '${print(toLisp(value))})`);
             } catch (e) {
               warnings.push(`${where}: :var is not added to ${b.lang} blocks (${/** @type {Error} */ (e).message})`);
             }
@@ -278,7 +243,7 @@ export function tangleDocument(doc, { documentName = 'untitled.org' } = {}) {
           } else warnings.push(`${where}: :var is not added to ${b.lang} blocks`);
         }
         parts.push(body);
-        if (b.args.epilogue) parts.push(headerText(b.args.epilogue));
+        if (b.args.epilogue && !elisp) parts.push(headerText(b.args.epilogue));
         body = parts.join('\n');
       }
       body = orgTrim(removeIndentation(body.split('\n')).join('\n'));

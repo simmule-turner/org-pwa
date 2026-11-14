@@ -9,9 +9,9 @@
 
 /**
  * @typedef {{
- *   todoKeywords: Set<string>, todo: boolean, priority: boolean, tags: boolean, planning: boolean, properties: boolean,
+ *   todoKeywords: Set<string>, todo: boolean, priority: boolean, tags: boolean, planning: boolean, properties: boolean | string[],
  *   drawer: (name: string) => boolean, footnotes: boolean, tables?: boolean, stat?: boolean, clocks?: boolean, creator?: string, abbreviations?: Map<string, string>, title: boolean, author: boolean, date: boolean, email: boolean,
- *   selective?: boolean, nested?: boolean,
+ *   selective?: boolean, nested?: boolean, looseNotes?: string[], inlineLevel?: number | null, stamps?: boolean | string, fixed?: boolean, tex?: string,
  *   cite?: { text: (c: any) => string, bibliography: string[] },
  * }} InterpretOptions
  */
@@ -20,6 +20,8 @@ import { parseCitationAt } from './cite.js';
 import { layoutTable } from './org-table-layout.js';
 import { getTagsColumn, withTags } from './tags-column.js';
 import { expandAbbreviation } from './link-abbrev.js';
+import { matchLatexFragmentAt } from './inline-markup.js';
+import { withDayName, withoutIsolatedTimestamps } from './export-timestamps.js';
 
 /** @param {string} s */
 const isBlank = (s) => s.trim() === '';
@@ -98,6 +100,16 @@ function citations(text, write) {
 function objects(text, opts) {
   let out = opts.cite ? citations(text, opts.cite.text) : text;
   out = out.replace(/@@[A-Za-z0-9-]+:[\s\S]*?@@/g, '');
+  if (opts.tex === 'nil') {
+    // tex:nil leaves the LaTeX fragments out
+    let kept = '';
+    for (let at = 0; at < out.length; ) {
+      const fragment = out[at] === '$' || out[at] === '\\' ? matchLatexFragmentAt(out, at) : null;
+      if (fragment) at += fragment.length + (/^[ \t]*/.exec(out.slice(at + fragment.length))?.[0].length ?? 0); // the blanks after it go with it
+      else kept += out[at++];
+    }
+    out = kept;
+  }
   out = out.replace(/\[\[((?:\\.|[^\][\\])+)(\]\[[^\]]*)?\]\]/g, (whole, raw, desc) => {
     const target = expandAbbreviation(raw.replace(/\\([[\]])/g, '$1'), opts.abbreviations ?? new Map());
     if (target.startsWith('doi:')) return 'https://doi.org/' + target.slice(4); // a DOI is written as its address, with no description
@@ -105,7 +117,7 @@ function objects(text, opts) {
     if (/^(?:\.{1,2}\/|\/|~\/)/.test(target)) return `[[file:${target}${desc || ''}]]`;
     return `[[${target}${desc || ''}]]`;
   });
-  out = out.replace(TIMESTAMP_RE, (_whole, a, b, spaces) => splitTimeRange(a) + (b ? '--' + splitTimeRange(b) : '') + (spaces ? spaces + spaces : ''));
+  out = out.replace(TIMESTAMP_RE, (_whole, a, b, spaces) => splitTimeRange(withDayName(a)) + (b ? '--' + splitTimeRange(withDayName(b)) : '') + (spaces ? spaces + spaces : ''));
   if (opts.stat === false) out = out.replace(STAT_RE, '');
   if (!opts.footnotes) out = out.replace(/\[fn:[^\]\s]*(?::[^\]]*)?\][ \t]*/g, ''); // the blanks after a dropped reference go with it
   return out;
@@ -206,7 +218,7 @@ function render(lines, opts) {
     const clock = CLOCK_RE.exec(line);
     if (clock) {
       i++;
-      if (opts.clocks) out.push(`CLOCK: ${clock[1]}${clock[2] ? '--' + clock[2] : ''}${clock[3] ? ' =>  ' + clock[3] : ''}`);
+      if (opts.clocks) out.push(`CLOCK: ${withDayName(clock[1])}${clock[2] ? '--' + withDayName(clock[2]) : ''}${clock[3] ? ' =>  ' + clock[3] : ''}`);
       else while (i < lines.length && isBlank(lines[i])) i++;
       afterTable = false;
       continue;
@@ -292,10 +304,11 @@ function render(lines, opts) {
     // fixed-width areas
     if (FIXED_RE.test(line)) {
       while (i < lines.length && FIXED_RE.test(lines[i])) {
-        out.push(lines[i].trim() === ':' ? ':' : ': ' + lines[i].replace(/^\s*: ?/, ''));
+        if (opts.fixed !== false) out.push(lines[i].trim() === ':' ? ':' : ': ' + lines[i].replace(/^\s*: ?/, ''));
         i++;
       }
-      out.push('');
+      if (opts.fixed !== false) out.push('');
+      else while (i < lines.length && !lines[i].trim()) i++; // a dropped element takes the blank lines after it
       afterTable = false;
       continue;
     }
@@ -318,8 +331,9 @@ function render(lines, opts) {
     if (env) {
       const k = findEnd(lines, i + 1, new RegExp(`^\\s*\\\\end\\{${escapeRe(env[1])}\\}\\s*$`));
       if (k >= 0) {
-        out.push(...dedent(lines.slice(i, k + 1)));
+        if (opts.tex !== 'nil') out.push(...dedent(lines.slice(i, k + 1)));
         i = k + 1;
+        if (opts.tex === 'nil') while (i < lines.length && !lines[i].trim()) i++; // a dropped element takes the blank lines after it
         continue;
       }
     }
@@ -332,7 +346,7 @@ function render(lines, opts) {
     i++;
     while (i < lines.length && !interrupts(lines[i], opts.nested)) i++;
     const text = lines.slice(start, i);
-    const written = dedent(text).map((l) => inline(l, opts));
+    const written = withoutIsolatedTimestamps(dedent(text).join('\n'), opts.stamps).split('\n').map((l) => inline(l, opts)); // `<:` leaves out the timestamps that stand alone
     if (opts.cite && /^\[cite/.test(text[0].trimStart())) written[0] = written[0].trimStart(); // a paragraph does not begin with a blank
     out.push(...written);
   }
@@ -421,7 +435,7 @@ function prologue(body, opts, zeroth) {
   if (k < body.length && PLANNING_RE.test(body[k])) {
     if (opts.planning) {
       const found = new Map([...body[k].matchAll(/(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]*[>\]])/g)].map((m) => [m[1], m[2]]));
-      written.push(['DEADLINE', 'SCHEDULED', 'CLOSED'].filter((x) => found.has(x)).map((x) => `${x}: ${found.get(x)}`).join(' '));
+      written.push(['DEADLINE', 'SCHEDULED', 'CLOSED'].filter((x) => found.has(x)).map((x) => `${x}: ${withDayName(/** @type {string} */ (found.get(x)))}`).join(' '));
       k++;
     } else {
       k++;
@@ -435,6 +449,7 @@ function prologue(body, opts, zeroth) {
         written.push(':PROPERTIES:');
         for (const l of body.slice(k + 1, end)) {
           const p = /^\s*:([^\s:]+):\s*(.*?)\s*$/.exec(l);
+          if (p && Array.isArray(opts.properties) && !opts.properties.some((x) => x.toUpperCase() === p[1].toUpperCase())) continue; // prop:("KEY" ...) keeps only those properties
           if (p) written.push(zeroth ? `:${p[1]}: ${p[2]}`.trimEnd() : `${(':' + p[1] + ':').padEnd(10)} ${p[2]}`.trimEnd());
         }
         written.push(':END:');
@@ -538,8 +553,9 @@ function headline(line, opts) {
     priority = cookie[1];
     rest = rest.slice(cookie[0].length);
   }
-  const left = [m[1], [opts.todo ? todo : '', opts.priority ? priority : '', rest].filter(Boolean).join(' ')].filter(Boolean).join(' ');
-  const shown = opts.tags ? tags : '';
+  const task = typeof opts.inlineLevel === 'number' && m[1].length >= opts.inlineLevel; // an inline task is written whole
+  const left = [m[1], [opts.todo || task ? todo : '', opts.priority || task ? priority : '', rest].filter(Boolean).join(' ')].filter(Boolean).join(' ');
+  const shown = opts.tags || task ? tags : '';
   if (!shown) return left + (left === m[1] ? ' ' : '');
   return withTags(left, shown, getTagsColumn());
 }
@@ -592,6 +608,23 @@ export function interpretOrg(text, opts) {
       if (!seen.has(label) && ref === label) wanted[n].push(label);
       seen.add(label);
     }
+  });
+  for (const note of takeNotes(opts.looseNotes || []).notes) if (!defined.has(note.label)) defined.set(note.label, note.lines); // definitions in trees that are left out still count
+  // a definition is followed by the ones its own references name, in the order the notes are numbered
+  /** @type {Set<string>} */
+  const written = new Set();
+  /** @param {string} label @param {string[]} into */
+  const withNested = (label, into) => {
+    if (written.has(label)) return;
+    written.add(label);
+    into.push(label);
+    for (const ref of noteRefs(defined.get(label) || [])) if (!ref.startsWith(':')) withNested(ref, into);
+  };
+  wanted.forEach((list, n) => {
+    /** @type {string[]} */
+    const all = [];
+    for (const label of list) withNested(label, all);
+    wanted[n] = all;
   });
   /** @type {string[]} */
   const out = [];

@@ -21,32 +21,10 @@
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { inheritedProperty } from './babel-args.js';
 import { parseInline } from './inline-markup.js';
-import { findLists } from './list-edit.js';
+import { findLists, listAt } from './list-edit.js';
 
 const BOX_LINE_RE = /^[ \t]*(?:[-+*]|\d+[.)])[ \t]+(?:\[@\d+\][ \t]*)?\[([ xX-])\](?:[ \t]|$)/;
 const COOKIE_RE = /\[\d*\/\d*\]|\[\d*%\]/g;
-
-/**
- * @param {any[]} items
- * @param {boolean} recursive
- */
-function walkListForCheckboxes(items, recursive) {
-  let total = 0;
-  let checked = 0;
-  for (const item of items) {
-    if (item.checkbox !== null) {
-      total++;
-      if (item.checkbox === 'X') checked++;
-    }
-    if (!recursive) continue;
-    for (const nested of item.children || []) {
-      const sub = walkListForCheckboxes(nested.items, true);
-      total += sub.total;
-      checked += sub.checked;
-    }
-  }
-  return { total, checked };
-}
 
 /** The checkboxes of `heading`'s own section (not its child headings): top-level items of every list, plus the
  * nested ones when `recursive`.
@@ -96,6 +74,26 @@ function writeCookies(heading, checked, total) {
 const formatCookie = (cookie, checked, total) =>
   cookie.includes('%') ? `[${Math.floor((100 * checked) / Math.max(1, total))}%]` : `[${checked}/${total}]`;
 
+/** The boxes under the item on line `at` of `lines` as Org counts them, by the lines (text and drawers under an item stay in it): its
+ * children's, or every descendant's when `recursive`.
+ * @param {string[] | undefined} lines @param {number} at @param {boolean} recursive */
+function countItemBoxes(lines, at, recursive) {
+  let total = 0;
+  let checked = 0;
+  const found = Array.isArray(lines) ? listAt(lines, at) : null;
+  if (!found || !lines) return { total, checked };
+  const { items } = found.list;
+  const self = items[found.index];
+  items.forEach((it, k) => {
+    if (recursive ? !(it.line > self.line && it.line < self.end) : it.parent !== found.index) return;
+    const box = BOX_LINE_RE.exec(lines[it.line]);
+    if (!box || k === found.index) return;
+    total++;
+    if (box[1] === 'X') checked++;
+  });
+  return { total, checked };
+}
+
 /**
  * Cookies in list items: each counts its own sub-list.
  * @param {Heading} heading
@@ -107,13 +105,7 @@ function updateItemCookies(heading, items, recursive) {
   for (const item of items) {
     for (const list of item.children || []) updateItemCookies(heading, list.items, recursive) && (changed = true);
     if (!new RegExp(COOKIE_RE.source).test(item.text)) continue;
-    let total = 0;
-    let checked = 0;
-    for (const list of item.children || []) {
-      const sub = walkListForCheckboxes(list.items, recursive);
-      total += sub.total;
-      checked += sub.checked;
-    }
+    const { total, checked } = countItemBoxes(heading.bodyLines, item.lineIndex, recursive);
     const text = item.text.replace(COOKIE_RE, (/** @type {string} */ c) => formatCookie(c, checked, total));
     if (text === item.text) continue;
     item.text = text;
@@ -195,6 +187,45 @@ export function updateTodoCookiesUpward(doc, heading, doneKeywords = []) {
     if (!recursive) break;
   }
   return changed;
+}
+
+/** The heading that follows the subtree of `heading` in the text, or null when it is the last one. @param {Doc} doc @param {Heading} heading @returns {Heading | null} */
+export function headingAfterSubtree(doc, heading) {
+  const chain = [...(findAncestorPath(doc, heading) || []), heading];
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const siblings = (i === 0 ? doc : chain[i - 1]).children;
+    const next = siblings[siblings.indexOf(chain[i]) + 1];
+    if (next) return next;
+  }
+  return null;
+}
+
+/**
+ * After a subtree has been archived (`org-archive-subtree` runs `org-update-statistics-cookies` at the parent of the heading its cut
+ * leaves point on): `next` is the heading that followed the subtree (see headingAfterSubtree), or null when none did, and then the last
+ * heading of the file stands in. The heading to update is that one's parent, or the heading itself at the top level. Its cookie
+ * counts its checkboxes when its own section has some (and says nothing of `todo`), else its child headings, and is [100%] or
+ * [0/0] when it has none.
+ * @param {Doc} doc
+ * @param {Heading | null} next
+ * @param {Set<string> | string[]} [doneKeywords]
+ * @returns {boolean} whether any title changed
+ */
+export function updateCookiesAfterArchive(doc, next, doneKeywords = []) {
+  /** @type {Heading | undefined} */
+  let at = next ?? undefined;
+  if (!at) {
+    at = doc.children[doc.children.length - 1];
+    while (at && at.children.length > 0) at = at.children[at.children.length - 1];
+  }
+  if (!at) return false;
+  const target = (findAncestorPath(doc, at) || []).slice(-1)[0] || at;
+  const hasBoxes = [target.logbookLines, target.preLogLines, target.bodyLines].some((lines) => Array.isArray(lines) && lines.some((l) => /^[ \t]*(?:[-+*]|\d+[.)]) \[[- X]\]/.test(l)));
+  if (hasBoxes && !hasWord(ownCookieData(target), 'todo')) return updateCheckboxCookie(target);
+  if (target.children.length) return updateTodoCookiesUpward(doc, target.children[0], doneKeywords);
+  const before = target.title;
+  target.title = before.replace(COOKIE_RE, (cookie) => (cookie.includes('%') ? '[100%]' : '[0/0]'));
+  return target.title !== before;
 }
 
 /**

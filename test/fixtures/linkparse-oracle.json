@@ -742,6 +742,214 @@
    ]
   },
   {
+   "line": "[[a\nb]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a b",
+     "raw": "a b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 7,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[a \n  b]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a b",
+     "raw": "a b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 10,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[https://x.org\n/y]]",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org /y",
+     "raw": "https://x.org /y",
+     "format": "bracket",
+     "begin": 0,
+     "end": 20,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[a][b\nc]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a",
+     "raw": "a",
+     "format": "bracket",
+     "begin": 0,
+     "end": 10,
+     "desc": "b\nc"
+    }
+   ]
+  },
+  {
+   "line": "[[a\nb][c]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a b",
+     "raw": "a b",
+     "format": "bracket",
+     "begin": 0,
+     "end": 10,
+     "desc": "c"
+    }
+   ]
+  },
+  {
+   "line": "<https://x.org\n.org>",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org.org",
+     "raw": "https://x.org\n.org",
+     "format": "angle",
+     "begin": 0,
+     "end": 20,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "<https://x.org\n  .org>",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org.org",
+     "raw": "https://x.org\n  .org",
+     "format": "angle",
+     "begin": 0,
+     "end": 22,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "<https://x\n .org\n z>",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.orgz",
+     "raw": "https://x\n .org\n z",
+     "format": "angle",
+     "begin": 0,
+     "end": 20,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "'https://x.org",
+   "emacs": []
+  },
+  {
+   "line": "$https://x.org",
+   "emacs": []
+  },
+  {
+   "line": "%https://x.org",
+   "emacs": []
+  },
+  {
+   "line": "\"https://x.org",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "plain",
+     "begin": 1,
+     "end": 14,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "(https://x.org",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org",
+     "raw": "https://x.org",
+     "format": "plain",
+     "begin": 1,
+     "end": 14,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "a https://x.org b",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org b",
+     "raw": "https://x.org b",
+     "format": "plain",
+     "begin": 2,
+     "end": 17,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "https://x.org/a b",
+   "emacs": [
+    {
+     "type": "https",
+     "path": "//x.org/a b",
+     "raw": "https://x.org/a b",
+     "format": "plain",
+     "begin": 0,
+     "end": 17,
+     "desc": null
+    }
+   ]
+  },
+  {
+   "line": "[[a][b $c$ d]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a",
+     "raw": "a",
+     "format": "bracket",
+     "begin": 0,
+     "end": 14,
+     "desc": "b $c$ d"
+    }
+   ]
+  },
+  {
+   "line": "[[a][*b* /c/]]",
+   "emacs": [
+    {
+     "type": "fuzzy",
+     "path": "a",
+     "raw": "a",
+     "format": "bracket",
+     "begin": 0,
+     "end": 14,
+     "desc": "*b* /c/"
+    }
+   ]
+  },
+  {
    "line": "[[https://example.org/a%20b][pct]]",
    "emacs": [
     {

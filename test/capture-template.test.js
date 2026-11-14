@@ -181,7 +181,7 @@ test('expandTemplate @# substitutes the table row number', () => {
 
 test('expandTemplate @# is empty when no table row number is given (not a table-line capture)', () => {
   const { text } = expandTemplate('Row @#', { now: NOW });
-  assert.equal(text, 'Row');
+  assert.equal(text, 'Row ');
 });
 
 test('expandTemplate @# + n adds a positive offset', () => {
@@ -206,7 +206,7 @@ test('expandTemplate @#+n and @#-n work with no whitespace around the operator',
 
 test('expandTemplate @# with an offset is still empty when no table row number is given', () => {
   const { text } = expandTemplate('ID: @# + 3', { now: NOW });
-  assert.equal(text, 'ID:');
+  assert.equal(text, 'ID: ');
 });
 
 test('expandTemplate no longer recognizes %N at all -- left as literal text, matching its replacement by @#', () => {
@@ -902,7 +902,7 @@ test('with nothing shared, %i and %a expand to nothing instead of staying visibl
 
 test('%x is the clipboard, and nothing when there is none', () => {
   assert.equal(expandTemplate('clip: %x', { now, clipboard: 'copied text' }).text, 'clip: copied text');
-  assert.equal(expandTemplate('clip: %x', { now }).text, 'clip:');
+  assert.equal(expandTemplate('clip: %x', { now }).text, 'clip: ');
 });
 
 test('shared and clipboard text cannot change the document structure: heading-looking lines are escaped at the start of a line', () => {

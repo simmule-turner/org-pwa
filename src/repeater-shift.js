@@ -36,7 +36,7 @@
  */
 
 import { parseOrgTimestamp, formatOrgTimestamp } from './org-timestamp.js';
-import { parseRepeater, addInterval } from './agenda.js';
+import { parseRepeater, addInterval, bodyLinesWithoutStamps, withoutInlineLiterals } from './agenda.js';
 import { setProperty } from './archive-model.js';
 
 /** The shifted Date for one repeater application, given `mark`
@@ -70,29 +70,46 @@ function computeShiftedDate(mark, amount, unit, oldDate, now) {
   return addInterval(oldDate, amount, unit);
 }
 
+/** What Emacs signals (a `user-error`) when a repeating entry cannot be moved on; the message is Emacs's own. */
+export class RepeatError extends Error {
+  /** @param {string} message */
+  constructor(message) {
+    super(message);
+    this.name = 'RepeatError';
+    /** The log note the state change still asks for (set by the caller that met the error). @type {import('./todo-transition.js').PendingNote | null} */
+    this.pendingNote = null;
+  }
+}
+
+/** The start of a time stamp as Emacs rewrites it on a shift: the delimiter, the date, the day name and the time (range). Everything
+ *  after it (a repeater, a warning period, in whatever order) stays as written. */
+const STAMP_HEAD_RE = /^[<[]\d{4}-\d\d-\d\d(?: +[A-Za-z.\u00c0-\uffff]+)?(?: +\d{1,2}:\d\d(?:-\d{1,2}:\d\d)?)?/;
+
 /** Re-serializes `raw` (an existing SCHEDULED/DEADLINE timestamp
  *  string with a repeater) with its own date shifted to `newDate` --
  *  every other part (active/inactive, time-of-day, the repeater
- *  itself, a delay/warning-period suffix) preserved exactly as it
- *  already was. Returns null if `raw` doesn't actually have a
- *  repeater at all (nothing for this module to do with it). */
+ *  itself, a delay/warning-period suffix, and their order) preserved
+ *  exactly as it already was. Returns null if `raw` doesn't actually have a
+ *  repeater at all (nothing for this module to do with it). An hour repeater
+ *  on a time stamp without a time is Emacs's user error. */
 /** @param {string} raw @param {Date} now @returns {string | null} */
 function shiftTimestampString(raw, now) {
   const parsed = parseOrgTimestamp(raw);
   if (!parsed || !parsed.repeater) return null;
   const rep = parseRepeater(parsed.repeater);
   if (!rep) return null;
+  if (rep.unit === 'h' && !/\d{1,2}:\d{2}/.test(raw)) throw new RepeatError(`Cannot repeat in ${rep.amount} hour(s) because no hour has been set`);
+  const head = STAMP_HEAD_RE.exec(raw);
+  if (!head) return null;
 
   const newDate = computeShiftedDate(rep.mark, rep.amount, rep.unit, parsed.date, now);
-  return formatOrgTimestamp({
+  const shifted = formatOrgTimestamp({
     date: newDate,
     time: parsed.hasTime ? `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}` : null,
     endTime: parsed.endDate ? `${String(parsed.endDate.getHours()).padStart(2, '0')}:${String(parsed.endDate.getMinutes()).padStart(2, '0')}` : null, // the end of a time range stays as written
-    repeaterMark: rep.mark,
-    repeaterValue: `${rep.amount}${rep.unit}` + (rep.range ? `/${rep.range.amount}${rep.range.unit}` : ''),
-    delayValue: parsed.delay ? parsed.delay.slice(1) : null, // parsed.delay keeps its own leading "-"; formatOrgTimestamp re-adds it
     active: parsed.active,
   });
+  return shifted.slice(0, -1) + raw.slice(head[0].length);
 }
 
 /**
@@ -158,25 +175,104 @@ export function hasRepeater(stamp) {
 }
 
 /**
+ * One piece of an entry's text as Emacs reads it for time stamps, with the way to write it back.
+ * @typedef {{ text: string, skip: boolean, set: (text: string) => void }} StampSegment
+ */
+
+/** The entry's text in file order (title, planning line, property values, log items, body) as pieces. Emacs takes no time stamp from a
+ *  comment line, a #+KEYWORD line, a source, example or export block, or a fixed-width (": ") line.
+ *  @param {Heading} heading @returns {StampSegment[]} */
+function entrySegments(heading) {
+  /** @type {StampSegment[]} */
+  const segs = [{ text: heading.title, skip: false, set: (t) => (heading.title = t) }];
+  const planning = heading.planning;
+  for (const key of (planning.order || ['scheduled', 'deadline']).filter((/** @type {string} */ k) => k === 'scheduled' || k === 'deadline')) {
+    const k = /** @type {'scheduled' | 'deadline'} */ (key);
+    if (planning[k]) segs.push({ text: /** @type {string} */ (planning[k]), skip: false, set: (t) => (planning[k] = t) });
+  }
+  for (const key of heading.propertyOrder || Object.keys(heading.properties)) {
+    const old = heading.properties[key];
+    if (old == null) continue;
+    segs.push({
+      text: old,
+      skip: false,
+      set: (t) => {
+        heading.properties[key] = t;
+        // Emacs changes the time stamp in place: the line keeps its own spacing
+        const lines = heading.raw && heading.raw.propertyLines;
+        const kept = lines && lines[key];
+        if (lines && kept && kept.value === old && kept.line.endsWith(old)) lines[key] = { line: kept.line.slice(0, kept.line.length - old.length) + t, value: t };
+      },
+    });
+  }
+  /** @param {string[]} lines */
+  const addLines = (lines) => {
+    const skipped = bodyLinesWithoutStamps(lines);
+    lines.forEach((text, i) => segs.push({ text, skip: skipped.has(i) || /^[ \t]*:(?: |$)/.test(text), set: (t) => (lines[i] = t) }));
+  };
+  addLines(heading.preLogLines || []);
+  addLines(heading.logbookLines);
+  addLines(heading.bodyLines);
+  return segs;
+}
+
+/** Whether the entry has a clock line Emacs counts (not one in a block or comment). @param {Heading} heading */
+export function hasClockLine(heading) {
+  return entrySegments(heading).some((s) => !s.skip && /^[ \t]*CLOCK:/.test(s.text));
+}
+
+/** The time stamps of the entry that repeat, in file order, as Emacs counts them; empty when the entry does not repeat (none, or the first is +0d).
+ *  @param {Heading} heading @returns {{ seg: StampSegment, index: number, stamp: string }[]} */
+function repeatingStamps(heading) {
+  const live = entrySegments(heading).filter((s) => !s.skip);
+  const masked = withoutInlineLiterals(live.map((s) => s.text).join('\n'));
+  let offset = 0;
+  /** @type {{ seg: StampSegment, index: number, stamp: string }[]} */
+  const stamps = [];
+  for (const seg of live) {
+    for (const m of seg.text.matchAll(ACTIVE_STAMP_RE)) if (masked.slice(offset + m.index, offset + m.index + m[0].length) === m[0] && REPEAT_RE.test(m[0])) stamps.push({ seg, index: m.index, stamp: m[0] });
+    offset += seg.text.length + 1;
+  }
+  const first = stamps.length ? /\+(\d+)[hdwmy]/.exec(stamps[0].stamp) : null;
+  return first && Number(first[1]) === 0 ? [] : stamps;
+}
+
+/** Whether the entry repeats (org-get-repeat is not nil and not zero). @param {Heading} heading */
+export function entryRepeats(heading) {
+  return repeatingStamps(heading).length > 0;
+}
+
+/**
  * `org-auto-repeat-maybe` for the time stamps: every active time stamp with a repeater in the entry (title, planning line,
- * drawers and text, not the sub-headings) moves on, and a SCHEDULED without a repeater is removed, as it no longer applies.
- * Returns false, and changes nothing, when the entry has no repeating time stamp.
+ * drawers and text, not the sub-headings, and not the places Emacs reads no time stamp in) moves on, and a SCHEDULED without a repeater
+ * is removed, as it no longer applies. The first repeater of the entry decides: a zero one (+0d) repeats nothing.
+ * Returns false, and changes nothing, when the entry does not repeat. Throws RepeatError when Emacs signals one: the stamps before it have moved.
  * @param {Heading} heading
  * @param {Date} now
  */
 export function shiftEntryRepeaters(heading, now) {
-  const shiftIn = (/** @type {string} */ text) => text.replace(ACTIVE_STAMP_RE, (stamp) => (REPEAT_RE.test(stamp) ? shiftTimestampString(stamp, now) || stamp : stamp));
-  const parts = [heading.title, heading.planning.scheduled, heading.planning.deadline, ...heading.bodyLines, ...heading.logbookLines, ...(heading.preLogLines || []), ...Object.values(heading.properties)];
-  if (!parts.some((t) => t && ACTIVE_STAMP_RE.test(t) && ((ACTIVE_STAMP_RE.lastIndex = 0), true) && t.match(ACTIVE_STAMP_RE)?.some((m) => REPEAT_RE.test(m)))) return false;
-  ACTIVE_STAMP_RE.lastIndex = 0;
+  const stamps = repeatingStamps(heading);
+  if (!stamps.length) return false;
   if (heading.planning.scheduled && !REPEAT_RE.test(heading.planning.scheduled)) heading.planning.scheduled = null;
-  heading.title = shiftIn(heading.title);
-  if (heading.planning.scheduled) heading.planning.scheduled = shiftIn(heading.planning.scheduled);
-  if (heading.planning.deadline) heading.planning.deadline = shiftIn(heading.planning.deadline);
-  heading.bodyLines = heading.bodyLines.map(shiftIn);
-  heading.logbookLines = heading.logbookLines.map(shiftIn);
-  if (heading.preLogLines) heading.preLogLines = heading.preLogLines.map(shiftIn);
-  for (const key of Object.keys(heading.properties)) heading.properties[key] = shiftIn(heading.properties[key]);
+  // the stamps move on in file order; one that Emacs refuses stops it there, the ones before it already moved
+  /** @type {Error | null} */
+  let failure = null;
+  /** @type {Map<StampSegment, { index: number, stamp: string, next: string }[]>} */
+  const bySeg = new Map();
+  for (const s of stamps) {
+    try {
+      bySeg.set(s.seg, [...(bySeg.get(s.seg) || []), { index: s.index, stamp: s.stamp, next: shiftTimestampString(s.stamp, now) || s.stamp }]);
+    } catch (err) {
+      failure = /** @type {Error} */ (err);
+      break;
+    }
+  }
+  for (const [seg, edits] of bySeg) {
+    let text = seg.text;
+    for (const e of [...edits].reverse()) text = text.slice(0, e.index) + e.next + text.slice(e.index + e.stamp.length);
+    seg.set(text);
+  }
+  if (failure) throw failure;
   return true;
 }
 

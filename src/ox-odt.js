@@ -11,6 +11,7 @@
  */
 
 import { buildExportTree, objects, isNumbered, lowLevel, resolveLink, ordinalOf, walk, lineage, parentHeadline } from './export-ascii.js';
+import { drawerAllowed } from './export-html.js';
 import { ENTITIES } from './entities.js';
 import { tableModel } from './table-model.js';
 import { createZip } from './zip-writer.js';
@@ -1173,18 +1174,7 @@ const TRANSCODERS = {
   },
   'export-block': (n) => (n.name === 'ODT' ? removeIndentation(n.lines || []).join('\n') + '\n' : null),
   'horizontal-rule': () => '\n<text:p text:style-name="Horizontal_20_Line"></text:p>',
-  drawer: (n, c, C) => {
-    const d = C.I.drawers;
-    if (d === false) return null;
-    if (Array.isArray(d)) {
-      const name = (n.name || '').toUpperCase();
-      const excluded = d.filter((x) => x.startsWith('!')).map((x) => x.slice(1).toUpperCase());
-      const included = d.filter((x) => !x.startsWith('!')).map((x) => x.toUpperCase());
-      if (excluded.includes(name)) return null;
-      if (included.length && !included.includes(name)) return null;
-    }
-    return c;
-  },
+  drawer: (n, c, C) => (drawerAllowed(C.I.htmlOptions.drawers, n.name || '') ? c : null),
   keyword: (n, _c, C) => {
     const value = n.value || '';
     if (n.key === 'ODT') return value;

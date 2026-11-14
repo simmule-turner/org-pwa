@@ -8,6 +8,7 @@
 /** @typedef {import('./types.js').Doc} Doc */
 
 import { parseBody } from './body-parser.js';
+import { isCommentedHeading } from './comment-model.js';
 import { expandReferences, macroDefinitions } from './org-macro.js';
 
 /** Splits a macro reference's own raw argument text on commas, the
@@ -65,6 +66,9 @@ const here = { heading: null, file: null };
 function expandMacrosInText(text, macros, doc, now) {
   return expandReferences(text, macros, { doc, now, heading: here.heading, file: here.file, counters });
 }
+
+/** The keywords whose value is text that can hold a macro. */
+const TEXT_KEYWORD_RE = /^(?:TITLE|SUBTITLE|AUTHOR|DATE|EMAIL|DESCRIPTION|KEYWORDS)$/i;
 
 /** `=verbatim=` and `~code~` spans: a macro written inside one is text, not a macro. */
 const CODE_SPAN_RE = /(^|[\s\-({'"])([=~])([^\s=~]|[^\s=~].*?[^\s=~])\2(?=$|[\s\-.,;:!?')}\]"])/g;
@@ -131,26 +135,31 @@ function expandMacros(doc, now, file = null) {
   const expand = (/** @type {string} */ text) => expandMacrosInText(text, macros, doc, now);
   const newBodyLines = expandBodyLines(doc.bodyLines || [], expand);
 
-  /** @param {Heading} heading
+  /** A commented heading and everything under it is left as it is (`org-in-commented-heading-p`).
+   *  @param {Heading} heading @param {boolean} [commented] a heading above is commented
    *  @returns {Heading} */
-  function walk(heading) {
+  function walk(heading, commented = false) {
     here.heading = heading;
-    const newTitle = expandMacrosInText(heading.title, macros, doc, now);
-    const newLines = expandBodyLines(heading.bodyLines || [], expand);
+    const leave = commented || isCommentedHeading(heading);
+    const newTitle = leave ? heading.title : expandMacrosInText(heading.title, macros, doc, now);
+    const newLines = leave ? heading.bodyLines || [] : expandBodyLines(heading.bodyLines || [], expand);
     return {
       ...heading,
       title: newTitle,
       bodyLines: newLines,
       body: parseBody(newLines),
-      children: (heading.children || []).map(walk),
+      children: (heading.children || []).map((child) => walk(child, leave)),
     };
   }
 
+  here.heading = null;
+  const keywords = (doc.keywords || []).map((k) => (TEXT_KEYWORD_RE.test(k.key) && k.value.includes('{{{') ? { ...k, value: expand(k.value) } : k)); // the title, author and date are text too
   return {
     ...doc,
+    keywords,
     bodyLines: newBodyLines,
     body: parseBody(newBodyLines),
-    children: (doc.children || []).map(walk),
+    children: (doc.children || []).map((h) => walk(h)),
   };
 }
 
@@ -163,7 +172,7 @@ function expandMacros(doc, now, file = null) {
 function expandMacrosForExport(doc, scope, now, file = null) {
   /** @param {Heading[]} headings @returns {boolean} */
   const uses = (headings) => headings.some((h) => h.title.includes('{{{') || (h.bodyLines || []).some((l) => l.includes('{{{')) || uses(h.children || []));
-  if (!(doc.bodyLines || []).some((l) => l.includes('{{{')) && !uses(doc.children || [])) return { doc, scope };
+  if (!(doc.bodyLines || []).some((l) => l.includes('{{{')) && !(doc.keywords || []).some((k) => TEXT_KEYWORD_RE.test(k.key) && k.value.includes('{{{')) && !uses(doc.children || [])) return { doc, scope };
   const expanded = expandMacros(doc, now, file);
   if (!scope) return { doc: expanded, scope };
   /** @param {Heading[]} from @param {Heading[]} to @returns {Heading | null} the heading in `to` at the place `scope` has in `from` */

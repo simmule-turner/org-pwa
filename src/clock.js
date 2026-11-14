@@ -316,7 +316,7 @@ function runningClockStartMs(heading) {
  * @param {string} raw
  *  null for anything unparseable. */
 function parseClockTimestampToDate(raw) {
-  const m = /(\d{4})-(\d{2})-(\d{2})(?:[^0-9]+(\d{2}):(\d{2}))?/.exec(raw);
+  const m = /(\d{4})-(\d{2})-(\d{2})(?:[^0-9]+(\d{1,2}):(\d{2}))?/.exec(raw);
   if (!m) return null;
   const [, y, mo, d, h, mi] = m;
   return new Date(Number(y), Number(mo) - 1, Number(d), h ? Number(h) : 0, mi ? Number(mi) : 0);

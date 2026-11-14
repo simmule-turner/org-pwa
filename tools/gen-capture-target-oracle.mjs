@@ -30,6 +30,19 @@ for (const prepend of [false, true]) {
     cases.push({ kind: 'clock', arg: '', type, prepend, init: DOC });
   }
 }
+// a (file+regexp) that finds an item of a nested list files into that list
+for (const type of ['item', 'checkitem']) {
+  for (const [init, re] of [
+    ['* A\n- skip\n  - here\n- skip\n', 'here'],
+    ['* A\n- skip\n  - here\n- skip\n', '^- skip'],
+    ['* A\n- a\n  - b\n    - c here\n  - d\n- e\n', 'c here'],
+    ['* A\n- a\n  - b\n    - c here\n  - d\n- e\n', '- b'],
+    ['* A\n- a\n  - b here\n    more\n  - d\n    text\n- e\n', 'b here'],
+    ['intro\n- a\n  - here\n', 'here'],
+  ]) cases.push({ kind: 'regexp', arg: re, type, prepend: false, init });
+}
+cases.push({ kind: 'regexp', arg: 'here', type: 'item', prepend: false, init: '* A\n- skip\n  - here\n- skip\n', template: '- X\n  Line 2' });
+cases.push({ kind: 'regexp', arg: 'here', type: 'item', prepend: false, init: '* A\n- skip\n  - here\n- skip\n', template: 'X\nLine 2' });
 // %^{Name}p asks for a property and sets it on the entry the placeholder is in
 const PROPS = [
   ['entry', '* TODO task %^{Effort}p', ['2h']],

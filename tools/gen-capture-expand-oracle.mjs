@@ -29,7 +29,7 @@ const T = [
   // escapes
   '\\%t', '\\\\%t', '\\\\\\%t', '100%', '%%', '50%% done', '%z',
   // whitespace and ends
-  '\n\n* TODO a', '* TODO a\n\n\n', '   \n', '', 'a\tb', '* a\n\tb', '%?', '* %?', '- %?\n  more', 'a %? b',
+  '\n\n* TODO a', '* TODO a\n\n\n', '   \n', '', '** ', '- X ', 'a  \n\n  \n', '* H  \nbody  \n \n', 'a\tb', '* a\n\tb', '%?', '* %?', '- %?\n  more', 'a %? b',
   // prompts
   '%^{Name}', '%^{Name}!', '%^{Name|Ada}', '%^{Name|Ada|Bob|Cy}', '%^{A} and %^{B}', '%^{A} %\\1', '%^{A} %^{B} %\\2 %\\1', '%\\3', '* %^{Title} %^g', '* %^{Title} :a:%^g', '%^G', '%^C', '%^L', '%^t', '%^T', '%^u', '%^U', '%^{Due}t', '%^{When}T',
   '* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?', '- [ ] %^{Item}\n  %U',

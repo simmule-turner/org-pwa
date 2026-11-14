@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v702 — Matching Org's own test suite
+Org's test suite fed inputs to Emacs and to the app, and where they differed the app now follows Emacs. Table formulas gain ~string()~, ~typeof()~, ~subvec()~, inherited ~$PROP_name~ and ~org-table-formula-create-columns~; table align and sort follow Org (with a case-sensitive sort). Repeating tasks skip comments and blocks, and the parser, export options, ~#+INCLUDE~, babel ~:var~ handling, footnotes, capture, attach and column view agree with Emacs more closely.
+Verified: Emacs 29.3 oracle cases for each area (about 2,000 new parser, 900 todo and 3,000 formula cases).
+
 * v701 — Column view, org-crypt, org-timer, capture targets, export options and calendar import
 Column view (~C-c C-x C-c~) shows properties as a table over the outline. org-crypt encrypts entries tagged ~:crypt:~ with a passphrase or an OpenPGP key and decrypts them on demand, keeping a typed passphrase for ten minutes (two hours at most), as gpg-agent does. org-timer brings the relative and countdown timers, in the modeline or page title. Capture targets gain ~file+regexp~, ~id~, ~clock~ and ~here~; more ~#+OPTIONS:~ keys are honored in export. iCalendar import turns rules a repeater cannot say into diary expressions and carries organizer, attendees, attachments and reminders.
 Verified: Emacs 29.3 checks of column view, org-crypt, org-timer, capture targets and nineteen recurrence rules, with examples for each.

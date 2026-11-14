@@ -169,7 +169,10 @@ function cleanupExpanded(text) {
   const first = text.search(/[^ \t\n\uE000]/);
   if (first === -1) return '';
   const lineStart = text.lastIndexOf('\n', first - 1) + 1;
-  const body = text.slice(lineStart).replace(/[ \t\n]+$/, '');
+  // only the blank lines after the last text are cut: spaces after its last word stay (`** ` is kept)
+  const tail = text.search(/[ \t\n]*$/);
+  const eol = text.indexOf('\n', tail);
+  const body = text.slice(lineStart, eol < 0 ? text.length : eol);
   return untabify(body) + '\n';
 }
 
@@ -634,6 +637,15 @@ function indentOf(line) {
   return /^[ \t]*/.exec(line)?.[0].replace(/\t/g, '        ').length ?? 0;
 }
 
+/** The list Emacs files into when it looks from line `offset` on: the one that holds the first item there, the nested one if that
+ * item is in one. @param {ReturnType<typeof findLists>[number]} list @param {number} offset */
+function innermostListFrom(list, offset) {
+  const first = list.items.find((it) => it.line >= offset);
+  if (!first) return list;
+  const items = list.items.filter((it) => it.parent === first.parent);
+  return { items, start: items[0].line, end: items[items.length - 1].end };
+}
+
 /** Files a list item (`org-capture-place-item`): into the first list of the entry's text (the file's text for a top
  *  level), else as a new list.
  * @param {Host} target @param {string} lead @param {string} text @param {boolean} prepend @param {number} before @param {number} after */
@@ -646,7 +658,7 @@ function placeItem(target, lead, text, prepend, before, after, keepEnd = false, 
     // at an exact position the lists are looked for from its line to the end of the entry's own text
     const lists = findLists(host.bodyLines).filter((l) => !exact || l.items.some((it) => it.line >= exact.offset));
     if (lists.length) {
-      found = { host, list: lists[0] };
+      found = { host, list: exact ? innermostListFrom(lists[0], exact.offset) : lists[0] };
       break;
     }
   }
@@ -682,7 +694,7 @@ function placeItem(target, lead, text, prepend, before, after, keepEnd = false, 
   const first = list.items[0];
   // Emacs indents a new last item like the list; one put first is not indented
   const indent = prepend ? 0 : indentOf(lines[first.line]);
-  const placed = itemLines.map((l) => (indentOf(l) < indent ? ' '.repeat(indent - indentOf(l)) + l : l));
+  const placed = itemLines.map((l) => ' '.repeat(indent) + l); // every line is indented, as `indent-to` does
   let at = prepend ? list.start : list.end;
   if (!prepend) at = blanksBefore(lines, at, Math.min(1, before));
   lines.splice(at, 0, ...placed);
@@ -775,24 +787,42 @@ function plannedTableRow(target, prepend = false, opts = {}) {
   }
 }
 
+/** The `#+TBLFM:` line of a table at the top of a file: the file keeps it among its keywords, not with the table.
+ * @param {Host} host @param {Table} table */
+function fileLevelFormulas(host, table) {
+  if (host.level || table.tblfm !== null) return null;
+  const keywords = /** @type {Doc} */ (host).keywords;
+  const end = table.lineIndex + table.lineCount;
+  return keywords?.find((k) => k.key.toUpperCase() === 'TBLFM' && (k.bodyLineIndex ?? 0) >= end && host.bodyLines.slice(end, k.bodyLineIndex ?? 0).every(BLANK)) ?? null;
+}
+
 /** Files a table row (`org-capture-place-table-line`): into the first table, or into a new one at the end of the text.
  * @param {Host} target @param {string} text @param {boolean} prepend @param {PlaceOptions} opts */
 function placeTableLine(target, text, prepend, opts) {
-  const cells = splitTableRowLine(text);
+  // each line of the template is a row of the table, or a rule
+  /** @type {import('./types.js').TableRow[]} */
+  const newRows = text.split('\n').map((l) => (/^[ \t]*\|-/.test(l) ? { type: 'rule' } : { type: 'row', cells: splitTableRowLine(l) }));
   const found = firstTableInFile(target, opts.exact);
   if (found) {
     const { host, table } = found;
     const at = tableRowIndex(table, prepend, opts.tableLinePos);
-    table.rows.splice(at, 0, { type: 'row', cells });
+    table.rows.splice(at, 0, ...newRows);
     // the formulas follow the rows (org-table-fix-formulas), then the table is worked out again
-    if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '@', {}, table.rows.slice(0, at + 1).filter((r) => r.type === 'row').length - 1, 1);
-    commit(host, table.lineIndex, table.lineCount, serializeTable(table, true));
+    const limit = table.rows.slice(0, at).filter((r) => r.type === 'row').length;
+    const fileFormulas = fileLevelFormulas(host, table);
+    if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '@', {}, limit, newRows.length);
+    else if (fileFormulas) {
+      fileFormulas.value = fixTableFormulas(fileFormulas.value, '@', {}, limit, newRows.length);
+      fileFormulas.raw = fileFormulas.raw.replace(/^([ \t]*#\+TBLFM:[ \t]*).*$/i, (/** @type {string} */ _m, /** @type {string} */ lead) => lead + fileFormulas.value);
+    }
+    // the table keeps the indentation of its first line, which is the new text (not indented) when it goes first
+    commit(host, table.lineIndex, table.lineCount, serializeTable(table, true, at === 0 ? '' : host.bodyLines[table.lineIndex]));
     const now = tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
-    if (now && now.tblfm && opts.recalculate) {
-      const rows = opts.recalculate(now);
+    if (now && (now.tblfm || fileFormulas) && opts.recalculate) {
+      const rows = opts.recalculate(fileFormulas ? { ...now, tblfm: fileFormulas.value } : now);
       if (rows) {
         now.rows = rows;
-        commit(host, now.lineIndex, now.lineCount, serializeTable(now, true));
+        commit(host, now.lineIndex, now.lineCount, serializeTable(now, true, host.bodyLines[now.lineIndex]));
       }
     }
     const filed = tablesOf(host).find((t) => t.lineIndex === table.lineIndex) || null;
@@ -800,14 +830,15 @@ function placeTableLine(target, text, prepend, opts) {
     return filed;
   }
   const host = opts.exact ? opts.exact.host : !target.level ? lastNodeOf(target) : target;
+  const firstCells = /** @type {import('./types.js').DataRow | undefined} */ (newRows.find((r) => r.type === 'row'))?.cells ?? [''];
   /** @type {import('./types.js').TableRow[]} */
-  const rows = [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
+  const rows = [{ type: 'row', cells: firstCells.map(() => '') }, { type: 'rule' }, ...newRows];
   const tableLines = serializeTable({ type: 'table', rows, tblfm: null, lineIndex: 0, lineCount: 0 }, true);
   const lead = opts.blankBeforeTable ? [''] : []; // org's one blank line before the table of a day it has just made
   const start = host.bodyLines.length + lead.length;
   commit(host, start - lead.length, 0, [...lead, ...tableLines]);
   const made = tablesOf(host)[0] || null;
-  if (made) opts.onFiled?.({ host, line: made.lineIndex, row: rows.length - 1 });
+  if (made) opts.onFiled?.({ host, line: made.lineIndex, row: 2 });
   return made;
 }
 

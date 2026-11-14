@@ -1,0 +1,652 @@
+[
+ {
+  "kind": "display",
+  "org": "* Head",
+  "fmt": "%ITEM",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "Head",
+      "* Head"
+     ]
+    ]
+   ],
+   "widths": [
+    6
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* [[https://orgmode.org][123]]",
+  "fmt": "%ITEM",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "[[https://orgmode.org][123]]",
+      "* 123"
+     ]
+    ]
+   ],
+   "widths": [
+    5
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* [[https://orgmode.org]] and [[file:a.org][b]]",
+  "fmt": "%ITEM",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "[[https://orgmode.org]] and [[file:a.org][b]]",
+      "* https://orgmode.org and b"
+     ]
+    ]
+   ],
+   "widths": [
+    27
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* [[https://orgmode.org][A long description]]",
+  "fmt": "%12ITEM",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "[[https://orgmode.org][A long description]]",
+      "* A long description"
+     ]
+    ]
+   ],
+   "widths": [
+    12
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "** Deep :t:\n*** Deeper",
+  "fmt": "%ITEM %TAGS",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "Deep",
+      "** Deep"
+     ],
+     [
+      ":t:",
+      ":t:"
+     ]
+    ],
+    [
+     [
+      "Deeper",
+      "*** Deeper"
+     ],
+     [
+      "",
+      ""
+     ]
+    ]
+   ],
+   "widths": [
+    10,
+    4
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* H\n:PROPERTIES:\n:P: 123456\n:END:",
+  "fmt": "%5P",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "123456",
+      "123456"
+     ]
+    ]
+   ],
+   "widths": [
+    5
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* H\n:PROPERTIES:\n:P: 12\n:END:",
+  "fmt": "%P(Title)",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "12",
+      "12"
+     ]
+    ]
+   ],
+   "widths": [
+    5
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* Head",
+  "fmt": "%ITEM %ITEM(Name)",
+  "emacs": {
+   "rows": [
+    [
+     [
+      "Head",
+      "* Head"
+     ],
+     [
+      "Head",
+      "* Head"
+     ]
+    ]
+   ],
+   "widths": [
+    6,
+    6
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* H\n*************** Inline task\n:PROPERTIES:\n:A: 2\n:END:\n*************** END\n** Children\n:PROPERTIES:\n:A: 3\n:END:\n",
+  "fmt": "%ITEM %A{min}",
+  "inline": 15,
+  "emacs": {
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ],
+    [
+     [
+      "Inline task",
+      "* Inline task"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ],
+    [
+     [
+      "Children",
+      "** Children"
+     ],
+     [
+      "3",
+      "3"
+     ]
+    ]
+   ],
+   "widths": [
+    13,
+    1
+   ]
+  }
+ },
+ {
+  "kind": "display",
+  "org": "* H\n*************** TODO Task\n:PROPERTIES:\n:A: 5\n:END:\nbody\n*************** END\n* Next\n",
+  "fmt": "%ITEM %A{max}",
+  "inline": 15,
+  "emacs": {
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "5",
+      "5"
+     ]
+    ],
+    [
+     [
+      "Task",
+      "* Task"
+     ],
+     [
+      "5",
+      "5"
+     ]
+    ]
+   ],
+   "widths": [
+    6,
+    1
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 99\n:END:",
+  "fmt": "%A %A{max}",
+  "op": "left",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %A{max} %A\n* H\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 99\n:END:",
+   "rows": [
+    [
+     [
+      "99",
+      "99"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "99",
+      "99"
+     ],
+     [
+      "99",
+      "99"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:",
+  "fmt": "%A %B",
+  "op": "left",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %B %A\n* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:",
+   "rows": [
+    [
+     [
+      "2",
+      "2"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:",
+  "fmt": "%A %B",
+  "op": "right",
+  "col": 0,
+  "emacs": {
+   "text": "#+COLUMNS: %B %A\n* H\n:PROPERTIES:\n:A: 1\n:B: 2\n:END:",
+   "rows": [
+    [
+     [
+      "2",
+      "2"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+  "fmt": "%ITEM %A{min} %A{max}",
+  "op": "left",
+  "col": 2,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %A{max} %A{min}\n* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+  "fmt": "%ITEM %A{min} %A{max}",
+  "op": "right",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %A{max} %A{min}\n* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+  "fmt": "%ITEM %A{min} %A{max}",
+  "op": "widen",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %2A{min} %A{max}\n* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+  "fmt": "%ITEM %A{min} %A{max}",
+  "op": "narrow",
+  "col": 2,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %A{min} %1A{max}\n* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "1",
+      "1"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "2",
+      "2"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+  "fmt": "%ITEM %A{min} %A{max}",
+  "op": "delete",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %A{max}\n* H\n** S1\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 2\n:END:",
+   "rows": [
+    [
+     [
+      "H",
+      "* H"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "1",
+      "1"
+     ]
+    ],
+    [
+     [
+      "S1",
+      "** S1"
+     ],
+     [
+      "2",
+      "2"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "edit",
+  "org": "* H\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 99\n:END:",
+  "fmt": "%A %A{max}",
+  "op": "delete",
+  "col": 0,
+  "emacs": {
+   "text": "#+COLUMNS: %A{max}\n* H\n:PROPERTIES:\n:A: 1\n:END:\n** S1\n:PROPERTIES:\n:A: 99\n:END:",
+   "rows": [
+    [
+     [
+      "99",
+      "99"
+     ]
+    ],
+    [
+     [
+      "99",
+      "99"
+     ]
+    ]
+   ]
+  }
+ },
+ {
+  "kind": "new",
+  "org": "#+COLUMNS: %ITEM %BAR\n* H",
+  "fmt": "%ITEM %BAR",
+  "name": "Foo",
+  "col": 1,
+  "emacs": {
+   "text": "#+COLUMNS: %ITEM %Foo %BAR\n* H"
+  }
+ },
+ {
+  "kind": "new",
+  "org": "#+columns: %ITEM %BAR\n* H",
+  "fmt": "%ITEM %BAR",
+  "name": "Foo",
+  "col": 1,
+  "emacs": {
+   "text": "#+columns: %ITEM %Foo %BAR\n* H"
+  }
+ },
+ {
+  "kind": "new",
+  "org": "* H",
+  "fmt": "%ITEM",
+  "name": "Foo",
+  "col": 0,
+  "emacs": {
+   "text": "#+COLUMNS: %Foo %ITEM\n* H"
+  }
+ },
+ {
+  "kind": "new",
+  "org": "* H",
+  "fmt": "%ITEM",
+  "name": "FOO",
+  "col": 0,
+  "emacs": {
+   "text": "#+COLUMNS: %FOO %ITEM\n* H"
+  }
+ },
+ {
+  "kind": "new",
+  "org": "* H\n:PROPERTIES:\n:COLUMNS: %ITEM\n:END:",
+  "fmt": "%ITEM",
+  "name": "Foo",
+  "col": 0,
+  "emacs": {
+   "text": "* H\n:PROPERTIES:\n:COLUMNS:  %Foo %ITEM\n:END:"
+  }
+ }
+]

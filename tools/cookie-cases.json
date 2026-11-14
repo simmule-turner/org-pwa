@@ -97,5 +97,11 @@
 },
 {
 "org": "* P [/]\n- [X] a\n  - [X] b\n    - [ ] c\n"
+},
+{
+"org": "* h\n- a [/]\n  - [X] x\n    :D:\n    - [X] z\n    :END:\n  - [X] y\n"
+},
+{
+"org": "* h\n- a [/]\n  - [X] x\n  - [ ] y\n    :D:\n    - [X] z\n    :END:\n"
 }
 ]

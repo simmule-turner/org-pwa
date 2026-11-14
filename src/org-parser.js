@@ -377,7 +377,7 @@ function parseOrg(text, opts = {}) {
     if (current.type === 'document') {
       const km = KEYWORD_RE.exec(line);
       if (km) {
-        doc.keywords.push({ key: km[1], value: km[2], bodyLineIndex: doc.bodyLines.length });
+        doc.keywords.push({ key: km[1], value: km[2], bodyLineIndex: doc.bodyLines.length, raw: line }); // raw: written back as read while key and value are unchanged
         i++;
         continue;
       }
@@ -549,7 +549,8 @@ function serializeOrg(doc) {
       out.push(bodyLines[bodyIdx]);
       bodyIdx++;
     }
-    out.push(`#+${kw.key}: ${kw.value}`);
+    const rawRead = typeof kw.raw === 'string' ? KEYWORD_RE.exec(kw.raw) : null;
+    out.push(rawRead && rawRead[1] === kw.key && rawRead[2] === kw.value ? kw.raw : `#+${kw.key}: ${kw.value}`);
   }
   for (; bodyIdx < bodyLines.length; bodyIdx++) out.push(bodyLines[bodyIdx]);
   for (const child of doc.children) serializeNode(child, out);

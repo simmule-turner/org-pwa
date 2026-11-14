@@ -18,6 +18,9 @@ const lines = [
   'file:foo.org and file:bar.org::*h', 'ftp://host/file.txt.', 'http://a.b/c-d_e~f', 'https://example.org/#sec-1.2,', 'news:comp.emacs end', 'id:abc-123 plain', 'doi:10.1/x plain',
   '[[https://x.org][desc with *bold* and [[nested]]]]', '[[https://x.org][]]', '[[ spaced ]]', '[[https://x.org][desc]][[https://y.org]]', 'adjacent[[https://x.org]]text',
   'tel:+1234 and  xmpp:me@x.org', '[[  https://x.org  ][d]]', '[[file:a b.org][sp]]', '[[https://x.org][desc ]] after', '[fn:1] not link [[https://x.org]]',
+  // a break inside a link, a plain link after a quote, a dollar or a percent sign, and at a no-break space
+  '[[a\nb]]', '[[a \n  b]]', '[[https://x.org\n/y]]', '[[a][b\nc]]', '[[a\nb][c]]', '<https://x.org\n.org>', '<https://x.org\n  .org>', '<https://x\n .org\n z>',
+  "'https://x.org", '$https://x.org', '%https://x.org', '"https://x.org', '(https://x.org', 'a https://x.org\u00a0b', 'https://x.org/a\u00a0b', '[[a][b $c$ d]]', '[[a][*b* /c/]]',
   '[[https://example.org/a%20b][pct]]', '[[https://example.org/(paren)][p]]', 'a [[x]] [[y]] [[z]]', '[[file:a.org::/re/][r]]', '[[file:a.org::(ref)][c]]',
 ];
 const cases = lines.map((l) => ({ line: l }));

@@ -22,6 +22,8 @@
  * single-timestamp parser should decide on its own.
  */
 
+import { matchLatexFragmentAt } from './inline-markup.js';
+
 // A whole timestamp as org-element reads it: the date, then (after one space) anything but a closing bracket, then a closer. The two brackets
 // need not match -- the opener alone says active or inactive -- and everything after the date is read loosely, as below.
 const TIMESTAMP_RE = /^([<[])(\d{4})-(\d{2})-(\d{2})((?: [^\]>\n]*?)?)[\]>]$/;
@@ -53,8 +55,9 @@ function parseOrgTimestamp(raw) {
   const range = RANGE_RE.exec(rest);
   const rep = REPEATER_RE.exec(text);
   const warn = WARNING_RE.exec(text);
-  const repeater = rep ? `${rep[1]}${rep[2]}${unitOf(rep[3])}${rep[4] || ''}` : null;
-  const delay = warn ? `${warn[1] ? '--' : '-'}${warn[2]}${unitOf(warn[3])}` : null;
+  // the numbers are read as numbers (`+01d` is `+1d`) and the unit lower-cased, as Org reads them
+  const repeater = rep ? `${rep[1]}${Number(rep[2])}${unitOf(rep[3])}${rep[4] ? `/${Number(rep[4].slice(1, -1))}${unitOf(rep[4].slice(-1))}` : ''}` : null;
+  const delay = warn ? `${warn[1] ? '--' : '-'}${Number(warn[2])}${unitOf(warn[3])}` : null;
 
   const hasTime = clock !== null;
   /** @param {number} h @param {number} min */
@@ -70,15 +73,81 @@ function parseOrgTimestamp(raw) {
   // construct entirely, not this single-timestamp form.
   const endDate = hasTime && range ? at(Number(range[1]), Number(range[2])) : null;
 
+  // `date` and `endDate` are moments, so a day or time that does not exist (2021-02-29, 24:00, 10:60) is a neighbor of it there;
+  // `fields` holds the numbers as they are written, which is what Org keeps
+  const fields = {
+    year: Number(y),
+    month: Number(mo),
+    day: Number(d),
+    hour: hasTime ? Number(clock[1]) : null,
+    minute: hasTime ? Number(clock[2]) : null,
+    endHour: hasTime && range ? Number(range[1]) : null,
+    endMinute: hasTime && range ? Number(range[2]) : null,
+  };
+
   return {
     active: open === '<',
     date,
     hasTime,
     endDate,
+    fields,
     repeater,
     delay,
     raw,
   };
+}
+
+/**
+ * The text with everything that is no part of the objects of Org's paragraphs blanked out (the line breaks stay, so every position is
+ * kept): comment, fixed-width, keyword, clock and property lines, the inside of source, example, comment and export blocks and of LaTeX
+ * environments, `=verbatim=` and `~code~` text, a bracket link (its text as well), a target, a LaTeX fragment, a macro, and inline source
+ * and call.
+ * @param {string} text
+ */
+function objectText(text) {
+  const blank = (/** @type {string} */ line) => line.replace(/[^\n]/g, ' ');
+  const lines = text.split('\n');
+  /** @type {string | null} */ let block = null; // the end line of the block being skipped
+  let drawer = false;
+  const kept = lines.map((line) => {
+    if (block !== null) {
+      if (new RegExp(`^[ \\t]*#\\+end_${block}[ \\t]*$`, 'i').test(line)) block = null;
+      return blank(line);
+    }
+    if (drawer) {
+      if (/^[ \t]*:END:[ \t]*$/i.test(line)) drawer = false;
+      return blank(line);
+    }
+    const begin = /^[ \t]*#\+begin_(\S+)/i.exec(line);
+    if (begin && /^(?:src|example|comment|export)$/i.test(begin[1])) {
+      block = begin[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return blank(line);
+    }
+    if (/^[ \t]*:PROPERTIES:[ \t]*$/i.test(line)) {
+      drawer = true;
+      return blank(line);
+    }
+    if (/^[ \t]*(?:#(?: |$)|:(?: |$)|CLOCK:)/.test(line)) return blank(line);
+    if (/^[ \t]*#\+\S+:/.test(line)) return blank(line); // a keyword's value is no object
+    return line;
+  });
+  let joined = kept.join('\n');
+  // a LaTeX environment, then the fragments in a line
+  joined = joined.replace(/^[ \t]*\\begin\{([A-Za-z0-9*]+)\}[\s\S]*?\\end\{\1\}[ \t]*$/gim, blank);
+  for (let at = 0; at < joined.length; at++) {
+    if (joined[at] !== '$' && joined[at] !== '\\') continue;
+    const fragment = matchLatexFragmentAt(joined, at);
+    if (fragment) {
+      joined = joined.slice(0, at) + blank(joined.slice(at, at + fragment.length)) + joined.slice(at + fragment.length);
+      at += fragment.length - 1;
+    }
+  }
+  return joined
+    .replace(/(^|[ \t\n\-({'"])([=~])(?=\S)((?:[^\n]*\n)?[^\n]*?[^\s])\2(?=$|[ \t\n\-.,;:!?'")}[])/g, (all, pre, mark, body) => pre + blank(mark + body + mark))
+    .replace(/\[\[(?:[^\][\\]|\\[\][\\])+\](?:\[[\s\S]+?\])?\]/g, blank) // a bracket link: the address and the text
+    .replace(/<<<?[^<>\n]+>>>?/g, blank)
+    .replace(/\{\{\{[a-zA-Z][-a-zA-Z0-9_]*(?:\([\s\S]*?\))?\}\}\}/g, blank)
+    .replace(/\b(?:src_[^ \t\n[{]+(?:\[[^\]\n]*\])?\{[^\n]*?\}|call_[^ \t\n[(]+(?:\[[^\]\n]*\])?\([^\n]*?\)(?:\[[^\]\n]*\])?)/g, blank);
 }
 
 /**
@@ -92,16 +161,31 @@ function parseOrgTimestamp(raw) {
  * timestamp objects (same shape as parseOrgTimestamp's) in the order
  * found, reusing that same parser/validator for each match rather than
  * duplicating its bracket-matching logic.
+ *
+ * Only where Org has objects: not in comments, fixed-width text, keywords, clock lines, source, example, comment and export blocks,
+ * `=verbatim=` and `~code~` text, the address of a link, or a target. A timestamp, `--`, and a timestamp is one timestamp, a range:
+ * the result is the first, with `raw` the whole range and `end` the second.
  * @param {string} text
+ * @returns {Array<NonNullable<ReturnType<typeof parseOrgTimestamp>> & { end?: NonNullable<ReturnType<typeof parseOrgTimestamp>> }>}
  */
 function findTimestamps(text) {
   if (!text) return [];
+  const masked = objectText(text);
+  /** @type {Array<NonNullable<ReturnType<typeof parseOrgTimestamp>> & { end?: NonNullable<ReturnType<typeof parseOrgTimestamp>> }>} */
   const results = [];
   TIMESTAMP_SCAN_RE.lastIndex = 0;
   let m;
-  while ((m = TIMESTAMP_SCAN_RE.exec(text))) {
-    const parsed = parseOrgTimestamp(m[0]);
-    if (parsed) results.push(parsed);
+  let previousEnd = -1;
+  while ((m = TIMESTAMP_SCAN_RE.exec(masked))) {
+    const raw = text.slice(m.index, m.index + m[0].length);
+    const parsed = parseOrgTimestamp(raw);
+    if (!parsed) continue;
+    const last = results[results.length - 1];
+    if (last && !last.end && previousEnd >= 0 && text.slice(previousEnd, m.index) === '--') {
+      last.end = parsed;
+      last.raw = text.slice(m.index - last.raw.length - 2, m.index + raw.length);
+    } else results.push(parsed);
+    previousEnd = m.index + raw.length;
   }
   return results;
 }

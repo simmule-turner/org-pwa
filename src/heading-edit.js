@@ -21,7 +21,7 @@
 
 import { findContainer, findAncestorPath, shiftLevels } from './archive-model.js';
 import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
-import { parseOrg, serializeHeadingSubtree } from './org-parser.js';
+import { parseOrg, serializeOrg, serializeHeadingSubtree, headingLineIndex } from './org-parser.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -252,18 +252,53 @@ export function insertChildHeading(parent, opts = {}, prepend = false) {
 }
 
 /**
- * Inserts a new sibling heading immediately after `heading`, at the
- * SAME level -- real org's own org-insert-heading (M-RET), which
- * inserts relative to point, not always at the document root the
- * way the "+" toolbar button's own insertTopLevelHeading does. No-op
+ * org--blank-before-heading-p with `org-blank-before-new-entry` at its default (auto): whether the heading `heading` has an empty
+ * line above it, which is whether a new heading beside it gets one too. A heading on the first line looks at the next heading instead,
+ * or, with none, at the end of the file.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ * @returns {boolean}
+ */
+function blankBeforeNewEntry(doc, heading) {
+  const text = serializeOrg(doc);
+  const lines = text.split('\n');
+  const at = headingLineIndex(doc).lines.get(heading);
+  if (!at) return false;
+  const blank = (/** @type {number} */ n) => n > 0 && /^[ \t]*$/.test(lines[n - 1]);
+  if (at.line > 0) return blank(at.line);
+  const after = lines.findIndex((l, j) => j > 0 && /^\*+ /.test(l));
+  if (after > 0) return blank(after);
+  const trimmedEnd = text.replace(/[ \t]+$/, ''); // the end of the file, when that is the start of a line: the line above it
+  if (trimmedEnd.length === 0 || trimmedEnd.endsWith('\n')) {
+    const end = trimmedEnd.split('\n');
+    return end.length >= 2 && /^[ \t]*$/.test(end[end.length - 2]);
+  }
+  return false;
+}
+
+/**
+ * Inserts a new sibling heading immediately after `heading`'s subtree, at the
+ * SAME level -- real org's own org-insert-heading with C-u (M-RET): the empty lines before the new heading
+ * are made one when the heading has one above it (org-blank-before-new-entry, auto), else none. No-op
  * (returns null) if `heading` can't be located in `doc` at all.
  * @param {Doc} doc
  * @param {Heading} heading
+ * @param {Record<string, any>} [opts]
+ * @param {boolean} [blank] whether an empty line goes before the new heading
  */
-function insertHeadingAfterRaw(doc, heading, opts = {}) {
+function insertHeadingAfterRaw(doc, heading, opts = {}, blank = false) {
   const located = findContainer(doc, heading);
   if (!located) return null;
   const sibling = createHeading({ level: heading.level, ...opts });
+  /** @type {Heading} */
+  let owner = heading;
+  while (owner.children.length > 0) owner = owner.children[owner.children.length - 1];
+  const lines = owner.bodyLines;
+  const emptyAbove = lines.length > 0 && /^[ \t]*$/.test(lines[lines.length - 1]);
+  if (!(blank && emptyAbove)) {
+    while (lines.length > 0 && /^[ \t]*$/.test(lines[lines.length - 1])) lines.pop(); // org-N-empty-lines-before-current
+    if (blank) lines.push('');
+  }
   located.container.splice(located.index + 1, 0, sibling);
   return sibling;
 }
@@ -469,7 +504,12 @@ function demoteHeadingRaw(doc, heading) {
   return true;
 }
 
-export const insertHeadingAfter = keepFinalNewline(insertHeadingAfterRaw);
+const insertHeadingAfterKeepingNewline = keepFinalNewline(insertHeadingAfterRaw);
+
+/** Inserts a new sibling heading after the subtree of `heading` (see insertHeadingAfterRaw). @param {Doc} doc @param {Heading} heading @param {Record<string, any>} [opts] */
+export function insertHeadingAfter(doc, heading, opts = {}) {
+  return insertHeadingAfterKeepingNewline(doc, heading, opts, blankBeforeNewEntry(doc, heading));
+}
 
 const removeHeadingKeepingNewline = keepFinalNewline(removeHeadingRaw);
 
@@ -495,20 +535,35 @@ export const promoteHeading = keepFinalNewline(promoteHeadingRaw);
 export const demoteHeading = keepFinalNewline(demoteHeadingRaw);
 
 /**
- * org-paste-subtree on `heading`: the subtrees in `text` go in after it, at its level. Returns the pasted headings, or null when
- * `text` holds no heading or `heading` is not in `doc`.
+ * org-paste-subtree on `heading`: the subtrees in `text` go in after it, at its level (or at `level`, Emacs's numeric prefix). On a
+ * heading that is nothing but its stars, with point after them (`atStars`), they take its place at its level; the empty line the
+ * heading's own line break leaves stays above them. Returns the pasted headings, or null when `text` holds no heading or `heading` is
+ * not in `doc`.
  * @param {Doc} doc
  * @param {Heading} heading
  * @param {string} text
+ * @param {number} [level]
+ * @param {boolean} [atStars] point is after the stars of `heading`, which is nothing else (not at the start of its line)
+ * @param {boolean} [lineBreak] whether the line of `heading` ends with a line break (the last one of a file may not)
  * @returns {Heading[] | null}
  */
-function pasteSubtreeAfterRaw(doc, heading, text) {
+function pasteSubtreeAfterRaw(doc, heading, text, level, atStars = false, lineBreak = true) {
   const parsed = parseOrg(text.replace(/\r?\n$/, ''));
   if (!parsed.children || parsed.children.length === 0) return null;
   const located = findContainer(doc, heading);
   if (!located) return null;
-  for (const node of parsed.children) shiftLevels(node, heading.level);
-  located.container.splice(located.index + 1, 0, ...parsed.children);
+  const bare = atStars && heading.title === '' && !heading.todo && !heading.priority && heading.tags.length === 0 && heading.bodyLines.length === 0 && heading.children.length === 0;
+  for (const node of parsed.children) shiftLevels(node, level ?? heading.level);
+  if (bare && lineBreak) {
+    /** @type {Doc | Heading} */
+    let before = (findAncestorPath(doc, heading) || []).slice(-1)[0] || doc;
+    if (located.index > 0) {
+      before = located.container[located.index - 1];
+      while (before.children.length > 0) before = before.children[before.children.length - 1];
+    }
+    before.bodyLines.push('');
+  }
+  located.container.splice(located.index + (bare ? 0 : 1), bare ? 1 : 0, ...parsed.children);
   return parsed.children;
 }
 
@@ -523,4 +578,11 @@ export function subtreeText(doc, heading) {
   return last && inSubtree(heading, last) && text.endsWith('\n') ? text : text + '\n'; // the last heading's own text already ends the file
 }
 
-export const pasteSubtreeAfter = keepFinalNewline(pasteSubtreeAfterRaw, false);
+const pasteSubtreeAfterKeepingNewline = keepFinalNewline(pasteSubtreeAfterRaw, false);
+
+/** org-paste-subtree on `heading` (see pasteSubtreeAfterRaw). @param {Doc} doc @param {Heading} heading @param {string} text @param {number} [level] @param {boolean} [atStars] */
+export function pasteSubtreeAfter(doc, heading, text, level, atStars = false) {
+  const last = lastHeading(doc);
+  const lineBreak = last !== heading || (heading.bodyLines.length > 0 && heading.bodyLines[heading.bodyLines.length - 1] === ''); // the last line of a file may end without one
+  return pasteSubtreeAfterKeepingNewline(doc, heading, text, level, atStars, lineBreak);
+}

@@ -1,0 +1,26 @@
+[
+ {
+  "org": "#+MACRO: m X\n{{{m}}} pre\n* COMMENT C\n{{{m}}} a\n** Sub\n{{{m}}} b\n* D\n{{{m}}} d\n",
+  "emacs": "#+MACRO: m X\nX pre\n* COMMENT C\n{{{m}}} a\n** Sub\n{{{m}}} b\n* D\nX d\n"
+ },
+ {
+  "org": "#+MACRO: m X\n* COMMENT {{{m}}} title\n{{{m}}}\n* {{{m}}} title\n",
+  "emacs": "#+MACRO: m X\n* COMMENT {{{m}}} title\n{{{m}}}\n* X title\n"
+ },
+ {
+  "org": "#+MACRO: m X\n* TODO COMMENT x {{{m}}}\n{{{m}}}\n** TODO y\n{{{m}}}\n* DONE [#A] COMMENT z\n{{{m}}}\n",
+  "emacs": "#+MACRO: m X\n* TODO COMMENT x {{{m}}}\n{{{m}}}\n** TODO y\n{{{m}}}\n* DONE [#A] COMMENT z\n{{{m}}}\n"
+ },
+ {
+  "org": "#+MACRO: m X\n* COMMENTED {{{m}}}\n{{{m}}}\n* COMMENT\n{{{m}}}\n",
+  "emacs": "#+MACRO: m X\n* COMMENTED X\nX\n* COMMENT\n{{{m}}}\n"
+ },
+ {
+  "org": "#+MACRO: m X\n* TODO {{{m}}} a\n** COMMENT b\n*** c\n{{{m}}}\n** d\n{{{m}}}\n",
+  "emacs": "#+MACRO: m X\n* TODO X a\n** COMMENT b\n*** c\n{{{m}}}\n** d\nX\n"
+ },
+ {
+  "org": "#+MACRO: m X\n#+MACRO: n (eval (number-to-string (+ 1 1)))\n* COMMENT C\n{{{n}}}\n* D\n{{{n}}}\n",
+  "emacs": "#+MACRO: m X\n#+MACRO: n (eval (number-to-string (+ 1 1)))\n* COMMENT C\n{{{n}}}\n* D\n2\n"
+ }
+]

@@ -187,6 +187,13 @@ export function resolveAttachmentDirectory(doc, heading, documentId, inherit = f
   if (!inherit) return ownAttachmentDirectory(/** @type {Heading} */ (heading), documentId);
   const ancestors = findAncestorPath(doc, /** @type {Heading} */ (heading)) || [];
   const chain = [/** @type {Heading} */ (heading), ...ancestors.slice().reverse()];
+  // org-attach-dir looks for a DIR through the whole chain before it looks for an ID
+  for (const candidate of chain) {
+    const named = getProperty(candidate, 'DIR');
+    if (named === undefined || named === null || named === '') continue;
+    const dir = ownAttachmentDirectory(candidate, documentId);
+    if (dir) return dir;
+  }
   for (const candidate of chain) {
     const dir = ownAttachmentDirectory(candidate, documentId);
     if (dir) return dir;

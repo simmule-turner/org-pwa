@@ -5651,6 +5651,755 @@
    "state": "",
    "org": "#+TODO: TODO NEXT | DONE CANC\n#+STARTUP: logdone\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\nSee [2026-10-05 Mon +1w]\n",
    "emacs": "#+TODO: TODO NEXT | DONE CANC\n#+STARTUP: logdone\n* t\nSCHEDULED: <2026-10-05 Mon +1d>\nSee [2026-10-05 Mon +1w]\n"
+  },
+  {
+   "head": "zero",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +0d>\n",
+   "emacs": "* DONE t\nSCHEDULED: <2026-10-05 Mon +0d>\n"
+  },
+  {
+   "head": "zero",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +0d>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\nSCHEDULED: <2026-10-05 Mon +0d>\n"
+  },
+  {
+   "head": "zero",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +0d>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\nSCHEDULED: <2026-10-05 Mon +0d>\n"
+  },
+  {
+   "head": "zeroFirst",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n",
+   "emacs": "* DONE t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n"
+  },
+  {
+   "head": "zeroFirst",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n"
+  },
+  {
+   "head": "zeroFirst",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n<2026-10-05 Mon +0w> <2026-10-06 Tue +1w>\n"
+  },
+  {
+   "head": "zeroSecond",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +0w>\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n<2026-10-12 Mon +1w> <2026-10-06 Tue +0w>\n"
+  },
+  {
+   "head": "zeroSecond",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +0w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n<2026-10-12 Mon +1w> <2026-10-06 Tue +0w>\n"
+  },
+  {
+   "head": "zeroSecond",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +0w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-12 Mon +1w> <2026-10-06 Tue +0w>\n"
+  },
+  {
+   "head": "hourNoTime",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "hourNoTime",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "hourNoTime",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +2h>\n"
+  },
+  {
+   "head": "hourTime",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 +5h>\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-11 Sun 17:00 +5h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "hourTime",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 +5h>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-11 Sun 17:00 +5h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "hourTime",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 +5h>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-11 Sun 17:00 +5h>\n"
+  },
+  {
+   "head": "hourTimeDot",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 .+5h>\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-11 Sun 21:30 .+5h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "hourTimeDot",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 .+5h>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-11 Sun 21:30 .+5h>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "hourTimeDot",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-11 Sun 12:00 .+5h>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-11 Sun 21:30 .+5h>\n"
+  },
+  {
+   "head": "hourNoTimeAfter",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n<2026-10-12 Mon +1w> <2026-10-06 Tue +2h>\n"
+  },
+  {
+   "head": "hourNoTimeAfter",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n<2026-10-12 Mon +1w> <2026-10-06 Tue +2h>\n"
+  },
+  {
+   "head": "hourNoTimeAfter",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon +1w> <2026-10-06 Tue +2h>\n",
+   "emacs": "ERROR Cannot repeat in 2 hour(s) because no hour has been set\n#+STARTUP: nologrepeat\n* TODO t\n<2026-10-12 Mon +1w> <2026-10-06 Tue +2h>\n"
+  },
+  {
+   "head": "clock",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n"
+  },
+  {
+   "head": "clock",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n"
+  },
+  {
+   "head": "clock",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n"
+  },
+  {
+   "head": "clockDrawer",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:LOGBOOK:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:LOGBOOK:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n"
+  },
+  {
+   "head": "clockDrawer",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:LOGBOOK:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n"
+  },
+  {
+   "head": "clockDrawer",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:LOGBOOK:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n:END:\n"
+  },
+  {
+   "head": "clockInExample",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "clockInExample",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "clockInExample",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n#+BEGIN_EXAMPLE\nCLOCK: [2026-10-05 Mon 10:00]--[2026-10-05 Mon 11:00] =>  1:00\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "lastRepeat",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-01-01 Thu 10:00]\n:END:\n",
+   "emacs": "* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "lastRepeat",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-01-01 Thu 10:00]\n:END:\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "lastRepeat",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-05 Mon +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-01-01 Thu 10:00]\n:END:\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-01-01 Thu 10:00]\n:END:\n"
+  },
+  {
+   "head": "partOrder",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon -2d +1w>\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n<2026-10-12 Mon -2d +1w>\n"
+  },
+  {
+   "head": "partOrder",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon -2d +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n<2026-10-12 Mon -2d +1w>\n"
+  },
+  {
+   "head": "partOrder",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon -2d +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-12 Mon -2d +1w>\n"
+  },
+  {
+   "head": "partOrderDeadline",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\nDEADLINE: <2026-10-20 Tue -3d +1m>\n",
+   "emacs": "* TODO t\nDEADLINE: <2026-11-20 Fri -3d +1m>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "partOrderDeadline",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\nDEADLINE: <2026-10-20 Tue -3d +1m>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\nDEADLINE: <2026-11-20 Fri -3d +1m>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "partOrderDeadline",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\nDEADLINE: <2026-10-20 Tue -3d +1m>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\nDEADLINE: <2026-11-20 Fri -3d +1m>\n"
+  },
+  {
+   "head": "propStamp",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n:PROPERTIES:\n:FOO: <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:FOO: <2026-10-12 Mon +1w>\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "propStamp",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:FOO: <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:FOO: <2026-10-12 Mon +1w>\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "propStamp",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n:PROPERTIES:\n:FOO: <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n:PROPERTIES:\n:FOO: <2026-10-12 Mon +1w>\n:END:\n"
+  },
+  {
+   "head": "propStampSpaced",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-12 Mon +1w>\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "propStampSpaced",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-12 Mon +1w>\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n"
+  },
+  {
+   "head": "propStampSpaced",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n:PROPERTIES:\n:FOO:      <2026-10-12 Mon +1w>\n:END:\n"
+  },
+  {
+   "head": "inComment",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon +1d>\n# <2026-10-04 Sun +1w>\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n<2026-10-06 Tue +1d>\n# <2026-10-04 Sun +1w>\n"
+  },
+  {
+   "head": "inComment",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon +1d>\n# <2026-10-04 Sun +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n<2026-10-06 Tue +1d>\n# <2026-10-04 Sun +1w>\n"
+  },
+  {
+   "head": "inComment",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon +1d>\n# <2026-10-04 Sun +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-06 Tue +1d>\n# <2026-10-04 Sun +1w>\n"
+  },
+  {
+   "head": "commentOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n# <2026-10-05 Mon +1w>\n",
+   "emacs": "* DONE t\n# <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "commentOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n# <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n# <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "commentOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n# <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n# <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "inExample",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n<2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n<2026-10-06 Tue +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "inExample",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n<2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n<2026-10-06 Tue +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "inExample",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-05 Mon +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n<2026-10-06 Tue +1d>\n#+BEGIN_EXAMPLE\n<2026-10-04 Sun +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "exampleOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n",
+   "emacs": "* DONE t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "exampleOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "exampleOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n#+BEGIN_EXAMPLE\n<2026-10-05 Mon +1w>\n#+END_EXAMPLE\n"
+  },
+  {
+   "head": "srcOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n",
+   "emacs": "* DONE t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n"
+  },
+  {
+   "head": "srcOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n"
+  },
+  {
+   "head": "srcOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n#+BEGIN_SRC emacs-lisp\n<2026-10-05 Mon +1w>\n#+END_SRC\n"
+  },
+  {
+   "head": "exportOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n",
+   "emacs": "* DONE t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n"
+  },
+  {
+   "head": "exportOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n"
+  },
+  {
+   "head": "exportOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n#+BEGIN_EXPORT html\n<2026-10-05 Mon +1w>\n#+END_EXPORT\n"
+  },
+  {
+   "head": "verbatimOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n=<2026-10-05 Mon +1w>=\n",
+   "emacs": "* DONE t\n=<2026-10-05 Mon +1w>=\n"
+  },
+  {
+   "head": "verbatimOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n=<2026-10-05 Mon +1w>=\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n=<2026-10-05 Mon +1w>=\n"
+  },
+  {
+   "head": "verbatimOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n=<2026-10-05 Mon +1w>=\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n=<2026-10-05 Mon +1w>=\n"
+  },
+  {
+   "head": "codeOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n~<2026-10-05 Mon +1w>~\n",
+   "emacs": "* DONE t\n~<2026-10-05 Mon +1w>~\n"
+  },
+  {
+   "head": "codeOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n~<2026-10-05 Mon +1w>~\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n~<2026-10-05 Mon +1w>~\n"
+  },
+  {
+   "head": "codeOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n~<2026-10-05 Mon +1w>~\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n~<2026-10-05 Mon +1w>~\n"
+  },
+  {
+   "head": "fixedOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n: <2026-10-05 Mon +1w>\n",
+   "emacs": "* DONE t\n: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "fixedOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n: <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "fixedOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n: <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "linkOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n",
+   "emacs": "* DONE t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n"
+  },
+  {
+   "head": "linkOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n"
+  },
+  {
+   "head": "linkOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n[[https://x.org][<2026-10-05 Mon +1w>]]\n"
+  },
+  {
+   "head": "keywordOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n#+CAPTION: <2026-10-05 Mon +1w>\n",
+   "emacs": "* DONE t\n#+CAPTION: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "keywordOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n#+CAPTION: <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n#+CAPTION: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "keywordOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n#+CAPTION: <2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n#+CAPTION: <2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "quoteOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n#+BEGIN_QUOTE\n<2026-10-05 Mon +1w>\n#+END_QUOTE\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n#+BEGIN_QUOTE\n<2026-10-12 Mon +1w>\n#+END_QUOTE\n"
+  },
+  {
+   "head": "quoteOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n#+BEGIN_QUOTE\n<2026-10-05 Mon +1w>\n#+END_QUOTE\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n#+BEGIN_QUOTE\n<2026-10-12 Mon +1w>\n#+END_QUOTE\n"
+  },
+  {
+   "head": "quoteOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n#+BEGIN_QUOTE\n<2026-10-05 Mon +1w>\n#+END_QUOTE\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n#+BEGIN_QUOTE\n<2026-10-12 Mon +1w>\n#+END_QUOTE\n"
+  },
+  {
+   "head": "tableOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n| <2026-10-05 Mon +1w> |\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n| <2026-10-12 Mon +1w> |\n"
+  },
+  {
+   "head": "tableOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n| <2026-10-05 Mon +1w> |\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n| <2026-10-12 Mon +1w> |\n"
+  },
+  {
+   "head": "tableOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n| <2026-10-05 Mon +1w> |\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n| <2026-10-12 Mon +1w> |\n"
+  },
+  {
+   "head": "drawerOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n:MYDRAWER:\n<2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:MYDRAWER:\n<2026-10-12 Mon +1w>\n:END:\n"
+  },
+  {
+   "head": "drawerOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n:MYDRAWER:\n<2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n:MYDRAWER:\n<2026-10-12 Mon +1w>\n:END:\n"
+  },
+  {
+   "head": "drawerOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n:MYDRAWER:\n<2026-10-05 Mon +1w>\n:END:\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n:MYDRAWER:\n<2026-10-12 Mon +1w>\n:END:\n"
+  },
+  {
+   "head": "childOnly",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n** sub\n<2026-10-05 Mon +1w>\n",
+   "emacs": "* DONE t\n** sub\n<2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "childOnly",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n** sub\n<2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: logdrawer\n* DONE t\n** sub\n<2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "childOnly",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n** sub\n<2026-10-05 Mon +1w>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* DONE t\n** sub\n<2026-10-05 Mon +1w>\n"
+  },
+  {
+   "head": "verbatimThenPlain",
+   "setting": "none",
+   "state": "DONE",
+   "org": "* TODO t\n=<2026-10-05 Mon +1w>= <2026-10-06 Tue +1d>\n",
+   "emacs": "* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n=<2026-10-05 Mon +1w>= <2026-10-07 Wed +1d>\n"
+  },
+  {
+   "head": "verbatimThenPlain",
+   "setting": "logdrawer",
+   "state": "DONE",
+   "org": "#+STARTUP: logdrawer\n* TODO t\n=<2026-10-05 Mon +1w>= <2026-10-06 Tue +1d>\n",
+   "emacs": "#+STARTUP: logdrawer\n* TODO t\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n:LOGBOOK:\n- State \"DONE\"       from \"TODO\"       [2026-10-11 Sun 16:30]\n:END:\n=<2026-10-05 Mon +1w>= <2026-10-07 Wed +1d>\n"
+  },
+  {
+   "head": "verbatimThenPlain",
+   "setting": "nologrepeat",
+   "state": "DONE",
+   "org": "#+STARTUP: nologrepeat\n* TODO t\n=<2026-10-05 Mon +1w>= <2026-10-06 Tue +1d>\n",
+   "emacs": "#+STARTUP: nologrepeat\n* TODO t\n=<2026-10-05 Mon +1w>= <2026-10-07 Wed +1d>\n"
+  },
+  {
+   "head": "seq-KWD2",
+   "setting": "#+TYP_TODO: KWD1 KWD2 | DONE",
+   "state": "DONE",
+   "org": "#+TYP_TODO: KWD1 KWD2 | DONE\n* KWD2 t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TYP_TODO: KWD1 KWD2 | DONE\n* KWD2 t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"KWD2\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-KWD2",
+   "setting": "#+TYP_TODO: KWD1 KWD2 | DONE nologrepeat",
+   "state": "DONE",
+   "org": "#+TYP_TODO: KWD1 KWD2 | DONE\n#+STARTUP: nologrepeat\n* KWD2 t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TYP_TODO: KWD1 KWD2 | DONE\n#+STARTUP: nologrepeat\n* KWD2 t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-KWD1",
+   "setting": "#+TYP_TODO: KWD1 KWD2 | DONE",
+   "state": "DONE",
+   "org": "#+TYP_TODO: KWD1 KWD2 | DONE\n* KWD1 t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TYP_TODO: KWD1 KWD2 | DONE\n* KWD1 t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"KWD1\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-KWD1",
+   "setting": "#+TYP_TODO: KWD1 KWD2 | DONE nologrepeat",
+   "state": "DONE",
+   "org": "#+TYP_TODO: KWD1 KWD2 | DONE\n#+STARTUP: nologrepeat\n* KWD1 t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TYP_TODO: KWD1 KWD2 | DONE\n#+STARTUP: nologrepeat\n* KWD1 t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-Y",
+   "setting": "#+TODO: A B | C #+TODO: X Y | Z",
+   "state": "Z",
+   "org": "#+TODO: A B | C\n#+TODO: X Y | Z\n* Y t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TODO: X Y | Z\n* X t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"Z\"          from \"Y\"          [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-Y",
+   "setting": "#+TODO: A B | C #+TODO: X Y | Z nologrepeat",
+   "state": "Z",
+   "org": "#+TODO: A B | C\n#+TODO: X Y | Z\n#+STARTUP: nologrepeat\n* Y t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TODO: X Y | Z\n#+STARTUP: nologrepeat\n* X t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-B",
+   "setting": "#+TODO: A B | C #+TODO: X Y | Z",
+   "state": "C",
+   "org": "#+TODO: A B | C\n#+TODO: X Y | Z\n* B t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TODO: X Y | Z\n* A t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"C\"          from \"B\"          [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-B",
+   "setting": "#+TODO: A B | C #+TODO: X Y | Z nologrepeat",
+   "state": "C",
+   "org": "#+TODO: A B | C\n#+TODO: X Y | Z\n#+STARTUP: nologrepeat\n* B t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TODO: X Y | Z\n#+STARTUP: nologrepeat\n* A t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-Y",
+   "setting": "#+TODO: A B | C #+TYP_TODO: X Y | Z",
+   "state": "Z",
+   "org": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n* Y t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n* Y t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"Z\"          from \"Y\"          [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-Y",
+   "setting": "#+TODO: A B | C #+TYP_TODO: X Y | Z nologrepeat",
+   "state": "Z",
+   "org": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n#+STARTUP: nologrepeat\n* Y t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n#+STARTUP: nologrepeat\n* Y t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-B",
+   "setting": "#+TODO: A B | C #+TYP_TODO: X Y | Z",
+   "state": "C",
+   "org": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n* B t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n* A t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"C\"          from \"B\"          [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-B",
+   "setting": "#+TODO: A B | C #+TYP_TODO: X Y | Z nologrepeat",
+   "state": "C",
+   "org": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n#+STARTUP: nologrepeat\n* B t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: A B | C\n#+TYP_TODO: X Y | Z\n#+STARTUP: nologrepeat\n* A t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
+  },
+  {
+   "head": "seq-NEXT",
+   "setting": "#+TODO: TODO NEXT | DONE",
+   "state": "DONE",
+   "org": "#+TODO: TODO NEXT | DONE\n* NEXT t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: TODO NEXT | DONE\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n:PROPERTIES:\n:LAST_REPEAT: [2026-10-11 Sun 16:30]\n:END:\n- State \"DONE\"       from \"NEXT\"       [2026-10-11 Sun 16:30]"
+  },
+  {
+   "head": "seq-NEXT",
+   "setting": "#+TODO: TODO NEXT | DONE nologrepeat",
+   "state": "DONE",
+   "org": "#+TODO: TODO NEXT | DONE\n#+STARTUP: nologrepeat\n* NEXT t\nSCHEDULED: <2026-10-05 Mon +1d>\n",
+   "emacs": "#+TODO: TODO NEXT | DONE\n#+STARTUP: nologrepeat\n* TODO t\nSCHEDULED: <2026-10-06 Tue +1d>\n"
   }
  ]
 }

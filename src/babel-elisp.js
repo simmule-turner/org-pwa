@@ -18,10 +18,10 @@ export function isElispBlock(block) {
 }
 
 /** A `:var` value from the header reader (numbers, strings, lists, null) as the Lisp object it stands for. @param {unknown} v @returns {LObj} */
-function toLisp(v) {
+export function toLisp(v) {
   if (v === null || v === undefined || v === false) return NIL;
   if (v === true) return T;
-  if (v instanceof Flt) return v;
+  if (v instanceof Flt || v instanceof Sym) return v;
   if (typeof v === 'number') return Number.isInteger(v) ? v : new Flt(v);
   if (typeof v === 'string') return v === 'hline' ? new Sym('hline') : v;
   if (Array.isArray(v)) return v.reduceRight((tail, x) => new Cons(toLisp(x), tail), /** @type {LObj} */ (NIL));
@@ -36,14 +36,34 @@ export function expandedSource(body, vars, spec) {
   return wrapped;
 }
 
+/** Does `org-babel-result-cond` take these `:results` words for text (the scalar form) rather than for a table? @param {ResultsSpec} spec */
+export function isLiteralResult(spec) {
+  const w = spec.words;
+  return w.has('scalar') || w.has('verbatim') || (w.has('html') && !w.has('table')) || w.has('code') || w.has('pp') || ((spec.collect === 'output' || w.has('raw') || w.has('org') || w.has('drawer')) && !w.has('table'));
+}
+
+/** `org-babel-reassemble-table`: a table gets back the row and column names its variable lost. @param {LObj} table @param {import('./babel.js').TableNames} names */
+function reassembled(table, names) {
+  if (!(table instanceof Cons) || !isProperList(table)) return table;
+  let rows = toArray(table);
+  if (names.row && rows.length === names.row.length) {
+    const given = names.row.slice();
+    rows = rows.map((row) => (row === NIL || row instanceof Cons ? new Cons(toLisp(given.shift() ?? ''), row) : row));
+  }
+  const first = rows[0];
+  if (names.col && (first === NIL || first instanceof Cons) && toArray(first).length === names.col.length) rows = [toLisp(names.col), new Sym('hline'), ...rows];
+  return rows.reduceRight((tail, x) => new Cons(x, tail), /** @type {LObj} */ (NIL));
+}
+
 /**
- * Evaluates a block.
- * @param {{ code: string, vars?: Record<string, unknown>, spec: ResultsSpec, lexical?: string, budget?: number }} options
+ * Evaluates a block. `names` are the column and row names the variables lost (see `shapeTable`), put back on a table result.
+ * @param {{ code: string, vars?: Record<string, unknown>, spec: ResultsSpec, lexical?: string, budget?: number, names?: import('./babel.js').TableNames }} options
  * @returns {{ ok: true, value: LObj } | { ok: false, message: string }}
  */
-export function runElisp({ code, vars = {}, spec, lexical, budget = 500000 }) {
+export function runElisp({ code, vars = {}, spec, lexical, budget = 500000, names }) {
   const r = run(expandedSource(code, vars, spec), { lexical: lexical === 'yes' || lexical === 't', budget, baseDepth: 20 });
-  return r.ok ? { ok: true, value: r.value } : { ok: false, message: r.error || 'error' };
+  if (!r.ok) return { ok: false, message: r.error || 'error' };
+  return { ok: true, value: names && !isLiteralResult(spec) ? reassembled(r.value, names) : r.value };
 }
 
 /** @param {LObj} x */
@@ -98,17 +118,18 @@ const cellsOf = (text) => text.split('\n')[0].split('|').map((c) => c.trim());
  * The lines to put under `#+RESULTS:` for what a block gave (`org-babel-execute:emacs-lisp` and `org-babel-insert-result`).
  * @param {LObj} value  the block's value, or the string it wrote with `:results output`
  * @param {ResultsSpec} spec
- * @param {{ wrap?: string | null, file?: string | null }} [options]
+ * @param {{ wrap?: string | null, file?: string | null, fileDesc?: string | null }} [options]
  * @returns {string[]}
  */
-export function formatElispResult(value, spec, { wrap = null, file = null } = {}) {
+export function formatElispResult(value, spec, { wrap = null, file = null, fileDesc = null } = {}) {
   if (spec.file) {
-    // `:results file`: a link to the file :file names, else to the value itself
+    // `:results file`: a link to the file :file names, else to the value itself; `:file-desc` is its description (the file when bare)
     const target = file !== null && file !== undefined ? file : typeof value === 'string' ? value : print(value, false);
-    return layoutResult({ text: `[[file:${target}]]` }, { ...spec, words: new Set(['raw']) }, { wrap, lang: 'emacs-lisp' });
+    const description = fileDesc === null || fileDesc === undefined ? '' : `[${fileDesc || target}]`;
+    return layoutResult({ text: `[[file:${target}]${description}]` }, { ...spec, words: new Set(['raw']) }, { wrap, lang: 'emacs-lisp' });
   }
   const w = spec.words;
-  const literal = w.has('scalar') || w.has('verbatim') || (w.has('html') && !w.has('table')) || w.has('code') || w.has('pp') || ((spec.collect === 'output' || w.has('raw') || w.has('org') || w.has('drawer')) && !w.has('table'));
+  const literal = isLiteralResult(spec);
   /** @type {{ text: string } | { list: import('./babel.js').Item[] }} */
   let result;
   if (literal) result = { text: w.has('code') || w.has('pp') ? pretty(value) : print(value, w.has('scalar') || w.has('verbatim')) };

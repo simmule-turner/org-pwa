@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HLINE, headerText, blockLanguage, findNamedTable, indexList, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { Flt } from '../src/elisp-data.js';
 import { parseBody } from '../src/body-parser.js';
 import { getBabelJs } from '../src/local-variables.js';
 
@@ -61,20 +62,20 @@ test('other result shapes', () => {
 
 test(':var values and named tables', () => {
   const lines = ['#+NAME: sales', '| q | n |', '|---+---|', '| Q1 | 10 |', '| Q2 | 2.5 |', '', 'text'];
-  assert.deepEqual(findNamedTable(lines, 'sales'), [['q', 'n'], HLINE, ['Q1', 10], ['Q2', 2.5]]);
+  assert.deepEqual(findNamedTable(lines, 'sales'), [['q', 'n'], HLINE, ['Q1', 10], ['Q2', new Flt(2.5)]]);
   assert.equal(findNamedTable(lines, 'nope'), null);
   const lookup = (n) => findNamedTable(lines, n);
   assert.deepEqual(resolveVars(['a=1 b="x y"', 'c=sales', 'd=t', "e='s'", 'f=nil'], lookup), {
     a: 1,
     b: 'x y',
-    c: [['Q1', 10], ['Q2', 2.5]],
+    c: [['Q1', 10], ['Q2', new Flt(2.5)]],
     d: true,
     e: 's',
     f: null,
   });
   assert.throws(() => resolveVars(['x=missing'], lookup), /Reference `missing. not found in this buffer/);
   assert.throws(() => resolveVars(['junk'], lookup), /expected name=value/);
-  assert.deepEqual(resolveVars(['c=sales'], lookup, { hlines: 'yes', colnames: 'no' }).c, [['q', 'n'], 'hline', ['Q1', 10], ['Q2', 2.5]]);
+  assert.deepEqual(resolveVars(['c=sales'], lookup, { hlines: 'yes', colnames: 'no' }).c, [['q', 'n'], 'hline', ['Q1', 10], ['Q2', new Flt(2.5)]]);
   assert.deepEqual(resolveVars(['c=sales[2,1]', "l='(1 \"a b\" (3))"], lookup), { c: 10, l: [1, 'a b', [3]] });
 });
 

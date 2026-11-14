@@ -1,0 +1,1705 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 |   |\n| 4 |   |\n| 8 | 5 |\n#+TBLFM: @3$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 |   |\n| 4 |   |\n| 8 | 5 |\n#+TBLFM: @3$2=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 |   |\n| 4 |   |\n| 8 | 5 |\n#+TBLFM: @3$2=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$4=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$4=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |   |\n| 4 |   |   | 5 |\n| 8 |   |   |   |\n#+TBLFM: @2$4=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$4=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |   |\n| 4 |   |   | 5 |\n| 8 |   |   |   |\n#+TBLFM: @2$4=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$4=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |   |\n| 4 |   |   | 5 |\n| 8 |   |   |   |\n#+TBLFM: @2$4=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$4=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@2$3=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@2$3=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$2..@2$3=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@2$3=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$2..@2$3=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@2$3=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$2..@2$3=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@2$3=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$3=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$3=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   | 7 |\n#+TBLFM: @1$2..@3$3=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$3=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   | 7 |\n#+TBLFM: @1$2..@3$3=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$3=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   | 7 |\n#+TBLFM: @1$2..@3$3=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$3=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@3$3=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@3$3=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |\n| 4 | 7 | 7 |\n| 8 |   | 7 |\n#+TBLFM: @2$2..@3$3=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@3$3=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |\n| 4 | 7 | 7 |\n| 8 |   | 7 |\n#+TBLFM: @2$2..@3$3=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@3$3=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 |   |   |\n| 4 | 7 | 7 |\n| 8 |   | 7 |\n#+TBLFM: @2$2..@3$3=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@3$3=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3..@2$2=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3..@2$2=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$3..@2$2=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3..@2$2=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$3..@2$2=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3..@2$2=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @1$3..@2$2=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3..@2$2=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@1$3=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@1$3=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @2$2..@1$3=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@1$3=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @2$2..@1$3=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@1$3=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 |\n| 4 |   | 7 |\n| 8 |   |   |\n#+TBLFM: @2$2..@1$3=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2$2..@1$3=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@1$4=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@1$4=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 | 7 |\n| 4 |   |   |   |\n| 8 |   |   |   |\n#+TBLFM: @1$2..@1$4=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@1$4=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 | 7 |\n| 4 |   |   |   |\n| 8 |   |   |   |\n#+TBLFM: @1$2..@1$4=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@1$4=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 | 7 | 7 |\n| 4 |   |   |   |\n| 8 |   |   |   |\n#+TBLFM: @1$2..@1$4=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@1$4=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$2=7",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$2=7",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 7 |\n| 4 |   |\n| 8 | 7 |\n#+TBLFM: @1$2..@3$2=7",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$2=7",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 7 |\n| 4 |   |\n| 8 | 7 |\n#+TBLFM: @1$2..@3$2=7",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$2=7",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 7 |\n| 4 |   |\n| 8 | 7 |\n#+TBLFM: @1$2..@3$2=7",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2..@3$2=7",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5::@3$2=6",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5::@3$2=6",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5::@3$2=6",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5::@3$2=6",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5::@3$2=6",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5::@3$2=6",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=5::@3$2=6",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5::@3$2=6",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=6::@1$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=6::@1$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @3$2=6::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=6::@1$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @3$2=6::@1$2=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=6::@1$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 5 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @3$2=6::@1$2=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @3$2=6::@1$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 2 | 5 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 2 | 5 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 2 | 5 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$3=5::@1$2=$>",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 1 | 2 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 1 | 2 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 1 | 2 |\n| 4 |   |   |\n| 8 |   |   |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=1::@1$3=@1$2+1",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=@1$5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=@1$5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 0 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=@1$5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=@1$5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 0 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=@1$5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=@1$5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 0 |\n| 4 |   |\n| 8 |   |\n#+TBLFM: @1$2=@1$5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=@1$5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2=3",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 2 |\n| 3 |\n| 8 |\n#+TBLFM: @2=3",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2=3",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 |\n| 3 |\n| 8 |\n#+TBLFM: @2=3",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2=3",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 |\n| 3 |\n| 8 |\n#+TBLFM: @2=3",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2=3",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 |\n| 3 |\n| 8 |\n#+TBLFM: @2=3",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @2=3",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 2 |\n| 3 |\n| 8 |\n#+TBLFM: @2=3",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$1001=1",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Formula column target too large",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$1001=1",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "ERROR Formula column target too large",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$1001=1",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "ERROR Formula column target too large",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$1001=1",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "ERROR Formula column target too large",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$1001=1",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Formula column target too large",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 2 |   | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 |   | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 |   | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 |   | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 2 |   | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15::@1$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 2 | 5 | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15::@1$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 5 | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15::@1$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 5 | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15::@1$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 5 | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15::@1$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 2 | 5 | 15 |\n| 4 |   | 15 |\n| 8 |   | 15 |\n#+TBLFM: $3=15::@1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $2=1::@2$4=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $2=1::@2$4=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 2 | 1 |   |   |\n| 4 | 1 |   | 5 |\n| 8 | 1 |   |   |\n#+TBLFM: $2=1::@2$4=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $2=1::@2$4=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 2 | 1 |   |   |\n| 4 | 1 |   | 5 |\n| 8 | 1 |   |   |\n#+TBLFM: $2=1::@2$4=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $2=1::@2$4=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 2 | 1 |   |   |\n| 4 | 1 |   | 5 |\n| 8 | 1 |   |   |\n#+TBLFM: $2=1::@2$4=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $2=1::@2$4=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 1 | 9 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 9 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 9 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 9 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 1 | 9 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$1..@3$2=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 9 | 9 |\n| 9 | 9 |\n| 9 | 9 |\n#+TBLFM: @1$1..@3$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$1..@3$2=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 9 | 9 |\n| 9 | 9 |\n| 9 | 9 |\n#+TBLFM: @1$1..@3$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$1..@3$2=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 9 | 9 |\n| 9 | 9 |\n| 9 | 9 |\n#+TBLFM: @1$1..@3$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$1..@3$2=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 9 | 9 |\n| 9 | 9 |\n| 9 | 9 |\n#+TBLFM: @1$1..@3$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$1..@3$2=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 9 | 9 |\n| 9 | 9 |\n| 9 | 9 |\n#+TBLFM: @1$1..@3$2=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2..@3$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2..@3$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 9 | 9 |\n| 3 | 9 | 9 |\n| 5 | 9 | 9 |\n#+TBLFM: @1$2..@3$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2..@3$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 9 | 9 |\n| 3 | 9 | 9 |\n| 5 | 9 | 9 |\n#+TBLFM: @1$2..@3$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2..@3$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 9 | 9 |\n| 3 | 9 | 9 |\n| 5 | 9 | 9 |\n#+TBLFM: @1$2..@3$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$2..@3$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @3$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @3$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 2 |   |\n| 3 | 4 |   |\n| 5 | 6 | 9 |\n#+TBLFM: @3$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @3$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 2 |   |\n| 3 | 4 |   |\n| 5 | 6 | 9 |\n#+TBLFM: @3$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @3$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 2 |   |\n| 3 | 4 |   |\n| 5 | 6 | 9 |\n#+TBLFM: @3$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @3$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 3 | 4 |   |\n| 5 | 6 |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 3 | 4 |   |\n| 5 | 6 |   |\n#+TBLFM: @1$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 3 | 4 |   |\n| 5 | 6 |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a | b | c |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a | b | c |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| a | b | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a | b | c |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| a | b | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| a | b | c |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| a | b | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a | b | c |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "| 1 |   |   |\n| a | b | c |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @1$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @1$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 3 |\n| 1 |   | 9 |\n#+TBLFM: @2$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 3 |\n| 1 |   | 9 |\n#+TBLFM: @2$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 3 |\n| 1 |   | 9 |\n#+TBLFM: @2$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 | 3 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 |\n| 1 | 2 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| 1 | 2 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @2$3=9",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| 1 | 2 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @2$3=9",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 |\n| 1 | 2 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 |   |   |\n| 1 | 2 | 9 |\n| 1 |   |   |\n#+TBLFM: @2$3=9",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 |\n| 1 | 2 |\n| 1 |\n#+TBLFM: @2$3=9",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @1$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @1$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| a | 5 |\n|---+---|\n| 1 |   |\n| 2 |   |\n| 3 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @1$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| a | 5 |\n|---+---|\n| 1 |   |\n| 2 |   |\n| 3 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @1$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| a | 5 |\n|---+---|\n| 1 |   |\n| 2 |   |\n| 3 |   |\n#+TBLFM: @1$2=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @1$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @3$2=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @3$2=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| a |   |\n|---+---|\n| 1 |   |\n| 2 | 5 |\n| 3 |   |\n#+TBLFM: @3$2=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @3$2=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| a |   |\n|---+---|\n| 1 |   |\n| 2 | 5 |\n| 3 |   |\n#+TBLFM: @3$2=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @3$2=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| a |   |\n|---+---|\n| 1 |   |\n| 2 | 5 |\n| 3 |   |\n#+TBLFM: @3$2=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @3$2=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @2$2..@3$3=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @2$2..@3$3=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| a |   |   |\n|---+---+---|\n| 1 | 5 | 5 |\n| 2 |   | 5 |\n| 3 |   |   |\n#+TBLFM: @2$2..@3$3=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @2$2..@3$3=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| a |   |   |\n|---+---+---|\n| 1 | 5 | 5 |\n| 2 |   | 5 |\n| 3 |   |   |\n#+TBLFM: @2$2..@3$3=5",
+   "warnings": [
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns",
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @2$2..@3$3=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| a |   |   |\n|---+---+---|\n| 1 | 5 | 5 |\n| 2 |   | 5 |\n| 3 |   |   |\n#+TBLFM: @2$2..@3$3=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? ",
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| a |\n|---|\n| 1 |\n| 2 |\n| 3 |\n#+TBLFM: @2$2..@3$3=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| # | 2 |\n| x | 3 |\n#+TBLFM: @1$3=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| # | 2 |\n| x | 3 |\n#+TBLFM: @1$3=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| # | 1 | 5 |\n| # | 2 |   |\n| x | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| # | 2 |\n| x | 3 |\n#+TBLFM: @1$3=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| # | 1 | 5 |\n| # | 2 |   |\n| x | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| # | 2 |\n| x | 3 |\n#+TBLFM: @1$3=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| # | 1 | 5 |\n| # | 2 |   |\n| x | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| # | 2 |\n| x | 3 |\n#+TBLFM: @1$3=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| x | 2 |\n| x | 3 |\n#+TBLFM: @3$3=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| x | 2 |\n| x | 3 |\n#+TBLFM: @3$3=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| x | 2 |   |\n| x | 3 | 5 |\n#+TBLFM: @3$3=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| x | 2 |\n| x | 3 |\n#+TBLFM: @3$3=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| x | 2 |   |\n| x | 3 | 5 |\n#+TBLFM: @3$3=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| x | 2 |\n| x | 3 |\n#+TBLFM: @3$3=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| x | 2 |   |\n| x | 3 | 5 |\n#+TBLFM: @3$3=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| x | 2 |\n| x | 3 |\n#+TBLFM: @3$3=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| _ | 2 |\n| _ | 3 |\n#+TBLFM: @2$3=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| _ | 2 |\n| _ | 3 |\n#+TBLFM: @2$3=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| _ | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @2$3=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| _ | 2 |\n| _ | 3 |\n#+TBLFM: @2$3=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| _ | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @2$3=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| # | 1 |\n| _ | 2 |\n| _ | 3 |\n#+TBLFM: @2$3=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| # | 1 |   |\n| _ | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @2$3=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| # | 1 |\n| _ | 2 |\n| _ | 3 |\n#+TBLFM: @2$3=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| _ | 3 |\n#+TBLFM: @1$3=5",
+   "value": "nil",
+   "answer": "yes",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| _ | 3 |\n#+TBLFM: @1$3=5",
+   "value": "t",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| _ | 3 |\n#+TBLFM: @1$3=5",
+   "value": "warn",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [
+    "Out-of-bounds formula added columns"
+   ],
+   "prompts": []
+  },
+  {
+   "org": "| 1 | 2 |\n| _ | 3 |\n#+TBLFM: @1$3=5",
+   "value": "prompt",
+   "answer": "yes",
+   "emacs": "| 1 | 2 | 5 |\n| _ | 3 |   |\n#+TBLFM: @1$3=5",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  },
+  {
+   "org": "| 1 | 2 |\n| _ | 3 |\n#+TBLFM: @1$3=5",
+   "value": "prompt",
+   "answer": "no",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "warnings": [],
+   "prompts": [
+    "Out-of-bounds formula.  Add columns? "
+   ]
+  }
+ ]
+}

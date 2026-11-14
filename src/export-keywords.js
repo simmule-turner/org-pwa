@@ -98,3 +98,51 @@ function expandLinks(doc) {
   if (!changed && bodyLines.length === (doc.bodyLines || []).length && bodyLines.every((l, i) => l === (doc.bodyLines || [])[i])) return doc;
   return { ...doc, bodyLines, body: parseBody(bodyLines), children };
 }
+
+/**
+ * The value of a subtree's `:EXPORT_KEY:` property (Org's per-subtree export setting, which a subtree inherits from the ones above it),
+ * or undefined.
+ * @param {Doc} doc @param {Heading | null | undefined} scope  the subtree being exported @param {string} key  `TITLE`, `AUTHOR`, `OPTIONS` ...
+ * @returns {string | undefined}
+ */
+export function subtreeSetting(doc, scope, key) {
+  if (!scope) return undefined;
+  const name = 'EXPORT_' + key.toUpperCase();
+  /** @param {Heading} h */
+  const own = (h) => {
+    const found = Object.keys(h.properties || {}).find((k) => k.toUpperCase() === name);
+    return found === undefined ? undefined : String(h.properties[found]);
+  };
+  /** @param {Heading[]} list @param {Heading[]} trail @returns {Heading[] | null} the headings from the top down to `scope` */
+  const path = (list, trail) => {
+    for (const h of list) {
+      if (h === scope) return [...trail, h];
+      const inner = path(h.children || [], [...trail, h]);
+      if (inner) return inner;
+    }
+    return null;
+  };
+  for (const h of (path(doc.children || [], []) || [scope]).reverse()) {
+    const value = own(h);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
+ * The document with the settings of the exported subtree's `:EXPORT_AUTHOR:`, `:EXPORT_DATE:`, `:EXPORT_OPTIONS:` ... properties in place of
+ * the file's own `#+AUTHOR:`, `#+DATE:`, `#+OPTIONS:` ... (an options string is added to the file's). The document itself without a subtree.
+ * @param {Doc} doc @param {Heading | null | undefined} scope @returns {Doc}
+ */
+export function withSubtreeKeywords(doc, scope) {
+  if (!scope) return doc;
+  let keywords = doc.keywords || [];
+  let changed = false;
+  for (const key of ['AUTHOR', 'DATE', 'EMAIL', 'LANGUAGE', 'DESCRIPTION', 'KEYWORDS', 'SELECT_TAGS', 'EXCLUDE_TAGS', 'OPTIONS']) {
+    const value = subtreeSetting(doc, scope, key);
+    if (value === undefined) continue;
+    keywords = key === 'OPTIONS' ? [...keywords, { key, value, bodyLineIndex: 0 }] : [...keywords.filter((k) => k.key.toUpperCase() !== key), { key, value, bodyLineIndex: 0 }];
+    changed = true;
+  }
+  return changed ? { ...doc, keywords } : doc;
+}

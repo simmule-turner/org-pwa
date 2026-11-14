@@ -47,6 +47,7 @@ import { shiftLevels } from './archive-model.js';
 import { parseBody } from './body-parser.js';
 import { serializeOrg } from './org-parser.js';
 import { buildFilter, parseHtmlOptions } from './export-html.js';
+import { inlineTaskLevel, isEnd } from './inline-tasks.js';
 import { rawExportOptions } from './export-options.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { interpretOrg } from './org-interpret.js';
@@ -122,10 +123,15 @@ function filterNoexportAndComments(doc) {
  * @param {number | undefined} minlevel
  *  falsy or the document already starts there. */
 function scaleHeadingLevels(doc, minlevel) {
-  if (!minlevel || (doc.children || []).length === 0) return doc;
-  const currentMin = Math.min(...doc.children.map((h) => h.level));
+  const taskLevel = inlineTaskLevel(); // inline tasks keep their stars
+  /** @param {Heading} h */
+  const isTask = (h) => taskLevel !== null && h.level >= taskLevel;
+  const ordinary = (doc.children || []).filter((h) => !isTask(h));
+  if (!minlevel || ordinary.length === 0) return doc;
+  const currentMin = Math.min(...ordinary.map((h) => h.level));
   if (currentMin === minlevel) return doc;
   const newChildren = doc.children.map((h) => {
+    if (isTask(h)) return h;
     const copy = structuredClone(h); // a shallow { ...h } would leave h.children pointing at the SAME nested objects as the original doc -- shiftLevels' own recursive walk mutates in place, so this needs to be a true, independent deep copy first
     shiftLevels(copy, minlevel + (h.level - currentMin));
     return copy;
@@ -168,18 +174,48 @@ async function exportAsOrg(doc, fetchPath, parseOrgFn, { now, minlevel, keepComm
  * @param {Doc} doc
  * @returns {Doc}
  */
-function pruneHeadings(doc) {
+function pruneHeadings(doc, loose = /** @type {string[]} */ ([])) {
   const sequences = resolveTodoSequences(doc);
   const keep = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc, options: parseHtmlOptions(doc), doneKeywords: sequences.flatMap((q) => q.doneKeywords) })));
   const arch = parseHtmlOptions(doc).arch;
+  const taskLevel = inlineTaskLevel();
+  /** @param {Heading} h */
+  const isTask = (h) => taskLevel !== null && h.level >= taskLevel;
+  /** @param {Heading[]} list @returns {Heading[]} */
+  const walkList = (list) => {
+    /** @type {Heading[]} */
+    const out = [];
+    let skipEnd = false;
+    for (const h of list) {
+      if (isTask(h) && isEnd(h)) {
+        if (!skipEnd) out.push({ ...h, title: 'end' }); // Org writes the closing line of a task in lower case
+        skipEnd = false;
+        continue;
+      }
+      skipEnd = false;
+      const next = walk(h);
+      if (next) out.push(next);
+      else if (isTask(h)) skipEnd = true;
+    }
+    return out;
+  };
   /** @param {Heading} h @returns {Heading | null} */
   const walk = (h) => {
-    if (!keep(h)) return null;
-    if (!(h.tags || []).includes('ARCHIVE') || arch === true) return { ...h, children: (h.children || []).map(walk).filter((c) => c !== null) };
+    if (!(isTask(h) ? keep.inlineTask({ todo: h.todo || null, tags: h.tags || [] }) : keep(h))) {
+      /** @param {Heading} t */
+      const gather = (t) => {
+        if (/^COMMENT(\s|$)/.test(t.title || '')) return;
+        loose.push(...(t.bodyLines || []), '');
+        (t.children || []).forEach(gather);
+      };
+      gather(h); // a footnote definition there is still used
+      return null;
+    }
+    if (!(h.tags || []).includes('ARCHIVE') || arch === true) return { ...h, children: walkList(h.children || []) };
     // arch:headline (the default) writes just the headline of an archived tree; arch:nil leaves it out
     return arch === false ? null : { ...h, children: [], bodyLines: [], body: [], raw: undefined, planning: { scheduled: null, deadline: null, closed: null }, properties: {} };
   };
-  return { ...doc, children: (doc.children || []).map(walk).filter((c) => c !== null) };
+  return { ...doc, children: walkList(doc.children || []) };
 }
 
 /**
@@ -190,7 +226,9 @@ function pruneHeadings(doc) {
  */
 async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
   doc = withBufferKeywords(doc, false);
-  const processed = pruneHeadings(await exportAsOrg(doc, fetchPath, parseOrgFn, { ...options, keepComments: true }));
+  /** @type {string[]} */
+  const looseNotes = [];
+  const processed = pruneHeadings(await exportAsOrg(doc, fetchPath, parseOrgFn, { ...options, keepComments: true }), looseNotes);
   const raw = rawExportOptions(processed);
   /** @param {string} key @param {boolean} dflt */
   const flag = (key, dflt) => (raw[key] === undefined ? dflt : raw[key] !== 'nil');
@@ -202,9 +240,7 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
   else if (d && /^\(not /.test(d)) drawer = (name) => ![...d.matchAll(/"([^"]*)"/g)].some((m) => m[1] === name);
   else if (d && d.startsWith('(')) drawer = (name) => [...d.matchAll(/"([^"]*)"/g)].some((m) => m[1] === name);
   const sequences = resolveTodoSequences(processed);
-  const select = new Set((processed.keywords || []).filter((k) => k.key.toUpperCase() === 'SELECT_TAGS').flatMap((k) => k.value.split(/\s+/)).filter(Boolean).map((t) => t.toLowerCase()));
-  /** @param {Heading[]} list @returns {boolean} */
-  const anySelected = (list) => list.some((h) => (h.tags || []).some((t) => select.has(String(t).toLowerCase())) || anySelected(h.children || []));
+  const selective = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc: processed, options: parseHtmlOptions(processed), doneKeywords: sequences.flatMap((q) => q.doneKeywords) }))).selective;
   /** @param {import('./cite.js').Segment[]} segments @returns {string} */
   const segmentText = (segments) => segments.map((s) => (typeof s === 'string' ? s : 'org' in s ? s.org : '/' + segmentText(s.italic) + '/')).join('');
   const cite = citeExportFor(processed, undefined, parseInline, true);
@@ -215,7 +251,7 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
     priority: flag('pri', false),
     tags: flag('tags', true),
     planning: flag('p', false),
-    properties: flag('prop', false),
+    properties: raw.prop && raw.prop.startsWith('(') ? [...raw.prop.matchAll(/"([^"]*)"/g)].map((m) => m[1]) : flag('prop', false),
     drawer,
     footnotes: flag('f', true),
     tables: flag('|', true),
@@ -226,7 +262,12 @@ async function exportOrgText(doc, fetchPath, parseOrgFn, options = {}) {
     author: flag('author', true),
     date: flag('date', true),
     email: flag('email', false),
-    selective: select.size > 0 && anySelected(processed.children || []),
+    selective,
+    looseNotes,
+    inlineLevel: inlineTaskLevel(),
+    stamps: parseHtmlOptions(processed).stamps,
+    fixed: parseHtmlOptions(processed).fixed,
+    tex: parseHtmlOptions(processed).tex,
   });
 }
 

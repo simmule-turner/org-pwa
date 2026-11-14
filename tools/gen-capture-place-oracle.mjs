@@ -47,6 +47,21 @@ for (const o of withP({})) {
   add('* Tr\n| x | y |\n\n| z | w |\n', 'table-line', '| a | b |', TR, o);
   add('| x | y |\n\n* Tr\n', 'table-line', '| a | b |', [], o);
   add('* Tr\n#+TBLFM: $2=1\n| x | y |\n#+TBLFM: $2=1\n', 'table-line', '| a | b |', TR, o);
+  // several rows in the template, formulas that name rows, tables with an indent, a table at the top of the file
+  add('* Tr\n| x | y |\n| z | w |\n', 'table-line', '| a | b |\n| c | d |', TR, o);
+  add('* Tr\n| h | h |\n|---+---|\n| x | y |\n', 'table-line', '| a | b |\n|---+---|\n| c | d |', TR, o);
+  add('* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n', 'table-line', '| 2 |', TR, o);
+  add('* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9::@3$1=@2$1+1\n', 'table-line', '| 2 |\n| 3 |', TR, o);
+  add('* Tr\n  | a | b |\n  | c | d |\n', 'table-line', '| e | f |', TR, o);
+  add('* Tr\n  | h1 | h2 |\n  |----+----|\n  | c | d |\n', 'table-line', '| e | f |\n| g | h |', TR, o);
+  add('* Tr\n\t| a | b |\n', 'table-line', '| e | f |', TR, o);
+  add('| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n', 'table-line', '| 2 |', [], o);
+  add('| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n', 'table-line', '| 2 |\n| 3 |', [], o);
+}
+for (const pos of ['I-1', 'I+1']) {
+  add('* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n', 'table-line', '| 2 |', TR, { tableLinePos: pos });
+  add('* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n', 'table-line', '| 2 |\n| 3 |', TR, { tableLinePos: pos });
+  add('* Tr\n  | 1 |\n  |---|\n  | 9 |\n', 'table-line', '| 2 |', TR, { tableLinePos: pos });
 }
 for (const pos of ['I+1', 'I+2', 'I-1', 'I+0', 'II+1', 'II-1', 'III+1', 'I+9', 'I-9']) {
   add('* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n', 'table-line', '| a | b |', TR, { tableLinePos: pos });
@@ -70,7 +85,14 @@ for (const o of withP({}).concat(withP({ emptyLines: 1 }))) {
   add('* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n', 'plain', 'new', TR, o);
   add('* Tr\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:ID: x\n:END:\n\ntext\n', 'item', 'new', TR, o);
   add('* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n', 'item', 'new', TR, o);
+  // a list that is indented takes every line of the item as indented, and the continuation lines too
+  add('* Tr\n  - a\n  - b\n', 'item', '- X\n  Line 2', TR, o);
+  add('* Tr\n  - a\n  - b\n', 'item', 'X\nLine 2', TR, o);
+  add('* Tr\n- a\n- b\n', 'item', '- X\n  Line 2\n  Line 3', TR, o);
 }
+add('* Tr\n    + a\n', 'item', '- X\n  Line 2', TR, {}); // only appended: put first, Emacs re-indents the old first item (4 spaces) as a child of the new one, which is not matched
+add('* Tr\n', 'entry', '** ', TR, {});
+add('* Tr\n', 'entry', '** ', TR, { prepend: true });
 
 const q = (s) => JSON.stringify(s);
 const kw = (o) => [

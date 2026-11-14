@@ -476,7 +476,7 @@ test('tags render as ox-html tag spans, and tags:nil hides them', () => {
 
 test('planning is hidden by default and shown with p:t', () => {
   assert.ok(!body('* A\nSCHEDULED: <2026-08-01>').includes('SCHEDULED'));
-  assert.match(body('#+OPTIONS: p:t\n* A\nSCHEDULED: <2026-08-01>'), /<span class="timestamp-kwd">SCHEDULED:<\/span> <span class="timestamp">&lt;2026-08-01&gt;<\/span>/);
+  assert.match(body('#+OPTIONS: p:t\n* A\nSCHEDULED: <2026-08-01>'), /<span class="timestamp-kwd">SCHEDULED:<\/span> <span class="timestamp">&lt;2026-08-01 Sat&gt;<\/span>/); // the day name is the date's own
 });
 
 test('emphasis maps to ox-html tags, and *:nil keeps the markers', () => {

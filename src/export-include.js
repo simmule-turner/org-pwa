@@ -1,302 +1,400 @@
 // @ts-check
-/** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
- * #+INCLUDE: "path" [block-type] [language-or-backend] [:lines "N-M"] [:minlevel N]
+ * #+INCLUDE: "path[::search]" [block-type [arguments]] [:lines "N-M"] [:minlevel N] [:only-contents t]
  *
- * Splices another document's own content into this one during export.
- * Works both before the first heading (document level, the same
- * place #+TITLE/#+AUTHOR/#+DATE/#+OPTIONS live) and inside a
- * heading's own body text -- the latter nests the included content as
- * children of that heading (see expandHeadingIncludes below).
+ * Expands `#+INCLUDE:` as Org's export does (org-export-expand-include-keyword): the included text is put where the keyword was, before
+ * anything else is read, and the whole is parsed again. That is why the keywords of an included Org file (#+MACRO:, #+TITLE: ...), its text
+ * before the first heading and its macros all count in the including document.
  *
- * The included file's own #+TITLE/#+AUTHOR/#+DATE/#+OPTIONS/etc. are
- * never merged into the including document's own metadata -- only
- * its actual content (headings, or raw text for a block-type
- * include). Real org's own actual behavior here is a genuinely
- * surprising edge case (confirmed directly against real Emacs org-
- * mode: a naive default-format #+INCLUDE literally concatenates the
- * two files' own #+TITLE values together in ox-ascii's own output),
- * not something worth reproducing; this also means real org's own
- * :only-contents switch (whose whole job is suppressing exactly that
- * merge) is effectively this module's own unconditional default,
- * so it's accepted but has no further effect of its own.
+ *  - An Org file (no block type): its blank lines at both ends are dropped, its headings are moved so that the shallowest one has
+ *    `:minlevel` stars (by default one more than the heading the keyword is under, or 1 before the first heading), and the indentation
+ *    of the keyword is kept up to the first heading. `path::*Heading`, `path::#custom-id`, `path::name`, `path::/regexp/` (Emacs
+ *    syntax) or `path::some text` include just that part, with `:only-contents t` only what is inside it.
+ *  - `example`, `src [language ...]`, `export [backend]` (or any other word): the text goes in a block of that name, as it is.
+ *  - `:lines "N-M"` keeps lines N up to, not counting, M (either may be left out).
+ *  - Left as the app has it: a file that cannot be read, a search that finds nothing, or an include that includes itself is skipped
+ *    where Emacs stops with an error; footnote labels of an included file are not renamed and relative file links in it are not
+ *    rewritten.
  */
 
-import { shiftLevels } from './archive-model.js';
-import { parseBody } from './body-parser.js';
+import { serializeOrg } from './org-parser.js';
+import { emacsRegexToJs } from './elisp-regex.js';
 import { formatSize, getSizeLimits, utf8Length } from './size-limits.js';
 
-/** Parses one #+INCLUDE: keyword's own value (everything after
- *  "#+INCLUDE:") into `{ path, blockType, language, lines, minlevel }`
- *  -- or null if `value` doesn't even have a valid quoted path, the
- *  one truly required part. `blockType` is one of 'src'/'example'/
- *  'quote'/'export', or null for the default (native org) case;
- *  `language` is set alongside blockType 'src' (a source language,
- *  e.g. "python") OR alongside blockType 'export' (a backend name,
- *  e.g. "html" -- confirmed directly against real Emacs org-mode:
- *  #+INCLUDE: "path" export html is valid syntax, exactly parallel to
- *  #+INCLUDE: "path" src python); `lines` is the raw "N-M"/"−M"/"N-"
- *  string (see applyLineRange below for how it's actually
+/** @param {string} s */
+const quoteRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * What the value of one #+INCLUDE: keyword says, read with the same patterns as Org's.
+ * `path` is null when there is none; `minlevel` is undefined unless `:minlevel` is given.
  * @param {string} value
- *  interpreted), or null; `minlevel` is a positive integer, or null. */
-function parseIncludeDirective(value) {
-  const pathMatch = /^"([^"]*)"/.exec(value.trim());
-  if (!pathMatch) return null;
-  const path = pathMatch[1];
-  const tokens = value
-    .slice(pathMatch[0].length)
-    .trim()
-    .match(/"[^"]*"|\S+/g) || [];
-
-  let blockType = null;
-  let language = null;
-  let i = 0;
-  if (i < tokens.length && /^(src|example|quote|export)$/.test(tokens[i])) {
-    blockType = tokens[i];
-    i++;
-    if ((blockType === 'src' || blockType === 'export') && i < tokens.length && !tokens[i].startsWith(':')) {
-      language = tokens[i];
-      i++;
+ * @returns {{ path: string | null, location: string | null, onlyContents: boolean, lines: string | null, literal: boolean, args: string | null, minlevel: number | undefined, block: string | null }}
+ */
+export function parseIncludeValue(value) {
+  let rest = value.trim();
+  /** @type {string | null} */
+  let path = null;
+  /** @type {string | null} */
+  let location = null;
+  const file = /^("[^"]+?"|\S+)(?:\s+|$)/.exec(rest);
+  if (file) {
+    let matched = file[1];
+    const at = /(::(.*?))"?$/.exec(matched);
+    if (at) {
+      location = at[2];
+      matched = matched.slice(0, at.index) + matched.slice(at.index + at[1].length);
     }
+    path = matched.replace(/^"(.*)"$/, '$1');
+    rest = rest.slice(file[0].length);
   }
-
+  let onlyContents = false;
+  const only = /:only-contents *([^: \r\t\n]\S*)?/.exec(rest);
+  if (only) {
+    onlyContents = only[1] !== undefined && only[1] !== 'nil';
+    rest = rest.replace(only[0], '');
+  }
+  /** @type {string | null} */
   let lines = null;
-  /** @type {number | null} */
-  let minlevel = null;
-  for (; i < tokens.length; i++) {
-    if (tokens[i] === ':lines' && tokens[i + 1]) {
-      lines = tokens[i + 1].replace(/^"|"$/g, '');
-      i++;
-    } else if (tokens[i] === ':minlevel' && tokens[i + 1]) {
-      minlevel = Number(tokens[i + 1]);
-      i++;
-    }
-    // :only-contents (and any other real #+INCLUDE switch) is
-    // recognized syntactically -- the loop simply skips past an
-    // unrecognized ":key value" pair -- but has no further effect;
-    // see this module's own top-level docs for why.
+  const range = /:lines +"([0-9]*-[0-9]*)"/.exec(rest);
+  if (range) {
+    lines = range[1];
+    rest = rest.replace(range[0], '');
   }
-
-  return { path, blockType, language, lines, minlevel };
+  let literal = false;
+  /** @type {string | null} */
+  let args = null;
+  const example = /\bexample\b/i.exec(rest);
+  const exported = /\bexport(?: +(.*))?/i.exec(rest);
+  const source = /\bsrc(?: +(.*))?/i.exec(rest);
+  if (example) literal = true;
+  else if (exported) {
+    literal = true;
+    args = exported[1] ?? null;
+  } else if (source) {
+    literal = true;
+    args = source[1] ?? null;
+  }
+  /** @type {number | undefined} */
+  let minlevel;
+  if (!literal) {
+    const level = /:minlevel +([0-9]+)/.exec(rest);
+    if (level) {
+      minlevel = Number(level[1]);
+      rest = rest.replace(level[0], '');
+    }
+  }
+  const word = /\b(\S+)\b/.exec(rest);
+  return { path, location, onlyContents, lines, literal, args, minlevel, block: word ? word[1] : null };
 }
 
-/** Applies a real org ":lines" range spec to an array of raw text
- *  lines (0-indexed JS array, but the spec itself is real org's own
- *  1-indexed convention). Confirmed directly against real Emacs org-
- *  mode's own actual export output -- notably, the manual's own
- *  wording ("lines 5-10" meaning "lines 5 through 10") is genuinely
- *  misleading: the range is inclusive of its own start but EXCLUSIVE
- *  of its own end ("5-10" is lines 5..9, not 5..10). "-M" means from
- *  the very start up to (exclusive) line M; "N-" means from line N to
- *  the file's own actual end (inclusive, since there's no upper bound
- *  to exclude there). `spec` of null/'' returns every line
+/**
+ * Applies a `:lines` range ("N-M", "-M", "N-"; lines count from 1, M is not included) to an array of lines.
  * @param {string[]} lines
- * @param {string} spec
- *  unchanged. */
-function applyLineRange(lines, spec) {
+ * @param {string | null} spec
+ */
+export function applyLineRange(lines, spec) {
   if (!spec) return lines;
   const m = /^(\d*)-(\d*)$/.exec(spec.trim());
   if (!m) return lines;
-  const start = m[1] ? Number(m[1]) : 1;
-  const end = m[2] ? Number(m[2]) : lines.length + 1;
-  return lines.slice(start - 1, end - 1);
+  const start = Number(m[1]);
+  const end = Number(m[2]);
+  return lines.slice(start === 0 ? 0 : start - 1, end === 0 ? lines.length : end - 1);
 }
 
-export { parseIncludeDirective, applyLineRange };
+const INCLUDE_RE = /^([ \t]*)#\+INCLUDE:(.*)$/i;
+const HEADLINE_RE = /^(\*+) /;
+const BEGIN_RE = /^[ \t]*#\+BEGIN_(\S+)/i;
+const LITERAL_BLOCK_RE = /^(?:SRC|EXAMPLE|EXPORT|COMMENT)$/i;
+const COMMENTED_RE = /^\*+ +(?:[A-Z][A-Z0-9_-]* +)?(?:\[#.\] +)?COMMENT(?: |$)/;
+const AFFILIATED_RE = /^[ \t]*#\+(?:NAME|CAPTION|HEADERS?|ATTR_\w+|PLOT|RESULTS)(?:\[.*\])?:/i;
 
-const INCLUDE_LINE_RE = /^\s*#\+INCLUDE:\s?(.*)$/i;
+/** @param {string} line */
+const isBlank = (line) => line.trim() === '';
 
-/** Resolves ONE already-parsed #+INCLUDE directive -- fetches its own
- *  target, applies :lines, and returns either `{ headings }` (default
- *  org format -- already level-shifted to `defaultMinlevel` when the
- *  directive itself gave no explicit :minlevel) or `{ bodyLines }`
- *  (a block-type include's own wrapped raw text), or null if the
- *  fetch failed/was unreachable (the caller treats that as "skip this
- *  one include," not a reason to fail the whole export). Shared by
- *  both the document-level and heading-level expansion below, so the
- *  two can never quietly drift apart on what a directive actually
- * @param {any} directive
- * @param {any} fetchPath
- * @param {any} parseOrgFn
- * @param {null} defaultMinlevel
- * @param {IncludeBudget} budget
- *  does. */
-async function resolveOneInclude(directive, fetchPath, parseOrgFn, defaultMinlevel, budget) {
+/** The title of a headline line: no stars, TODO keyword, priority, statistics cookie or tags. @param {string} line */
+function headlineTitle(line) {
+  return line
+    .replace(/^\*+ +/, '')
+    .replace(/[ \t]+:[\w@#%:]+:[ \t]*$/, '')
+    .replace(/^(?:[A-Z][A-Z0-9_-]* +)?(?:\[#.\] +)?/, '')
+    .replace(/^\[[0-9/%]*\] */, '')
+    .replace(/ *\[[0-9/%]*\]$/, '')
+    .trim();
+}
+
+/** The index after the headline at `from` and everything beneath it. @param {string[]} lines @param {number} from */
+function subtreeEnd(lines, from) {
+  const level = /** @type {RegExpExecArray} */ (HEADLINE_RE.exec(lines[from]))[1].length;
+  let i = from + 1;
+  while (i < lines.length) {
+    const m = HEADLINE_RE.exec(lines[i]);
+    if (m && m[1].length <= level) break;
+    i++;
+  }
+  return i;
+}
+
+/**
+ * The element a line belongs to, as lines: where it begins, where it ends (blank lines after it included) and where its contents are.
+ * @param {string[]} lines @param {number} at
+ * @returns {{ begin: number, end: number, contents: [number, number] }}
+ */
+function elementAt(lines, at) {
+  const afterBlanks = (/** @type {number} */ i) => {
+    while (i < lines.length && isBlank(lines[i])) i++;
+    return i;
+  };
+  if (HEADLINE_RE.test(lines[at])) {
+    const end = subtreeEnd(lines, at);
+    let first = at + 1;
+    if (first < end && /^\s*(?:SCHEDULED|DEADLINE|CLOSED):/.test(lines[first])) first++;
+    if (first < end && /^\s*:PROPERTIES:\s*$/i.test(lines[first])) {
+      while (first < end && !/^\s*:END:\s*$/i.test(lines[first])) first++;
+      first++;
+    }
+    return { begin: at, end, contents: [Math.min(first, end), end] };
+  }
+  // a block that holds the line
+  for (let b = at; b >= 0 && !HEADLINE_RE.test(lines[b]); b--) {
+    const open = BEGIN_RE.exec(lines[b]);
+    if (!open) continue;
+    const close = new RegExp(`^[ \\t]*#\\+END_${quoteRegExp(open[1])}\\s*$`, 'i');
+    let k = b + 1;
+    while (k < lines.length && !close.test(lines[k])) k++;
+    if (k >= at) return { begin: b, end: afterBlanks(Math.min(k + 1, lines.length)), contents: [b + 1, k] };
+    break;
+  }
+  let begin = at;
+  while (begin > 0 && AFFILIATED_RE.test(lines[begin - 1])) begin--;
+  let end = at + 1;
+  if (AFFILIATED_RE.test(lines[at])) {
+    while (end < lines.length && AFFILIATED_RE.test(lines[end])) end++;
+    if (end < lines.length && BEGIN_RE.test(lines[end])) return { ...elementAt(lines, end), begin };
+  }
+  if (/^\s*\|/.test(lines[end - 1] ?? '')) while (end < lines.length && /^\s*\|/.test(lines[end])) end++;
+  else while (end < lines.length && !isBlank(lines[end]) && !HEADLINE_RE.test(lines[end])) end++;
+  let first = begin;
+  while (first < end && AFFILIATED_RE.test(lines[first])) first++;
+  return { begin, end: afterBlanks(end), contents: [first, end] };
+}
+
+/**
+ * The lines of a file that `path::location` names (org-export--inclusion-absolute-lines), with `:lines` applied to them.
+ * Null when the search finds nothing.
+ * @param {string[]} lines @param {string} location @param {boolean} onlyContents @param {string | null} range
+ * @returns {string[] | null}
+ */
+function locate(lines, location, onlyContents, range) {
+  const text = location.trim();
+  /** @type {number} */
+  let at;
+  const headings = lines.map((l, i) => (HEADLINE_RE.test(l) ? i : -1)).filter((i) => i >= 0);
+  /** The line holding the end of the first match of `re` in the whole text. @param {RegExp} re */
+  const find = (re) => {
+    const whole = lines.join('\n');
+    const hit = re.exec(whole);
+    return hit ? whole.slice(0, hit.index + hit[0].length).split('\n').length - 1 : -1;
+  };
+  if (text.startsWith('*')) {
+    const want = text.slice(1).trim();
+    at = headings.find((i) => headlineTitle(lines[i]) === want) ?? headings.find((i) => headlineTitle(lines[i]).includes(want)) ?? -1;
+  } else if (text.startsWith('#')) {
+    const id = new RegExp(`^\\s*:CUSTOM_ID:\\s+${quoteRegExp(text.slice(1))}\\s*$`, 'i');
+    at = headings.find((i) => lines.slice(i + 1, subtreeEnd(lines, i)).some((l) => id.test(l))) ?? -1;
+  } else if (text.length > 1 && text.startsWith('/') && text.endsWith('/')) {
+    at = find(emacsRegexToJs(text.slice(1, -1)));
+  } else {
+    const name = new RegExp(`^[ \\t]*#\\+NAME:[ \\t]*${quoteRegExp(text)}[ \\t]*$`, 'i');
+    at = lines.findIndex((l) => name.test(l));
+    if (at < 0) at = lines.findIndex((l) => l.includes(`<<${text}>>`));
+    if (at < 0) at = headings.find((i) => headlineTitle(lines[i]) === text) ?? -1;
+    if (at < 0) at = find(new RegExp(text.split(/\s+/).map(quoteRegExp).join('\\s+'), 'i'));
+  }
+  if (at < 0) return null;
+  const el = elementAt(lines, at);
+  const region = onlyContents ? lines.slice(el.contents[0], el.contents[1]) : lines.slice(el.begin, el.end);
+  const m = range && /^(\d*)-(\d*)$/.exec(range.trim());
+  if (!m) return region;
+  // Org counts the last line of the range from its first line here, not from the start of the region
+  const start = m[1] ? Number(m[1]) - 1 : 0;
+  return region.slice(start, Number(m[2]) ? start + Number(m[2]) - 1 : region.length);
+}
+
+/**
+ * An included file's lines ready to go in (org-export--prepare-file-contents): blank lines at both ends dropped, the keyword's
+ * indentation up to the first heading, and the headings moved to `minlevel`.
+ * @param {string[]} lines @param {number} indent @param {number | null} minlevel
+ */
+function prepare(lines, indent, minlevel) {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && isBlank(lines[start])) start++;
+  while (end > start && isBlank(lines[end - 1])) end--;
+  let out = lines.slice(start, end);
+  if (indent > 0) {
+    let heading = false;
+    out = out.map((l) => {
+      if (heading || HEADLINE_RE.test(l)) {
+        heading = true;
+        return l;
+      }
+      return /^\[fn:[^\]\s]+\]/.test(l) ? l : ' '.repeat(indent) + l;
+    });
+  }
+  if (minlevel !== null) {
+    const levels = out.map((l) => HEADLINE_RE.exec(l)).filter((m) => m !== null).map((m) => /** @type {RegExpExecArray} */ (m)[1].length);
+    if (levels.length) {
+      const offset = minlevel - Math.min(...levels);
+      if (offset !== 0) out = out.map((l) => (HEADLINE_RE.test(l) ? (offset < 0 ? l.slice(-offset) : '*'.repeat(offset) + l) : l));
+    }
+  }
+  return out;
+}
+
+/** What org-escape-code-in-string does to the lines of a block that is not parsed. @param {string[]} lines */
+const escapeCode = (lines) => lines.map((l) => l.replace(/^([ \t]*)(,*(?:\*|#\+))/, '$1,$2'));
+
+/** The directory part of a path, with its last slash, or ''. @param {string} path */
+const directoryOf = (path) => path.slice(0, path.lastIndexOf('/') + 1);
+
+/** @param {string} dir @param {string} path */
+function resolvePath(dir, path) {
+  if (!dir || path.startsWith('/') || path.startsWith('~') || /^[a-z][a-z0-9+.-]*:/i.test(path)) return path;
+  /** @type {string[]} */
+  const out = [];
+  for (const part of (dir + path).split('/')) {
+    if (part === '.') continue;
+    if (part === '..' && out.length && out[out.length - 1] !== '..') out.pop();
+    else out.push(part);
+  }
+  return out.join('/');
+}
+
+/** @typedef {{ max: number, used: number, warned: boolean, onSkip?: (message: string) => void }} IncludeBudget */
+/** @typedef {{ dir: string, included: string[], fetchPath: any, budget: IncludeBudget }} IncludeContext */
+
+/**
+ * `lines` with every #+INCLUDE: keyword replaced by what it includes (recursively).
+ * @param {string[]} lines
+ * @param {IncludeContext} ctx
+ * @returns {Promise<string[]>}
+ */
+async function expandLines(lines, ctx) {
+  /** @type {string[]} */
+  const out = [];
+  let level = 0; // the level of the headline the line is under
+  let commented = 0; // the level of the commented headline it is under, or 0
+  let block = '';
+  for (const line of lines) {
+    if (block) {
+      if (new RegExp(`^[ \\t]*#\\+END_${quoteRegExp(block)}\\s*$`, 'i').test(line)) block = '';
+      out.push(line);
+      continue;
+    }
+    const open = BEGIN_RE.exec(line);
+    if (open && LITERAL_BLOCK_RE.test(open[1])) {
+      block = open[1];
+      out.push(line);
+      continue;
+    }
+    const head = HEADLINE_RE.exec(line);
+    if (head) {
+      level = head[1].length;
+      if (commented && level <= commented) commented = 0;
+      if (!commented && COMMENTED_RE.test(line)) commented = level;
+      out.push(line);
+      continue;
+    }
+    const m = INCLUDE_RE.exec(line);
+    if (!m || commented) {
+      out.push(line);
+      continue;
+    }
+    out.push(...(await includeAt(m[1].length, m[2], level + 1, ctx)));
+  }
+  return out;
+}
+
+/**
+ * The lines one #+INCLUDE: keyword stands for.
+ * @param {number} indent @param {string} value @param {number} inducedLevel
+ * @param {IncludeContext} ctx
+ * @returns {Promise<string[]>}
+ */
+async function includeAt(indent, value, inducedLevel, ctx) {
+  const d = parseIncludeValue(value);
+  if (d.path === null) return [];
+  const file = resolvePath(ctx.dir, d.path);
+  const key = `${file}\u0000${d.lines ?? ''}`;
+  if (ctx.included.includes(key)) return []; // a file that includes itself
   let result;
   try {
-    result = await fetchPath(directive.path);
+    result = await ctx.fetchPath(file);
   } catch {
-    return null;
+    return [];
   }
-  if (!result || typeof result.content !== 'string') return null;
+  if (!result || typeof result.content !== 'string') return [];
   // Each file has its own size limit (where it is read); this one bounds all of them together, so many #+INCLUDE lines
   // cannot add up to a document larger than the app would open.
+  const { budget } = ctx;
   const bytes = utf8Length(result.content);
   if (budget.max > 0 && budget.used + bytes > budget.max) {
-    if (!budget.warned) budget.onSkip?.(`Not included: "${directive.path}" would take the included files past ${formatSize(budget.max)} in all. Set org-xx-size-limit-org-file in Global Variables to change the limit.`);
+    if (!budget.warned) budget.onSkip?.(`Not included: "${d.path}" would take the included files past ${formatSize(budget.max)} in all. Set org-xx-size-limit-org-file in Global Variables to change the limit.`);
     budget.warned = true;
-    return null;
+    return [];
   }
   budget.used += bytes;
-
-  const rawLines = applyLineRange(result.content.split('\n'), directive.lines);
-
-  if (directive.blockType) {
-    const langSuffix = (directive.blockType === 'src' || directive.blockType === 'export') && directive.language ? ' ' + directive.language : '';
-    return {
-      bodyLines: [`#+BEGIN_${directive.blockType.toUpperCase()}${langSuffix}`, ...rawLines, `#+END_${directive.blockType.toUpperCase()}`],
-    };
+  const all = result.content.replace(/\r\n/g, '\n').split('\n');
+  if (all.length && all[all.length - 1] === '') all.pop();
+  const pad = ' '.repeat(indent);
+  if (d.literal) {
+    const name = d.block ?? '';
+    return [`${pad}#+BEGIN_${name}${d.args !== null ? ' ' + d.args : ''}`, ...escapeCode(prepare(applyLineRange(all, d.lines), 0, null)), `${pad}#+END_${name}`];
   }
-  const subDoc = parseOrgFn(rawLines.join('\n'));
-  const headings = subDoc.children || [];
-  const minlevel = directive.minlevel || defaultMinlevel;
-  if (minlevel) {
-    for (const heading of headings) shiftLevels(heading, minlevel);
-  }
-  return { headings };
+  if (d.block !== null) return [`${pad}#+BEGIN_${d.block}`, ...prepare(applyLineRange(all, d.lines), 0, null), `${pad}#+END_${d.block}`];
+  const chosen = d.location !== null ? locate(all, d.location, d.onlyContents, d.lines) : applyLineRange(all, d.lines);
+  if (chosen === null) return []; // the search finds nothing
+  const text = prepare(chosen, indent, d.minlevel ?? inducedLevel);
+  return expandLines(text, { ...ctx, dir: directoryOf(file), included: [...ctx.included, key] });
 }
 
-/** Expands every #+INCLUDE: found within `heading`'s own body text
- *  (real org allows this, confirmed directly against real Emacs org-
- *  mode: the included content nests as CHILDREN of the containing
- *  heading) and, recursively, within every one of its own
- *  descendants. Not mutating -- returns a new heading object. With no
- *  explicit :minlevel, defaults to one level deeper than the
- *  containing heading itself (confirmed directly against real Emacs
- *  org-mode -- genuinely different from the document-level default,
- *  which keeps the sub-document's own original levels unchanged).
- *  Any body text before/after the #+INCLUDE: line, within the same
- *  heading, stays exactly where it was -- this app doesn't reproduce
- *  real org's own further quirk of merging trailing body text into
- *  whatever the last included element happened to be, a well-defined,
- *  predictable placement being preferable to replicating an
- * @param {Heading} heading
- * @param {any} [fetchPath]
- * @param {any} [parseOrgFn]
- *  incidental artifact of real org's own internal merging. */
-/** @returns {Promise<any>} */ async function expandHeadingIncludes(/** @type {any} */ heading, /** @type {any} */ fetchPath, /** @type {any} */ parseOrgFn, /** @type {IncludeBudget} */ budget) {
-  const newBodyLines = [];
-  const prependedChildren = [];
-  for (const line of heading.bodyLines || []) {
-    const m = INCLUDE_LINE_RE.exec(line);
-    if (!m) {
-      newBodyLines.push(line);
-      continue;
-    }
-    const directive = parseIncludeDirective(m[1]);
-    if (!directive) {
-      newBodyLines.push(line); // doesn't even look like a valid directive -- leave the line as plain text rather than silently eating it
-      continue;
-    }
-    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, heading.level + 1, budget);
-    if (!resolved) continue; // unreachable/failed -- the #+INCLUDE line itself is still dropped, matching the document-level case's own "skip silently" behavior
-    if (resolved.headings) prependedChildren.push(...resolved.headings);
-    else newBodyLines.push(...(resolved.bodyLines || []));
-  }
-
-  const expandedChildren = [];
-  for (const child of heading.children || []) {
-    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn, budget));
-  }
-
-  return {
-    ...heading,
-    bodyLines: newBodyLines,
-    body: parseBody(newBodyLines),
-    children: [...prependedChildren, ...expandedChildren],
-  };
-}
-
-/** Expands every document-level #+INCLUDE: keyword in `doc` into a
- *  NEW, expanded document object -- `doc` itself is never mutated.
- *  Included content is prepended before `doc`'s own existing top-
- *  level headings, in #+INCLUDE order (multiple #+INCLUDE lines are
- *  all document-level, before the first heading, so this matches
- *  actual source order).
- *
- *  `fetchPath(path)` is an async function the caller supplies --
- *  given a raw #+INCLUDE path string, resolves it to `{ content:
- *  string }`, or returns/throws anything else to signal "not found,"
- *  which this function treats as "skip this one #+INCLUDE, keep
- *  going" rather than failing the whole export. `parseOrgFn` is the
- *  caller's own parseOrg (from org-parser.js) -- injected the same
- *  way, so this module has no import of its own on org-parser.js,
- *  avoiding a circular dependency (org-parser.js has no reason to
- *  know about includes at all).
- *
- *  Default (no block-type): the included file is parsed as a full
- *  org document; its own top-level headings are spliced in (each
- *  level-shifted to `:minlevel` if given, preserving its own
- *  internal relative depth), but its own #+TITLE/#+AUTHOR/#+DATE/
- *  #+OPTIONS/preamble body are never merged in -- see this module's
- *  own top-level docs for why.
- *
- *  block-type (src/example/quote/export): the (line-range-filtered)
- *  raw text is wrapped in the corresponding #+BEGIN_.../#+END_...
- *  block and appended to the document's own bodyLines (the
- *  document-level preamble, now rendered by every export format)
- *  rather than becoming a heading, matching real org's own actual
- *  placement. */
-/** True if `doc` has a #+INCLUDE: anywhere at all -- the document
- *  root's own keywords, or any heading's own body text, at any depth.
- *  expandIncludes' own cheap-no-op fast path for the overwhelmingly
- *  common case (a document with no includes at all shouldn't pay for
+/**
+ * True if `doc` has a #+INCLUDE: anywhere at all, so a document without one is not rebuilt.
  * @param {Doc} doc
- *  rebuilding every single heading object just to find that out). */
+ */
 function hasAnyInclude(doc) {
-  if ((doc.keywords || []).some((k) => k.key.toUpperCase() === 'INCLUDE')) return true;
+  if ((doc.keywords || []).some((k) => k.key.toUpperCase() === 'INCLUDE') || (doc.bodyLines || []).some((line) => INCLUDE_RE.test(line))) return true;
   return (function walk(headings) {
     for (const heading of headings || []) {
-      if ((heading.bodyLines || []).some((/** @type {string} */ line) => INCLUDE_LINE_RE.test(line))) return true;
+      if ((heading.bodyLines || []).some((/** @type {string} */ line) => INCLUDE_RE.test(line))) return true;
       if (walk(heading.children)) return true;
     }
     return false;
   })(doc.children);
 }
 
-/** @typedef {{ max: number, used: number, warned: boolean, onSkip?: (message: string) => void }} IncludeBudget */
-
 /**
- * `options.maxTotalBytes`: the most all the included files may add up to (default: the Org file limit; 0 for no limit); an
- * include that would go past it is left out, and `options.onSkip` is told once.
+ * `doc` with its #+INCLUDE: keywords expanded: a new document, `doc` itself is never changed.
+ *
+ * `fetchPath(path)` is an async function the caller supplies, giving `{ content: string }` for a path as written in the keyword (a path
+ * in an included file is made relative to that file); anything else it returns, or a throw, skips that include. `parseOrgFn` is
+ * the caller's parseOrg, which this module is given rather than importing it.
+ * `options.maxTotalBytes` is the most all the included files may add up to (default: the Org file limit; 0 for no limit); an include
+ * that would go past it is left out, and `options.onSkip` is told once.
  * @param {Doc} doc
  * @param {any} [fetchPath]
  * @param {any} [parseOrgFn]
  * @param {{ maxTotalBytes?: number, onSkip?: (message: string) => void }} [options]
+ * @returns {Promise<Doc>}
  */
 async function expandIncludes(doc, fetchPath, parseOrgFn, options = {}) {
   if (!hasAnyInclude(doc)) return doc;
   /** @type {IncludeBudget} */
   const budget = { max: options.maxTotalBytes ?? getSizeLimits().orgFile.max, used: 0, warned: false, onSkip: options.onSkip };
-
-  /** @param {any} [k] */
-  const includeKeywords = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'INCLUDE');
-
-  const prependedHeadings = [];
-  const appendedBodyLines = [];
-
-  for (const kw of includeKeywords) {
-    const directive = parseIncludeDirective(kw.value);
-    if (!directive) continue;
-    const resolved = await resolveOneInclude(directive, fetchPath, parseOrgFn, null, budget);
-    if (!resolved) continue;
-    if (resolved.headings) prependedHeadings.push(...resolved.headings);
-    else appendedBodyLines.push(...(resolved.bodyLines || []));
-  }
-
-  const expandedChildren = [];
-  for (const child of doc.children || []) {
-    expandedChildren.push(await expandHeadingIncludes(child, fetchPath, parseOrgFn, budget));
-  }
-
-  const newBodyLines = [...(doc.bodyLines || []), ...appendedBodyLines];
-  return {
-    ...doc,
-    children: [...prependedHeadings, ...expandedChildren],
-    bodyLines: newBodyLines,
-    body: parseBody(newBodyLines),
-  };
+  const lines = await expandLines(serializeOrg(doc).split('\n'), { dir: '', included: [], fetchPath, budget });
+  const parsed = parseOrgFn(lines.join('\n'));
+  return { ...doc, keywords: parsed.keywords, bodyLines: parsed.bodyLines, body: parsed.body, children: parsed.children };
 }
 
 export { expandIncludes };

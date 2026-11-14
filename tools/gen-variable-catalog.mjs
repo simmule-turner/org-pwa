@@ -25,7 +25,7 @@ org-agenda-skip-archived-trees org-agenda-skip-comment-trees org-agenda-remove-t
 org-cite-basic-sorting-field org-cite-basic-author-year-separator org-footnote-section org-footnote-auto-label org-footnote-auto-adjust
 org-footnote-define-inline org-tags-exclude-from-inheritance org-agenda-show-inherited-tags org-agenda-use-tag-inheritance
 org-use-property-inheritance org-refile-allow-creating-parent-nodes org-priority-start-cycle-with-default org-priority-faces
-org-priority-default org-table-duration-hour-zero-padding org-export-with-broken-links org-html-doctype org-html-checkbox-type org-html-preamble-format org-html-postamble-format org-html-validation-link
+org-priority-default org-table-duration-hour-zero-padding org-table-formula-create-columns org-export-with-broken-links org-html-doctype org-html-checkbox-type org-html-preamble-format org-html-postamble-format org-html-validation-link
 org-icalendar-include-todo org-icalendar-use-scheduled org-icalendar-use-deadline org-icalendar-with-timestamps org-icalendar-alarm-time
 org-agenda-sorting-strategy org-agenda-custom-commands org-modules org-inlinetask-min-level org-global-properties
 org-columns-default-format org-columns-ellipses org-timer-format org-timer-default-timer org-timer-display org-crypt-key org-crypt-tag-matcher org-crypt-disable-auto-save before-save-hook diary-list-entries-hook diary-nongregorian-listing-hook diary-date-forms display-time-format large-file-warning-threshold`.split(/\s+/);

@@ -14,7 +14,7 @@ import { getPropertiesText, getProperty, isRestorable } from '../src/archive-mod
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
 import { updateCheckboxCookie } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
-import { extractLatexFragments, parseInline, stripLineBreakMarker } from '../src/inline-markup.js';
+import { extractLatexFragments, parseInline, parseInlineLines, stripLineBreakMarker } from '../src/inline-markup.js';
 import { isJsBlock } from '../src/babel.js';
 import { isElispBlock } from '../src/babel-elisp.js';
 import { getDragHandle, getIndentTables, parseLispBoolean } from '../src/local-variables.js';
@@ -926,16 +926,17 @@ export function renderTableRow(row) {
   if (row.node.tblfm && row.node.tblfm.trim()) {
     controls.appendChild(
       smallButton('\ud83d\udd22 Calc', 'Recalculate this table', () => {
-        const recalc = () => {
-          const { result, message, hasError } = recalculateOneTable(row.heading, row.node);
+        const recalc = async () => {
+          const { result, message, hasError, warning } = await recalculateOneTable(row.heading, row.node);
+          const note = warning ? ` ${warning}` : '';
           if (result === 'error') {
             setStatus(`Couldn't recalculate: ${message}`);
             render();
           } else if (result === 'unchanged') {
-            setStatus('Table is already up to date.');
+            setStatus(`Table is already up to date.${note}`);
             render();
           } else if (result === 'changed') {
-            setStatus(hasError ? 'Recalculated table -- one or more cells has #ERROR.' : 'Recalculated table.');
+            setStatus(`${hasError ? 'Recalculated table -- one or more cells has #ERROR.' : 'Recalculated table.'}${note}`);
             commitAndRender('Recalculated table');
           }
           // 'no-formula' can't actually happen here -- the button itself is only shown when row.node.tblfm is set.
@@ -1127,6 +1128,7 @@ export function renderParagraphRow(row) {
     const { lines: extractedLines, fragments } = extractLatexFragments(strippedLines);
     const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
     const numbered = marksOn();
+    const lineNodes = parseInlineLines(extractedLines.map(stripLineBreakMarker), inlineOpts); // the paragraph is read as a whole, so a span may cross a line
     extractedLines.forEach((line, i) => {
       if (i > 0) {
         const prevLine = extractedLines[i - 1];
@@ -1136,7 +1138,7 @@ export function renderParagraphRow(row) {
       }
       const mark = nextMark();
       if (mark) p.appendChild(mark);
-      renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, null, row.heading);
+      renderInlineNodes(lineNodes[i], p, null, row.heading);
     });
   } else if (!affiliated.length) {
     p.textContent = '(empty note \u2014 tap to edit)';
@@ -1278,6 +1280,7 @@ export function renderBlockContent(block, container, linkContext) {
       p.style.margin = PARAGRAPH_MARGIN; // prose inside a quote: the paragraph value
       const { lines: extractedLines, fragments } = extractLatexFragments(currentParagraphLines);
       const inlineOpts = { ...currentInlineOpts(), latexFragments: fragments };
+      const lineNodes = parseInlineLines(extractedLines.map(stripLineBreakMarker), inlineOpts);
       extractedLines.forEach((line, i) => {
         if (i > 0) {
           const prevLine = extractedLines[i - 1];
@@ -1286,7 +1289,7 @@ export function renderBlockContent(block, container, linkContext) {
         }
         const mark = marks.length === extractedLines.length ? marks[i] : null;
         if (mark) p.appendChild(mark);
-        renderInlineNodes(parseInline(stripLineBreakMarker(line), inlineOpts), p, linkContext);
+        renderInlineNodes(lineNodes[i], p, linkContext);
       });
       wrap.appendChild(p);
       currentParagraphLines = [];

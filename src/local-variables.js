@@ -833,6 +833,15 @@ export function getOrgTableDurationHourZeroPadding(vars) {
   return parseLispBoolean((vars || {})['org-table-duration-hour-zero-padding'], true);
 }
 
+/** org-table-formula-create-columns: real org's own variable. `nil` (Emacs's default) refuses a formula for a field past the last column;
+ *  `t` adds the columns; `warn` adds them and shows a warning; `prompt` asks first. A leading quote is allowed; any other value reads as nil.
+ * @param {LocalVars} vars
+ * @returns {'nil' | 't' | 'warn' | 'prompt'} */
+export function getOrgTableFormulaCreateColumns(vars) {
+  const value = String((vars || {})['org-table-formula-create-columns'] ?? '').trim().replace(/^'/, '').toLowerCase();
+  return value === 't' ? 't' : value === 'warn' ? 'warn' : value === 'prompt' ? 'prompt' : 'nil';
+}
+
 /** org-weather-format: this app's own extension, not a real
  *  elisp/org variable -- the template %%(org-weather) substitutes
  *  its own placeholders into (see src/org-weather.js's own

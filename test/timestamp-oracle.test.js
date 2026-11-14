@@ -23,13 +23,16 @@ function expectedFrom(e) {
   };
 }
 
+// The numbers as written: a day or time that does not exist (2021-02-29, 24:00) is kept, as Emacs keeps it. The repeater string of ours
+// carries a habit's last-chance period (`+1d/2d`) that Emacs leaves out of the repeater, so it is read without it.
 function oursFrom(p) {
+  const f = p.fields;
   return {
     active: p.active,
-    y: p.date.getFullYear(), mo: p.date.getMonth() + 1, d: p.date.getDate(),
-    h: p.hasTime ? p.date.getHours() : null, min: p.hasTime ? p.date.getMinutes() : null,
-    endH: p.endDate ? p.endDate.getHours() : null, endMin: p.endDate ? p.endDate.getMinutes() : null,
-    repeater: p.repeater, delay: p.delay,
+    y: f.year, mo: f.month, d: f.day,
+    h: f.hour, min: f.minute,
+    endH: f.endHour, endMin: f.endMinute,
+    repeater: p.repeater && p.repeater.replace(/\/.*$/, ''), delay: p.delay,
   };
 }
 
@@ -64,4 +67,32 @@ test(`the weekday written for a date is the one Emacs names, for ${oracle.weekda
 test('a timestamp inside a line of text is found the way Emacs finds it', () => {
   const found = findTimestamps('Dinner <2026-10-11 Sun 18:30> and [2026-10-12 Mon] then <2026-10-13 +1w>');
   assert.equal(found.length, 3);
+});
+
+test('the last-chance period of a repeater is kept with it, as a habit reads it, and written as a number', () => {
+  assert.equal(parseOrgTimestamp('<2020-01-01 Wed +01d/02d>').repeater, '+1d/2d');
+  assert.equal(parseOrgTimestamp('<2020-01-01 Wed .+1w/2w>').repeater, '.+1w/2w');
+  assert.equal(parseOrgTimestamp('<2020-01-01 Wed +007w -03d>').repeater, '+7w');
+});
+
+test(`timestamps in running text are the ones Emacs finds there, for ${oracle.found.length} texts`, () => {
+  const wrong = [];
+  for (const c of oracle.found) {
+    const got = findTimestamps(c.text).map((t) => {
+      const a = t.fields;
+      const e = t.end ? t.end.fields : null;
+      return {
+        raw: t.raw,
+        start: [a.year, a.month, a.day, a.hour, a.minute],
+        end: e ? [e.year, e.month, e.day, e.hour, e.minute] : [a.year, a.month, a.day, a.endHour ?? a.hour, a.endHour !== null ? a.endMinute : a.minute],
+      };
+    });
+    const want = c.emacs.map((e) => ({
+      raw: e.raw,
+      start: [e.ys, e.ms, e.ds, e.hs === false ? null : e.hs, e.is === false ? null : e.is],
+      end: [e.ye, e.me, e.de, e.he === false ? null : e.he, e.ie === false ? null : e.ie],
+    }));
+    if (JSON.stringify(got) !== JSON.stringify(want)) wrong.push({ text: c.text, got, want });
+  }
+  assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} differ`);
 });

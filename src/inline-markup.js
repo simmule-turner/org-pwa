@@ -196,8 +196,13 @@ function latexNode(source, displayMode, raw) {
  * @param {string[]} lines
  *  line (pass it through via opts.latexFragments). */
 function extractLatexFragments(lines) {
-  const fullText = lines.join('\n');
-  const fragments = [];
+  /** @type {any[]} */ const fragments = [];
+  return { lines: extractFrom(lines.join('\n'), fragments).split('\n'), fragments };
+}
+
+/** The text of extractLatexFragments for one string, the fragments it finds added to `fragments`.
+ * @param {string} fullText @param {any[]} fragments */
+function extractFrom(fullText, fragments) {
   let result = '';
   let pos = 0;
   while (pos < fullText.length) {
@@ -225,6 +230,12 @@ function extractLatexFragments(lines) {
       if (link) {
         result += '[[' + link[1] + ']';
         pos += 3 + link[1].length;
+        if (link[2] !== undefined) { // the text of a link is read as a text of its own
+          result += '[' + extractFrom(link[2], fragments) + ']';
+          pos += link[2].length + 2;
+        }
+        result += ']';
+        pos += 1;
         continue;
       }
     }
@@ -240,7 +251,7 @@ function extractLatexFragments(lines) {
     result += ch;
     pos += 1;
   }
-  return { lines: result.split('\n'), fragments };
+  return result;
 }
 
 // Footnotes: [fn:label] is a bare reference to a definition given
@@ -310,12 +321,13 @@ const TYPES_RE = AUTOLINK_SCHEMES.join('|');
 // and ends in something that is not punctuation, a slash, or a parenthesized group.
 const PLAIN_CHARS = '[^\\][ \\t\\n()<>]';
 const PLAIN_PAREN = `\\((?:${PLAIN_CHARS}|\\(${PLAIN_CHARS}*\\))*\\)`;
-const BARE_URL_RE = new RegExp(`^(?:${TYPES_RE}):(?:(?:${PLAIN_CHARS}|${PLAIN_PAREN})+)(?:[^!-/:-@\\[-\`{-~\\p{P} \\t\\n]|/|${PLAIN_PAREN})`, 'iu');
+const BARE_URL_RE = new RegExp(`^(?:${TYPES_RE}):(?:(?:${PLAIN_CHARS}|${PLAIN_PAREN})+)(?:[^!-/:-@\\[-\`{-~\\p{P}\\p{Z} \\t\\n]|/|${PLAIN_PAREN})`, 'iu');
 // <https://example.com> -- real org's other recognized plain-URI form,
 // explicitly called out in org's own manual as equivalent to the bare
 // form above, just with angle brackets marking the boundary instead of
 // relying on trailing-punctuation heuristics.
-const ANGLE_URL_RE = new RegExp(`^<((?:${TYPES_RE}):[^>\\n]*)>`, 'i');
+// The address may run over lines when the next one begins with a character that is not a blank or `>` (org-link-angle-re).
+const ANGLE_URL_RE = new RegExp(`^<((?:${TYPES_RE}):[^>\\n]*(?:\\n[ \\t]*[^> \\t\\n][^>\\n]*)*)>`, 'i');
 
 // Emphasis borders as org-element--parse-generic-emphasis has them: an opening marker follows the start of the text, whitespace or one of
 // -('"{ and is not followed by whitespace; the closing one is not preceded by whitespace and is followed by whitespace, the end or one of
@@ -448,17 +460,30 @@ function matchEmphasisAt(text, pos) {
  * bare `a_b` as literal text; `'nil'` disables sub/superscript
  * interpretation entirely, so `_`/`^` are always literal characters.
  *
+ * `opts.inLink` is set for the text of a link, which holds objects but no links.
+ *
  * `_` is both the underline marker and the subscript marker. As in Org, a subscript is tried first (it needs a non-blank character before
  * the `_`), then underline. A script that org-use-sub-superscripts does not interpret stays text, and its text is not read for markup.
  * @param {string} text
  */
-/** @returns {any} */ function parseInline(/** @type {any} */ text, opts = {}) {
-  const subSuperscriptMode = /** @type {any} */ (opts).subSuperscriptMode || 't';
+/** @typedef {{ type: string, value?: string, children?: InlineNode[], newlines?: number }} InlineNode */
+/** @typedef {{ subSuperscriptMode?: string, inLink?: boolean, radioTargets?: RegExp | null, latexFragments?: { raw: string, source: string, displayMode: boolean }[] }} InlineOpts */
+/** @param {string} text @param {InlineOpts} [opts] @returns {any} */
+function parseInline(text, opts = {}) {
+  const subSuperscriptMode = opts.subSuperscriptMode || 't';
   const nodes = [];
   let buffer = '';
   let pos = 0;
 
-  const radioRe = /** @type {any} */ (opts).radioTargets || null; // plain occurrences of a radio target become links to it
+  const inLink = !!opts.inLink;
+  const radioRe = inLink ? null : opts.radioTargets || null; // plain occurrences of a radio target become links to it
+  /** Records on `node` how many line breaks the text it was made from held (a node that spans lines; see parseInlineLines).
+   * @param {any} node @param {number} from @param {number} to */
+  const spans = (node, from, to) => {
+    const breaks = text.slice(from, to).split('\n').length - 1;
+    if (breaks > 0) Object.defineProperty(node, 'newlines', { value: breaks });
+    return node;
+  };
   const flush = () => {
     if (!buffer) return;
     if (radioRe) {
@@ -481,7 +506,7 @@ function matchEmphasisAt(text, pos) {
     flush();
     const script = { type: sc.kind, value: sc.braces ? text.slice(at + 2, at + sc.length - 1) : text.slice(at + 1, at + sc.length) };
     Object.defineProperty(script, 'raw', { value: text.slice(at, at + sc.length) }); // as typed (a_{bc}); not an enumerable field
-    nodes.push(script);
+    nodes.push(spans(script, at, at + sc.length));
     pos = at + sc.length;
     return true;
   };
@@ -489,15 +514,20 @@ function matchEmphasisAt(text, pos) {
   while (pos < text.length) {
     const remaining = text.slice(pos);
 
-    const linkMatch = LINK_RE.exec(remaining);
+    const linkMatch = inLink ? null : LINK_RE.exec(remaining);
     if (linkMatch && linkMatch.index === 0) {
       flush();
-      const target = unescapeLink(linkMatch[1]);
-      const description = linkMatch[2] !== undefined ? linkMatch[2] : null;
-      if (description === null && IMAGE_EXT_RE.test(target)) {
-        nodes.push({ type: 'image', target });
+      const target = unescapeLink(linkMatch[1]).replace(/[ \t]*\n[ \t]*/g, ' '); // a break in the address is one blank, as Org reads it
+      const written = linkMatch[2] !== undefined ? linkMatch[2] : null;
+      if (written === null && IMAGE_EXT_RE.test(target)) {
+        nodes.push(spans({ type: 'image', target }, pos, pos + linkMatch[0].length));
       } else {
-        nodes.push({ type: 'link', target, description });
+        const frags = opts.latexFragments;
+        // the text is kept as typed (a fragment found in the paragraph is put back); the objects in it are read as well
+        const description = written === null ? null : written.replace(/\uE000(\d+)\uE001/g, (all, n) => (frags && frags[Number(n)] ? frags[Number(n)].raw : all));
+        const link = { type: 'link', target, description };
+        if (written !== null) Object.defineProperty(link, 'descriptionNodes', { value: parseInline(written, { ...opts, inLink: true }) });
+        nodes.push(spans(link, pos, pos + linkMatch[0].length));
       }
       pos += linkMatch[0].length;
       continue;
@@ -515,20 +545,21 @@ function matchEmphasisAt(text, pos) {
       }
     }
 
-    const angleMatch = ANGLE_URL_RE.exec(remaining);
+    const angleMatch = inLink ? null : ANGLE_URL_RE.exec(remaining);
     if (angleMatch && angleMatch.index === 0) {
       flush();
       const target = angleMatch[1];
       if (IMAGE_EXT_RE.test(target)) {
-        nodes.push({ type: 'image', target });
+        nodes.push(spans({ type: 'image', target }, pos, pos + angleMatch[0].length));
       } else {
-        nodes.push({ type: 'link', target, description: null });
+        nodes.push(spans({ type: 'link', target, description: null }, pos, pos + angleMatch[0].length));
       }
       pos += angleMatch[0].length;
       continue;
     }
 
-    const bareMatch = pos === 0 || !/[\p{L}\p{N}]/u.test(text[pos - 1]) ? BARE_URL_RE.exec(remaining) : null;
+    // not after a letter or digit, nor after a quote, dollar or percent sign
+    const bareMatch = !inLink && (pos === 0 || !/[\p{L}\p{N}'$%]/u.test(text[pos - 1])) ? BARE_URL_RE.exec(remaining) : null;
     if (bareMatch && bareMatch.index === 0) {
       flush();
       const target = bareMatch[0];
@@ -559,14 +590,14 @@ function matchEmphasisAt(text, pos) {
       }
     }
 
-    if (text[pos] === '[' && text[pos + 1] === 'f' && text[pos + 2] === 'n' && text[pos + 3] === ':') {
+    if (!inLink && text[pos] === '[' && text[pos + 1] === 'f' && text[pos + 2] === 'n' && text[pos + 3] === ':') {
       const fn = matchFootnoteAt(text, pos);
       if (fn) {
         flush();
         if (fn.type === 'footnote-ref') {
           nodes.push({ type: 'footnote-ref', label: fn.label });
         } else {
-          nodes.push({ type: 'footnote-def', label: fn.label, children: parseInline(fn.content, opts) });
+          nodes.push(spans({ type: 'footnote-def', label: fn.label, children: parseInline(fn.content ?? '', opts) }, pos, pos + fn.length));
         }
         pos += fn.length;
         continue;
@@ -575,7 +606,7 @@ function matchEmphasisAt(text, pos) {
 
     if (text[pos] === LATEX_PLACEHOLDER_START) {
       const ph = LATEX_PLACEHOLDER_RE.exec(text.slice(pos));
-      const frag = ph && /** @type {any} */ (opts).latexFragments && /** @type {any} */ (opts).latexFragments[Number(ph[1])];
+      const frag = ph && opts.latexFragments && opts.latexFragments[Number(ph[1])];
       if (frag) {
         flush();
         nodes.push(latexNode(frag.source, frag.displayMode, frag.raw));
@@ -651,7 +682,7 @@ function matchEmphasisAt(text, pos) {
       const m = matchEmphasisAt(text, pos);
       if (m) {
         flush();
-        const kind = /** @type {any} */ (EMPHASIS_KIND)[m.marker];
+        const kind = /** @type {Record<string, string>} */ (EMPHASIS_KIND)[m.marker];
         if (LITERAL_KINDS.has(kind)) {
           nodes.push({ type: kind, value: m.content });
         } else {
@@ -668,6 +699,53 @@ function matchEmphasisAt(text, pos) {
 
   flush();
   return nodes;
+}
+
+/**
+ * The nodes of a paragraph, one array per line of it: the lines are read as the one text they make, as in Org (so `*bold` over a line
+ * break, or a link whose text has one, is found), and the nodes that cross a line break are cut at it. An emphasis that crosses one is
+ * a piece in each line; a node that cannot be cut (a link, a script, an inline footnote) stays whole in the line where it begins, the
+ * lines it covers following empty, and the text after it starts the line it ends on (without the blank after the break).
+ * @param {string[]} lines the lines, line-break marks and LaTeX fragments already taken care of
+ * @param {InlineOpts} [opts] as parseInline
+ * @returns {import('./types.js').InlineNode[][]}
+ */
+function parseInlineLines(lines, opts = {}) {
+  const nodes = parseInline(lines.join('\n'), opts);
+  /** @type {InlineNode[][]} */ const rows = [[]];
+  let trim = false; // the next text follows a break inside a node: its leading blanks are the break
+  /** @param {InlineNode[]} list @param {InlineNode[][]} out */
+  const cut = (list, out) => {
+    for (const node of list) {
+      const row = () => out[out.length - 1];
+      if (node.type === 'text') {
+        (node.value ?? '').split('\n').forEach((piece, k) => {
+          if (k > 0) out.push([]);
+          if (trim) piece = piece.replace(/^[ \t]+/, '');
+          trim = false;
+          if (piece !== '') row().push({ type: 'text', value: piece });
+        });
+      } else if ((node.type === 'code' || node.type === 'verbatim') && (node.value ?? '').includes('\n')) {
+        (node.value ?? '').split('\n').forEach((piece, k) => {
+          if (k > 0) out.push([]);
+          row().push({ type: node.type, value: piece });
+        });
+      } else if (node.children && !node.newlines && node.type !== 'footnote-def') {
+        /** @type {InlineNode[][]} */ const inner = [[]];
+        cut(node.children, inner);
+        inner.forEach((part, k) => {
+          if (k > 0) out.push([]);
+          if (part.length) row().push({ ...node, children: part });
+        });
+      } else {
+        row().push(node);
+        for (let k = 0; k < (node.newlines || 0); k++) out.push([]);
+        if (node.newlines) trim = true;
+      }
+    }
+  };
+  cut(nodes, rows);
+  return /** @type {import("./types.js").InlineNode[][]} */ (/** @type {unknown} */ (rows));
 }
 
 /** Real org's own hard-line-break marker: a paragraph line ending in
@@ -690,6 +768,7 @@ function stripLineBreakMarker(line) {
 
 export {
   parseInline,
+  parseInlineLines,
   stripLineBreakMarker,
   IMAGE_EXT_RE,
   matchLatexFragmentAt,

@@ -180,6 +180,22 @@
    "emacs": ""
   },
   {
+   "template": "** ",
+   "emacs": "** \n"
+  },
+  {
+   "template": "- X ",
+   "emacs": "- X \n"
+  },
+  {
+   "template": "a  \n\n  \n",
+   "emacs": "a  \n"
+  },
+  {
+   "template": "* H  \nbody  \n \n",
+   "emacs": "* H  \nbody  \n"
+  },
+  {
    "template": "a\tb",
    "emacs": "a       b\n"
   },

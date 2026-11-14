@@ -3,9 +3,10 @@
  * The Org functions an agenda setting may call (`org-entry-get`, `org-get-heading`, `org-get-tags`, ...), as built-ins of the Lisp
  * interpreter. Emacs runs such a setting with the cursor on a heading; here `withHeading` says which heading that is.
  */
-import { NIL, list, signal, wrongType } from './elisp-data.js';
+import { NIL, Sym, intern, list, print, signal, wrongType } from './elisp-data.js';
 import { defun } from './elisp-core.js';
-import { inheritedProperty } from './babel-args.js';
+import { inheritedProperty, topPropertyPairs } from './babel-args.js';
+import { parsePropertyInheritance, parseTagInheritance, propertyInherits, tagInherits } from './tag-inheritance.js';
 import { cookieOf, readPriorityRange } from './priorities.js';
 
 /** @typedef {import('./types.js').Heading} Heading */
@@ -68,12 +69,23 @@ function keyword(doc, key) {
   return k ? String(k.value).trim() : null;
 }
 
-/** The tags of the heading, the file's and its ancestors' first, as `org-get-tags` lists them. @param {HeadingContext & { ancestors: Heading[] }} c @param {boolean} local */
+/** The printed value of a Lisp variable (set, or bound by a `let`), or undefined while it is void. @param {string} name @returns {string | undefined} */
+function variableText(name) {
+  const value = intern(name).value;
+  return value === undefined ? undefined : print(value);
+}
+
+/** The tags of the heading as `org-get-tags` lists them: the file's and its ancestors' first, as far as `org-use-tag-inheritance` and
+ * `org-tags-exclude-from-inheritance` let them in, then its own; a tag that comes twice stays where it is most local.
+ * @param {HeadingContext & { ancestors: Heading[] }} c @param {boolean} local */
 function tagsOf(c, local) {
   const own = c.heading.tags || [];
   if (local) return [...own];
+  const policy = parseTagInheritance(variableText('org-use-tag-inheritance'), variableText('org-tags-exclude-from-inheritance'));
+  if (policy === false) return [...own];
   const file = (keyword(c.doc, 'FILETAGS') || '').split(/[:\s]+/).filter(Boolean);
-  return [...file, ...c.ancestors.flatMap((a) => a.tags || []), ...own];
+  const all = [...file, ...c.ancestors.flatMap((a) => a.tags || [])].filter((t) => tagInherits(policy, t)).concat(own);
+  return all.filter((t, i) => all.lastIndexOf(t) === i);
 }
 
 /** @param {HeadingContext & { ancestors: Heading[] }} c @returns {string} */
@@ -82,6 +94,8 @@ function categoryOf(c) {
     const entry = Object.entries(h.properties || {}).find(([k]) => k.toUpperCase() === 'CATEGORY');
     if (entry) return String(entry[1]);
   }
+  const top = topPropertyPairs(c.doc).find(([k]) => k.toUpperCase() === 'CATEGORY'); // the drawer at the top of the file
+  if (top) return top[1];
   return keyword(c.doc, 'CATEGORY') ?? c.category ?? '';
 }
 
@@ -103,7 +117,7 @@ function stringArg(x) {
   throw wrongType('stringp', x);
 }
 
-/** org-entry-get. @param {LObj} property @param {boolean} inherit @param {boolean} literalNil @returns {LObj} */
+/** org-entry-get. @param {LObj} property @param {boolean | 'selective'} inherit @param {boolean} literalNil @returns {LObj} */
 function entryGet(property, inherit, literalNil) {
   const c = here();
   const name = stringArg(property);
@@ -125,8 +139,15 @@ function entryGet(property, inherit, literalNil) {
     case 'DEADLINE': value = h.planning && h.planning.deadline; break;
     case 'CLOSED': value = h.planning && h.planning.closed; break;
     default: {
-      const own = Object.entries(h.properties || {}).find(([k]) => k.toUpperCase() === name.toUpperCase());
-      value = own ? String(own[1]) : inherit ? inheritedProperty(c.doc, [...c.ancestors, h], name) : null;
+      let inherits = inherit === true;
+      if (inherit === 'selective') {
+        // inheritance only for the properties org-use-property-inheritance names (org-property-inherit-p)
+        const policy = parsePropertyInheritance(variableText('org-use-property-inheritance'));
+        if (policy === null) throw signal('error', ["Invalid setting of `org-use-property-inheritance'"]);
+        inherits = propertyInherits(policy, name);
+      }
+      // the values of NAME+ lines add to NAME's, in one entry as in the ones above it
+      value = inherits ? inheritedProperty(c.doc, [...c.ancestors, h], name) : inheritedProperty(null, [h], name);
     }
   }
   if (value === null || value === undefined) return NIL;
@@ -136,7 +157,7 @@ function entryGet(property, inherit, literalNil) {
 /** @param {LObj | undefined} x */
 const truthy = (x) => x !== undefined && x !== NIL;
 
-defun('org-entry-get', 2, 4, ([, property, inherit, literalNil]) => entryGet(property, truthy(inherit), truthy(literalNil)));
+defun('org-entry-get', 2, 4, ([, property, inherit, literalNil]) => entryGet(property, inherit instanceof Sym && inherit.name === 'selective' ? 'selective' : truthy(inherit), truthy(literalNil)));
 defun('org-entry-get-with-inheritance', 1, 2, ([property, literalNil]) => entryGet(property, true, truthy(literalNil)));
 defun('org-get-heading', 0, 4, ([noTags, noTodo, noPriority, noComment]) => headingText(here(), truthy(noTags), truthy(noTodo), truthy(noPriority), truthy(noComment)));
 defun('org-get-todo-state', 0, 0, () => here().heading.todo || NIL);

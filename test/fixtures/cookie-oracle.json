@@ -30,4 +30,6 @@
 {"org":"* P [/] [%]\n- [X] a\n- [ ] b\n+ [X] c\n","emacs":"* P [2/3] [66%]\n- [X] a\n- [ ] b\n+ [X] c\n"},
 {"org":"* P [/]\n1) [X] a\n2) [ ] b\n","emacs":"* P [1/2]\n1) [X] a\n2) [ ] b\n"},
 {"org":"* P [/]\n- [@3] [X] a\n- [@4] [-] b\n","emacs":"* P [1/2]\n- [@3] [X] a\n- [@4] [-] b\n"},
-{"org":"* P [/]\n- [X] a\n  - [X] b\n    - [ ] c\n","emacs":"* P [1/1]\n- [X] a\n  - [X] b\n    - [ ] c\n"}]
+{"org":"* P [/]\n- [X] a\n  - [X] b\n    - [ ] c\n","emacs":"* P [1/1]\n- [X] a\n  - [X] b\n    - [ ] c\n"},
+{"org":"* h\n- a [/]\n  - [X] x\n    :D:\n    - [X] z\n    :END:\n  - [X] y\n","emacs":"* h\n- a [2/2]\n  - [X] x\n    :D:\n    - [X] z\n    :END:\n  - [X] y\n"},
+{"org":"* h\n- a [/]\n  - [X] x\n  - [ ] y\n    :D:\n    - [X] z\n    :END:\n","emacs":"* h\n- a [1/2]\n  - [X] x\n  - [ ] y\n    :D:\n    - [X] z\n    :END:\n"}]

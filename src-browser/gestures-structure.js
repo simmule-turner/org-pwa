@@ -210,7 +210,7 @@ export async function pasteSubtree(heading) {
     return;
   }
   if (!findContainer(S.state.doc, heading)) return;
-  const pasted = pasteSubtreeAfter(S.state.doc, heading, text);
+  const pasted = pasteSubtreeAfter(S.state.doc, heading, text, undefined, true); // an empty heading is replaced, as when point is after its stars
   if (!pasted) {
     setStatus('Clipboard doesn\u2019t contain a subtree to paste.');
     return;

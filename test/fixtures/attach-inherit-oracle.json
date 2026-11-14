@@ -1,0 +1,37 @@
+[
+ {
+  "org": "* P\n:PROPERTIES:\n:DIR: att1\n:END:\n** C\n:PROPERTIES:\n:ID: abcd12345\n:END:\n*** G\n",
+  "heading": "C",
+  "emacs": "att1"
+ },
+ {
+  "org": "* P\n:PROPERTIES:\n:DIR: att1\n:END:\n** C\n:PROPERTIES:\n:ID: abcd12345\n:END:\n*** G\n",
+  "heading": "G",
+  "emacs": "att1"
+ },
+ {
+  "org": "* P\n:PROPERTIES:\n:ID: abcd12345\n:END:\n** C\n:PROPERTIES:\n:DIR: mine\n:END:\n*** G\n",
+  "heading": "G",
+  "emacs": "mine"
+ },
+ {
+  "org": "* P\n:PROPERTIES:\n:ID: abcd12345\n:END:\n** C\n*** G\n",
+  "heading": "G",
+  "emacs": "data/ab/cd12345"
+ },
+ {
+  "org": "* P\n:PROPERTIES:\n:ID: abcd12345\n:END:\n** C\n:PROPERTIES:\n:ID: wxyz98765\n:END:\n*** G\n",
+  "heading": "G",
+  "emacs": "data/wx/yz98765"
+ },
+ {
+  "org": "* P\n** C\n*** G\n",
+  "heading": "G",
+  "emacs": null
+ },
+ {
+  "org": "* P\n:PROPERTIES:\n:DIR: top\n:END:\n** C\n:PROPERTIES:\n:DIR: mid\n:END:\n*** G\n:PROPERTIES:\n:ID: abcd12345\n:END:\n",
+  "heading": "G",
+  "emacs": "mid"
+ }
+]

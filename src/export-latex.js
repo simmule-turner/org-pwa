@@ -24,7 +24,8 @@
  * Not yet: line numbers and references in source blocks, custom language environments, `engraved`.
  */
 
-import { withBufferKeywords } from './export-keywords.js';
+import { withBufferKeywords, withSubtreeKeywords, subtreeSetting } from './export-keywords.js';
+import { translateTimestamps, withoutIsolatedTimestamps } from './export-timestamps.js';
 import { foldInlineTasks, inlineTaskInfo, INLINE_TASK_BLOCK } from './inline-tasks.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 import { parseElements, parseAttributes } from './org-elements.js';
@@ -33,7 +34,7 @@ import { parseExportOptions, rawExportOptions, getDocTitle, getDocAuthor, getDoc
 import { brokenPathOf, brokenLinkText, finishDropped } from './broken-links.js';
 import { quoteStatuses, smartQuotes } from './smart-quotes.js';
 import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
-import { preambleBody, parseHtmlOptions, buildFilter } from './export-html.js';
+import { preambleBody, parseHtmlOptions, buildFilter, inlineTaskFilter } from './export-html.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { NIL, intern, list as lispList, print } from './elisp-data.js';
 import { callFunction } from './agenda-lisp.js';
@@ -202,7 +203,7 @@ function plainPiece(s) {
   return s
     .split('...')
     .map((part) => protect(part).split(BREAK).join('\\\\[0pt]'))
-    .join('\\ldots{}')
+    .join(S.opts.special === false ? '...' : '\\ldots{}') // -:nil leaves `...` as it is
     .replace(/\bLaTeX\b/g, '\\LaTeX{}')
     .replace(/\bTeX\b/g, '\\TeX{}');
 }
@@ -221,6 +222,7 @@ function textWithTimestamps(s) {
     else if (to) body = at(open, date, day, from, close, repeat) + '--' + at(open, date, day, to, close, repeat);
     else if (date2) body = at(open, date, day, from, close, repeat) + '--' + at(open2, date2, day2, time2, close2, '');
     else body = whole;
+    if (!sexp) body = translateTimestamps(body); // the day name is the date's own
     const end = start + whole.length;
     const format = open === '<' || sexp ? S.cfg.vars.activeTimestamp : S.cfg.vars.inactiveTimestamp;
     out += format.replace(/%s/g, () => protect(body) + (/^[ \t]*/.exec(s.slice(end)) || [''])[0]); // the blanks after it are in the box and in the text, as Org writes them
@@ -286,8 +288,11 @@ function mergeInlineMath(list) {
 function nodes(list) {
   list = mergeInlineMath(list);
   const quotes = S.raw["'"] === 't' ? quoteStatuses(list) : null; // #+OPTIONS: ':t
-  const out = list.map((n) => {
-    const written = node(n);
+  const out = list.map((n, i) => {
+    let k = i - 1;
+    while (k > 0 && (() => { const b = list[k]; return b.type === 'text' && /^\s*$/.test(b.value); })()) k--; // blanks between two references do not part them
+    const prev = list[k];
+    const written = (prev && (n.type === 'footnote-ref' || n.type === 'footnote-def') && (prev.type === 'footnote-ref' || prev.type === 'footnote-def') ? '\\textsuperscript{,}\\,' : '') + node(n); // org-latex-footnote-separator
     const status = quotes && quotes.get(n);
     return status && (written.match(/['"]/g) || []).length === status.length ? smartQuotes(written, status, S.language) : written;
   });
@@ -627,7 +632,8 @@ const trimEnd = (s) => s.replace(/\n+$/, '') + '\n';
 function element(el) {
   switch (el.type) {
     case 'paragraph': {
-      const parsed = parseText([el.lines[0].trimStart(), ...el.lines.slice(1)].join('\n'));
+      const lines = withoutIsolatedTimestamps(el.lines.join('\n'), S.opts.stamps).split('\n'); // `<:` leaves out the timestamps that stand alone
+      const parsed = parseText([lines[0].trimStart(), ...lines.slice(1)].join('\n'));
       const content = parsed.filter((x) => !(x.type === 'text' && !x.value.trim()));
       if (content.length === 1 && content[0].type === 'image') return pictureBlock(content[0].target, el.aff);
       S.paraAff = el.aff || null;
@@ -638,10 +644,14 @@ function element(el) {
     case 'list':
       return list(el, 1);
     case 'table':
+      if (el.tableEl) return verbatim(el.tableEl) + '\n'; // a table.el table is shown as written
       return table(el);
     case 'block':
       return block(el);
+    case 'dynamic-block':
+      return elements(el.children); // the contents of a dynamic block are exported as they stand
     case 'fixed':
+      if (!S.opts.fixed) return '';
       return namedLabel(el) + verbatim(el.lines) + '\n';
     case 'toc':
       if (S.beamer && /\bheadlines\b/.test(el.value)) {
@@ -931,7 +941,7 @@ const keywordList = (/** @type {Doc} */ doc, /** @type {string} */ key) => (doc.
 /** Which headings are exported: not COMMENT, not tagged for exclusion (`#+EXCLUDE_TAGS:`, `noexport` by default), not the Footnotes section. @param {Doc} doc @param {boolean} [footnoteSection] */
 function exclusion(doc, footnoteSection = true) {
   const keep = buildFilter(/** @type {import("./export-html.js").ExportState} */ (/** @type {unknown} */ ({ doc, options: S.opts, doneKeywords: resolveTodoSequence(doc).doneKeywords }))); // COMMENT, #+EXCLUDE_TAGS:, #+SELECT_TAGS:, tasks:
-  return (/** @type {Heading} */ h) => !keep(h) || (S.opts.arch === false && h.tags.includes('ARCHIVE')) || (footnoteSection && h.title.trim() === 'Footnotes'); // Org keeps its footnote section out of the export
+  return Object.assign((/** @type {Heading} */ h) => !keep(h) || (S.opts.arch === false && h.tags.includes('ARCHIVE')) || (footnoteSection && h.title.trim() === 'Footnotes'), { selective: keep.selective }); // Org keeps its footnote section out of the export
 }
 
 /** @param {Heading} h @param {boolean} [forToc]  the title as the table of contents shows it: statistics cookies in parentheses, no tags */
@@ -1075,8 +1085,18 @@ function headingPreface(h) {
 function lowLevelList(run, ctx, base) {
   const env = isNumbered(run[0], ctx, base) ? 'enumerate' : 'itemize';
   let out = '\\begin{' + env + '}\n';
-  for (const h of run) out += '\\item ' + headingTitle(h) + '\n\\label{' + labelFor(h, ctx) + '}\n' + headingBody(h, ctx, base);
-  return out + '\\end{' + env + '}\n';
+  let last = '';
+  run.forEach((h, i) => {
+    const item = '\\item ' + headingTitle(h) + '\n\\label{' + labelFor(h, ctx) + '}\n' + headingBody(h, ctx, base);
+    if (i + 1 < run.length) out += item;
+    else {
+      // the blank line after the last item belongs to the list, so it follows \end
+      const blank = item.endsWith('\n\n');
+      out += blank ? item.slice(0, -1) : item;
+      last = blank ? '\n' : '';
+    }
+  });
+  return out + '\\end{' + env + '}\n' + last;
 }
 
 // ---- Beamer headings ------------------------------------------------------
@@ -1375,9 +1395,9 @@ const firstLine = (s) => s.replace(/\s*\n\s*/g, ' ').trim();
  * @param {Heading | null} [scope]
  */
 export function exportToLatex(doc, scope = null, { beamer = false, images = /** @type {Map<string, string> | null} */ (null), defaults = /** @type {{ cls?: string, compiler?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, header?: string, init?: string, file?: { name?: string, mtime?: Date } }} */ ({}) } = {}) {
-  doc = withBufferKeywords(doc);
+  doc = withSubtreeKeywords(withBufferKeywords(doc), scope);
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date(), defaults.file || null)); // {{{macros}}} are expanded before anything is read
-  ({ doc, scope } = foldInlineTasks(doc, scope));
+  ({ doc, scope } = foldInlineTasks(doc, scope, undefined, inlineTaskFilter(doc)));
   if (beamer) ({ doc, scope } = withoutFinalNewline(doc, scope));
   S = newState();
   S.beamer = beamer;
@@ -1412,12 +1432,9 @@ export function exportToLatex(doc, scope = null, { beamer = false, images = /** 
   const base = scope ? scope.level : 0;
   indexHeadings(roots, ctx);
 
-  const selectTags = keywordList(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean);
-  /** @param {Heading[]} list @returns {boolean} */
-  const anySelected = (list) => list.some((h) => h.tags.some((t) => selectTags.includes(t)) || anySelected(h.children || []));
-  const preamble = scope ? scope.bodyLines || [] : selectTags.length && anySelected(doc.children || []) ? [] : preambleBody(doc); // with selected trees, the text before the first headline is left out
-  for (const lines of [preamble, ...collectBodies(roots, exclusion(doc, false))]) {
-    for (const el of parsedLines(lines)) if (el.type === 'footnote-def') S.footnotes.set(el.label, el.children);
+  const preamble = scope ? scope.bodyLines || [] : skip.selective ? [] : preambleBody(doc); // with selected trees, the text before the first headline is left out
+  for (const lines of [preambleBody(doc), ...collectBodies(doc.children || [], (h) => /^COMMENT(\s|$)/.test(h.title || ''))]) { // a definition counts wherever it is, but in a COMMENT tree
+    for (const el of parsedLines(lines)) if (el.type === 'footnote-def' && !S.footnotes.has(el.label)) S.footnotes.set(el.label, el.children);
   }
   for (const lines of [preamble, ...collectBodies(roots, skip)]) {
     indexNames(parsedLines(lines));
@@ -1432,7 +1449,7 @@ export function exportToLatex(doc, scope = null, { beamer = false, images = /** 
   const cited = S.processor === 'natbib' || S.processor === 'biblatex' ? hasCitations(preamble, roots, skip) : false;
   const bibFiles = bibliographyFiles(doc, citeDefaults.globalFiles);
 
-  const title = scope ? getDocTitle(doc) || scope.title : getDocTitle(doc);
+  const title = scope ? subtreeSetting(doc, scope, 'TITLE') ?? scope.title : getDocTitle(doc); // a subtree's title is its :EXPORT_TITLE: or its headline
   const author = getDocAuthor(doc);
   const date = getDocDate(doc);
   const lang = (first('LANGUAGE') || 'en').trim().split(/[-_]/)[0];

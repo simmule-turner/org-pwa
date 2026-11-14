@@ -325,6 +325,18 @@ test('attachmentDirFromProperty names the folder Emacs names, for a document in 
   assert.equal(attachmentDirFromProperty('../x', 'foo.org'), 'x', 'a document at the top of the storage');
 });
 
+test('with inheritance a DIR anywhere up the chain wins over an ID (org-attach-dir, asked of Emacs 29.3)', async () => {
+  const { parseOrg } = await import('../src/org-parser.js');
+  const { resolveAttachmentDirectory } = await import('../src/link-resolve.js');
+  const cases = JSON.parse(readFileSync(new URL('./fixtures/attach-inherit-oracle.json', import.meta.url), 'utf8'));
+  for (const c of cases) {
+    const doc = parseOrg(c.org);
+    const find = (nodes) => { for (const n of nodes) { if (n.title === c.heading) return n; const f = find(n.children); if (f) return f; } return null; };
+    const got = resolveAttachmentDirectory(doc, find(doc.children), 'org-pwa/foo.org', true);
+    assert.equal(got === null ? null : got.replace(/^org-pwa\//, ''), c.emacs, c.org + c.heading);
+  }
+});
+
 test('a DIR that cannot name a folder in the storage is an error that names DIR, never the ID folder', () => {
   for (const bad of ['', '   ', 'a\\b', '~/files', '/']) assert.throws(() => attachmentDirFromProperty(bad, 'foo.org'), (e) => e instanceof VariableValueError && /^DIR is /.test(e.message), JSON.stringify(bad));
   const props = (object) => ({ properties: object, propertyOrder: Object.keys(object) });

@@ -6,7 +6,10 @@ import { buildArchivedClone, buildRestoredClone, getArchiveLocation, endsDocumen
 import { displayName } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
+import { headingAfterSubtree, updateCookiesAfterArchive } from '../src/checkbox-cookie.js';
+import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { S } from './app-state.js';
+import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 
@@ -24,8 +27,14 @@ export function getArchiveDestinationLabel(heading) {
       : `"${displayName(targetFileId)}" (top level)`;
 }
 
+/** Emacs refreshes a cookie where the cut leaves it (see updateCookiesAfterArchive). @param {Heading | null} next the heading that followed the archived subtree */
+function updateCookiesAfter(next) {
+  updateCookiesAfterArchive(S.state.doc, next, resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT).doneKeywords);
+}
+
 /** @param {Heading} heading */
 export async function archiveHeadingToLocation(heading) {
+  const next = headingAfterSubtree(S.state.doc, heading);
   const location = getArchiveLocation(S.state.doc, heading);
   const { filePart, headlinePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, S.state.documentId);
@@ -38,6 +47,7 @@ export async function archiveHeadingToLocation(heading) {
     const tailRemoved = endsDocument(S.state.doc, heading);
     removeHeading(S.state.doc, heading);
     insertAtArchiveLocation(S.state.doc, clone, headlinePart, { sourceFileId: S.state.documentId, tailRemoved });
+    updateCookiesAfter(next);
     commitAndRender('Archived heading');
     setStatus('--- Archive complete.');
     return;
@@ -58,6 +68,7 @@ export async function archiveHeadingToLocation(heading) {
 
   // The write succeeded -- now, and only now, remove the original.
   removeHeading(S.state.doc, heading);
+  updateCookiesAfter(next);
   commitAndRender('Archived heading');
   setStatus(`--- Archive complete. (${targetFileId})${UNSAVED_NOTE}`);
 }

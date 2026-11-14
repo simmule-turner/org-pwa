@@ -8,7 +8,7 @@ import { commitLines } from '../src/body-edit.js';
 import { agendaOccurrences, normalizeAgendaItems, normalizeLine } from '../src/extensions.js';
 import { checkLinkOpenUrl, normalizeExport, usableLinkPrefix } from '../src/extension-net.js';
 import { recalculateTable, setUserTableFunctions, isBuiltinFormulaName, parseTableConstants, parseNamedTables } from '../src/table-formula.js';
-import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
+import { getOrgTableDurationHourZeroPadding, getOrgTableFormulaCreateColumns } from '../src/local-variables.js';
 import { links } from './extension-links.js';
 import { saveOut } from './save-out.js';
 import { applyEdits, snapshotDocument, snapshotStillMatches, validateEdits } from '../src/extension-edit.js';
@@ -290,7 +290,8 @@ export async function warmTableFunctions(tables) {
   if (!active || !info.tableFunctions.length) return;
   tableCache.clear();
   const mine = tables.filter((t) => t.tblfm && info.tableFunctions.some((n) => /** @type {string} */ (t.tblfm).includes(n + '(')));
-  const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(S.state.doc), tables: parseNamedTables(S.state.doc) };
+  // the warm-up only collects the script calls a recalculation makes, so it goes on as if any question about new columns were answered yes
+  const options = { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), createColumns: getOrgTableFormulaCreateColumns(S.state.localVariables) !== 'nil', constants: parseTableConstants(S.state.doc), tables: parseNamedTables(S.state.doc) };
   let total = 0;
   for (let pass = 0; pass < 3 && mine.length; pass++) {
     const misses = new Map();

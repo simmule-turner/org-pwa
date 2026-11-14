@@ -29,7 +29,9 @@
  * and `#+SETUPFILE:` need files this page cannot read, and element ids are readable slugs instead of hashes.
  */
 
-import { withBufferKeywords } from './export-keywords.js';
+import { withBufferKeywords, withSubtreeKeywords, subtreeSetting } from './export-keywords.js';
+import { parseTagGroups } from './tags-match.js';
+import { translateTimestamps, withoutIsolatedTimestamps, withDayName } from './export-timestamps.js';
 import { expandMacrosForExport } from './export-macros.js';
 import { quoteStatuses, smartQuotes } from './smart-quotes.js';
 import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
@@ -99,6 +101,9 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     tables: true,
     stat: true,
     tasks: true,
+    inline: true,
+    tex: 't', // #+OPTIONS: tex: t, nil or verbatim
+    fixed: true, // #+OPTIONS: ::
     planning: false,
     author: true,
     date: true,
@@ -108,7 +113,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     preamble: /** @type {boolean | string | import('./export-defaults.js').ExportFunction} */ (defaults.preamble ?? true), // org-html-preamble: nil (false), t (org-html-preamble-format), a format string, or a function
     postamble: /** @type {boolean | 'auto' | string | import('./export-defaults.js').ExportFunction} */ (defaults.postamble ?? 'auto'), // org-html-postamble: auto (date, author, email, Created, creator, validation link), nil, t (org-html-postamble-format), a format string or a function
     timestamp: true, // #+OPTIONS: timestamp: (org-export-time-stamp-file): the Created line of the auto postamble
-    stamps: true,
+    stamps: /** @type {boolean | string} */ (true), // #+OPTIONS: <: nil, active, inactive or t
     arch: 'headline',
     comments: false,
     drawers: { all: false, exclude: ['LOGBOOK'], include: null },
@@ -137,7 +142,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
   /** @param {string} v */
   const isNil = (v) => v === 'nil';
   for (const token of tokens) {
-    const m = /^(\\n|[^:\s]+):(.*)$/.exec(token);
+    const m = /^(\\n|:|[^:\s]+):(.*)$/.exec(token);
     if (!m) continue;
     const [, key, v] = m;
     switch (key) {
@@ -157,6 +162,9 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'f': o.footnotes = !isNil(v); break;
       case '|': o.tables = !isNil(v); break;
       case 'stat': o.stat = !isNil(v); break;
+      case 'inline': o.inline = !isNil(v); break;
+      case 'tex': o.tex = isNil(v) ? 'nil' : v === 'verbatim' ? 'verbatim' : 't'; break;
+      case ':': o.fixed = !isNil(v); break;
       case 'tasks': o.tasks = isNil(v) ? false : v === 'todo' || v === 'done' ? v : v.startsWith('(') ? [...v.matchAll(/"([^"]*)"|([^\s()"]+)/g)].map((m) => m[1] ?? m[2]) : true; break; // a list keeps the headings of those keywords
       case 'p': o.planning = v === 't'; break;
       case 'author': o.author = !isNil(v); break;
@@ -167,7 +175,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'html-preamble': o.preamble = isNil(v) ? false : v === 't' ? true : lispString(v) ?? { fn: v.replace(/^#?'/, '') }; break;
       case 'html-postamble': o.postamble = isNil(v) ? false : v === 't' ? true : v === 'auto' ? 'auto' : lispString(v) ?? { fn: v.replace(/^#?'/, '') }; break;
       case 'timestamp': o.timestamp = !isNil(v); break;
-      case '<': o.stamps = !isNil(v); break;
+      case '<': o.stamps = isNil(v) ? false : v === 'active' || v === 'inactive' ? v : true; break;
       case 'arch': o.arch = isNil(v) ? false : v === 't' ? true : 'headline'; break;
       case 'c': o.comments = v === 't'; break;
       case 'prop': o.properties = isNil(v) ? false : v.startsWith('(') ? [...v.matchAll(/"([^"]*)"|([^\s()"]+)/g)].map((m) => (m[1] ?? m[2]).toUpperCase()) : true; break;
@@ -328,12 +336,13 @@ const TIMESTAMP_WITH_BLANKS_RE = new RegExp('(?:' + TIMESTAMP_RE.source + '|<%%\
  * @param {string[]} match
  */
 function timestampHtml(state, match, blanks = '') {
-  const [whole] = match;
+  const [original] = match;
+  const whole = translateTimestamps(original); // the day name is the date's own
   // a time range within one day, <2026-03-04 Wed 10:00-11:00>, is written as two timestamps
   const range = /^([<[])(\d{4}-\d{2}-\d{2}(?: [^\s>\]\d-][^\s>\]]*)?) (\d{1,2}:\d{2})-(\d{1,2}:\d{2})((?: [^>\]]+)?)([>\]])$/.exec(whole);
   const spelled = range ? `${range[1]}${range[2]} ${range[3]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}--${range[1]}${range[2]} ${range[4]}${range[5].replace(/\/\d+[hdwmy]/g, '')}${range[6]}` : whole;
   const text = escapeHtml(spelled).replace(/--/g, '&#x2013;');
-  return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}${blanks}</span></span>`, whole);
+  return addToken(state, `<span class="timestamp-wrapper"><span class="timestamp">${text}${blanks}</span></span>`, original);
 }
 
 /**
@@ -580,11 +589,12 @@ function linkHref(state, target) {
  * @param {Heading[]} headings
  * @param {string} name
  * @param {string} value
+ * @returns {Heading | null}
  */
 function findByProperty(headings, name, value) {
   for (const h of headings) {
     if (String(getProperty(h, name) || '').trim() === value) return h;
-    /** @type {any} */ const r = findByProperty(h.children || [], name, value);
+    const r = findByProperty(h.children || [], name, value);
     if (r) return r;
   }
   return null;
@@ -613,10 +623,18 @@ function renderNodes(state, nodes) {
       return before && n.type === 'text' && (before.type === 'footnote-ref' || before.type === 'footnote-def') ? { ...n, value: n.value.replace(/^[ \t]+/, '') } : n;
     });
   }
+  if (state.options.tex === 'nil') {
+    // a fragment left out takes the blanks after it with it
+    nodes = nodes.map((/** @type {import('./types.js').InlineNode} */ n, i) => (n.type === 'text' && nodes[i - 1]?.type === 'latex' ? { ...n, value: n.value.replace(/^[ \t]+/, '') } : n));
+  }
   const quotes = state.options.smart ? quoteStatuses(nodes) : null;
   return nodes
-    .map((n) => {
+    .map((n, i) => {
       const status = quotes && quotes.get(n);
+      let k = i - 1;
+      while (k > 0 && (() => { const b = nodes[k]; return b.type === 'text' && /^\s*$/.test(b.value); })()) k--; // blanks between two references do not part them
+      const after = /** @type {import('./types.js').InlineNode | undefined} */ (nodes[k]);
+      if (state.options.footnotes && (n.type === 'footnote-ref' || n.type === 'footnote-def') && after && (after.type === 'footnote-ref' || after.type === 'footnote-def')) return '<sup>, </sup>' + renderNode(state, n); // org-html-footnote-separator
       if (!status || n.type !== 'text') return renderNode(state, n);
       // each quote character becomes a placeholder for its entity, which the text rendering puts back
       const value = smartQuotes(n.value, status, state.options.language, 'html').replace(/(&[a-z]+;)+/g, (entity) => addToken(state, entity, entity));
@@ -686,6 +704,8 @@ function renderNode(state, node) {
     case 'link':
       return linkHtml(state, node);
     case 'latex':
+      if (state.options.tex === 'nil') return ''; // tex:nil leaves the fragment out
+      if (state.options.tex === 'verbatim') return escapeHtml(node.raw || ''); // tex:verbatim writes it as it is
       return mathHtml(state, node.source, node.displayMode);
     case 'footnote-ref':
       return state.options.footnotes ? footnoteRef(state, node.label) : '';
@@ -720,7 +740,7 @@ function citeSegmentsHtml(state, segments) {
 
 /**
  * @param {string} target
- * @param {undefined} [alt]
+ * @param {string} [alt]
  */
 function imageHtml(target, alt, attrs = '') {
   const src = imageSrc(target);
@@ -830,10 +850,9 @@ function captionHtml(state, aff) {
  * @param {ElCtx} ctx
  */
 function paragraphHtml(state, el, ctx) {
-  const text = el.lines.join('\n');
+  const text = withoutIsolatedTimestamps(el.lines.join('\n'), state.options.stamps); // `<:` leaves out the timestamps that stand alone
   const image = standaloneImage(el);
   if (image && ctx.parent !== 'item-first') return figureHtml(state, el, image);
-  if (!state.options.stamps && !text.replace(TIMESTAMP_WITH_BLANKS_RE, '').trim()) return ''; // `<:nil` leaves out a paragraph made of timestamps only
   const body = renderInline(state, state.options.brk ? text + '\n' : text);
   if (ctx.bare) return body;
   const { cls, rest } = classAndAttributes(el.aff, ctx.footnote ? 'footpara' : '');
@@ -858,7 +877,7 @@ function standaloneImage(el) {
 function figureHtml(state, el, image) {
   const aff = el.aff;
   const attrs = parseAttributes(aff && aff.attr.html);
-  const alt = (attrs).alt !== undefined ? /** @type {any} */ (attrs).alt : undefined;
+  const alt = attrs.alt !== undefined ? attrs.alt : undefined;
   const rest = htmlAttributes(aff, ['alt']);
   let img = imageHtml(image.thumb || image.target, alt, rest);
   if (image.link) img = `<a href="${escapeAttr(activeImages.has(image.link) ? imageSrc(image.link) : linkHref(state, image.link))}">${img}</a>`;
@@ -1049,7 +1068,7 @@ function blockHtml(state, el, ctx) {
   const { name } = el;
   /**
    * @param {string[]} lines
-   * @param {any} [sub]
+   * @param {Record<string, unknown>} [sub]
    */
   const inner = (lines, sub) => elementsHtml(state, nestedElements(state, lines), { ...ctx, ...sub, first: undefined, bare: false });
   switch (name) {
@@ -1097,16 +1116,26 @@ function blockHtml(state, el, ctx) {
   }
 }
 
+/** Whether `#+OPTIONS: d:` lets a drawer through. @param {{ all: boolean, exclude: string[] | null, include: string[] | null }} d @param {string} drawerName */
+export function drawerAllowed(d, drawerName) {
+  const name = drawerName.toUpperCase();
+  return d.all || (d.include ? d.include.some((/** @type {any} */ x) => x.toUpperCase() === name) : !(d.exclude || []).some((/** @type {any} */ x) => x.toUpperCase() === name));
+}
+
+/** The lines of a heading's text; the LOGBOOK drawer the parser keeps apart is among them, without its drawer lines, when `d:` lets it through. @param {{ all: boolean, exclude: string[] | null, include: string[] | null }} d @param {Heading} h */
+export function headingTextLines(d, h) {
+  const logbook = ((h.raw && h.raw.drawers) || []).filter((x) => x.type === 'logbook');
+  if (!logbook.length || !drawerAllowed(d, 'LOGBOOK')) return h.bodyLines || [];
+  return [...logbook.flatMap((x) => x.lines.slice(1, -1)), ...(h.bodyLines || [])];
+}
+
 /**
  * @param {ExportState} state
  * @param {OrgEl<'drawer'>} el
  * @param {ElCtx} ctx
  */
 function drawerHtml(state, el, ctx) {
-  const d = state.options.drawers;
-  const name = el.name.toUpperCase();
-  const allowed = d.all || (d.include ? d.include.some((/** @type {any} */ x) => x.toUpperCase() === name) : !(d.exclude || []).some((/** @type {any} */ x) => x.toUpperCase() === name));
-  if (!allowed) return '';
+  if (!drawerAllowed(state.options.drawers, el.name)) return '';
   return elementsHtml(state, nestedElements(state, el.lines, false), ctx);
 }
 
@@ -1122,17 +1151,23 @@ function elementHtml(state, el, ctx = {}) {
     case 'list':
       return listHtml(state, el, ctx);
     case 'table':
+      if (el.tableEl) return `<pre class="example">\n${escapeHtml(el.tableEl.join('\n'))}\n</pre>`; // a table.el table is shown as written
       return tableHtml(state, el);
     case 'block':
       return blockHtml(state, el, ctx);
     case 'drawer':
       return drawerHtml(state, el, ctx);
+    case 'dynamic-block':
+      return elementsHtml(state, el.children, ctx); // the contents of a dynamic block are exported as they stand
     case 'fixed':
+      if (!state.options.fixed) return '';
       return `<pre class="example">\n${escapeHtml(el.lines.join('\n'))}\n</pre>`;
     case 'hr':
       return `<hr${closing}`;
     case 'latex-env': {
       const source = el.lines.join('\n');
+      if (state.options.tex === 'nil') return '';
+      if (state.options.tex === 'verbatim') return escapeHtml(source);
       const r = renderMathHtml(source, true);
       if (r.ok) {
         state.math = true;
@@ -1158,7 +1193,7 @@ function elementHtml(state, el, ctx = {}) {
  * @param {import('./org-elements.js').OrgElement[]} elements
  */
 function elementsHtml(state, elements, ctx = {}) {
-  /** @type {any[]} */ const parts = [];
+  /** @type {string[]} */ const parts = [];
   elements.forEach((el, i) => {
     const html = elementHtml(state, el, { ...ctx, first: i === 0 });
     if (html !== '') parts.push(html);
@@ -1185,11 +1220,30 @@ function titleOf(h) {
  */
 export function buildFilter(state) {
   const { doc, options } = state;
-  const exclude = new Set((keywordValues(doc, 'EXCLUDE_TAGS').join(' ') || 'noexport').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
-  if (!keywordValues(doc, 'EXCLUDE_TAGS').length) exclude.add('noexport');
-  const select = new Set(keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean).map((/** @type {any} */ t) => t.toLowerCase()));
+  const groups = parseTagGroups([doc]);
+  /** `org-export-select-tags` and `-exclude-tags` stand for the members of a tag group too. @param {string[]} tags */
+  const withMembers = (tags) => {
+    /** @type {Set<string>} */ const out = new Set();
+    /** @param {string} t */
+    const add = (t) => {
+      if (out.has(t.toLowerCase())) return;
+      out.add(t.toLowerCase());
+      for (const m of groups.get(t) || []) if (!m.startsWith('{')) add(m);
+    };
+    tags.forEach(add);
+    return out;
+  };
+  const fileTags = keywordValues(doc, 'FILETAGS').flatMap((/** @type {string} */ v) => v.split(/[:\s]+/).filter(Boolean)); // every heading inherits them
+  /** @param {any} h */
+  const tagsOf = (h) => [...(h.tags || []), ...fileTags].map((/** @type {any} */ t) => String(t).toLowerCase());
+  const given = keywordValues(doc, 'EXCLUDE_TAGS').join(' ').split(/\s+/).filter(Boolean);
+  const exclude = withMembers(keywordValues(doc, 'EXCLUDE_TAGS').length ? given : ['noexport']);
+  const selectKeywords = keywordValues(doc, 'SELECT_TAGS').join(' ').split(/\s+/).filter(Boolean);
+  const select = withMembers(selectKeywords.length ? selectKeywords : ['export']); // org-export-select-tags is ("export")
+  /** The tags of the inline tasks in a heading's text (a select tag there selects the heading that holds the task). @param {any} h */
+  const taskTags = (/** @type {any} */ h) => (h.bodyLines || []).flatMap((/** @type {string} */ l) => (l.startsWith('#+begin_' + INLINE_TASK_BLOCK + ' ') ? inlineTaskInfo(l.slice(('#+begin_' + INLINE_TASK_BLOCK + ' ').length)).tags : [])).map((/** @type {any} */ t) => String(t).toLowerCase());
   /** @param {Heading[]} list @returns {boolean} */
-  const anyTagged = (list) => list.some((h) => (h.tags || []).some((t) => select.has(String(t).toLowerCase())) || anyTagged(h.children || []));
+  const anyTagged = (list) => list.some((h) => tagsOf(h).some((t) => select.has(t)) || taskTags(h).some((/** @type {string} */ t) => select.has(t)) || anyTagged(h.children || []));
   if (select.size && !anyTagged(doc.children || [])) select.clear(); // no headline carries a select tag: everything is exported
   const selected = new Set();
   /**
@@ -1198,7 +1252,7 @@ export function buildFilter(state) {
    */
   const mark = (headings, inherited) => {
     for (const h of headings) {
-      const own = select.size && (h.tags || []).some((t) => select.has(String(t).toLowerCase()));
+      const own = select.size && tagsOf(h).some((t) => select.has(t));
       if (own || inherited) selected.add(h);
       mark(h.children || [], own || inherited);
     }
@@ -1210,7 +1264,7 @@ export function buildFilter(state) {
     let any = false;
     for (const h of headings) {
       const sub = markAncestors(h.children || []);
-      if (selected.has(h) || sub) {
+      if (selected.has(h) || sub || (select.size && taskTags(h).some((/** @type {string} */ t) => select.has(t)))) {
         keepAncestor.add(h);
         any = true;
       }
@@ -1219,9 +1273,9 @@ export function buildFilter(state) {
   };
   if (select.size) markAncestors(doc.children || []);
   const done = new Set(state.doneKeywords);
-  return (/** @type {any} */ h) => {
+  const keep = (/** @type {any} */ h) => {
     if (!options.comments && isCommented(h)) return false;
-    if ((h.tags || []).some((/** @type {any} */ t) => exclude.has(String(t).toLowerCase()))) return false;
+    if (tagsOf(h).some((t) => exclude.has(t))) return false;
     if (select.size && !keepAncestor.has(h)) return false;
     if (options.tasks !== true && h.todo) {
       if (options.tasks === false) return false;
@@ -1231,6 +1285,20 @@ export function buildFilter(state) {
     }
     return true;
   };
+  /** Whether an inline task stays: `inline:`, `tasks:` and the exclude tags apply to it as to a heading. @param {{ todo: string | null, tags: string[] }} task */
+  keep.inlineTask = (task) => {
+    if (options.inline === false) return false;
+    if ((task.tags || []).some((t) => exclude.has(String(t).toLowerCase())) || fileTags.some((/** @type {string} */ t) => exclude.has(t.toLowerCase()))) return false;
+    return !task.todo || keep(/** @type {any} */ ({ title: '', tags: [], todo: task.todo }));
+  };
+  /** True when select tags are in use: the text before the first heading is then left out, as Emacs does. */
+  keep.selective = select.size > 0;
+  return keep;
+}
+
+/** What `foldInlineTasks` asks of an export: whether an inline task stays in it. @param {Doc} doc */
+export function inlineTaskFilter(doc) {
+  return buildFilter(/** @type {ExportState} */ (/** @type {unknown} */ ({ doc, options: parseHtmlOptions(doc), doneKeywords: resolveTodoSequence(doc).doneKeywords }))).inlineTask;
 }
 
 /** @param {Heading} h */
@@ -1316,7 +1384,7 @@ function planningHtml(state, heading) {
    * @param {string} kw
    * @param {string | null} v
    */
-  const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(v).replace(/^&lt;/, '&lt;')}</span>` : '');
+  const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(withDayName(v))}</span>` : '');
   const parts = [stamp('CLOSED', closed), stamp('DEADLINE', deadline), stamp('SCHEDULED', scheduled)].filter(Boolean);
   return parts.length ? `<p><span class="timestamp-wrapper">${parts.join(' ')}</span></p>` : '';
 }
@@ -1581,7 +1649,7 @@ export function exportToHtml(doc, scope = null, options = {}) {
  * @param {Doc} doc
  */
 function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images = /** @type {any} */ (null), defaults = /** @type {import('./export-defaults.js').HtmlExportDefaults} */ ({}) } = {}) {
-  doc = withBufferKeywords(doc);
+  doc = withSubtreeKeywords(withBufferKeywords(doc), scope);
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date(), /** @type {{ file?: { name?: string, mtime?: Date } }} */ (defaults).file || null)); // {{{macros}}} are expanded before anything is read
   const prepared = prepareHtmlExport(doc, scope, { images, defaults });
   ({ doc, scope } = prepared);
@@ -1596,7 +1664,7 @@ function exportToHtmlDocument(doc, scope = /** @type {any} */ (null), { images =
  * @param {{ images?: Map<string, string> | null, defaults?: import('./export-defaults.js').HtmlExportDefaults }} [extra]
  */
 function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
-  ({ doc, scope } = foldInlineTasks(doc, scope));
+  ({ doc, scope } = foldInlineTasks(doc, scope, undefined, inlineTaskFilter(doc)));
   activeImages = images instanceof Map ? images : new Map();
   // #+HTML_DOCTYPE:, else org-html-doctype, else Org's own default
   const doctype = doctypeInfo(keywordValue(doc, 'HTML_DOCTYPE') || defaults.doctype);
@@ -1636,7 +1704,7 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   state.cite = citeExportFor(doc, exported(state.outline), parseInline, !scope);
 
   // footnote definitions and radio/inline targets are found before anything is rendered
-  const preamble = scope ? scope.bodyLines || [] : preambleBody(doc);
+  const preamble = scope ? scope.bodyLines || [] : passes.selective ? [] : preambleBody(doc); // with selected trees, the text before the first headline is left out
   const preElements = parseElements(preamble);
   state.fnDefsCollect(preElements);
   state.parsed = new Map();
@@ -1671,7 +1739,7 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
   /** @param {any} [nodes] */
   const collect = (nodes) => {
     for (const node of nodes) {
-      const els = parseElements(node.heading.bodyLines || []);
+      const els = parseElements(headingTextLines(state.options.drawers, node.heading));
       state.parsed.set(node.heading, els);
       scan(els);
       state.fnDefsCollect(els);
@@ -1684,14 +1752,21 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
     }
   };
   collect(state.outline);
-  // the definitions in the Footnotes section are still found, though the section itself is not exported
+  // the definitions anywhere in the document are still found (in the Footnotes section, before the first heading, in a subtree that is
+  // left out or outside the exported one), but not in a COMMENT tree
+  /** @param {any[]} elements */
+  const lateDefs = (elements) => {
+    for (const el of elements) if (el.type === 'footnote-def' && !state.fnDefs.has(el.label)) state.fnDefs.set(el.label, el.children);
+  };
   /** @param {any[]} headings */
   const sectionDefs = (headings) => {
     for (const h of headings) {
-      if (h.title.replace(/^COMMENT\s*/, '').trim() === 'Footnotes') state.fnDefsCollect(parseElements(h.bodyLines || []));
+      if (isCommented(h)) continue;
+      lateDefs(parseElements(h.bodyLines || []));
       sectionDefs(h.children || []);
     }
   };
+  lateDefs(parseElements(preambleBody(state.doc)));
   sectionDefs(state.doc.children || []);
   for (const t of targetsInLines(preamble)) targetId(state, t.name);
 
@@ -1723,7 +1798,7 @@ function prepareHtmlExport(doc, scope, { images = null, defaults = {} } = {}) {
 function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, doctype) {
   const { options } = state;
   const out = [];
-  const title = scope ? titleOf(scope) : (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'TITLE').map((k) => k.value).join(' ') || keywordValue(doc, 'TITLE'); // several #+TITLE: lines are joined
+  const title = scope ? subtreeSetting(doc, scope, 'TITLE') ?? titleOf(scope) : (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'TITLE').map((k) => k.value).join(' ') || keywordValue(doc, 'TITLE'); // several #+TITLE: lines are joined
   const subtitle = !scope && options.title ? keywordValue(doc, 'SUBTITLE') : null;
   if (title && options.title) {
     const sub = subtitle ? `\n<br${closing}\n<span class="subtitle">${renderInline(state, subtitle)}</span>\n` : '';
@@ -1761,7 +1836,7 @@ function finishHtmlDocument(state, doc, scope, preElements, preamble, defaults, 
   const barInfo = { title, subtitle: keywordValue(doc, 'SUBTITLE') || '', author: authorName, date: keywordValue(doc, 'DATE') || '', email: keywordValue(doc, 'EMAIL') || defaults.userMailAddress || '', language: keywordValue(doc, 'LANGUAGE') || 'en' };
   const preambleDiv = barHtml('preamble', options.preamble, defaults, specValues, barInfo, renderInline, state, /** @type {Parameters<typeof barHtml>[7]} */ (options));
   const postamble = barHtml('postamble', options.postamble, defaults, specValues, barInfo, renderInline, state, /** @type {Parameters<typeof barHtml>[7]} */ (options));
-  const docTitle = escapeHtml(scope ? titleOf(scope) : title ? stripMarkup(title) : 'Untitled');
+  const docTitle = escapeHtml(scope ? subtreeSetting(doc, scope, 'TITLE') ?? titleOf(scope) : title ? stripMarkup(title) : 'Untitled');
   const lang = (keywordValue(doc, 'LANGUAGE') || 'en').replace(/[^A-Za-z-]/g, '') || 'en';
   const meta = [];
   const author = authorName;

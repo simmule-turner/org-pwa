@@ -168,11 +168,18 @@ function largeImagePlaceholder(target, resolvedPath, cacheKey, bytes) {
  */
 export function renderLinkNode(node, linkContext = /** @type {any} */ (null), heading = null) {
   const label = node.description || node.target;
+  // the text of a link holds objects (`[[url][*bold* text]]`): drawn as such when the parser read them
+  const objects = /** @type {{ descriptionNodes?: any[] }} */ (node).descriptionNodes;
+  /** @param {HTMLElement} el */
+  const fillLabel = (el) => {
+    if (objects && objects.length) renderInlineNodes(objects, el, linkContext, heading);
+    else el.textContent = label;
+  };
   const targetDoc = linkContext ? linkContext.doc : S.state.doc;
   if (!linkContext && /^elisp:/i.test(node.target)) {
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -186,7 +193,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
   if (custom && customLinks.open) {
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -205,7 +212,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
     a.href = /** @type {string} */ (resolution.url);
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     return a;
@@ -214,7 +221,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
   if (resolution.type === 'heading') {
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -233,7 +240,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
     // not in this file: it may be in another open tab or an Agenda File (id-links.js looks)
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -251,7 +258,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
     }
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -265,7 +272,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
   if (resolution.type === 'help' && !linkContext) {
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -279,7 +286,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
   if (resolution.type === 'file' && !linkContext) {
     const a = document.createElement('a');
     a.href = '#';
-    a.textContent = label;
+    fillLabel(a);
     a.style.color = 'var(--accent)';
     a.setAttribute(INLINE_LINK_ATTR, '1');
     a.onclick = (e) => {
@@ -298,7 +305,7 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
   // rather than silently rendered as plain text, since "this link is
   // broken" is useful information.
   const span = document.createElement('span');
-  span.textContent = label;
+  fillLabel(span);
   span.style.color = 'var(--text-muted, #888)';
   span.style.textDecoration = 'underline wavy';
   span.title = 'Unresolved link: ' + node.target;

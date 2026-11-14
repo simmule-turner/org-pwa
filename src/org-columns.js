@@ -16,6 +16,7 @@ import { commitLines } from './body-edit.js';
 import { parseOrg, serializeOrg } from './org-parser.js';
 import { clockSum } from './clock-report.js';
 import { isNil, listItems, NIL, readLisp } from './lisp-read.js';
+import { inlineTaskLevel, isEnd } from './inline-tasks.js';
 
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -43,8 +44,9 @@ export const DEFAULT_COLUMNS_FORMAT = '%25ITEM %TODO %3PRIORITY %TAGS';
 const SPECIAL = new Set(['ALLTAGS', 'BLOCKED', 'CLOCKSUM', 'CLOCKSUM_T', 'CLOSED', 'DEADLINE', 'FILE', 'ITEM', 'PRIORITY', 'SCHEDULED', 'TAGS', 'TIMESTAMP', 'TIMESTAMP_IA', 'TODO']);
 const SPEC_RE = /%([0-9]+)?([\p{L}\p{N}_-]+)(?:\(([^)]+)\))?(?:\{([^}]+)\})?\s*/gu;
 
-/** org-columns-compile-format. @param {string} fmt @returns {ColumnSpec[]} */
-export function compileColumnsFormat(fmt) {
+/** org-columns-compile-format. `keepCase` leaves each property as it is written, as a column made by `org-columns-new` has it.
+ * @param {string} fmt @param {boolean} [keepCase] @returns {ColumnSpec[]} */
+export function compileColumnsFormat(fmt, keepCase = false) {
   /** @type {ColumnSpec[]} */
   const specs = [];
   for (const m of fmt.matchAll(SPEC_RE)) {
@@ -57,7 +59,7 @@ export function compileColumnsFormat(fmt) {
         op = op.slice(0, semi);
       }
     }
-    specs.push({ prop: m[2].toUpperCase(), title: m[3] ?? m[2], width: m[1] === undefined ? null : Number(m[1]), op, printf });
+    specs.push({ prop: keepCase ? m[2] : m[2].toUpperCase(), title: m[3] ?? m[2], width: m[1] === undefined ? null : Number(m[1]), op, printf });
   }
   return specs;
 }
@@ -167,6 +169,10 @@ function entriesOf(doc) {
   const walk = (nodes, chain) => {
     for (const heading of nodes || []) {
       if (heading.type !== 'heading') continue;
+      if (inlineTaskLevel() !== null && heading.level >= /** @type {number} */ (inlineTaskLevel()) && isEnd(heading)) {
+        walk(heading.children, chain); // the END line of an inline task is no entry
+        continue;
+      }
       const entry = { heading, ancestors: chain, level: heading.level, index: out.length, end: 0, summaries: new Map() };
       out.push(entry);
       walk(heading.children, [...chain, heading]);
@@ -202,6 +208,11 @@ const itemText = (h) => String(h.title || '').replace(/^COMMENT(?:\s+|$)/, '');
 
 /** The heading as it is now: the lines it was read from describe the properties it had when it was parsed, not after edits. @param {Heading} h @returns {Heading} */
 const live = (h) => Object.create(h, { raw: { value: undefined } });
+
+/** org-link-display-format: links in `s` show their description, or else their target. @param {string} s */
+export function linkDisplayFormat(s) {
+  return s.replace(/\[\[((?:[^[\]\\]|\\(?:\\\\)*[[\]]|\\+[^[\]])+)\](?:\[((?:.|\n)+?)\])?\]/g, (_m, target, description) => description ?? target);
+}
 
 /** A computed column view of one document. */
 export class ColumnView {
@@ -362,12 +373,29 @@ export class ColumnView {
       let displayed;
       const modified = this.context.modifyValue ? this.context.modifyValue(spec.title, value) : null;
       if (modified !== null && modified !== undefined) displayed = modified;
-      else if (spec.prop === 'ITEM') displayed = value;
+      else if (spec.prop === 'ITEM') displayed = linkDisplayFormat(value);
       else if (spec.prop === 'DEADLINE' || spec.prop === 'SCHEDULED' || spec.prop === 'TIMESTAMP') displayed = value.replace(/[<[](\d{4}-\d\d-\d\d[^>\]\n]*)[>\]]/g, '[$1]');
       else if (spec.printf === null) displayed = value;
       else displayed = formatNumber(spec.printf, value);
       return { spec, value, displayed };
     });
+  }
+
+  /** The stars an ITEM cell starts with: those of its heading, but an inline task is no heading to `org-current-level`, so it takes the
+   * level of the heading it is in (1 when it is in none). @param {Entry} entry */
+  stars(entry) {
+    const limit = inlineTaskLevel();
+    if (limit === null || entry.level < limit) return entry.level;
+    const parent = [...entry.ancestors].reverse().find((h) => h.level < limit);
+    return parent ? parent.level : 1;
+  }
+
+  /** The width of column `i` as shown (`org-columns--set-widths`): its width in the format, or the widest of its title and values, an
+   * ITEM value counting its stars and the space after them (`* Head` is 6). @param {number} i */
+  width(i) {
+    const spec = this.specs[i];
+    if (spec.width !== null) return spec.width;
+    return this.viewEntries().reduce((w, entry) => Math.max(w, this.cells(entry)[i].displayed.length + (spec.prop === 'ITEM' ? this.stars(entry) + 1 : 0)), spec.title.length);
   }
 
   /** The entries of the view, in order. */

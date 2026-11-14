@@ -1,0 +1,928 @@
+{
+ "emacs": "Emacs 29.3, Org 9.6.15",
+ "cases": [
+  {
+   "test": "align-buffer-tables",
+   "before": "\n|  a  b  |\n\n|  c  d  |\n",
+   "want": [
+    "a  b",
+    "c  d"
+   ]
+  },
+  {
+   "test": "align-buffer-tables",
+   "before": "\n|  a  b  |\n\n|  c  d  |\n",
+   "want": [
+    "a  b",
+    "c  d"
+   ]
+  },
+  {
+   "test": "compare",
+   "before": "\n|      | 0    | z    |      | nan  | uinf | -inf | inf  |\n|------+------+------+------+------+------+------+------|\n|    0 | repl | repl | repl | repl | repl | repl | repl |\n|    z | repl | repl | repl | repl | repl | repl | repl |\n|      | repl | repl | repl | repl | repl | repl | repl |\n|  nan | repl | repl | repl | repl | repl | repl | repl |\n| uinf | repl | repl | repl | repl | repl | repl | repl |\n| -inf | repl | repl | repl | repl | repl | repl | repl |\n|  inf | repl | repl | repl | repl | repl | repl | repl |\n#+TBLFM: @<<$<<..@>$> = if(\"$1\" == \"@1\", x, string(\"\")); E",
+   "want": [
+    "|0|z||nan|uinf|-inf|inf",
+    "---",
+    "0|x||||||",
+    "z||x|||||",
+    "|||x||||",
+    "nan||||x|||",
+    "uinf|||||x||",
+    "-inf||||||x|",
+    "inf|||||||x"
+   ]
+  },
+  {
+   "test": "compare",
+   "before": "\n|      | 0    | z    |      | nan  | uinf | -inf | inf  |\n|------+------+------+------+------+------+------+------|\n|    0 | repl | repl | repl | repl | repl | repl | repl |\n|    z | repl | repl | repl | repl | repl | repl | repl |\n|      | repl | repl | repl | repl | repl | repl | repl |\n|  nan | repl | repl | repl | repl | repl | repl | repl |\n| uinf | repl | repl | repl | repl | repl | repl | repl |\n| -inf | repl | repl | repl | repl | repl | repl | repl |\n|  inf | repl | repl | repl | repl | repl | repl | repl |\n#+TBLFM: $2 = if(\"$1\" == \"(0)\"   , x, string(\"\")); E :: $3 = if(\"$1\" == \"(z)\"   , x, string(\"\")); E :: $4 = if(\"$1\" == \"nan\"   , x, string(\"\")); E :: $5 = if(\"$1\" == \"(nan)\" , x, string(\"\")); E :: $6 = if(\"$1\" == \"(uinf)\", x, string(\"\")); E :: $7 = if(\"$1\" == \"(-inf)\", x, string(\"\")); E :: $8 = if(\"$1\" == \"(inf)\" , x, string(\"\")); E",
+   "want": [
+    "|0|z||nan|uinf|-inf|inf",
+    "---",
+    "0|x||||||",
+    "z||x|||||",
+    "|||x||||",
+    "nan||||x|||",
+    "uinf|||||x||",
+    "-inf||||||x|",
+    "inf|||||||x"
+   ]
+  },
+  {
+   "test": "compare",
+   "before": "\n|   0 | replace |\n|   z | replace |\n|     | replace |\n| nan | replace |\n#+TBLFM: $2 = if(\"$1\" == \"nan\", string(\"\"), $1 + 1); E",
+   "want": [
+    "0|1",
+    "z|z + 1",
+    "|",
+    "nan|nan"
+   ]
+  },
+  {
+   "test": "copy-field",
+   "before": "\n| 0                | replace |\n| a b              | replace |\n| c   d            | replace |\n|                  | replace |\n| 2012-12          | replace |\n| [2012-12-31 Mon] | replace |\n#+TBLFM: $2 = '(identity $1)",
+   "want": [
+    "0|0",
+    "a b|a b",
+    "c   d|c   d",
+    "|",
+    "2012-12|2012-12",
+    "[2012-12-31 Mon]|[2012-12-31 Mon]"
+   ]
+  },
+  {
+   "test": "copy-field",
+   "before": "\n| 0                | replace |\n| a b              | replace |\n| c   d            | replace |\n|                  | replace |\n| 2012-12          | replace |\n| [2012-12-31 Mon] | replace |\n#+TBLFM: $2 = if(\"$1\" == \"nan\", string(\"\"), string(subvec(\"$1\", 2, vlen(\"$1\")))); E",
+   "want": [
+    "0|0",
+    "a b|a b",
+    "c   d|c   d",
+    "|",
+    "2012-12|2012-12",
+    "[2012-12-31 Mon]|[2012-12-31 Mon]"
+   ]
+  },
+  {
+   "test": "copy-field",
+   "before": "\n| 0                | replace |\n| a b              | replace |\n| c   d            | replace |\n|                  | replace |\n| 2012-12          | replace |\n| [2012-12-31 Mon] | replace |\n#+TBLFM: $2 = if(\"$1\" == \"nan\", string(\"\"), $1); E",
+   "want": [
+    "0|0",
+    "a b|a b",
+    "c   d|c d",
+    "|",
+    "2012-12|2000",
+    "[2012-12-31 Mon]|[2012-12-31 Mon]"
+   ]
+  },
+  {
+   "test": "duration",
+   "before": "\n       | 2:12 | 1:47 | |\n       #+TBLFM: @1$3=$1+$2;T",
+   "want": [
+    "2:12|1:47|03:59:00"
+   ]
+  },
+  {
+   "test": "duration",
+   "before": "\n       | 2:12 | 1:47 | |\n       #+TBLFM: @1$3=$1+$2;U",
+   "want": [
+    "2:12|1:47|03:59"
+   ]
+  },
+  {
+   "test": "duration",
+   "before": "\n       | 3:02:20 | -2:07:00 | |\n       #+TBLFM: @1$3=$1+$2;t",
+   "want": [
+    "3:02:20|-2:07:00|0.92"
+   ]
+  },
+  {
+   "test": "duration",
+   "before": "* H\n  :PROPERTIES:\n  :time_constant: 08:00:00\n  :END:\n\n  |  |\n  #+TBLFM: $1=2*$PROP_time_constant;T",
+   "want": [
+    "16:00:00"
+   ]
+  },
+  {
+   "test": "duration",
+   "before": "* H\n  :PROPERTIES:\n  :time_constant: 08:00:00\n  :END:\n\n  |  |\n  #+TBLFM: $1=2*$PROP_time_constant;t",
+   "want": [
+    "16.00"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n| -1 | replace |\n|  0 | replace |\n|    | replace |\n#+TBLFM: $2 = if(\"$1\" == \"nan\", string(\"\"), $1 + 1); E",
+   "want": [
+    "-1|0",
+    "0|1",
+    "|"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n| -1 | replace |\n|  0 | replace |\n|    | replace |\n#+TBLFM: $2 = '(if (eq \"$1\" \"\") \"\" (1+ $1)); L",
+   "want": [
+    "-1|0",
+    "0|1",
+    "|"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n| 1 | 2 | replace |\n| 4 |   | replace |\n|   | 8 | replace |\n|   |   | replace |\n#+TBLFM: $3 = if(\"$1\" == \"nan\" || \"$2\" == \"nan\", string(\"\"), $1 + $2); E",
+   "want": [
+    "1|2|3",
+    "4||",
+    "|8|",
+    "||"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n| 1 | 2 | replace |\n| 4 |   | replace |\n|   | 8 | replace |\n|   |   | replace |\n#+TBLFM: $3 = '(if (or (eq \"$1\" \"\") (eq \"$2\" \"\")) \"\" (+ $1 $2)); L",
+   "want": [
+    "1|2|3",
+    "4||",
+    "|8|",
+    "||"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n| 1.5 | 0 |\n| 3.5 |   |\n|     | 5 |\n|     |   |\n#+TBLFM: $2 = if(\"$1\" == \"nan\", if(\"$2\" == \"nan\", string(\"\"), $2 +.0), $1 + 0.5); E f-1",
+   "want": [
+    "1.5|2.0",
+    "3.5|4.0",
+    "|5.0",
+    "|"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n|   |   |   |   | repl | repl | repl | repl | repl | repl |\n|   |   | 5 | 7 | repl | repl | repl | repl | repl | repl |\n| 1 | 3 | 5 | 7 | repl | repl | repl | repl | repl | repl |\n#+TBLFM: $5 = if(typeof(vmean($1..$4)) == 12, string(\"\"), vmean($1..$4)); E :: $6 = if(typeof(vmean(@0$1..@0$4)) == 12, string(\"\"), vmean(@0$1..@0$4)); E :: $7 = if(\"$1..$4\" == \"[]\", string(\"\"), vmean($1..$4)) :: $8 = if(\"@0$1..@0$4\" == \"[]\", string(\"\"), vmean(@0$1..@0$4)) :: $9 = vmean($1..$4); EN :: $10 = vmean(@0$1..@0$4); EN",
+   "want": [
+    "||||||||0|0",
+    "||5|7|||6|6|3|3",
+    "1|3|5|7|4|4|4|4|4|4"
+   ]
+  },
+  {
+   "test": "empty-field",
+   "before": "\n|   |   |   |   | repl | repl | repl | repl | repl | repl |\n|   |   | 5 | 7 | repl | repl | repl | repl | repl | repl |\n| 1 | 3 | 5 | 7 | repl | repl | repl | repl | repl | repl |\n#+TBLFM: $5 = '(let ((l '($1..$4))) (if (member \"\" l) \"\" (/ (apply '+ (mapcar 'string-to-number l)) (length l)))); E :: $6 = '(let ((l '(@0$1..@0$4))) (if (member \"\" l) \"\" (/ (apply '+ (mapcar 'string-to-number l)) (length l)))); E :: $7 = '(let ((l '($1..$4))) (if l (/ (apply '+ l) (length l)) \"\")); N :: $8 = '(let ((l '(@0$1..@0$4))) (if l (/ (apply '+ l) (length l)) \"\")); N :: $9 = '(/ (+ $1..$4) (length '($1..$4))); EN :: $10 = '(/ (+ @0$1..@0$4) (length '(@0$1..@0$4))); EN",
+   "want": [
+    "||||||||0|0",
+    "||5|7|||6|6|3|3",
+    "1|3|5|7|4|4|4|4|4|4"
+   ]
+  },
+  {
+   "test": "end-on-hline",
+   "before": "\n| 1 | 2 | 3 |\n| 4 | 5 | 6 |\n|   |   |   |\n|---+---+---|\n#+TBLFM: @3$2..@3$>=vsum(@1..@2)",
+   "want": [
+    "1|2|3",
+    "4|5|6",
+    "|7|9",
+    "---"
+   ]
+  },
+  {
+   "test": "field-formula-outside-table",
+   "before": "\n| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "want": "ERROR"
+  },
+  {
+   "test": "field-formula-outside-table",
+   "before": "\n| 2 |\n| 4 |\n| 8 |\n#+TBLFM: @1$2=5",
+   "want": [
+    "2|5",
+    "4|",
+    "8|"
+   ],
+   "createColumns": true
+  },
+  {
+   "test": "field-formula-outside-table",
+   "before": "\n| 2 |\n| 4 |\n| 8 |\n#+TBLFM: $3=15",
+   "want": [
+    "2||15",
+    "4||15",
+    "8||15"
+   ],
+   "createColumns": true
+  },
+  {
+   "test": "first-rc",
+   "before": "|   | 2 |\n#+TBLFM: $<=1",
+   "want": [
+    "1|2"
+   ]
+  },
+  {
+   "test": "first-rc",
+   "before": "| 2 |\n|   |\n#+TBLFM: @2$1=@<",
+   "want": [
+    "2",
+    "2"
+   ]
+  },
+  {
+   "test": "formula-priority",
+   "before": "| 1 |   |\n| 2 |   |\n#+tblfm: $2=3*$1::@2$2=99",
+   "want": [
+    "1|3",
+    "2|99"
+   ]
+  },
+  {
+   "test": "formula-priority",
+   "before": "| 1 |   |\n| 2 |   |\n#+tblfm: $2=3*$1::@2$2=99",
+   "want": [
+    "1|3",
+    "2|99"
+   ]
+  },
+  {
+   "test": "formula-priority",
+   "before": "| 1 |  3 |\n| 2 | 99 |\n#+tblfm: $2=3*$1",
+   "want": [
+    "1|3",
+    "2|6"
+   ]
+  },
+  {
+   "test": "last-rc",
+   "before": "| 2 |   |\n#+TBLFM: $>=1",
+   "want": [
+    "2|1"
+   ]
+  },
+  {
+   "test": "last-rc",
+   "before": "| 2 |\n|   |\n#+TBLFM: @>$1=@<",
+   "want": [
+    "2",
+    "2"
+   ]
+  },
+  {
+   "test": "lisp-return-value",
+   "before": "\n|                         | nil         | (list) | '() |\n|-------------------------+-------------+--------+-----|\n| type-of, no L           | replace (r) | r      | r   |\n| type-of identity, no L  | r           | r      | r   |\n| identity, no L          | r           | r      | r   |\n|-------------------------+-------------+--------+-----|\n| type-of \"@1\"            | r           | r      | r   |\n| type-of (identity \"@1\") | r           | r      | r   |\n| identity \"@1\"           | r           | r      | r   |\n|-------------------------+-------------+--------+-----|\n| type-of @1              | r           | r      | r   |\n| type-of (identity @1)   | r           | r      | r   |\n| identity @1             | r           | r      | r   |\n#+TBLFM: @2$<<..@2$> = '(type-of @1) :: @3$<<..@3$> = '(type-of (identity @1)) :: @4$<<..@4$> = '(identity @1) :: @5$<<..@>$> = '(@0$1); L",
+   "want": [
+    "|nil|(list)|'()",
+    "---",
+    "type-of, no L|string|string|string",
+    "type-of identity, no L|string|string|string",
+    "identity, no L|nil|(list)|'()",
+    "---",
+    "type-of \"@1\"|string|string|string",
+    "type-of (identity \"@1\")|string|string|string",
+    "identity \"@1\"|nil|(list)|'()",
+    "---",
+    "type-of @1|symbol|symbol|symbol",
+    "type-of (identity @1)|symbol|symbol|symbol",
+    "identity @1|nil|nil|nil"
+   ]
+  },
+  {
+   "test": "mode-string-u",
+   "before": "\n| 1.5 A/B | 2.0 B | |\n#+TBLFM: $3=$1*$2;u",
+   "want": [
+    "1.5 A/B|2.0 B|3. A"
+   ]
+  },
+  {
+   "test": "named-column",
+   "before": "\n| ! | name |   |\n|   |    1 |   |\n#+TBLFM: @2$3=$name",
+   "want": [
+    "!|name|",
+    "|1|1"
+   ]
+  },
+  {
+   "test": "named-field",
+   "before": "\n|   |      |\n| ^ | name |\n#+TBLFM: $name=1",
+   "want": [
+    "|1",
+    "^|name"
+   ]
+  },
+  {
+   "test": "named-field",
+   "before": "\n| _ | name |\n|   |      |\n#+TBLFM: $name=1",
+   "want": [
+    "_|name",
+    "|1"
+   ]
+  },
+  {
+   "test": "org-lookup-all",
+   "before": "\n#+NAME: data\n| Purchase | Product | Shop | Rating |\n|----------+---------+------+--------|\n| a        | p1      | s1   |      1 |\n| b        | p1      | s2   |      4 |\n| c        | p2      | s1   |      2 |\n| d        | p3      | s2   |      8 |\n\n| Product | Rating  | Ranking |\n|---------+---------+---------|\n| p1      | replace | replace |\n| p2      | replace | replace |\n| p3      | replace | replace |\n#+TBLFM: $2 = '(let ((all (org-lookup-all '$1 '(remote(data, @I$2..@>$2)) '(remote(data, @I$4..@>$4))))) (/ (apply '+ all) (length all) 1.0)); L :: $3 = '(+ 1 (length (org-lookup-all $2 '(@I$2..@>$2) nil '<))); N",
+   "want": [
+    "Purchase|Product|Shop|Rating",
+    "---",
+    "a|p1|s1|1",
+    "b|p1|s2|4",
+    "c|p2|s1|2",
+    "d|p3|s2|8",
+    "Product|Rating|Ranking",
+    "---",
+    "p1|2.5|1",
+    "p2|2.0|2",
+    "p3|8.0|1"
+   ]
+  },
+  {
+   "test": "org-lookup-all",
+   "before": "\n#+NAME: data\n| Purchase | Product | Shop | Rating |\n|----------+---------+------+--------|\n| a        | p1      | s1   |      1 |\n| b        | p1      | s2   |      4 |\n| c        | p2      | s1   |      2 |\n| d        | p3      | s2   |      8 |\n\n| Product | Rating  | Ranking |\n|---------+---------+---------|\n| p1      | 2.5 | 1 |\n| p2      | 2.0 | 2 |\n| p3      | 8.0 | 1 |\n#+TBLFM: $2 = '(let ((all (org-lookup-all '$1 '(remote(data, @I$2..@>$2)) '(remote(data, @I$4..@>$4))))) (/ (apply '+ all) (length all) 1.0)); L :: $3 = '(+ 1 (length (org-lookup-all $2 '(@I$2..@>$2) nil '<))); N",
+   "want": [
+    "Purchase|Product|Shop|Rating",
+    "---",
+    "a|p1|s1|1",
+    "b|p1|s2|4",
+    "c|p2|s1|2",
+    "d|p3|s2|8",
+    "Product|Rating|Ranking",
+    "---",
+    "p1|2.5|2",
+    "p2|2.0|3",
+    "p3|8.0|1"
+   ]
+  },
+  {
+   "test": "org-lookup-all",
+   "before": "\n#+NAME: data\n| Purchase | Product | Shop | Rating |\n|----------+---------+------+--------|\n| a        | p1      | s1   |      1 |\n| b        | p1      | s2   |      4 |\n| c        | p2      | s1   |      2 |\n| d        | p3      | s2   |      8 |\n\n| Shop | Rating  | Ranking |\n|------+---------+---------|\n| s1   | replace | replace |\n| s2   | replace | replace |\n#+TBLFM: $2 = '(let ((all (org-lookup-all '$1 '(remote(data, @I$3..@>$3)) '(remote(data, @I$4..@>$4))))) (/ (apply '+ all) (length all) 1.0)); L :: $3 = '(+ 1 (length (org-lookup-all $2 '(@I$2..@>$2) nil '<))); N",
+   "want": [
+    "Purchase|Product|Shop|Rating",
+    "---",
+    "a|p1|s1|1",
+    "b|p1|s2|4",
+    "c|p2|s1|2",
+    "d|p3|s2|8",
+    "Shop|Rating|Ranking",
+    "---",
+    "s1|1.5|1",
+    "s2|6.0|1"
+   ]
+  },
+  {
+   "test": "org-lookup-all",
+   "before": "\n#+NAME: data\n| Purchase | Product | Shop | Rating |\n|----------+---------+------+--------|\n| a        | p1      | s1   |      1 |\n| b        | p1      | s2   |      4 |\n| c        | p2      | s1   |      2 |\n| d        | p3      | s2   |      8 |\n\n| Shop | Rating  | Ranking |\n|------+---------+---------|\n| s1   | 1.5 | 1 |\n| s2   | 6.0 | 1 |\n#+TBLFM: $2 = '(let ((all (org-lookup-all '$1 '(remote(data, @I$3..@>$3)) '(remote(data, @I$4..@>$4))))) (/ (apply '+ all) (length all) 1.0)); L :: $3 = '(+ 1 (length (org-lookup-all $2 '(@I$2..@>$2) nil '<))); N",
+   "want": [
+    "Purchase|Product|Shop|Rating",
+    "---",
+    "a|p1|s1|1",
+    "b|p1|s2|4",
+    "c|p2|s1|2",
+    "d|p3|s2|8",
+    "Shop|Rating|Ranking",
+    "---",
+    "s1|1.5|2",
+    "s2|6.0|1"
+   ]
+  },
+  {
+   "test": "org-table-calc-current-TBLFM",
+   "before": "\n| 1 |   |\n| 2 |   |\n#+TBLFM: $2=$1*1\n#+TBLFM: $2=$1*2\n#+TBLFM: $2=$1*3\n",
+   "want": [
+    "1|1",
+    "2|2"
+   ]
+  },
+  {
+   "test": "org-table-calc-current-TBLFM",
+   "before": "\n| 1 | 1 |\n| 2 | 2 |\n#+TBLFM: $2=$1*1\n#+TBLFM: $2=$1*2\n#+TBLFM: $2=$1*3\n",
+   "want": [
+    "1|2",
+    "2|4"
+   ],
+   "pick": 1
+  },
+  {
+   "test": "org-table-calc-current-TBLFM-when-stop-because-of-error",
+   "before": "\n| 1 | 1 |\n| 2 | 2 |\n#+TBLFM: $2=$1*1\n#+TBLFM: $2=$1*2::$2=$1*2\n#+TBLFM: $2=$1*3\n",
+   "want": "ERROR",
+   "pick": 1
+  },
+  {
+   "test": "orgtbl-ascii-draw",
+   "before": "\n|    Value | <l>     |\n|----------+---------|\n|       19 | replace |\n|----------+---------|\n| -0.50001 | replace |\n| -0.49999 | replace |\n|  0.49999 | replace |\n|  0.50001 | replace |\n|  1.49999 | replace |\n| 22.50001 | replace |\n| 23.49999 | replace |\n| 23.50001 | replace |\n| 24.49999 | replace |\n| 24.50001 | replace |\n#+TBLFM: $2 = '(orgtbl-ascii-draw $1 0 24 3 \" 12345678\")",
+   "want": [
+    "Value|<l>",
+    "---",
+    "19|883",
+    "---",
+    "-0.50001|too small",
+    "-0.49999|",
+    "0.49999|",
+    "0.50001|1",
+    "1.49999|1",
+    "22.50001|887",
+    "23.49999|887",
+    "23.50001|888",
+    "24.49999|888",
+    "24.50001|too large"
+   ]
+  },
+  {
+   "test": "orgtbl-ascii-draw",
+   "before": "\n| -1 | replace |\n|  0 | replace |\n|  1 | replace |\n|  2 | replace |\n|  3 | replace |\n|  4 | replace |\n#+TBLFM: $2 = '(orgtbl-ascii-draw $1 0 3 3 \"$-\")",
+   "want": [
+    "-1|too small",
+    "0|$",
+    "1|-$",
+    "2|--$",
+    "3|---$",
+    "4|too large"
+   ]
+  },
+  {
+   "test": "references/mode-string-E",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity $1); E :: $4 = '(+ $1 $2); E :: $5 = '(+ $1..$2); E :: $6 = '(+ @0$1..@0$2); E :: $7 = '(length '($1..$2)); E :: $8 = '(length '(@0$1..@0$2)); E",
+   "want": [
+    "0|1|0|#ERROR|#ERROR|#ERROR|2|2",
+    "z|1|z|#ERROR|#ERROR|#ERROR|2|2",
+    "|1||#ERROR|#ERROR|#ERROR|2|2",
+    "|||#ERROR|#ERROR|#ERROR|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-E",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; E :: $4 = $1 + $2; E :: $5 = vsum($1..$2); E :: $6 = vsum(@0$1..@0$2); E :: $7 = vlen($1..$2); E :: $8 = vlen(@0$1..@0$2); E",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|z|z + 1|z + 1|z + 1|2|2",
+    "|1|nan|nan|nan|nan|2|2",
+    "||nan|nan|nan|nan|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-E",
+   "before": "\n|  nan | 1 | replace | replace | replace | replace | replace | replace |\n| uinf | 1 | replace | replace | replace | replace | replace | replace |\n| -inf | 1 | replace | replace | replace | replace | replace | replace |\n|  inf | 1 | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; E :: $4 = $1 + $2; E :: $5 = vsum($1..$2); E :: $6 = vsum(@0$1..@0$2); E :: $7 = vlen($1..$2); E :: $8 = vlen(@0$1..@0$2); E",
+   "want": [
+    "nan|1|nan|nan|nan|nan|2|2",
+    "uinf|1|uinf|uinf|uinf|uinf|2|2",
+    "-inf|1|-inf|-inf|-inf|-inf|2|2",
+    "inf|1|inf|inf|inf|inf|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-EL",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity \"$1\"); EL :: $4 = '(+ $1 $2); EL :: $5 = '(+ $1..$2); EL :: $6 = '(+ @0$1..@0$2); EL :: $7 = '(length '($1..$2)); EL :: $8 = '(length '(@0$1..@0$2)); EL",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|z|#ERROR|#ERROR|#ERROR|2|2",
+    "|1||1|1|1|1|1",
+    "|||0|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-EL",
+   "before": "\n| \"0\" | \"1\" | repl | repl | repl | repl | repl | repl |\n| \"z\" | \"1\" | repl | repl | repl | repl | repl | repl |\n| \"\"  | \"1\" | repl | repl | repl | repl | repl | repl |\n| \"\"  | \"\"  | repl | repl | repl | repl | repl | repl |\n#+TBLFM: $3 = '(concat \"\\\"\" $1 \"\\\"\"); EL :: $4 = '(+ (string-to-number $1) (string-to-number $2)); EL :: $5 = '(+ $1..$2); EL :: $6 = '(+ @0$1..@0$2); EL :: $7 = '(length '($1..$2)); EL :: $8 = '(length '(@0$1..@0$2)); EL",
+   "want": [
+    "\"0\"|\"1\"|\"0\"|1|#ERROR|#ERROR|2|2",
+    "\"z\"|\"1\"|\"z\"|1|#ERROR|#ERROR|2|2",
+    "\"\"|\"1\"|\"\"|1|#ERROR|#ERROR|2|2",
+    "\"\"|\"\"|\"\"|0|#ERROR|#ERROR|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-EN",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity $1); EN :: $4 = '(+ $1 $2); EN :: $5 = '(+ $1..$2); EN :: $6 = '(+ @0$1..@0$2); EN :: $7 = '(length '($1..$2)); EN :: $8 = '(length '(@0$1..@0$2)); EN",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|0|1|1|1|2|2",
+    "|1|0|1|1|1|2|2",
+    "||0|0|0|0|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-EN",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; EN :: $4 = $1 + $2; EN :: $5 = vsum($1..$2); EN :: $6 = vsum(@0$1..@0$2); EN :: $7 = vlen($1..$2); EN :: $8 = vlen(@0$1..@0$2); EN",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|0|1|1|1|2|2",
+    "|1|0|1|1|1|2|2",
+    "||0|0|0|0|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-EN",
+   "before": "\n|  nan | 1 | replace | replace | replace | replace | replace | replace |\n| uinf | 1 | replace | replace | replace | replace | replace | replace |\n| -inf | 1 | replace | replace | replace | replace | replace | replace |\n|  inf | 1 | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; EN :: $4 = $1 + $2; EN :: $5 = vsum($1..$2); EN :: $6 = vsum(@0$1..@0$2); EN :: $7 = vlen($1..$2); EN :: $8 = vlen(@0$1..@0$2); EN",
+   "want": [
+    "nan|1|0|1|1|1|2|2",
+    "uinf|1|0|1|1|1|2|2",
+    "-inf|1|0|1|1|1|2|2",
+    "inf|1|0|1|1|1|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-L",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity \"$1\"); L :: $4 = '(+ $1 $2); L :: $5 = '(+ $1..$2); L :: $6 = '(+ @0$1..@0$2); L :: $7 = '(length '($1..$2)); L :: $8 = '(length '(@0$1..@0$2)); L",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|z|#ERROR|#ERROR|#ERROR|2|2",
+    "|1||1|1|1|1|1",
+    "|||0|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-N",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity $1); N :: $4 = '(+ $1 $2); N :: $5 = '(+ $1..$2); N :: $6 = '(+ @0$1..@0$2); N :: $7 = '(length '($1..$2)); N :: $8 = '(length '(@0$1..@0$2)); N",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|0|1|1|1|2|2",
+    "|1|0|1|1|1|1|1",
+    "||0|0|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-N",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; N :: $4 = $1 + $2; N :: $5 = vsum($1..$2); N :: $6 = vsum(@0$1..@0$2); N :: $7 = vlen($1..$2); N :: $8 = vlen(@0$1..@0$2); N",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|0|1|1|1|2|2",
+    "|1|0|1|1|1|1|1",
+    "||0|0|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-N",
+   "before": "\n|  nan | 1 | replace | replace | replace | replace | replace | replace |\n| uinf | 1 | replace | replace | replace | replace | replace | replace |\n| -inf | 1 | replace | replace | replace | replace | replace | replace |\n|  inf | 1 | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1; N :: $4 = $1 + $2; N :: $5 = vsum($1..$2); N :: $6 = vsum(@0$1..@0$2); N :: $7 = vlen($1..$2); N :: $8 = vlen(@0$1..@0$2); N",
+   "want": [
+    "nan|1|0|1|1|1|2|2",
+    "uinf|1|0|1|1|1|2|2",
+    "-inf|1|0|1|1|1|2|2",
+    "inf|1|0|1|1|1|2|2"
+   ]
+  },
+  {
+   "test": "references/mode-string-none",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = '(identity $1) :: $4 = '(+ $1 $2) :: $5 = '(+ $1..$2) :: $6 = '(+ @0$1..@0$2) :: $7 = '(length '($1..$2)) :: $8 = '(length '(@0$1..@0$2))",
+   "want": [
+    "0|1|0|#ERROR|#ERROR|#ERROR|2|2",
+    "z|1|z|#ERROR|#ERROR|#ERROR|2|2",
+    "|1||#ERROR|#ERROR|#ERROR|1|1",
+    "|||#ERROR|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-none",
+   "before": "\n| 0 | 1 | replace | replace | replace | replace | replace | replace |\n| z | 1 | replace | replace | replace | replace | replace | replace |\n|   | 1 | replace | replace | replace | replace | replace | replace |\n|   |   | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1 :: $4 = $1 + $2 :: $5 = vsum($1..$2) :: $6 = vsum(@0$1..@0$2) :: $7 = vlen($1..$2) :: $8 = vlen(@0$1..@0$2)",
+   "want": [
+    "0|1|0|1|1|1|2|2",
+    "z|1|z|z + 1|z + 1|z + 1|2|2",
+    "|1|0|1|1|1|1|1",
+    "||0|0|0|0|0|0"
+   ]
+  },
+  {
+   "test": "references/mode-string-none",
+   "before": "\n|  nan | 1 | replace | replace | replace | replace | replace | replace |\n| uinf | 1 | replace | replace | replace | replace | replace | replace |\n| -inf | 1 | replace | replace | replace | replace | replace | replace |\n|  inf | 1 | replace | replace | replace | replace | replace | replace |\n#+TBLFM: $3 = $1 :: $4 = $1 + $2 :: $5 = vsum($1..$2) :: $6 = vsum(@0$1..@0$2) :: $7 = vlen($1..$2) :: $8 = vlen(@0$1..@0$2)",
+   "want": [
+    "nan|1|nan|nan|nan|nan|2|2",
+    "uinf|1|uinf|uinf|uinf|uinf|2|2",
+    "-inf|1|-inf|-inf|-inf|-inf|2|2",
+    "inf|1|inf|inf|inf|inf|2|2"
+   ]
+  },
+  {
+   "test": "remote-reference-access",
+   "before": "\n#+NAME: table\n|   | x   42 |   |\n\n| replace | replace |\n#+TBLFM: $1 = '(identity remote(table, @1$2)) :: $2 = 2 * remote(table, @1$2)",
+   "want": [
+    "|x   42|",
+    "x   42|84 x"
+   ]
+  },
+  {
+   "test": "remote-reference-indirect",
+   "before": "\n#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: summary\n|  year | amount  |\n|-------+---------|\n|  2012 | replace |\n|  2013 | replace |\n|-------+---------|\n| total | replace |\n#+TBLFM: @<<$2..@>>$2 = remote($<, @>$1) :: @>$2 = vsum(@I..@II)",
+   "want": [
+    "amount",
+    "---",
+    "1",
+    "2",
+    "---",
+    "3",
+    "amount",
+    "---",
+    "4",
+    "8",
+    "---",
+    "12",
+    "year|amount",
+    "---",
+    "2012|3",
+    "2013|12",
+    "---",
+    "total|15"
+   ]
+  },
+  {
+   "test": "remote-reference-indirect",
+   "before": "\n#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: summary\n|  year | amount  |\n|-------+---------|\n|  2012 | replace |\n|  2013 | replace |\n|-------+---------|\n| total | replace |\n#+TBLFM: @<<$2..@>>$2 = '(identity remote($<, @>$1)); N :: @>$2 = '(+ @I..@II); N",
+   "want": [
+    "amount",
+    "---",
+    "1",
+    "2",
+    "---",
+    "3",
+    "amount",
+    "---",
+    "4",
+    "8",
+    "---",
+    "12",
+    "year|amount",
+    "---",
+    "2012|3",
+    "2013|12",
+    "---",
+    "total|15"
+   ]
+  },
+  {
+   "test": "remote-reference-indirect",
+   "before": "\n#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: summary\n| year   |    2012 |    2013 | total   |\n|--------+---------+---------+---------|\n| amount | replace | replace | replace |\n#+TBLFM: @2$<<..@2$>> = remote(@<, @>$1) :: @2$> = vsum($<<..$>>)",
+   "want": [
+    "amount",
+    "---",
+    "1",
+    "2",
+    "---",
+    "3",
+    "amount",
+    "---",
+    "4",
+    "8",
+    "---",
+    "12",
+    "year|2012|2013|total",
+    "---",
+    "amount|3|12|15"
+   ]
+  },
+  {
+   "test": "remote-reference-indirect",
+   "before": "\n#+NAME: 2012\n| amount |\n|--------|\n|      1 |\n|      2 |\n|--------|\n|      3 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: 2013\n| amount |\n|--------|\n|      4 |\n|      8 |\n|--------|\n|     12 |\n#+TBLFM: @>$1 = vsum(@I..@II)\n\n#+NAME: summary\n| year   |    2012 |    2013 | total   |\n|--------+---------+---------+---------|\n| amount | replace | replace | replace |\n#+TBLFM: @2$<<..@2$>> = '(identity remote(@<, @>$1)); N :: @2$> = '(+ $<<..$>>); N",
+   "want": [
+    "amount",
+    "---",
+    "1",
+    "2",
+    "---",
+    "3",
+    "amount",
+    "---",
+    "4",
+    "8",
+    "---",
+    "12",
+    "year|2012|2013|total",
+    "---",
+    "amount|3|12|15"
+   ]
+  },
+  {
+   "test": "simple-formula/no-grouping/no-title-row",
+   "before": "\n|       2 |\n|       4 |\n|       8 |\n| replace |\n#+TBLFM: @>$1 = vsum(@<..@>>)",
+   "want": [
+    "2",
+    "4",
+    "8",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/no-grouping/no-title-row",
+   "before": "\n|       2 |\n|       4 |\n|       8 |\n| replace |\n#+TBLFM: @>$1 = '(+ @<..@>>); N",
+   "want": [
+    "2",
+    "4",
+    "8",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/no-grouping/with-title-row",
+   "before": "\n|     foo |\n|---------|\n|       2 |\n|       4 |\n|       8 |\n| replace |\n#+TBLFM: @>$1 = vsum(@I..@>>)",
+   "want": [
+    "foo",
+    "---",
+    "2",
+    "4",
+    "8",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/no-grouping/with-title-row",
+   "before": "\n|     foo |\n|---------|\n|       2 |\n|       4 |\n|       8 |\n| replace |\n#+TBLFM: @>$1 = '(+ @I..@>>); N",
+   "want": [
+    "foo",
+    "---",
+    "2",
+    "4",
+    "8",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 |\n|       4 |\n|       8 |\n|---------|\n| replace |\n#+TBLFM: $1 = vsum(@<..@>>)",
+   "want": [
+    "2",
+    "4",
+    "8",
+    "---",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 |\n|       4 |\n|       8 |\n|---------|\n| replace |\n#+TBLFM: $1 = '(+ @<..@>>); N",
+   "want": [
+    "2",
+    "4",
+    "8",
+    "---",
+    "14"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 | header  |\n|       4 | header  |\n|       8 | header  |\n|---------+---------|\n| replace | replace |\n#+TBLFM: @>$1 = vsum(@<..@>>) :: $2 = 2 * $1",
+   "want": [
+    "2|header",
+    "4|header",
+    "8|header",
+    "---",
+    "14|2 replace"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 | header  |\n|       4 | header  |\n|       8 | header  |\n|---------+---------|\n| 14 | 2 replace |\n#+TBLFM: @>$1 = vsum(@<..@>>) :: $2 = 2 * $1",
+   "want": [
+    "2|header",
+    "4|header",
+    "8|header",
+    "---",
+    "14|28"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 | header  |\n|       4 | header  |\n|       8 | header  |\n|---------+---------|\n| replace | replace |\n#+TBLFM: @>$1 = '(+ @<..@>>); N :: $2 = '(* 2 $1); N",
+   "want": [
+    "2|header",
+    "4|header",
+    "8|header",
+    "---",
+    "14|0"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/no-title-row",
+   "before": "\n|       2 | header  |\n|       4 | header  |\n|       8 | header  |\n|---------+---------|\n| 14 | 0 |\n#+TBLFM: @>$1 = '(+ @<..@>>); N :: $2 = '(* 2 $1); N",
+   "want": [
+    "2|header",
+    "4|header",
+    "8|header",
+    "---",
+    "14|28"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/with-title-row",
+   "before": "\n|     foo | bar     |\n|---------+---------|\n|       2 | replace |\n|       4 | replace |\n|       8 | replace |\n|---------+---------|\n| replace | replace |\n#+TBLFM: @>$1 = vsum(@I..@>>) :: $2 = 2 * $1",
+   "want": [
+    "foo|bar",
+    "---",
+    "2|4",
+    "4|8",
+    "8|16",
+    "---",
+    "14|2 replace"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/with-title-row",
+   "before": "\n|     foo | bar     |\n|---------+---------|\n|       2 | 4 |\n|       4 | 8 |\n|       8 | 16 |\n|---------+---------|\n| 14 | 2 replace |\n#+TBLFM: @>$1 = vsum(@I..@>>) :: $2 = 2 * $1",
+   "want": [
+    "foo|bar",
+    "---",
+    "2|4",
+    "4|8",
+    "8|16",
+    "---",
+    "14|28"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/with-title-row",
+   "before": "\n|     foo | bar     |\n|---------+---------|\n|       2 | replace |\n|       4 | replace |\n|       8 | replace |\n|---------+---------|\n| replace | replace |\n#+TBLFM: @>$1 = '(+ @I..@>>); N :: $2 = '(* 2 $1); N",
+   "want": [
+    "foo|bar",
+    "---",
+    "2|4",
+    "4|8",
+    "8|16",
+    "---",
+    "14|0"
+   ]
+  },
+  {
+   "test": "simple-formula/with-grouping/with-title-row",
+   "before": "\n|     foo | bar     |\n|---------+---------|\n|       2 | 4 |\n|       4 | 8 |\n|       8 | 16 |\n|---------+---------|\n| 14 | 0 |\n#+TBLFM: @>$1 = '(+ @I..@>>); N :: $2 = '(* 2 $1); N",
+   "want": [
+    "foo|bar",
+    "---",
+    "2|4",
+    "4|8",
+    "8|16",
+    "---",
+    "14|28"
+   ]
+  },
+  {
+   "test": "single-rowgroup",
+   "before": "\n|---+---|\n| 1 |   |\n|---+---|\n#+TBLFM: $2=$1-1",
+   "want": [
+    "---",
+    "1|0",
+    "---"
+   ]
+  },
+  {
+   "test": "single-rowgroup",
+   "before": "\n| 1 |   |\n#+TBLFM: $2=$1-1",
+   "want": [
+    "1|0"
+   ]
+  },
+  {
+   "test": "sub-total",
+   "before": "\n|-------+---------+---------|\n| Item  |    Item | Sub-    |\n| name  |   value | total   |\n|-------+---------+---------|\n| a1    |     4.1 | replace |\n| a2    |     8.2 | replace |\n| a3    |         | replace |\n|-------+---------+---------|\n| b1    |    16.0 | replace |\n|-------+---------+---------|\n| c1    |      32 | replace |\n| c2    |      64 | replace |\n|-------+---------+---------|\n| Total | replace | replace |\n|-------+---------+---------|\n#+TBLFM: @>$2 = vsum(@II..@>>) ::$3 = if(vlen(@0..@+I) == 1, vsum(@-I$2..@+I$2) +.0, string(\"\")); EN f-1 :: @>$3 = string(\"\")",
+   "want": [
+    "---",
+    "Item|Item|Sub-",
+    "name|value|total",
+    "---",
+    "a1|4.1|",
+    "a2|8.2|",
+    "a3||12.3",
+    "---",
+    "b1|16.0|16.0",
+    "---",
+    "c1|32|",
+    "c2|64|96.0",
+    "---",
+    "Total|124.3|",
+    "---"
+   ]
+  },
+  {
+   "test": "tab-indent",
+   "before": "\n\t| ! |  sum |      | a |  b |   c |\n\t|---+------+------+---+----+-----|\n\t| # | 1011 | 1000 | 1 | 10 | 100 |\n\t#+TBLFM: $2=$a+$b+$c\n",
+   "want": [
+    "!|sum||a|b|c",
+    "---",
+    "#|111|1000|1|10|100"
+   ]
+  },
+  {
+   "test": "time-stamps",
+   "before": "| <2016-07-07 Sun> | <2016-07-08 Fri> |   |\n#+TBLFM: $3=$2-$1",
+   "want": [
+    "<2016-07-07 Sun>|<2016-07-08 Fri>|1"
+   ]
+  },
+  {
+   "test": "time-stamps",
+   "before": "| <2016-07-07 Do> | <2016-07-08 Fr> |   |\n#+TBLFM: $3=$2-$1",
+   "want": [
+    "<2016-07-07 Do>|<2016-07-08 Fr>|1"
+   ]
+  }
+ ]
+}

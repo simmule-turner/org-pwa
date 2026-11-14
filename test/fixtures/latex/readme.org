@@ -178,7 +178,7 @@ Undo/redo covers every edit (see [[#undoredo-and-history][Undo/redo and History]
 :CUSTOM_ID: table-pad
 :END:
 
-*⋯ Table*, below a table, opens a pad of buttons that act at the highlighted cell, the one you last tapped; the arrows at its top move it. Each button is an Org command, and holding one shows its key. They are in the command palette too (~org-table-insert-row~, ~org-table-kill-row~, ~org-table-sort-lines~ and the rest). In a table the M-arrow keys do these instead of moving headings.
+*⋯ Table*, below a table, opens a pad of buttons that act at the highlighted cell, the one you last tapped; the arrows at its top move it. Each button is an Org command, and holding one shows its key. They are in the command palette too (~org-table-insert-row~, ~org-table-kill-row~, ~org-table-sort-lines~ and the rest). In a table the M-arrow keys do these instead of moving headings. Sort offers a case-sensitive alphabetic pair (Emacs's ~C-u C-c ^ a~) after the eight kinds.
 
 | Key | What it does |
 |---+---|
@@ -234,7 +234,9 @@ With the cursor in the qty column of
 | ~vvar~, ~vpvar~, ~vsdev~, ~vpsdev~ | Sample and population variance and standard deviation |
 | ~if(c,t,f)~ | ~t~ if ~c~ is non-zero or non-empty, else ~f~; only that branch is evaluated |
 | ~and~, ~or~, ~not~ | Function forms of the logical operators |
-| ~string(ref)~, ~"text"~ | A cell's raw text, and a string literal (a string result shows as character codes, as in Calc) |
+| ~string(ref)~, ~"text"~ | A cell's raw text, and a string literal (a string result shows as character codes, as in Calc). ~string("")~ gives an empty cell; ~string(x)~ shows a string, or a list of character codes, as text |
+| ~typeof(x)~ | Calc's kind of value: 1 integer, 2 fraction, 3 float, 12 ~nan~ or ~inf~, 101 vector, 102 matrix |
+| ~subvec(v, a, b)~, ~vlen(v)~ | The elements ~a~ to ~b-1~ of a vector or string, and how many elements it has |
 | ~date(ref)~, ~date(Y,M,D)~, ~now()~, ~deg(x)~, ~date-to-time(ref)~ | Dates (below) |
 | ~format-time-string(fmt, time, utc)~ | Emacs's, with every ~%~ code of [[#capture-templates][Capture templates]] |
 | ~uconv(value, "from", "to")~ | Unit conversion (below) |
@@ -242,6 +244,12 @@ With the cursor in the qty column of
 *Logic*: ~==~ (or ~=~), ~!=~, ~<~, ~>~, ~<=~, ~>=~ give 1 or 0 and bind tighter than ~&&~ and ~||~, which short-circuit like ~if~, so ~if($1 != 0, 100 / $1, 0)~ never divides by zero. ~!x~ is NOT. ~string($1) == "Sales"~ compares text; a bare ~$1 == "Sales"~ reads the cell as a number.
 
 *Constants*: ~#+CONSTANTS: c=299792458 g=9.81~ defines ~$c~ and ~$g~. Several lines combine and a later value wins.
+
+*Properties*: ~$PROP_name~ is the property ~name~ of the entry the table is in, inherited from its parents as ~org-entry-get~ does: ~$1=2*$PROP_rate~. A time such as ~08:00:00~ in it is read as a duration under ~T~.
+
+*Other tables*: ~remote(name, @>$1)~ reads a field or range of the table with that ~#+NAME:~. The name can be a field of this table, ~remote($<, @>$1)~, and can be a number.
+
+*Quoted references*: a reference inside quotes is pasted in as the field's text in parentheses, ~nan~ for an empty field under ~E~, and a range as ~[a,b,c]~: ~if("$1" == "nan", string(""), $1 + 1);E~ leaves an empty cell empty.
 
 *Names in the table*: the first cell of a row marks it, as in Org.
 - ~!~ names the columns below it: with ~| ! | Item | Price | Qty | Tot |~, ~$5=$Price*$Qty~ works (the marker column is column 1).
@@ -253,7 +261,7 @@ Names start with a letter and use letters, digits and ~_~. A column name wins ov
 
 *Dates*: a cell with an Org timestamp is a date when referenced. Subtracting dates gives days (decimals if a time is present); adding a number shifts the date and keeps its day name: ~$1 + 14~ on ~<2026-08-25>~ gives ~[2026-09-08 Tue]~. ~date($1)~ is Calc's day number (~739631~ for ~[2026-01-15]~), ~date(739631)~ turns it back, and ~date(2026, 2, 29)~ rolls over to 1 March. ~($2 - $1) * 24;%.2f~ is hours between two timestamps. As in Calc, adding two dates adds their day numbers, and a date times a number stays symbolic. ~date-to-time~ also reads ISO 8601, RFC 822 and US dates. ~format-time-string("%Y-%m-%d", $1)~ gives ~2026-01-15~; ~time~ defaults to now and a non-zero ~utc~ formats in UTC.
 
-*References*: ~$N~ is a column of the current row, ~@N$M~ a field, ~@-N~ and ~@+N~ rows relative to the target, ~@<~ ~@>~ ~$<~ ~$>~ the first and last row or column, and ~$1..$3~ or ~@1$1..@3$2~ a range (~@2..@6~ means those rows of the formula's own column). Rows count every row including the header. ~@I~, ~@II~ ... are horizontal rules (~@IIII~ is the fourth), ~@III+2~ is two rows after one, and ~vsum(@I..@II)~ covers the rows between two. The shorthand ~$M=~ skips rows before the first rule.
+*References*: ~$N~ is a column of the current row, ~@N$M~ a field, ~@-N~ and ~@+N~ rows relative to the target, ~@<~ ~@>~ ~$<~ ~$>~ the first and last row or column, and ~$1..$3~ or ~@1$1..@3$2~ a range (~@2..@6~ means those rows of the formula's own column). Rows count every row including the header. ~@I~, ~@II~ ... are horizontal rules (~@IIII~ is the fourth), ~@III+2~ is two rows after one, and ~vsum(@I..@II)~ covers the rows between two. The shorthand ~$M=~ skips the rows above the first rule that comes after a row.
 
 *Targets and order*: a target is a field (~@N$M=~), a range (~@N$M..@N$M=~) or a column (~$M=~). Several formulas on one line are separated by ~::~ and run, as in Org, sorted by target: column formulas row by row, then field formulas.
 
@@ -268,7 +276,7 @@ Names start with a letter and use letters, digits and ~_~. A column name wins ov
 | ~%d~ | Truncates toward zero |
 | ~nN~, ~sN~, ~eN~ | Normal, scientific and engineering notation with N figures: ~3.14159265;n5~ gives ~3.1416~ |
 | ~pN~ | Computes at N significant digits (arbitrary precision); add ~nN~ to show them: ~1/3;p20n20~ |
-| ~E~, ~N~ | ~E~ keeps blanks as ~nan~; ~N~ reads non-numeric text (and with ~E~, blanks) as 0 |
+| ~E~, ~N~ | ~E~ keeps blanks as ~nan~; ~N~ reads non-numeric text (and with ~E~, blanks) as 0, and without ~E~ a result that is not a number is ~#ERROR~ |
 | ~D~, ~R~ | Degrees (the default) or radians for trig |
 | ~T~, ~U~, ~t~ | Durations: cells like ~HH:MM[:SS]~ are read as durations, and the result is ~HH:MM:SS~, ~HH:MM~ or decimal hours. ~org-table-duration-hour-zero-padding~ pads hours |
 | ~F~ | Exact fractions, written with a colon as Calc does: ~1/3;F~ is ~1:3~ |
@@ -282,7 +290,7 @@ Text after the semicolon that is neither a flag nor a ~%~ format is written into
 - Vectors and matrices: ~[1, 2, 3]~ and ~[[1, 2], [3, 4]]~; ~+ -~ and ~* /~ by a number are elementwise, ~*~ is a dot or matrix product, and ~det~, ~inv~, ~trn~, ~tr~, ~cross~ and ~vlen~ work.
 - Algebra: letters are variables and what cannot be reduced is written as Calc writes it (~x + x~ is ~2 x~). ~simplify~, ~esimplify~, ~expand~, ~deriv(sin(x)*x, x)~, ~prfac(360)~, and ~solve(a*x+b=c, x)~ for equations, inequalities and systems. ~fsolve~ writes ~s1~ and ~n1~ for the choices in a periodic solution. Intervals (~[1 .. 5]~) add, multiply and take powers.
 
-*Raw Elisp*: a formula starting with a quote, ~'(orgtbl-ascii-draw value min max width)~, draws a bar in the cell with Org's 11-character gradient.
+*Raw Elisp*: a formula starting with a quote, ~'(orgtbl-ascii-draw value min max width)~, draws a bar in the cell with Org's 11-character gradient. Any other Lisp works too: ~'(identity $1)~ gets the field as a string (a number under ~N~, as written under ~L~), a range as the list of its strings, and ~'(org-lookup-first $1 '(remote(prices, @I$1..@>$1)) '(remote(prices, @I$2..@>$2)))~ looks a value up in another table; ~org-lookup-last~ and ~org-lookup-all~ are there too.
 
 *** Plots
 :PROPERTIES:
@@ -910,9 +918,9 @@ The interpreter behind the Lisp init, ~emacs-lisp~ source blocks, holiday lists,
 
 ~format~ ~format-message~ ~insert~ ~message~ ~prin1~ ~prin1-to-string~ ~princ~ ~print~ ~read~ ~read-from-string~ ~terpri~ ~write-char~
 
-*Org functions* (16): The read-only Org functions an agenda setting, skip function, capture template or HTML preamble function may call. They work on the entry being processed, as when Emacs runs them with the cursor on a heading.
+*Org functions* (19): The read-only Org functions an agenda setting, skip function, capture template or HTML preamble function may call. They work on the entry being processed, as when Emacs runs them with the cursor on a heading.
 
-~org-agenda-skip-entry-if~ ~org-agenda-skip-if~ ~org-agenda-skip-subtree-if~ ~org-entry-get~ ~org-entry-get-with-inheritance~ ~org-entry-is-done-p~ ~org-entry-is-todo-p~ ~org-export-data~ ~org-get-category~ ~org-get-heading~ ~org-get-tags~ ~org-get-todo-state~ ~org-link-escape~ ~org-link-make-string~ ~org-outline-level~ ~orgtbl-ascii-draw~
+~org-agenda-skip-entry-if~ ~org-agenda-skip-if~ ~org-agenda-skip-subtree-if~ ~org-entry-get~ ~org-entry-get-with-inheritance~ ~org-entry-is-done-p~ ~org-entry-is-todo-p~ ~org-export-data~ ~org-get-category~ ~org-get-heading~ ~org-get-tags~ ~org-get-todo-state~ ~org-link-escape~ ~org-link-make-string~ ~org-lookup-all~ ~org-lookup-first~ ~org-lookup-last~ ~org-outline-level~ ~orgtbl-ascii-draw~
 
 *Calendar, diary and holiday functions* (89): Calendar arithmetic, the holiday functions of ~calendar-holidays~ and the diary sexp functions of ~%%(...)~ entries. A holiday entry is evaluated for the month shown, with ~displayed-month~ and ~displayed-year~ bound. ~org-xx-dst-date~, ~org-weather~ and ~today-p~ are this app's own.
 

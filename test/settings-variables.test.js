@@ -10,7 +10,7 @@ import { buildVariableIndex } from '../src/variable-index.js';
 import {
   getAgendaHideTitleStamps, getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees, getCiteGlobalBibliography, getCiteSeparator, getCiteSortingField,
   getClosedKeepWhenNoTodo, getContactsBirthdayProperty, getDisplayTimeFormat, getExportWithBrokenLinks, getFootnoteAutoAdjust, getFootnoteAutoLabel,
-  getFootnoteDefineInline, getFootnoteSection, getOrgTableDurationHourZeroPadding, getOrgWeatherFormat, getRefileAllowCreatingParentNodes,
+  getFootnoteDefineInline, getFootnoteSection, getOrgTableDurationHourZeroPadding, getOrgTableFormulaCreateColumns, getOrgWeatherFormat, getRefileAllowCreatingParentNodes,
   getUsePropertyInheritance,
 } from '../src/local-variables.js';
 import { readPriorityRange, startCycleWithDefault } from '../src/priorities.js';
@@ -30,7 +30,7 @@ test('the variables with no control are the ones decided on, and the ones a pers
   const catalog = new Set(VARIABLE_CATALOG.map((c) => c.name));
   for (const k of [
     'org-tags-exclude-from-inheritance', 'org-agenda-show-inherited-tags', 'org-agenda-use-tag-inheritance', 'org-use-property-inheritance',
-    'org-priority-faces', 'org-priority-default', 'org-priority-start-cycle-with-default', 'org-table-duration-hour-zero-padding',
+    'org-priority-faces', 'org-priority-default', 'org-priority-start-cycle-with-default', 'org-table-duration-hour-zero-padding', 'org-table-formula-create-columns',
     'org-closed-keep-when-no-todo', 'org-refile-allow-creating-parent-nodes', 'org-agenda-skip-archived-trees', 'org-agenda-skip-comment-trees',
     'org-agenda-remove-times-when-in-prefix', 'org-agenda-sorting-strategy', 'org-agenda-custom-commands', 'org-modules', 'org-inlinetask-min-level',
     'org-global-properties', 'org-xx-extra-menu', 'org-xx-menu-aliases', 'diary-list-entries-hook', 'diary-nongregorian-listing-hook',
@@ -96,6 +96,7 @@ test('the readers take the Lisp text of the variables that have no control', () 
   assert.equal(getFootnoteAutoAdjust(vars("(setq org-footnote-auto-adjust 'sort)")), 'sort');
   assert.equal(getRefileAllowCreatingParentNodes(vars("(setq org-refile-allow-creating-parent-nodes 'confirm)")), 'confirm');
   assert.equal(getExportWithBrokenLinks(vars("(setq org-export-with-broken-links 'mark)")), 'mark');
+  for (const value of ['t', 'warn', 'prompt', 'nil']) assert.equal(getOrgTableFormulaCreateColumns(vars(`(setq org-table-formula-create-columns ${value === 't' || value === 'nil' ? value : "'" + value})`)), value);
   assert.equal(readPriorityRange(vars('(setq org-priority-default ?C)')).default, 67);
   assert.equal(startCycleWithDefault(vars('(setq org-priority-start-cycle-with-default nil)')), false);
 });
@@ -122,6 +123,7 @@ test('a variable that is not set reads as its Emacs default, the one the catalog
   assert.equal(getOrgWeatherFormat({}), JSON.parse(default_('org-weather-format')));
   assert.equal(getRefileAllowCreatingParentNodes({}), default_('org-refile-allow-creating-parent-nodes'));
   assert.equal(getExportWithBrokenLinks({}), default_('org-export-with-broken-links'));
+  assert.equal(getOrgTableFormulaCreateColumns({}), default_('org-table-formula-create-columns'));
   assert.equal(readPriorityRange({}).default, Number(default_('org-priority-default')));
 });
 

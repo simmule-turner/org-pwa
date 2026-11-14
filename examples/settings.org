@@ -456,6 +456,9 @@ Setting every line below to the value shown changes nothing.
 ;; * org-table-duration-hour-zero-padding: Non-nil means hours in table duration computations should be zero-padded.
 ;; (setq org-table-duration-hour-zero-padding t)
 
+;; * org-table-formula-create-columns: Non-nil means evaluation of formula can add new columns.
+;; (setq org-table-formula-create-columns nil)
+
 ;;   org-tag-alist: Tags to offer when you tag a heading.
 ;; (setq org-tag-alist nil)
 

@@ -20,7 +20,7 @@ function pad(table) {
 
 /** @param {Heading} heading @param {Table} table */
 function write(heading, table) {
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, true, heading.bodyLines[table.lineIndex]));
 }
 
 /** `M-S-<down>` (org-table-insert-row): a blank row above the cursor's row; the cursor stays on it. @param {Heading} heading @param {Table} table @param {Cursor} at @returns {Cursor} */
@@ -118,33 +118,50 @@ function stringToNumber(s) {
 }
 
 const UNIT_MINUTES = /** @type {Record<string, number>} */ ({ min: 1, h: 60, d: 1440, w: 10080, m: 43200, y: 525960 });
+const UNIT = '([0-9]+(?:\\.[0-9]*)?)[ \\t]*(min|h|d|w|m|y)';
+const DURATION_UNITS = new RegExp(`^(?:[ \\t]*${UNIT})+[ \\t]*$`);
+const DURATION_MIXED = new RegExp(`^(?<units>(?:[ \\t]*${UNIT})+)[ \\t]*(?<clock>[0-9]+(?::[0-9]{2}){1,2})[ \\t]*$`);
+const DURATION_CLOCK = /^[ \t]*[0-9]+(?::[0-9]{2}){1,2}[ \t]*$/;
 
-/** The minutes of a duration written 1:30, 1:30:00 or 1d 3h 2min (org-duration-to-minutes), or null when it is not one. @param {string} s */
+/** The minutes of a duration written 1:30, 1:30:00, 1d 3h 2min or 1d 3:00 (org-duration-to-minutes), or null when it is not one (org-duration-p). @param {string} s @returns {number | null} */
 function durationMinutes(s) {
-  const clock = /^(\d+):(\d{2})(?::(\d{2}))?$/.exec(s);
-  if (clock) return Number(clock[1]) * 60 + Number(clock[2]) + Number(clock[3] || 0) / 60;
-  if (/^(?:\d+(?:\.\d*)?[ \t]*(?:min|h|d|w|m|y)[ \t]*)+$/.test(s)) {
+  if (DURATION_CLOCK.test(s)) {
+    const [h, m, sec] = s.split(':').map(stringToNumber);
+    return (sec || 0) / 60 + m + 60 * h;
+  }
+  if (DURATION_UNITS.test(s)) {
     let total = 0;
-    for (const m of s.matchAll(/(\d+(?:\.\d*)?)[ \t]*(min|h|d|w|m|y)/g)) total += Number(m[1]) * UNIT_MINUTES[m[2]];
+    for (const m of s.matchAll(new RegExp(UNIT, 'g'))) total += Number(m[1]) * UNIT_MINUTES[m[2]];
     return total;
   }
+  const mixed = DURATION_MIXED.exec(s);
+  if (mixed) return /** @type {number} */ (durationMinutes(/** @type {{ units: string }} */ (mixed.groups).units)) + /** @type {number} */ (durationMinutes(/** @type {{ clock: string }} */ (mixed.groups).clock));
   return null;
 }
 
-/** The key of the time sort: a timestamp's seconds, a duration's minutes (so any timestamp sorts after any duration), or 0. @param {string} f */
+/** The key of the time sort (org-table-sort-lines): the seconds of the first timestamp in the field, else the minutes of a duration, else of an hh:mm in it, else 0.
+ * @param {string} f */
 function timeKey(f) {
-  const ts = /[<[](\d{4})-(\d{2})-(\d{2})(?:[ \t]+[^\]>\n]*?)?(?:[ \t]+(\d{1,2}):(\d{2}))?[^\]>\n]*[>\]]/.exec(f);
-  if (ts) return new Date(Number(ts[1]), Number(ts[2]) - 1, Number(ts[3]), Number(ts[4] || 0), Number(ts[5] || 0)).getTime() / 1000;
+  const ts = /[[<]([0-9]{4}-[0-9]{2}-[0-9]{2}(?: .*?)?)[\]>]/.exec(f);
+  if (ts) {
+    // org-parse-time-string: the date, a day name (no digits, no "+" or "-"), then a time
+    const m = /([0-9]{4})-([0-9]{2})-([0-9]{2})(?: +[^\]+0-9>\r\n -]+)?(?: +([0-9]{1,2}):([0-9]{2}))?/.exec(ts[0]);
+    const [, y, mo, d, h, mi] = /** @type {RegExpExecArray} */ (m);
+    const date = new Date(0);
+    date.setFullYear(Number(y), Number(mo) - 1, Number(d));
+    date.setHours(Number(h || 0), Number(mi || 0), 0, 0);
+    return date.getTime() / 1000;
+  }
   const whole = durationMinutes(f);
   if (whole !== null) return whole;
-  const inside = /\b\d+:\d{2}\b/.exec(f);
+  const inside = /\b[0-9]+:[0-9]{2}\b/.exec(f);
   return inside ? /** @type {number} */ (durationMinutes(inside[0])) : 0;
 }
 
-/** Alphabetic order as Emacs gives it in the C locale with case ignored: by character code. @param {string} a @param {string} b */
-function byCharacterCode(a, b) {
-  const x = Array.from(a.toLowerCase());
-  const y = Array.from(b.toLowerCase());
+/** Alphabetic order as Emacs gives it in the C locale, with case ignored unless `withCase`: by character code. @param {string} a @param {string} b @param {boolean} withCase */
+function byCharacterCode(a, b, withCase) {
+  const x = Array.from(withCase ? a : a.toLowerCase());
+  const y = Array.from(withCase ? b : b.toLowerCase());
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const d = /** @type {number} */ (x[i].codePointAt(0)) - /** @type {number} */ (y[i].codePointAt(0));
     if (d) return d;
@@ -153,12 +170,13 @@ function byCharacterCode(a, b) {
 }
 
 /** `C-c ^` (org-table-sort-lines): the rows between the nearest rules around the cursor's row (the whole table if there are none), by the cursor's column.
- * `type` is Emacs's: a alphabetic (case folded), n numeric, t time; the capital letter reverses. Rows that tie keep their order, and the lines are
+ * `type` is Emacs's: a alphabetic (case folded, unless `withCase`, the `C-u` of `C-c ^`), n numeric, t time; the capital letter reverses. Rows that tie keep their order, and the lines are
  * moved as they are. The cursor stays where it is.
  * `f` and `F` sort by the functions of `by` (see table-sort-lisp.js): the key of a field, and whether one key goes before another.
  * @param {Heading} heading @param {Table} table @param {Cursor} at @param {'a' | 'A' | 'n' | 'N' | 't' | 'T' | 'f' | 'F'} type
- * @param {{ key: (field: string) => unknown, less: (a: never, b: never) => boolean }} [by] @returns {Cursor} */
-export function sortRows(heading, table, at, type, by) {
+ * @param {{ key: (field: string) => unknown, less: (a: never, b: never) => boolean }} [by]
+ * @param {boolean} [withCase] @returns {Cursor} */
+export function sortRows(heading, table, at, type, by, withCase = false) {
   const [row, col] = at;
   if (!table.rows[row] || table.rows[row].type !== 'row') throw new Error('Not in table data field');
   let start = row;
@@ -182,7 +200,7 @@ export function sortRows(heading, table, at, type, by) {
     return at;
   }
   const compare = (/** @type {{ key: unknown }} */ a, /** @type {{ key: unknown }} */ b) => {
-    const order = kind === 'a' ? byCharacterCode(/** @type {string} */ (a.key), /** @type {string} */ (b.key)) : /** @type {number} */ (a.key) - /** @type {number} */ (b.key);
+    const order = kind === 'a' ? byCharacterCode(/** @type {string} */ (a.key), /** @type {string} */ (b.key), withCase) : /** @type {number} */ (a.key) - /** @type {number} */ (b.key);
     return reverse ? -order : order;
   };
   items.sort(compare); // stable

@@ -6,12 +6,13 @@ import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { cacheHash } from '../src/babel-cache.js';
-import { evalAllowed, headerText, existingResultsHash, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { evalAllowed, headerText, existingResultsHash, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, pickedNames, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { plainVariables, referenceLookup } from '../src/babel-ref.js';
 import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
 import { formatElispResult, isElispBlock, runElisp } from '../src/babel-elisp.js';
+import { readHeaderValue } from '../src/babel-args.js';
 import { trustDigest } from '../src/babel-trust.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
@@ -142,8 +143,9 @@ export async function executeSourceBlock(heading, block) {
 
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
+  /** @type {import('../src/babel.js').TableNames} */ const names = {};
   try {
-    vars = resolveVars(args.var, referenceLookup(S.state.doc, all), { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines });
+    vars = resolveVars(args.var, referenceLookup(S.state.doc, all), { colnames: args.colnames, rownames: args.rownames, hlines: args.hlines, names });
   } catch (err) {
     setStatus(`Source block failed: ${err.message}`); // as in Emacs, the error stops the command and writes nothing
     return;
@@ -188,7 +190,7 @@ export async function executeSourceBlock(heading, block) {
   if (lisp) {
     // the interpreter has no network or position to declare; a step budget stops a loop that never ends
     setStatus('Running…');
-    outcome = runElisp({ code, vars, spec, lexical: args.lexical });
+    outcome = runElisp({ code, vars, spec, lexical: args.lexical, names: pickedNames(args, names) });
   } else {
     let declared;
     try {
@@ -226,7 +228,7 @@ export async function executeSourceBlock(heading, block) {
   let lines;
   if (outcome.ok && lisp) {
     try {
-      lines = formatElispResult(/** @type {import('../src/elisp-data.js').LObj} */ (outcome.value), spec, { wrap, file: args.file === undefined ? null : args.file });
+      lines = formatElispResult(/** @type {import('../src/elisp-data.js').LObj} */ (outcome.value), spec, { wrap, file: args.file === undefined ? null : args.file, fileDesc: args['file-desc'] === undefined ? null : readHeaderValue(args['file-desc']) });
     } catch (err) {
       outcome = { ok: false, message: err.message };
       lines = formatError(String(outcome.message));

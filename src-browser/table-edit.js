@@ -118,6 +118,8 @@ export const TABLE_COMMANDS = {
   'rule-and-move': { label: 'Rule below, then next row', key: 'C-c RET', run: (h, t, at) => ({ cursor: insertRuleAndMove(h, t, at), say: 'Added a rule below' }) },
   'sort-a': { label: 'Sort A to Z', key: 'C-c ^ a', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'a'), say: 'Sorted alphabetically' }) },
   'sort-A': { label: 'Sort Z to A', key: 'C-c ^ A', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'A'), say: 'Sorted alphabetically, reversed' }) },
+  'sort-c': { label: 'Sort A to Z, case sensitive', key: 'C-u C-c ^ a', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'a', undefined, true), say: 'Sorted alphabetically, case sensitive' }) },
+  'sort-C': { label: 'Sort Z to A, case sensitive', key: 'C-u C-c ^ A', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'A', undefined, true), say: 'Sorted alphabetically, case sensitive, reversed' }) },
   'sort-n': { label: 'Sort 1 to 9', key: 'C-c ^ n', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'n'), say: 'Sorted numerically' }) },
   'sort-N': { label: 'Sort 9 to 1', key: 'C-c ^ N', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 'N'), say: 'Sorted numerically, reversed' }) },
   'sort-t': { label: 'Sort oldest first', key: 'C-c ^ t', run: (h, t, at) => ({ cursor: sortRows(h, t, at, 't'), say: 'Sorted by time' }) },
@@ -167,7 +169,7 @@ export function tableChord(id) {
  * gets the key and the one that compares keys (org-read-function: the name of a function that exists; the second may be empty).
  * @param {Heading} heading @param {Table} table */
 export function askSort(heading, table) {
-  /** @param {'a' | 'A' | 'n' | 'N' | 't' | 'T'} type */
+  /** @param {'a' | 'A' | 'c' | 'C' | 'n' | 'N' | 't' | 'T'} type */
   const sortBy = (type) => () => runTableCommand(heading, table, 'sort-' + type);
   /** @param {'f' | 'F'} type */
   const sortByFunction = (type) => async () => {
@@ -201,6 +203,8 @@ export function askSort(heading, table) {
       { key: 'T', text: 'Time, reversed', onClick: sortBy('T') },
       { key: 'f', text: 'Function\u2026', onClick: sortByFunction('f') },
       { key: 'F', text: 'Function, reversed\u2026', onClick: sortByFunction('F') },
+      { key: 'c', text: 'Alphabetic, case sensitive', onClick: sortBy('c') },
+      { key: 'C', text: 'Alphabetic, case sensitive, reversed', onClick: sortBy('C') },
     ],
   });
 }

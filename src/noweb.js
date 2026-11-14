@@ -57,7 +57,7 @@ const isStrip = (args) => String((args && args.noweb) || '').split(/\s+/).includ
  * The text of a heading's subtree below its heading line, planning line and property drawer.
  * @param {Heading} heading
  */
-function headingText(heading) {
+export function headingText(heading) {
   const lines = serializeOrg({ type: 'document', keywords: [], bodyLines: [], children: [heading] }).replace(/\n+$/, '').split('\n');
   let i = 1;
   if (/^\s*(SCHEDULED|DEADLINE|CLOSED):/.test(lines[i] || '')) i++;
@@ -73,7 +73,7 @@ function headingText(heading) {
  * @param {Doc} doc
  * @param {string} id
  */
-const findHeadingByCustomId = (blocks, doc, id) => {
+export const findHeadingByCustomId = (blocks, doc, id) => {
   /** @param {any} [list] */
   const walk = (list) => {
     for (const h of list) {

@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { getClosedKeepWhenNoTodo, parseLocalVariables } from '../src/local-variables.js';
 import { readLogSettings } from '../src/log-settings.js';
-import { resolveTodoSequence, setTodoState } from '../src/todo-cycle.js';
+import { resolveTodoSequence, resolveTodoSequences, findSequenceForHeading, setTodoState } from '../src/todo-cycle.js';
+import { RepeatError } from '../src/repeater-shift.js';
 import { applyTransitionEffects } from '../src/todo-transition.js';
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/todo-oracle.json', import.meta.url), 'utf8'));
@@ -19,11 +20,18 @@ function ours(c) {
   const doc = parseOrg(c.org);
   const heading = doc.children[0];
   const sequence = resolveTodoSequence(doc, GLOBAL);
+  const ownSequence = findSequenceForHeading(resolveTodoSequences(doc, GLOBAL), heading);
   const from = heading.todo;
   if (c.state === '') heading.todo = null;
   else setTodoState(heading, c.state, sequence);
   const setting = readLogSettings(doc, parseLocalVariables(serializeOrg(doc)), {}, [heading]);
-  applyTransitionEffects(heading, from, sequence, { settings: setting, keepWhenNoTodo: getClosedKeepWhenNoTodo({}), now: new Date(oracle.now.replace(' ', 'T')) });
+  try {
+    applyTransitionEffects(heading, from, sequence, { settings: setting, keepWhenNoTodo: getClosedKeepWhenNoTodo({}), now: new Date(oracle.now.replace(' ', 'T')), ownSequence });
+  } catch (e) {
+    if (!(e instanceof RepeatError)) throw e;
+    // Emacs's user error, with the entry as it had become; its batch run never reaches the log note that follows a command
+    return `ERROR ${e.message}\n${serializeOrg(doc).replace(/^- State .*\n/gm, '').replace(/^:LOGBOOK:\n:END:\n/gm, '')}`;
+  }
   return serializeOrg(doc);
 }
 

@@ -417,6 +417,119 @@ export const REF_DOCS = [
   REF_SRC('ten', '(* 2 5)') + '\n' + REF_USE('x=ten y=ten', '(list x y)').replace(' y=ten', ' :var y=ten'),
 ];
 
+
+// ---- deviations found by comparing the app with Emacs (D1-D13 of the Babel report), one document each --------------------------------
+
+/** `:var` spellings, Lisp forms, table cells, named elements of every kind, indexes, CUSTOM_ID, duplicates and commented headings;
+ * `:colnames`/`:rownames` on every kind of value; `:results wrap`, `:file-desc`; results that keep the indentation of their `#+RESULTS:` line. */
+const FIX_EXEC = [
+  "* H\n#+begin_src emacs-lisp :var a = 1 b = 2 c= 3 d =4\n(+ a b c d)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a=1 b\n(list a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a 5\n(list a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var prop = (* 7 6)\nprop\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var x=(* 7 6)\nx\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var l='(a b c)\nl\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a=1, b=2\n(+ a b)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a=1 3\n(list a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a=1 -n\n(list a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :var a=1 b=2 -n\n(list a b)\n#+end_src\n",
+  "* H\n#+NAME: t\n| 1.0 |\n\n#+begin_src emacs-lisp :var x=t\nx\n#+end_src\n",
+  "* H\n#+NAME: t\n| 1e3 |\n\n#+begin_src emacs-lisp :var x=t\nx\n#+end_src\n",
+  "* H\n#+NAME: t\n| \"q\" |\n\n#+begin_src emacs-lisp :var x=t\nx\n#+end_src\n",
+  "* H\n#+NAME: t\n| .5 | 5. | +5 | -1.5e-3 | 0x10 | 1,5 | 1_000 | #b11 |\n\n#+begin_src emacs-lisp :var x=t\nx\n#+end_src\n",
+  "* H\n#+NAME: t\n| a b | 'q' | (1 2) |\n\n#+begin_src emacs-lisp :var x=t\nx\n#+end_src\n",
+  "* H\n#+NAME: t\n| 1e3 |\n\n#+begin_src emacs-lisp :var x=t\n(list (floatp (caar x)))\n#+end_src\n",
+  "* H\n#+NAME: blk\n#+begin_src emacs-lisp\n'((1 2 3)(4 5 6))\n#+end_src\n\n#+begin_src emacs-lisp :var x=blk :colnames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: blk\n#+begin_src emacs-lisp\n'((1 2 3)(4 5 6))\n#+end_src\n\n#+begin_src emacs-lisp :var x=blk :rownames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: blk\n#+begin_src emacs-lisp\n'((1 2 3)(4 5 6))\n#+end_src\n\n#+begin_src emacs-lisp :var x=blk :colnames yes :rownames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: l\n- a\n- b\n- c\n\n#+begin_src emacs-lisp :var x=l :colnames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: l\n- a\n- b\n- c\n\n#+begin_src emacs-lisp :var x=l :rownames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: r\n#+RESULTS:\n| 1 | 2 |\n| 3 | 4 |\n\n#+begin_src emacs-lisp :var x=r :colnames yes\nx\n#+end_src\n",
+  "* H\n#+NAME: p\nJust a paragraph\nmore\n\n#+begin_src emacs-lisp :var x=p\nx\n#+end_src\n",
+  "* H\n#+NAME: p\n#+begin_example\nline1\nline2\n#+end_example\n\n#+begin_src emacs-lisp :var x=p\nx\n#+end_src\n",
+  "* H\n#+NAME: p\n: 42\n\n#+begin_src emacs-lisp :var x=p\nx\n#+end_src\n",
+  "* H\n#+NAME: p\n: 42\n: 43\n\n#+begin_src emacs-lisp :var x=p\nx\n#+end_src\n",
+  "* H\n#+NAME: p\n#+begin_quote\nquoted text\n#+end_quote\n\n#+begin_src emacs-lisp :var x=p\nx\n#+end_src\n",
+  "* H\n#+NAME: blk\n#+begin_src emacs-lisp\n'((1 2 3)(4 5 6))\n#+end_src\n\n#+begin_src emacs-lisp :var x=blk[]\nx\n#+end_src\n",
+  "* H\n#+NAME: b\n#+begin_src emacs-lisp\n(+ 1 2)\n#+end_src\n\n#+begin_src emacs-lisp :var x=b[]\nx\n#+end_src\n",
+  "* H\n#+NAME: l\n- simple\n  - not\n  - list\n\n#+begin_src emacs-lisp :var x=l\nx\n#+end_src\n",
+  "* H\n#+NAME: l\n1. a\n2. b\n   - c\n\n#+begin_src emacs-lisp :var x=l\nx\n#+end_src\n",
+  "* A\n#+NAME: v\n: 1\n* COMMENT B\n#+NAME: v\n: 2\n\n* C\n#+begin_src emacs-lisp :var x=v\nx\n#+end_src\n",
+  "* COMMENT B\n#+NAME: v\n: 2\n* A\n#+NAME: v\n: 1\n* C\n#+begin_src emacs-lisp :var x=v\nx\n#+end_src\n",
+  "* H\n#+NAME: v\n: 1\n\n#+NAME: v\n: 2\n\n#+begin_src emacs-lisp :var x=v\nx\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n* Bar\n#+begin_src emacs-lisp :var text=foo\nx\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n** Sub\nsub\n* Bar\n#+begin_src emacs-lisp :var text=foo\nx\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\n| 1 | 2 |\n* Bar\n#+begin_src emacs-lisp :var text=foo\nx\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n* Bar\n#+begin_src emacs-lisp :var text=foo[]\nx\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n* Bar\n#+begin_src emacs-lisp :var text=foo\ntext\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n** Sub\nsub\n* Bar\n#+begin_src emacs-lisp :var text=foo\ntext\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\n| 1 | 2 |\n* Bar\n#+begin_src emacs-lisp :var text=foo\ntext\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n* Bar\n#+begin_src emacs-lisp :var text=foo[]\ntext\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\nthe text\n* Bar\n#+begin_src emacs-lisp :var text=foo\n(length text)\n#+end_src\n",
+  "* H\n#+NAME: p\nJust a paragraph\n\n#+begin_src emacs-lisp :var text=p\n(length text)\n#+end_src\n",
+  "* H\n#+NAME: e\n#+begin_example\nhi\n#+end_example\n\n#+begin_src emacs-lisp :var text=e\n(length text)\n#+end_src\n",
+  "* H\n#+NAME: e\n#+begin_quote\nhi\n#+end_quote\n\n#+begin_src emacs-lisp :var text=e\n(length text)\n#+end_src\n",
+  "* H\n#+NAME: e\n#+begin_src sh\nhi\n#+end_src\n\n#+begin_src emacs-lisp :var text=e[]\n(length text)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results wrap\n\"hi\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results wrap :wrap quote\n\"hi\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results value wrap\n\"hi\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results output wrap\n(princ \"a\\nb\")\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file foo.png :file-desc bar\n\"foo.png\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file foo :file-desc\n\"x\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file-desc bar\n\"foo.png\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file foo.txt\n\"x\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file foo.png :file-desc \"two words\"\n\"x\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results file :file-desc\n\"foo.png\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results wrap :exports both :wrap results\n\"hi\"\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :wrap\n\"hi\"\n#+end_src\n",
+  "* H\n- item\n  #+begin_src emacs-lisp\n  1\n  #+end_src\n\n#+RESULTS:\n: 0\n",
+  "* H\n#+begin_src emacs-lisp\n1\n#+end_src\n\n    #+RESULTS:\n    : 0\n",
+  "* H\n#+begin_src emacs-lisp :results append\n1\n#+end_src\n\n    #+RESULTS:\n    : 0\n",
+  "* H\n- item\n  #+begin_src emacs-lisp :results append\n  1\n  #+end_src\n\n  #+RESULTS:\n: 0\n",
+  "* H\n- item\n  #+begin_src emacs-lisp :results prepend\n  1\n  #+end_src\n\n#+RESULTS:\n: 0\n",
+  "* H\n  #+begin_src emacs-lisp\n  '((1 2))\n  #+end_src\n\n#+RESULTS:\n| 0 | 1 |\n",
+  "* H\n#+begin_src emacs-lisp\n'((1 2))\n#+end_src\n\n  #+RESULTS:\n  | 0 | 1 |\n",
+  "* H\n#+begin_src emacs-lisp\n1\n#+end_src\n\n  #+RESULTS:\n  #+begin_example\n  a\n  #+end_example\n",
+  "* H\n#+begin_src emacs-lisp :results raw\n\"- a\"\n#+end_src\n\n   #+RESULTS:\n   - b\n",
+  "* H\n#+NAME: n\n#+begin_src emacs-lisp\n1\n#+end_src\n\n  #+RESULTS: n\n  : 0\n",
+];
+/** Tangled `:var` (tables before the first heading, blocks, lists, results, CUSTOM_ID, Lisp forms), `:prologue`/`:epilogue`, comment links. */
+const FIX_TANGLE = [
+  "#+NAME: t\n| 1 | 2 |\n\n* H\n#+begin_src emacs-lisp :tangle out.el :var x=t\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: t\n| 1 | 2 |\n#+begin_src emacs-lisp :tangle out.el :var x=t\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: l\n- a\n- b\n\n#+begin_src emacs-lisp :tangle out.el :var x=l\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: b\n#+begin_src emacs-lisp\n(+ 1 2)\n#+end_src\n\n#+begin_src emacs-lisp :tangle out.el :var x=b\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: b\n#+begin_src emacs-lisp :var n=1\n(+ n 2)\n#+end_src\n\n#+begin_src emacs-lisp :tangle out.el :var x=b(5)\n(list x)\n#+end_src\n",
+  "* Foo\n:PROPERTIES:\n:CUSTOM_ID: foo\n:END:\ntext\n* H\n#+begin_src emacs-lisp :tangle out.el :var x=foo\n(list x)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :tangle out.el :var x=1.0 y=1e3\n(list x)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :tangle out.el :var x=(* 7 6) y='(a b)\n(list x)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :tangle out.el :var a = 1 b = 2\n(list x)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :tangle out.el :prologue \"(pro)\" :epilogue \"(epi)\"\n(list x)\n#+end_src\n",
+  "* H\n#+begin_src sh :tangle out.sh :prologue \"echo pro\" :epilogue \"echo epi\"\nls\n#+end_src\n",
+  "* H\n#+NAME: t\n| a | b |\n|---+---|\n| 1 | 2 |\n#+begin_src emacs-lisp :tangle out.el :var x=t :colnames yes\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: e\n#+begin_example\nhi\n#+end_example\n#+begin_src emacs-lisp :tangle out.el :var x=e\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: r\n#+RESULTS:\n: 5\n#+begin_src emacs-lisp :tangle out.el :var x=r\n(list x)\n#+end_src\n",
+  "* H\n#+NAME: \n#+begin_src sh :tangle o.sh :comments org\necho 1\n#+end_src\n",
+  "* H\nSome text before.\n#+begin_src sh :tangle o.sh :comments org\necho 1\n#+end_src\n",
+  "* H [ ] box\n#+begin_src sh :tangle o.sh :comments link\necho 1\n#+end_src\n",
+  "* H [1/2] progress\n#+begin_src sh :tangle o.sh :comments link\necho 1\n#+end_src\n",
+  "* A [[link]] b\n#+begin_src sh :tangle o.sh :comments link\necho 1\n#+end_src\n",
+  "* TODO H [#A] tag :x:\n#+begin_src sh :tangle o.sh :comments link\necho 1\n#+end_src\n",
+  "* H\n#+begin_src sh :tangle o.sh :comments both\necho [ ]\n#+end_src\n",
+  "* H\n#+NAME: n[ ]\n#+begin_src sh :tangle o.sh :comments link\necho 1\n#+end_src\n",
+  "* H\n#+NAME: a\n#+begin_src sh\necho a\n#+end_src\n#+begin_src sh :tangle o.sh :comments noweb :noweb yes\n<<a>>\n#+end_src\n",
+  "* H\n#+HEADER: :tangle o.sh :comments org\n#+begin_src sh\necho a\n#+end_src\n",
+  "* H\ntext\n#+NAME: x\n#+CAPTION: cap\n#+begin_src sh :tangle o.sh :comments org\necho a\n#+end_src\n",
+];
+/** What export leaves of a block with the `-i` switch or `:flags`. */
+const FIX_EXPORT = [
+  "* H\n#+begin_src emacs-lisp -i\n  (a)\n    (b)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :flags -x\n  (a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp -n :flags \"-x -y\"\n  (a)\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp -i :exports both\n  (a)\n#+end_src\n\n#+RESULTS:\n: 1\n",
+  "* H\n  #+begin_src emacs-lisp -i\n    (a)\n      (b)\n  #+end_src\n",
+];
+
 export function buildCases() {
   const cases = [];
   // header arguments and their inheritance, over generated documents
@@ -450,5 +563,9 @@ export function buildCases() {
     const text = doc.startsWith('*') ? doc : '* H\n' + doc;
     cases.push({ kind: 'exec', text, index: (text.match(/#\+begin_src/gi) || []).length - 1 });
   }
+  // after the generated ones, so adding a case leaves the random corpus as it was
+  for (const text of FIX_EXEC) cases.push({ kind: 'exec', text, index: (text.match(/#\+begin_src/gi) || []).length - 1 });
+  for (const text of FIX_TANGLE) cases.push({ kind: 'tangle', text, name: 'doc.org' });
+  for (const text of FIX_EXPORT) cases.push({ kind: 'export', text });
   return cases;
 }

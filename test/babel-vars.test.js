@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { findNamedTable, parseHeaderArgs, resolveVars } from '../src/babel.js';
+import { plainValue } from '../src/babel-ref.js';
 
 // test/fixtures/babel-vars-oracle.json: the value Emacs 29.3 (ob-js) gave a block for `:var x=TABLE` under each :colnames /
 // :rownames / :hlines header (tools/gen-babel-vars-oracle.mjs).  Where a rule reaches the block (`:hlines yes`), ob-js writes
@@ -18,6 +19,6 @@ for (const c of oracle) {
       assert.ok(JSON.stringify(vars.x).includes('"hline"'));
       return;
     }
-    assert.equal(JSON.stringify(vars.x), c.emacs);
+    assert.equal(JSON.stringify(plainValue(vars.x)), c.emacs); // a script sees floats as plain numbers
   });
 }

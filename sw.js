@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v701';
+const CACHE_NAME = 'org-pwa-shell-v702';
 
 const SHELL_FILES = [
   './',
@@ -214,6 +214,7 @@ const SHELL_FILES = [
   './src/export-dictionary.js',
   './src/export-keywords.js',
   './src/export-macros.js',
+  './src/export-timestamps.js',
   './src/agenda-todo-list.js',
   './src/agenda-emacs-days.js',
   './src/body-edit.js',

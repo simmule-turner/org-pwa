@@ -61,8 +61,8 @@ test('document keywords are captured', () => {
   const text = ['#+title: The glories of Org', '#+author: A. Org Writer', '* Heading'].join('\n');
   const doc = parseOrg(text);
   assert.deepEqual(doc.keywords, [
-    { key: 'title', value: 'The glories of Org', bodyLineIndex: 0 },
-    { key: 'author', value: 'A. Org Writer', bodyLineIndex: 0 },
+    { key: 'title', value: 'The glories of Org', bodyLineIndex: 0, raw: '#+title: The glories of Org' },
+    { key: 'author', value: 'A. Org Writer', bodyLineIndex: 0, raw: '#+author: A. Org Writer' },
   ]);
 });
 

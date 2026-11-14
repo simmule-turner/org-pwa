@@ -547,6 +547,11 @@ export const VARIABLE_CATALOG = [
     "default": "t"
   },
   {
+    "name": "org-table-formula-create-columns",
+    "doc": "Non-nil means evaluation of formula can add new columns.",
+    "default": "nil"
+  },
+  {
     "name": "org-tags-exclude-from-inheritance",
     "doc": "List of tags that should never be inherited.",
     "default": "nil"

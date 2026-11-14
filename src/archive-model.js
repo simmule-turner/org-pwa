@@ -75,11 +75,13 @@ function getProperty(heading, key) {
 }
 
 /**
+ * org-entry-put: a property name is not empty and has no whitespace (Emacs: a user error).
  * @param {Heading} heading
  * @param {string} key
  * @param {string} value
  */
 function setProperty(heading, key, value) {
+  if (key === '' || /\s/.test(key)) throw new Error(`Invalid property name: "${key}"`); // org--valid-property-p
   const existingKey = findPropertyKey(heading.properties, key);
   if (existingKey === null) {
     heading.propertyOrder.push(key);

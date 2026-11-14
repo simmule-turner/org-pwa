@@ -727,6 +727,16 @@ function entryTimestampText(heading) {
   for (const value of Object.values(heading.properties || {})) lines.push(String(value));
   lines.push(...allLogLines(heading));
   const body = heading.bodyLines || [];
+  const skipped = bodyLinesWithoutStamps(body);
+  for (let i = 0; i < body.length; i++) if (!skipped.has(i)) lines.push(body[i]);
+  return withoutInlineLiterals(lines.join('\n'));
+}
+
+/** The indexes of the body lines Emacs passes over when it looks for time stamps: #+BEGIN_SRC/EXAMPLE/EXPORT/COMMENT blocks (one with no
+ * #+END is not a block), "# " comment lines and #+KEYWORD lines.
+ * @param {string[]} body @returns {Set<number>} */
+export function bodyLinesWithoutStamps(body) {
+  const skipped = new Set();
   for (let i = 0; i < body.length; i++) {
     const begin = /^\s*#\+BEGIN_(\w+)/i.exec(body[i]);
     if (begin && NO_STAMP_BLOCKS.has(begin[1].toUpperCase())) {
@@ -734,14 +744,14 @@ function entryTimestampText(heading) {
       let j = i + 1;
       while (j < body.length && !end.test(body[j])) j++;
       if (j < body.length) {
+        for (let k = i; k <= j; k++) skipped.add(k);
         i = j;
         continue;
       }
     }
-    if (/^\s*#(\s|$|\+)/.test(body[i])) continue;
-    lines.push(body[i]);
+    if (/^\s*#(\s|$|\+)/.test(body[i])) skipped.add(i);
   }
-  return withoutInlineLiterals(lines.join('\n'));
+  return skipped;
 }
 
 // ~code~ and =verbatim= as Org reads them (org-emphasis-regexp-components: the opening mark follows a space, a line start or one of
@@ -752,7 +762,7 @@ const LITERAL_RE = /(^|[\s\-('"{])([=~])(\S(?:[^\n]*\n?[^\n]*\S)?)\2(?=$|[\s\-.,
 const LINK_RE = /\[\[[^\]\n]*\](?:\[[^\]\n]*\])?\]/g;
 
 /** @param {string} text */
-function withoutInlineLiterals(text) {
+export function withoutInlineLiterals(text) {
   const blank = (/** @type {string} */ s) => s.replace(/[^\n]/g, ' ');
   return text
     .replace(LINK_RE, blank)

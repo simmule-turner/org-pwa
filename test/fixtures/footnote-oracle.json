@@ -5958,5 +5958,944 @@
   "defineInline": false,
   "section": null,
   "emacs": "A[fn:1].[fn:zz]\n\n[fn:zz] \n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n"
+ },
+ {
+  "op": "normalize",
+  "text": "[fn:1]",
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:1]\n"
+ },
+ {
+  "op": "normalize",
+  "text": "[fn:1]",
+  "section": null,
+  "emacs": "\n[fn:1]\n"
+ },
+ {
+  "op": "renumber",
+  "text": "[fn:1]",
+  "emacs": "[fn:1]"
+ },
+ {
+  "op": "sort",
+  "text": "[fn:1]",
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:1]\n"
+ },
+ {
+  "op": "delete",
+  "text": "[fn:1]",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": ""
+ },
+ {
+  "op": "delete",
+  "text": "[fn:1]",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": ""
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn::]"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:new]\n\n* Footnotes\n\n[fn:new] \n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:1]"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:zz] \n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\n* Footnotes\n\n[fn:zz] \n\n[fn:1][fn:zz]\n"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "[fn:1][fn:zz:]"
+ },
+ {
+  "op": "new",
+  "text": "[fn:1]",
+  "pos": 6,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "[fn:1][fn:zz]\n\n[fn:zz] \n"
+ },
+ {
+  "op": "normalize",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n\n* Footnotes\n\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "section": null,
+  "emacs": "Paragraph[fn:1]\n\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "renumber",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "emacs": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "sort",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n\n* Footnotes\n\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "Paragraph\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "Paragraph\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn::]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn:new]\n[fn:1] Def 1\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n[fn:1] Def 1[fn::]\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n[fn:1] Def 1[fn:new]\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n[fn:1] Def 1[fn:1]\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 47,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 47,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 47,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 56,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 56,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 56,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn:zz]\n[fn:1] Def 1\n\n* Footnotes\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn:zz]\n\n* Footnotes\n\n[fn:1] Def 1\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1][fn:zz:]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 15,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Paragraph[fn:1][fn:zz]\n[fn:1] Def 1\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "Paragraph\n\n* Footnotes\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "section": null,
+  "emacs": "Paragraph\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "renumber",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "emacs": "Paragraph\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "sort",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "Paragraph\n\n* Footnotes\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn::]\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:new]\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:1]\n\n* Footnotes\n\n[fn:1] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 28,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 37,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 37,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 37,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:zz]\n\n* Footnotes\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:zz]\n\n* Footnotes\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "Paragraph[fn:zz:]\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "Paragraph\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 9,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "Paragraph[fn:zz]\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:1][fn:2]\n\n* Footnotes\n\n[fn:1] Def 1\n\n[fn:2] Def 2\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "section": null,
+  "emacs": "\nParagraph[fn:1][fn:2]\n\n[fn:1] Def 1\n\n[fn:2] Def 2\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "renumber",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "sort",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n* Footnotes\n\n[fn:foo] Def 1\n\n[fn:bar] Def 2\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "label": "foo",
+  "autoAdjust": "nil",
+  "emacs": "\nParagraph[fn:bar]\n\n[fn:bar] Def 2\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "label": "foo",
+  "autoAdjust": "renumber",
+  "emacs": "\nParagraph[fn:bar]\n\n[fn:bar] Def 2\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "label": "bar",
+  "autoAdjust": "nil",
+  "emacs": "\nParagraph[fn:foo]\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "delete",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "label": "bar",
+  "autoAdjust": "renumber",
+  "emacs": "\nParagraph[fn:foo]\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn::]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:new]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "foo",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:foo]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 42,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2[fn::]\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 42,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2[fn:new]\n\n[fn:foo] Def 1\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 42,
+  "label": "foo",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2[fn:foo]\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 58,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1[fn::]\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 58,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1[fn:new]\n\n* Footnotes\n\n[fn:new] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 58,
+  "label": "foo",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1[fn:foo]\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 78,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 78,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 78,
+  "label": "foo",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 87,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 87,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 87,
+  "label": "foo",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:zz]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n* Footnotes\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:zz]\n\n* Footnotes\n\n[fn:foo] Def 1\n\n[fn:bar] Def 2\n\n[fn:zz] \n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:zz:]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "new",
+  "text": "\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:",
+  "pos": 26,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "\nParagraph[fn:foo][fn:bar][fn:zz]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n[fn:zz] \n\n# Local Variables:\n# foo: t\n# End:"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:2] two\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "normalize",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "section": null,
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:1] one\n\n[fn:2] two\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "renumber",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "sort",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n* Footnotes\n\n[fn:1] one\n\n[fn:2] two\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "label": "1",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText and[fn:2].\n\n[fn:2] two\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "label": "1",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText and[fn:1].\n\n[fn:1] two\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "label": "2",
+  "autoAdjust": "nil",
+  "emacs": "* H\nText[fn:1] and.\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "delete",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "label": "2",
+  "autoAdjust": "renumber",
+  "emacs": "* H\nText[fn:1] and.\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 25,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].[fn::]\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 25,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].[fn:new]\n\n[fn:2] two\n\n[fn:1] one\n\n* Footnotes\n\n[fn:new] \n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 25,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].[fn:1]\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 45,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1][fn::] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 45,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1][fn:new] one\n\n* Footnotes\n\n[fn:new] \n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 45,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1][fn:1] one\n  # local variables:\n  # x: y\n  # End:\n"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 59,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 59,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 59,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 77,
+  "label": "",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 77,
+  "label": "new",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 77,
+  "label": "1",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "renumber",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "sort",
+  "defineInline": false,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": true,
+  "section": "Footnotes",
+  "emacs": "ERROR Cannot insert a footnote here"
+ },
+ {
+  "op": "new",
+  "text": "* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n",
+  "pos": 1,
+  "label": "zz",
+  "autoAdjust": "nil",
+  "defineInline": false,
+  "section": null,
+  "emacs": "ERROR Cannot insert a footnote here"
  }
 ]

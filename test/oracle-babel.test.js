@@ -58,7 +58,9 @@ function exportedText(doc) {
     }
     let j = i + 1;
     while (j < lines.length && !/^\s*#\+end_src\s*$/i.test(lines[j])) j++;
-    out.push(m[1].trimEnd(), ...removeIndentation(lines.slice(i + 1, j)));
+    const flags = /\s:flags\s+(?:"([^"]*)"|(\S+))/.exec(lines[i]); // Emacs makes the :flags value switches of the block
+    const body = lines.slice(i + 1, j);
+    out.push((m[1].trimEnd() + (flags ? ' ' + (flags[1] ?? flags[2]) : '')).trimEnd(), ...(/\s-i(?:\s|$)/.test(m[1]) ? body : removeIndentation(body))); // -i keeps the indentation
     i = j - 1;
   }
   return out.join('\n').replace(/\n+$/, '');

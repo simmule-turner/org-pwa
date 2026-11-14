@@ -54,5 +54,9 @@
 {
 "org": "* A\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 10:00]--[2026-08-01 Sat 10:30] =>  0:30\nCLOCK: [2026-08-02 Sun 10:00]--[2026-08-02 Sun 10:30] =>  0:30\n:END:\n",
 "params": ":maxlevel 2 :scope file :tstart \"2026-08-01 10:15\" :tend \"2026-08-02 10:10\""
+},
+{
+"org": "* Test\nCLOCK: [2012-03-29 Thu 8:00]--[2012-03-29 Thu 16:40] => 8:40\n* Other\n:LOGBOOK:\nCLOCK: [2026-08-01 Sat 9:05]--[2026-08-01 Sat 10:00] =>  0:55\n:END:\n",
+"params": ":maxlevel 2 :scope file"
 }
 ]

@@ -50,7 +50,12 @@ const TEXTS = [
   '* One\nA[fn:1].\n\n* Footnotes\n\n[fn:1] a\n\n** Not part\nstuff\n',
   '* One\nA.\n\n* FOOTNOTES\n',
   '* Footnotes :tag:\nA.\n',
-  'A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n',
+  'A[fn:1].\n\n* Footnotes\n[fn:1] one\ncontinued\n\npara two of def\n',  // a reference typed at the very end of a definition's label line; a file-local-variables block stays last
+  '[fn:1]',
+  'Paragraph[fn:1]\n[fn:1] Def 1\n# Local Variables:\n# foo: t\n# End:',
+  'Paragraph\n# Local Variables:\n# foo: t\n# End:',
+  '\nParagraph[fn:foo][fn:bar]\n\n[fn:bar] Def 2\n\n[fn:foo] Def 1\n\n# Local Variables:\n# foo: t\n# End:',
+  '* H\nText[fn:1] and[fn:2].\n\n[fn:2] two\n\n[fn:1] one\n  # local variables:\n  # x: y\n  # End:\n',
 ];
 const ops = [];
 const add = (op, text, args = {}) => ops.push({ op, text, ...args });

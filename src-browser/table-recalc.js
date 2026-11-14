@@ -4,13 +4,49 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: table recalc.
 import { allTablesInBody, commitLines, serializeTable } from '../src/body-edit.js';
-import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
+import { inheritedProperty } from '../src/babel-args.js';
+import { ancestorsOf } from '../src/org-lisp.js';
+import { getOrgTableDurationHourZeroPadding, getOrgTableFormulaCreateColumns } from '../src/local-variables.js';
 import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
 import { S } from './app-state.js';
 import { allHeadingsInOrder } from './doc-helpers.js';
+import { confirmDialog } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { tableFunctionsActive, tableUserCall, warmTableFunctions } from './extension-flow.js';
 import { render } from './render.js';
+
+/** org-table-formula-create-columns as the recalculation takes it. */
+const CREATE_COLUMNS = /** @type {const} */ ({ nil: false, t: true, warn: 'warn', prompt: 'prompt' });
+
+/** Raised inside a recalculation that reaches a question the person has not answered yet. */
+class QuestionPending extends Error {}
+
+/** Recalculates `table`; where Emacs would ask (yes-or-no-p) the person is asked, each question as it comes: the recalculation is run
+ *  again with the answers so far, and stops at the first question it has no answer for. The warnings are those of the final run.
+ * @param {Table} table @param {Parameters<typeof recalculateTable>[1]} options */
+async function recalculateAsking(table, options) {
+  /** @type {boolean[]} */
+  const answers = [];
+  while (true) {
+    /** @type {string[]} */
+    const warnings = [];
+    let asked = 0;
+    try {
+      const rows = recalculateTable(table, {
+        ...options,
+        warn: (/** @type {string} */ message) => warnings.push(message),
+        confirm: (/** @type {string} */ question) => {
+          if (asked < answers.length) return answers[asked++];
+          throw new QuestionPending(question);
+        },
+      });
+      return { rows, warnings };
+    } catch (err) {
+      if (!(err instanceof QuestionPending)) throw err;
+      answers.push(await confirmDialog(err.message.trim(), { confirmLabel: 'Add columns', danger: false }));
+    }
+  }
+}
 
 /** Recalculates a single table's own #+TBLFM: formulas (if any) and
  *  commits the result, if anything actually changed -- the shared
@@ -28,22 +64,25 @@ import { render } from './render.js';
  * @param {Heading} heading
  * @param {Table} table
  *  different status wording for the same underlying result. */
-export function recalculateOneTable(heading, table) {
+export async function recalculateOneTable(heading, table) {
   if (!table.tblfm || !table.tblfm.trim()) return { result: 'no-formula' };
   try {
-    const newRows = recalculateTable(table, {
+    const { rows: newRows, warnings } = await recalculateAsking(table, {
       hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables),
+      createColumns: CREATE_COLUMNS[getOrgTableFormulaCreateColumns(S.state.localVariables)],
       constants: parseTableConstants(S.state.doc),
       tables: parseNamedTables(S.state.doc),
+      properties: (/** @type {string} */ name) => inheritedProperty(S.state.doc, [...ancestorsOf(S.state.doc, heading), heading], name),
       userCall: tableUserCall,
     });
+    const warning = warnings.length ? `Warning: ${warnings[0]}.` : '';
     if (!newRows || JSON.stringify(newRows) === JSON.stringify(table.rows)) {
-      return { result: 'unchanged' };
+      return { result: 'unchanged', warning };
     }
     table.rows = newRows;
     commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
     const hasError = newRows.some((row) => (row.cells || []).includes('#ERROR'));
-    return { result: 'changed', hasError };
+    return { result: 'changed', hasError, warning };
   } catch (err) {
     return { result: 'error', message: err.message };
   }
@@ -93,13 +132,15 @@ export async function recalculateAllTables() {
   let anyChanged = false;
   const failedHeadingTitles = [];
   const erroredHeadingTitles = [];
+  let warning = '';
   for (const { heading } of allHeadingsInOrder(S.state.doc)) {
     let tableIndex = 0;
     while (true) {
       const tables = allTablesInBody(heading); // freshly re-derived every iteration -- see this function's own docs above for why
       if (tableIndex >= tables.length) break;
       const table = tables[tableIndex];
-      const { result, hasError } = recalculateOneTable(heading, table);
+      const { result, hasError, warning: warned } = await recalculateOneTable(heading, table);
+      if (warned) warning = warned;
       if (result === 'changed') anyChanged = true;
       if (result === 'error') failedHeadingTitles.push(heading.title || '(untitled)');
       if (result === 'changed' && hasError) erroredHeadingTitles.push(heading.title || '(untitled)');
@@ -107,18 +148,19 @@ export async function recalculateAllTables() {
     }
   }
 
+  const note = warning ? ` ${warning}` : '';
   if (failedHeadingTitles.length > 0) {
     const shown = failedHeadingTitles.slice(0, 3).join(', ');
     const rest = failedHeadingTitles.length > 3 ? `, +${failedHeadingTitles.length - 3} more` : '';
     const noun = failedHeadingTitles.length === 1 ? 'a formula' : 'formulas';
     const verb = failedHeadingTitles.length === 1 ? 'was' : 'were';
-    setStatus(`Recalculated tables, but ${noun} under "${shown}${rest}" had an error and ${verb} skipped.`);
+    setStatus(`Recalculated tables, but ${noun} under "${shown}${rest}" had an error and ${verb} skipped.${note}`);
   } else if (erroredHeadingTitles.length > 0) {
     const shown = erroredHeadingTitles.slice(0, 3).join(', ');
     const rest = erroredHeadingTitles.length > 3 ? `, +${erroredHeadingTitles.length - 3} more` : '';
-    setStatus(`Recalculated all table formulas -- one or more cells under "${shown}${rest}" has #ERROR.`);
+    setStatus(`Recalculated all table formulas -- one or more cells under "${shown}${rest}" has #ERROR.${note}`);
   } else if (anyChanged) {
-    setStatus('Recalculated all table formulas.');
+    setStatus(`Recalculated all table formulas.${note}`);
   } else {
     setStatus('No table formulas to recalculate.');
   }

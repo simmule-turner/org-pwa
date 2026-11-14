@@ -8,7 +8,8 @@
  * parseElements(lines) -> element[]. Every element has `type`, and `aff` (affiliated keywords, or null):
  *   paragraph        { lines }
  *   list             { listType: 'unordered'|'ordered'|'descriptive', items: [{ bullet, checkbox, counter, tag, children }] }
- *   table            { rows: [{ rule: true } | { cells: [string] }] }
+ *   table            { rows: [{ rule: true } | { cells: [string] }] }   (a table.el table has no rows: `tableEl` holds its lines)
+ *   dynamic-block    { name, params, lines, children }   (`#+BEGIN: name params` ... `#+END:`)
  *   block            { name (lower case), params, lines }   -- example, src, export, quote, verse, center, comment, special ...
  *   drawer           { name, lines }
  *   fixed            { lines }
@@ -33,10 +34,11 @@
  * @typedef {AffField & (
  *   { type: 'paragraph', lines: string[] } |
  *   { type: 'list', listType: 'unordered' | 'ordered' | 'descriptive', items: ElementListItem[] } |
- *   { type: 'table', rows: ElementTableRow[] } |
+ *   { type: 'table', rows: ElementTableRow[], tableEl?: string[] } |
  *   { type: 'index', value: string } |
  *   { type: 'block', name: string, rawName?: string, params: string, lines: string[], indent: number } |
  *   { type: 'drawer', name: string, lines: string[] } |
+ *   { type: 'dynamic-block', name: string, params: string, lines: string[], children: OrgElement[] } |
  *   { type: 'fixed', lines: string[] } |
  *   { type: 'hr' } |
  *   { type: 'latex-env', lines: string[] } |
@@ -54,14 +56,21 @@
 
 const AFFILIATED_RE = /^[ \t]*#\+(CAPTION|NAME|HEADERS?|RESULTS|PLOT|TBLNAME|ATTR_[A-Za-z0-9_-]+)(?:\[([^\]]*)\])?:[ \t]*(.*?)[ \t]*$/i;
 const BLOCK_BEGIN_RE = /^[ \t]*#\+begin_(\S+)(?:[ \t]+(.*?))?[ \t]*$/i;
-const KEYWORD_RE = /^[ \t]*#\+([A-Za-z0-9_-]+):[ \t]*(.*?)[ \t]*$/;
+const KEYWORD_RE = /^[ \t]*#\+(\S+):[ \t]*(.*?)[ \t]*$/; // Org: any run of non-blanks, then a colon
+// a dynamic block opens with `#+BEGIN: name args` and closes at the first `#+END:` (or `#+END`); an unclosed one is a paragraph
+const DYNBLOCK_BEGIN_RE = /^[ \t]*#\+begin:[ \t]*([\p{L}\p{N}]+)(?:[ \t]+(.+))?/iu;
+const DYNBLOCK_END_RE = /^[ \t]*#\+end:?[ \t]*$/i;
 const COMMENT_RE = /^[ \t]*#(?: |$)/;
-const DRAWER_RE = /^[ \t]*:([A-Za-z0-9_-]+):[ \t]*$/;
+const DRAWER_RE = /^[ \t]*:([\p{L}\p{N}_-]+):[ \t]*$/u;
 const FIXED_RE = /^[ \t]*:(?: |$)/;
 const HR_RE = /^[ \t]*-{5,}[ \t]*$/;
 const TABLE_RE = /^[ \t]*\|/;
-const LATEX_ENV_RE = /^[ \t]*\\begin\{([A-Za-z0-9*]+)\}/;
-const FOOTNOTE_DEF_RE = /^\[fn:([A-Za-z0-9_-]+)\][ \t]?(.*)$/;
+const LATEX_ENV_RE = /^[ \t]*\\begin\{([A-Za-z0-9*]+)\}/i;
+const FOOTNOTE_DEF_RE = /^\[fn:([\p{L}\p{N}_-]+)\][ \t]?(.*)$/iu;
+// a rule of a table.el table: `+---+---+`
+const TABLE_EL_RULE_RE = /^[ \t]*\+(?:-+\+)+[ \t]*$/;
+// a table.el table line that is not a rule must still begin with `|` or `+` (after blanks)
+const TABLE_EL_LINE_RE = /^[ \t]*[+|]/;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:[ \t]+|$)/;
 const HEADLINE_LIKE_RE = /^\*+ /;
 
@@ -151,6 +160,19 @@ function parseTable(lines, i) {
 }
 
 /**
+ * The lines of a table.el table starting at line `i`, as Org finds them: a rule, then lines that begin with `|` or `+`, the last one a rule,
+ * at least two lines in all. Returns the index after the table, or -1 when the lines are no such table.
+ * @param {string[]} lines
+ * @param {number} i
+ */
+function tableElEnd(lines, i) {
+  if (!TABLE_EL_RULE_RE.test(lines[i])) return -1;
+  let j = i + 1;
+  while (j < lines.length && TABLE_EL_LINE_RE.test(lines[j])) j++;
+  return j - i >= 2 && TABLE_EL_RULE_RE.test(lines[j - 1]) ? j : -1;
+}
+
+/**
  * Removes up to `n` columns of leading whitespace.
  * @param {string} line
  * @param {number} n
@@ -183,9 +205,23 @@ function parseList(lines, start) {
     const contentIndent = m[0].replace(/\t/g, '        ').length;
     let rest = lines[i].slice(bulletEnd);
     const bodyLines = [];
+    /** @type {Set<number>} */ const literal = new Set(); // body lines inside a block or drawer: Org skips them when it looks for the end of the item
     let j = i + 1;
     while (j < lines.length) {
       const line = lines[j];
+      if (!isBlank(line) && indentOf(line) > baseIndent && !itemMatch(line)) {
+        let end = -1;
+        if (/^[ \t]*#\+begin_/i.test(line)) end = lines.findIndex((l, n) => n > j && /^[ \t]*#\+end_/i.test(l));
+        else if (DRAWER_RE.test(line) && !/^[ \t]*:END:/i.test(line)) end = lines.findIndex((l, n) => n > j && /^[ \t]*:END:/i.test(l));
+        if (end > j) {
+          const open = j;
+          for (; j <= end; j++) {
+            if (j > open && j < end) literal.add(bodyLines.length);
+            bodyLines.push(lines[j]);
+          }
+          continue;
+        }
+      }
       if (isBlank(line)) {
         let k = j;
         while (k < lines.length && isBlank(lines[k])) k++;
@@ -209,19 +245,21 @@ function parseList(lines, start) {
     }
     const box = /^\[([ xX-])\](?:[ \t]+|$)/.exec(rest);
     if (box) {
-      item.checkbox = box[1] === ' ' ? 'off' : box[1] === '-' ? 'trans' : 'on';
+      item.checkbox = box[1] === ' ' ? 'off' : box[1] === '-' ? 'trans' : box[1] === 'X' ? 'on' : null; // a lower-case `[x]` is dropped from the text but is no checkbox, as Org reads it
       rest = rest.slice(box[0].length);
     }
-    const tagMatch = /^(.*?)[ \t]+::(?:[ \t]+(.*))?$/.exec(rest);
+    // the tag runs to the last ` ::` that ends the text or is followed by blanks; only an unordered item has one
+    const tagMatch = /^[-+*]/.test(m[2]) ? /^(.*)[ \t]+::(?:[ \t]+(.*)|)$/.exec(rest) : null;
     if (tagMatch && !isInsideCode(rest, tagMatch[1].length)) {
       item.tag = tagMatch[1];
       rest = tagMatch[2] || '';
     }
     const contentLines = [];
-    if (rest.trim() !== '') contentLines.push(rest);
-    const strip = Math.min(...bodyLines.filter((l) => !isBlank(l)).map(indentOf), contentIndent);
+    const firstLine = rest.trim() !== '';
+    if (firstLine) contentLines.push(rest);
+    const strip = Math.min(...bodyLines.filter((l, n) => !isBlank(l) && !literal.has(n)).map(indentOf), contentIndent);
     for (const l of bodyLines) contentLines.push(isBlank(l) ? '' : dedent(l, strip));
-    item.children = parseElements(contentLines);
+    item.children = parseElements(contentLines, { firstParagraph: firstLine, nested: true });
     items.push(item);
     i = j;
     // a blank line (or two) between items is fine; the next item continues the list
@@ -262,32 +300,52 @@ function findBlockEnd(lines, i, name) {
   return -1;
 }
 
-/** A keyword line: `#+KEY:` or `#+KEY[option]:`. */
-const KEYWORD_LINE_RE = /^[ \t]*#\+[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?:/;
+/** A keyword line: `#+KEY:`, or `#+KEY[option]:` (which ends a paragraph only for the dual keywords, CAPTION and RESULTS). */
+const KEYWORD_LINE_RE = /^[ \t]*#\+\S+:/;
+const DUAL_KEYWORD_LINE_RE = /^[ \t]*#\+(\S+?)\[.*\]:/;
 
 /**
- * Does this line start something that ends a paragraph?
- * @param {string} line
+ * Does the line at `i` start something that ends a paragraph? A block, a drawer or a LaTeX environment ends it only when it is closed.
+ * @param {string[]} lines
+ * @param {number} i
+ * @param {boolean} nested  inside a list item: a line that looks like a footnote definition is not one there
  */
-function interruptsParagraph(line) {
+function interruptsParagraph(lines, i, nested) {
+  const line = lines[i];
+  const closed = (/** @type {RegExp} */ re) => lines.slice(i).some((l) => re.test(l)); // Org looks from the start of the line itself
+  const begin = BLOCK_BEGIN_RE.exec(line);
+  const env = LATEX_ENV_RE.exec(line);
+  const dual = DUAL_KEYWORD_LINE_RE.exec(line);
   return (
     isBlank(line) ||
-    BLOCK_BEGIN_RE.test(line) ||
-    AFFILIATED_RE.test(line) ||
+    (!!begin && closed(blockEndRe(begin[1]))) ||
+    (!dual && AFFILIATED_RE.test(line)) ||
     COMMENT_RE.test(line) ||
-    KEYWORD_LINE_RE.test(line) || // any `#+KEY:` line ends a paragraph, known or not
+    (dual ? /^(?:CAPTION|RESULTS)$/i.test(dual[1]) : KEYWORD_LINE_RE.test(line)) || // any `#+KEY:` line ends a paragraph, known or not
     TABLE_RE.test(line) ||
+    TABLE_EL_RULE_RE.test(line) ||
     HR_RE.test(line) ||
     FIXED_RE.test(line) ||
-    LATEX_ENV_RE.test(line) ||
-    (DRAWER_RE.test(line) && !/^[ \t]*:END:/i.test(line)) ||
+    (!!env && closed(latexEndRe(env[1]))) ||
+    (DRAWER_RE.test(line) && closed(/^[ \t]*:END:[ \t]*$/i)) ||
     !!itemMatch(line) ||
-    (FOOTNOTE_DEF_RE.test(line) && indentOf(line) === 0)
+    (!nested && FOOTNOTE_DEF_RE.test(line) && indentOf(line) === 0)
   );
 }
 
-/** @param {string[]} lines @returns {OrgElement[]} */
-export function parseElements(lines) {
+/** @param {string} name */
+const blockEndRe = (name) => new RegExp('^[ \\t]*#\\+end_' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[ \\t]*$', 'i');
+/** @param {string} name */
+const latexEndRe = (name) => new RegExp('\\\\end\\{' + name.replace(/\*/g, '\\*') + '\\}[ \\t]*$', 'i');
+
+/**
+ * @param {string[]} lines
+ * @param {{ firstParagraph?: boolean, nested?: boolean }} [options]  `firstParagraph`: the first line is text that follows a list bullet or a
+ *   footnote label on its own line, which Org always reads as a paragraph; `nested`: the lines are the content of a list item, where a
+ *   footnote definition cannot be
+ * @returns {OrgElement[]}
+ */
+export function parseElements(lines, options = {}) {
   /** @type {OrgElement[]} */ const out = [];
   /** @type {Affiliated | null} */
   let aff = null;
@@ -303,6 +361,13 @@ export function parseElements(lines) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+    if (i === 0 && options.firstParagraph) {
+      const para = [line];
+      i++;
+      while (i < lines.length && !interruptsParagraph(lines, i, !!options.nested)) para.push(lines[i++]);
+      push({ type: 'paragraph', lines: removeCommonIndentation(para) });
+      continue;
+    }
     if (isBlank(line)) {
       const last = out[out.length - 1];
       if (last && !aff && !afterComment) last.postBlank = (last.postBlank || 0) + 1;
@@ -326,7 +391,17 @@ export function parseElements(lines) {
         continue;
       }
     }
-    const kw = KEYWORD_RE.exec(line);
+    const dyn = DYNBLOCK_BEGIN_RE.exec(line);
+    if (dyn) {
+      const end = lines.findIndex((l, n) => n > i && DYNBLOCK_END_RE.test(l));
+      if (end > 0) {
+        const content = lines.slice(i + 1, end);
+        push({ type: 'dynamic-block', name: dyn[1], params: dyn[2] || '', lines: content, children: parseElements(content, { nested: options.nested }) });
+        i = end + 1;
+        continue;
+      }
+    }
+    const kw = dyn ? null : KEYWORD_RE.exec(line); // an unclosed dynamic block is text
     if (kw && !/^begin_|^end_/i.test(kw[1])) {
       const key = kw[1].toUpperCase();
       if (key === 'HTML') push({ type: 'html-line', value: kw[2] });
@@ -376,9 +451,16 @@ export function parseElements(lines) {
       i = next;
       continue;
     }
+    const tableEl = tableElEnd(lines, i);
+    if (tableEl > 0) {
+      push({ type: 'table', rows: [], tableEl: lines.slice(i, tableEl) });
+      i = tableEl;
+      while (i < lines.length && /^[ \t]*#\+TBLFM:/i.test(lines[i])) i++;
+      continue;
+    }
     const env = LATEX_ENV_RE.exec(line);
     if (env) {
-      const endRe = new RegExp('^[ \\t]*\\\\end\\{' + env[1].replace(/\*/g, '\\*') + '\\}');
+      const endRe = latexEndRe(env[1]); // the end may be on the line of the beginning
       let j = i;
       while (j < lines.length && !endRe.test(lines[j])) j++;
       if (j < lines.length) {
@@ -388,7 +470,7 @@ export function parseElements(lines) {
       }
     }
     const fn = FOOTNOTE_DEF_RE.exec(line);
-    if (fn && indentOf(line) === 0) {
+    if (fn && indentOf(line) === 0 && !options.nested) {
       const body = [fn[2]];
       let j = i + 1;
       while (j < lines.length) {
@@ -397,7 +479,7 @@ export function parseElements(lines) {
         body.push(lines[j]);
         j++;
       }
-      push({ type: 'footnote-def', label: fn[1], children: parseElements(body) });
+      push({ type: 'footnote-def', label: fn[1], children: parseElements(body, { firstParagraph: fn[2].trim() !== '' }) });
       i = j;
       continue;
     }
@@ -413,7 +495,7 @@ export function parseElements(lines) {
     // paragraph
     const para = [line];
     i++;
-    while (i < lines.length && !interruptsParagraph(lines[i])) para.push(lines[i++]);
+    while (i < lines.length && !interruptsParagraph(lines, i, !!options.nested)) para.push(lines[i++]);
     push({ type: 'paragraph', lines: removeCommonIndentation(para) });
   }
   return out;

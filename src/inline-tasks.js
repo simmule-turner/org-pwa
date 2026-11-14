@@ -27,6 +27,11 @@ export function setInlineTaskLevel(level) {
   config.level = level;
 }
 
+/** The level from which headings are inline tasks, or null while org-inlinetask is not loaded. */
+export function inlineTaskLevel() {
+  return config.level;
+}
+
 /**
  * The inline task level the variables ask for: `org-inlinetask-min-level` when org-inlinetask is in `org-modules` (the global variables or the
  * Lisp init) or required there; null otherwise.
@@ -50,7 +55,7 @@ export function readInlineTaskLevel(vars) {
 /** @param {Heading} h @param {number} level */
 const isTask = (h, level) => h.level >= level;
 /** An `END` line closes the task before it. @param {Heading} h */
-const isEnd = (h) => !h.todo && !h.priority && (!h.tags || !h.tags.length) && /^END$/i.test(String(h.title || '').trim());
+export const isEnd = (h) => !h.todo && !h.priority && (!h.tags || !h.tags.length) && /^END$/i.test(String(h.title || '').trim());
 
 /** The lines under a task's own line (planning, drawers) without its property drawer, which Org does not export.
  * @param {Heading} task @returns {string[]} */
@@ -76,10 +81,10 @@ function runOf(children, level, out) {
 
 /**
  * The text lines that stand for the inline tasks among `children`, to go at the end of the section they belong to.
- * @param {Heading[]} children @param {number} level
+ * @param {Heading[]} children @param {number} level @param {((info: { todo: string | null, priority: string | null, title: string, tags: string[] }) => boolean) | undefined} [taskFilter]
  * @returns {string[]}
  */
-function blocksFor(children, level) {
+function blocksFor(children, level, taskFilter) {
   /** @type {Heading[]} */ const run = [];
   runOf(children, level, run);
   /** @type {string[]} */ const out = [];
@@ -87,6 +92,13 @@ function blocksFor(children, level) {
     const task = run[i];
     const info = JSON.stringify({ todo: task.todo || null, priority: task.priority || null, title: task.title || '', tags: task.tags || [] });
     const closing = run[i + 1] && isEnd(run[i + 1]) ? run[i + 1] : null;
+    if (taskFilter && !taskFilter({ todo: task.todo || null, priority: task.priority || null, title: task.title || '', tags: task.tags || [] })) { // left out by inline:nil, tasks: or the exclude tags
+      if (closing) {
+        out.push(...(closing.bodyLines || []));
+        i++;
+      } else out.push(...underLine(task), ...(task.bodyLines || []));
+      continue;
+    }
     out.push(`#+begin_${INLINE_TASK_BLOCK} ${info}`);
     if (closing) out.push(...underLine(task), ...(task.bodyLines || []));
     out.push(`#+end_${INLINE_TASK_BLOCK}`);
@@ -102,9 +114,10 @@ function blocksFor(children, level) {
  * A copy of the document in which every inline task is a block in the text of the section it belongs to, and no longer a heading.
  * `scope` (a heading of the document or null) is returned as its copy.
  * @param {Doc} doc @param {Heading | null | undefined} scope @param {number | null} [level]
+ * @param {((info: { todo: string | null, priority: string | null, title: string, tags: string[] }) => boolean) | undefined} [taskFilter]  false for a task the export leaves out
  * @returns {{ doc: Doc, scope: Heading | null }}
  */
-export function foldInlineTasks(doc, scope, level = config.level) {
+export function foldInlineTasks(doc, scope, level = config.level, taskFilter = undefined) {
   if (level === null || level === undefined) return { doc, scope: scope || null };
   const min = level;
   let found = false;
@@ -122,7 +135,7 @@ export function foldInlineTasks(doc, scope, level = config.level) {
     const next = { ...h, children: keep.map(copy) };
     if (tasks.length) {
       found = true;
-      next.bodyLines = [...(h.bodyLines || []), ...blocksFor(tasks, min)];
+      next.bodyLines = [...(h.bodyLines || []), ...blocksFor(tasks, min, taskFilter)];
       next.body = parseBody(next.bodyLines);
     }
     copies.set(h, next);
@@ -133,7 +146,7 @@ export function foldInlineTasks(doc, scope, level = config.level) {
   if (!found && !top.tasks.length) return { doc, scope: scope || null };
   /** @type {Doc} */
   const next = { ...doc, children };
-  if (top.tasks.length) next.bodyLines = [...(doc.bodyLines || []), ...blocksFor(top.tasks, min)];
+  if (top.tasks.length) next.bodyLines = [...(doc.bodyLines || []), ...blocksFor(top.tasks, min, taskFilter)];
   return { doc: next, scope: scope ? copies.get(scope) || scope : null };
 }
 

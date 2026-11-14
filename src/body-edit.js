@@ -56,13 +56,16 @@ export function serializeTableRule(columnCount) {
 /**
  * @param {Table} table
  * @param {boolean} [align] pad the columns as Emacs's org-table-align does (every table edit does); false writes each row as is
+ * @param {string} [first] the table's first line as it is now: its indentation is kept, and a table of rules only keeps the columns it has
  */
-export function serializeTable(table, align = true) {
+export function serializeTable(table, align = true, first = '') {
   const dataRow = table.rows.find(/** @param {import('./types.js').TableRow} r @returns {r is import('./types.js').DataRow} */ (r) => r.type === 'row');
   const columnCount = dataRow ? dataRow.cells.length : 1;
   const lines = align
-    ? layoutTable(table.rows.map((row) => (row.type === 'rule' ? null : row.cells)))
+    ? layoutTable(table.rows.map((row) => (row.type === 'rule' ? null : row.cells)), undefined, 1 + (first.match(/\+/g) || []).length)
     : table.rows.map((row) => (row.type === 'rule' ? serializeTableRule(columnCount) : serializeTableRow(row.cells)));
+  const indent = /^[ \t]*/.exec(first)?.[0] ?? '';
+  if (align && indent) lines.forEach((l, i) => (lines[i] = indent + l));
   if (table.tblfm !== null) {
     for (let k = 0; k < (table.blankBeforeTblfm || 0); k++) lines.push('');
     lines.push('#+TBLFM: ' + table.tblfm);
@@ -189,7 +192,7 @@ function requireDataRow(table, rowIndex) {
 export function setTableCell(heading, table, rowIndex, colIndex, value, align = true) {
   const row = requireDataRow(table, rowIndex);
   row.cells[colIndex] = String(value).replace(/[\r\n|]+/g, ' ').trim();
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align, heading.bodyLines[table.lineIndex]));
 }
 
 /**
@@ -241,7 +244,7 @@ export function insertTableRow(heading, table, afterRowIndex, align = true) {
   const newRow = /** @type {import('./types.js').DataRow} */ ({ type: 'row', cells: Array(columnCount).fill('') });
   table.rows.splice(afterRowIndex + 1, 0, newRow);
   if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '@', {}, dataLineNumber(table, afterRowIndex + 1) - 1, 1);
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, align, heading.bodyLines[table.lineIndex]));
 }
 
 /**
@@ -275,7 +278,7 @@ export function insertTableColumn(heading, table, afterColIndex) {
     if (row.type === 'row') row.cells.splice(afterColIndex + 1, 0, '');
   }
   if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '$', {}, afterColIndex + 1, 1);
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, true, heading.bodyLines[table.lineIndex]));
 }
 
 /**
@@ -292,7 +295,7 @@ export function deleteTableColumn(heading, table, colIndex) {
     if (row.type === 'row') row.cells.splice(colIndex, 1);
   }
   if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '$', { [colIndex + 1]: 'INVALID' }, colIndex + 1, -1, colIndex + 1);
-  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table));
+  commitLines(heading, table.lineIndex, table.lineCount, serializeTable(table, true, heading.bodyLines[table.lineIndex]));
 }
 
 /**

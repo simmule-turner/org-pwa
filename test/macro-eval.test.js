@@ -31,3 +31,12 @@ test('the HTML export runs them too', () => {
   const html = exportToHtml(parseOrg('#+MACRO: up (eval (upcase $1))\n\nsay {{{up(hello)}}} now\n'));
   assert.match(html, /say HELLO now/);
 });
+
+test('macros under a COMMENT heading stay as they are, as org-macro-replace-all leaves them (Emacs 29.3)', async () => {
+  const { serializeOrg } = await import('../src/org-parser.js');
+  const cases = JSON.parse(fs.readFileSync(new URL('./fixtures/macro-comment-oracle.json', import.meta.url), 'utf8'));
+  for (const c of cases) {
+    const { doc } = expandMacrosForExport(parseOrg(c.org), null, new Date());
+    assert.equal(serializeOrg(doc).replace(/^#\+MACRO[^\n]*\n/gm, ''), c.emacs.replace(/^#\+MACRO[^\n]*\n/gm, ''), c.org);
+  }
+});

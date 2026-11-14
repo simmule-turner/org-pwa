@@ -22,16 +22,17 @@ import { citeExportFor, dropSilentCitations } from './cite.js';
 import { removeIndentation } from './babel-blocks.js';
 import { ENTITIES } from './entities.js';
 import { getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
-import { preambleBody, parseHtmlOptions, buildFilter } from './export-html.js';
+import { translateTimestamps, TIMESTAMP_RE, withoutIsolatedTimestamps, withDayName } from './export-timestamps.js';
+import { preambleBody, parseHtmlOptions, buildFilter, inlineTaskFilter, drawerAllowed, headingTextLines } from './export-html.js';
 import { resolveTodoSequence } from './todo-cycle.js';
 import { expandMacrosForExport } from './export-macros.js';
 import { radioTargetRegExp } from './targets.js';
 import { BrokenLinkSignal, brokenLinkText, parseBrokenLinks } from './broken-links.js';
 import { HARD, stringWidth, normalizeString, indentString, fillString, justifyLines, justifyBlock } from './ascii-fill.js';
 import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
-import { withBufferKeywords } from './export-keywords.js';
+import { withBufferKeywords, withSubtreeKeywords, subtreeSetting } from './export-keywords.js';
 import { translate } from './export-dictionary.js';
-import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
+import { newCodeCounter, codeStart, unravelCode, parseCodeSwitches, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -125,7 +126,7 @@ export function normalizeAsciiCharset(value) {
  *   withTitle: boolean, withAuthor: boolean, withEmail: boolean, withDate: boolean, withCreator: boolean,
  *   emphasis: boolean, statistics: boolean,
  *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean, withPlanning: boolean,
- *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean, drawers: boolean | string[],
+ *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean,
  *   fixedWidth: boolean, tex: boolean,
  *   linksToNotes: boolean, noFootnotes?: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
  *   verbatimFormat: string,
@@ -168,7 +169,6 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
   const numValue = o.get('num');
   const tocValue = o.get('toc');
   const tags = o.get('tags');
-  const drawers = o.get('d');
   const levels = Number(o.get('H'));
   return {
     width: textWidth,
@@ -197,7 +197,6 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
     entities: flag(o.get('e'), true),
     footnotes: flag(o.get('f'), true),
     tables: flag(o.get('|'), true),
-    drawers: drawers === undefined ? ['!LOGBOOK'] : drawers === 'nil' ? false : drawers === 't' ? true : drawers.replace(/[()"]/g, '').split(/\s+/).filter(Boolean),
     fixedWidth: flag(o.get(':'), true),
     tex: flag(o.get('tex'), true),
     linksToNotes: true,
@@ -245,31 +244,6 @@ const UNICODE_SPECIAL = [
   [/--/g, '–'],
   [/\.\.\./g, '…'],
 ];
-
-const TIMESTAMP_RE = /([<[])(\d{4})-(\d{1,2})-(\d{1,2})(?: +[^\s\d>\]+-][^\s>\]]*)?(?: +(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?)?((?: +(?:[.+]\+?|-{1,2})\d+[hdwmy](?:\/\d+[hdwmy])?)*) *([>\]])/g;
-const DAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/**
- * Timestamps as ox-ascii writes them: the date with its day name (a day past the end of a month rolls over, as encode-time does),
- * a time range as two timestamps, and a repeater without its habit part.
- * @param {string} text
- */
-function translateTimestamps(text) {
-  const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
-  return text.replace(TIMESTAMP_RE, (whole, open, y, mo, d, h1, m1, h2, m2, marks, close) => {
-    if (open === '<' !== (close === '>')) return whole;
-    const dayText = (/** @type {Date} */ date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${DAY_ABBREVIATIONS[date.getDay()]}`;
-    const tail = marks.replace(/\/\d+[hdwmy]/g, '');
-    // a time goes through the local clock, as encode-time does: 24:00 is midnight of the next day, and a time skipped by
-    // daylight saving time moves forward
-    const stamp = (/** @type {string | undefined} */ hh, /** @type {string | undefined} */ mm) => {
-      if (hh === undefined) return `${open}${dayText(new Date(Number(y), Number(mo) - 1, Number(d), 12))}${tail}${close}`;
-      const at = new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm));
-      return `${open}${dayText(at)} ${pad(at.getHours())}:${pad(at.getMinutes())}${tail}${close}`;
-    };
-    return h2 === undefined ? stamp(h1, m1) : `${stamp(h1, m1)}--${stamp(h2, m2)}`;
-  });
-}
 
 /**
  * A run of plain text as ox-ascii writes it: entities in the character set's own spelling, `\-` dropped, and in UTF-8 the dashes and ellipsis.
@@ -342,6 +316,10 @@ function convertInline(nodes, parent, I) {
       const before = nodes[i - 1];
       return before && n.type === 'text' && (before.type === 'footnote-ref' || before.type === 'footnote-def') ? [{ ...n, value: n.value.replace(/^[ \t]+/, '') }] : [n];
     });
+  }
+  if (!I.tex) {
+    // tex:nil drops the fragments, and the blanks after one go with it
+    nodes = nodes.flatMap((n, i) => (n.type === 'latex' ? [] : nodes[i - 1]?.type === 'latex' && n.type === 'text' ? [{ ...n, value: n.value.replace(/^[ \t]+/, '') }] : [n]));
   }
   for (const n of nodes) {
     switch (n.type) {
@@ -478,9 +456,9 @@ function buildElements(list, parent, I) {
   return out;
 }
 
-/** @param {string[]} lines */
-function unescapeCode(lines) {
-  return removeIndentation(lines).map((l) => l.replace(/^([ \t]*),(?=\*|#\+)/, '$1'));
+/** @param {string[]} lines @param {boolean} preserveIndent the `-i` switch keeps the indentation */
+function unescapeCode(lines, preserveIndent) {
+  return (preserveIndent ? lines : removeIndentation(lines)).map((l) => l.replace(/^([ \t]*),(?=\*|#\+)/, '$1'));
 }
 
 /**
@@ -490,7 +468,7 @@ function unescapeCode(lines) {
 function buildElement(el, parent, I) {
   switch (el.type) {
     case 'paragraph': {
-      const lines = el.lines.slice();
+      const lines = withoutIsolatedTimestamps(el.lines.join('\n'), I.htmlOptions.stamps).split('\n'); // `<:` leaves out the timestamps that stand alone
       // clock lines are elements of their own, and not exported
       while (lines.length && /^[ \t]*CLOCK:[ \t]*\[/.test(lines[0])) lines.shift();
       if (lines.length === 0) return null;
@@ -515,6 +493,7 @@ function buildElement(el, parent, I) {
     }
     case 'table': {
       if (!I.tables) return null;
+      if (el.tableEl) return mk('fixed-width', parent, { lines: el.tableEl }); // a table.el table is shown as written
       const node = mk('table', parent);
       for (const row of el.rows) {
         const cellTexts = 'cells' in row && row.cells ? row.cells : null;
@@ -531,11 +510,17 @@ function buildElement(el, parent, I) {
     case 'block':
       return buildBlock(el, parent, I);
     case 'fixed':
+      if (!I.htmlOptions.fixed) return null;
       return mk('fixed-width', parent, { lines: el.lines });
     case 'hr':
       return mk('horizontal-rule', parent);
     case 'latex-env':
       return mk('latex-environment', parent, { lines: el.lines });
+    case 'dynamic-block': {
+      const node = mk('dynamic-block', parent, { name: el.name });
+      node.contents = buildElements(el.children, node, I);
+      return node;
+    }
     case 'drawer': {
       const node = mk('drawer', parent, { name: el.name });
       node.contents = buildElements(parseElements(el.lines), node, I);
@@ -585,9 +570,9 @@ function buildBlock(el, parent, I) {
   const name = el.name.toLowerCase();
   switch (name) {
     case 'src':
-      return codeNode(mk('src-block', parent, { lines: unescapeCode(el.lines), params: el.params }), name, el.params, I);
+      return codeNode(mk('src-block', parent, { lines: unescapeCode(el.lines, parseCodeSwitches(blockSwitchText(name, el.params)).preserveIndent), params: el.params }), name, el.params, I);
     case 'example':
-      return codeNode(mk('example-block', parent, { lines: unescapeCode(el.lines) }), name, el.params, I);
+      return codeNode(mk('example-block', parent, { lines: unescapeCode(el.lines, parseCodeSwitches(blockSwitchText(name, el.params)).preserveIndent) }), name, el.params, I);
     case 'comment':
       return null;
     case INLINE_TASK_BLOCK: {
@@ -625,7 +610,7 @@ const isFootnoteSection = (h) => h.title.trim() === 'Footnotes';
 function exclusion(doc) {
   const options = parseHtmlOptions(doc);
   const keep = buildFilter(/** @type {import('./export-html.js').ExportState} */ (/** @type {unknown} */ ({ doc, options, doneKeywords: resolveTodoSequence(doc).doneKeywords })));
-  return (/** @type {Heading} */ h) => !keep(h) || isFootnoteSection(h) || (options.arch === false && h.tags.includes('ARCHIVE'));
+  return Object.assign((/** @type {Heading} */ h) => !keep(h) || isFootnoteSection(h) || (options.arch === false && h.tags.includes('ARCHIVE')), { selective: keep.selective });
 }
 
 /**
@@ -638,7 +623,7 @@ function sectionHead(h, parent, I) {
   const out = [];
   const { planning } = h;
   if (I.withPlanning && planning && (planning.closed || planning.deadline || planning.scheduled)) {
-    const text = [planning.closed && `CLOSED: ${planning.closed}`, planning.deadline && `DEADLINE: ${planning.deadline}`, planning.scheduled && `SCHEDULED: ${planning.scheduled}`].filter(Boolean).join(' ');
+    const text = [planning.closed && `CLOSED: ${withDayName(planning.closed)}`, planning.deadline && `DEADLINE: ${withDayName(planning.deadline)}`, planning.scheduled && `SCHEDULED: ${withDayName(planning.scheduled)}`].filter(Boolean).join(' ');
     out.push(mk('planning', parent, { value: text }));
   }
   const wanted = I.htmlOptions.properties;
@@ -667,7 +652,7 @@ function buildHeadlines(children, parent, I, offset, skip) {
     node.title = objects(h.title, node, I);
     I.headlines.push(node);
     const archived = h.tags.includes('ARCHIVE') && I.htmlOptions.arch !== true; // an archived subtree shows its headline only
-    const lines = archived ? [] : h.bodyLines || [];
+    const lines = archived ? [] : headingTextLines(I.htmlOptions.drawers, h);
     const elements = archived ? [] : parseElements(lines);
     const first = archived ? [] : sectionHead(h, node, I);
     if (elements.length || first.length) {
@@ -690,7 +675,7 @@ function buildTree(I) {
   const root = mk('org-data', null);
   const scope = I.scope;
   const skip = exclusion(I.doc);
-  const lines = scope ? scope.bodyLines || [] : preambleBody(I.doc);
+  const lines = scope ? scope.bodyLines || [] : skip.selective ? [] : preambleBody(I.doc); // with selected trees, the text before the first headline is left out
   const elements = parseElements(lines);
   if (elements.length) {
     const section = mk('section', root);
@@ -698,6 +683,22 @@ function buildTree(I) {
     root.contents.push(section);
   }
   buildHeadlines(scope ? scope.children || [] : I.doc.children || [], root, I, scope ? -scope.level : 0, skip);
+  // a definition is found wherever it is (before the first heading, in a tree left out or outside the exported one), but not in a COMMENT tree
+  const holder = mk('section', root);
+  /** @param {string[]} bodyLines */
+  const looseDefinitions = (bodyLines) => {
+    for (const def of buildElements(parseElements(bodyLines).filter((el) => el.type === 'footnote-def'), holder, I)) if (def.type === 'footnote-definition' && def.label && !I.defs.has(def.label)) I.defs.set(def.label, def);
+  };
+  /** @param {Heading[]} headings */
+  const looseIn = (headings) => {
+    for (const h of headings) {
+      if (/^COMMENT(\s|$)/.test(h.title || '')) continue;
+      looseDefinitions(h.bodyLines || []);
+      looseIn(h.children || []);
+    }
+  };
+  looseDefinitions(preambleBody(I.doc));
+  looseIn(I.doc.children || []);
   return root;
 }
 
@@ -789,7 +790,7 @@ function numberFootnotes(root, I) {
       const def = label ? I.defs.get(label) || null : null;
       I.fnList.push({ number, label, inline: n.inline || null, def });
       if (label) I.fnLabels.set(label, number);
-      if (def) visit(def);
+      if (def) for (const c of childrenOf(def)) visit(c); // the references inside a definition are numbered right after it
       else if (n.inline) for (const c of n.inline) visit(c);
       return true;
     });
@@ -909,7 +910,7 @@ function codeOf(n) {
 // ---- export ------------------------------------------------------------------------
 
 /** The greater elements: their contents are normalized before they are handed on. */
-const GREATER = new Set(['org-data', 'headline', 'inlinetask', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'footnote-definition', 'table']);
+const GREATER = new Set(['org-data', 'headline', 'inlinetask', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'dynamic-block', 'footnote-definition', 'table']);
 const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'planning', 'property-drawer', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
 
 /**
@@ -1009,17 +1010,9 @@ const TRANSCODERS = {
     return justifyLines(I.cs.rule.repeat(wanted !== undefined && /^[0-9]+$/.test(wanted) ? Number(wanted) : width), width, 'center');
   },
   'latex-environment': (n, _c, I) => (I.tex ? justifyElement(removeIndentation(n.lines || []).join('\n') + '\n', n, I) : null),
+  'dynamic-block': (_n, c) => c,
   drawer: (n, c, I) => {
-    const d = I.drawers;
-    if (d === false) return null;
-    if (Array.isArray(d)) {
-      const name = (n.name || '').toUpperCase();
-      const excluded = d.filter((x) => x.startsWith('!')).map((x) => x.slice(1).toUpperCase());
-      const included = d.filter((x) => !x.startsWith('!')).map((x) => x.toUpperCase());
-      if (excluded.includes(name)) return null;
-      if (included.length && !included.includes(name)) return null;
-    }
-    return c;
+    return drawerAllowed(I.htmlOptions.drawers, n.name || '') ? c : null;
   },
   keyword: (n, _c, I) => keywordText(n, I),
   section: (n, c, I) => {
@@ -1553,7 +1546,7 @@ function documentTitle(I) {
     const found = (doc.keywords || []).find((k) => k.key.toUpperCase() === key);
     return found ? found.value.trim() : '';
   };
-  const titleRaw = I.scope ? I.scope.title : getDocTitle(doc) || '';
+  const titleRaw = I.scope ? subtreeSetting(doc, I.scope, 'TITLE') ?? I.scope.title : getDocTitle(doc) || '';
   const subtitleRaw = I.scope ? '' : kw('SUBTITLE');
   const text = (/** @type {string} */ raw) => exportItems(objects(raw, null, I), I);
   const title = I.withTitle && titleRaw ? text(titleRaw) : '';
@@ -1632,8 +1625,8 @@ function footnoteSection(I) {
  * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, linksToNotes?: boolean, bodyOnly?: boolean }} [options]
  */
 export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil', linksToNotes = true, bodyOnly = false } = {}) {
-  doc = withBufferKeywords(doc);
-  ({ doc, scope } = foldInlineTasks(doc, scope));
+  doc = withSubtreeKeywords(withBufferKeywords(doc), scope);
+  ({ doc, scope } = foldInlineTasks(doc, scope, undefined, inlineTaskFilter(doc)));
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
   const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup, brokenLinks);
   I.linksToNotes = linksToNotes;
@@ -1688,7 +1681,7 @@ export function wrapText(text, width) {
  * @param {{ sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, odt: NonNullable<Info['odt']> }} options
  */
 export function buildExportTree(doc, scope, { sup = 't', brokenLinks = 'nil', odt }) {
-  ({ doc, scope } = foldInlineTasks(doc, scope));
+  ({ doc, scope } = foldInlineTasks(doc, scope, undefined, inlineTaskFilter(doc)));
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
   const I = makeInfo(doc, scope || null, 72, 'utf-8', sup, brokenLinks);
   I.odt = odt;

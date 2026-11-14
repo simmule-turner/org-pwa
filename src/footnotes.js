@@ -11,7 +11,7 @@
 import { matchLatexFragmentAt } from './inline-markup.js';
 
 const WORD = '[-_\\p{L}\\p{N}]';
-const DEF_LINE_RE = new RegExp(`^\\[fn:(${WORD}+)\\]`, 'u');
+const DEF_LINE_RE = new RegExp(`^\\[fn:(${WORD}+)\\]`, 'iu'); // `[FN:1]` is a definition too (Org matches without regard to case)
 const REF_START_RE = new RegExp(`\\[fn:(?:(${WORD}+)?(:)|(${WORD}+)\\])`, 'uy');
 const FORBIDDEN_BLOCKS = new Set(['comment', 'example', 'export', 'src']);
 
@@ -57,6 +57,21 @@ class Buf {
   insert(at, str) {
     this.replace(at, at, str);
   }
+}
+
+/** The `# Local Variables:` block `org-preserve-local-variables` sets aside: the last such line within the final 3000
+ * characters, to the end. @param {string} text @returns {{ head: string, block: string } | null} */
+function splitLocalVariables(text) {
+  const re = /^[ \t]*# +Local Variables:/gim;
+  const bound = Math.max(text.length - 3000, 0);
+  let start = -1;
+  for (let m; (m = re.exec(text)); ) if (m.index >= bound) start = m.index;
+  return start < 0 ? null : { head: text.slice(0, start), block: text.slice(start) };
+}
+
+/** Puts the block back at the end, after a newline if the text lacks one. @param {string} head @param {string} block */
+function joinLocalVariables(head, block) {
+  return head + (head === '' || head.endsWith('\n') ? '' : '\n') + block;
 }
 
 // ---- where footnotes may be ----------------------------------------------------------------------------------------
@@ -431,9 +446,15 @@ function localInsertionPoint(buf, pos) {
  * when there is none).
  * @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {string} */
 export function normalizeFootnotes(text, options) {
+  const lv = splitLocalVariables(text);
+  return lv ? joinLocalVariables(normalizeFootnotesIn(lv.head, options), lv.block) : normalizeFootnotesIn(text, options);
+}
+
+/** @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {string} */
+function normalizeFootnotesIn(text, options) {
   const opt = { ...footnoteDefaults, ...options };
   const refs = collectReferences(text, true);
-  if (scanReferences(text).length === 0 && !opt.section) return text; // nothing refers to a definition: Org leaves the text as it is
+  if (scanReferences(text).length === 0 && !opt.section && findDefinitionElements(text).elements.length === 0) return text; // no footnotes at all: Org leaves the text as it is
   /** @type {Map<FootnoteRef, string>} */
   const newLabel = new Map();
   /** @type {Map<string, string>} */
@@ -489,7 +510,7 @@ export function normalizeFootnotes(text, options) {
     if (d) definitions.unshift(d);
   }
   for (const d of takeDefinitions(buf)) definitions.push({ key: d.label, def: d.def, anonymous: false });
-  const point = buf.mark(opt.section ? clearFootnoteSection(buf, opt.section) : 0);
+  const point = buf.mark(opt.section ? clearFootnoteSection(buf, opt.section) : buf.text.length); // Emacs inserts at point, which the oracle leaves at the end of the buffer
   /** @param {{ key: string, anonymous: boolean }} d */
   const idOf = (d) => (d.anonymous ? '\u0000' : '') + d.key;
   const inserted = new Set();
@@ -551,6 +572,12 @@ export function renumberFootnotes(text) {
  * section holding each reference; inline footnotes are left alone (org-footnote-sort).
  * @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {string} */
 export function sortFootnotes(text, options) {
+  const lv = splitLocalVariables(text);
+  return lv ? joinLocalVariables(sortFootnotesIn(lv.head, options), lv.block) : sortFootnotesIn(text, options);
+}
+
+/** @param {string} text @param {Partial<FootnoteOptions>} [options] @returns {string} */
+function sortFootnotesIn(text, options) {
   const opt = { ...footnoteDefaults, ...options };
   const refs = collectReferences(text, false);
   const buf = new Buf(text);
@@ -629,6 +656,15 @@ function removeDefinitionsOf(buf, label) {
  * @param {string} text @param {string} label @param {Partial<FootnoteOptions>} [options]
  * @returns {{ text: string, references: number, definitions: number }} */
 export function deleteFootnote(text, label, options) {
+  const lv = splitLocalVariables(text);
+  if (!lv) return deleteFootnoteIn(text, label, options);
+  const result = deleteFootnoteIn(lv.head, label, options);
+  return { ...result, text: joinLocalVariables(result.text, lv.block) };
+}
+
+/** @param {string} text @param {string} label @param {Partial<FootnoteOptions>} [options]
+ * @returns {{ text: string, references: number, definitions: number }} */
+function deleteFootnoteIn(text, label, options) {
   const buf = new Buf(text);
   let references = 0;
   /** @type {RegExp | null} */
@@ -725,7 +761,7 @@ export function canInsertFootnoteAt(text, pos) {
   }
   const def = DEF_LINE_RE.exec(line);
   if (def && col < def[0].length) return false;
-  if (def && col === def[0].length) return /[ \t]/.test(line[col] || '');
+  if (def && col === def[0].length) return /[ \t]/.test(line[col] || '') || pos === text.length;
   return true;
 }
 
@@ -735,10 +771,11 @@ export function canInsertFootnoteAt(text, pos) {
  * @returns {{ text: string, cursor: number }} */
 export function createFootnoteDefinition(text, label, options) {
   const opt = { ...footnoteDefaults, ...options };
-  const buf = new Buf(text);
+  const lv = splitLocalVariables(text);
+  const buf = new Buf(lv ? lv.head : text);
   let at;
   if (!opt.section) {
-    at = text.length;
+    at = buf.text.length;
     if (at > 0 && buf.text[at - 1] !== '\n') {
       buf.insert(at, '\n');
       at++;
@@ -762,7 +799,7 @@ export function createFootnoteDefinition(text, label, options) {
   }
   const entry = `[fn:${label}] `;
   buf.insert(at, entry + '\n');
-  return { text: buf.text, cursor: at + entry.length };
+  return { text: lv ? joinLocalVariables(buf.text, lv.block) : buf.text, cursor: at + entry.length };
 }
 
 /** Inserts a new footnote at `pos`. `label` is null for an anonymous one, the name of an existing footnote for another
@@ -792,6 +829,8 @@ export function insertFootnote(text, pos, label, options) {
     return { text: adjusted.text, cursor: ref ? ref.contentsBegin : pos + label.length + 5, existing: false };
   }
   buf.insert(pos, `[fn:${label}]`);
+  const lv = splitLocalVariables(buf.text);
+  if (lv) buf.replace(lv.head.length, buf.text.length, '');
   const entry = `[fn:${label}] `;
   /** @type {number} */
   let at;
@@ -815,6 +854,7 @@ export function insertFootnote(text, pos, label, options) {
     at++;
   }
   buf.insert(at, entry + '\n');
+  if (lv) buf.text = joinLocalVariables(buf.text, lv.block);
   if (opt.autoAdjust === 'nil') return { text: buf.text, cursor: at + entry.length, existing: false };
   const adjusted = adjustFootnotes(buf.text, opt);
   const now = adjusted.map.get(label) ?? label;

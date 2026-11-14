@@ -1,6 +1,6 @@
 // @ts-check
 
-import { parseInline, stripLineBreakMarker, extractLatexFragments, matchLatexFragmentAt } from './inline-markup.js';
+import { parseInline, parseInlineLines, stripLineBreakMarker, extractLatexFragments, matchLatexFragmentAt } from './inline-markup.js';
 
 /**
  * Body-content parser: text lines -> content nodes (list, table, block,
@@ -35,11 +35,33 @@ import { parseInline, stripLineBreakMarker, extractLatexFragments, matchLatexFra
  * visible content.
  */
 
-const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
-const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
+const BLOCK_START_RE = /^\s*#\+begin_(\S+)(?:\s+(.*))?$/i; // Org: any run of non-blanks names the block
+/** The line that closes the block `name` (compared without regard to case, and literally: the name may hold `*`).
+ * @param {string} name */
+const blockEndRe = (name) => new RegExp('^\\s*#\\+end_' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i');
+/** Does the block that opens at line `i` close? Org reads an unclosed `#+begin_` line as text.
+ * @param {string[]} lines @param {number} i */
+function blockCloses(lines, i) {
+  const m = BLOCK_START_RE.exec(lines[i]);
+  if (!m) return false;
+  const end = blockEndRe(m[1]);
+  for (let k = i + 1; k < lines.length; k++) if (end.test(lines[k])) return true;
+  return false;
+}
 const TABLE_LINE_RE = /^\s*\|.*\|?\s*$/;
 const TABLE_RULE_RE = /^\s*\|-/; // as in Org, any row that starts with |- is a horizontal rule (|---|---| too)
-const TBLFM_RE = /^\s*#\+TBLFM:\s*(.*)$/i;
+// a table.el table: a rule `+---+---+`, then lines that begin with `|` or `+`, the last a rule (two lines at least)
+const TABLE_EL_RULE_RE = /^[ \t]*\+(?:-+\+)+[ \t]*$/;
+const TABLE_EL_LINE_RE = /^[ \t]*[+|]/;
+/** The index after the table.el table that starts at line `i`, or -1 when none does.
+ * @param {string[]} lines @param {number} i */
+function tableElEnd(lines, i) {
+  if (!TABLE_EL_RULE_RE.test(lines[i])) return -1;
+  let j = i + 1;
+  while (j < lines.length && TABLE_EL_LINE_RE.test(lines[j])) j++;
+  return j - i >= 2 && TABLE_EL_RULE_RE.test(lines[j - 1]) ? j : -1;
+}
+const TBLFM_RE = /^\s*#\+TBLFM: (.*)$/i; // Org wants the space after the colon
 const AFFILIATED_RE = /^\s*#\+(\w+)(?:\[[^\]]*\])?:\s*(.*)$/;
 /** The #+NAME: of the table at line `at`: Org lets other affiliated keywords (#+CAPTION:, #+ATTR_*:, #+PLOT:) stand between.
  * @param {string[]} lines @param {number} at @returns {string | undefined} */
@@ -52,7 +74,9 @@ function nameBefore(lines, at) {
   return undefined;
 }
 const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
-const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)]|[A-Za-z][.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\](?:\s+|$))?(.*)$/;
+// Org reads `a.` and `A)` as bullets only when org-list-allow-alphabetical is set. A lower-case `[x]` stays a checkbox here, as it is for
+// Org's own commands (C-c C-c toggles it)
+const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\](?:\s+|$))?(.*)$/;
 // Real org: "a line consisting of only dashes, and at least 5 of them,
 // is exported as a horizontal line." Whitespace around the dashes is
 // tolerated (indentation, trailing spaces), matching how org itself is
@@ -87,10 +111,10 @@ function parseBlock(lines, i) {
   const params = startMatch[2] ? startMatch[2].trim() : '';
   const content = [];
   const startIndex = i;
+  const endRe = blockEndRe(startMatch[1]);
   i++;
   while (i < lines.length) {
-    const endMatch = BLOCK_END_RE.exec(lines[i]);
-    if (endMatch && endMatch[1].toUpperCase() === name) {
+    if (endRe.test(lines[i])) {
       i++;
       break;
     }
@@ -109,7 +133,7 @@ function parseTableRow(line) {
   }
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
   const cells = trimmed.split('|').map((c) => c.trim());
-  return { type: 'row', cells, cellsInline: cells.map(parseInline) };
+  return { type: 'row', cells, cellsInline: cells.map((c) => parseInline(c)) };
 }
 
 /**
@@ -145,7 +169,7 @@ function parseTable(lines, i) {
 
 /** @param {any} [marker] */
 function isOrderedMarker(marker) {
-  return /^\d+[.)]$/.test(marker) || /^[A-Za-z][.)]$/.test(marker);
+  return /^\d+[.)]$/.test(marker);
 }
 
 /** Whether position `pos` in `text` falls inside an active ~...~ or
@@ -180,13 +204,17 @@ function parseListItemLine(line) {
 
   /** @type {string | null} */
   let tag = null;
-  const TAG_SEP_RE = /\s+::\s+/g;
+  // as Org reads it: only an unordered item has a tag, which runs to the last ` ::` that ends the text or is followed by a blank
+  const TAG_SEP_RE = /[ \t]+::(?=[ \t]|$)[ \t]*/g;
   let tagMatch;
-  while ((tagMatch = TAG_SEP_RE.exec(text))) {
+  let found = null;
+  while (/^[-+*]$/.test(marker) && (tagMatch = TAG_SEP_RE.exec(text))) {
     if (isInsideLiteralSpan(text, tagMatch.index)) continue; // e.g. a "~term :: description~" example within the item's own text, not a real tag separator
-    tag = text.slice(0, tagMatch.index);
-    text = text.slice(tagMatch.index + tagMatch[0].length);
-    break;
+    found = tagMatch;
+  }
+  if (found) {
+    tag = text.slice(0, found.index);
+    text = text.slice(found.index + found[0].length);
   }
   return {
     type: 'list-item',
@@ -222,7 +250,7 @@ function parseList(lines, i, baseIndent) {
     if (line.trim() === '') {
       let j = i + 1;
       while (j < lines.length && lines[j].trim() === '') j++;
-      if (j < lines.length && isListItemLine(lines[j]) && indentOf(lines[j]) >= baseIndent) {
+      if (j - i < 2 && j < lines.length && isListItemLine(lines[j]) && indentOf(lines[j]) >= baseIndent) { // two blank lines end a list
         i = j;
         continue;
       }
@@ -251,7 +279,7 @@ function parseList(lines, i, baseIndent) {
     // continuation (above) is completely unaffected.
     let lookahead = i;
     while (lookahead < lines.length && lines[lookahead].trim() === '') lookahead++;
-    if (lookahead < lines.length && isListItemLine(lines[lookahead]) && indentOf(lines[lookahead]) > indent) {
+    if (lookahead - i < 2 && lookahead < lines.length && isListItemLine(lines[lookahead]) && indentOf(lines[lookahead]) > indent) {
       const [nested, nextI] = parseList(lines, lookahead, indentOf(lines[lookahead]));
       item.children.push(nested);
       i = nextI;
@@ -308,10 +336,12 @@ function parseParagraph(lines, i, protectedIndices = new Set()) {
   const paraLines = [];
   while (
     i < lines.length &&
-    (protectedIndices.has(i) ||
+    (i === startIndex || // the first line is the paragraph's, whatever it looks like
+      protectedIndices.has(i) ||
       (lines[i].trim() !== '' &&
-        !BLOCK_START_RE.test(lines[i]) &&
+        !(BLOCK_START_RE.test(lines[i]) && blockCloses(lines, i)) &&
         !TABLE_LINE_RE.test(lines[i]) &&
+        !TABLE_EL_RULE_RE.test(lines[i]) &&
         !isListItemLine(lines[i]) &&
         !HR_LINE_RE.test(lines[i])))
   ) {
@@ -323,7 +353,7 @@ function parseParagraph(lines, i, protectedIndices = new Set()) {
   const footnoteLabel = footnoteMatch ? footnoteMatch[1] : null;
   const strippedLines = footnoteMatch ? [footnoteMatch[2], ...paraLines.slice(1)] : paraLines;
   const { lines: extractedLines, fragments } = extractLatexFragments(strippedLines);
-  const inlineLines = extractedLines.map((l) => parseInline(stripLineBreakMarker(l), { latexFragments: fragments }));
+  const inlineLines = parseInlineLines(extractedLines.map(stripLineBreakMarker), { latexFragments: fragments }); // the paragraph is read as a whole, so a span may cross a line
 
   return [
     {
@@ -354,7 +384,7 @@ function parseBody(lines) {
       i++;
       continue;
     }
-    if (BLOCK_START_RE.test(line)) {
+    if (BLOCK_START_RE.test(line) && blockCloses(lines, i)) {
       const [node, next] = parseBlock(lines, i);
       nodes.push(node);
       i = next;
@@ -379,6 +409,14 @@ function parseBody(lines) {
       // Not actually followed by a table -- fall through to ordinary
       // paragraph parsing below, same as any other "#+" line this app
       // doesn't specifically recognize.
+    }
+    const tableEl = tableElEnd(lines, i);
+    if (tableEl > 0) { // a table.el table is shown as it is written: one paragraph of its lines
+      const [node] = parseParagraph(lines.slice(i, tableEl), 0, new Set(Array.from({ length: tableEl - i }, (_, k) => k)));
+      node.lineIndex = i;
+      nodes.push(node);
+      i = tableEl;
+      continue;
     }
     if (TABLE_LINE_RE.test(line)) {
       const [node, next] = parseTable(lines, i);

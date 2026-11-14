@@ -111,10 +111,15 @@ function splitVars(value) {
   }
   if (cur) tokens.push(cur);
   /** @type {string[]} */
-  const out = [];
+  const joined = [];
   for (const t of tokens) {
-    if (out.length && (out[out.length - 1].endsWith('=') || t.startsWith('='))) out[out.length - 1] += t;
-    else if (out.length && !t.includes('=')) out[out.length - 1] = out[out.length - 1].replace(/=[\s\S]*$/, '') + '=' + t; // Emacs: a bare word gives the previous variable that value
+    if (joined.length && (joined[joined.length - 1].endsWith('=') || t.startsWith('='))) joined[joined.length - 1] += t; // org-babel-join-splits-near-ch
+    else joined.push(t);
+  }
+  /** @type {string[]} */
+  const out = [];
+  for (const t of joined) {
+    if (out.length && out[out.length - 1].includes('=') && !t.includes('=')) out[out.length - 1] = out[out.length - 1].replace(/=[\s\S]*$/, '') + '=' + t; // Emacs: a bare word gives the previous variable that value
     else out.push(t);
   }
   return out;
@@ -185,9 +190,26 @@ function headingPropertyPairs(h) {
   return out.length ? out : Object.entries(h.properties || {}).map(([k, v]) => /** @type {[string, string]} */ ([k, String(v)]));
 }
 
-/** The value of property `name` for a place in the document: the file-level `#+PROPERTY:` lines first, then every
+/** The properties of the file-level drawer, as Emacs reads it: a `:PROPERTIES:` drawer at the top of the file, after nothing but
+ *  `# ` comment lines (org-get-property-block before the first heading). Repeated keys included.
+ * @param {Doc | null} doc
+ * @returns {[string, string][]} */
+export function topPropertyPairs(doc) {
+  const lines = (doc && doc.bodyLines) || [];
+  let i = 0;
+  while (i < lines.length && /^[ \t]*#(?: |$)/.test(lines[i])) i++;
+  if (!/^[ \t]*:PROPERTIES:[ \t]*$/i.test(lines[i] || '')) return [];
+  /** @type {[string, string][]} */ const out = [];
+  for (i++; i < lines.length && !/^[ \t]*:END:[ \t]*$/i.test(lines[i]); i++) {
+    const m = /^\s*:(\S+?):(?:\s+(.*?))?\s*$/.exec(lines[i]);
+    if (m) out.push([m[1], m[2] || '']);
+  }
+  return i < lines.length ? out : []; // a drawer without its :END: is no drawer
+}
+
+/** The value of property `name` for a place in the document: the file-level `#+PROPERTY:` lines first, then the file-level drawer, then every
  *  heading from the top one down to the block's own. At each place `name` replaces what came before and `name+`
- * @param {Doc} doc
+ * @param {Doc | null} doc  null for the headings alone, without the file's own properties
  * @param {any} ancestors
  * @param {string} name
  *  appends to it. */
@@ -210,6 +232,15 @@ export function inheritedProperty(doc, ancestors, name) {
     if (keyEq(m[1], name)) apply(m[2], null);
     else if (keyEq(m[1], name + '+')) apply(null, m[2]);
   }
+  /** @type {string | null} */
+  let topPlain = null;
+  /** @type {string | null} */
+  let topPlus = null;
+  for (const [k, v] of topPropertyPairs(doc)) {
+    if (keyEq(k, name)) topPlain = String(v);
+    else if (keyEq(k, name + '+')) topPlus = topPlus === null ? String(v) : topPlus + ' ' + String(v);
+  }
+  apply(topPlain, topPlus);
   for (const h of ancestors) {
     /** @type {string | null} */
     let plain = null;

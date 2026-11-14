@@ -3,43 +3,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { recalculateTable, parseTableConstants, parseNamedTables } from '../src/table-formula.js';
-import { parseOrg } from '../src/org-parser.js';
+import { recalcGrid, gridOf } from './support/recalc-text.js';
 import { TABLE_RULES, ruleFor } from './support/oracle-tables-known.js';
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/oracle-tables.json', import.meta.url), 'utf8'));
 
-
-const cellsOf = (line) => line.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => c.trim());
-const gridOf = (text) => text.split('\n').filter((l) => /^\s*\|/.test(l)).map((l) => (/^\s*\|-/.test(l) ? '---' : cellsOf(l).join('|')));
-
-/** The app's result: every table of the text recalculated with its first #+TBLFM line, like Emacs's recalculate-buffer-tables. */
+/** The app's result: every table of the text recalculated with its first #+TBLFM line, like Emacs's recalculate-buffer-tables; an error is 'ERROR'. @param {string} org */
 function ours(org) {
-  const lines = org.split('\n');
-  const parsedDoc = parseOrg(org); const constants = parseTableConstants(parsedDoc); const tables = parseNamedTables(parsedDoc);
-  const out = [];
-  let i = 0;
-  while (i < lines.length) {
-    if (!/^\s*\|/.test(lines[i])) { i++; continue; }
-    const start = i;
-    while (i < lines.length && /^\s*\|/.test(lines[i])) i++;
-    const rows = lines.slice(start, i).map((l) => (/^\s*\|-/.test(l) ? { type: 'rule' } : { type: 'row', cells: cellsOf(l) }));
-    let j = i;
-    while (j < lines.length && /^\s*#\+(NAME|CAPTION|ATTR)/i.test(lines[j])) j++;
-    let t = i;
-    while (t < lines.length && lines[t].trim() === '') t++; // Emacs finds the formulas after blank lines too
-    const m = /^\s*#\+TBLFM:(.*)$/i.exec(lines[t] || '');
-    if (m) i = t + 1;
-    if (!m) { out.push(...lines.slice(start, i).map((l, k) => (rows[k].type === 'rule' ? '---' : rows[k].cells.join('|')))); continue; }
-    try {
-      const res = recalculateTable({ tblfm: m[1].trim(), rows }, { constants, tables });
-      const rs = res || rows;
-      out.push(...rs.map((r) => (r.type === 'rule' ? '---' : r.cells.join('|').split('|').map((c) => c.trim()).join('|'))));
-    } catch (e) {
-      return 'ERROR ' + e.message;
-    }
+  try {
+    return recalcGrid(org);
+  } catch {
+    return 'ERROR';
   }
-  return out;
 }
 
 /** Every case the app gets different from Emacs, with the rule that explains it (test/support/oracle-tables-known.js). */

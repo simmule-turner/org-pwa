@@ -8,8 +8,8 @@
  */
 import { formatNoteLine, formatStateLogLine } from './logbook.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
-import { shiftEntryRepeaters } from './repeater-shift.js';
-import { setProperty, deleteProperty } from './archive-model.js';
+import { entryRepeats, shiftEntryRepeaters, hasClockLine, RepeatError } from './repeater-shift.js';
+import { setProperty } from './archive-model.js';
 
 /** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string, kind: 'state' | 'done' }} PendingNote */
 
@@ -70,11 +70,13 @@ export function insertLogLines(heading, lines, intoDrawer, blankBeforeNextHeadin
  * @param {Heading} heading
  * @param {string | null} fromTodo
  * @param {any} sequence
- * @param {{ settings: LogSettings, keepWhenNoTodo: boolean, now: Date, inhibitLogging?: boolean }} context
- *   `inhibitLogging` is Emacs's `org-inhibit-logging`: no log item or note is written, but CLOSED and LAST_REPEAT still follow their settings
+ * @param {{ settings: LogSettings, keepWhenNoTodo: boolean, now: Date, inhibitLogging?: boolean, ownSequence?: { todoKeywords: string[], type?: string } }} context
+ *   `inhibitLogging` is Emacs's `org-inhibit-logging`: no log item or note is written, but CLOSED and LAST_REPEAT still follow their settings.
+ *   `ownSequence` is the one of the file's parallel sequences that `fromTodo` belongs to (`sequence` is all of them together): a repeating task
+ *   goes back to the first keyword of its own, or stays where it was when that sequence is a type one (#+TYP_TODO:)
  * @returns {PendingNote | null}
  */
-export function applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now, inhibitLogging = false }) {
+export function applyTransitionEffects(heading, fromTodo, sequence, { settings, keepWhenNoTodo, now, inhibitLogging = false, ownSequence = sequence }) {
   const toTodo = heading.todo;
   const isDone = (/** @type {string | null} */ k) => k !== null && sequence.doneKeywords.includes(k);
   const isTodo = (/** @type {string | null} */ k) => k !== null && sequence.todoKeywords.includes(k) && !isDone(k);
@@ -93,7 +95,7 @@ export function applyTransitionEffects(heading, fromTodo, sequence, { settings, 
   const leave = fromTodo === null ? null : halves(specs[fromTodo]).leave;
   const dolog = enter || leave;
   const becameDone = isDone(toTodo) && !isDone(fromTodo);
-  const repeated = becameDone && shiftEntryRepeaters(heading, now);
+  const repeated = becameDone && entryRepeats(heading);
 
   if (logging && dolog && !inhibitLogging) {
     // org-log-repeat `note` on a repeating task turns even a time stamp into a note: Emacs sets one log item up for both
@@ -108,7 +110,7 @@ export function applyTransitionEffects(heading, fromTodo, sequence, { settings, 
   if (repeated) {
     // A repeating task is not finished: its dates move on and the state goes back to where the sequence starts.
     const repeatTo = heading.properties.REPEAT_TO_STATE?.trim();
-    heading.todo = repeatTo && [...sequence.todoKeywords, ...sequence.doneKeywords].includes(repeatTo) ? repeatTo : fromTodo === null ? null : sequence.todoKeywords[0] || null;
+    heading.todo = repeatTo && [...sequence.todoKeywords, ...sequence.doneKeywords].includes(repeatTo) ? repeatTo : fromTodo === null ? null : ownSequence.type === 'type' ? fromTodo : ownSequence.todoKeywords[0] || null;
     heading.planning.closed = null;
     if (settings.logSpecs && heading.todo !== toTodo) {
       // a LOGGING property is read again by the org-todo that moves the task back, so the state it enters logs by that property
@@ -118,14 +120,18 @@ export function applyTransitionEffects(heading, fromTodo, sequence, { settings, 
         else insertLogLines(heading, formatStateLogLine(heading.todo, toTodo, timestamp), intoDrawer);
       }
     }
-    if (settings.logRepeat) {
-      setProperty(heading, 'LAST_REPEAT', timestamp);
-      if (!dolog && !pendingNote && !inhibitLogging) {
-        if (settings.logRepeat === 'note') pendingNote = { heading, fromTodo, toTodo, timestamp, kind: 'state' };
-        else insertLogLines(heading, formatStateLogLine(toTodo, fromTodo ?? '', timestamp), intoDrawer);
-      }
-    } else if (Object.keys(heading.properties).includes('LAST_REPEAT')) {
-      deleteProperty(heading, 'LAST_REPEAT');
+    // Emacs records LAST_REPEAT when org-log-repeat is set or the entry has a clock line
+    if (settings.logRepeat || hasClockLine(heading)) setProperty(heading, 'LAST_REPEAT', timestamp);
+    if (settings.logRepeat && !dolog && !pendingNote && !inhibitLogging) {
+      if (settings.logRepeat === 'note') pendingNote = { heading, fromTodo, toTodo, timestamp, kind: 'state' };
+      else insertLogLines(heading, formatStateLogLine(toTodo, fromTodo ?? '', timestamp), intoDrawer);
+    }
+    // the time stamps move on last, as in Emacs, so that its error (an hour repeater without a time) leaves the rest done; the log note is still due
+    try {
+      shiftEntryRepeaters(heading, now);
+    } catch (err) {
+      if (err instanceof RepeatError) err.pendingNote = pendingNote;
+      throw err;
     }
   }
   return pendingNote;

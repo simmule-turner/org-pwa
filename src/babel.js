@@ -1,6 +1,7 @@
 // @ts-check
 import { inspect } from './js-inspect.js';
 import { layoutTable } from './org-table-layout.js';
+import { Flt, Sym } from './elisp-data.js';
 
 /**
  * Org Babel for JavaScript blocks: the pure part. Header arguments, `:var`
@@ -54,7 +55,7 @@ export function parseHeaderArgs(params) {
 }
 
 const COLLECT_WORDS = new Set(['value', 'output']);
-const FORMAT_WORDS = new Set(['table', 'vector', 'list', 'scalar', 'verbatim', 'raw', 'html', 'latex', 'org', 'code', 'pp', 'drawer']);
+const FORMAT_WORDS = new Set(['table', 'vector', 'list', 'scalar', 'verbatim', 'raw', 'html', 'latex', 'org', 'code', 'pp', 'drawer', 'wrap']);
 
 /**
  * `:results` words -> { collect, words, handling, silent, unsupported }.  `collect` is `value` (the default) or `output`;
@@ -97,7 +98,7 @@ export function timeoutMs(args) {
 
 // ---- :var -------------------------------------------------------------------
 
-const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[A-Za-z_][\w.-]*\((?:[^()"]|"(?:[^"\\]|\\.)*"|\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))*\)(?:\[[^\]]*\])?|[^\s,[]+(?:\[[^\]]*\])?)/g;
+const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[A-Za-z_][\w.-]*\((?:[^()"]|"(?:[^"\\]|\\.)*"|\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))*\)(?:\[[^\]]*\])?|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\)|[^\s,[]+(?:\[[^\]]*\])?)/g;
 
 /**
  * A `:prologue` / `:epilogue` value as Org reads it: text in double quotes is a Lisp string (`\n`, `\"` and `\\` escapes),
@@ -114,12 +115,30 @@ export function headerText(value) {
 export const HLINE = Symbol('hline');
 
 /**
- * A table cell as a value: numbers become numbers (`org-babel--string-to-number`), everything else stays text.
+ * A number as Org reads it (`org-babel--string-to-number`): only digits, `e`, `.`, `+` and `-` with no blanks inside, and what Lisp's
+ * reader takes for a number. A float (`1.0`, `.5`, `1e3`) is an `Flt`, so a Lisp block sees a float; `5.` is the integer 5.
+ * @param {string} text
+ * @returns {number | Flt | null}
+ */
+export function numberOf(text) {
+  const t = text.trim();
+  if (!/^[0-9e.+ -]+$/.test(text) || /\s/.test(t)) return null;
+  if (/^[-+]?\d+\.?$/.test(t)) return Number(t.replace(/\.$/, ''));
+  if (/^[-+]?(?:\d+\.\d+|\.\d+|\d+)(?:e[-+]?\d+)?$/.test(t) && /[.e]/.test(t)) return new Flt(Number(t));
+  return null;
+}
+
+/**
+ * A table cell as a value (`org-babel-read`): a number (see `numberOf`), a text in double quotes without quotes inside is that text,
+ * everything else stays text.
  * @param {string} text
  */
 export function cellValue(text) {
-  const t = text.trim();
-  return t !== '' && /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t) ? Number(t) : t;
+  const n = numberOf(text);
+  if (n !== null) return n;
+  const quoted = /^\s*"(.*)"\s*$/.exec(text);
+  if (quoted && !/[^\\]"/.test(quoted[1]) && !quoted[1].startsWith('"')) return quoted[1].replace(/\\([\s\S])/g, (_, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+  return text.trim();
 }
 
 /** The rows of the table named by a `#+NAME:` line in `lines`, or null.  A rule row is `HLINE`.
@@ -177,17 +196,33 @@ export function indexList(index, list) {
  * (anything but `no`), or when it is the only row before the table's one rule; the first column is left out for any
  * `:rownames` but `no`, and then every rule goes; the rules go unless `:hlines yes`.
  * @param {any[]} rows
- * @param {{ colnames?: string, rownames?: string, hlines?: string }} options
+ * @param {{ colnames?: string, rownames?: string, hlines?: string, names?: TableNames }} options `names` receives the column and row names taken out
+ *        (for the last variable that had them), which a result table gets back (`org-babel-reassemble-table`)
  */
-export function shapeTable(rows, { colnames, rownames, hlines } = {}) {
+export function shapeTable(rows, { colnames, rownames, hlines, names } = {}) {
   if (!Array.isArray(rows)) return rows;
+  const rule = (/** @type {unknown} */ r) => r === HLINE || r === 'hline' || (r instanceof Sym && r.name === 'hline');
   let out = rows;
-  const header = out.length > 1 && out[1] === HLINE && !out.slice(2).includes(HLINE);
-  if (colnames !== 'no' && (colnames !== undefined || header)) out = out[1] === HLINE ? out.slice(2) : out.slice(1);
-  if (rownames !== undefined && rownames !== 'no') out = out.filter((r) => r !== HLINE).map((r) => (Array.isArray(r) ? r.slice(1) : r));
-  if (hlines !== 'yes') out = out.filter((r) => r !== HLINE);
+  const header = out.length > 1 && rule(out[1]) && !out.slice(2).some(rule);
+  if (colnames !== 'no' && (colnames !== undefined || header)) {
+    if (names) names.col = /** @type {unknown[]} */ (out[0]);
+    out = rule(out[1]) ? out.slice(2) : out.slice(1);
+  }
+  if (rownames !== undefined && rownames !== 'no') {
+    const bad = out.find((r) => !rule(r) && !Array.isArray(r));
+    if (bad !== undefined) throw new Error(`(wrong-type-argument listp ${JSON.stringify(String(bad))})`); // a row without cells has no first column
+    out = out.filter((r) => !rule(r));
+    if (names) names.row = out.map((r) => r[0]);
+    out = out.map((r) => r.slice(1));
+  }
+  if (hlines !== 'yes') out = out.filter((r) => !rule(r));
   return out;
 }
+
+/** @typedef {{ col?: unknown[], row?: unknown[] }} TableNames */
+
+/** The names a table result gets back: only those of a header argument that is given (`org-babel-pick-name`). @param {{ colnames?: string, rownames?: string }} args @param {TableNames} names @returns {TableNames} */
+export const pickedNames = (args, names) => ({ col: args.colnames !== undefined ? names.col : undefined, row: args.rownames !== undefined ? names.row : undefined });
 
 /** What a script sees of a table value: a rule is the string `"hline"` (ob-js writes a bare `hline`, which Node cannot run). @param {unknown} v @returns {unknown} */
 function scriptValue(v) {
@@ -207,7 +242,7 @@ function readQuotedList(text) {
       return list;
     }
     if (t[0] === '"') return JSON.parse(t);
-    if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(t)) return Number(t);
+    if (numberOf(t) !== null) return numberOf(t);
     if (t === 'nil') return [];
     throw new Error(`:var: cannot read "${t}" in ${text}`);
   };
@@ -220,7 +255,7 @@ function readQuotedList(text) {
  *  undefined (`true`, `false`, `nil` and `null` are read as those words, which Org would call missing references).
  * @param {any} [varSpecs]
  * @param {any} [lookupTable]
- * @param {{ colnames?: string, rownames?: string, hlines?: string }} [tableOptions] */
+ * @param {{ colnames?: string, rownames?: string, hlines?: string, names?: TableNames }} [tableOptions] */
 export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
   /** @type {Record<string, unknown>} */ const vars = {};
   for (const spec of varSpecs || []) {
@@ -231,20 +266,22 @@ export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
     while ((m = assignment.exec(text)) !== null) {
       matched++;
       const [, name, raw] = m;
-      if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(raw)) vars[name] = Number(raw);
+      if (numberOf(raw) !== null) vars[name] = numberOf(raw);
       else if (/^"[\s\S]*"$/.test(raw)) vars[name] = JSON.parse(raw);
       else if (/^'[\s\S]*'$/.test(raw) && !raw.startsWith("'(")) vars[name] = raw.slice(1, -1);
-      else if (raw.startsWith("'(")) vars[name] = readQuotedList(raw);
-      else {
+      else if (raw.startsWith("'(")) {
+        const evaluated = lookupTable ? lookupTable(raw) : null; // Lisp reads it, so symbols are allowed
+        const list = evaluated && !Array.isArray(evaluated) ? evaluated.value : readQuotedList(raw);
+        vars[name] = Array.isArray(list) ? shapeTable(list, tableOptions) : list;
+      } else {
         // a name is looked up first, as Org resolves a reference; only a name nothing has is read as a word
         const parts = /^([^()[\]]+)(?:\(([\s\S]*)\))?(?:\[(.*)\])?$/.exec(raw);
         const tableName = parts ? parts[1] : raw;
-        const found = lookupTable ? lookupTable(tableName, parts?.[2]) : null;
-        if (Array.isArray(found)) {
-          const picked = parts?.[3] !== undefined ? indexList(parts[3], found) : found;
-          vars[name] = scriptValue(shapeTable(picked, tableOptions));
-        } else if (found) {
-          vars[name] = parts?.[3] !== undefined && Array.isArray(found.value) ? indexList(parts[3], found.value) : found.value;
+        const found = lookupTable ? lookupTable(tableName, parts?.[2], parts?.[3] === '') : null;
+        if (found) {
+          const rows = Array.isArray(found) ? found : found.value;
+          const picked = parts?.[3] && Array.isArray(rows) ? indexList(parts[3], rows) : rows;
+          vars[name] = scriptValue(Array.isArray(picked) ? shapeTable(picked, tableOptions) : picked);
         } else if (raw === 'true' || raw === 't') vars[name] = true;
         else if (raw === 'false') vars[name] = false;
         else if (raw === 'nil' || raw === 'null') vars[name] = null;
@@ -368,7 +405,7 @@ export function layoutResult(result, spec, { wrap = null, lang = 'js', cells = (
   if (w.has('org')) return block('#+begin_src org', '#+end_src', true);
   if (w.has('code')) return block('#+begin_src ' + lang, '#+end_src', true);
   if (w.has('raw')) return lines;
-  if (w.has('drawer')) return block(':results:', ':end:', false);
+  if (w.has('drawer') || w.has('wrap')) return block(':results:', ':end:', false); // `wrap` without a :wrap value is a drawer
   return isList ? lines : examplify(lines);
 }
 
@@ -406,6 +443,18 @@ export function resultsEnd(lines, at) {
   return k;
 }
 
+/** The indentation of the list item a block at `at` is in, or -1: results after the item (at its own indentation or less) are not the block's. @param {string[]} lines @param {number} at */
+function listItemIndent(lines, at) {
+  const here = (/^\s*/.exec(lines[at]) || [''])[0].length;
+  for (let i = at - 1; i >= 0 && here > 0; i--) {
+    if (lines[i].trim() === '') continue;
+    const indent = (/^\s*/.exec(lines[i]) || [''])[0].length;
+    if (indent >= here) continue;
+    return /^\s*(?:[-+*]|\d+[.)])\s/.test(lines[i]) ? indent : -1;
+  }
+  return -1;
+}
+
 /** The edit that puts `resultLines` under a block: `{ start, removeCount, insert }`
  *  for splicing into the heading's body lines. An existing `#+RESULTS:` after the
  *  block (blank lines allowed between) is replaced; otherwise a new one is added
@@ -415,9 +464,11 @@ export function resultsEnd(lines, at) {
  *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`;
  *  `name` is the block's `#+NAME:`, which Org writes after `#+RESULTS:`. */
 export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null), handling = 'replace', name = '' } = {}) {
-  const indent = (/^(\s*)/.exec(bodyLines[block.lineIndex]) || ['', ''])[1];
-  /** @param {string} l */
-  const pad = (l) => (l === '' ? l : indent + l);
+  const indentOf = (/** @type {string} */ l) => (/^(\s*)/.exec(l) || ['', ''])[1];
+  const indent = indentOf(bodyLines[block.lineIndex]);
+  /** The results of a block keep the indentation of their `#+RESULTS:` line. @param {string} lead @returns {(l: string) => string} */
+  const padWith = (lead) => (l) => (l === '' ? l : lead + l);
+  let pad = padWith(indent);
   const blockEnd = block.lineIndex + block.lineCount;
   const label = name ? ' ' + name : '';
   // A named block owns the `#+RESULTS: name` line (here: in this section); an unnamed one the unnamed `#+RESULTS:` right after it.
@@ -433,9 +484,10 @@ export function placeResults(bodyLines, block, resultLines, { hash = /** @type {
   } else {
     let k = blockEnd;
     while (k < bodyLines.length && bodyLines[k].trim() === '') k++;
-    if (k < bodyLines.length && RESULTS_LINE_RE.test(bodyLines[k]) && /^\s*#\+RESULTS(?:\[[^\]]*\])?:\s*$/i.test(bodyLines[k])) j = k;
+    if (k < bodyLines.length && RESULTS_LINE_RE.test(bodyLines[k]) && /^\s*#\+RESULTS(?:\[[^\]]*\])?:\s*$/i.test(bodyLines[k]) && indentOf(bodyLines[k]).length > listItemIndent(bodyLines, block.lineIndex)) j = k;
   }
   if (j >= 0) {
+    pad = padWith(indentOf(bodyLines[j]));
     const end = resultsEnd(bodyLines, j);
     if (handling === 'append') {
       const old = bodyLines.slice(j + 1, end);

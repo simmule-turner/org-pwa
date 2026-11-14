@@ -2743,6 +2743,92 @@
    "emacs": "* Tr\n#+TBLFM: $2=1\n| x | 1 |\n| a | 1 |\n#+TBLFM: $2=1\n"
   },
   {
+   "init": "* Tr\n| x | y |\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |\n| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| x | y |\n| z | w |\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n| h | h |\n|---+---|\n| x | y |\n",
+   "type": "table-line",
+   "template": "| a | b |\n|---+---|\n| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| h | h |\n|---+---|\n| x | y |\n| a | b |\n|---+---|\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n| 1 |\n|---|\n| 9 |\n| 2 |\n#+TBLFM: @2$1=9\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9::@3$1=@2$1+1\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "ERROR Args out of range: [nil 0 2 3 4], 5"
+  },
+  {
+   "init": "* Tr\n  | a | b |\n  | c | d |\n",
+   "type": "table-line",
+   "template": "| e | f |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n  | a | b |\n  | c | d |\n  | e | f |\n"
+  },
+  {
+   "init": "* Tr\n  | h1 | h2 |\n  |----+----|\n  | c | d |\n",
+   "type": "table-line",
+   "template": "| e | f |\n| g | h |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n  | h1 | h2 |\n  |----+----|\n  | c  | d  |\n  | e  | f  |\n  | g  | h  |\n"
+  },
+  {
+   "init": "* Tr\n\t| a | b |\n",
+   "type": "table-line",
+   "template": "| e | f |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n\t| a | b |\n\t| e | f |\n"
+  },
+  {
+   "init": "| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [],
+   "opts": {},
+   "emacs": "| 1 |\n|---|\n| 9 |\n| 2 |\n#+TBLFM: @2$1=9\n"
+  },
+  {
+   "init": "| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [],
+   "opts": {},
+   "emacs": "| 1 |\n|---|\n| 9 |\n| 2 |\n| 3 |\n#+TBLFM: @2$1=9\n"
+  },
+  {
    "init": "* Tr\n",
    "type": "table-line",
    "template": "| a | b |",
@@ -2871,6 +2957,182 @@
     "prepend": true
    },
    "emacs": "* Tr\n#+TBLFM: $2=1\n| a | 1 |\n| x | 1 |\n#+TBLFM: $2=1\n"
+  },
+  {
+   "init": "* Tr\n| x | y |\n| z | w |\n",
+   "type": "table-line",
+   "template": "| a | b |\n| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| a | b |\n| c | d |\n| x | y |\n| z | w |\n"
+  },
+  {
+   "init": "* Tr\n| h | h |\n|---+---|\n| x | y |\n",
+   "type": "table-line",
+   "template": "| a | b |\n|---+---|\n| c | d |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| h | h |\n|---+---|\n| a | b |\n|---+---|\n| c | d |\n| x | y |\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| 1 |\n|---|\n| 2 |\n| 9 |\n#+TBLFM: @3$1=9\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9::@3$1=@2$1+1\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "ERROR Args out of range: [nil 0 2 3 4], 5"
+  },
+  {
+   "init": "* Tr\n  | a | b |\n  | c | d |\n",
+   "type": "table-line",
+   "template": "| e | f |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| e | f |\n| a | b |\n| c | d |\n"
+  },
+  {
+   "init": "* Tr\n  | h1 | h2 |\n  |----+----|\n  | c | d |\n",
+   "type": "table-line",
+   "template": "| e | f |\n| g | h |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n  | h1 | h2 |\n  |----+----|\n  | e  | f  |\n  | g  | h  |\n  | c  | d  |\n"
+  },
+  {
+   "init": "* Tr\n\t| a | b |\n",
+   "type": "table-line",
+   "template": "| e | f |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n| e | f |\n| a | b |\n"
+  },
+  {
+   "init": "| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "| 1 |\n|---|\n| 2 |\n| 9 |\n#+TBLFM: @3$1=9\n"
+  },
+  {
+   "init": "| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "| 1 |\n|---|\n| 2 |\n| 3 |\n| 9 |\n#+TBLFM: @4$1=9\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I-1"
+   },
+   "emacs": "* Tr\n| 1 |\n| 2 |\n|---|\n| 9 |\n#+TBLFM: @3$1=9\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I-1"
+   },
+   "emacs": "* Tr\n| 1 |\n| 2 |\n| 3 |\n|---|\n| 9 |\n#+TBLFM: @4$1=9\n"
+  },
+  {
+   "init": "* Tr\n  | 1 |\n  |---|\n  | 9 |\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I-1"
+   },
+   "emacs": "* Tr\n  | 1 |\n  | 2 |\n  |---|\n  | 9 |\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "* Tr\n| 1 |\n|---|\n| 2 |\n| 9 |\n#+TBLFM: @3$1=9\n"
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: @2$1=9\n",
+   "type": "table-line",
+   "template": "| 2 |\n| 3 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "* Tr\n| 1 |\n|---|\n| 2 |\n| 3 |\n| 9 |\n#+TBLFM: @4$1=9\n"
+  },
+  {
+   "init": "* Tr\n  | 1 |\n  |---|\n  | 9 |\n",
+   "type": "table-line",
+   "template": "| 2 |",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "tableLinePos": "I+1"
+   },
+   "emacs": "* Tr\n  | 1 |\n  |---|\n  | 2 |\n  | 9 |\n"
   },
   {
    "init": "* Tr\n| h1 | h2 |\n|----+----|\n| x | y |\n| z | w |\n|----+----|\n| t | u |\n",
@@ -3143,6 +3405,36 @@
    "emacs": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n- new\n"
   },
   {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n  - a\n  - b\n  - X\n    Line 2\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "X\nLine 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n  - a\n  - b\n  - X\n    Line 2\n"
+  },
+  {
+   "init": "* Tr\n- a\n- b\n",
+   "type": "item",
+   "template": "- X\n  Line 2\n  Line 3",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n- a\n- b\n- X\n  Line 2\n  Line 3\n"
+  },
+  {
    "init": "* Tr\n+ a\n+ b\n",
    "type": "item",
    "template": "new",
@@ -3311,6 +3603,42 @@
    "emacs": "* Tr\n- new\n#+begin_src sh\n- not a list\n#+end_src\ntext\n"
   },
   {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "X\nLine 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n- a\n- b\n",
+   "type": "item",
+   "template": "- X\n  Line 2\n  Line 3",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n  Line 3\n- a\n- b\n"
+  },
+  {
    "init": "* Tr\n+ a\n+ b\n",
    "type": "item",
    "template": "new",
@@ -3477,6 +3805,42 @@
     "emptyLines": 1
    },
    "emacs": "* Tr\n#+begin_src sh\n- not a list\n#+end_src\ntext\n\n- new\n\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n  - a\n  - b\n\n  - X\n    Line 2\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "X\nLine 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n  - a\n  - b\n\n  - X\n    Line 2\n"
+  },
+  {
+   "init": "* Tr\n- a\n- b\n",
+   "type": "item",
+   "template": "- X\n  Line 2\n  Line 3",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1
+   },
+   "emacs": "* Tr\n- a\n- b\n\n- X\n  Line 2\n  Line 3\n"
   },
   {
    "init": "* Tr\n+ a\n+ b\n",
@@ -3660,6 +4024,77 @@
     "prepend": true
    },
    "emacs": "* Tr\n\n- new\n\n#+begin_src sh\n- not a list\n#+end_src\ntext\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n  - a\n  - b\n",
+   "type": "item",
+   "template": "X\nLine 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n\n  - a\n  - b\n"
+  },
+  {
+   "init": "* Tr\n- a\n- b\n",
+   "type": "item",
+   "template": "- X\n  Line 2\n  Line 3",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "emptyLines": 1,
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n  Line 3\n\n- a\n- b\n"
+  },
+  {
+   "init": "* Tr\n    + a\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n    + a\n    + X\n      Line 2\n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "** ",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {},
+   "emacs": "* Tr\n** \n"
+  },
+  {
+   "init": "* Tr\n",
+   "type": "entry",
+   "template": "** ",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n** \n"
   }
  ]
 }

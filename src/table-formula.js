@@ -5,7 +5,7 @@
  *   dataRows: any[], dataRowCount: number, colCount: number, hlinePositions: HlineBoundary[],
  *   namedTables?: Map<string, import('./types.js').TableRow[]>,
  *   complexDomain?: any, numericMode?: any, durationMode?: boolean, emptyMode?: string, forceNumeric?: boolean, angleMode?: string,
- *   constants?: Record<string, any>, userCall?: ((name: string, args: any[]) => any) | undefined, now?: Date,
+ *   constants?: Record<string, any>, properties?: ((name: string) => string | null | undefined) | undefined, userCall?: ((name: string, args: any[]) => any) | undefined, now?: Date,
  *   currentRow?: number, currentCol?: number, probe?: { nonNumeric: boolean }, literal?: boolean, durationFlag?: string | null, hourZeroPad?: boolean,
  * }} FormulaCtx
  */
@@ -91,8 +91,8 @@ import './calc-deriv.js'; // registers deriv and tderiv
 import './calc-prfac.js'; // registers prfac
 import { formatTimeString } from './format-time.js';
 import { run as runLisp } from './elisp.js';
-import { defun as defineLispFunction } from './elisp-core.js';
-import { Flt, print as printLisp, wrongType, NIL, Cons } from './elisp-data.js';
+import { defun as defineLispFunction, funcall as callLisp } from './elisp-core.js';
+import { Flt, print as printLisp, wrongType, NIL, Cons, equal as lispEqual, list as lispList } from './elisp-data.js';
 import { floatToString } from './elisp-data.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
@@ -343,7 +343,7 @@ export function setUserTableFunctions(names = []) {
 }
 /** @param {string} name */
 export function isBuiltinFormulaName(name) {
-  return name in AGGREGATE_FUNCTIONS || name in SCALAR_FUNCTIONS || name === 'string' || name === 'if';
+  return name in AGGREGATE_FUNCTIONS || name in SCALAR_FUNCTIONS || name === 'string' || name === 'typeof' || name === 'subvec' || name === 'if';
 }
 
 const AGGREGATE_FUNCTIONS = {
@@ -835,7 +835,8 @@ function parseRef(token) {
  *  surface as a status message, not meant to pinpoint an exact
  * @param {string[]} tokens
  *  column the way a real compiler's own diagnostics would. */
-function parseExpression(tokens) {
+/** @param {string[]} tokens @param {boolean} [allowNames] a bare name is a value (an unassigned variable) instead of an error */
+function parseExpression(tokens, allowNames = false) {
   let pos = 0;
   function peek() {
     return tokens[pos];
@@ -978,6 +979,7 @@ function parseExpression(tokens) {
       if (name === 'e') return { type: 'number', value: Math.E, float: true, symbolic: 'e' };
       if (name === 'i') return { type: 'complexLiteral', re: { type: 'number', value: 0 }, im: { type: 'number', value: 1 } };
       if (name === 'inf') return { type: 'number', value: Infinity };
+      if (name === 'nan' && peek() !== '(') return { type: 'number', value: NaN };
       if (name === 'remote' && peek() === '(') {
         // remote(NAME, REF): REF read in the table with that #+NAME:
         next();
@@ -1020,11 +1022,19 @@ function parseExpression(tokens) {
         }
         return { type: 'formatTimeCall', args };
       }
-      if (name === 'string') {
+      if (name === 'string' || name === 'typeof' || name === 'subvec') {
         expect('(');
-        /** @type {any} */ const arg = parseExpr();
+        /** @type {any[]} */ const callArgs = [];
+        if (peek() !== ')') {
+          callArgs.push(parseExpr());
+          while (peek() === ',') {
+            next();
+            callArgs.push(parseExpr());
+          }
+        }
         expect(')');
-        return { type: 'unknownCall', name: rawName, args: [arg] }; // Calc has no string(): the call stays, its argument read as Calc reads it
+        if (name === 'subvec' ? callArgs.length < 2 || callArgs.length > 3 : callArgs.length !== 1) return { type: 'unknownCall', name: rawName, args: callArgs }; // another argument count: the call stays as written
+        return { type: name === 'string' ? 'stringFn' : name === 'typeof' ? 'typeofCall' : 'subvecCall', name: rawName, args: callArgs };
       }
       if (name === 'if') {
         expect('(');
@@ -1056,6 +1066,7 @@ function parseExpression(tokens) {
       }
       const isAggregate = name in AGGREGATE_FUNCTIONS;
       const isScalar = name in SCALAR_FUNCTIONS;
+      if (allowNames && peek() !== '(') return { type: 'name', name: rawName };
       expect('(');
       if (!isAggregate && !isScalar) {
         // Calc leaves a function it does not know as written: `foo(1)` stays `foo(1)`. Only the algebra path can show that.
@@ -1254,9 +1265,22 @@ function readCellValue(dataRows, row, col, ctx) {
     const complex = parseComplexCell(text, ctx.complexDomain, ctx.angleMode === 'degrees');
     if (complex) return complexResult(complex, ctx);
   }
+  const folded = ctx.forceNumeric || ctx.durationMode || text.trim() === '' || !Number.isNaN(Number(text.trim())) ? null : calcNumberOf(text);
+  if (folded !== null) return folded;
   const number = readCellNumber(dataRows, row, col, ctx.emptyMode, ctx.forceNumeric);
   if (Number.isNaN(number) && text.trim() !== '' && ctx.probe) ctx.probe.nonNumeric = true; // text that is not a number: Calc reads it as algebra
   return number;
+}
+
+/** Text that Calc reads as a plain number, such as 2012-12 (a subtraction), or null. @param {string} text @returns {number | null} */
+function calcNumberOf(text) {
+  try {
+    const form = Sym.normalize(Sym.parseExpression(text));
+    return form.t === 'int' || form.t === 'flt' ? Sym.toNumber(form) : null;
+  } catch (err) {
+    if (err instanceof Sym.SymbolicSyntaxError || err instanceof Sym.SymbolicUnsupported) return null;
+    throw err;
+  }
 }
 
 /** Both ends of a range. A range between two hlines counts the rows between them, so the later hline stands for the row before it and the
@@ -1295,6 +1319,14 @@ function resolveRef(ref, currentRow, dataRowCount, colCount, currentCol, hlinePo
   return { row, col };
 }
 
+/** The result of Calc's string(): text that is shown as it is, not as a vector of character codes. */
+class RawText {
+  /** @param {string} text */
+  constructor(text) {
+    this.text = text;
+  }
+}
+
 /** True for a mathjs Fraction or BigNumber value -- both instance
  *  types set their own `.isFraction`/`.isBigNumber` tag, the standard
  *  way to type-check a mathjs value without importing its class
@@ -1313,7 +1345,7 @@ function isMathjsValue(v) {
  * @param {any} [v]
  *  top-level date-arithmetic docs) rather than a plain number. */
 function isTaggedValue(v) {
-  return v !== null && typeof v === 'object' && !isMathjsValue(v) && v.isComplex !== true && v.isVector !== true;
+  return v !== null && typeof v === 'object' && !isMathjsValue(v) && v.isComplex !== true && v.isVector !== true && !(v instanceof RawText);
 }
 
 /** Calc's own boolean convention -- a non-zero number is true, zero
@@ -1638,7 +1670,7 @@ function vectorScalarCall(name, argValues, ctx) {
     case 'trn': return vectorResult(vTrn(a), ctx);
     case 'tr': return vectorResult(vTrace(a, D, degrees), ctx);
     case 'cross': return vectorResult(vCross(a, argValues[1], D, degrees), ctx);
-    case 'vlen': return vLength(a);
+    case 'vlen': if (typeof a === 'number' && Number.isNaN(a) && ctx.probe && ctx.probe.nonNumeric) throw new Error('vlen of a name stays as written'); return typeof a === 'string' ? Array.from(a).length : isVector(a) ? vLength(a) : 0; // a number has no elements; Calc says 0
     case 'abs': return vectorResult(vAbs(a, D, degrees), ctx);
     default: throw new Error(`${name} does not take a vector`);
   }
@@ -1701,6 +1733,60 @@ function complexScalarCall(name, argValues, ctx) {
   return complexResult(result, ctx);
 }
 
+/** The character codes a Calc string or vector of integers holds, or null for anything else. @param {any} v @param {FormulaCtx} ctx @returns {number[] | null} */
+function charCodesOf(v, ctx) {
+  if (typeof v === 'string') return Array.from(v, (ch) => /** @type {number} */ (ch.codePointAt(0)));
+  if (!isVector(v)) return null;
+  const codes = [];
+  for (const item of v.items) {
+    if (!isReal(item) || item.f) return null;
+    codes.push(Number(ctx.complexDomain.toNumber(item.x)));
+  }
+  return codes;
+}
+
+/** What string() shows: the text of a string or of a vector of character codes up to 255, control characters as ^@; null for anything else.
+ * @param {any} v @param {FormulaCtx} ctx @returns {string | null} */
+function calcStringText(v, ctx) {
+  const codes = charCodesOf(v, ctx);
+  if (codes === null || codes.some((c) => !Number.isInteger(c) || c < 0 || c > 255)) return null;
+  return codes.map((c) => (c < 32 || c === 127 ? '^' + String.fromCharCode(c + 64) : String.fromCharCode(c))).join('');
+}
+
+/** Calc's typeof(): 1 integer, 2 fraction, 3 float, 4 hms, 5 complex, 10 and 11 dates, 12 inf, uinf and nan, 100 a name, 101 a vector, 102 a matrix.
+ * @param {any} v @param {FormulaNode} argNode @param {FormulaCtx} ctx */
+function calcTypeOf(v, argNode, ctx) {
+  if (argNode.type === 'ref' && typeof v === 'number' && Number.isNaN(v) && ctx.probe && ctx.probe.nonNumeric) return 100; // a name
+  if (typeof v === 'bigint') return 1;
+  if (typeof v === 'number') {
+    if (Number.isNaN(v) || v === Infinity) return 12;
+    if (v === -Infinity) return new RawText('neg');
+    return Number.isInteger(v) && !exprIsFloat(argNode, ctx) ? 1 : 3;
+  }
+  if (isMathjsValue(v)) return v.isFraction ? 2 : v.isInteger() && !exprIsFloat(argNode, ctx) ? 1 : 3;
+  if (typeof v === 'string') return 101;
+  if (isVector(v)) return v.items.length > 0 && v.items.every(isVector) ? 102 : 101;
+  if (isComplex(v)) return 5;
+  if (isTaggedValue(v)) return v.type === 'date' ? (Number.isInteger(v.days + CALC_EPOCH_OFFSET) ? 10 : 11) : 4;
+  throw new Error('typeof: unknown kind of value');
+}
+
+/** Calc's subvec(VEC, START[, END]): the elements START to END-1 (1-based; zero or negative counts from the end). Anything else stays as written.
+ * @param {any[]} args @param {FormulaCtx} ctx */
+function calcSubvec(args, ctx) {
+  const [vec, startValue, endValue] = args;
+  const asInteger = (/** @type {any} */ x) => { const n = typeof x === 'bigint' ? Number(x) : x; if (typeof n !== 'number' || !Number.isInteger(n)) throw new Error('subvec needs whole numbers'); return n; };
+  let start = asInteger(startValue);
+  let end = endValue === undefined ? 0 : asInteger(endValue);
+  const items = typeof vec === 'string' ? Array.from(vec, (ch) => toReal(/** @type {number} */ (ch.codePointAt(0)), ctx.complexDomain)) : isVector(vec) ? vec.items : null;
+  if (items === null) throw new Error('subvec needs a vector');
+  const len = items.length;
+  if (start <= 0) start += len + 1;
+  if (end <= 0) end += len + 1;
+  if (start > len || end <= start) return makeVector([]);
+  return makeVector(items.slice(start - 1, Math.min(end, len + 1) - 1));
+}
+
 /**
  * @param {any} node
  * @param {FormulaCtx} ctx
@@ -1712,7 +1798,15 @@ function complexScalarCall(name, argValues, ctx) {
     case 'cellIndex':
       return wrapNumericLiteral(node.which === 'row' ? ctx.currentRow : ctx.currentCol, ctx, false);
     case 'string':
-      return node.value;
+      return /[@$]/.test(node.value) ? substituteReferences(node.value, ctx, false) : node.value; // Org pastes the fields in before Calc reads the text, inside quotes too
+    case 'name': return new RawText(node.name); // a variable that has no value stays as it is written
+    case 'stringFn': {
+      const text = calcStringText(evaluateAst(node.args[0], ctx), ctx);
+      if (text === null) throw new Error('string() leaves what is not a string as written');
+      return new RawText(text);
+    }
+    case 'typeofCall': return calcTypeOf(evaluateAst(node.args[0], ctx), node.args[0], ctx);
+    case 'subvecCall': return calcSubvec(node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx)), ctx);
     case 'vectorLiteral': {
       const D = ctx.complexDomain;
       return makeVector(node.items.map((/** @type {any} */ item) => vectorOperand(evaluateAst(item, ctx), D)));
@@ -1827,7 +1921,7 @@ function complexScalarCall(name, argValues, ctx) {
       throw new Error(`Unknown operator "${node.op}"`);
     }
     case 'ref': {
-      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(node.remote, ctx));
+      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(remoteTableName(node.remote, ctx), ctx));
       const rowKind = node.ref.row?.type;
       if (node.ref.col === null && (rowKind === 'hline' || rowKind === 'hlineRel')) return 0; // a hline alone holds no field: Emacs reads it as 0
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
@@ -1837,11 +1931,20 @@ function complexScalarCall(name, argValues, ctx) {
       const value = (ctx.constants || {})[node.name];
       const text = constantText(ctx, node.name);
       if (value === undefined && text === undefined) throw new Error(`Undefined constant "$${node.name}" -- add it to a #+CONSTANTS: line`);
-      if (value === undefined) return evaluateAst(parseExpression(tokenize(/** @type {string} */ (text))), ctx); // Calc reads the text
+      if (value === undefined) { // Calc reads the text
+        const source = constantSource(/** @type {string} */ (text), ctx);
+        try {
+          return evaluateAst(parseExpression(tokenize(source)), ctx);
+        } catch (err) {
+          const named = parseWithNames(source);
+          if (named === null) throw err;
+          return evaluateAst(named, ctx);
+        }
+      }
       return /[.eE]/.test(text || '') ? wrapNumericLiteral(value, ctx, true) : value;
     }
     case 'range': {
-      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(node.remote, ctx));
+      if (node.remote) return evaluateAst({ ...node, remote: undefined }, remoteView(remoteTableName(node.remote, ctx), ctx));
       // a range is a flat vector of its non-blank cells, in reading order, as in org
       const D = ctx.complexDomain;
       return makeVector(collectRangeValues(node, ctx).map((/** @type {any} */ v) => vectorOperand(v, D)));
@@ -1856,6 +1959,11 @@ function complexScalarCall(name, argValues, ctx) {
       values = values.map((/** @type {any} */ v) => (typeof v === 'bigint' ? Number(v) : v));
       if (values.some(isVector)) values = flattenForAggregate(values, ctx);
       if (values.some(isComplex)) return complexResult(cAggregate(node.name, values, ctx.complexDomain, ctx.angleMode === 'degrees'), ctx);
+      if (values.length === 0) { // Calc: the largest of nothing is -inf, the smallest inf; a mean, median, variance or deviation of nothing stays as written
+        if (node.name === 'vmax') return -Infinity;
+        if (node.name === 'vmin') return Infinity;
+        if (/^v(mean|median|p?var|p?sdev|meane)$/.test(node.name)) throw new Error(`${node.name}([]) stays as written`);
+      }
       return fn(values);
     }
     case 'userCall': {
@@ -2578,6 +2686,9 @@ function isPlainAlgebra(node, allowUnknown = false) {
     case 'scalarCall':
       return node.name !== 'uconv' && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'unknownCall':
+    case 'stringFn':
+    case 'typeofCall':
+    case 'subvecCall':
       return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown));
     case 'dateCall':
       return allowUnknown && node.args.every((/** @type {FormulaNode} */ a) => isPlainAlgebra(a, allowUnknown)); // an impossible date stays as written
@@ -2702,13 +2813,15 @@ function exprIsFloat(node, ctx) {
       }
     }
     case 'ref': {
+      if (node.remote) return exprIsFloat({ ...node, remote: undefined }, remoteView(remoteTableName(node.remote, ctx), ctx));
       const { row, col } = resolveRef(node.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
       return cellTextIsFloat(ctx.dataRows, row, col);
     }
     case 'namedConstant': {
       const text = constantText(ctx, node.name);
       if (text === undefined) return false;
-      return /^[-+]?(?:\d+\.\d*|\.\d+|\d+[eE])/.test(text) || (Number.isNaN(Number(text)) && exprIsFloat(parseExpression(tokenize(text)), ctx));
+      const source = constantSource(text, ctx);
+      return /^[-+]?(?:\d+\.\d*|\.\d+|\d+[eE])/.test(source) || (Number.isNaN(Number(source)) && exprIsFloat(parseExpression(tokenize(source)), ctx));
     }
     case 'vectorLiteral': return node.items.some((/** @type {FormulaNode} */ item) => exprIsFloat(item, ctx));
     case 'dateCall': {
@@ -2722,6 +2835,7 @@ function exprIsFloat(node, ctx) {
     case 'call': {
       if (node.name === 'vcount') return false;
       const arg = node.arg;
+      if (arg.remote) return exprIsFloat({ ...node, arg: { ...arg, remote: undefined } }, remoteView(remoteTableName(arg.remote, ctx), ctx));
       if (arg.type === 'ref') {
         const { row, col } = resolveRef(arg.ref, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions);
         return cellTextIsFloat(ctx.dataRows, row, col);
@@ -2813,13 +2927,31 @@ defineLispFunction('orgtbl-ascii-draw', 3, 5, ([value, min, max, width, characte
   return bar;
 });
 
+/** org-lookup-first, org-lookup-last and org-lookup-all (org-define-lookup-function): the elements of R-LIST (S-LIST when it is nil) that stand where VAL matches an element of S-LIST by PREDICATE (`equal` when nil).
+ * @param {'first' | 'last' | 'all'} mode @param {import('./elisp.js').LObj[]} args */
+function orgLookup(mode, [val, sList, rList, predicate]) {
+  const matches = predicate === undefined || predicate === NIL ? lispEqual : (/** @type {import('./elisp.js').LObj} */ a, /** @type {import('./elisp.js').LObj} */ b) => callLisp(predicate, [a, b]) !== NIL;
+  let sl = sList;
+  let rl = rList === undefined || rList === NIL ? sList : rList;
+  /** @type {import('./elisp.js').LObj[]} */ const found = [];
+  while (sl instanceof Cons && !(mode === 'first' && found.length > 0)) {
+    if (matches(val, sl.car)) found.push(rl instanceof Cons ? rl.car : NIL);
+    sl = sl.cdr;
+    rl = rl instanceof Cons ? rl.cdr : NIL;
+  }
+  if (mode === 'all') return lispList(found);
+  return found.length === 0 ? NIL : mode === 'first' ? found[0] : found[found.length - 1];
+}
+defineLispFunction('org-lookup-first', 3, 4, (args) => orgLookup('first', args));
+defineLispFunction('org-lookup-last', 3, 4, (args) => orgLookup('last', args));
+defineLispFunction('org-lookup-all', 3, 4, (args) => orgLookup('all', args));
+
 /** A Lisp float as `prin1` prints it. @param {number} n */
 const lispFloat = (n) => floatToString(n);
 
-/** A reference's text as it goes into a '(...) formula: a quoted string, or a number under N. @param {string} text @param {boolean} numbers @param {boolean} literal @param {boolean} keepEmpty */
-function lispLiteral(text, numbers, literal, keepEmpty) {
+/** A reference's text as it goes into a '(...) formula: a quoted string, or a number under N. @param {string} text @param {boolean} numbers @param {boolean} literal */
+function lispLiteral(text, numbers, literal) {
   if (literal) return text;
-  if (text === '' && !keepEmpty) return '';
   if (numbers) {
     const { n, isFloat } = stringToNumber(text);
     return isFloat ? lispFloat(n) : String(n);
@@ -2830,35 +2962,105 @@ function lispLiteral(text, numbers, literal, keepEmpty) {
 const LISP_REF = '@(?:<+|>+|[-+]?\\d+|[-+]?I+(?:[-+]\\d+)?)(?:\\$(?:<+|>+|[-+]?\\d+))?|\\$(?:<+|>+|[-+]?\\d+)';
 const LISP_REF_RE = new RegExp(`@#|\\$#|(?:${LISP_REF})(?:\\.\\.(?:${LISP_REF}))?`, 'g');
 
+/** The `$name` constants and `$PROP_name` properties of a Lisp formula, pasted in as text as Org does (an unknown name becomes #UNDEFINED_NAME).
+ * @param {string} source @param {FormulaCtx} ctx @returns {string} */
+function substituteNames(source, ctx) {
+  return source.replace(/\bremote\([^)]*\)|\$([a-zA-Z][_a-zA-Z0-9]*)/g, (token, name) => {
+    if (name === undefined) return token;
+    const text = constantText(ctx, name);
+    if (text !== undefined) return text;
+    const value = (ctx.constants || {})[name];
+    return value === undefined ? '#UNDEFINED_NAME' : String(value);
+  });
+}
+
+/** A field as Org's org-table-make-reference writes it into a formula: `(text)` for Calc, a quoted string or number for Lisp, `nan` for an
+ *  empty field under E. @param {string} text @param {FormulaCtx} ctx @param {boolean} lisp */
+function fieldReference(text, ctx, lisp) {
+  const numbers = ctx.forceNumeric === true;
+  const keepEmpty = ctx.emptyMode !== 'omit';
+  if (lisp) return lispLiteral(text, numbers, ctx.literal === true);
+  if (!/\S/.test(text)) return !keepEmpty || numbers ? '(0)' : 'nan';
+  return `(${numbers ? numberText(text) : text})`;
+}
+
+/** `(number-to-string (string-to-number TEXT))`. @param {string} text */
+function numberText(text) {
+  const { n, isFloat } = stringToNumber(text);
+  return isFloat ? lispFloat(n) : String(n);
+}
+
+/** The text of a range of fields as Org writes it into a formula. @param {string[]} texts @param {FormulaCtx} ctx @param {boolean} lisp */
+function rangeReference(texts, ctx, lisp) {
+  const numbers = ctx.forceNumeric === true;
+  const keepEmpty = ctx.emptyMode !== 'omit';
+  const kept = keepEmpty ? texts : texts.filter((t) => /\S/.test(t));
+  if (lisp) return kept.map((t) => lispLiteral(t, numbers, ctx.literal === true)).join(' ');
+  return `[${kept.map((t) => (/\S/.test(t) ? (numbers ? numberText(t) : t) : !keepEmpty || numbers ? '0' : 'nan')).join(',')}]`;
+}
+
+/** The cells a reference or range token names, in the table `ctx` holds: one text for a field, a list for a range, or null for text that is no reference.
+ * @param {string} token @param {FormulaCtx} ctx @param {(row: number, col: number) => string} cell @returns {string | string[] | null} */
+function referencedFields(token, ctx, cell) {
+  const [fromText, toText] = token.split('..');
+  const from = parseRef(fromText);
+  if (!from) return null;
+  const start = resolveRef(from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, toText !== undefined);
+  if (toText === undefined) return cell(start.row, start.col);
+  const to = parseRef(toText);
+  if (!to) return null;
+  const end = resolveRef(to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
+  const texts = [];
+  for (let r = Math.min(start.row, end.row); r <= Math.max(start.row, end.row); r++) {
+    for (let c = Math.min(start.col, end.col); c <= Math.max(start.col, end.col); c++) texts.push(cell(r, c));
+  }
+  return texts;
+}
+
+/** The text of the field a remote() call names its table by, when that is a reference of this table (`remote($<, @>$1)`): the field's text. Else the name as written.
+ * @param {string} name @param {FormulaCtx} ctx @returns {string} */
+function remoteTableName(name, ctx) {
+  const text = name.trim();
+  if (!/^[@$]/.test(text)) return text;
+  const field = referencedFields(/^\$[-+]?\d+$/.test(text) ? '@0' + text : text, { ...ctx, currentRow: ctx.currentRow }, (row, col) => String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) ?? '').trim());
+  if (typeof field !== 'string' || field === '') throw new Error('Spreadsheet error: a table name needs a field with a name in it');
+  return field;
+}
+
+/** Replaces the field references in `source` by what Org writes there (see org-table-eval-formula): the text goes on to Calc, or to Lisp.
+ * @param {string} source @param {FormulaCtx} ctx @param {boolean} lisp @returns {string} */
+function substituteReferences(source, ctx, lisp) {
+  const textOf = (/** @type {FormulaCtx} */ c) => (/** @type {number} */ row, /** @type {number} */ col) => {
+    const text = String((c.dataRows[row - 1] && c.dataRows[row - 1].cells[col - 1]) ?? '').trim();
+    const seconds = ctx.durationMode && text !== '' ? parseDurationSeconds(text) : null;
+    return seconds === null ? text : String(seconds);
+  };
+  const reference = (/** @type {string | string[] | null} */ fields, /** @type {string} */ token) => (fields === null ? token : typeof fields === 'string' ? fieldReference(fields, ctx, lisp) : rangeReference(fields, ctx, lisp));
+  const once = (/** @type {string} */ text) => text
+    .replace(/\bremote\([ \t]*([^,)]+?)[ \t]*,[ \t]*([^\n)]+)\)/g, (call, name, ref) => {
+      const view = { ...remoteView(remoteTableName(name, ctx), ctx), currentRow: 1, currentCol: 1 }; // the references of a remote table are absolute
+      return reference(referencedFields(ref.trim().replace(/^\$(?=[-+]?\d)/, '@0$').replace(/^(@0\$[-+]?\d+)\.\.\$/, '$1..@0$'), view, textOf(view)), call);
+    })
+    .replace(LISP_REF_RE, (token) => {
+      if (token === '@#') return String(ctx.currentRow);
+      if (token === '$#') return String(ctx.currentCol);
+      return reference(referencedFields(token, ctx, textOf(ctx)), token);
+    });
+  // Org scans the formula again after each reference it replaced, so a reference that came in with a field's text is replaced as well
+  let form = source;
+  for (let pass = 0; ; pass++) {
+    const next = once(form);
+    if (next === form) return form;
+    if (pass >= 100) throw new Error('Spreadsheet error: invalid reference');
+    form = next;
+  }
+}
+
 /** Evaluates a `'(...)` formula as Org does: the references become Lisp text, the form is evaluated twice (`(eval (eval (read form)))`), and an
  *  error is the cell text "#ERROR". The result goes into the cell as text.
  * @param {string} source @param {FormulaCtx} ctx @returns {string} */
 function evalLispForm(source, ctx) {
-  const keepEmpty = ctx.emptyMode !== 'omit';
-  const numbers = ctx.forceNumeric === true;
-  const literal = ctx.literal === true;
-  const cell = (/** @type {number} */ row, /** @type {number} */ col) => String((ctx.dataRows[row - 1] && ctx.dataRows[row - 1].cells[col - 1]) ?? '');
-  const form = source.replace(LISP_REF_RE, (token) => {
-    if (token === '@#') return String(ctx.currentRow);
-    if (token === '$#') return String(ctx.currentCol);
-    const [fromText, toText] = token.split('..');
-    const from = parseRef(fromText);
-    if (!from) return token;
-    const start = resolveRef(from, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, toText !== undefined);
-    if (toText === undefined) return lispLiteral(cell(start.row, start.col), numbers, literal, keepEmpty);
-    const to = parseRef(toText);
-    if (!to) return token;
-    const end = resolveRef(to, ctx.currentRow, ctx.dataRowCount, ctx.colCount, ctx.currentCol, ctx.hlinePositions, false);
-    const parts = [];
-    for (let r = Math.min(start.row, end.row); r <= Math.max(start.row, end.row); r++) {
-      for (let c = Math.min(start.col, end.col); c <= Math.max(start.col, end.col); c++) {
-        const text = cell(r, c);
-        if (!keepEmpty && !/\S/.test(text)) continue;
-        parts.push(lispLiteral(text, numbers, literal, true));
-      }
-    }
-    return parts.join(' ');
-  });
+  const form = substituteReferences(substituteNames(source, ctx), ctx, true);
   const outcome = runLisp(`(eval ${form})`);
   if (!outcome.ok) return '#ERROR';
   const value = outcome.value;
@@ -2921,11 +3123,30 @@ function parseFormulaStatement(statement) {
     if (!isLisp && /\d:\d/.test(rhs) && readsAsAlgebra(rhs)) throw new Error('Calc fraction'); // 1:2 is Calc's; only the symbolic engine reads it
     expr = parseExpression(tokenize(rhs));
   } catch (err) {
+    const named = !isLisp && /^Expected "\("/.test(/** @type {Error} */ (err).message) ? parseWithNames(rhs) : null;
     // Calc algebra the numeric parser has no word for (an interval, a bare name): the symbolic engine reads it when the cells are known
     if (isLisp || !(rhs.includes('..') || /\d:\d/.test(rhs) || /chain of comparisons|^Expected "\("/.test(/** @type {Error} */ (err).message)) || !readsAsAlgebra(rhs)) expr = { type: 'invalid', message: /** @type {Error} */ (err).message }; // Calc cannot read it: that cell is #ERROR, the others go on
     else expr = { type: 'algebra' };
+    if (named) expr = named;
   }
   return { target, expr, mode, source: isLisp ? null : rhs };
+}
+
+/** A formula whose bare names only stand where a value ends up (the branch of an if(), or the whole formula), as `if(c, x, string(""))`; null for any other use of a name, which is Calc algebra.
+ * @param {string} rhs @returns {FormulaNode | null} */
+function parseWithNames(rhs) {
+  try {
+    const tree = parseExpression(tokenize(rhs), true);
+    /** @param {FormulaNode} node @param {boolean} atValue @returns {boolean} */
+    function valueOnly(node, atValue) {
+      if (node.type === 'name') return atValue;
+      if (node.type === 'ifCall') return valueOnly(node.condition, false) && valueOnly(node.trueExpr, atValue) && valueOnly(node.falseExpr, atValue);
+      return !Object.values(node).some((v) => (Array.isArray(v) ? v.some((/** @type {any} */ x) => x && typeof x === 'object' && !valueOnly(x, false)) : v && typeof v === 'object' && !valueOnly(v, false)));
+    }
+    return valueOnly(tree, true) ? tree : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Does Calc's own reader take this formula, cell references standing for numbers? @param {string} rhs @returns {boolean} */
@@ -3025,6 +3246,7 @@ function formatAsFraction(n, mixedNumber) {
  * @param {any} [complexDomain]
  *  own default. */
 function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = false) {
+  if (value instanceof RawText) return value.text;
   if (typeof value === 'string') return value;
   if (typeof value === 'bigint') {
     if (!mode.duration && !mode.fraction) return value.toString();
@@ -3051,9 +3273,18 @@ function formatFinalValue(value, mode, hourZeroPad, complexDomain, isFloat = fal
   return mode.precision !== null && typeof value === 'number' && (isFloat || !Number.isInteger(value)) ? calcFloatString(value, 'float', 8, mode.precision) : formatResult(value, isFloat);
 }
 
-/** The text a #+CONSTANTS: name was written as. @param {{ constants?: any }} ctx @param {string} name @returns {string | undefined} */
+/** What Org pastes into the formula for a constant's text: under a duration flag a time such as 08:00:00 becomes its seconds. @param {string} text @param {FormulaCtx} ctx */
+function constantSource(text, ctx) {
+  const seconds = ctx.durationMode && /\S/.test(text) ? parseDurationSeconds(text.trim()) : null;
+  return seconds === null ? text : String(seconds);
+}
+
+/** The text a #+CONSTANTS: name was written as, or the property a `$PROP_name` names. @param {FormulaCtx} ctx @param {string} name @returns {string | undefined} */
 function constantText(ctx, name) {
-  return ctx.constants && ctx.constants.$texts ? ctx.constants.$texts[name] : undefined;
+  if (ctx.constants && ctx.constants.$texts && ctx.constants.$texts[name] !== undefined) return ctx.constants.$texts[name];
+  if (ctx.constants && ctx.constants[name] !== undefined) return undefined;
+  const property = name.startsWith('PROP_') && ctx.properties ? ctx.properties(name.slice(5)) : undefined; // $PROP_name is the property of the entry the table is in, inherited as org-entry-get does
+  return property === null ? undefined : property;
 }
 
 /** Extracts and parses every #+CONSTANTS: line in `doc` into a single
@@ -3211,6 +3442,17 @@ function inOrgOrder(tblfm) {
     .join('::');
 }
 
+/** org-table-formula-create-columns for one missing column: t adds it, `warn` adds it and says so, `prompt` asks, anything else refuses.
+ * @param {{ createColumns?: boolean | 'warn' | 'prompt', confirm?: (question: string) => boolean, warn?: (message: string) => void }} o */
+function mayCreateColumns(o) {
+  if (o.createColumns === true) return true;
+  if (o.createColumns === 'warn') {
+    if (o.warn) o.warn('Out-of-bounds formula added columns');
+    return true;
+  }
+  return o.createColumns === 'prompt' && !!o.confirm && o.confirm('Out-of-bounds formula.  Add columns? ');
+}
+
 /** @param {Table} table */
 export function recalculateTable(table, options = {}) {
   if (!table.tblfm || !table.tblfm.trim()) return null;
@@ -3236,9 +3478,13 @@ export function recalculateTable(table, options = {}) {
   // the manual's own words about it and stopping there.
   const dataRows = workingRows.filter((r) => r.type === 'row');
   const dataRowCount = dataRows.length;
-  // A column formula for a column past the last one adds the column, as in Emacs
-  const wantedColumns = statements.reduce((/** @type {number} */ max, /** @type {{ target: { type: string, col?: { type: string, n?: number } } }} */ st) => (st.target.type === 'column' && st.target.col?.type === 'absolute' ? Math.max(max, st.target.col.n ?? 0) : max), 0);
+  // A column formula for a column past the last one adds the column, as in Emacs; a field formula does the same only as
+  // org-table-formula-create-columns allows (nil in Emacs: an error), checked as the formula reaches the field (see the field loop below)
+  const absoluteColumn = (/** @type {{ type?: string, n?: number } | null | undefined} */ ref) => (ref && ref.type === 'absolute' ? ref.n ?? 0 : 0);
+  const wantedColumns = statements.reduce((/** @type {number} */ max, /** @type {{ target: any }} */ st) => (st.target.type === 'column' ? Math.max(max, absoluteColumn(st.target.col)) : max), 0);
   const colCount = Math.max(wantedColumns, dataRows.reduce((max, r) => Math.max(max, r.cells.length), 0));
+  /** What Emacs counts in each line of the text: the fields it really has, not the padding this grid gets. */
+  const widths = dataRows.map((r) => r.cells.length);
   for (const r of dataRows) while (r.cells.length < colCount && wantedColumns > r.cells.length) r.cells.push('');
   // The header-row exclusion real org DOES have is narrower and
   // different from @N numbering: specifically, the column-formula
@@ -3249,8 +3495,10 @@ export function recalculateTable(table, options = {}) {
   // targeted cell formula like @1$2=999 still freely modifies the
   // header when asked to. No hline anywhere at all means nothing is
   // excluded from column formulas either -- every row counts as data.
-  const firstRuleIndex = workingRows.findIndex((r) => r.type === 'rule');
-  const headerRowCount = firstRuleIndex === -1 ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
+  // Org looks for a data line, then a hline, then another data line: a hline at the very top starts no header, and a hline with no data line below it ends none.
+  const firstDataIndex = workingRows.findIndex((r) => r.type === 'row');
+  const firstRuleIndex = firstDataIndex === -1 ? -1 : workingRows.findIndex((r, i) => i > firstDataIndex && r.type === 'rule');
+  const headerRowCount = firstRuleIndex === -1 || !workingRows.slice(firstRuleIndex).some((r) => r.type === 'row') ? 0 : workingRows.slice(0, firstRuleIndex).filter((r) => r.type === 'row').length;
   const { positions: hlinePositions } = computeHlinePositions(workingRows);
 
   // Org keeps its formulas sorted by the text of their targets, and applies the column formulas row by row, then the field formulas.
@@ -3265,7 +3513,7 @@ export function recalculateTable(table, options = {}) {
       : null;
     const digits = mode.precision !== null ? mode.precision : 12;
     const complexDomain = mode.fraction ? fractionDomain(mathjsDefault, bigDomain(mathjsForPrecision(12), 12, mathjsForPrecision(18))) : bigDomain(mathjsForPrecision(digits), digits, mathjsForPrecision(digits + 6));
-    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: /** @type {any} */ (options).constants || {}, namedTables: /** @type {any} */ (options).tables, numericMode, userCall: /** @type {any} */ (options).userCall, literal: mode.literal, durationFlag: mode.duration, hourZeroPad };
+    const evalCtx = { complexDomain, dataRows, dataRowCount, colCount, hlinePositions, durationMode: mode.duration !== null, emptyMode: mode.emptyMode, forceNumeric: mode.forceNumeric, angleMode: mode.angleMode, constants: /** @type {any} */ (options).constants || {}, properties: /** @type {any} */ (options).properties, namedTables: /** @type {any} */ (options).tables, numericMode, userCall: /** @type {any} */ (options).userCall, literal: mode.literal, durationFlag: mode.duration, hourZeroPad };
     // Evaluates the expression for one specific (row, col) and writes
     // either its formatted result or, if evaluation itself throws,
     // the literal text "#ERROR" into that cell -- confirmed directly
@@ -3275,6 +3523,7 @@ export function recalculateTable(table, options = {}) {
     // evaluates normally. Isolated per cell, not per statement, so a
     // range/column-formula target with one bad cell doesn't lose the
     // rest of its own siblings either.
+    const numbersOnly = mode.forceNumeric && mode.emptyMode === 'omit'; // N alone asks Calc for a number; with E the fields are numbers already and a result may be text
     const plainMode = !mode.forceNumeric && !mode.fraction && !mode.duration && mode.precision === null;
     const isPlain = source !== null && isPlainAlgebra(expr);
     const canFallBack = source !== null && isPlainAlgebra(expr, true);
@@ -3313,13 +3562,14 @@ export function recalculateTable(table, options = {}) {
           if (outcome && outcome.kind === 'text') return void store(outcome.text);
         }
         const value = evaluateAst(expr, cellCtx);
+        if (mode.forceNumeric && mode.emptyMode === 'omit' && (value instanceof RawText || isNanValue(value) || (typeof value === 'number' && !Number.isFinite(value)))) throw new Error('N needs a number'); // Calc is asked for a number, and inf, nan and text are none
         if ((probe.nonNumeric || isNanValue(value)) && canFallBack && !mode.forceNumeric && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
         store(expr.bare ? String(formatFinalValue(value, mode, hourZeroPad, complexDomain)).replace(/^\((.*)\)$/, '$1') : typeof value === 'string' && (expr.type === 'string' || (expr.type === 'ifCall' && !/^[[<][^\]>]*[\]>] \? .* : /.test(value))) ? charCodeVector(value) : formatFinalValue(value, mode, hourZeroPad, complexDomain, (typeof value === 'number' || (isMathjsValue(value) && value.isBigNumber)) && exprIsFloat(expr, cellCtx)));
       } catch (err) {
         if (err instanceof FormatFault) throw err;
         if (err instanceof DivisionByZero && mode.duration) throw new FormatFault('Division by zero in a duration formula'); // the unevaluated quotient is no duration: Emacs stops
         const showsExpression = !mode.format && !mode.forceNumeric && !mode.duration;
-        if (canFallBack && !mode.forceNumeric && (!(err instanceof DivisionByZero) || showsExpression) && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
+        if (canFallBack && !numbersOnly && (!(err instanceof DivisionByZero) || showsExpression) && storeSymbolic(symbolicOutcome(source, cellCtx))) return;
         const shown = err instanceof DivisionByZero && err.node === expr && !mode.format && !mode.forceNumeric && !mode.duration ? unevaluatedDivision(err) : null;
         store(shown ?? '#ERROR');
       }
@@ -3329,6 +3579,9 @@ export function recalculateTable(table, options = {}) {
 
   /** The cells the field formulas set: a column formula does not touch them. @type {Set<string>} */
   const untouchable = new Set();
+  /** An absolute column past the last one is allowed here: whether it may be added is decided when the formula reaches it.
+   * @param {Parameters<typeof resolveColRef>[0]} ref */
+  const fieldColumn = (ref) => (ref && ref.type === 'absolute' && ref.n >= 1 ? ref.n : resolveColRef(ref, colCount));
   /** @param {Prepared['target']} given @returns {[number, number, number, number] | null} */
   const fieldBounds = (given) => {
     const target = /** @type {{ type: string, row: RowRef, col: ColRef | null, from: { row: RowRef | null, col: ColRef | null }, to: { row: RowRef | null, col: ColRef | null } }} */ (/** @type {unknown} */ (given));
@@ -3339,7 +3592,7 @@ export function recalculateTable(table, options = {}) {
     }
     if (target.type === 'cell') {
       const row = resolveRowRef(target.row, 1, dataRowCount, hlinePositions, false); // currentRow=1 is a placeholder -- an explicit @N$M target is never itself relative
-      const col = resolveColRef(target.col, colCount);
+      const col = fieldColumn(target.col);
       if (row === null || col === null) throw new Error('Formula target is out of range for this table');
       return [row, row, col, col];
     }
@@ -3348,8 +3601,8 @@ export function recalculateTable(table, options = {}) {
     }
     const fromRow = resolveRowRef(target.from.row, 1, dataRowCount, hlinePositions, false);
     const toRow = resolveRowRef(target.to.row, 1, dataRowCount, hlinePositions, false);
-    const fromCol = resolveColRef(target.from.col, colCount);
-    const toCol = resolveColRef(target.to.col, colCount);
+    const fromCol = fieldColumn(target.from.col);
+    const toCol = fieldColumn(target.to.col);
     if (fromRow === null || toRow === null || fromCol === null || toCol === null) {
       throw new Error('Formula target is out of range for this table');
     }
@@ -3370,13 +3623,37 @@ export function recalculateTable(table, options = {}) {
   for (let r = marked ? 1 : headerRowCount + 1; r <= dataRowCount; r++) {
     if (MARKER_ROW_RE.test(firstCell(r))) continue;
     if (marked && !RECALC_ROW_RE.test(firstCell(r))) continue;
-    for (const { col, evalCell } of columnFormulas) if (!untouchable.has(r + ',' + col)) evalCell(r, /** @type {number} */ (col));
+    for (const { col, evalCell } of columnFormulas) {
+      widths[r - 1] = Math.max(widths[r - 1], /** @type {number} */ (col)); // Emacs adds the column to the line first, even where a field formula sets the field
+      if (!untouchable.has(r + ',' + col)) evalCell(r, /** @type {number} */ (col));
+    }
   }
 
-  // Field formulas, after the column ones
+  // Field formulas, after the column ones, field by field. Whether a column is missing is judged on the line the cursor was left on, the last field's or,
+  // at first, the last line looked at: so a field of a narrower line than that one is not created, and a formula for it sets nothing (as in Emacs)
+  const createColumns = /** @type {{ createColumns?: boolean | 'warn' | 'prompt', confirm?: (question: string) => boolean, warn?: (message: string) => void }} */ (options);
+  let cursorRow = marked ? dataRows.map((_, i) => i + 1).filter((r) => RECALC_ROW_RE.test(firstCell(r))).pop() ?? 1 : dataRowCount;
+  let grew = false;
   for (const { target, evalCell } of fieldFormulas) {
     const [r0, r1, c0, c1] = /** @type {[number, number, number, number]} */ (fieldBounds(target));
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) evalCell(r, c);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        if (c > 1000) throw new Error('Formula column target too large');
+        const create = c > widths[cursorRow - 1];
+        if (create && !mayCreateColumns(createColumns)) throw new Error('Missing columns in the table.  Aborting');
+        cursorRow = r;
+        if (create) {
+          widths[r - 1] = Math.max(widths[r - 1], c);
+          while (dataRows[r - 1].cells.length < c) dataRows[r - 1].cells.push('');
+          grew = true;
+        }
+        if (c <= widths[r - 1]) evalCell(r, c);
+      }
+    }
+  }
+  if (grew) {
+    const widest = Math.max(...dataRows.map((r) => r.cells.length));
+    for (const r of dataRows) while (r.cells.length < widest) r.cells.push(''); // Emacs aligns the table afterwards
   }
 
   return workingRows;

@@ -10221,6 +10221,7 @@ check('table pad: C-c ^ asks for the kind of sort as Emacs does, and f asks for 
   await page.waitForSelector('[data-table-pad]');
   await page.locator('[data-pad-command="sort"]').click();
   expect(await page.getByText('Sort Table: [a]lphabetic, [n]umeric, [t]ime, [f]unc. A/N/T/F means reversed:').count() === 1, 'the prompt is the one Emacs asks');
+  expect(await page.getByRole('button', { name: /Alphabetic, case sensitive$/ }).count() === 1 && await page.getByRole('button', { name: /Alphabetic, case sensitive, reversed/ }).count() === 1, 'the case-sensitive pair is offered after the eight');
   await page.getByRole('button', { name: /Function, reversed/ }).click();
   const ask = async (text, button) => {
     await page.locator('input[aria-label^="Function for"]').fill(text);

@@ -1,0 +1,347 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "kind": "archive",
+   "org": "* Top [%]\n** DONE One\n** TODO Two\n",
+   "index": 1,
+   "emacs": "* Top [0%]\n** TODO Two\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** DONE One\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [%]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [%]\n** TODO Two\n",
+   "index": 1,
+   "emacs": "* Top [%]\n* Archive\n\n** TODO Two\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [%]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n** DONE One\n** DONE Two\n** TODO Three\n",
+   "index": 3,
+   "emacs": "* Top [/]\n** DONE One\n** DONE Two\n* Archive\n\n** TODO Three\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n** DONE One\n** DONE Two\n** TODO Three\n",
+   "index": 1,
+   "emacs": "* Top [1/2]\n** DONE Two\n** TODO Three\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** DONE One\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n- [X] a\n- [ ] b\n** TODO Two\n",
+   "index": 1,
+   "emacs": "* Top [/]\n- [X] a\n- [ ] b\n* Archive\n\n** TODO Two\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [%]\n- [X] a\n- [ ] b\n** TODO Two\n",
+   "index": 1,
+   "emacs": "* Top [%]\n- [X] a\n- [ ] b\n* Archive\n\n** TODO Two\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [%]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n:PROPERTIES:\n:COOKIE_DATA: todo\n:END:\n- [X] a\n** TODO Two\n** DONE Three\n",
+   "index": 1,
+   "emacs": "* Top [1/1]\n:PROPERTIES:\n:COOKIE_DATA: todo\n:END:\n- [X] a\n** DONE Three\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** TODO Two\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [%]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n** Mid\n*** DONE a\n*** TODO b\n** TODO c\n",
+   "index": 2,
+   "emacs": "* Top [0%]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n** Mid\n*** TODO b\n** TODO c\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** DONE a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [%]/Mid\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n** Mid\n*** TODO b\n** DONE c\n",
+   "index": 2,
+   "emacs": "* Top [1/1]\n:PROPERTIES:\n:COOKIE_DATA: recursive\n:END:\n** Mid\n** DONE c\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** TODO b\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]/Mid\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [%]\n** TODO a\n** plain\n",
+   "index": 1,
+   "emacs": "* Top [0%]\n** plain\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** TODO a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [%]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top\n** TODO a\n",
+   "index": 1,
+   "emacs": "* Top\n* Archive\n\n** TODO a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [0/2] and [50%]\n** DONE a\n** TODO b\n** TODO c\n",
+   "index": 1,
+   "emacs": "* Top [0/2] and [0%]\n** TODO b\n** TODO c\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** DONE a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top  and\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n** TODO a\n*** DONE a1\n",
+   "index": 2,
+   "emacs": "* Top [/]\n** TODO a\n* Archive\n\n** DONE a1\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]/a\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n** TODO a\n*** DONE a1\n*** TODO a2\n",
+   "index": 3,
+   "emacs": "* Top [/]\n** TODO a\n*** DONE a1\n* Archive\n\n** TODO a2\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]/a\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* A\n* Top [/]\n** DONE a\n** TODO b\n",
+   "index": 3,
+   "emacs": "* A\n* Top [/]\n** DONE a\n* Archive\n\n** TODO b\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: TODO\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* TODO Top [/]\n** DONE a\n",
+   "index": 1,
+   "emacs": "* TODO Top [/]\n* Archive\n\n** DONE a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n"
+  },
+  {
+   "kind": "archive",
+   "org": "* Top [/]\n** DONE a\n   - [ ] x\n** TODO b\n",
+   "index": 1,
+   "emacs": "* Top [0/1]\n** TODO b\n\nArchived entries from file /tmp/core-edit-oracle-buffer.org\n\n\n* Archive\n\n** DONE a\n:PROPERTIES:\n:ARCHIVE_TIME: 2026-11-14 Sat 08:35\n:ARCHIVE_FILE: /tmp/core-edit-oracle-buffer.org\n:ARCHIVE_OLPATH: Top [/]\n:ARCHIVE_CATEGORY: core-edit-oracle-buffer\n:ARCHIVE_TODO: DONE\n:END:\n   - [ ] x\n"
+  },
+  {
+   "kind": "paste",
+   "org": "*** ",
+   "tree": "* Text",
+   "level": null,
+   "index": 0,
+   "emacs": "*** Text\n"
+  },
+  {
+   "kind": "paste",
+   "org": "*** ",
+   "tree": "** Text\n*** Sub",
+   "level": null,
+   "index": 0,
+   "emacs": "*** Text\n**** Sub\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* ",
+   "tree": "*** Text",
+   "level": null,
+   "index": 0,
+   "emacs": "* Text\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* A\n** \n* B\n",
+   "tree": "* Text",
+   "level": null,
+   "index": 1,
+   "emacs": "* A\n\n** Text\n* B\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* A\n* \n",
+   "tree": "* Text\nbody",
+   "level": null,
+   "index": 1,
+   "emacs": "* A\n\n* Text\nbody\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* A\n** \n* B\n",
+   "tree": "* T1\n* T2",
+   "level": null,
+   "index": 1,
+   "emacs": "* A\n\n** T1\n** T2\n* B\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* H",
+   "tree": "* Text",
+   "level": 3,
+   "index": 0,
+   "emacs": "* H\n*** Text\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* H\nbody\n* Z\n",
+   "tree": "* Text",
+   "level": 3,
+   "index": 0,
+   "emacs": "* H\nbody\n*** Text\n* Z\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* H\nbody\n* Z\n",
+   "tree": "** Text\n*** Sub",
+   "level": 2,
+   "index": 0,
+   "emacs": "* H\nbody\n** Text\n*** Sub\n* Z\n"
+  },
+  {
+   "kind": "paste",
+   "org": "** H\n",
+   "tree": "* Text",
+   "level": 1,
+   "index": 0,
+   "emacs": "** H\n* Text\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* H\nbody\n",
+   "tree": "* Text",
+   "level": null,
+   "index": 0,
+   "emacs": "* H\nbody\n* Text\n"
+  },
+  {
+   "kind": "paste",
+   "org": "* H\n* Z\n",
+   "tree": "** Text",
+   "level": null,
+   "index": 0,
+   "emacs": "* H\n* Text\n* Z\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "TEST",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:TEST:     v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "TEST",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:TEST:     v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "no space",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"no space\"\n* H\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "no space",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"no space\"\n* H\n:PROPERTIES:\n:test: 1\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"\"\n* H\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"\"\n* H\n:PROPERTIES:\n:test: 1\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "tab\tname",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"tab\tname\"\n* H\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "tab\tname",
+   "value": "v",
+   "index": 0,
+   "emacs": "ERROR Invalid property name: \"tab\tname\"\n* H\n:PROPERTIES:\n:test: 1\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "a-b",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:a-b:      v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "a-b",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:test: 1\n:a-b:      v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "a+",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:a+:       v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "a+",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:test: 1\n:a+:       v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "x_y",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:x_y:      v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "x_y",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:test: 1\n:x_y:      v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "1",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:1:        v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "1",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:test: 1\n:1:        v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n",
+   "name": "é",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:é:        v\n:END:\n"
+  },
+  {
+   "kind": "property",
+   "org": "* H\n:PROPERTIES:\n:test: 1\n:END:\n",
+   "name": "é",
+   "value": "v",
+   "index": 0,
+   "emacs": "* H\n:PROPERTIES:\n:test: 1\n:é:        v\n:END:\n"
+  }
+ ]
+}

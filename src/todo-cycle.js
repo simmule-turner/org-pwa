@@ -60,7 +60,7 @@ function resolveTodoSequences(doc, globalDefault) {
   for (const kw of lines) {
     const parsed = parseTodoSpecValue(kw.value);
     // a line without keywords still counts: it replaces the default set with an empty one, as in Emacs
-    sequences.push({ todoKeywords: parsed.todoKeywords, doneKeywords: parsed.doneKeywords, keySpecs: parsed.keySpecs, logSpecs: parsed.logSpecs });
+    sequences.push({ todoKeywords: parsed.todoKeywords, doneKeywords: parsed.doneKeywords, keySpecs: parsed.keySpecs, logSpecs: parsed.logSpecs, ...(kw.key.toUpperCase() === 'TYP_TODO' ? { type: 'type' } : {}) }); // a type sequence has no order: a repeating task stays in its own state
   }
   return sequences.length ? sequences : [fallback];
 }

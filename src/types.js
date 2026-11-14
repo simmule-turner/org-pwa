@@ -152,7 +152,7 @@ export {};
  *   pendingAudioRecording: { heading: Heading } | null, mediaRecorder: MediaRecorder | null, recordedChunks: Blob[],
  *   recordingStartedAt: number | null, recordedBlobUrl: string | null,
  *   calendarOpen: boolean, calendarViewYear: number, calendarViewMonth: number,
- *   columnsOpen: { global: boolean, anchor: number, format: string | null } | null,
+ *   columnsOpen: { global: boolean, anchor: number, format: string | null, inhibit?: boolean } | null,
  *   columnsOverlay: HTMLElement | null,
  *   timer: import('./org-timer.js').TimerState | null, timerValue: string | null, timerModeLine: string | null, timerTitleBase: string | null,
  *   timerTick: number | null, timerAlarm: number | null,

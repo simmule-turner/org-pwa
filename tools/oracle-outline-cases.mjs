@@ -42,6 +42,16 @@ export const docs = {
   lvl2first: '** A\n* B\n',
   crlf: '* A\r\n** A1\r\n* B\r\n',
   trailsp: '* A   \n** A1  :x:  \n* B\n',
+  // org-blank-before-new-entry (auto): the new heading has an empty line above it when the heading it follows has one
+  blankAfter: '* H1\nContents\n\n* H2\n',
+  blankSame: '* H1\n\n* H\n',
+  blankMid: '* Sec1\n** SubSec1\n\ntext\n\n** SubSec2\n\ntext\n',
+  blankMixed: '* A\nbody\n\n* B\nbody\n* C\n\n\n* D\n',
+  blankTail: '* A\n\n\n',
+  blankTailOne: '* A\n* B\n\n',
+  blankFirst: '* A\nx\n\n** A1\n* B\n',
+  preBlank: 'intro\n\n* A\n* B\n',
+  preNoBlank: 'intro\n* A\n\n* B\n',
 };
 export const ops = ['promote', 'demote', 'up', 'down', 'delete', 'insert-after', 'copy'];
 // org-tags-column values tried on the outlines that have tags (Emacs's own default is -77, the app's 0)

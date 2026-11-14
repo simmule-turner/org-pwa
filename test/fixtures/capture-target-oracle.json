@@ -88,7 +88,7 @@
    "prepend": false,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "* NEW",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetLVZELu.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetbQ3APx.org"
   },
   {
    "kind": "regexp",
@@ -140,9 +140,9 @@
    "arg": "Marker line",
    "type": "entry",
    "prepend": false,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "* NEW",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -241,7 +241,7 @@
    "prepend": false,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWITEM",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetfXiqTp.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetuykGr4.org"
   },
   {
    "kind": "regexp",
@@ -293,9 +293,9 @@
    "arg": "Marker line",
    "type": "item",
    "prepend": false,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWITEM",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -394,7 +394,7 @@
    "prepend": false,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWCHECK",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetKWfTsN.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/target5k6vc2.org"
   },
   {
    "kind": "regexp",
@@ -446,9 +446,9 @@
    "arg": "Marker line",
    "type": "checkitem",
    "prepend": false,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWCHECK",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -547,7 +547,7 @@
    "prepend": false,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "| a | b |",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetXX8RFg.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetAA5uQ2.org"
   },
   {
    "kind": "regexp",
@@ -599,9 +599,9 @@
    "arg": "Marker line",
    "type": "table-line",
    "prepend": false,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "| a | b |",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -700,7 +700,7 @@
    "prepend": false,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "PLAIN",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetZ8JVTG.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetQ21b65.org"
   },
   {
    "kind": "regexp",
@@ -752,9 +752,9 @@
    "arg": "Marker line",
    "type": "plain",
    "prepend": false,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "PLAIN",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\nPLAIN\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\nPLAIN\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -853,7 +853,7 @@
    "prepend": true,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "* NEW",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetsyQQol.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetCiKgQt.org"
   },
   {
    "kind": "regexp",
@@ -905,9 +905,9 @@
    "arg": "Marker line",
    "type": "entry",
    "prepend": true,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "* NEW",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -1006,7 +1006,7 @@
    "prepend": true,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWITEM",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetCNgaJl.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/target7qEizv.org"
   },
   {
    "kind": "regexp",
@@ -1058,9 +1058,9 @@
    "arg": "Marker line",
    "type": "item",
    "prepend": true,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWITEM",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -1159,7 +1159,7 @@
    "prepend": true,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWCHECK",
-   "emacs": "ERROR No match for target regexp in file /tmp/target2pvCpa.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetT0x3Pc.org"
   },
   {
    "kind": "regexp",
@@ -1211,9 +1211,9 @@
    "arg": "Marker line",
    "type": "checkitem",
    "prepend": true,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "NEWCHECK",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -1312,7 +1312,7 @@
    "prepend": true,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "| a | b |",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetYbIy8B.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetb2PqVr.org"
   },
   {
    "kind": "regexp",
@@ -1364,9 +1364,9 @@
    "arg": "Marker line",
    "type": "table-line",
    "prepend": true,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "| a | b |",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -1465,7 +1465,7 @@
    "prepend": true,
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "PLAIN",
-   "emacs": "ERROR No match for target regexp in file /tmp/targetJREyya.org"
+   "emacs": "ERROR No match for target regexp in file /tmp/targetSlnz8n.org"
   },
   {
    "kind": "regexp",
@@ -1517,9 +1517,9 @@
    "arg": "Marker line",
    "type": "plain",
    "prepend": true,
-   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "PLAIN",
-   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-14 Sat 08:34]\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
   },
   {
    "kind": "clock",
@@ -1529,6 +1529,132 @@
    "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
    "template": "PLAIN",
    "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- skip\n  - here\n  - NEWITEM\n- skip\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- skip",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- skip\n  - here\n- skip\n- NEWITEM\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "c here",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- a\n  - b\n    - c here\n  - d\n- e\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- a\n  - b\n    - c here\n    - NEWITEM\n  - d\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "- b",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- a\n  - b\n    - c here\n  - d\n- e\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- a\n  - b\n    - c here\n  - d\n  - NEWITEM\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "b here",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- a\n  - b here\n    more\n  - d\n    text\n- e\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- a\n  - b here\n    more\n  - d\n    text\n  - NEWITEM\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "item",
+   "prepend": false,
+   "init": "intro\n- a\n  - here\n",
+   "template": "NEWITEM",
+   "emacs": "intro\n- a\n  - here\n  - NEWITEM\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- skip\n  - here\n  - NEWCHECK\n- skip\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- skip",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- skip\n  - here\n- skip\n- NEWCHECK\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "c here",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n- a\n  - b\n    - c here\n  - d\n- e\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- a\n  - b\n    - c here\n    - NEWCHECK\n  - d\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "- b",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n- a\n  - b\n    - c here\n  - d\n- e\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- a\n  - b\n    - c here\n  - d\n  - NEWCHECK\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "b here",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n- a\n  - b here\n    more\n  - d\n    text\n- e\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- a\n  - b here\n    more\n  - d\n    text\n  - NEWCHECK\n- e\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "intro\n- a\n  - here\n",
+   "template": "NEWCHECK",
+   "emacs": "intro\n- a\n  - here\n  - NEWCHECK\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "- X\n  Line 2",
+   "emacs": "* A\n- skip\n  - here\n  - X\n    Line 2\n- skip\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "here",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n- skip\n  - here\n- skip\n",
+   "template": "X\nLine 2",
+   "emacs": "* A\n- skip\n  - here\n  - X\n    Line 2\n- skip\n"
   },
   {
    "kind": "prop",

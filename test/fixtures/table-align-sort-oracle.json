@@ -1,0 +1,655 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "op": "align",
+   "org": "| <r> |\n| ab |\n| abc |\n",
+   "emacs": "| <r> |\n|  ab |\n| abc |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <l> |\n| 12 |\n| 123 |\n",
+   "emacs": "| <l> |\n| 12  |\n| 123 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <c> |\n| 1 |\n| 123 |\n",
+   "emacs": "| <c> |\n|  1  |\n| 123 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <c> |\n| 1 |\n| 12 |\n| 1234 |\n",
+   "emacs": "| <c>  |\n|  1   |\n|  12  |\n| 1234 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <r5> | <l> |\n| ab | 12 |\n| abc | 123 |\n",
+   "emacs": "| <r5> | <l> |\n|   ab | 12  |\n|  abc | 123 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <5> | x |\n| ab | 12 |\n| abc | 123 |\n",
+   "emacs": "| <5> |   x |\n| ab  |  12 |\n| abc | 123 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| a | b |\n| <r> | <c> |\n| ab | 1 |\n| abc | 123 |\n",
+   "emacs": "|   a |  b  |\n| <r> | <c> |\n|  ab |  1  |\n| abc | 123 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| ab | x |\n| <r> | y |\n| abc | z |\n",
+   "emacs": "|  ab | x |\n| <r> | y |\n| abc | z |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <c> |\n|-----|\n| 1 |\n| 1234 |\n",
+   "emacs": "| <c>  |\n|------|\n|  1   |\n| 1234 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <x> |\n| 12 |\n",
+   "emacs": "| <x> |\n|  12 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| <r> | <c> |\n|---+---|\n| a | b |\n| 1234567 | 1 |\n",
+   "emacs": "|     <r> | <c> |\n|---------+-----|\n|       a |  b  |\n| 1234567 |  1  |\n"
+  },
+  {
+   "op": "align",
+   "org": "  |   a |\n",
+   "emacs": "  | a |\n"
+  },
+  {
+   "op": "align",
+   "org": "  | a | b |\n  |---+---|\n  | 1 | 22 |\n",
+   "emacs": "  | a |  b |\n  |---+----|\n  | 1 | 22 |\n"
+  },
+  {
+   "op": "align",
+   "org": "    | <r> |\n    | ab |\n    | abc |\n",
+   "emacs": "    | <r> |\n    |  ab |\n    | abc |\n"
+  },
+  {
+   "op": "align",
+   "org": " | a |\n| bb |\n",
+   "emacs": " | a  |\n | bb |\n"
+  },
+  {
+   "op": "align",
+   "org": "\t| a | b |\n\t| ccc | d |\n",
+   "emacs": "\t| a   | b |\n\t| ccc | d |\n"
+  },
+  {
+   "op": "align",
+   "org": "| a | b |\n  | ccc | d |\n",
+   "emacs": "| a   | b |\n| ccc | d |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 0 | z |\n| nan | uinf |\n| -inf | inf |\n| +inf | ab |\n",
+   "emacs": "|    0 |    z |\n|  nan | uinf |\n| -inf |  inf |\n| +inf |   ab |\n"
+  },
+  {
+   "op": "align",
+   "org": "| nan |\n| x |\n| yy |\n",
+   "emacs": "| nan |\n| x   |\n| yy  |\n"
+  },
+  {
+   "op": "align",
+   "org": "| uinf |\n| x |\n",
+   "emacs": "| uinf |\n|    x |\n"
+  },
+  {
+   "op": "align",
+   "org": "| -inf |\n| x |\n| yyyy |\n",
+   "emacs": "| -inf |\n| x    |\n| yyyy |\n"
+  },
+  {
+   "op": "align",
+   "org": "| +inf |\n| abc |\n",
+   "emacs": "| +inf |\n|  abc |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 1 |\n| x |\n| yyy |\n",
+   "emacs": "| 1   |\n| x   |\n| yyy |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 1 |\n| x |\n| yyy |\n| 2 |\n",
+   "emacs": "|   1 |\n|   x |\n| yyy |\n|   2 |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 0x1F |\n| zz |\n| yyyyy |\n",
+   "emacs": "| 0x1F  |\n| zz    |\n| yyyyy |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 12#ab |\n| zzzzzz |\n",
+   "emacs": "|  12#ab |\n| zzzzzz |\n"
+  },
+  {
+   "op": "align",
+   "org": "| >3.5 |\n| <2 |\n| abcdef |\n",
+   "emacs": "|   >3.5 |\n|     <2 |\n| abcdef |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 2x10^12 |\n| a |\n",
+   "emacs": "| 2x10^12 |\n|       a |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 2.7(10) |\n| a |\n",
+   "emacs": "| 2.7(10) |\n|       a |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 12:30 |\n| a |\n| bbbb |\n",
+   "emacs": "| 12:30 |\n| a     |\n| bbbb  |\n"
+  },
+  {
+   "op": "align",
+   "org": "| 5% |\n| 1e-3 |\n| abc |\n",
+   "emacs": "|   5% |\n| 1e-3 |\n|  abc |\n"
+  },
+  {
+   "op": "align",
+   "org": "|---|\n",
+   "emacs": "|---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|---|---------|\n|---|---|-----|\n",
+   "emacs": "|---|\n|---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|---+---|\n",
+   "emacs": "|---+---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|-|\n|-|\n",
+   "emacs": "|---|\n|---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|---+---+---|\n|-|\n",
+   "emacs": "|---+---+---|\n|---+---+---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|-+-|\n|---|\n|-|\n",
+   "emacs": "|---+---|\n|---+---|\n|---+---|\n"
+  },
+  {
+   "op": "align",
+   "org": "|---|\n#+TBLFM: $1=1\n",
+   "emacs": "|---|\n#+TBLFM: $1=1\n"
+  },
+  {
+   "op": "align",
+   "org": "| |\n| |\n",
+   "emacs": "|   |\n|   |\n"
+  },
+  {
+   "op": "align",
+   "org": "| a | b |\n| c |\n",
+   "emacs": "| a | b |\n| c |   |\n"
+  },
+  {
+   "op": "align",
+   "org": "| a |\n| b | c | d |\n|---|\n",
+   "emacs": "| a |   |   |\n| b | c | d |\n|---+---+---|\n"
+  },
+  {
+   "op": "align",
+   "org": "| x | |\n| | 1 |\n| yy | 22 |\n",
+   "emacs": "| x  |    |\n|    |  1 |\n| yy | 22 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| _x |\n| a |\n| A |\n| b |\n| B |\n| C |\n| c |\n| e |\n| Z |\n| é |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| A |\n| B |\n| C |\n| Z |\n| _x |\n| a |\n| b |\n| c |\n| e |\n| é |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| é |\n| Z |\n| e |\n| C |\n| c |\n| b |\n| B |\n| a |\n| A |\n| _x |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| é |\n| e |\n| c |\n| b |\n| a |\n| _x |\n| Z |\n| C |\n| B |\n| A |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n"
+  },
+  {
+   "op": "sort",
+   "name": "words",
+   "org": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| b |\n| C |\n| a |\n| B |\n| A |\n| c |\n| _x |\n| Z |\n| é |\n| e |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| b | 2 |\n| C | 1 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| C | 1 |\n| a | 3 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "a",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| C | 1 |\n| b | 2 |\n| a | 3 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "a",
+   "col": 1,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| C | 1 |\n| b | 2 |\n| a | 3 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| C | 1 |\n| b | 2 |\n| a | 3 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| b | 2 |\n| a | 3 |\n| C | 1 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "A",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| b | 2 |\n| C | 1 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "A",
+   "col": 1,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| a | 3 |\n| b | 2 |\n| C | 1 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "n",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| C | 1 |\n| b | 2 |\n| a | 3 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "N",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| b | 2 |\n| C | 1 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "t",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "mixed",
+   "org": "| a | 3 |\n| C | 1 |\n| b | 2 |\n",
+   "mode": "T",
+   "col": 1,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| a | 3 |\n| C | 1 |\n| b | 2 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n| <2014-03-04 tue.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "a",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n| <2014-03-04 tue.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue.> |\n| <2012-03-29 thu.> |\n| <2008-08-08 sat.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "A",
+   "col": 0,
+   "withCase": true,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue.> |\n| <2012-03-29 thu.> |\n| <2008-08-08 sat.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n| <2014-03-04 tue.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps",
+   "org": "| <2014-03-04 tue.> |\n| <2008-08-08 sat.> |\n| <2012-03-29 thu.> |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue.> |\n| <2012-03-29 thu.> |\n| <2008-08-08 sat.> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps2",
+   "org": "| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| 2014-03-04 |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n| 2014-03-04 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps2",
+   "org": "| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| 2014-03-04 |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 2014-03-04 |\n| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps2",
+   "org": "| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| 2014-03-04 |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 2014-03-04 |\n| <2014-3-4> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 mon.> |\n| <2014-03-04 Tue 08:00 +1d> |\n| <2014-03-04 Tue 09:30> |\n| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 10:00-11:30> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| <2014-03-04 foo 11:00> |\n| <2014-03-04 tue. 12:00> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "stamps2",
+   "org": "| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04> |\n| <2014-03-04 foo 11:00> |\n| x [2013-01-01 Tue] y |\n| <2014-03-04 Tue 10:00-11:30> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 Tue 08:00 +1d> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| 2014-03-04 |\n| <2014-3-4> |\n| <2014-03-04 mon.> |\n| <2014-03-04 tue. 12:00> |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| <2014-03-04 tue. 12:00> |\n| <2014-03-04 foo 11:00> |\n| [2014-03-04 Tue 10:00] |\n| <2014-03-04 Tue 10:00-11:30> |\n| [2014-03-04 Tue 10:00]--[2014-03-05 Tue 10:00] |\n| <2014-03-04 Tue 09:30> |\n| <2014-03-04 Tue 08:00 +1d> |\n| <2014-03-04> |\n| <2014-03-04 Tue +1w> |\n| <2014-03-04 mon.> |\n| x [2013-01-01 Tue] y |\n| 2014-03-04 |\n| <2014-3-4> |\n"
+  },
+  {
+   "op": "sort",
+   "name": "clock",
+   "org": "| 114:00 |\n| 17:00 |\n| 1:00 |\n| 0:30:15 |\n| 12:3 |\n| 5 |\n| 1:00:30 |\n| 100:00:00 |\n| 2:5 |\n| 2:05 |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 0:30:15 |\n| 1:00 |\n| 1:00:30 |\n| 2:5 |\n| 2:05 |\n| 5 |\n| 12:3 |\n| 17:00 |\n| 100:00:00 |\n| 114:00 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "clock",
+   "org": "| 114:00 |\n| 17:00 |\n| 1:00 |\n| 0:30:15 |\n| 12:3 |\n| 5 |\n| 1:00:30 |\n| 100:00:00 |\n| 2:5 |\n| 2:05 |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 114:00 |\n| 100:00:00 |\n| 17:00 |\n| 12:3 |\n| 5 |\n| 2:5 |\n| 2:05 |\n| 1:00 |\n| 1:00:30 |\n| 0:30:15 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "clock",
+   "org": "| 114:00 |\n| 17:00 |\n| 1:00 |\n| 0:30:15 |\n| 12:3 |\n| 5 |\n| 1:00:30 |\n| 100:00:00 |\n| 2:5 |\n| 2:05 |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 12:3 |\n| 5 |\n| 2:5 |\n| 0:30:15 |\n| 1:00 |\n| 1:00:30 |\n| 2:05 |\n| 17:00 |\n| 100:00:00 |\n| 114:00 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "clock",
+   "org": "| 114:00 |\n| 17:00 |\n| 1:00 |\n| 0:30:15 |\n| 12:3 |\n| 5 |\n| 1:00:30 |\n| 100:00:00 |\n| 2:5 |\n| 2:05 |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 114:00 |\n| 100:00:00 |\n| 17:00 |\n| 2:05 |\n| 1:00:30 |\n| 1:00 |\n| 0:30:15 |\n| 12:3 |\n| 5 |\n| 2:5 |\n"
+  },
+  {
+   "op": "sort",
+   "name": "durs",
+   "org": "| 28:00 |\n| 1d 3:00 |\n| 1h 30min |\n| 1.5h |\n| 2h |\n| 90min |\n| 1d |\n| 1w |\n| 3 h |\n| 1h30min |\n| 1y |\n| 1m |\n| 10min 5h |\n| 5 |\n| abc |\n| about 3:15 pm |\n| 1:05:00 foo |\n",
+   "mode": "n",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| abc |\n| about 3:15 pm |\n| 1d 3:00 |\n| 1h 30min |\n| 1d |\n| 1w |\n| 1h30min |\n| 1y |\n| 1m |\n| 1:05:00 foo |\n| 1.5h |\n| 2h |\n| 3 h |\n| 5 |\n| 10min 5h |\n| 28:00 |\n| 90min |\n"
+  },
+  {
+   "op": "sort",
+   "name": "durs",
+   "org": "| 28:00 |\n| 1d 3:00 |\n| 1h 30min |\n| 1.5h |\n| 2h |\n| 90min |\n| 1d |\n| 1w |\n| 3 h |\n| 1h30min |\n| 1y |\n| 1m |\n| 10min 5h |\n| 5 |\n| abc |\n| about 3:15 pm |\n| 1:05:00 foo |\n",
+   "mode": "N",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 90min |\n| 28:00 |\n| 10min 5h |\n| 5 |\n| 3 h |\n| 2h |\n| 1.5h |\n| 1d 3:00 |\n| 1h 30min |\n| 1d |\n| 1w |\n| 1h30min |\n| 1y |\n| 1m |\n| 1:05:00 foo |\n| abc |\n| about 3:15 pm |\n"
+  },
+  {
+   "op": "sort",
+   "name": "durs",
+   "org": "| 28:00 |\n| 1d 3:00 |\n| 1h 30min |\n| 1.5h |\n| 2h |\n| 90min |\n| 1d |\n| 1w |\n| 3 h |\n| 1h30min |\n| 1y |\n| 1m |\n| 10min 5h |\n| 5 |\n| abc |\n| about 3:15 pm |\n| 1:05:00 foo |\n",
+   "mode": "t",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 5 |\n| abc |\n| 1:05:00 foo |\n| 1h 30min |\n| 1.5h |\n| 90min |\n| 1h30min |\n| 2h |\n| 3 h |\n| about 3:15 pm |\n| 10min 5h |\n| 1d |\n| 1d 3:00 |\n| 28:00 |\n| 1w |\n| 1m |\n| 1y |\n"
+  },
+  {
+   "op": "sort",
+   "name": "durs",
+   "org": "| 28:00 |\n| 1d 3:00 |\n| 1h 30min |\n| 1.5h |\n| 2h |\n| 90min |\n| 1d |\n| 1w |\n| 3 h |\n| 1h30min |\n| 1y |\n| 1m |\n| 10min 5h |\n| 5 |\n| abc |\n| about 3:15 pm |\n| 1:05:00 foo |\n",
+   "mode": "T",
+   "col": 0,
+   "withCase": false,
+   "row": 0,
+   "emacs": "| 1y |\n| 1m |\n| 1w |\n| 28:00 |\n| 1d 3:00 |\n| 1d |\n| 10min 5h |\n| about 3:15 pm |\n| 3 h |\n| 2h |\n| 1h 30min |\n| 1.5h |\n| 90min |\n| 1h30min |\n| 1:05:00 foo |\n| 5 |\n| abc |\n"
+  }
+ ]
+}

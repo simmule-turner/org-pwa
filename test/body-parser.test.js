@@ -283,10 +283,11 @@ test('a blank line followed by an ORDINARY PARAGRAPH (not any kind of list item)
   assert.equal(body[1].type, 'paragraph');
 });
 
-test('multiple blank lines before a nested sub-list are also tolerated, not just exactly one', () => {
+test('two blank lines end a list, so a sub-list after them starts a list of its own (as in Org)', () => {
   const body = parseBody(['1. Parent', '', '', '   - Nested child']);
-  assert.equal(body.length, 1);
-  assert.equal(body[0].items[0].children.length, 1);
+  assert.equal(body.length, 2);
+  assert.equal(body[0].items[0].children.length, 0);
+  assert.equal(body[1].items[0].text, 'Nested child');
 });
 
 test('mixed ordered-parent/unordered-child nesting (the exact real-world case this bug affected) works correctly with a blank-line separator', () => {

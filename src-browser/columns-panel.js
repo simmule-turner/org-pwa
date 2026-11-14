@@ -62,7 +62,8 @@ function buildView() {
   const state = /** @type {NonNullable<typeof S.columnsOpen>} */ (S.columnsOpen);
   const view = new ColumnView(S.state.doc, columnsContext());
   const at = state.anchor >= 0 ? view.entries[state.anchor] || null : null;
-  view.prepare({ at, global: state.global, format: state.format });
+  view.prepare({ at, global: state.global, format: state.format, update: !state.inhibit });
+  state.inhibit = false; // only the view right after moving, widening or deleting a column writes no summary into the properties (org-columns-inhibit-recalculation)
   return view;
 }
 
@@ -136,8 +137,7 @@ export function renderColumnsPanel() {
     row.setAttribute('data-columns-row', String(entry.index));
     view.cells(entry).forEach((cell, i) => {
       const td = row.insertCell();
-      const text = ellipsize(cell.displayed, view.specs[i].width, ctx.ellipses ?? '..');
-      td.textContent = cell.spec.prop === 'ITEM' ? `${'*'.repeat(entry.level)} ${text}` : text;
+      td.textContent = ellipsize(cell.spec.prop === 'ITEM' ? `${'*'.repeat(view.stars(entry))} ${cell.displayed}` : cell.displayed, view.specs[i].width, ctx.ellipses ?? '..');
       td.style.cssText = 'padding:8px;border-bottom:1px solid var(--border);vertical-align:top;white-space:pre;cursor:pointer;' + widthStyle(view.specs[i].width);
       if (cell.spec.prop === 'ITEM') td.style.fontWeight = '600';
       td.onclick = () => cellSheet(view, entry.heading, i);
@@ -163,12 +163,14 @@ function barButton(label, onClick) {
   return b;
 }
 
-/** `org-columns-store-format`, then the view again. @param {ColumnView} view @param {import('../src/org-columns.js').ColumnSpec[]} specs */
-function storeFormat(view, specs) {
+/** `org-columns-store-format`, then the view again; `inhibit` leaves the summaries as they are (`org-columns-inhibit-recalculation`).
+ * @param {ColumnView} view @param {import('../src/org-columns.js').ColumnSpec[]} specs @param {boolean} [inhibit] */
+function storeFormat(view, specs, inhibit = false) {
   const format = uncompileColumnsFormat(specs);
   storeColumnsFormat(S.state.doc, view.top ? view.top.heading : null, format);
   const state = /** @type {NonNullable<typeof S.columnsOpen>} */ (S.columnsOpen);
   state.format = format;
+  state.inhibit = inhibit;
   commitAndRender('Column format');
   renderColumnsPanel();
 }
@@ -184,7 +186,7 @@ function editFormat(view) {
         setStatus('A column format has at least one column, such as %ITEM.');
         return;
       }
-      storeFormat(view, compileColumnsFormat(text));
+      storeFormat(view, compileColumnsFormat(text, true));
     },
   });
 }
@@ -193,27 +195,20 @@ function editFormat(view) {
 function columnSheet(view, i) {
   const specs = view.specs.map((s) => ({ ...s }));
   const spec = specs[i];
-  const width = measuredWidth(view, i);
+  const width = view.width(i);
   openActionSheet({
     title: spec.title,
     subtitle: uncompileColumnsFormat([spec]),
     actions: [
-      { label: 'Wider', hint: 'org-columns-widen', onClick: () => storeFormat(view, withWidth(specs, i, width + 1)) },
-      { label: 'Narrower', hint: 'org-columns-narrow', onClick: () => storeFormat(view, withWidth(specs, i, Math.max(1, width - 1))) },
-      { label: 'Move left', hint: 'org-columns-move-left', disabled: i === 0, onClick: () => storeFormat(view, swap(specs, i - 1)) },
-      { label: 'Move right', hint: 'org-columns-move-right', disabled: i === specs.length - 1, onClick: () => storeFormat(view, swap(specs, i)) },
+      { label: 'Wider', hint: 'org-columns-widen', onClick: () => storeFormat(view, withWidth(specs, i, width + 1), true) },
+      { label: 'Narrower', hint: 'org-columns-narrow', onClick: () => storeFormat(view, withWidth(specs, i, Math.max(1, width - 1)), true) },
+      { label: 'Move left', hint: 'org-columns-move-left', disabled: i === 0, onClick: () => storeFormat(view, swap(specs, i - 1), true) },
+      { label: 'Move right', hint: 'org-columns-move-right', disabled: i === specs.length - 1, onClick: () => storeFormat(view, swap(specs, i), true) },
       { label: 'Add a column before this one', hint: 'org-columns-new', onClick: () => editColumn(view, specs, i, null) },
       { label: 'Edit title, width and summary', hint: 'org-columns-edit-attributes', onClick: () => editColumn(view, specs, i, spec) },
-      { label: 'Delete this column', hint: 'org-columns-delete', danger: true, disabled: specs.length === 1, onClick: () => storeFormat(view, specs.filter((_, k) => k !== i)) },
+      { label: 'Delete this column', hint: 'org-columns-delete', danger: true, disabled: specs.length === 1, onClick: () => storeFormat(view, specs.filter((_, k) => k !== i), true) },
     ],
   });
-}
-
-/** The width of a column as shown: its format width, or the widest value. @param {ColumnView} view @param {number} i */
-function measuredWidth(view, i) {
-  const spec = view.specs[i];
-  if (spec.width !== null) return spec.width;
-  return view.viewEntries().reduce((w, entry) => Math.max(w, view.cells(entry)[i].displayed.length), spec.title.length);
 }
 
 /** @param {import('../src/org-columns.js').ColumnSpec[]} specs @param {number} i @param {number} width */
@@ -230,7 +225,7 @@ function editColumn(view, specs, i, spec) {
     label: spec ? 'Column (width, property, title, summary: %25Effort(Est){:})' : 'New column (%25Effort(Est){:})',
     value: spec ? uncompileColumnsFormat([spec]) : '%',
     onSave: (/** @type {string} */ raw) => {
-      const made = compileColumnsFormat(String(raw).trim());
+      const made = compileColumnsFormat(String(raw).trim(), true);
       if (made.length !== 1) {
         setStatus('Give one column, such as %25Effort(Est){:}.');
         return;
