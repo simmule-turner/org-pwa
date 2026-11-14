@@ -8,6 +8,7 @@ import { addMinutesToTime, formatOrgTimestamp } from '../src/org-timestamp.js';
 import { assertWithinLimit } from '../src/size-limits.js';
 import { S } from './app-state.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
+import { timerEditorTool } from './timer-flow.js';
 import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
@@ -426,7 +427,7 @@ export function openHeadingTextEditor(heading) {
     value: originalText,
     placeholder: 'All content for this heading — lists, notes, etc. — as org text',
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'heading-text', null)],
+    tools: [footnoteEditorTool(heading, 'heading-text', null), timerEditorTool()],
     onCancel: () => {
       S.editingHeadingText = null;
       render();

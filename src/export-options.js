@@ -119,9 +119,8 @@ function parseExportOptions(doc, sup = 't', broken = 'nil') {
       } else if (key === 'broken-links') {
         options.broken = parseBrokenLinks(value, options.broken);
       }
-      // Every other real #+OPTIONS: key (tags:, todo:, pri:, e:, and
-      // many more) is silently ignored -- out of scope for this
-      // app's own narrower subset.
+      // The other keys (tags:, todo:, pri:, e:, ...) are read by each exporter
+      // from the same line through `optionTable` in export-ascii.js.
     }
   }
   return options;

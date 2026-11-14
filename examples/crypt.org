@@ -1,0 +1,44 @@
+#+TITLE: Org Crypt
+#+STARTUP: showall
+
+Org Crypt keeps the text of an entry secret in the file: it is replaced by a block of =-----BEGIN PGP MESSAGE-----= text that Emacs (=org-decrypt-entry=) and gpg can open too. The heading, its tags and its properties stay readable. Everything below them, sub-headings included, is encrypted.
+
+Open the command palette and choose:
+- *Encrypt entry* / *Decrypt entry* (=org-encrypt-entry=, =org-decrypt-entry=): the entry you are on.
+- *Encrypt all crypt entries* / *Decrypt all crypt entries* (=org-encrypt-entries=, =org-decrypt-entries=): every entry with the =crypt= tag.
+
+The passphrase of every entry in this file is =example=. It is asked for once and kept in memory for ten minutes. While entries are decrypted, the copy of the file kept on this device is not updated (Settings → =org-crypt-disable-auto-save=); save the file after encrypting it again.
+
+The =CRYPTKEY= property of the last entry names the key it is encrypted to; without it, =org-crypt-key= in Settings is used, and without a key, a passphrase. To open that entry, import =crypt-example-key.asc= under Settings → Encryption keys (its passphrase is also =example=), then choose *Decrypt entry*. It is a key for trying this out; do not use it for anything real.
+
+* Waiting to be encrypted :crypt:
+:PROPERTIES:
+:ID: 7f1e2b52-2f58-4a5c-9e34-0c8b6b7d1a01
+:END:
+This entry has the =crypt= tag and plain text. Choose *Encrypt all crypt entries*, enter a passphrase, and the text below the properties becomes a message. Choose *Decrypt all crypt entries* to read it again.
+
+Wi-Fi: guest / correct-horse-battery
+** Sub-headings are encrypted with it
+Nothing below this entry's properties is left in the clear.
+
+* A passphrase entry :crypt:
+-----BEGIN PGP MESSAGE-----
+
+jA0ECQMKcCz7dOtOK5L/0nEB/QwXbezbMk1llKlxQwDb5dNxP35Gbz03LQx3176K
+ECxpdd4ihUhIVQu/ZHzgedu23LLsS1wcm4djYnvNlZw16I5U0gKKHSNU3zQkzrA7
+PEV4dkaBbePrSfhfya9X1vcaEWD3yGD7++Hl5ZCETOHtPA==
+=YfR8
+-----END PGP MESSAGE-----
+* An entry for a key :crypt:
+:PROPERTIES:
+:CRYPTKEY: example@org-pwa.invalid
+:END:
+-----BEGIN PGP MESSAGE-----
+
+hF4DLxc11qfwOM0SAQdAyhuG0aMX1kX2dPoTjgNBBWSjvJsANr0uFLAYBgY233Uw
+BUljK2DSEtL17r/F3/ZBJc9Q+k2DSqAr29B2Jq8P6/t2vlpVqsDuOIuZJRowLUbr
+1HcBCQIQL8LtTO+rbkILCh7w3bUBqcWIzZ64XCMVLe9eeQ5gqfH+3Ugq87nBssN5
+1eikRG/b5JOEUuptH0yRnYJwvlpYaApsIkoJIDNp3CnqKJrKHTnqKOlJxJVWo46o
+7Vw3WpBeOwbHQ7mdlEB/uIeNmZKcn5OrJg==
+=0/PM
+-----END PGP MESSAGE-----

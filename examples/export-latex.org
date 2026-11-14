@@ -75,6 +75,35 @@ Emacs writes:
 \label{sec:org0000001}
 #+end_src
 
+* Choosing what is exported
+=tasks:todo= keeps only the unfinished TODO headings (the DONE one goes), =arch:nil= drops archived subtrees and =d:nil= drops drawers. Every key =#+OPTIONS:= takes is listed in the README.
+
+#+begin_src org
+,#+OPTIONS: tasks:todo arch:nil d:nil
+,* TODO Open
+The meeting runs long.
+:LOGBOOK:
+- Note taken
+:END:
+,* DONE Closed
+closed text
+,* Old :ARCHIVE:
+hidden
+,* Plain
+stays
+#+end_src
+
+Emacs writes:
+
+#+begin_src latex
+\section{{\bfseries\sffamily TODO} Open}
+\label{sec:org0000001}
+The meeting runs long.
+\section{Plain}
+\label{sec:org0000002}
+stays
+#+end_src
+
 * Your own headline format
 =org-latex-format-headline-function= is called for every section title and low-level list headline with the keyword, its type (=todo= or =done=), the priority as a character code, the title, the tags and the export info. Whatever it returns is the headline.
 

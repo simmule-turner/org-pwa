@@ -210,6 +210,24 @@ export const CASES = [
     before: '* Inbox\n** Earlier\n',
   },
   {
+    title: 'After a line that matches', key: 'r', file: 'notes.org', at: [2026, 11, 7, 18, 30],
+    about: ['=(file+regexp "notes.org" REGEXP)= files after the first line the regular expression matches; an =entry= goes on the lines below it, an =item= at the end of the match. A file where nothing matches stops the capture, as in Emacs. =%^{EFFORT}p= asks for the value of a property and sets it on the new entry; the text typed at =%?= is the note.'],
+    init: String.raw`(add-to-list 'org-capture-templates
+  '("r" "Idea" entry (file+regexp "notes.org" "^\\* Ideas$")
+    "** %^{Idea}\n%^{EFFORT}p\n%?"))`,
+    answers: { Idea: 'Try a standing desk', EFFORT: '1:00' }, typed: 'Ask facilities first.',
+    before: '* Ideas\n** Earlier idea\n* Other\n',
+  },
+  {
+    title: 'After a line that matches, newest first', key: 'r', file: 'notes.org', at: [2026, 11, 7, 18, 30],
+    about: ['With =:prepend t= the entry is filed as the first child of the matching heading, above the older ones, and takes the level below it (the template says =*=, the entry is made =**=). =:immediate-finish t= skips the text step.'],
+    init: String.raw`(add-to-list 'org-capture-templates
+  '("r" "Idea" entry (file+regexp "notes.org" "^\\* Ideas$")
+    "* %^{Idea}\n" :prepend t :immediate-finish t))`,
+    answers: { Idea: 'Learn to juggle' },
+    before: '* Ideas\n** Earlier idea\n* Other\n',
+  },
+  {
     title: 'Tracking', key: 't', file: 'home.org', at: [2026, 11, 7, 18, 30], runs: 2, warm: [2026, 10, 31, 8, 0],
     about: ['A =table-line= template whose target function finds or makes the headings =Bag=, =Health=, =Tracking= and the current month, puts the new month first, and gives it a plot line, a table and the formulas. The row is filed into that table, the formulas are worked out again, and =:jump-to-captured t= opens the table and scrolls to the new row. The file already has October; two rows are captured in November.',
       'Emacs does not expand =@#= in a template, so the first column is a formula, =$1=@#-1= (the header row counts as a row). Emacs rejects a =#+TBLFM= line that defines =$4== twice ("Double definition"), so one formula gives the hour column.'],

@@ -1,0 +1,283 @@
+[
+ {
+  "name": "encrypt a heading with a crypt tag",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entry",
+    "line": 3
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt entry works without the tag (command on the heading)",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entry",
+    "line": 1
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\n-----BEGIN PGP MESSAGE-----\n\n317c7c4e6f7468696e6720686572652e0a\n-----END PGP MESSAGE-----\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt a heading from a line of its body",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entry",
+    "line": 7
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt entries",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt entries then decrypt entries",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt entries twice does nothing the second time",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "decrypt then encrypt again reuses the message",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   },
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "a change after decrypting is encrypted anew",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   },
+   {
+    "do": "replace",
+    "from": "PIN: 0000",
+    "to": "PIN: 1111"
+   },
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n327c7c4163636f756e743a2031323334350a50494e3a20313131310a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt a heading and decrypt it by hand",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entry",
+    "line": 3
+   },
+   {
+    "do": "decrypt-entry",
+    "line": 3
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n"
+ },
+ {
+  "name": "planning, properties and logbook stay outside",
+  "text": "* TODO Taxes :crypt:\nDEADLINE: <2026-04-15 Wed>\n:PROPERTIES:\n:Owner: me\n:END:\n:LOGBOOK:\nCLOCK: [2026-04-01 Wed 09:00]--[2026-04-01 Wed 10:00] =>  1:00\n:END:\n\nSecret text\n  indented secret\n* Next\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "* TODO Taxes :crypt:\nDEADLINE: <2026-04-15 Wed>\n:PROPERTIES:\n:Owner: me\n:END:\n:LOGBOOK:\nCLOCK: [2026-04-01 Wed 09:00]--[2026-04-01 Wed 10:00] =>  1:00\n:END:\n\n-----BEGIN PGP MESSAGE-----\n\n317c7c53656372657420746578740a2020696e64656e746564207365637265740a\n-----END PGP MESSAGE-----\n* Next\n"
+ },
+ {
+  "name": "planning, properties and logbook: decrypt",
+  "text": "* TODO Taxes :crypt:\nDEADLINE: <2026-04-15 Wed>\n:PROPERTIES:\n:Owner: me\n:END:\n:LOGBOOK:\nCLOCK: [2026-04-01 Wed 09:00]--[2026-04-01 Wed 10:00] =>  1:00\n:END:\n\nSecret text\n  indented secret\n* Next\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   }
+  ],
+  "expected": "* TODO Taxes :crypt:\nDEADLINE: <2026-04-15 Wed>\n:PROPERTIES:\n:Owner: me\n:END:\n:LOGBOOK:\nCLOCK: [2026-04-01 Wed 09:00]--[2026-04-01 Wed 10:00] =>  1:00\n:END:\n\nSecret text\n  indented secret\n* Next\n"
+ },
+ {
+  "name": "empty bodies and the end of the file",
+  "text": "* Empty :crypt:\n* Only props :crypt:\n:PROPERTIES:\n:ID: x\n:END:\n* Last :crypt:\ntext at the end of the file",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "* Empty :crypt:\n-----BEGIN PGP MESSAGE-----\n\n317c7c\n-----END PGP MESSAGE-----\n* Only props :crypt:\n:PROPERTIES:\n:ID: x\n:END:\n-----BEGIN PGP MESSAGE-----\n\n327c7c\n-----END PGP MESSAGE-----\n* Last :crypt:\n-----BEGIN PGP MESSAGE-----\n\n337c7c746578742061742074686520656e64206f66207468652066696c65\n-----END PGP MESSAGE-----\n"
+ },
+ {
+  "name": "empty bodies and the end of the file: decrypt",
+  "text": "* Empty :crypt:\n* Only props :crypt:\n:PROPERTIES:\n:ID: x\n:END:\n* Last :crypt:\ntext at the end of the file",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   }
+  ],
+  "expected": "* Empty :crypt:\n* Only props :crypt:\n:PROPERTIES:\n:ID: x\n:END:\n* Last :crypt:\ntext at the end of the file"
+ },
+ {
+  "name": "a key from org-crypt-key",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "key": "alice",
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c616c6963657c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "a key that matches nothing falls back to symmetric",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "key": "nobody",
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "no key at all (nil) is symmetric",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "key": null,
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "the CRYPTKEY property",
+  "text": "* A :crypt:\n:PROPERTIES:\n:CRYPTKEY: bob\n:END:\ntext a\n* B :crypt:\ntext b\n* C :crypt:\n:PROPERTIES:\n:CRYPTKEY: nil\n:END:\ntext c\n* D :crypt:\n:PROPERTIES:\n:CRYPTKEY: nobody\n:END:\ntext d\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "key": "alice",
+  "expected": "* A :crypt:\n:PROPERTIES:\n:CRYPTKEY: bob\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c626f627c7465787420610a\n-----END PGP MESSAGE-----\n* B :crypt:\n-----BEGIN PGP MESSAGE-----\n\n327c616c6963657c7465787420620a\n-----END PGP MESSAGE-----\n* C :crypt:\n:PROPERTIES:\n:CRYPTKEY: nil\n:END:\n-----BEGIN PGP MESSAGE-----\n\n337c7c7465787420630a\n-----END PGP MESSAGE-----\n* D :crypt:\n:PROPERTIES:\n:CRYPTKEY: nobody\n:END:\n-----BEGIN PGP MESSAGE-----\n\n347c7c7465787420640a\n-----END PGP MESSAGE-----\n"
+ },
+ {
+  "name": "another tag matcher",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "matcher": "crypt|Plain",
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ },
+ {
+  "name": "blank lines only below the heading",
+  "text": "* A :crypt:\n\n\n* B\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   }
+  ],
+  "expected": "* A :crypt:\n-----BEGIN PGP MESSAGE-----\n\n317c7c0a0a\n-----END PGP MESSAGE-----\n* B\n"
+ },
+ {
+  "name": "blank lines before and after the text",
+  "text": "* A :crypt:\n\n\ntext\n\n\n* B\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entries"
+   }
+  ],
+  "expected": "* A :crypt:\n\n\ntext\n\n\n* B\n"
+ },
+ {
+  "name": "a message indented by the list or the heading",
+  "text": "* A\n  -----BEGIN PGP MESSAGE-----\n\n  317c7c68690a\n  -----END PGP MESSAGE-----\n",
+  "ops": [
+   {
+    "do": "decrypt-entry",
+    "line": 0
+   }
+  ],
+  "expected": "* A\nhi\n"
+ },
+ {
+  "name": "decrypt a heading that is not encrypted",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "decrypt-entry",
+    "line": 1
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n"
+ },
+ {
+  "name": "encrypt before the first heading does nothing useful",
+  "text": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\nAccount: 12345\nPIN: 0000\n\n** Child one\nChild text\n** Child two :crypt:\nMore child text.\n* After\nAfter text\n",
+  "ops": [
+   {
+    "do": "encrypt-entries"
+   },
+   {
+    "do": "decrypt-entry",
+    "line": 0
+   }
+  ],
+  "expected": "#+TITLE: Secrets\n* Plain\nNothing here.\n* Bank :crypt:\n:PROPERTIES:\n:ID: abc\n:END:\n-----BEGIN PGP MESSAGE-----\n\n317c7c4163636f756e743a2031323334350a50494e3a20303030300a0a2a2a204368696c64206f6e650a4368696c6420746578740a2a2a204368696c642074776f203a63727970743a0a4d6f7265206368696c6420746578742e0a\n-----END PGP MESSAGE-----\n* After\nAfter text\n"
+ }
+]

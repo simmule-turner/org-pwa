@@ -76,15 +76,15 @@ export async function playClockSound(raw) {
   }
 }
 
-/** @param {string} text */
-async function notify(text) {
+/** A reminder: the status line, the sound of `org-clock-sound` and a notification where the browser allows one (org-notify). @param {string} text @param {string} [title] @param {string} [id] */
+export async function notify(text, title = 'Clock', id = 'clock-effort') {
   setStatus(text);
   await playClockSound(S.globalVariables['org-clock-sound']);
   const n = platform.notifications;
   try {
     if (n.supported() && (await n.permission()) === 'granted') {
       const today = new Date();
-      await n.show({ id: 'clock-effort', title: 'Clock', body: text, detail: null, day: new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() });
+      await n.show({ id, title, body: text, detail: null, day: new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() });
     }
   } catch {
     /* the status line already said it */

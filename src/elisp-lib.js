@@ -1232,6 +1232,15 @@ defun('add-hook', 2, 4, ([hook, fn, depth]) => {
   }
   return NIL;
 });
+// (org-crypt-use-before-save-magic): entries with the crypt tag are encrypted before a file is saved (org-crypt.el adds the function to `before-save-hook`)
+defun('org-crypt-use-before-save-magic', 0, 0, () => {
+  const symbol = intern('before-save-hook');
+  const cur = symbol.value === undefined || symbol.value === NIL ? NIL : symbol.value;
+  const items = cur instanceof Cons ? toArray(cur) : cur === NIL ? [] : [cur];
+  if (!items.some((e) => e === intern('org-encrypt-entries'))) symbol.value = list([...items, intern('org-encrypt-entries')]);
+  symbol.special = true;
+  return NIL;
+});
 defun('remove-hook', 2, 3, ([hook, fn]) => {
   const symbol = sym(hook);
   if (symbol.value instanceof Cons) symbol.value = list(toArray(symbol.value).filter((e) => !equal(e, fn)));

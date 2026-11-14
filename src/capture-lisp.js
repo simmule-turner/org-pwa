@@ -60,13 +60,13 @@ function functionTexts(f) {
 /**
  * Where a template files: `{ file, olp }` (with `datetree` for file+olp+datetree, `fn` for a function that finds the place), or a reason it cannot be read.
  * @param {Lisp | undefined} target
- * @returns {{ file: string, olp: string[], datetree?: boolean, treeType?: string, fn?: string, strict?: boolean } | string}
+ * @returns {{ file: string, olp: string[], datetree?: boolean, treeType?: string, fn?: string, strict?: boolean, regexp?: string, id?: string, clock?: boolean } | string}
  */
 function readTarget(target) {
   const items = listItems(target);
   const head = items && symbolName(items[0]);
   if (!items || !head) return 'the target is not a list such as (file+olp "f.org" "Heading")';
-  const file = stringValue(items[1]) ?? '';
+  const file = head === 'id' || head === 'clock' ? '' : (stringValue(items[1]) ?? '');
   if (head === 'file') return { file, olp: [] };
   if (head === 'file+function') {
     const fn = items.length === 3 ? functionText(items[2]) : null;
@@ -76,6 +76,15 @@ function readTarget(target) {
     const fn = items.length === 2 ? functionText(items[1]) : null;
     return fn === null ? 'function needs a function (a name or a lambda form)' : { file: '', olp: [], fn: fn };
   }
+  if (head === 'file+regexp') {
+    const regexp = stringValue(items[2]);
+    return regexp === null || items.length !== 3 ? 'file+regexp needs a regular expression as a string' : { file, olp: [], regexp };
+  }
+  if (head === 'id') {
+    const id = stringValue(items[1]);
+    return id === null || items.length !== 2 ? 'id needs an ID as a string' : { file: '', olp: [], id };
+  }
+  if (head === 'clock') return items.length === 1 ? { file: '', olp: [], clock: true } : 'clock takes no arguments';
   if (head === 'file+headline') {
     const heading = stringValue(items[2]);
     return heading === null ? 'file+headline needs a heading as a string' : { file, olp: [heading] };
@@ -90,7 +99,7 @@ function readTarget(target) {
     if (!path.every((s) => s !== null)) return `${head} needs headings as strings`;
     return { file, olp: /** @type {string[]} */ (path), strict: true, datetree: true, ...(head === 'file+weektree' ? { treeType: 'week' } : {}) };
   }
-  return `the target ${head} is not supported (use file, file+headline, file+olp, file+olp+datetree or file+function)`;
+  return `the target ${head} is not supported (use file, file+headline, file+olp, file+regexp, file+olp+datetree, file+function, function, id or clock)`;
 }
 
 /**
@@ -112,7 +121,6 @@ function readEntry(entry, notes) {
   if (typeof target === 'string') return say(target), null;
   const text = stringValue(items[4]);
   if (text === null) return say('the template must be a string'), null;
-  if (target.olp.length === 0 && !target.datetree && !target.fn && type !== 'entry' && type !== 'plain') return say(`a ${type} needs a heading to go under (use file+headline or file+olp)`), null;
 
   /** @type {CaptureTemplate} */
   const out = { key, description, type, olp: target.olp, template: text };
@@ -121,6 +129,8 @@ function readEntry(entry, notes) {
   if (target.strict) out.olpMustExist = true; // file+olp stops at a heading that is not there, as in Emacs; file+headline makes it
   if (target.treeType) out.treeType = target.treeType;
   if (target.fn) out.targetFunction = target.fn;
+  if (target.id !== undefined) out.targetId = target.id;
+  if (target.clock) out.targetClock = true;
   const props = items.slice(5);
   /** @type {string[]} org-capture-plist as Emacs has it for a function to read: the template's own keywords as written, then the ones Emacs adds */
   const plist = [];
@@ -154,6 +164,11 @@ function readEntry(entry, notes) {
       else notes.push(`Capture template "${key}": ${name} needs a string and is ignored.`);
     } else if (UNSUPPORTED.has(name)) notes.push(`Capture template "${key}": ${name} has no effect here.`);
     else if (!QUIET.has(name)) notes.push(`Capture template "${key}": ${name} is not known and has no effect.`);
+  }
+  // file+regexp: the function a template could have written, which leaves point at the end of the match (at its start for :prepend), as Emacs does
+  if (target.regexp !== undefined) {
+    const lit = (/** @type {string} */ x) => `"${x.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    out.targetFunction = `(lambda () (goto-char (point-min)) (if (re-search-forward ${lit(target.regexp)} nil t) (goto-char (if ${out.prepend ? 't' : 'nil'} (match-beginning 0) (match-end 0))) (error "No match for target regexp in file %s" ${lit(target.file)})))`;
   }
   plist.push(':key', print(toObject(items[0])), ':description', print(toObject(items[1])), ':target', print(toObject(items[3])), ':template', print(toObject(items[4])), ':type', type);
   out.plist = plist;

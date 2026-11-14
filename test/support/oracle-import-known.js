@@ -11,7 +11,6 @@ export const KNOWN = [
   { chosen: true, reason: '`\\N` is a line break in RFC 5545 (as `\\n`); Emacs leaves it as written.', match: /SUMMARY:x\\Ny/ },
   { chosen: true, reason: 'Emacs ignores INTERVAL of a monthly or yearly rule (every month, every year); the app keeps it (+2m, +2y).', match: /FREQ=(MONTHLY|YEARLY);INTERVAL=2/ },
   { chosen: true, reason: 'Emacs drops an hourly rule; the app keeps the rule in an :RRULE: property.', match: /FREQ=HOURLY/ },
-  { chosen: true, reason: 'EXDATE (an exception) is written by Emacs as a diary exclusion; the app does not carry exceptions over and says so.', match: /EXDATE/ },
   { chosen: true, reason: 'An event with no DTSTART: Emacs writes an entry with no date; the app has nothing to date it and skips it.', match: /SUMMARY:NoStart/ },
   { chosen: true, reason: 'An end before the start: Emacs writes a block that ends before it begins; the app keeps the start only.', match: /SUMMARY:EndBefore/ },
   { chosen: true, reason: 'A VTODO: Emacs skips tasks; the app makes a TODO heading (README: Import).', match: /BEGIN:VTODO/ },

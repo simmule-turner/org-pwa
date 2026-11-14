@@ -19,6 +19,7 @@ import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { openDocsAtHeading, switchToView } from './views.js';
 import { platform } from './platform.js';
 import { clockInCaptured, findRunningClockAcrossSessions } from './clock-flow.js';
+import { findIdDocumentId } from './id-links.js';
 
 /** Converts org-agenda-files' own raw string value (semicolon-
  *  separated "scheme:path" entries, the same separator convention
@@ -45,6 +46,7 @@ export async function renderCapturePanel() {
   capturePanelBox.innerHTML = '';
   if (!S.captureOpen) {
     hideModalOverlay(capturePanel);
+    S.captureInsertHere = false;
     S.capturePromptTemplate = null;
     S.currentCaptureTemplates = [];
     S.captureShared = null; // shared-in content and the clipboard belong to one capture only
@@ -64,6 +66,20 @@ export async function renderCapturePanel() {
   heading.style.marginBottom = '8px';
   heading.textContent = 'Capture \u2014 pick a template';
   capturePanelBox.appendChild(heading);
+
+  if (S.currentView === 'text' && !S.narrowedHeading) {
+    // `C-0 C-c c`: the capture goes in where the cursor is, not where the template says
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = !!S.captureInsertHere;
+    box.onchange = () => {
+      S.captureInsertHere = box.checked;
+    };
+    label.append(box, 'Insert at the cursor (C-0 C-c c)');
+    capturePanelBox.appendChild(label);
+  }
 
   const templates = await getCaptureTemplates();
   if (!S.captureOpen) return; // panel was closed again before this resolved
@@ -397,6 +413,15 @@ export function renderCapturePromptForm() {
  * @param {Date} [at] the date and time asked for by :time-prompt
  */
 export async function runCaptureWithAnswers(template, answers, at) {
+  /** @type {{ line: number, column: number } | null} the cursor of the text view, when the capture is to go in there */
+  let here = null;
+  if (S.captureInsertHere && S.currentView === 'text' && !S.narrowedHeading) {
+    const textarea = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+    if (textarea) {
+      const before = textarea.value.slice(0, textarea.selectionStart);
+      here = { line: before.split('\n').length - 1, column: before.length - before.lastIndexOf('\n') - 1 };
+    }
+  }
   if (S.currentView === 'text') {
     // Same reasoning as search's own text-mode guard above: leaving text
     // mode reparses the document into new objects, so do it now, before
@@ -422,7 +447,28 @@ export async function runCaptureWithAnswers(template, answers, at) {
     }
   }
 
-  const targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
+  let targetFileId = resolveCaptureFileId(template.file, S.state.documentId);
+  if (here) targetFileId = S.state.documentId;
+  else if (template.targetClock) {
+    // (clock): the file the running clock is in
+    const running = findRunningClockAcrossSessions();
+    if (!running) {
+      setStatus('Capture failed: No running clock that could be used as capture target');
+      renderCapturePanel();
+      return;
+    }
+    targetFileId = running.isActive ? S.state.documentId : (S.documentSessions.find((x) => x.tabId === running.tabId)?.state.documentId ?? S.state.documentId);
+  } else if (template.targetId !== undefined) {
+    // (id ID): the file org-id finds the ID in
+    setStatus(`Looking for ID ${template.targetId}\u2026`);
+    const found = await findIdDocumentId(template.targetId);
+    if (!found) {
+      setStatus(`Capture failed: Cannot find target ID "${template.targetId}"`);
+      renderCapturePanel();
+      return;
+    }
+    targetFileId = found;
+  }
 
   if (targetFileId !== S.state.documentId) {
     // Cross-file capture: read/insert/write the OTHER file directly via
@@ -456,7 +502,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
     setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}${afterNote(captured)}`);
     if (template.jumpToCaptured && captured) {
       // :jump-to-captured t visits the other file's buffer, as Emacs does
-      const tab = S.documentSessions.find((/** @type {any} */ x) => x.state && x.state.documentId === targetFileId);
+      const tab = S.documentSessions.find((x) => x.state && x.state.documentId === targetFileId);
       if (tab) {
         switchToTab(tab.tabId);
         showCaptured(template, captured);
@@ -467,7 +513,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
     return;
   }
 
-  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d) });
+  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d), ...(here ? { here } : {}) });
   if (!result.ok) {
     setStatus(result.message);
     renderCapturePanel();
@@ -477,7 +523,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
   const clocked = clockCapturedEntry(template, result, S.state.doc);
   commitAndRender(`Captured: ${template.description}`);
 
-  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
+  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction || template.targetId !== undefined || template.targetClock;
   // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry
   if (template.jumpToCaptured) showCaptured(template, result);
   setStatus('Captured.' + clocked + afterNote(result));
@@ -505,7 +551,7 @@ function clockCapturedEntry(template, result, doc) {
 function showCaptured(template, result) {
   const { target, placed, reveal } = result;
   switchToView('org');
-  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction;
+  const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction || template.targetId !== undefined || template.targetClock;
   const shown = hasTarget && 'level' in target ? target : placed && 'level' in placed ? placed : null;
   if (reveal) {
     if (reveal.heading) {

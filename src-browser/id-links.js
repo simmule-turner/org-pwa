@@ -54,6 +54,28 @@ function locate(id) {
 }
 
 /**
+ * The id of the file that holds the heading with this :ID: (`org-id-find`, for a capture target): the file on screen, then the open tabs, the Agenda
+ * Files and the file the ID was last seen in. Null when none has it.
+ * @param {string} id
+ * @returns {Promise<string | null>}
+ */
+export async function findIdDocumentId(id) {
+  if (S.state.doc && findHeadingById(S.state.doc, id)) return S.state.documentId;
+  let { places } = locate(id);
+  if (places.length === 0) {
+    await ensureAgendaFilesLoadedAndWait();
+    ({ places } = locate(id));
+  }
+  const first = places[0];
+  if (first) {
+    if (first.tabId !== undefined) return S.documentSessions.find((x) => x.tabId === first.tabId)?.state.documentId ?? null;
+    return first.documentId ?? null;
+  }
+  const remembered = await lookupIdLocation(id);
+  return remembered ? remembered.documentId : null;
+}
+
+/**
  * Follows an `id:` link that is not in the file on screen.
  * @param {string} id
  * @param {Heading | null} [containingHeading]  the heading the link is in, so Back returns to it

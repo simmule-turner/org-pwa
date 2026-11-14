@@ -113,7 +113,7 @@ function ownMinutes(heading, tstart, tend) {
  * @param {Heading[]} roots @param {number | null} tstart @param {number | null} tend @param {((h: Heading) => boolean) | null} filter
  * @returns {{ time: Map<Heading, number>, total: number }}
  */
-function clockSum(roots, tstart, tend, filter) {
+export function clockSum(roots, tstart, tend, filter) {
   /** @type {Map<Heading, number>} */
   const time = new Map();
   /** @param {Heading} heading @returns {number} */

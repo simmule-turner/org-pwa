@@ -17,16 +17,18 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | capture-vcard.org       | a capture template that files a contact                                                                      | app only                                          |
 | citations.org           | citations and the reference list                                                                             | org-cite                                          |
 | clock-tables.org        | =#+BEGIN: clocktable= reports: =:block=, =:step=, =:match=, =:formula=, =:link=, =:compact=                  | org-update-all-dblocks                            |
+| column-view.org         | column view (=C-c C-x C-c=): =#+COLUMNS:=, a =:COLUMNS:= property, summaries, =#+BEGIN: columnview= tables   | org-update-all-dblocks                            |
 | contacts-vcard-tree.org | contacts exported as vCards (tree)                                                                           | app only                                          |
 | contacts-vcard.org      | contacts exported as vCards (flat)                                                                           | app only                                          |
 | cookies.org             | =[/]= and =[%]= cookies on lists and headings                                                                | org-update-statistics-cookies                     |
+| crypt.org               | =crypt= entries: encrypt and decrypt by passphrase or key; =crypt-example-key.asc= is the key                | gpg, org-encrypt-entries                          |
 | diary.org               | the diary: date forms, Lisp entries, and when to use it instead of a calendar; =diary= is the file           | diary-list-entries                                |
 | editing.org             | promote, demote and move headings; list items and checkboxes; table rows, columns and cells                  | org-promote-subtree, org-meta-return, org-table-* |
 | export-latex.org        | macros including =(eval ..)=, headline function, classes, =#+ATTR_LATEX=                                     | org-export-as 'latex                              |
 | god-mode.org            | god-mode keys to try, and the rules behind them                                                              | god-mode.el's rules                               |
 | habits.org              | the habit strip: colors, ranges, repeaters                                                                   | org-habit                                         |
 | holidays.org            | holiday groups and flags, switching entries on and off, adding your own, every entry with a description link | list-holidays                                     |
-| icalendar.org           | calendar (.ics) export; =icalendar.ics= is the output                                                        | org-icalendar-export-to-ics                       |
+| icalendar.org           | calendar (.ics) export (=icalendar.ics= is the output) and import (=icalendar-import.ics=)                  | org-icalendar-export-to-ics                       |
 | inline-latex.org        | math in the inline, display and environment forms                                                            | KaTeX; rules from Org                             |
 | lisp-init.org           | what the Lisp init reads and how it evaluates                                                                | Emacs Lisp                                        |
 | logging.org             | per-keyword logging, =:LOGBOOK:=, repeats                                                                    | org-todo, org-log-*                               |
@@ -37,6 +39,7 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | settings.org            | every variable the app reads, alphabetical, each as a commented =(setq NAME DEFAULT)=; =*= marks one with no control in Settings | Emacs 29.3's defaults                             |
 | sunrise-sunset.org      | sunrise and sunset from a shared =js= block with Noweb                                                       | app only                                          |
 | table-formulas.org      | =#+TBLFM:= formulas, ranges, parameters, dates, number literals, Calc                                        | results from Emacs                                |
+| timer.org               | a relative timer and a countdown: timer list items, shifting stamps, a countdown from the effort             | org-timer-* (stamps, item, shift)                 |
 | todo-states.org         | what a TODO state change writes: repeats, =CLOSED:=, log items                                               | org-todo                                          |
 
 * How a result is checked

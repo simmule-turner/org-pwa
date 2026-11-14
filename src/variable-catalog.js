@@ -7,6 +7,11 @@
 /** @type {CatalogEntry[]} */
 export const VARIABLE_CATALOG = [
   {
+    "name": "before-save-hook",
+    "doc": "Normal hook that is run before a buffer is saved to its file.",
+    "default": "nil"
+  },
+  {
     "name": "buffer-read-only",
     "doc": "Non-nil if this buffer is read-only.",
     "default": "nil"
@@ -317,9 +322,34 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-columns-default-format",
+    "doc": "The default column format, if no other format has been defined.",
+    "default": "\"%25ITEM %TODO %3PRIORITY %TAGS\""
+  },
+  {
+    "name": "org-columns-ellipses",
+    "doc": "The ellipses to be used when a field in column view is truncated.",
+    "default": "\"..\""
+  },
+  {
     "name": "org-contacts-birthday-property",
     "doc": "The property that holds a contact's birthday or anniversary (org-contacts).",
     "default": "\"BIRTHDAY\""
+  },
+  {
+    "name": "org-crypt-disable-auto-save",
+    "doc": "What org-decrypt should do if `auto-save-mode' is enabled.",
+    "default": "ask"
+  },
+  {
+    "name": "org-crypt-key",
+    "doc": "The default key to use when encrypting the contents of a heading.",
+    "default": "\"\""
+  },
+  {
+    "name": "org-crypt-tag-matcher",
+    "doc": "The tag matcher used to find headings whose contents should be encrypted.",
+    "default": "\"crypt\""
   },
   {
     "name": "org-deadline-past-days",
@@ -520,6 +550,21 @@ export const VARIABLE_CATALOG = [
     "name": "org-tags-exclude-from-inheritance",
     "doc": "List of tags that should never be inherited.",
     "default": "nil"
+  },
+  {
+    "name": "org-timer-default-timer",
+    "doc": "The default timer when a timer is set, in minutes or hh:mm:ss format.",
+    "default": "\"0\""
+  },
+  {
+    "name": "org-timer-display",
+    "doc": "Define where running timer is displayed, if at all.",
+    "default": "mode-line"
+  },
+  {
+    "name": "org-timer-format",
+    "doc": "The format to insert the time of the timer.",
+    "default": "\"%s \""
   },
   {
     "name": "org-use-property-inheritance",

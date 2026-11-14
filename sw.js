@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v700';
+const CACHE_NAME = 'org-pwa-shell-v701';
 
 const SHELL_FILES = [
   './',
@@ -119,6 +119,10 @@ const SHELL_FILES = [
   './src/local-variables.js',
   './src/refile.js',
   './src/clock.js',
+  './src/org-columns.js',
+  './src/org-timer.js',
+  './src/org-crypt.js',
+  './src/pgp.js',
   './src/org-duration.js',
   './src/effort-values.js',
   './src/broken-links.js',
@@ -176,6 +180,7 @@ const SHELL_FILES = [
   './src/vendor/katex/katex.min.css',
   './src/vendor/katex/katex.min.js',
   './src/vendor/mathjs/mathjs-custom.min.js',
+  './src/vendor/openpgp/openpgp.min.mjs',
   './src/global-variables.js',
   './src/comment-model.js',
   './src/outline-view-model.js',
@@ -329,6 +334,10 @@ const SHELL_FILES = [
   './src-browser/attachments-store.js',
   './src-browser/audio-recording.js',
   './src-browser/calendar-panel.js',
+  './src-browser/columns-panel.js',
+  './src-browser/dblocks.js',
+  './src-browser/crypt-flow.js',
+  './src-browser/timer-flow.js',
   './src-browser/capture-templates.js',
   './src-browser/capture-ui.js',
   './src-browser/chrome.js',

@@ -37,7 +37,7 @@ test('add-to-list puts a template first, and a group heading or a template that 
   const { templates, notes } = captureTemplatesFromLisp(`
     (setq org-capture-templates '(("w" "Work") ("wt" "Task" entry (file+headline "w.org" "Tasks") "* TODO %?" :empty-lines 1)
                                   ("d" "Dated" entry (file+datetree+prompt "d.org") "* %?")
-                                  ("f" "Fn" entry (clock) "* %?")))
+                                  ("f" "Fn" entry (nowhere) "* %?")))
     (add-to-list 'org-capture-templates '("n" "Note" plain (file "inbox.org") "* %?"))`);
   assert.deepEqual(templates.map((t) => t.key), ['n', 'wt']);
   assert.deepEqual(templates[0].olp, []);
@@ -96,4 +96,13 @@ test('file+olp+datetree and the older file+datetree and file+weektree read as a 
   assert.deepEqual(templates.map((t) => [t.key, t.olp, t.datetree, t.treeType]), [['a', ['Journal', 'Sub'], true, 'week'], ['b', [], true, undefined], ['c', ['X'], true, 'week'], ['d', [], true, 'month'], ['e', [], true, undefined]]);
   assert.equal(notes.length, 1);
   assert.match(notes[0], /"e".*Org 9\.8/);
+});
+
+test('file+regexp, id and clock targets are read, and an item or a table row needs no heading to go under', () => {
+  const { templates, notes } = captureTemplatesFromLisp(`(setq org-capture-templates '(("r" "Re" entry (file+regexp "f.org" "^\\\\* Inbox") "* %?") ("i" "Id" entry (id "abc-1") "* %?") ("c" "Clock" item (clock) "x") ("l" "Log" item (file "f.org") "x")))`);
+  assert.deepEqual(notes, []);
+  assert.match(templates[0].targetFunction ?? '', /re-search-forward "\^\\\\\* Inbox".*No match for target regexp in file %s" "f\.org"/);
+  assert.equal(templates[1].targetId, 'abc-1');
+  assert.equal(templates[2].targetClock, true);
+  assert.equal(templates[3].type, 'item');
 });

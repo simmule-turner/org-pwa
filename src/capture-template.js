@@ -67,6 +67,8 @@ const LINK_RE = /\[\[(.*?)\](\[.*?\])?\]/;
 const TAGS_COLUMN = 77;
 /** Stands in the text where a blank %? ends it, until the text is cleaned up: the space before it is kept, as Emacs keeps it. */
 const CURSOR_AT_END = '\uE000';
+/** Where a `%^{Name}p` stood, until the property it asks for is set on the entry that holds it. */
+const PROPERTY_MARK = (/** @type {number} */ n) => `\uE001${n}\uE002`;
 
 /** @typedef {{ buf: string, pos: number }} Cursor */
 
@@ -126,6 +128,36 @@ function untabify(text) {
       return out;
     })
     .join('\n');
+}
+
+/**
+ * `org-set-property` for each `%^{Name}p`, on the entry the placeholder is in: the value of the property is changed if the entry has it,
+ * else it is added to the properties drawer, which is made after the planning line if there is none; before the first heading the drawer
+ * is at the start of the text.
+ * @param {string} text the expanded text, with the places of the placeholders marked @param {{ name: string, value: string }[]} properties
+ */
+function setPromptedProperties(text, properties) {
+  if (!properties.length) return text;
+  let lines = text.split('\n');
+  properties.forEach(({ name, value }, n) => {
+    const mark = PROPERTY_MARK(n);
+    const at = lines.findIndex((l) => l.includes(mark));
+    if (at < 0) return;
+    lines[at] = lines[at].replace(mark, '');
+    let heading = at;
+    while (heading >= 0 && !/^\*+[ \t]/.test(lines[heading])) heading--;
+    let pos = heading + 1;
+    if (heading >= 0 && /^[ \t]*(?:SCHEDULED|DEADLINE|CLOSED):/.test(lines[pos] ?? '')) pos++;
+    if (/^[ \t]*:PROPERTIES:[ \t]*$/i.test(lines[pos] ?? '')) {
+      let end = pos + 1;
+      while (end < lines.length && !/^[ \t]*:END:[ \t]*$/i.test(lines[end])) end++;
+      const key = name.toLowerCase();
+      const own = lines.slice(pos + 1, end).findIndex((l) => new RegExp(`^[ \\t]*:${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:`, 'i').test(l));
+      if (own >= 0 && key) lines[pos + 1 + own] = lines[pos + 1 + own].replace(/^([ \t]*:[^:\s]*:)[ \t]*.*$/, (_m, head) => (value === '' ? head : `${head.padEnd(10)} ${value}`));
+      else lines.splice(end, 0, value === '' ? `:${name}:` : `${`:${name}:`.padEnd(10)} ${value}`);
+    } else lines.splice(pos, 0, ':PROPERTIES:', value === '' ? `:${name}:` : `${`:${name}:`.padEnd(10)} ${value}`, ':END:');
+  });
+  return lines.join('\n');
 }
 
 /**
@@ -237,6 +269,7 @@ function runExpansion(template, context, answers) {
   st.pos = 0;
   /** @type {any[]} */ const prompts = [];
   /** @type {string[]} */ const strings = [];
+  /** @type {{ name: string, value: string }[]} */ const properties = [];
   const answerFor = (/** @type {string} */ fallback) => {
     const given = answers[prompts.length - 1];
     return given === undefined || given === null || given === '' ? fallback : String(given);
@@ -256,7 +289,14 @@ function runExpansion(template, context, answers) {
     const completions = items.slice(2);
     const key = m[2];
     if (key === 'p') {
-      insertAt(cur, m[0]); // property prompts are not supported; the text stays as written
+      if (label === undefined) {
+        insertAt(cur, m[0]); // Emacs asks for a property with no name; here the text stays as written
+        return;
+      }
+      // `org-read-property-value`: the allowed values come from the target's tree, not from the template, so the list in the placeholder is not used
+      prompts.push({ kind: 'property', prompt: label, default: dflt || '', completions: [] });
+      properties.push({ name: label, value: answerFor(dflt || '') });
+      insertAt(cur, PROPERTY_MARK(properties.length - 1));
       return;
     }
     if (key === 'C' || key === 'L') {
@@ -313,7 +353,7 @@ function runExpansion(template, context, answers) {
     if (n > strings.length) throw new Error(`The template refers to %\\${n}, but it has ${strings.length} %^{...} prompt${strings.length === 1 ? '' : 's'}.`);
     insertAt(cur, strings[n - 1]);
   });
-  return { text: st.buf, prompts };
+  return { text: st.buf, prompts, properties };
 }
 
 /**
@@ -343,8 +383,8 @@ function scanPrompts(template, context = {}) {
  * @param {string} template
  */
 function expandTemplate(template, context = {}) {
-  const { text } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
-  return { text: cleanupExpanded(text).replace(CURSOR_AT_END, '') };
+  const { text, properties } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
+  return { text: setPromptedProperties(cleanupExpanded(text), properties).replace(CURSOR_AT_END, '') };
 }
 
 /** Expands a capture template: `expandTemplate`, plus whether %? asked for the cursor to end up at the end of the text.
@@ -353,8 +393,8 @@ function expandTemplate(template, context = {}) {
  * @param {any} [context]
  */
 function expandCaptureText(template, context = {}) {
-  const { text } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
-  const cleaned = cleanupExpanded(text);
+  const { text, properties } = runExpansion(template, context, /** @type {any} */ (context).promptAnswers || []);
+  const cleaned = setPromptedProperties(cleanupExpanded(text), properties);
   return { text: cleaned.replace(CURSOR_AT_END, ''), cursorAtEnd: cleaned.includes(CURSOR_AT_END) };
 }
 
@@ -485,7 +525,7 @@ function splitTableRowLine(line) {
 /** @typedef {import('./types.js').Heading | import('./types.js').Doc} Host a heading, or a file's top level */
 /** @typedef {import('./types.js').Table} Table */
 /** The blank lines around filed text, the table row to use, and `recalculate`, which works out a table's #+TBLFM after a row is added.
- *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, blankBeforeTable?: boolean, cursorAtEnd?: boolean, recalculate?: (table: Table) => import('./types.js').TableRow[] | null, onFiled?: (where: { row?: number, host?: Host, line?: number }) => void }} PlaceOptions */
+ *  @typedef {{ emptyLines?: number, emptyLinesBefore?: number, emptyLinesAfter?: number, tableLinePos?: string, blankBeforeTable?: boolean, cursorAtEnd?: boolean, exact?: { host: Host, offset: number }, recalculate?: (table: Table) => import('./types.js').TableRow[] | null, onFiled?: (where: { row?: number, host?: Host, line?: number }) => void }} PlaceOptions */
 const BLANK = (/** @type {string} */ l) => l.trim() === '';
 const ITEM_START_RE = /^[ \t]*(?:[-+]|\d+[.)])(?:[ \t]|$)/;
 
@@ -597,13 +637,14 @@ function indentOf(line) {
 /** Files a list item (`org-capture-place-item`): into the first list of the entry's text (the file's text for a top
  *  level), else as a new list.
  * @param {Host} target @param {string} lead @param {string} text @param {boolean} prepend @param {number} before @param {number} after */
-function placeItem(target, lead, text, prepend, before, after, keepEnd = false) {
+function placeItem(target, lead, text, prepend, before, after, keepEnd = false, exact = /** @type {PlaceOptions['exact']} */ (undefined)) {
   const body = keepEnd ? text.replace(/^\s+/, '') : text.replace(/^\s+|\s+$/g, '');
   const itemLines = (ITEM_START_RE.test(body) ? body : lead + body.split('\n').join('\n  ')).split('\n');
   /** @type {{ host: Host, list: ReturnType<typeof findLists>[number] } | null} */
   let found = null;
-  for (const host of hostNodes(target)) {
-    const lists = findLists(host.bodyLines);
+  for (const host of exact ? [exact.host] : hostNodes(target)) {
+    // at an exact position the lists are looked for from its line to the end of the entry's own text
+    const lists = findLists(host.bodyLines).filter((l) => !exact || l.items.some((it) => it.line >= exact.offset));
     if (lists.length) {
       found = { host, list: lists[0] };
       break;
@@ -612,7 +653,22 @@ function placeItem(target, lead, text, prepend, before, after, keepEnd = false) 
   if (!found) {
     // a file that starts with a heading has the new list in that heading's text; Emacs looks from the file's start
     const top = !target.level;
+    if (exact) {
+      const lines = exact.host.bodyLines;
+      let at = prepend ? exact.offset : lines.length;
+      at = blanksBefore(lines, at, before);
+      lines.splice(at, 0, ...itemLines);
+      blanksAfter(lines, at + itemLines.length, after);
+      exact.host.body = parseBody(lines);
+      return { host: exact.host, line: at };
+    }
     const host = top ? (prepend ? (target.bodyLines.length === 0 && target.children.length ? target.children[0] : target) : lastNodeOf(target)) : target;
+    if (prepend && host.level && /** @type {Heading} */ (host).logbookLines?.length) {
+      // the start of the entry's text is before the drawer of its log: org-end-of-meta-data skips the planning line and the properties only
+      const heading = /** @type {Heading} */ (host);
+      heading.preLogLines = [...itemLines, ...Array(after).fill(''), ...(heading.preLogLines || [])];
+      return { host, line: -1 };
+    }
     const lines = host.bodyLines;
     let at = prepend ? 0 : lines.length;
     at = blanksBefore(lines, at, before);
@@ -672,10 +728,11 @@ function commit(host, at, count, lines) {
   commitLines(/** @type {Heading} */ (host), at, count, lines);
 }
 
-/** @param {Host} target @returns {{ host: Host, table: Table } | null} */
-function firstTableInFile(target) {
-  for (const host of hostNodes(target)) {
-    const table = tablesOf(host)[0];
+/** @param {Host} target @param {PlaceOptions['exact']} [exact] a position: the first table from its line on, in the text it is in
+ * @returns {{ host: Host, table: Table } | null} */
+function firstTableInFile(target, exact) {
+  for (const host of exact ? [exact.host] : hostNodes(target)) {
+    const table = tablesOf(host).find((t) => !exact || t.lineIndex + t.lineCount > exact.offset);
     if (table) return { host, table };
   }
   return null;
@@ -708,7 +765,7 @@ function tableRowIndex(table, prepend, pos) {
  * @param {Host} target @param {boolean} [prepend] @param {PlaceOptions} [opts]
  */
 function plannedTableRow(target, prepend = false, opts = {}) {
-  const found = firstTableInFile(target);
+  const found = firstTableInFile(target, opts.exact);
   if (!found) return 2; // a new table starts with an empty header row and a rule, then the row
   try {
     const k = tableRowIndex(found.table, prepend, opts.tableLinePos);
@@ -722,7 +779,7 @@ function plannedTableRow(target, prepend = false, opts = {}) {
  * @param {Host} target @param {string} text @param {boolean} prepend @param {PlaceOptions} opts */
 function placeTableLine(target, text, prepend, opts) {
   const cells = splitTableRowLine(text);
-  const found = firstTableInFile(target);
+  const found = firstTableInFile(target, opts.exact);
   if (found) {
     const { host, table } = found;
     const at = tableRowIndex(table, prepend, opts.tableLinePos);
@@ -742,7 +799,7 @@ function placeTableLine(target, text, prepend, opts) {
     opts.onFiled?.({ host, line: table.lineIndex, row: at });
     return filed;
   }
-  const host = !target.level ? lastNodeOf(target) : target;
+  const host = opts.exact ? opts.exact.host : !target.level ? lastNodeOf(target) : target;
   /** @type {import('./types.js').TableRow[]} */
   const rows = [{ type: 'row', cells: cells.map(() => '') }, { type: 'rule' }, { type: 'row', cells }];
   const tableLines = serializeTable({ type: 'table', rows, tblfm: null, lineIndex: 0, lineCount: 0 }, true);
@@ -765,7 +822,7 @@ function placeTableLine(target, text, prepend, opts) {
 function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
   const [before, after] = emptyLinesOf(opts);
   if (type === 'item' || type === 'checkitem') {
-    const placed = placeItem(target, '- ', expandedText, prepend, before, after, !!opts.cursorAtEnd);
+    const placed = placeItem(target, '- ', expandedText, prepend, before, after, !!opts.cursorAtEnd, opts.exact);
     opts.onFiled?.({ host: placed.host, line: placed.line });
     for (const node of placed.host.body || []) {
       if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
@@ -791,6 +848,40 @@ function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
   }
   placePlainText(target, text.split('\n'), prepend, before, after, opts.onFiled);
   return null;
+}
+
+/**
+ * The lines a capture puts in at the cursor (`org-capture` with a prefix argument of 0): an entry whose first heading has `level`, an item
+ * with its bullet, a row in a new table, or text as it is.
+ * @param {string} type @param {string} expandedText @param {number} level
+ * @returns {string[]}
+ */
+function linesAtPoint(type, expandedText, level) {
+  const lines = (/** @type {string} */ t) => t.replace(/\n$/, '').split('\n');
+  if (type === 'item' || type === 'checkitem') {
+    const body = expandedText.replace(/^\s+|\s+$/g, '');
+    return (ITEM_START_RE.test(body) ? body : '- ' + body.split('\n').join('\n  ')).split('\n');
+  }
+  if (type === 'table-line') {
+    const scratch = parseOrg('');
+    insertCapture(scratch, 'table-line', expandedText, false, {});
+    return lines(serializeOrg(scratch)).filter((l, i, all) => l !== '' || all.slice(0, i).some((x) => x !== ''));
+  }
+  if (type === 'entry') {
+    const fragment = parseOrg(expandedText);
+    if (fragment.children.length) {
+      const offset = level - fragment.children[0].level;
+      const shift = (/** @type {Heading[]} */ headings) => {
+        for (const h of headings) {
+          h.level += offset;
+          shift(h.children);
+        }
+      };
+      shift(fragment.children);
+      return lines(serializeOrg(fragment));
+    }
+  }
+  return lines(expandedText);
 }
 
 /**
@@ -990,6 +1081,9 @@ function computeNonCollidingKeys(items, keyFn) {
 }
 
 export {
+  linesAtPoint,
+  blanksBefore,
+  blanksAfter,
   formatTime,
   filePlainText,
   parseTimePrompt,

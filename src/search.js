@@ -903,4 +903,4 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
   return results;
 }
 
-export { parseFilterQuery, effectiveTags, effectivePropertyValue };
+export { parseFilterQuery, effectiveTags, effectivePropertyValue, buildMatchEntry, filePropertyEntries, entryPropertyValue, entryPriority, firstTimestamp };

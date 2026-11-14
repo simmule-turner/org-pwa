@@ -10,6 +10,7 @@ import { parseOrgDuration } from '../src/org-duration.js';
 import { findHeadingLineNumber } from '../src/org-parser.js';
 import { S } from './app-state.js';
 import { renderCalendarPanel } from './calendar-panel.js';
+import { renderColumnsPanel } from './columns-panel.js';
 import { renderCapturePanel } from './capture-ui.js';
 import { findRunningClockAcrossSessions } from './clock-flow.js';
 import { contentAreaEl, extraMenuBtn, godModeBtn, minibufferSearchEl, modelineBarEl, modelineEl, navBackBtn, outlineEl, statusEl, topBarEl } from './dom.js';
@@ -58,6 +59,7 @@ export function anyOverlayPanelOpen() {
     S.captureOpen ||
     S.extraMenuOpen ||
     S.calendarOpen ||
+    !!S.columnsOpen ||
     S.viewMenuOpen ||
     S.moreOpen ||
     S.historyOpen ||
@@ -97,6 +99,10 @@ export function closeAllOverlayPanels() {
   if (S.calendarOpen) {
     S.calendarOpen = false;
     renderCalendarPanel();
+  }
+  if (S.columnsOpen) {
+    S.columnsOpen = null;
+    renderColumnsPanel();
   }
   if (S.viewMenuOpen) {
     S.viewMenuOpen = false;
@@ -268,6 +274,7 @@ export function buildGlobalModeStringParts(vars) {
   if (getDisplayTimeMode(vars)) {
     parts.push(formatTime(new Date(), getDisplayTimeFormat(vars)));
   }
+  if (S.timerModeLine) parts.push(S.timerModeLine); // org-timer-display: "<0:12:03>" while a timer runs
   if (S.apptModeLine) parts.push(S.apptModeLine); // appt-display-mode-line: "Appt: 10m", only while an appointment is inside its warning time
   const running = findRunningClockAcrossSessions();
   if (running) {

@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v701 — Column view, org-crypt, org-timer, capture targets, export options and calendar import
+Column view (~C-c C-x C-c~) shows properties as a table over the outline. org-crypt encrypts entries tagged ~:crypt:~ with a passphrase or an OpenPGP key and decrypts them on demand, keeping a typed passphrase for ten minutes (two hours at most), as gpg-agent does. org-timer brings the relative and countdown timers, in the modeline or page title. Capture targets gain ~file+regexp~, ~id~, ~clock~ and ~here~; more ~#+OPTIONS:~ keys are honored in export. iCalendar import turns rules a repeater cannot say into diary expressions and carries organizer, attendees, attachments and reminders.
+Verified: Emacs 29.3 checks of column view, org-crypt, org-timer, capture targets and nineteen recurrence rules, with examples for each.
+
 * v700 — The agenda reads your agenda files, as Emacs does
 The Agenda, TODO list, Match, Search, the calendar and appointment reminders now read only your agenda files; the file you have open counts when it is one of them. To look at one file or subtree, press *<* in Agenda commands, or lock every command with ~C-c C-x <~ and lift it with ~C-c C-x >~. With no agenda files the views say so. Tag completion follows Emacs too: the open file, or your agenda files from an agenda view, plus ~org-tag-alist~ and ~org-tag-persistent-alist~.
 Verified: an Emacs 29.3 check of how a tag alist is read, and a smoke check of the restriction, the lock and the empty case.

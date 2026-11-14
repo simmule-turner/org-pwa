@@ -970,6 +970,8 @@ test('tags typed as work:home are inserted as :work:home: and a heading is align
   assert.ok(text.trimEnd().endsWith(' :work:home:'));
 });
 
-test('%^{Name}p is left as written', () => {
-  assert.equal(expandTemplate('x %^{Name}p', {}).text, 'x %^{Name}p');
+test('%^{Name}p sets the property on the entry it is in, and asks for it like any prompt', () => {
+  assert.equal(expandTemplate('* x %^{Name}p', { promptAnswers: ['Ada'] }).text, '* x \n:PROPERTIES:\n:Name:     Ada\n:END:');
+  assert.deepEqual(scanPrompts('* x %^{Name|Bob}p').map((p) => [p.kind, p.prompt, p.default]), [['property', 'Name', 'Bob']]);
+  assert.equal(expandTemplate('* x %^{Name|Bob}p', { promptAnswers: [''] }).text, '* x \n:PROPERTIES:\n:Name:     Bob\n:END:');
 });

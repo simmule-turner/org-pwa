@@ -76,7 +76,7 @@
 </text:index-title>
 <text:p text:style-name="Contents_20_1">
 <text:a xlink:type="simple" xlink:href="#ORG">
-<text:span text:style-name="OrgPriority-C">[#C]</text:span> Heading one</text:a>
+<text:span text:style-name="OrgPriority-67">[#C]</text:span> Heading one</text:a>
 </text:p>
 <text:p text:style-name="Contents_20_2">
 <text:a xlink:type="simple" xlink:href="#ORG">Level two</text:a>
@@ -229,7 +229,7 @@
 </text:index-title>
 <text:p text:style-name="Contents_20_1">
 <text:a xlink:type="simple" xlink:href="#ORG">
-<text:span text:style-name="OrgPriority-C">[#C]</text:span> Heading one</text:a>
+<text:span text:style-name="OrgPriority-67">[#C]</text:span> Heading one</text:a>
 </text:p>
 <text:p text:style-name="Contents_20_1">
 <text:a xlink:type="simple" xlink:href="#ORG">Visible</text:a>

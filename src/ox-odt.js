@@ -133,6 +133,10 @@ function plainText(text, I) {
     if (ch === '[') {
       COOKIE.lastIndex = i;
       const m = COOKIE.exec(text);
+      if (m && !I.statistics) {
+        i += m[0].length; // stat:nil drops the cookie and leaves the spaces around it
+        continue;
+      }
       if (m) {
         flush();
         out.push(`<text:span text:style-name="OrgCode">${escapeXml(m[0])}</text:span>`);
@@ -797,8 +801,9 @@ function headlineText(h, C, toc) {
   C.toc = toc;
   try {
     const title = (h.title || []).map((t) => data(t, C)).join('');
-    const todo = I.withTodo && h.todo ? span(C.done.has(h.todo) ? 'OrgDone' : 'OrgTodo', escapeXml(h.todo)) + ' ' : '';
-    const priority = I.withPriority && h.priority ? span(`OrgPriority-${h.priority}`, `[#${h.priority}]`) + ' ' : '';
+    // the table of contents of Emacs styles a finished keyword like an open one and names the priority style by its character code
+    const todo = I.withTodo && h.todo ? span(C.done.has(h.todo) && !toc ? 'OrgDone' : 'OrgTodo', escapeXml(h.todo)) + ' ' : '';
+    const priority = I.withPriority && h.priority ? span(`OrgPriority-${toc ? h.priority.charCodeAt(0) : h.priority}`, `[#${h.priority}]`) + ' ' : '';
     const tags = I.withTags && h.tags && h.tags.length ? tagsXml(h.tags, toc) : '';
     return { todo, priority, title, tags };
   } finally {
@@ -1101,10 +1106,12 @@ const section = (C, text, style) => `\n<text:section text:style-name="${style}" 
 
 /** @type {Record<string, (n: Node, contents: string, C: Ctx) => string | null | undefined>} */
 const TRANSCODERS = {
-  bold: (_n, c) => span('Bold', c),
-  italic: (_n, c) => span('Emphasis', c),
-  underline: (_n, c) => span('Underline', c),
-  strikethrough: (_n, c) => span('Strikethrough', c),
+  // *:nil leaves the markers in the text, as Emacs (which then does not read the markup at all)
+  bold: (_n, c, C) => (C.I.emphasis ? span('Bold', c) : `*${c}*`),
+  italic: (_n, c, C) => (C.I.emphasis ? span('Emphasis', c) : `/${c}/`),
+  underline: (_n, c, C) => (C.I.emphasis ? span('Underline', c) : `_${c}_`),
+  strikethrough: (_n, c, C) => (C.I.emphasis ? span('Strikethrough', c) : `+${c}+`),
+  'property-drawer': (n) => `\n<text:p text:style-name="OrgFixedWidthBlock">${encodePlain(n.value || '')}\n</text:p>`,
   verbatim: (n) => span('OrgCode', encodePlain(n.value || '')),
   'latex-fragment': (n, _c, C) => {
     const raw = n.value || '';

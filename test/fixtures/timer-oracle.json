@@ -1,0 +1,344 @@
+[
+ {
+  "fn": "fix",
+  "in": "5",
+  "expected": "0:00:05"
+ },
+ {
+  "fn": "fix",
+  "in": "65",
+  "expected": "0:00:65"
+ },
+ {
+  "fn": "fix",
+  "in": "1:05",
+  "expected": "0:01:05"
+ },
+ {
+  "fn": "fix",
+  "in": "1:2:3",
+  "expected": "1:02:03"
+ },
+ {
+  "fn": "fix",
+  "in": "10:00:00",
+  "expected": "10:00:00"
+ },
+ {
+  "fn": "fix",
+  "in": "0:00:00",
+  "expected": "0:00:00"
+ },
+ {
+  "fn": "fix",
+  "in": " 12 ",
+  "expected": " 0:00:12 "
+ },
+ {
+  "fn": "fix",
+  "in": "x",
+  "expected": "ERROR Cannot parse HMS string \"x\""
+ },
+ {
+  "fn": "fix",
+  "in": "",
+  "expected": "ERROR Cannot parse HMS string \"\""
+ },
+ {
+  "fn": "fix",
+  "in": "-0:05",
+  "expected": "-0:00:05"
+ },
+ {
+  "fn": "fix",
+  "in": "3600",
+  "expected": "0:00:3600"
+ },
+ {
+  "fn": "fix",
+  "in": "1:30:00 extra",
+  "expected": "1:30:00 extra"
+ },
+ {
+  "fn": "secs",
+  "in": "1:02:05",
+  "expected": 3725
+ },
+ {
+  "fn": "secs",
+  "in": "-1:02:05",
+  "expected": -3725
+ },
+ {
+  "fn": "secs",
+  "in": "+0:00:09",
+  "expected": 9
+ },
+ {
+  "fn": "secs",
+  "in": "0:00:00",
+  "expected": 0
+ },
+ {
+  "fn": "secs",
+  "in": "at 12:34:56 then",
+  "expected": 45296
+ },
+ {
+  "fn": "secs",
+  "in": "00:01:00",
+  "expected": 60
+ },
+ {
+  "fn": "secs",
+  "in": "5",
+  "expected": 0
+ },
+ {
+  "fn": "secs",
+  "in": "1:2:3",
+  "expected": 0
+ },
+ {
+  "fn": "secs",
+  "in": "100:00:00",
+  "expected": 360000
+ },
+ {
+  "fn": "hms",
+  "in": 0,
+  "expected": "0:00:00"
+ },
+ {
+  "fn": "hms",
+  "in": 5,
+  "expected": "0:00:05"
+ },
+ {
+  "fn": "hms",
+  "in": 59,
+  "expected": "0:00:59"
+ },
+ {
+  "fn": "hms",
+  "in": 60,
+  "expected": "0:01:00"
+ },
+ {
+  "fn": "hms",
+  "in": 61,
+  "expected": "0:01:01"
+ },
+ {
+  "fn": "hms",
+  "in": 3599,
+  "expected": "0:59:59"
+ },
+ {
+  "fn": "hms",
+  "in": 3600,
+  "expected": "1:00:00"
+ },
+ {
+  "fn": "hms",
+  "in": 3725,
+  "expected": "1:02:05"
+ },
+ {
+  "fn": "hms",
+  "in": -5,
+  "expected": "-0:00:05"
+ },
+ {
+  "fn": "hms",
+  "in": -3725,
+  "expected": "-1:02:05"
+ },
+ {
+  "fn": "hms",
+  "in": 360000,
+  "expected": "100:00:00"
+ },
+ {
+  "fn": "value",
+  "elapsed": 0,
+  "countdown": false,
+  "expected": "0:00:00 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 5,
+  "countdown": false,
+  "expected": "0:00:05 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 3725,
+  "countdown": false,
+  "expected": "1:02:05 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 3725.9,
+  "countdown": false,
+  "expected": "1:02:05 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 90,
+  "countdown": true,
+  "expected": "0:01:30 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 90.5,
+  "countdown": true,
+  "expected": "0:01:31 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 0.4,
+  "countdown": true,
+  "expected": "0:00:01 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 7200,
+  "countdown": true,
+  "expected": "2:00:00 "
+ },
+ {
+  "fn": "value",
+  "elapsed": 65,
+  "countdown": false,
+  "format": "Elapsed %s -",
+  "expected": "Elapsed 0:01:05 -"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "-0:00:10",
+  "expected": "0:00:00 start\n0:01:20 middle\n0:59:50 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "0:00:10",
+  "expected": "0:00:20 start\n0:01:40 middle\n1:00:10 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "",
+  "expected": "0:00:00 start\n0:01:20 middle\n0:59:50 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": " ",
+  "expected": "0:00:00 start\n0:01:20 middle\n0:59:50 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "1:00",
+  "expected": "0:01:10 start\n0:02:30 middle\n1:01:00 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "-90",
+  "expected": "-0:01:20 start\n0:00:00 middle\n0:58:30 end\n"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "0:00:00",
+  "expected": "ERROR No change"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "0",
+  "expected": "ERROR No change"
+ },
+ {
+  "fn": "change",
+  "text": "0:00:10 start\n0:01:30 middle\n1:00:00 end\n",
+  "delta": "x",
+  "expected": "ERROR Cannot parse HMS string \"x\""
+ },
+ {
+  "fn": "change",
+  "text": "-0:00:05 before\n0:00:05 after\n",
+  "delta": "",
+  "expected": "-0:00:10 before\n0:00:10 after\n"
+ },
+ {
+  "fn": "change",
+  "text": "no stamps here\n",
+  "delta": "",
+  "expected": "ERROR Cannot parse HMS string \"\""
+ },
+ {
+  "fn": "change",
+  "text": "0:00:01 and 9:59:59",
+  "delta": "0:00:01",
+  "expected": "0:00:02 and 10:00:00"
+ },
+ {
+  "fn": "item",
+  "line": "- 0:00:05 :: first",
+  "expected": "yes"
+ },
+ {
+  "fn": "item",
+  "line": "+ 0:01:00 :: x",
+  "expected": "yes"
+ },
+ {
+  "fn": "item",
+  "line": "1. 0:00:05 :: numbered",
+  "expected": "yes"
+ },
+ {
+  "fn": "item",
+  "line": "  - 0:00:05 :: indented",
+  "expected": "yes"
+ },
+ {
+  "fn": "item",
+  "line": "- 0:00:05:: nospace",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "- 0:00:05 ::",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "- [ ] 0:00:05 :: box",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "- term :: not a stamp",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "- plain item",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "- -0:00:05 :: negative",
+  "expected": "no"
+ },
+ {
+  "fn": "item",
+  "line": "0:00:05 :: no bullet",
+  "expected": "no"
+ }
+]

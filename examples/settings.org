@@ -6,6 +6,9 @@ Every variable the app reads, in alphabetical order, as it would stand in the Li
 Setting every line below to the value shown changes nothing.
 
 #+BEGIN_SRC emacs-lisp
+;; * before-save-hook: Normal hook that is run before a buffer is saved to its file.
+;; (setq before-save-hook nil)
+
 ;; * buffer-read-only: Non-nil if this buffer is read-only.
 ;; (setq buffer-read-only nil)
 
@@ -255,11 +258,26 @@ Setting every line below to the value shown changes nothing.
 ;; * org-closed-keep-when-no-todo: Remove CLOSED: time-stamp when switching back to a non-todo state?
 ;; (setq org-closed-keep-when-no-todo nil)
 
+;; * org-columns-default-format: The default column format, if no other format has been defined.
+;; (setq org-columns-default-format "%25ITEM %TODO %3PRIORITY %TAGS")
+
+;; * org-columns-ellipses: The ellipses to be used when a field in column view is truncated.
+;; (setq org-columns-ellipses "..")
+
 ;; * org-contacts-birthday-property: The property that holds a contact's birthday or anniversary (org-contacts).
 ;; (setq org-contacts-birthday-property "BIRTHDAY")
 
 ;;   org-contacts-files: More files for Contacts (.vcf) export.
 ;; (setq org-contacts-files nil)
+
+;; * org-crypt-disable-auto-save: What org-decrypt should do if `auto-save-mode' is enabled.
+;; (setq org-crypt-disable-auto-save 'ask)
+
+;; * org-crypt-key: The default key to use when encrypting the contents of a heading.
+;; (setq org-crypt-key "")
+
+;; * org-crypt-tag-matcher: The tag matcher used to find headings whose contents should be encrypted.
+;; (setq org-crypt-tag-matcher "crypt")
 
 ;;   org-cycle-open-archived-trees: nil: an archived heading starts folded and swipe will not open it.
 ;; (setq org-cycle-open-archived-trees nil)
@@ -449,6 +467,15 @@ Setting every line below to the value shown changes nothing.
 
 ;; * org-tags-exclude-from-inheritance: List of tags that should never be inherited.
 ;; (setq org-tags-exclude-from-inheritance nil)
+
+;; * org-timer-default-timer: The default timer when a timer is set, in minutes or hh:mm:ss format.
+;; (setq org-timer-default-timer "0")
+
+;; * org-timer-display: Define where running timer is displayed, if at all.
+;; (setq org-timer-display 'mode-line)
+
+;; * org-timer-format: The format to insert the time of the timer.
+;; (setq org-timer-format "%s ")
 
 ;; * org-use-property-inheritance: Non-nil means properties apply also for sublevels.
 ;; (setq org-use-property-inheritance nil)

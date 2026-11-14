@@ -71,14 +71,23 @@ test('a recurrence that a repeater says exactly becomes a repeater', () => {
   assert.equal(rule('FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=5'), '* R <2026-10-05 Mon 09:00 +1y>\n');
 });
 
-test('a recurrence a repeater cannot say is imported ONCE, with the rule kept, and reported (never a repeater that is wrong)', () => {
+test('a recurrence a repeater cannot say becomes a diary expression, with the time first in the title', () => {
   const kept = [];
   const out = text(wrap(vevent('SUMMARY:Ends', 'DTSTART:20261005T090000', 'RRULE:FREQ=WEEKLY;COUNT=10')), { onRecurrenceKept: (s) => kept.push(s) });
-  assert.equal(out, '* Ends <2026-10-05 Mon 09:00>\n:PROPERTIES:\n:RRULE: FREQ=WEEKLY;COUNT=10\n:END:\n');
-  assert.deepEqual(kept, ['Ends']);
-  for (const r of ['FREQ=WEEKLY;UNTIL=20270101T000000Z', 'FREQ=WEEKLY;BYDAY=MO,WE,FR', 'FREQ=MONTHLY;BYDAY=2TU', 'FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR', 'FREQ=WEEKLY;BYDAY=TU', 'FREQ=HOURLY']) {
+  assert.equal(out, '* 09:00 Ends <%%(and (org-cyclic 7 2026 10 5) (org-block 2026 10 5 2026 12 7))>\n');
+  assert.deepEqual(kept, []);
+  for (const r of ['FREQ=WEEKLY;UNTIL=20270101T000000Z', 'FREQ=WEEKLY;BYDAY=MO,WE,FR', 'FREQ=MONTHLY;BYDAY=2TU', 'FREQ=WEEKLY;BYDAY=TU']) {
     const o = text(wrap(vevent('SUMMARY:X', 'DTSTART:20261005T090000', `RRULE:${r}`)));
+    assert.ok(o.startsWith('* 09:00 X <%%(') && !o.includes(':RRULE:') && !/\+\d[dwmy]/.test(o), r);
+  }
+});
+
+test('a rule neither a repeater nor an expression can say is imported ONCE, with the rule kept, and reported', () => {
+  for (const r of ['FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR', 'FREQ=HOURLY']) {
+    const kept = [];
+    const o = text(wrap(vevent('SUMMARY:X', 'DTSTART:20261005T090000', `RRULE:${r}`)), { onRecurrenceKept: (s) => kept.push(s) });
     assert.ok(o.includes(`:RRULE: ${r}`) && !/\+\d[dwmy]/.test(o), r);
+    assert.deepEqual(kept, ['X']);
   }
 });
 
@@ -107,11 +116,11 @@ test('location, link, UID and a cancelled status become properties; categories b
   assert.equal(out, '* Lunch <2026-10-05 Mon> :food:Big_Deal:team_lunch:\n:PROPERTIES:\n:UID: u-1@example.com\n:LOCATION: Caf\u00e9, 5th St\n:URL: https://example.com/e\n:STATUS: CANCELLED\n:END:\n');
 });
 
-test('an alarm, bookkeeping and X- properties are skipped silently; real data that is not carried over is reported', () => {
+test('bookkeeping and X- properties are skipped silently; real data that is not carried over is reported', () => {
   const skipped = [];
-  const out = text(wrap(vevent('SUMMARY:Meet', 'DTSTART;VALUE=DATE:20261005', 'DTSTAMP:20260101T000000Z', 'SEQUENCE:3', 'X-GOOGLE-CONFERENCE:https://meet', 'ORGANIZER:mailto:o@x.org', 'ATTENDEE:mailto:a@x.org', 'EXDATE:20261012', ['BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT15M', 'END:VALARM']).flat()), { onUnmappedProperty: (n) => skipped.push(n) });
+  const out = text(wrap(vevent('SUMMARY:Meet', 'DTSTART;VALUE=DATE:20261005', 'DTSTAMP:20260101T000000Z', 'SEQUENCE:3', 'X-GOOGLE-CONFERENCE:https://meet', 'GEO:1;2', 'RELATED-TO:abc')), { onUnmappedProperty: (n) => skipped.push(n) });
   assert.equal(out, '* Meet <2026-10-05 Mon>\n');
-  assert.deepEqual(skipped.sort(), ['ATTENDEE', 'EXDATE', 'ORGANIZER']);
+  assert.deepEqual(skipped.sort(), ['GEO', 'RELATED-TO']);
 });
 
 test('an event with no title is called so, and one with no start is left out', () => {
@@ -169,4 +178,36 @@ test('round trip with this app\u2019s own Export > Calendar: what it writes impo
   assert.equal(first('Weekly review').repeater, '+1w');
   assert.equal(first('Weekly review').date.getDate(), 9);
   assert.equal(findTimestamps(back.children.find((h) => h.title.startsWith('DL: Pay rent')).title).length, 1, 'a deadline comes back as a dated event too');
+});
+
+test('ORGANIZER, ATTENDEE, ATTACH and VALARM are carried over as properties and link lines', () => {
+  const unmapped = [];
+  const out = text(
+    wrap(vevent('SUMMARY:Review', 'DTSTART:20261005T090000', 'DTEND:20261005T100000', 'ORGANIZER;CN=Ann:mailto:ann@x.org', 'ATTENDEE;CN=Bob:mailto:bob@x.org', 'ATTENDEE:mailto:cy@x.org', 'ATTACH:https://x.org/a.pdf', 'ATTACH;FILENAME=b.pdf:https://x.org/b.pdf', 'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'END:VALARM')),
+    { onUnmappedProperty: (n) => unmapped.push(n) },
+  );
+  assert.equal(
+    out,
+    '* Review <2026-10-05 Mon 09:00-10:00>\n:PROPERTIES:\n:ORGANIZER: Ann <ann@x.org>\n:ATTENDEES: Bob <bob@x.org>, cy@x.org\n:APPT_WARNTIME: 15\n:END:\n  - [[https://x.org/a.pdf]]\n  - [[https://x.org/b.pdf][b.pdf]]\n',
+  );
+  assert.deepEqual(unmapped, []);
+});
+
+test('a rule a repeater cannot say becomes a diary expression: several weekdays with COUNT and an EXDATE', () => {
+  const kept = [];
+  const out = text(wrap(vevent('SUMMARY:Gym', 'DTSTART:20261005T180000', 'DTEND:20261005T190000', 'RRULE:FREQ=WEEKLY;BYDAY=MO,TH;COUNT=4', 'EXDATE:20261008T180000')), { onRecurrenceKept: (s) => kept.push(s) });
+  assert.equal(out, "* 18:00-19:00 Gym <%%(and (not (org-date 2026 10 8)) (memq (calendar-day-of-week date) '(1 4)) (org-block 2026 10 5 2026 10 15))>\n");
+  assert.deepEqual(kept, []);
+});
+
+test('an EXDATE on a plain repeating event makes it a diary expression too', () => {
+  const out = text(wrap(vevent('SUMMARY:Ex', 'DTSTART;VALUE=DATE:20261005', 'RRULE:FREQ=WEEKLY;INTERVAL=2', 'EXDATE;VALUE=DATE:20261019')));
+  assert.equal(out, '* Ex <%%(and (not (org-date 2026 10 19)) (org-cyclic 14 2026 10 5))>\n');
+});
+
+test('a rule even the expression cannot say (INTERVAL with a weekday position) keeps :RRULE: and is reported', () => {
+  const kept = [];
+  const out = text(wrap(vevent('SUMMARY:Odd', 'DTSTART;VALUE=DATE:20261005', 'RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=2TU')), { onRecurrenceKept: (s) => kept.push(s) });
+  assert.equal(out, '* Odd <2026-10-05 Mon>\n:PROPERTIES:\n:RRULE: FREQ=MONTHLY;INTERVAL=2;BYDAY=2TU\n:END:\n');
+  assert.deepEqual(kept, ['Odd']);
 });

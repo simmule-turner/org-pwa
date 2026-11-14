@@ -36,8 +36,8 @@ export const placeFor = (template) => (/** @type {import('../src/types.js').Doc}
   },
 });
 
-test('the file has its sixteen cases', () => {
-  assert.equal(sections.length, 16);
+test('the file has its eighteen cases', () => {
+  assert.equal(sections.length, 18);
 });
 
 for (const sec of sections) {

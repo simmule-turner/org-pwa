@@ -602,6 +602,81 @@ After, inbox.org:
 ,** NEXT Standup with Sam
 #+END_SRC
 
+* After a line that matches
+=(file+regexp "notes.org" REGEXP)= files after the first line the regular expression matches; an =entry= goes on the lines below it, an =item= at the end of the match. A file where nothing matches stops the capture, as in Emacs. =%^{EFFORT}p= asks for the value of a property and sets it on the new entry; the text typed at =%?= is the note.
+
+Captured on 2026-11-07 Saturday 18:30.
+
+In the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("r" "Idea" entry (file+regexp "notes.org" "^\\* Ideas$")
+    "** %^{Idea}\n%^{EFFORT}p\n%?"))
+#+END_SRC
+
+Answers to the prompts:
+#+BEGIN_SRC text
+- Idea: Try a standing desk
+- EFFORT: 1:00
+#+END_SRC
+
+Typed at the cursor (=%?=):
+#+BEGIN_SRC text
+- r: Ask facilities first.
+#+END_SRC
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Ideas
+,** Earlier idea
+,* Other
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Ideas
+,** Earlier idea
+,** Try a standing desk
+:PROPERTIES:
+:EFFORT:   1:00
+:END:
+
+Ask facilities first.
+,* Other
+#+END_SRC
+
+* After a line that matches, newest first
+With =:prepend t= the entry is filed as the first child of the matching heading, above the older ones, and takes the level below it (the template says =*=, the entry is made =**=). =:immediate-finish t= skips the text step.
+
+Captured on 2026-11-07 Saturday 18:30.
+
+In the Lisp init:
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'org-capture-templates
+  '("r" "Idea" entry (file+regexp "notes.org" "^\\* Ideas$")
+    "* %^{Idea}\n" :prepend t :immediate-finish t))
+#+END_SRC
+
+Answers to the prompts:
+#+BEGIN_SRC text
+- Idea: Learn to juggle
+#+END_SRC
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Ideas
+,** Earlier idea
+,* Other
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Ideas
+,** Learn to juggle
+,** Earlier idea
+,* Other
+#+END_SRC
+
 * Tracking
 A =table-line= template whose target function finds or makes the headings =Bag=, =Health=, =Tracking= and the current month, puts the new month first, and gives it a plot line, a table and the formulas. The row is filed into that table, the formulas are worked out again, and =:jump-to-captured t= opens the table and scrolls to the new row. The file already has October; two rows are captured in November.
 

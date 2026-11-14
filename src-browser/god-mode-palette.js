@@ -29,6 +29,10 @@ import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addLocalFile } from './local-file-add.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
 import { executeFocusedBlock } from './babel-flow.js';
+import { openColumnsPanel } from './columns-panel.js';
+import { insertColumnviewBlock, updateAllDynamicBlocks, updateDynamicBlocksAtFocus } from './dblocks.js';
+import { runCrypt } from './crypt-flow.js';
+import { timerChangeTimes, timerItem, timerPauseOrContinue, timerSetTimer, timerShowRemaining, timerStart, timerStartWithOffset, timerStop } from './timer-flow.js';
 import { tangleCurrentDocument } from './tangle-flow.js';
 import { extensionPaletteEntries } from './extension-flow.js';
 import { showDisplayMeasurements, showKeyboardDebugLog, showUpdateLog } from './display-info.js';
@@ -263,6 +267,15 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-t': () => S.keyboardFocusedHeading && openTodoOrPickWorkflow(S.keyboardFocusedHeading),
   'C-c ,': () => S.keyboardFocusedHeading && cyclePriorityFor(S.keyboardFocusedHeading),
   'C-c C-x e': () => S.keyboardFocusedHeading && openEffortEditor(S.keyboardFocusedHeading),
+  'C-c C-x C-c': () => openColumnsPanel(false),
+  'C-c C-x 0': () => timerStart(),
+  'C-u C-c C-x 0': () => timerStartWithOffset(),
+  'C-c C-x ,': () => timerPauseOrContinue(),
+  'C-c C-x _': () => timerStop(),
+  'C-c C-x ;': () => timerSetTimer(),
+  'C-u C-c C-x ;': () => timerSetTimer({ ignoreEffort: true }),
+  'C-c C-x -': () => timerItem(),
+  'C-c C-x C-u': () => updateDynamicBlocksAtFocus(),
   'C-c C-w': () => S.keyboardFocusedHeading && openArchiveRefilePanel(S.keyboardFocusedHeading),
   'C-c C-a': () => S.keyboardFocusedHeading && openAttachChoicePrompt(S.keyboardFocusedHeading, { viaKeys: true }),
   'C-c C-x C-i': () => S.keyboardFocusedHeading && clockInHeading(S.keyboardFocusedHeading),
@@ -609,6 +622,23 @@ export function paletteCommandList() {
     { id: 'todo', label: 'Cycle TODO state', orgName: 'org-todo', keys: 'C-c C-t', group: 'Heading', needs: HEAD, run: onHeading(openTodoOrPickWorkflow) },
     { id: 'priority', label: 'Set priority', orgName: 'org-priority', keys: 'C-c ,', group: 'Heading', needs: HEAD, run: onHeading(cyclePriorityFor) },
     { id: 'effort', label: 'Set effort estimate', orgName: 'org-set-effort', keys: 'C-c C-x e', group: 'Heading', needs: HEAD, run: onHeading(openEffortEditor) },
+    { id: 'columns', label: 'Column view', orgName: 'org-columns', keys: 'C-c C-x C-c', group: 'Document', keywords: ['columns', 'colview', 'table', 'properties', 'effort', 'summary'], needs: ['doc'], run: () => openColumnsPanel(false) },
+    { id: 'dblock-update', label: 'Update dynamic block', orgName: 'org-dblock-update', keys: 'C-c C-x C-u', group: 'Heading', keywords: ['dynamic block', 'columnview', 'refresh'], needs: HEAD, run: () => updateDynamicBlocksAtFocus() },
+    { id: 'dblock-update-all', label: 'Update all dynamic blocks', orgName: 'org-update-all-dblocks', group: 'Document', keywords: ['dynamic block', 'columnview', 'refresh'], needs: ['doc', 'writable'], run: () => updateAllDynamicBlocks() },
+    { id: 'timer-start', label: 'Start timer', orgName: 'org-timer-start', keys: 'C-c C-x 0', group: 'Document', keywords: ['timer', 'stopwatch', 'relative'], needs: ['doc'], run: () => timerStart() },
+    { id: 'timer-start-offset', label: 'Start timer with an offset', keys: 'C-u C-c C-x 0', group: 'Document', keywords: ['timer', 'stopwatch', 'offset', 'restart'], needs: ['doc'], run: () => timerStartWithOffset() },
+    { id: 'timer-pause', label: 'Pause or continue timer', orgName: 'org-timer-pause-or-continue', keys: 'C-c C-x ,', group: 'Document', keywords: ['timer', 'pause', 'continue', 'resume'], needs: ['doc'], run: () => timerPauseOrContinue() },
+    { id: 'timer-stop', label: 'Stop timer', orgName: 'org-timer-stop', keys: 'C-c C-x _', group: 'Document', keywords: ['timer', 'stop', 'cancel'], needs: ['doc'], run: () => timerStop() },
+    { id: 'timer-set', label: 'Set countdown timer', orgName: 'org-timer-set-timer', keys: 'C-c C-x ;', group: 'Document', keywords: ['timer', 'countdown', 'alarm', 'effort', 'minutes'], needs: ['doc'], run: () => timerSetTimer() },
+    { id: 'timer-set-ask', label: 'Set countdown timer, ignoring the effort', keys: 'C-u C-c C-x ;', group: 'Document', keywords: ['timer', 'countdown', 'alarm', 'minutes'], needs: ['doc'], run: () => timerSetTimer({ ignoreEffort: true }) },
+    { id: 'timer-remaining', label: 'Show time left on the countdown', orgName: 'org-timer-show-remaining-time', group: 'Document', keywords: ['timer', 'remaining', 'left'], needs: ['doc'], run: () => timerShowRemaining() },
+    { id: 'timer-item', label: 'Insert timer list item', orgName: 'org-timer-item', keys: 'C-c C-x -', group: 'Heading', keywords: ['timer', 'list', 'item', 'notes', 'meeting'], needs: HEAD, run: () => timerItem() },
+    { id: 'timer-change-times', label: 'Shift timer stamps in the text', orgName: 'org-timer-change-times-in-region', group: 'Heading', keywords: ['timer', 'shift', 'stamps', 'region'], needs: HEAD, run: () => timerChangeTimes() },
+    { id: 'encrypt-entry', label: 'Encrypt entry', orgName: 'org-encrypt-entry', group: 'Heading', keywords: ['crypt', 'encrypt', 'gpg', 'pgp', 'secret', 'password'], needs: HEAD, run: () => runCrypt('encrypt-entry') },
+    { id: 'decrypt-entry', label: 'Decrypt entry', orgName: 'org-decrypt-entry', group: 'Heading', keywords: ['crypt', 'decrypt', 'gpg', 'pgp', 'secret', 'password'], needs: HEAD, run: () => runCrypt('decrypt-entry') },
+    { id: 'encrypt-entries', label: 'Encrypt all crypt entries', orgName: 'org-encrypt-entries', group: 'Document', keywords: ['crypt', 'encrypt', 'gpg', 'pgp', 'secret'], needs: ['doc', 'writable'], run: () => runCrypt('encrypt-entries') },
+    { id: 'decrypt-entries', label: 'Decrypt all crypt entries', orgName: 'org-decrypt-entries', group: 'Document', keywords: ['crypt', 'decrypt', 'gpg', 'pgp', 'secret'], needs: ['doc', 'writable'], run: () => runCrypt('decrypt-entries') },
+    { id: 'columns-insert-dblock', label: 'Insert column view block', orgName: 'org-columns-insert-dblock', group: 'Heading', keywords: ['dynamic block', 'columnview', 'table'], needs: HEAD, run: () => insertColumnviewBlock() },
     {
       id: 'details',
       label: 'Edit details',

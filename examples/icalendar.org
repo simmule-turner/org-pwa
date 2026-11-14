@@ -48,3 +48,10 @@ DEADLINE: <2026-11-20 Fri> SCHEDULED: <2026-11-18 Wed>
 - A heading with no =:ID:= gets a random =UID= from Emacs and a stable one from the app (made from the file name and the heading), so the same event keeps its identity when you export again. The headings above carry an =:ID:= so the files can be compared.
 - The =TODO= heading at the end is left out by both, because =org-icalendar-include-todo= is =nil= in Emacs and in the app; set it in Settings → Export to have tasks written.
 - The =PRODID= names the login name of the user who exported.
+
+* Importing
+=icalendar-import.ics= beside this file is a small calendar from another app; *Import → iCalendar* (in Emacs, =icalendar-import-file=) turns it into headings:
+- /Design review/ keeps its organizer, attendees and attachment, and its 15-minute reminder becomes =:APPT_WARNTIME: 15=.
+- /Gym/ (Monday and Thursday, six times, one day skipped) cannot be a repeater, so it becomes a =<%%(...)>= expression with the skipped day left out and the time first in the title. =COUNT= is turned into an end date; Emacs's own import gets this count wrong.
+- /Clinic day/ (the second Tuesday, until March) uses =diary-float=.
+- /Pay rent/ is a plain monthly repeater, =+1m=.

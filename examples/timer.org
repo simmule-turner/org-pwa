@@ -1,0 +1,30 @@
+#+TITLE: Org Timer
+#+STARTUP: showall
+
+A timer for meetings, talks and practice. Open the command palette and choose:
+- *Start timer* (=C-c C-x 0=, =org-timer-start=): a timer that counts up. It shows as =<0:12:03>= in the modeline.
+- *Pause or continue timer* (=C-c C-x ,=), *Stop timer* (=C-c C-x _=).
+- *Insert timer list item* (=C-c C-x -=, =org-timer-item=): adds =- 0:12:03 :: = to the end of the text of the heading you are on, and the next one goes under it. Write the note after the =::=.
+- The *Timer* button of the text editors (=org-timer=) puts the time at the cursor.
+- *Set countdown timer* (=C-c C-x ;=, =org-timer-set-timer=): minutes or =h:mm:ss=. On a heading with an =Effort=, it counts down that effort without asking. At zero, you get a reminder (and the sound of =org-clock-sound=).
+- *Shift timer stamps in the text* (=org-timer-change-times-in-region=): moves every stamp in the heading's text by an amount such as =-0:08:26=; leave it empty to make the first one 0:00:00.
+
+* Team meeting
+The list below was made while the timer ran: start the timer with the meeting, then choose *Insert timer list item* at each topic.
+
+- 0:00:12 :: Welcome and agenda
+- 0:03:40 :: Release status: v701 is in testing
+- 0:09:05 :: Open questions on the export options
+- 0:14:30 :: Next steps
+
+* The same notes, started late
+The timer was started eight minutes into the meeting, so every stamp is 8:26 too small. *Shift timer stamps in the text* with =0:08:26= puts them right.
+
+- 0:00:12 :: Welcome and agenda
+- 0:03:40 :: Release status
+
+* Focus block
+:PROPERTIES:
+:Effort: 0:25
+:END:
+*Set countdown timer* on this heading counts down 25 minutes, the effort, and says "Focus block: time out" at zero.

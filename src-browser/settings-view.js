@@ -25,6 +25,7 @@ import { APP_VERSION } from './version.js';
 import { render } from './render.js';
 import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnableProtectionDialog, prepareImport } from './connection-protection.js';
 import { forState, vault } from './connection-vault.js';
+import { buildEncryptionCard } from './crypt-flow.js';
 import { buildHistoryCard, reapplySettings } from './settings-history.js';
 import { DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getFontFamily, getFontSize, getGithubConfig, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
@@ -888,6 +889,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
     'Encrypts the GitHub token and owner and the WebDAV, calendar and contacts user names and passwords, in this browser and in the exported settings. The passphrase is asked for when one is first used in a session. Addresses and everything else stay as they are.' +
     (vault.protected && !vault.key ? ' Locked now \u2014 it opens when a connection is used.' : '');
   protectSection.appendChild(protectHint);
+
+  cards.set('encryption', buildEncryptionCard());
 
   const githubSection = document.createElement('div');
   githubSection.className = 'settings-section';

@@ -90,7 +90,7 @@ export const GROUPS = [
     id: 'symbols', title: 'Symbols and functions',
     intro: 'Defining and calling functions, symbols, variables, features, equality and type tests.',
     note: '~require~, ~provide~ and ~featurep~ treat every feature as loaded, so ~eval-after-load~ and ~with-eval-after-load~ run their body at once.',
-    names: 'defun defmacro defalias defvar defvar-local defconst defcustom defgroup declare declare-function interactive funcall apply eval macroexpand macroexpand-1 macroexpand-all func-arity fset functionp fboundp fmakunbound symbol-function symbol-name symbol-value symbol-plist symbolp keywordp booleanp boundp makunbound set default-value special-variable-p make-variable-buffer-local get put intern intern-soft make-symbol gensym eq eql equal type-of identity ignore always add-hook remove-hook add-to-list require provide featurep eval-after-load with-eval-after-load eval-and-compile eval-when-compile',
+    names: 'defun defmacro defalias defvar defvar-local defconst defcustom defgroup declare declare-function interactive funcall apply eval macroexpand macroexpand-1 macroexpand-all func-arity fset functionp fboundp fmakunbound symbol-function symbol-name symbol-value symbol-plist symbolp keywordp booleanp boundp makunbound set default-value special-variable-p make-variable-buffer-local get put intern intern-soft make-symbol gensym eq eql equal type-of identity ignore always add-hook remove-hook org-crypt-use-before-save-magic add-to-list require provide featurep eval-after-load with-eval-after-load eval-and-compile eval-when-compile',
   },
   {
     id: 'buffer', title: 'Text buffers',

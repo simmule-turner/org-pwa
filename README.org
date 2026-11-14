@@ -33,6 +33,9 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#source-blocks][Source blocks]]
 - [[#attachments][Attachments]]
 - [[#clocking][Clocking]]
+- [[#column-view][Column View]]
+- [[#org-crypt][Org Crypt]]
+- [[#org-timer][Org Timer]]
 - [[#line-numbers][Line numbers]]
 - [[#narrowing][Narrowing]]
 - [[#the-plain-text-editor][The plain-text editor]]
@@ -641,6 +644,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 
 | Variable | Default | What it does |
 |---+---+---|
+| ~before-save-hook~ | ~nil~ | Functions run before a file is saved; ~org-encrypt-entries~ in it (or ~(org-crypt-use-before-save-magic)~ in the Lisp init) encrypts the ~crypt~ entries first (see [[#org-crypt][Org Crypt]]) |
 | ~buffer-read-only~ | ~nil~ | Whether the buffer is read-only (see [[#keybindings][Keybindings]]: ~C-x C-q~, or *Toggle read-only* in the command palette) |
 | ~calendar-bahai-all-holidays-flag~ | ~nil~ | ~t~ adds the longer Bahá'í list (see [[#holidays][Holidays]]) |
 | ~calendar-christian-all-holidays-flag~ | ~nil~ | ~t~ adds the longer Christian list (see [[#holidays][Holidays]]) |
@@ -722,8 +726,13 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-clock-out-switch-to-state~ | ~nil~ | A TODO keyword to switch to when clocking out of an entry that has a state |
 | ~org-clock-sound~ | ~nil~ | ~t~ beeps when a clocked task reaches its estimate. A file name plays that file in the Android app, which looks for it by name in the org-pwa folder (a folder part such as ~~/sounds/~ is ignored); a file that is not there plays nothing, as in Emacs, and so does the browser, which has no folder to look in. ~t~, or a file that will not play, gives two beeps |
 | ~org-closed-keep-when-no-todo~ | ~nil~ | ~t~ keeps a CLOSED timestamp when a DONE heading is cycled back to no keyword. Cycling to another keyword always removes it (see [[#progress-logging][Progress logging]]) |
+| ~org-columns-default-format~ | ~"%25ITEM %TODO %3PRIORITY %TAGS"~ | The columns of column view (~C-c C-x C-c~) when neither a ~COLUMNS~ property nor a ~#+COLUMNS:~ line gives them (see [[#column-view][Column View]]) |
+| ~org-columns-ellipses~ | ~".."~ | What column view puts at the end of a value cut to its column's width |
 | ~org-contacts-birthday-property~ | ~"BIRTHDAY"~ | The property ~org-contacts-anniversaries~ reads, as a string (~# org-contacts-birthday-property: "EVENT"~) |
 | ~org-contacts-files~ | unset (current file only) | A list of file names like ~org-agenda-files~: more files for [[#export][Contacts (.vcf)]] export (see [[#contacts-files][Contacts Files]]) |
+| ~org-crypt-disable-auto-save~ | ~ask~ | What happens to the copy kept on this device while entries are decrypted: ~ask~, ~t~ (keep none), ~nil~ (keep it), ~encrypt~ (see [[#org-crypt][Org Crypt]]) |
+| ~org-crypt-key~ | ~""~ | The key entries are encrypted to: a key ID, or part of a name or address. ~""~ matches no key, and ~nil~ always uses a passphrase |
+| ~org-crypt-tag-matcher~ | ~"crypt"~ | The match (as in ~C-c / m~) for the entries *Encrypt all crypt entries* and *Decrypt all crypt entries* use |
 | ~org-cycle-open-archived-trees~ | ~nil~ | ~nil~: an archived heading starts folded whatever ~#+STARTUP:~ says, and the swipe gesture refuses to open it (the chevron still does, as org's force-open commands do). ~t~ makes archived headings behave like any other |
 | ~org-deadline-past-days~ | ~10000~ | Number of days to warn about missed deadlines; set in Global Variables or the Lisp init |
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
@@ -787,6 +796,9 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-tag-persistent-alist~ | unset | Like ~org-tag-alist~, but a file's own ~org-tag-alist~ does not replace it |
 | ~org-tags-column~ | ~-77~ | Where a heading's tags sit when the line is rewritten: ~0~ one space after the title, a negative number right-aligns them to that column, a positive one starts them at that column; also Settings → Editing |
 | ~org-tags-exclude-from-inheritance~ | (none) | Tags that never inherit, as a list (~'("private" "archive")~) |
+| ~org-timer-default-timer~ | ~"0"~ | The countdown asked for by *Set countdown timer*, in minutes or ~h:mm:ss~; ~"0"~ asks with nothing filled in |
+| ~org-timer-display~ | ~mode-line~ | Where a running timer shows: ~mode-line~, ~frame-title~ (the title of the page), ~both~ or ~nil~ |
+| ~org-timer-format~ | ~"%s "~ | What ~org-timer~ and ~org-timer-item~ insert; ~%s~ is the time |
 | ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter and an attachment folder use a value inherited from an ancestor (a heading's own value wins). A list of property names, or a regexp in quotes, limits inheritance to those properties |
 | ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org; any other value counts as ~t~); see [[#inline-text-markup][Inline text markup]] |
 | ~org-use-tag-inheritance~ | ~t~ | ~t~ lets a ~tag:~ search filter match a tag inherited from an ancestor; ~nil~ limits it to the heading's own tags; a list such as ~("work" "home")~ or a quoted regexp such as ~"^proj_"~ inherits only those tags. Applies to search, the Agenda tag filters and the tags shown on a heading |
@@ -878,9 +890,9 @@ The interpreter behind the Lisp init, ~emacs-lisp~ source blocks, holiday lists,
 
 ~clrhash~ ~copy-hash-table~ ~gethash~ ~hash-table-count~ ~hash-table-keys~ ~hash-table-p~ ~hash-table-values~ ~make-hash-table~ ~maphash~ ~puthash~ ~remhash~
 
-*Symbols and functions* (58): Defining and calling functions, symbols, variables, features, equality and type tests. ~require~, ~provide~ and ~featurep~ treat every feature as loaded, so ~eval-after-load~ and ~with-eval-after-load~ run their body at once.
+*Symbols and functions* (59): Defining and calling functions, symbols, variables, features, equality and type tests. ~require~, ~provide~ and ~featurep~ treat every feature as loaded, so ~eval-after-load~ and ~with-eval-after-load~ run their body at once.
 
-~add-hook~ ~add-to-list~ ~always~ ~apply~ ~booleanp~ ~boundp~ ~declare~ ~declare-function~ ~defalias~ ~default-value~ ~defconst~ ~defcustom~ ~defgroup~ ~defmacro~ ~defun~ ~defvar~ ~defvar-local~ ~eq~ ~eql~ ~equal~ ~eval~ ~eval-after-load~ ~eval-and-compile~ ~eval-when-compile~ ~fboundp~ ~featurep~ ~fmakunbound~ ~fset~ ~func-arity~ ~funcall~ ~functionp~ ~gensym~ ~get~ ~identity~ ~ignore~ ~interactive~ ~intern~ ~intern-soft~ ~keywordp~ ~macroexpand~ ~macroexpand-1~ ~macroexpand-all~ ~make-symbol~ ~make-variable-buffer-local~ ~makunbound~ ~provide~ ~put~ ~remove-hook~ ~require~ ~set~ ~special-variable-p~ ~symbol-function~ ~symbol-name~ ~symbol-plist~ ~symbol-value~ ~symbolp~ ~type-of~ ~with-eval-after-load~
+~add-hook~ ~add-to-list~ ~always~ ~apply~ ~booleanp~ ~boundp~ ~declare~ ~declare-function~ ~defalias~ ~default-value~ ~defconst~ ~defcustom~ ~defgroup~ ~defmacro~ ~defun~ ~defvar~ ~defvar-local~ ~eq~ ~eql~ ~equal~ ~eval~ ~eval-after-load~ ~eval-and-compile~ ~eval-when-compile~ ~fboundp~ ~featurep~ ~fmakunbound~ ~fset~ ~func-arity~ ~funcall~ ~functionp~ ~gensym~ ~get~ ~identity~ ~ignore~ ~interactive~ ~intern~ ~intern-soft~ ~keywordp~ ~macroexpand~ ~macroexpand-1~ ~macroexpand-all~ ~make-symbol~ ~make-variable-buffer-local~ ~makunbound~ ~org-crypt-use-before-save-magic~ ~provide~ ~put~ ~remove-hook~ ~require~ ~set~ ~special-variable-p~ ~symbol-function~ ~symbol-name~ ~symbol-plist~ ~symbol-value~ ~symbolp~ ~type-of~ ~with-eval-after-load~
 
 *Text buffers* (54): A buffer of text with point, narrowing, motion, insertion, deletion and searching, for ~:prepare-finalize~ and target functions, and for code of your own inside ~with-temp-buffer~. Positions count characters from 1. ~save-excursion~ and ~save-restriction~ keep point and the narrowing.
 
@@ -1207,6 +1219,59 @@ The effort prompt completes against ~Effort_ALL~. The first source with a usable
 3. ~org-global-properties~ (Settings → Advanced or Local Variables), such as ~(("Effort_ALL" . "0:15 0:30 1:00 2:00 4:00"))~.
 
 Values are space-separated ~org-duration~ forms. When a list applies, *Set effort estimate* shows its values as buttons and the box still takes any other duration. The same list supplies the Agenda's effort filter; with none, the filter uses Org's ~0 0:10 0:30 1:00 2:00 3:00 4:00 5:00 6:00 7:00~.
+
+** Column View
+:PROPERTIES:
+:CUSTOM_ID: column-view
+:END:
+
+*Column view* (~C-c C-x C-c~, ~org-columns~) shows the headings of the subtree you are in, or of the whole file when the cursor is above the first heading, as a table with a column for each entry of the format. Tap a cell to edit the value, to pick one of its allowed values (~Effort_ALL~, ~Cost_ALL~, ...), or to change the column: wider, narrower, move, add, delete, edit its title and summary. The format comes from the ~COLUMNS~ property of the nearest heading that has one, then the first ~#+COLUMNS:~ line, then ~org-columns-default-format~. A column is written ~%25ITEM(Task){+;%.2f}~: an optional width, the property, a title in parentheses, and a summary type with an optional ~printf~ format in braces. Changing the format stores it where it came from (the ~COLUMNS~ property of the heading, or the ~#+COLUMNS:~ line).
+
+The special properties are ~ITEM~, ~TODO~, ~PRIORITY~, ~TAGS~, ~ALLTAGS~, ~CATEGORY~, ~FILE~, ~DEADLINE~, ~SCHEDULED~, ~CLOSED~, ~TIMESTAMP~, ~TIMESTAMP_IA~, ~BLOCKED~ and ~CLOCKSUM~; any other name is a property, taken from the heading itself (or from the ancestors, as ~org-use-property-inheritance~ says).
+
+*Summaries* are computed from the children up and written into the property of each parent that has one, as Emacs does. Types: ~+~ sum, ~$~ currency, ~min~, ~max~, ~mean~, ~X~ ~X/~ ~X%~ check boxes, ~:~ ~:min~ ~:max~ ~:mean~ times, ~@min~ ~@max~ ~@mean~ ages, ~est+~ ranges such as ~3-5~. A ~printf~ format after the type (~{+;%.1f}~) shapes the numbers, including those of rows with no summary.
+
+*Dynamic block*: ~#+BEGIN: columnview~ ... ~#+END:~ holds the same table as text. *Insert column view block* (~org-columns-insert-dblock~) adds one to the focused heading; *Update dynamic block* (~C-c C-x C-u~, ~org-dblock-update~) writes the blocks under the focused heading again, and *Update all dynamic blocks* (~org-update-all-dblocks~) those of the file. Parameters: ~:id~ (~local~, ~global~, or the ~ID~ of an entry in this file), ~:format~, ~:maxlevel~, ~:match~, ~:skip-empty-rows~, ~:exclude-tags~, ~:hlines~, ~:indent~, ~:vlines~; a ~#+TBLFM:~ line inside the block is recalculated.
+
+Example, in =examples/column-view.org=: with =#+COLUMNS: %30ITEM(Task) %10Effort(Estimate){:} %Cost(Cost){+;%.2f}= at the top, a heading with children that have =:Effort: 6:00= and =:Cost: 1200= shows a row of its own whose =Estimate= is the total of theirs and whose =Cost= reads =1200.00=. A heading with =:COLUMNS: %25ITEM %Cost(Cost){min}= shows the cheapest of its children instead. The block
+
+#+begin_example
+#+BEGIN: columnview :id global :maxlevel 2 :hlines 1
+#+END:
+#+end_example
+
+is filled with the table, and written again by *Update all dynamic blocks*.
+
+** Org Crypt
+:PROPERTIES:
+:CUSTOM_ID: org-crypt
+:END:
+
+*Org Crypt* keeps the text of an entry secret in the file. The text below the heading and its properties, sub-headings included, becomes an ASCII-armored PGP message, the same text Emacs's ~org-crypt~ and ~gpg~ write and read, so a file can be opened in either. The heading, tags and properties stay readable.
+
+- *Encrypt entry*, *Decrypt entry* (~org-encrypt-entry~, ~org-decrypt-entry~): the focused entry.
+- *Encrypt all crypt entries*, *Decrypt all crypt entries* (~org-encrypt-entries~, ~org-decrypt-entries~): every entry matching ~org-crypt-tag-matcher~, the ~crypt~ tag by default.
+
+An entry is encrypted with a passphrase, asked for twice. With ~org-crypt-key~ set to a key ID, or part of a name or address, it is encrypted to the matching keys in *Settings → Encryption keys* instead, and a ~:CRYPTKEY:~ property on the entry names its own key (~nil~ for a passphrase). Decrypting an entry encrypted to a key asks for the passphrase of its secret key. A passphrase typed is kept in memory for ten minutes after its last use, and two hours at most, as gpg-agent keeps it. Decrypted text that did not change is encrypted to the same message again, so the file does not change for nothing.
+
+While entries are decrypted, ~org-crypt-disable-auto-save~ says what happens to the copy of the file kept on this device after each edit: ~ask~ (the default) asks when you decrypt, ~t~ keeps no copy until the file is read again, ~nil~ keeps it (decrypted text may then be stored), ~encrypt~ stores the entries encrypted. The undo history is not kept either, except with ~nil~. Saving the file writes what is on screen; ~(org-crypt-use-before-save-magic)~ in the Lisp init encrypts the ~crypt~ entries first.
+
+Example, in =examples/crypt.org=: the heading ~* Waiting to be encrypted :crypt:~ has plain text under its properties. *Encrypt all crypt entries* asks for a passphrase and puts a ~-----BEGIN PGP MESSAGE-----~ block there; the passphrase of the other entries in the file is ~example~. Import =crypt-example-key.asc= under *Encryption keys* to open the entry encrypted to a key.
+
+** Org Timer
+:PROPERTIES:
+:CUSTOM_ID: org-timer
+:END:
+
+*Org Timer* is a relative timer that counts up, and a countdown. While one runs, ~<0:12:03>~ shows in the modeline (~org-timer-display~).
+
+- *Start timer* (~C-c C-x 0~, ~org-timer-start~), *Start timer with an offset* (~C-u C-c C-x 0~; an offset such as ~0:08:26~, for a timer started late).
+- *Pause or continue timer* (~C-c C-x ,~), *Stop timer* (~C-c C-x _~).
+- *Insert timer list item* (~C-c C-x -~, ~org-timer-item~) adds ~- 0:12:03 ::~ at the end of the text of the focused heading; the next one goes under it. The *Timer* button in the text editors (~org-timer~) inserts the time at the cursor.
+- *Set countdown timer* (~C-c C-x ;~, ~org-timer-set-timer~): minutes or ~h:mm:ss~; with an ~Effort~ on the focused heading, that effort, without asking (*Set countdown timer, ignoring the effort*, ~C-u C-c C-x ;~, asks). At zero, a reminder with the sound of ~org-clock-sound~. *Show time left on the countdown* is ~org-timer-show-remaining-time~.
+- *Shift timer stamps in the text* (~org-timer-change-times-in-region~): every ~H:MM:SS~ in the text of the focused heading moves by an amount such as ~-0:08:26~; empty makes the first one ~0:00:00~.
+
+Example, in =examples/timer.org=: start the timer when a meeting starts and choose *Insert timer list item* at each topic to get ~- 0:03:40 :: Release status~.
 
 ** Line numbers
 :PROPERTIES:
@@ -1587,6 +1652,8 @@ Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(
     "%?" :empty-lines 1))
 #+END_SRC
 
+In Text view the list has *Insert at the cursor* (~C-0 C-c c~): the capture goes in at the cursor instead of at the target; an entry gets the level of the heading above it.
+
 If a capture fails (network error, sync conflict) the form keeps your text. Every template is also a palette command, *Capture: <description>*, and the Extras menu (see [[#extras-menu][Extras Menu]]) can jump to one by key. A capture into the open file scrolls to the new row, item or heading. A capture into a different file goes into that file's buffer, as in Emacs: a background tab, modified until you save it (see [[#file-management][File management]]). A template or keyword the app cannot use is named in a message when the Capture list opens, and so is an error in the Lisp init. A template of a type other than ~entry~, ~item~, ~checkitem~, ~table-line~ or ~plain~ is refused with a message naming the type, so the text is not lost (Emacs files nothing).
 
 *A template* is ~("key" "description" type target "text" keyword value …)~:
@@ -1594,6 +1661,7 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 - ~key~: must be unique. It is the hotkey in a god-mode picker and shows beside the description on the capture form.
 - ~type~: ~item~ (a bullet), ~checkitem~ (a bullet too: Org 9.6 inserts no box), ~plain~ (the text as it is, headings included, put where point would be), ~entry~ (a heading; its level follows the target, and so do the sub-headings of the text) or ~table-line~ (a row added to the first table under the target; with none, a new table starts with an empty header row and a rule, as in Emacs).
 - target, where the text goes: ~(file "f")~ the top level of a file; ~(file+headline "f" "H")~ and ~(file+olp "f" "H1" "H2")~ the outline path. ~file+headline~ makes its heading when the file lacks it; ~file+olp~ stops with ~Heading not found on level N: NAME~, as Emacs does.
+- ~(file+regexp "f" "REGEXP")~ goes where the first match of an Emacs regular expression ends (where it starts, with ~:prepend~): under the heading when the match is on a heading line, otherwise as for a target function that leaves point there. ~(id "ID")~ is the entry with that ~:ID:~ (in this file, an open tab, an agenda file, or the file it was last seen in), and ~(clock)~ the entry with the running clock; the capture goes under it as for ~file+headline~. With none of them, Emacs's message is shown and nothing is filed.
 - The file ~"f"~ may be ~""~ for the open file. A bare name is a sibling of the open file, a path containing ~/~ is used as is, and a ~github:~, ~webdav:~ or ~local:~ prefix names the backend (one that doesn't match the open document's is refused). GitHub and WebDAV targets work directly; a local or iOS-imported target must have been opened or saved once, except in the [[#android-app][Android app]], where a file in the org-pwa folder works and is created if missing.
 - ~(file+olp+datetree "f" "H" …)~ files under today's date. After the headings (which may be none, for the top of the file), the year, month and day headings (=2026=, =2026-11 November=, =2026-11-07 Saturday=) are found or created in date order, and the capture goes into the day. ~:tree-type week~ files under the year, the ISO week (=2026-W45=) and the day; ~:tree-type month~ files directly under the month. ~file+datetree~ and ~file+weektree~ work too.
 - ~:jump-to-captured t~: after filing, go to the new text: the headings above it open and the view scrolls to it, a table row included. For a template that files into another file, that file's buffer is shown. Without it the screen stays where it was, as in Emacs.
@@ -1606,7 +1674,7 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
 - ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
 
-A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading the capture is filed under it, for every type; an entry is its last child, or its first with ~:prepend~. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). A target function or ~:prepare-finalize~ function can read the template with ~(org-capture-get :prepend)~ (also ~:key~, ~:description~, ~:type~, ~:template~ and any other keyword the template gives) and change it with ~org-capture-put~, for example to make a new month heading first or last as ~:prepend~ says. An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
+A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ runs FN, a name or a ~(lambda () …)~, in a text buffer that holds the file, with point at its start; it may insert whole lines (a year heading, a table with its ~#+TBLFM~) and leaves point where the capture goes. With point on a heading an entry is filed as its last child (its first with ~:prepend~), and an item or a table row in its text. Off a heading an entry goes to the top level of the file, and an item or a row is looked for from point to the end of that text; plain text goes where point is. ~:prepare-finalize~ takes a function, a lambda or a list of them, and runs them on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed (see /Text buffers/ in the list of Lisp functions). A target function or ~:prepare-finalize~ function can read the template with ~(org-capture-get :prepend)~ (also ~:key~, ~:description~, ~:type~, ~:template~ and any other keyword the template gives) and change it with ~org-capture-put~, for example to make a new month heading first or last as ~:prepend~ says. An error in a function shows Emacs's message and files nothing. Templates that use a function call ~(format-time-string "%Y")~ for the moment of the capture.
 
 *Template text, the %-escape language* (local time):
 
@@ -1649,6 +1717,7 @@ A target can also be a function: ~(file+function "f" FN)~ or ~(function FN)~ run
 - ~%x~ and ~%c~ are the clipboard. It is read only for a template that uses it (~%x~, ~%c~, ~%^C~ or ~%^L~), the browser may ask permission (iOS shows a Paste confirmation), and a refusal leaves it empty while the capture still goes ahead.
 - ~%n~ is the value of ~user-full-name~ from the global variables (empty when unset). ~%k~ is the heading of the running clock and ~%K~ a link to it, ~[[file::*heading][heading]]~. ~%f~ and ~%F~ are the open file's name and full path.
 - ~%^{Prompt}~ asks a question on the in-app form. ~%^{Prompt|default}~ pre-fills an answer, and ~%^{Prompt|default|choice1|choice2}~ also lists the choices as a hint under the field (there is no dropdown). An empty answer is the default. Several prompts share one form, and cancelling discards the whole capture.
+- ~%^{Name}p~ asks for a value and sets the property ~Name~ on the entry the placeholder is in (the text of the placeholder is removed); ~%^{Name|default}p~ pre-fills it. Where there is no heading in the template the properties drawer is put at its start.
 - ~%^g~ and ~%^G~ ask for tags, written as ~work:home~, and insert ~:work:home:~. On a heading line the tags are placed where ~org-tags-column~ says.
 - ~%^C~ asks for a clipboard value (pre-filled with the shared text, when there is any) and inserts it; ~%^L~ inserts it as ~[[value]]~.
 - ~%^t~, ~%^T~, ~%^u~, ~%^U~ (and ~%^{Prompt}t~ and the other letters, to name the field) are interactive timestamps: active date (~<2026-09-22 Tue>~), active date and time, inactive date (~[2026-09-22 Tue]~), inactive date and time. Active timestamps show in the [[#agenda][Agenda]]; inactive ones don't. Each is a text field with a *📅 Pick date* (or *📅 Pick date & time*) button. In the popup, *OK* writes the timestamp into the field, where it stays editable, and *Cancel* leaves the field as it was. The date & time popup also has an *End time*, which follows the start by 30 minutes until you change it (*No end* removes it) and writes a range such as ~<2026-09-22 Tue 09:00-10:30>~: an appointment with a start and an end, exported with both. A date typed into the field (~2026-09-22~ or ~2026-09-22 14:30~) becomes a timestamp; ~T~ and ~U~ add the current time when none is given, and an empty field is now.
@@ -1949,7 +2018,7 @@ The CSS is print-aware, so *Print → Save as PDF* is the route to PDF. For a ta
 
 *** ODT
 
-A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs, a port of ~ox-odt~ with the same styles, style names and structure for headings, lists, tables (special rows and columns, alignment cookies, ~#+ATTR_ODT:~), blocks, ~#+ODT:~ and ~@@odt:@@~, footnotes, links, the table of contents and captions, and ~#+OPTIONS:~ such as ~toc:~, ~num:~, ~tags:~, ~todo:~, ~pri:~, ~p:~, ~f:~ and ~|:~. Images the app can read are embedded and sized from their pixels, ~#+ATTR_ODT: :width :height :scale~ or the page. LaTeX fragments become embedded formula objects you can edit, with a number on display equations. Source blocks are colored with ~OrgSrcFontLock~ styles. ~#+ATTR_ODT: :style NAME~ picks a table style from ~org-odt-table-styles~, which the Lisp init can extend.
+A standalone ~.odt~ that opens in LibreOffice, Word (with the ODF filter) and Google Docs, a port of ~ox-odt~ with the same styles, style names and structure for headings, lists, tables (special rows and columns, alignment cookies, ~#+ATTR_ODT:~), blocks, ~#+ODT:~ and ~@@odt:@@~, footnotes, links, the table of contents and captions, and ~#+OPTIONS:~ such as ~toc:~, ~num:~, ~tags:~, ~todo:~, ~pri:~, ~p:~, ~f:~, ~|:~, ~*:~, ~stat:~ and ~prop:~. Images the app can read are embedded and sized from their pixels, ~#+ATTR_ODT: :width :height :scale~ or the page. LaTeX fragments become embedded formula objects you can edit, with a number on display equations. Source blocks are colored with ~OrgSrcFontLock~ styles. ~#+ATTR_ODT: :style NAME~ picks a table style from ~org-odt-table-styles~, which the Lisp init can extend.
 
 *** Line numbers and references in source blocks
 :PROPERTIES:
@@ -2103,9 +2172,9 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 - An event's time is a timestamp in the title: ~* Dentist <2026-10-05 Mon 09:00-10:30>~. An all-day event has a date only; a multi-day event is a range.
 - Times are shown in this device's time zone; UTC and named zones (~TZID~) are converted, as ~icalendar-import-file~ does. A time with no zone, or in a zone name the browser doesn't know, is kept as written and the status line says so.
 - ~LOCATION~, ~URL~ and ~UID~ become properties, ~CATEGORIES~ tags, ~DESCRIPTION~ the body, and a cancelled event keeps ~:STATUS: CANCELLED~.
-- A recurrence a repeater can express (~FREQ~ with ~INTERVAL~, such as ~+1w~) becomes one. Any other rule (an end date or ~COUNT~, several weekdays, "the second Tuesday") is imported once at its first date with the rule in an ~:RRULE:~ property, and the status line counts them.
+- A recurrence a repeater can express (~FREQ~ with ~INTERVAL~, such as ~+1w~) becomes one. Any other rule (an end date or ~COUNT~, several weekdays, "the second Tuesday", ~EXDATE~ exceptions) becomes a diary expression, ~<%%(and (org-cyclic 7 2026 10 5) (org-block 2026 10 5 2026 12 7))>~, built from Org's own ~org-cyclic~, ~org-date~, ~org-block~ and ~diary-float~; the agenda has no time of day for these, so the time goes first in the title (~* 09:00 Standup~). ~COUNT~ is turned into an end date. Only a rule those cannot say (~INTERVAL~ with several weekdays, or on a monthly or yearly rule, ~FREQ=HOURLY~) is imported once at its first date with the rule in an ~:RRULE:~ property, and the status line counts them.
 - A task (~VTODO~) becomes ~TODO~, or ~DONE~ with ~CLOSED~ once completed; ~DUE~ is its ~DEADLINE~, ~DTSTART~ its ~SCHEDULED~, ~PRIORITY~ becomes ~[#A]~ to ~[#C]~.
-- Attendees, organizer, attachments, exceptions and alarms are not carried over, and the status line names them.
+- ~ORGANIZER~ and ~ATTENDEE~ become ~:ORGANIZER:~ and ~:ATTENDEES:~ properties, ~ATTACH~ links become list lines under the heading, and a reminder (~VALARM~) becomes ~:APPT_WARNTIME:~ in minutes, as ~appt~ reads it. Anything else not carried over is named in the status line.
 
 -----
 

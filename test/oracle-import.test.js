@@ -66,6 +66,12 @@ function fromOrg(orgText) {
   const events = [];
   const lines = orgText.split('\n');
   for (let i = 0; i < lines.length; i++) {
+    const sx = /^\* (?:(\d\d:\d\d(?:-\d\d:\d\d)?) )?(.*?) <%%\(.*\)>(?: (:[\w:@]+:))?$/.exec(lines[i]);
+    if (sx) {
+      // a diary expression: the time leads the title, and the rule is one Emacs's own import also writes as a sexp ("complex")
+      events.push({ summary: sx[2], date: '', time: sx[1] ?? '', end: '', repeat: 'complex', desc: '', loc: '' });
+      continue;
+    }
     const h = /^\* (?:TODO |DONE )?(.*?)(?: <(\d{4}-\d\d-\d\d) \w+(?: (\d\d:\d\d(?:-\d\d:\d\d)?))?(?: [.+]+(\d+)([dwmy]))?>(?:--<(\d{4}-\d\d-\d\d) \w+(?: \d\d:\d\d)?>)?)?(?: (:[\w:@]+:))?$/.exec(lines[i]);
     if (!h) continue;
     /** @type {Event} */

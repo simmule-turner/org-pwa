@@ -834,7 +834,7 @@ export async function importIcalendarFile(icsText) {
   const what = [eventCount ? `${eventCount} event${eventCount === 1 ? '' : 's'}` : '', todoCount ? `${todoCount} task${todoCount === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
   const notes = [];
   if (unmappedProperties.length) notes.push(`${unmappedProperties.length} unrecognized propert${unmappedProperties.length === 1 ? 'y was' : 'ies were'} skipped: ${unmappedProperties.join(', ')}.`);
-  if (keptRecurrences.length) notes.push(`${keptRecurrences.length} recurring event${keptRecurrences.length === 1 ? '' : 's'} could not become a repeater (an end date, several weekdays, ...) and ${keptRecurrences.length === 1 ? 'was' : 'were'} imported once, with the rule in an :RRULE: property.`);
+  if (keptRecurrences.length) notes.push(`${keptRecurrences.length} recurring event${keptRecurrences.length === 1 ? '' : 's'} could not be expressed as a repeater or a diary expression and ${keptRecurrences.length === 1 ? 'was' : 'were'} imported once, with the rule in an :RRULE: property.`);
   if (unknownZones.length) notes.push(`Times in an unknown time zone (${unknownZones.join(', ')}) were kept as written.`);
   const warning = notes.length ? ` ${notes.join(' ')}` : '';
   S.moreOpen = false;

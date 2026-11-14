@@ -1,0 +1,2159 @@
+{
+ "cases": [
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n** NEW\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n*** NEW\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n** NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetLVZELu.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n* NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "entry",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "* NEW",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n** NEW\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "entry",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "* NEW",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n** NEW\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n- NEWITEM\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n- NEWITEM\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n- NEWITEM\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n- NEWITEM\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n- NEWITEM\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetfXiqTp.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n- NEWITEM\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "item",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWITEM\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "item",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWITEM\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n- NEWITEM\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n- NEWCHECK\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n- NEWCHECK\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n- NEWCHECK\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n- NEWCHECK\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n- NEWCHECK\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetKWfTsN.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n- NEWCHECK\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWCHECK\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWCHECK\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n- NEWCHECK\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n|   |   |\n|---+---|\n| a | b |\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n|   |   |\n|---+---|\n| a | b |\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n|   |   |\n|---+---|\n| a | b |\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n| a | b |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n| a | b |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetXX8RFg.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n|   |   |\n|---+---|\n| a | b |\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "table-line",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "| a | b |",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n|   |   |\n|---+---|\n| a | b |\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "table-line",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "| a | b |",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n|   |   |\n|---+---|\n| a | b |\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\nPLAIN\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\nPLAIN\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nPLAIN\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\nPLAIN\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmor\nPLAIN\ne\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbo\nPLAIN\ndy\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t\nPLAIN\n | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\nPLAIN\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker\nPLAIN\n line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetZ8JVTG.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nPLAIN\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "plain",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "PLAIN",
+   "emacs": "- first\n* A\nPLAIN\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\nPLAIN\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "plain",
+   "prepend": false,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "PLAIN",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\nPLAIN\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\nPLAIN\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** NEW\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n*** NEW\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n** NEW\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetsyQQol.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* NEW\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "entry",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "* NEW",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** NEW\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "entry",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "* NEW",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** NEW\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n** NEW\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "entry",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "* NEW",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- NEWITEM\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- NEWITEM\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- NEWITEM\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\n- NEWITEM\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n- NEWITEM\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- NEWITEM\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetCNgaJl.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- NEWITEM\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "item",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWITEM\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "item",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWITEM\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWITEM\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "item",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWITEM",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- NEWCHECK\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- NEWCHECK\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- NEWCHECK\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\n- NEWCHECK\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n- NEWCHECK\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- NEWCHECK\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR No match for target regexp in file /tmp/target2pvCpa.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- NEWCHECK\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWCHECK\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n- NEWCHECK\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n- NEWCHECK\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "checkitem",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "NEWCHECK",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n|   |   |\n|---+---|\n| a | b |\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n|   |   |\n|---+---|\n| a | b |\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n|   |   |\n|---+---|\n| a | b |\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| a | b |\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| a | b |\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetYbIy8B.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n|   |   |\n|---+---|\n| a | b |\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "table-line",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "| a | b |",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n|   |   |\n|---+---|\n| a | b |\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "table-line",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "| a | b |",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n|   |   |\n|---+---|\n| a | b |\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n|   |   |\n|---+---|\n| a | b |\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "table-line",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "| a | b |",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "PLAIN\n* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\*\\* A1",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nPLAIN\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^body",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^- x",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\nPLAIN\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "mor",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nPLAIN\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "bo",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^| t",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\nPLAIN\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* B$",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\nPLAIN\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "Marker",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* \nPLAIN\nMarker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "nomatch",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR No match for target regexp in file /tmp/targetJREyya.org"
+  },
+  {
+   "kind": "regexp",
+   "arg": "text a",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\nPLAIN\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "regexp",
+   "arg": "^\\* A$",
+   "type": "plain",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "PLAIN",
+   "emacs": "- first\nPLAIN\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-1",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "id",
+   "arg": "id-2",
+   "type": "plain",
+   "prepend": true,
+   "init": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\n** Sub\n* B\n",
+   "template": "PLAIN",
+   "emacs": "- first\n* A\n:PROPERTIES:\n:ID: id-2\n:END:\nPLAIN\n** Sub\n* B\n"
+  },
+  {
+   "kind": "id",
+   "arg": "nope",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR Please turn on `org-id-track-globally' if you want to track IDs"
+  },
+  {
+   "kind": "clock",
+   "arg": "Marker line",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\n:LOGBOOK:\nCLOCK: [2026-11-13 Fri 18:25]\n:END:\nPLAIN\nbody\nmore\n* B\n- z\n| t | u |\n"
+  },
+  {
+   "kind": "clock",
+   "arg": "",
+   "type": "plain",
+   "prepend": true,
+   "init": "* A\ntext a\n** A1\n- x\n- y\n** A2\n* Marker line\n:PROPERTIES:\n:ID: id-1\n:END:\nbody\nmore\n* B\n- z\n| t | u |\n",
+   "template": "PLAIN",
+   "emacs": "ERROR No running clock that could be used as capture target"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* TODO task %^{Effort}p",
+   "answers": [
+    "2h"
+   ],
+   "emacs": "* A\n** A1\n** TODO task \n:PROPERTIES:\n:Effort:   2h\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* TODO task\nbody %^{Effort}p more",
+   "answers": [
+    "2h"
+   ],
+   "emacs": "* A\n** A1\n** TODO task\n:PROPERTIES:\n:Effort:   2h\n:END:\nbody  more\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* TODO task\n:PROPERTIES:\n:ID: x\n:END:\n%^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n** A1\n** TODO task\n:PROPERTIES:\n:ID: x\n:Foo:      bar\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* TODO task\n:PROPERTIES:\n:Foo: old\n:ID: x\n:END:\n%^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n** A1\n** TODO task\n:PROPERTIES:\n:Foo:      bar\n:ID: x\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* TODO task\nSCHEDULED: <2026-01-01 Thu>\n%^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n** A1\n** TODO task\nSCHEDULED: <2026-01-01 Thu>\n:PROPERTIES:\n:Foo:      bar\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* T %^{A}p %^{B}p",
+   "answers": [
+    "1",
+    "2"
+   ],
+   "emacs": "* A\n** A1\n** T  \n:PROPERTIES:\n:A:        1\n:B:        2\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* T %^{A|dflt|x|y}p",
+   "answers": [
+    "1"
+   ],
+   "emacs": "* A\n** A1\n** T \n:PROPERTIES:\n:A:        1\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* T %^{A|dflt}p",
+   "answers": [
+    ""
+   ],
+   "emacs": "* A\n** A1\n** T \n:PROPERTIES:\n:A:        dflt\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* T %^{A}p",
+   "answers": [
+    ""
+   ],
+   "emacs": "* A\n** A1\n** T \n:PROPERTIES:\n:A:\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "* T\n** U %^{A}p\n%^{B}p",
+   "answers": [
+    "1",
+    "2"
+   ],
+   "emacs": "* A\n** A1\n** T\n*** U \n:PROPERTIES:\n:A:        1\n:B:        2\n:END:\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "text %^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n:PROPERTIES:\n:Foo:      bar\n:END:\ntext \n** A1\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "#+TITLE: x\ntext %^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n:PROPERTIES:\n:Foo:      bar\n:END:\n#+TITLE: x\ntext \n** A1\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "- item %^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n- :PROPERTIES:\n  :Foo:      bar\n  :END:\n  - item\n** A1\n* B\n"
+  },
+  {
+   "kind": "prop",
+   "arg": "",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\n** A1\n* B\n",
+   "template": "- [ ] item %^{Foo}p",
+   "answers": [
+    "bar"
+   ],
+   "emacs": "* A\n- :PROPERTIES:\n  :Foo:      bar\n  :END:\n  - [ ] item\n** A1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"more\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\nmore\n* NEW\n a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":-3}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntex\n* NEW\nt a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* A\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\n* NEW\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"body 1\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n** NEW\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- x\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\nmore a\n- x\n* NEW\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n* NEW\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* B\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n* NEW\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- y\",\"offset\":-1}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\nmore a\n- x\n- \n* NEW\ny\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"intro\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "intro\n* A\n",
+   "template": "* NEW",
+   "emacs": "intro\n* NEW\n* A\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "entry",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "extra": ":empty-lines 1",
+   "template": "* NEW",
+   "emacs": "* A\ntext a\n\n* NEW\n\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"more\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\n- NEWITEM\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":-3}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- NEWITEM\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* A\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "- NEWITEM\n* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"body 1\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\n- NEWITEM\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- x\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\nmore a\n- NEWITEM\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\n- NEWITEM\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* B\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n- NEWITEM\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- y\",\"offset\":-1}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWITEM",
+   "emacs": "* A\ntext a\nmore a\n- x\n- NEWITEM\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"intro\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "intro\n* A\n",
+   "template": "NEWITEM",
+   "emacs": "- NEWITEM\nintro\n* A\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "item",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "extra": ":empty-lines 1",
+   "template": "NEWITEM",
+   "emacs": "* A\n\n- NEWITEM\n\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"more\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\n- NEWCHECK\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":-3}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- NEWCHECK\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* A\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "- NEWCHECK\n* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"body 1\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\n- NEWCHECK\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- x\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\nmore a\n- NEWCHECK\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\n- NEWCHECK\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* B\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n- NEWCHECK\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- y\",\"offset\":-1}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "NEWCHECK",
+   "emacs": "* A\ntext a\nmore a\n- x\n- NEWCHECK\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"intro\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "intro\n* A\n",
+   "template": "NEWCHECK",
+   "emacs": "- NEWCHECK\nintro\n* A\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "checkitem",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "extra": ":empty-lines 1",
+   "template": "NEWCHECK",
+   "emacs": "* A\n\n- NEWCHECK\n\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"more\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\n|   |   |\n|---+---|\n| a | b |\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":-3}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\n|   |   |\n|---+---|\n| a | b |\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* A\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "|   |   |\n|---+---|\n| a | b |\n* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"body 1\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\n|   |   |\n|---+---|\n| a | b |\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- x\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\nmore a\n|   |   |\n|---+---|\n| a | b |\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\n|   |   |\n|---+---|\n| a | b |\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* B\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n|   |   |\n|---+---|\n| a | b |\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- y\",\"offset\":-1}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "| a | b |",
+   "emacs": "* A\ntext a\nmore a\n- x\n|   |   |\n|---+---|\n| a | b |\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"intro\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "intro\n* A\n",
+   "template": "| a | b |",
+   "emacs": "|   |   |\n|---+---|\n| a | b |\nintro\n* A\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "table-line",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "extra": ":empty-lines 1",
+   "template": "| a | b |",
+   "emacs": "* A\n|   |   |\n|---+---|\n| a | b |\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"more\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nmore\nPLAIN\n a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":-3}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntex\nPLAIN\nt a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* A\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\nPLAIN\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"body 1\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\nPLAIN\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- x\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nmore a\n- x\nPLAIN\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nPLAIN\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"* B\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\nPLAIN\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"- y\",\"offset\":-1}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\nmore a\n- x\n- \nPLAIN\ny\n** A1\nbody 1\n* B\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"intro\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "intro\n* A\n",
+   "template": "PLAIN",
+   "emacs": "intro\nPLAIN\n* A\n"
+  },
+  {
+   "kind": "here",
+   "arg": "{\"search\":\"text a\",\"offset\":0}",
+   "type": "plain",
+   "prepend": false,
+   "init": "* A\ntext a\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n",
+   "extra": ":empty-lines 1",
+   "template": "PLAIN",
+   "emacs": "* A\ntext a\n\nPLAIN\n\nmore a\n- x\n- y\n** A1\nbody 1\n* B\n"
+  }
+ ]
+}

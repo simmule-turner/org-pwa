@@ -88,12 +88,14 @@ function parseGlobalProperties(text) {
 }
 
 /**
- * The allowed effort values that apply to `heading` (which may be null,
- * for the file-wide list). `globalProperties` is the raw
- * org-global-properties text.
+ * The allowed values of `NAME_ALL` that apply to `heading` (which may be null, for the file-wide list), as Emacs's
+ * org-property-get-allowed-values finds them. `globalProperties` is the raw org-global-properties text.
+ * @param {string} name the property, as `Effort`
  * @param {{ doc?: any, heading?: any, globalProperties?: string }} [options]
  */
-function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } = {}) {
+function getAllowedValues(name, { doc, heading = null, globalProperties = '' } = {}) {
+  const PROPERTY_NAME = `${name}_ALL`;
+  const PLUS_NAME = `${name}_ALL+`;
   // Walk outward from the heading. A level with Effort_ALL starts the list (the nearest one wins; what lies outside it is dropped); a
   // level's Effort_ALL+ is appended after it, outer levels first. The file's #+PROPERTY lines are one level, and the global setting
   // is the base only when the file says nothing about Effort_ALL at all, as Emacs's org-property-get-allowed-values does.
@@ -137,4 +139,12 @@ function getAllowedEffortValues({ doc, heading = null, globalProperties = '' } =
   return [...(base || []), ...appended.flat()];
 }
 
-export { PROPERTY_NAME, PLUS_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, readLispWords, parseGlobalProperties, getAllowedEffortValues };
+/**
+ * The allowed effort values that apply to `heading`; see getAllowedValues.
+ * @param {{ doc?: any, heading?: any, globalProperties?: string }} [options]
+ */
+function getAllowedEffortValues(options = {}) {
+  return getAllowedValues('Effort', options);
+}
+
+export { PROPERTY_NAME, PLUS_NAME, DEFAULT_EFFORT_FILTER_VALUES, parseEffortValues, readLispWords, parseGlobalProperties, getAllowedEffortValues, getAllowedValues };

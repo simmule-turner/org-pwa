@@ -11,7 +11,9 @@ import { describeFailure } from './elisp.js';
 import { enterBuffer, openBuffer, textBefore } from './elisp-buffer.js';
 import { withDefaultTime } from './elisp-time.js';
 import { withContext } from './diary-lisp.js';
-import { expandCaptureText, fileCapture, filePlainText, holdsHeading, plannedTableRow, resolveOlpTarget } from './capture-template.js';
+import { blanksAfter, blanksBefore, expandCaptureText, linesAtPoint, fileCapture, filePlainText, holdsHeading, plannedTableRow, resolveOlpTarget } from './capture-template.js';
+import { findHeadingWithRunningClock } from './clock.js';
+import { findHeadingById } from './link-resolve.js';
 import { findHeadingAtLine, headingLineIndex, parseOrg, serializeOrg } from './org-parser.js';
 import { parseBody } from './body-parser.js';
 
@@ -32,7 +34,7 @@ function functionOf(source) {
  * Runs the functions named by `sources`, one after another with no arguments, in a buffer that holds `text` with point at its start.
  * @param {string} text @param {string[]} sources @param {Date} [now] the moment `format-time-string` formats when it is given no time
  * @param {string[]} [plist] the template's `org-capture-plist`, as name and Lisp text in turn, for `org-capture-get`
- * @returns {{ ok: true, text: string, line: number, atLineStart: boolean } | { ok: false, message: string }}  `line` is the 0-based line point ends on
+ * @returns {{ ok: true, text: string, line: number, column: number, atLineStart: boolean } | { ok: false, message: string }}  `line` is the 0-based line point ends on, `column` its offset in it
  */
 export function runInBuffer(text, sources, now, plist) {
   try {
@@ -43,7 +45,7 @@ export function runInBuffer(text, sources, now, plist) {
       for (const source of sources) funcallPlain(functionOf(source), []);
       const buffer = /** @type {import('./elisp-data.js').Buffer} */ (state.buffer);
       const before = textBefore(buffer, buffer.pt);
-      return { ok: /** @type {const} */ (true), text: buffer.text, line: before.split('\n').length - 1, atLineStart: before === '' || before.endsWith('\n') };
+      return { ok: /** @type {const} */ (true), text: buffer.text, line: before.split('\n').length - 1, column: before.length - (before.lastIndexOf('\n') + 1), atLineStart: before === '' || before.endsWith('\n') };
     }));
   } catch (raw) {
     return { ok: false, message: describeFailure(raw).message };
@@ -144,7 +146,7 @@ function parentChildren(doc, heading) {
  * deletes a line is refused. Returns the heading point is on (null: not on a heading) and how the text is to be filed.
  * @param {Doc} doc @param {string} source @param {Date} [moment] what `format-time-string` formats when given no time
  * @param {string[]} [plist] the template's properties for `org-capture-get`
- * @returns {{ ok: true, apply: () => Heading | null, insertAtPoint: (lines: string[]) => void, onHeading: boolean, atLineStart: boolean, line: number, after: string } | { ok: false, message: string }}
+ * @returns {{ ok: true, apply: () => Heading | null, insertAtPoint: (lines: string[], before: number, after: number) => number, onHeading: boolean, atLineStart: boolean, line: number, column: number, after: string } | { ok: false, message: string }}
  */
 export function runTargetFunction(doc, source, moment, plist) {
   const before = serializeOrg(doc);
@@ -164,13 +166,43 @@ export function runTargetFunction(doc, source, moment, plist) {
     onHeading,
     atLineStart: ran.atLineStart,
     line: ran.line,
+    column: ran.column,
     after: ran.text,
     apply: () => {
       if (inserted.length) insertLines(doc, head, inserted, ran.text);
       return onHeading ? findHeadingAtLine(doc, ran.line) : null;
     },
-    insertAtPoint: (put) => insertLines(doc, ran.line, put, [...now.slice(0, ran.line), ...put, ...now.slice(ran.line)].join('\n')),
+    insertAtPoint: (put, before, after) => insertAtPosition(doc, ran.line, ran.column, put, before, after),
   };
+}
+
+/** The text a line is in and where in it: where a capture looks from when a target function leaves point off a heading. @param {Doc} doc @param {number} line */
+function exactOf(doc, line) {
+  const owner = [...headingLineIndex(doc).lines.entries()].filter(([n, w]) => w.bodyStart <= line && line - w.bodyStart <= n.bodyLines.length).pop();
+  return { host: owner ? owner[0] : doc, offset: line - (owner ? owner[1].bodyStart : 0) };
+}
+
+/**
+ * `org-capture-place-plain-text` at an exact position: a line break at point unless it is at the start of a line, the blank lines before, the
+ * text, the blank lines after. `doc` is the file as it is now; returns the line the text starts on.
+ * @param {Doc} doc @param {number} line the 0-based line point is on @param {number} column its offset in that line @param {string[]} put @param {number} before @param {number} after
+ */
+function insertAtPosition(doc, line, column, put, before, after) {
+  const lines = serializeOrg(doc).split('\n');
+  const ends = lines.length > 1 && lines[lines.length - 1] === ''; // the newline that ends the file is not a line of its own
+  if (ends) lines.pop();
+  const cur = lines[line] ?? '';
+  let at = Math.min(line, lines.length);
+  if (column > 0) {
+    if (column < cur.length) lines.splice(line, 1, cur.slice(0, column), cur.slice(column));
+    at = line + 1;
+  }
+  at = blanksBefore(lines, at, before);
+  lines.splice(at, 0, ...put);
+  blanksAfter(lines, at + put.length, after);
+  if (ends) lines.push('');
+  insertLines(doc, at, put, lines.join('\n'));
+  return at;
 }
 
 /** The part of `host`'s text that holds its line `line` (0-based): a list item for a list, else the block, table or paragraph. @param {Doc | Heading} host @param {number} line @returns {object | null} */
@@ -209,7 +241,7 @@ export function revealAtLine(doc, line) {
  * on a failure nothing has been filed and `message` says why.
  * @param {Doc} doc
  * @param {CaptureTemplate} template
- * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options
+ * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number } }} options
  *   `context` is what the template can read besides the clock and its answers; `place` gives the options of filing (blank lines, table).
  * @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null, afterFinalizeMessage?: string } | { ok: false, message: string }}  `reveal`: where the new text is on screen; `afterFinalizeMessage`: why an :after-finalize function failed (the entry is filed all the same)
  */
@@ -223,7 +255,7 @@ export function captureInto(doc, template, options) {
   return result;
 }
 
-/** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
+/** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number } }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
 function captureIntoDoc(doc, template, options) {
   const { now, answers, context, place } = options;
   // Emacs files nothing for a type it does not know; here the capture is refused and says why, so the text is never lost
@@ -235,20 +267,26 @@ function captureIntoDoc(doc, template, options) {
   let apply = null;
   /** @type {Doc | Heading | null} */
   let planned = null;
-  /** @type {null | ((lines: string[]) => void)} */
+  /** @type {null | ((lines: string[], before: number, after: number) => number)} */
   let insertPlain = null;
-  let pointLine = 0;
-  if (template.targetFunction) {
+  /** @type {number | null} the line point is on when a target function left it off a heading */
+  let exactLine = null;
+  if (options.here) {
+    target = doc; // the cursor is the place
+  } else if (template.targetFunction) {
     const found = runTargetFunction(doc, template.targetFunction, now, template.plist);
     if (!found.ok) return { ok: false, message: `Capture failed: ${found.message}` };
-    if (!found.onHeading && template.type !== 'entry' && template.type !== 'plain') return { ok: false, message: `Capture failed: the target function must leave point on a heading to file a ${template.type}` };
-    if (template.type === 'plain' && !found.atLineStart) return { ok: false, message: 'Capture failed: the target function must leave point at the start of a line to file plain text' };
     apply = found.apply;
-    pointLine = found.line;
-    insertPlain = template.type === 'plain' ? found.insertAtPoint : null;
+    insertPlain = template.type === 'plain' ? found.insertAtPoint : null; // plain text goes exactly where point is, on a heading or not
+    exactLine = found.onHeading ? null : found.line;
     const scratch = parseOrg(found.after);
     planned = found.onHeading ? findHeadingAtLine(scratch, found.line) : scratch;
     target = doc;
+  } else if (template.targetId !== undefined || template.targetClock) {
+    // (id ID) and (clock): the entry itself, as for a heading target; the file it is in was found by the caller
+    const heading = template.targetClock ? findHeadingWithRunningClock(doc) : findHeadingById(doc, /** @type {string} */ (template.targetId));
+    if (!heading) return { ok: false, message: template.targetClock ? 'Capture failed: No running clock that could be used as capture target' : `Capture failed: Cannot find target ID "${template.targetId}"` };
+    target = heading;
   } else {
     try {
       target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend, unique: true, datetree: !!template.datetree, treeType: template.treeType, mustExist: !!template.olpMustExist }) : doc; // no path: the file's top level
@@ -256,7 +294,7 @@ function captureIntoDoc(doc, template, options) {
       return { ok: false, message: `Capture failed: ${/** @type {Error} */ (err).message}` };
     }
   }
-  const tableRowNumber = template.type === 'table-line' ? plannedTableRow(planned ?? target, !!template.prepend, template) : null;
+  const tableRowNumber = template.type === 'table-line' ? plannedTableRow(planned ?? target, !!template.prepend, { ...template, exact: exactLine !== null && planned && !('level' in planned) ? exactOf(/** @type {Doc} */ (planned), exactLine) : undefined }) : null;
   let expanded;
   try {
     expanded = expandCaptureText(template.template, { ...context, now, promptAnswers: answers, tableRowNumber });
@@ -270,13 +308,25 @@ function captureIntoDoc(doc, template, options) {
     if (!ran.ok) return { ok: false, message: `Capture failed: ${ran.message}` };
     text = ran.text.replace(/\n$/, '');
   }
+  if (options.here) {
+    // org-capture with a prefix argument of 0: the text goes in at the cursor, an entry at the level of the heading it is under
+    const { line, column } = options.here;
+    const above = serializeOrg(doc).split('\n').slice(0, line + 1).reverse().find((l) => /^\*+[ \t]/.test(l));
+    const level = above ? /^\*+/.exec(above)?.[0].length ?? 1 : 1;
+    const table = template.type === 'table-line'; // a table row takes no blank lines
+    const before = table ? 0 : template.emptyLinesBefore ?? template.emptyLines ?? 0;
+    const after = table ? 0 : template.emptyLinesAfter ?? template.emptyLines ?? 0;
+    const atBol = template.type === 'item' || template.type === 'checkitem' || template.type === 'table-line'; // those go in at the start of the line
+    const at = insertAtPosition(doc, line, atBol ? 0 : column, linesAtPoint(template.type, text, level), before, after);
+    return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, at) };
+  }
   if (apply) target = apply() ?? doc;
   if (insertPlain) {
     // Emacs puts plain text where point is, whatever it is on
     const before = template.emptyLinesBefore ?? template.emptyLines ?? 0;
     const after = template.emptyLinesAfter ?? template.emptyLines ?? 0;
-    insertPlain([...Array(before).fill(''), ...text.split('\n'), ...Array(after).fill('')]);
-    return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, pointLine + before) };
+    const at = insertPlain(text.split('\n'), before, after);
+    return { ok: true, target: doc, placed: null, reveal: revealAtLine(doc, at) };
   }
   if (template.type === 'plain' && holdsHeading(text)) {
     const at = filePlainText(doc, target, text, template.prepend, { ...place(doc) });
@@ -284,7 +334,9 @@ function captureIntoDoc(doc, template, options) {
   }
   /** @type {{ row?: number, host?: Doc | Heading, line?: number }} */
   let filed = {};
-  const placed = fileCapture(doc, target, template.type, text, template.prepend, { ...place(doc), cursorAtEnd: expanded.cursorAtEnd || finalizers.length > 0, onFiled: (where) => (filed = where) });
+  // an item or a table row for a point that is not on a heading is looked for from that line to the end of the entry's own text
+  const exact = exactLine !== null && template.type !== 'entry' ? exactOf(doc, exactLine) : undefined;
+  const placed = fileCapture(doc, target, template.type, text, template.prepend, { ...place(doc), exact, cursorAtEnd: expanded.cursorAtEnd || finalizers.length > 0, onFiled: (where) => (filed = where) });
   /** @type {Reveal | null} */
   let reveal = null;
   if (placed && 'level' in placed) reveal = { node: placed, heading: placed, row: null };

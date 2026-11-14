@@ -329,6 +329,12 @@ async function setDocumentText(page, text) {
   await viewMenu(page, 'Org');
 }
 
+async function documentTextWithPanelClosed(page) {
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  return documentText(page);
+}
+
 async function documentText(page) {
   await viewMenu(page, 'Text');
   const text = await page.locator('#document-text-edit-input').inputValue();
@@ -7616,8 +7622,8 @@ check('More > Import lists Contacts (.vcf) and iCalendar (.ics); each opens its 
 check('More > Import > iCalendar (.ics): a file adds its events and tasks to the open document, says what it could not carry over, can go to a new buffer, and reads calendar text from the document itself', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Existing\n* Plain heading\n* Cal\nBEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:From text\nDTSTART;VALUE=DATE:20261012\nEND:VEVENT\nEND:VCALENDAR\n');
-  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:e1', 'SUMMARY:Dentist', 'DTSTART:20261005T090000', 'DTEND:20261005T100000', 'LOCATION:Main St', 'ATTENDEE:mailto:a@b.c', 'END:VEVENT',
-    'BEGIN:VEVENT', 'SUMMARY:Weekly review', 'DTSTART;VALUE=DATE:20261009', 'RRULE:FREQ=WEEKLY;COUNT=4', 'END:VEVENT', 'BEGIN:VTODO', 'SUMMARY:Pay rent', 'DUE;VALUE=DATE:20261031', 'END:VTODO', 'END:VCALENDAR', ''].join('\r\n');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:e1', 'SUMMARY:Dentist', 'DTSTART:20261005T090000', 'DTEND:20261005T100000', 'LOCATION:Main St', 'ATTENDEE:mailto:a@b.c', 'GEO:1;2', 'END:VEVENT',
+    'BEGIN:VEVENT', 'SUMMARY:Weekly review', 'DTSTART;VALUE=DATE:20261009', 'RRULE:FREQ=WEEKLY;COUNT=4', 'END:VEVENT', 'BEGIN:VEVENT', 'SUMMARY:Hourly', 'DTSTART;VALUE=DATE:20261010', 'RRULE:FREQ=HOURLY', 'END:VEVENT', 'BEGIN:VTODO', 'SUMMARY:Pay rent', 'DUE;VALUE=DATE:20261031', 'END:VTODO', 'END:VCALENDAR', ''].join('\r\n');
   const docText = () => page.evaluate(async () => (await import('/src/org-parser.js')).serializeOrg((await import('/src-browser/app-state.js')).S.state.doc));
   const status = () => page.locator('#minibuffer').innerText();
   const openPanel = async () => {
@@ -7638,11 +7644,12 @@ check('More > Import > iCalendar (.ics): a file adds its events and tasks to the
   await chooseFile('cal.ics', ics);
   let t = await docText();
   expect(t.startsWith('* Existing\n'), `what was there is untouched and first: ${t.slice(0, 60)}`);
-  expect(t.includes('* Dentist <2026-10-05 Mon 09:00-10:00>\n:PROPERTIES:\n:UID: e1\n:LOCATION: Main St\n:END:'), `an event, its time in the title and its properties: ${t}`);
-  expect(t.includes('* Weekly review <2026-10-09 Fri>\n:PROPERTIES:\n:RRULE: FREQ=WEEKLY;COUNT=4\n:END:'), `a recurrence a repeater cannot say keeps its rule: ${t}`);
+  expect(t.includes('* Dentist <2026-10-05 Mon 09:00-10:00>\n:PROPERTIES:\n:UID: e1\n:LOCATION: Main St\n:ATTENDEES: a@b.c\n:END:'), `an event, its time in the title and its properties: ${t}`);
+  expect(t.includes('* Weekly review <%%(and (org-cyclic 7 2026 10 9) (org-block 2026 10 9 2026 10 30))>'), `a recurrence a repeater cannot say becomes a diary expression: ${t}`);
+  expect(t.includes('* Hourly <2026-10-10 Sat>\n:PROPERTIES:\n:RRULE: FREQ=HOURLY\n:END:'), `one even that cannot say keeps its rule: ${t}`);
   expect(t.includes('* TODO Pay rent\nDEADLINE: <2026-10-31 Sat>'), `a task: ${t}`);
   const said = await status();
-  expect(said.includes('Imported 2 events and 1 task from iCalendar.') && said.includes('1 unrecognized property was skipped: ATTENDEE.') && said.includes('1 recurring event could not become a repeater'), `the status says what came and what did not: ${said}`);
+  expect(said.includes('Imported 3 events and 1 task from iCalendar.') && said.includes('1 unrecognized property was skipped: GEO.') && said.includes('1 recurring event could not be expressed as a repeater or a diary expression'), `the status says what came and what did not: ${said}`);
   expect(!(await page.locator('#morePanel').isVisible()), 'the menu closes after an import');
 
   // the imported events are on the agenda, where the timestamp in the title puts them (looked at on their own day, so the check does not depend on today's date)
@@ -10231,6 +10238,83 @@ check('table pad: C-c ^ asks for the kind of sort as Emacs does, and f asks for 
   await ask('', 'Sort'); // the default comparison of sort-subr
   t = await lines();
   expect(t[2].includes('banana') && t[3].includes('cherry') && t[4].includes('apple'), `longest first, ties in order: ${t.join(' / ')}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('column view: the table shows the format, a tap edits a cell, and the summaries of the parents follow', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['#+COLUMNS: %25ITEM %TODO %Cost{+}', '* Project', ':PROPERTIES:', ':Cost: 0', ':END:', '** TODO Design', ':PROPERTIES:', ':Cost: 10', ':END:', '** Build', ':PROPERTIES:', ':Cost: 5', ':END:', ''].join('\n'));
+  await runCommand(page, 'org-columns');
+  await page.waitForSelector('[data-columns-table]', { timeout: 5000 });
+  const rows = async () => (await page.locator('[data-columns-table] tbody tr').allInnerTexts()).map((r) => r.replace(/\s+/g, ' ').trim());
+  let table = await rows();
+  expect(table.length === 3 && table[0].startsWith('* Project') && table[0].endsWith('15') && table[1].includes('TODO') && table[1].endsWith('10'), `the rows: ${JSON.stringify(table)}`);
+  const headers = (await page.locator('[data-columns-table] th').allInnerTexts()).join('|');
+  expect(headers === 'ITEM|TODO|Cost', `the headers: ${headers}`);
+  // a tap on a Cost cell offers to edit it; the parent's sum follows
+  await page.locator('[data-columns-row="2"] td').nth(2).click();
+  await page.getByText('Edit value').click();
+  await page.locator('#heading-text-edit-popup textarea, .ui-overlay textarea').last().fill('7');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForTimeout(300);
+  table = await rows();
+  expect(table[0].endsWith('17') && table[2].endsWith('7'), `after the edit: ${JSON.stringify(table)}`);
+  expect(/:COST:\s+17/.test(await documentTextWithPanelClosed(page)), 'the sum is written into the parent property, as Emacs does');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('column view: a columnview block is written again by org-update-all-dblocks', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* Project', ':PROPERTIES:', ':Cost: 1', ':END:', '#+BEGIN: columnview :id local :format "%ITEM %Cost{+}"', '#+END:', '** Design', ':PROPERTIES:', ':Cost: 10', ':END:', ''].join('\n'));
+  await runCommand(page, 'org-update-all-dblocks');
+  await page.waitForTimeout(300);
+  const text = await documentText(page);
+  expect(text.includes('| Project | 10 |') || text.includes('| Project |   10 |'), `the block should hold the table: ${JSON.stringify(text)}`);
+  expect(/:COST:\s+10/.test(text), 'the summary is written into the parent');
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-crypt: entries with the crypt tag are encrypted with a passphrase and decrypted again', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* Secret :crypt:', ':PROPERTIES:', ':ID: x', ':END:', 'the plain body', '* Open', 'stays open', ''].join('\n'));
+  await runCommand(page, 'org-encrypt-entries');
+  const fields = page.locator('input[type=password]');
+  await fields.first().waitFor({ timeout: 5000 });
+  await fields.nth(0).fill('hunter2');
+  await fields.nth(1).fill('hunter2');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => document.body.innerText.includes('Encrypted.'), null, { timeout: 20000 });
+  let text = await documentText(page);
+  expect(/:END:\n-----BEGIN PGP MESSAGE-----\n/.test(text) && !text.includes('the plain body') && text.includes('stays open'), `encrypted: ${JSON.stringify(text)}`);
+  await runCommand(page, 'org-decrypt-entries');
+  await page.getByRole('button', { name: 'Yes', exact: true }).click(); // org-crypt-disable-auto-save is ask: disable the copy kept on this device
+  await page.waitForFunction(() => document.body.innerText.includes('Decrypted.'), null, { timeout: 20000 }); // the passphrase is still at hand
+  text = await documentText(page);
+  expect(text.includes('the plain body') && !text.includes('BEGIN PGP MESSAGE'), `decrypted: ${JSON.stringify(text)}`);
+  expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-timer: the timer shows in the modeline, pauses, stops, and a countdown ends with a reminder', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* Task', 'text', ''].join('\n'));
+  await runCommand(page, 'org-timer-start');
+  await page.waitForFunction(() => /<0:00:0\d>/.test(document.body.innerText), null, { timeout: 5000 });
+  await runCommand(page, 'org-timer-pause-or-continue');
+  const paused = await page.evaluate(() => (/<(\d+:\d\d:\d\d)>/.exec(document.body.innerText) || [])[1]);
+  await page.waitForTimeout(1500);
+  const still = await page.evaluate(() => (/<(\d+:\d\d:\d\d)>/.exec(document.body.innerText) || [])[1]);
+  expect(paused && paused === still, `a paused timer stands still: ${paused} then ${still}`);
+  await runCommand(page, 'org-timer-stop');
+  expect(await page.evaluate(() => !/<\d+:\d\d:\d\d>/.test(document.body.innerText)), 'the modeline loses the timer when it stops');
+  await runCommand(page, 'org-timer-set-timer');
+  await page.locator('.ui-overlay input[type=text], .ui-overlay input:not([type])').last().fill('0:00:02');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  await page.waitForFunction(() => /<0:00:0[12]>/.test(document.body.innerText), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.body.innerText.includes('time out'), null, { timeout: 8000 });
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

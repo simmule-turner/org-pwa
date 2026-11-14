@@ -4,6 +4,7 @@
 // Extracted from app.js: editing.
 import { editListItemText, editParagraphText, insertParagraphAfter } from '../src/body-edit.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
+import { timerEditorTool } from './timer-flow.js';
 import { saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility, captureFolds, restoreFolds } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -24,6 +25,7 @@ import { resyncKeyboardFocusToBodyRow } from './keyboard-focus.js';
 import { outlinePathForHeadingInDocument } from './navigation.js';
 import { renderDiffView } from './render-helpers.js';
 import { render } from './render.js';
+import { cryptKeepsHistory, cryptPersistDoc } from './crypt-flow.js';
 import { kv, textModeLastCommittedValue } from './singletons.js';
 import { renderLogNotePrompt } from './todo-workflow.js';
 import { menuButton } from './ui-widgets.js';
@@ -86,7 +88,7 @@ export function openParagraphEditor(heading, paragraph) {
     label: 'Edit paragraph',
     value: originalText,
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'paragraph', paragraph)],
+    tools: [footnoteEditorTool(heading, 'paragraph', paragraph), timerEditorTool()],
     onCancel: () => {
       S.editingParagraph = null;
       render();
@@ -136,7 +138,7 @@ export function openListItemEditor(heading, item) {
     label: 'Edit list item',
     value: originalText,
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'list-item', item)],
+    tools: [footnoteEditorTool(heading, 'list-item', item), timerEditorTool()],
     onCancel: () => {
       S.editingListItem = null;
       render();
@@ -215,7 +217,8 @@ export function cancelTitleEdit() {
 }
 
 export async function persist() {
-  await saveDocument({ documentId: S.state.documentId, doc: S.state.doc, kvAdapter: kv });
+  const doc = await cryptPersistDoc(S.state.doc); // while entries are decrypted: nothing, or the entries encrypted (org-crypt-disable-auto-save)
+  if (doc) await saveDocument({ documentId: S.state.documentId, doc, kvAdapter: kv });
 }
 
 // The fix for "every tap feels laggy": document-store.js's whole design is
@@ -237,7 +240,7 @@ export function persistInBackground() {
 // than a failed document save, and shouldn't interrupt the person's
 // workflow with a status message about something they didn't ask for.
 export function persistHistoryInBackground() {
-  if (!S.state.documentId) return;
+  if (!S.state.documentId || !cryptKeepsHistory()) return;
   savePersistedHistory(kv, S.state.documentId, S.history).catch((err) => console.error('Failed to persist undo history:', err));
 }
 

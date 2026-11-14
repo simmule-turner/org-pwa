@@ -20,16 +20,21 @@
  * it is HERE. A time with neither (a "floating" time) is kept as written. A zone name this runtime does not know (Outlook's
  * "W. Europe Standard Time") is kept as written too, and reported through onUnknownTimeZone.
  *
- * RECURRENCE becomes a repeater only when the repeater says the same thing: FREQ with an INTERVAL, and BYDAY / BYMONTHDAY /
- * BYMONTH only where they repeat what DTSTART already says. Anything else (an end date or COUNT, several weekdays, "the
- * second Tuesday") would be imported as a repeater that never ends or runs on the wrong days, so the event is imported once,
- * at its first occurrence, with the original rule kept in an :RRULE: property, and reported through onRecurrenceKept.
+ * RECURRENCE becomes a repeater when the repeater says the same thing: FREQ with an INTERVAL, and BYDAY / BYMONTHDAY /
+ * BYMONTH only where they repeat what DTSTART already says. Anything Org's repeaters cannot say (an end date or COUNT, several
+ * weekdays, "the second Tuesday", EXDATE) becomes a diary-style `<%%(...)>` expression built from Org's own org-cyclic,
+ * org-date, org-block and diary-float, which finds the same days. Only a rule that expression cannot say either (an INTERVAL
+ * with several weekdays, or on a monthly or yearly rule) is imported once, at its first occurrence, with the original rule kept
+ * in an :RRULE: property, and reported through onRecurrenceKept.
  *
- * Properties that are not carried over (ATTENDEE, ORGANIZER, ATTACH, EXDATE, ...) are reported through onUnmappedProperty;
- * bookkeeping ones (DTSTAMP, SEQUENCE, X-... and the like) and VALARM blocks are skipped silently.
+ * ORGANIZER, ATTENDEE and ATTACH become :ORGANIZER: / :ATTENDEES: properties and link lines; a VALARM becomes :APPT_WARNTIME:
+ * (minutes before). Properties that are still not carried over are reported through onUnmappedProperty; bookkeeping ones
+ * (DTSTAMP, SEQUENCE, X-... and the like) are skipped silently.
  */
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { oneLine, propertyText, bodyLines } from './import-safe.js';
+
+/** @typedef {{ name: string, params: Record<string, string>, value: string }} IcsProp */
 
 const SILENT = new Set(['DTSTAMP', 'CREATED', 'LAST-MODIFIED', 'SEQUENCE', 'TRANSP', 'CLASS', 'PRODID', 'VERSION', 'CALSCALE', 'METHOD', 'COLOR', 'PERCENT-COMPLETE', 'PRIORITY']);
 const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -89,7 +94,7 @@ function unescapeText(value) {
 }
 
 /**
- * The VEVENT and VTODO components, each as { type, props: [{ name, params, value }] }. VALARM and other nested blocks are skipped.
+ * The VEVENT and VTODO components, each as { type, props: [{ name, params, value }], alarms: [the TRIGGER of each VALARM] }. Other nested blocks are skipped.
  * @param {string} text
  */
 function collectComponents(text) {
@@ -99,16 +104,27 @@ function collectComponents(text) {
     if (!line.trim()) continue;
     const begin = /^BEGIN:(.+)$/i.exec(line.trim());
     if (begin) {
-      stack.push({ type: begin[1].trim().toUpperCase(), props: /** @type {any[]} */ ([]) });
+      stack.push({ type: begin[1].trim().toUpperCase(), props: /** @type {IcsProp[]} */ ([]), alarms: /** @type {IcsProp[]} */ ([]) });
       continue;
     }
     const end = /^END:(.+)$/i.exec(line.trim());
     if (end) {
       const top = stack.pop();
+      if (top && top.type === 'VALARM') {
+        const parent = stack[stack.length - 1];
+        const trigger = top.props.find((p) => p.name === 'TRIGGER');
+        if (parent && trigger) parent.alarms = [...parent.alarms, trigger];
+        continue;
+      }
       if (top && (top.type === 'VEVENT' || top.type === 'VTODO') && !stack.some((c) => c.type === 'VEVENT' || c.type === 'VTODO')) found.push(top);
       continue;
     }
     const top = stack[stack.length - 1];
+    if (top && top.type === 'VALARM') {
+      const alarmProp = parseProperty(line);
+      if (alarmProp) top.props.push(alarmProp);
+      continue;
+    }
     if (!top || (top.type !== 'VEVENT' && top.type !== 'VTODO')) continue;
     if (stack.length >= 2 && stack[stack.length - 2].type !== 'VCALENDAR' && stack[stack.length - 2].type !== 'VEVENT' && stack[stack.length - 2].type !== 'VTODO') continue;
     const prop = parseProperty(line);
@@ -234,21 +250,147 @@ function repeaterFor(rruleText, startWall) {
   return `+${interval}${unit}`;
 }
 
+/** The parts of an RRULE as an object with upper-case keys. @param {string} text @returns {Record<string, string>} */
+function parseRule(text) {
+  /** @type {Record<string, string>} */ const rule = {};
+  for (const piece of text.split(';')) {
+    const eq = piece.indexOf('=');
+    if (eq > 0) rule[piece.slice(0, eq).toUpperCase()] = piece.slice(eq + 1).toUpperCase();
+  }
+  return rule;
+}
+
+/** @param {number} y @param {number} m */
+const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+/**
+ * Does the rule hold on the day with these wall-clock fields? One predicate for every rule the sexp below writes, so that COUNT
+ * can be turned into the day of the last occurrence. `n` is the number of days since the start.
+ * @param {{ freq: string, interval: number, weekdays: number[] | null, nth: [number, number] | null }} r
+ * @param {{ y: number, m: number, d: number }} start @param {{ y: number, m: number, d: number }} day @param {number} n
+ */
+function ruleHolds(r, start, day, n) {
+  const dow = new Date(Date.UTC(day.y, day.m - 1, day.d)).getUTCDay();
+  const startDow = new Date(Date.UTC(start.y, start.m - 1, start.d)).getUTCDay();
+  if (r.freq === 'DAILY') return n % r.interval === 0;
+  if (r.freq === 'WEEKLY') return r.weekdays ? r.weekdays.includes(dow) : n % (7 * r.interval) === 0 && dow === startDow;
+  if (r.freq === 'MONTHLY') {
+    if (r.nth) {
+      if (dow !== r.nth[1]) return false;
+      const count = r.nth[0];
+      if (count > 0) return Math.ceil(day.d / 7) === count;
+      return day.d + 7 * -count > daysInMonth(day.y, day.m) && day.d + 7 * (-count - 1) <= daysInMonth(day.y, day.m);
+    }
+    return day.d === start.d;
+  }
+  return day.m === start.m && day.d === start.d; // YEARLY
+}
+
+/**
+ * The `<%%(...)>` expression for a recurrence a repeater cannot say (an end date or COUNT, several weekdays, "the second Tuesday"),
+ * and for one with excluded dates (EXDATE), or null when there is none: every day the expression is true is an occurrence. It uses
+ * Org's own sexp functions (org-cyclic, org-date, org-block) and diary-float, which take their dates in the
+ * same order whatever calendar-date-style is. A rule it cannot write (an INTERVAL with several weekdays or on a month or year,
+ * BYSETPOS, BYMONTHDAY=-1, ...) gives null.
+ * @param {string} rruleText @param {number} startWall @param {number[]} exdates the wall times of EXDATE
+ * @returns {string | null}
+ */
+function sexpFor(rruleText, startWall, exdates) {
+  const rule = parseRule(rruleText);
+  const freq = rule.FREQ;
+  if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(freq)) return null;
+  const interval = rule.INTERVAL === undefined ? 1 : Number(rule.INTERVAL);
+  if (!Number.isInteger(interval) || interval < 1) return null;
+  const start = wallParts(startWall);
+  const startDay = { y: start.y, m: start.m, d: start.d };
+  const startDow = new Date(startWall).getUTCDay();
+  for (const key of Object.keys(rule)) if (!['FREQ', 'INTERVAL', 'WKST', 'UNTIL', 'COUNT', 'BYDAY', 'BYMONTHDAY', 'BYMONTH'].includes(key)) return null;
+  /** @type {number[] | null} */ let weekdays = null;
+  /** @type {[number, number] | null} */ let nth = null;
+  if (rule.BYDAY !== undefined) {
+    const parts = rule.BYDAY.split(',');
+    if (freq === 'WEEKLY') {
+      if (!parts.every((p) => DAY_CODES.includes(p))) return null;
+      weekdays = parts.map((p) => DAY_CODES.indexOf(p));
+    } else if (freq === 'MONTHLY' && parts.length === 1) {
+      const m = /^(-?[1-5])([A-Z]{2})$/.exec(parts[0]);
+      if (!m || !DAY_CODES.includes(m[2]) || Number(m[1]) === -5) return null;
+      nth = [Number(m[1]), DAY_CODES.indexOf(m[2])];
+    } else return null;
+  }
+  if (rule.BYMONTHDAY !== undefined && (freq === 'DAILY' || freq === 'WEEKLY' || Number(rule.BYMONTHDAY) !== start.d)) return null;
+  if (rule.BYMONTH !== undefined && !(freq === 'YEARLY' && Number(rule.BYMONTH) === start.m)) return null;
+  const several = weekdays !== null && (weekdays.length > 1 || weekdays[0] !== startDow);
+  if ((freq === 'MONTHLY' || freq === 'YEARLY' || several) && interval !== 1) return null;
+  if (weekdays && !several) weekdays = null;
+  const r = { freq, interval, weekdays, nth };
+
+  /** @type {{ y: number, m: number, d: number } | null} */ let last = null;
+  if (rule.UNTIL !== undefined) {
+    const m = /^(\d{4})(\d{2})(\d{2})/.exec(rule.UNTIL);
+    if (!m) return null;
+    last = { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+  } else if (rule.COUNT !== undefined) {
+    const count = Number(rule.COUNT);
+    if (!Number.isInteger(count) || count < 1) return null;
+    let found = 0;
+    for (let n = 0; n < 366 * 400 && found < count; n++) {
+      const t = new Date(startWall + n * 86400000);
+      const day = { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+      if (ruleHolds(r, startDay, day, n)) {
+        found++;
+        last = day;
+      }
+    }
+    if (found < count) return null;
+  }
+
+  const clauses = exdates.map((w) => {
+    const e = wallParts(w);
+    return `(not (org-date ${e.y} ${e.m} ${e.d}))`;
+  });
+  /** Does the clause itself start at the first day? */
+  let bounded = false;
+  if (freq === 'DAILY') {
+    clauses.push(`(org-cyclic ${interval} ${start.y} ${start.m} ${start.d})`);
+    bounded = true;
+  } else if (freq === 'WEEKLY') {
+    if (weekdays) clauses.push(`(memq (calendar-day-of-week date) '(${weekdays.join(' ')}))`);
+    else {
+      clauses.push(`(org-cyclic ${7 * interval} ${start.y} ${start.m} ${start.d})`);
+      bounded = true;
+    }
+  } else if (freq === 'MONTHLY') clauses.push(nth ? `(diary-float t ${nth[1]} ${nth[0]})` : `(org-date t t ${start.d})`);
+  else clauses.push(`(org-date t ${start.m} ${start.d})`);
+  if (last) clauses.push(`(org-block ${start.y} ${start.m} ${start.d} ${last.y} ${last.m} ${last.d})`);
+  else if (!bounded) clauses.push(`(org-block ${start.y} ${start.m} ${start.d} 9999 12 31)`);
+  return clauses.length === 1 ? clauses[0] : `(and ${clauses.join(' ')})`;
+}
+
+/** The minutes before the start a display alarm rings, from `TRIGGER:-PT15M`, `-PT1H30M`, `-P1D` or `-P1W`; null for any other trigger. @param {IcsProp} trigger */
+function alarmMinutes(trigger) {
+  if (trigger.params.RELATED && /^END$/i.test(trigger.params.RELATED)) return null;
+  const m = /^-P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:\d+S)?)?$/i.exec(trigger.value.trim());
+  if (!m) return null;
+  const minutes = Number(m[1] || 0) * 10080 + Number(m[2] || 0) * 1440 + Number(m[3] || 0) * 60 + Number(m[4] || 0);
+  return minutes > 0 ? minutes : null;
+}
+
 // ---- building headings -------------------------------------------------------------------------------
 
 /**
- * @param {any} props
+ * @param {IcsProp[]} props
  * @param {string} name
  */
 const textOf = (props, name) => {
-  const prop = props.find((/** @type {any} */ p) => p.name === name);
+  const prop = props.find((/** @type {IcsProp} */ p) => p.name === name);
   return prop ? unescapeText(prop.value).trim() : '';
 };
 
 /** @param {any} [props] */
 function tagsFrom(props) {
   /** @type {any[]} */ const tags = [];
-  for (const prop of props.filter((/** @type {any} */ p) => p.name === 'CATEGORIES')) {
+  for (const prop of props.filter((/** @type {IcsProp} */ p) => p.name === 'CATEGORIES')) {
     for (const raw of prop.value.split(/(?<!\\),/)) {
       const tag = unescapeText(raw).trim().replace(/[^A-Za-z0-9_@#%]+/g, '_').replace(/^_+|_+$/g, '');
       if (tag && !tags.includes(tag)) tags.push(tag);
@@ -301,7 +443,7 @@ function headingFor(component, options) {
   const summary = oneLine(textOf(props, 'SUMMARY').replace(/\s*\n\s*/g, ' ')) || '(no title)';
   /** @param {string} name */
   const dateOf = (name) => {
-    const prop = props.find((/** @type {any} */ p) => p.name === name);
+    const prop = props.find((/** @type {IcsProp} */ p) => p.name === name);
     return prop ? parseDateValue(prop, zone, onUnknownTimeZone) : null;
   };
   const start = dateOf('DTSTART');
@@ -309,24 +451,39 @@ function headingFor(component, options) {
   if (!isTodo && !start) return null; // an event with no start has no place in a calendar
 
   let end = isTodo ? null : dateOf('DTEND');
-  const duration = props.find((/** @type {any} */ p) => p.name === 'DURATION');
+  const duration = props.find((/** @type {IcsProp} */ p) => p.name === 'DURATION');
   if (!isTodo && !end && duration && start) {
     const ms = parseDuration(duration.value);
     if (ms !== null) end = { wall: start.wall + ms, allDay: start.allDay };
   }
 
-  const rrule = props.find((/** @type {any} */ p) => p.name === 'RRULE');
+  const rrule = props.find((/** @type {IcsProp} */ p) => p.name === 'RRULE');
   const anchor = isTodo ? due || start : start;
   /** @type {any} */
   let repeater = null;
+  /** @type {string | null} */
+  let sexp = null;
   const kept = {};
-  if (rrule && anchor) {
-    repeater = repeaterFor(rrule.value, anchor.wall);
-    if (!repeater) {
-      kept.RRULE = rrule.value;
-      if (onRecurrenceKept) onRecurrenceKept(summary);
+  const exdates = /** @type {number[]} */ ([]);
+  for (const prop of props.filter((/** @type {IcsProp} */ p) => p.name === 'EXDATE')) {
+    for (const value of prop.value.split(',')) {
+      const parsed = parseDateValue({ ...prop, value }, zone, onUnknownTimeZone);
+      if (parsed) exdates.push(parsed.wall);
     }
   }
+  let exceptionsKept = false;
+  if (rrule && anchor) {
+    repeater = repeaterFor(rrule.value, anchor.wall);
+    if (!isTodo && (exdates.length || !repeater)) {
+      sexp = sexpFor(rrule.value, anchor.wall, exdates);
+      if (sexp) repeater = null;
+    }
+    if (!repeater && !sexp) {
+      kept.RRULE = rrule.value;
+      if (onRecurrenceKept) onRecurrenceKept(summary);
+    } else if (exdates.length && !sexp) exceptionsKept = true;
+  } else if (exdates.length) exceptionsKept = true;
+  if (exceptionsKept && onUnmappedProperty) onUnmappedProperty('EXDATE');
 
   const properties = [];
   const uid = textOf(props, 'UID');
@@ -337,8 +494,33 @@ function headingFor(component, options) {
   if (url) properties.push(['URL', propertyText(url)]);
   if (/^CANCELLED$/i.test(textOf(props, 'STATUS'))) properties.push(['STATUS', 'CANCELLED']);
   if (kept.RRULE) properties.push(['RRULE', propertyText(kept.RRULE)]);
+  /** `Name <address>` for an ORGANIZER or ATTENDEE. @param {IcsProp} prop */
+  const person = (prop) => {
+    const address = prop.value.replace(/^mailto:/i, '');
+    const name = prop.params.CN ? oneLine(prop.params.CN) : '';
+    return propertyText(name && name !== address ? `${name} <${address}>` : address);
+  };
+  const organizer = props.find((/** @type {IcsProp} */ p) => p.name === 'ORGANIZER');
+  if (organizer) properties.push(['ORGANIZER', person(organizer)]);
+  const attendees = props.filter((/** @type {IcsProp} */ p) => p.name === 'ATTENDEE');
+  if (attendees.length) properties.push(['ATTENDEES', attendees.map(person).join(', ')]);
+  // a display alarm before the start is what `:APPT_WARNTIME:` says on export
+  const alarms = component.alarms || [];
+  if (alarms.length) {
+    const minutes = alarms.length === 1 && !isTodo && start && !start.allDay ? alarmMinutes(alarms[0]) : null;
+    if (minutes === null) {
+      if (onUnmappedProperty) onUnmappedProperty('VALARM');
+    } else properties.push(['APPT_WARNTIME', String(minutes)]);
+  }
 
-  const handled = new Set(['SUMMARY', 'DTSTART', 'DTEND', 'DUE', 'DURATION', 'RRULE', 'UID', 'LOCATION', 'URL', 'STATUS', 'CATEGORIES', 'DESCRIPTION', 'COMPLETED']);
+  const handled = new Set(['SUMMARY', 'DTSTART', 'DTEND', 'DUE', 'DURATION', 'RRULE', 'EXDATE', 'UID', 'LOCATION', 'URL', 'STATUS', 'CATEGORIES', 'DESCRIPTION', 'COMPLETED', 'ORGANIZER', 'ATTENDEE']);
+  const attachments = [];
+  for (const prop of props.filter((/** @type {IcsProp} */ p) => p.name === 'ATTACH')) {
+    if (/^BINARY$/i.test(prop.params.VALUE || '') || /^BASE64$/i.test(prop.params.ENCODING || '') || !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(prop.value)) {
+      if (onUnmappedProperty) onUnmappedProperty('ATTACH');
+    } else attachments.push(prop.params.FILENAME ? `[[${prop.value}][${oneLine(prop.params.FILENAME)}]]` : `[[${prop.value}]]`);
+  }
+  handled.add('ATTACH');
   if (onUnmappedProperty) {
     for (const prop of props) {
       if (handled.has(prop.name) || SILENT.has(prop.name) || prop.name.startsWith('X-')) continue;
@@ -351,10 +533,11 @@ function headingFor(component, options) {
   const description = textOf(props, 'DESCRIPTION');
   const body = description ? bodyLines(description).map((line) => (line.trim() ? `  ${line.replace(/\s+$/, '')}` : '')) : [];
   while (body.length && body[body.length - 1] === '') body.pop();
+  for (const link of attachments) body.push(`  - ${link}`);
 
   const lines = [];
   if (isTodo) {
-    const done = /^COMPLETED$/i.test(textOf(props, 'STATUS')) || props.some((/** @type {any} */ p) => p.name === 'COMPLETED');
+    const done = /^COMPLETED$/i.test(textOf(props, 'STATUS')) || props.some((/** @type {IcsProp} */ p) => p.name === 'COMPLETED');
     const priority = Number(textOf(props, 'PRIORITY'));
     const mark = priority >= 1 && priority <= 4 ? '[#A] ' : priority === 5 ? '[#B] ' : priority >= 6 && priority <= 9 ? '[#C] ' : '';
     lines.push(`* ${done ? 'DONE' : 'TODO'} ${mark}${summary}${tagText}`);
@@ -365,7 +548,12 @@ function headingFor(component, options) {
     if (start) planning.push(`SCHEDULED: ${stamp(start.wall, start.allDay, !due && repeater ? { repeaterMark: '+', repeaterValue: repeater.slice(1) } : {})}`);
     if (planning.length) lines.push(planning.join(' '));
   } else {
-    lines.push(`* ${summary} ${eventTimestamp(start, end, repeater)}${tagText}`);
+    if (sexp) {
+      const timed = start && !start.allDay ? wallParts(start.wall) : null;
+      const until = timed && start && end && end.wall > start.wall ? wallParts(end.wall) : null;
+      const time = timed ? `${pad(timed.h)}:${pad(timed.mi)}${until ? `-${pad(until.h)}:${pad(until.mi)}` : ''} ` : '';
+      lines.push(`* ${time}${summary} <%%${sexp}>${tagText}`); // the time first, as a diary entry has it
+    } else lines.push(`* ${summary} ${eventTimestamp(start, end, repeater)}${tagText}`);
   }
   if (properties.length) lines.push(':PROPERTIES:', ...properties.map(([k, v]) => `:${k}: ${v}`), ':END:');
   lines.push(...body);

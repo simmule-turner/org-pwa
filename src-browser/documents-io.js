@@ -29,6 +29,7 @@ import { requestApptScan } from './appt-flow.js';
 import { scheduleSync } from './mirror-sync.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
+import { cryptBeforeSave } from './crypt-flow.js';
 import { scrollContainer } from './chrome.js';
 import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { captureBtn, moreBtn, searchBtn, searchMenuBtn, viewMenuBtn } from './dom.js';
@@ -74,6 +75,7 @@ function openedStatus(message) {
  * @param {string | null} [storageKind]
  *  backend it came from. */
 export async function afterDocumentLoaded(documentId, doc, storageKind, resumedFromCache = false, { replaceCurrentTab = false, savedCopy = false } = {}) {
+  if (S.cryptDecrypted) S.cryptDecrypted.delete(String(documentId)); // a file read anew has its entries encrypted again
   if (!replaceCurrentTab) {
     const alreadyOpenTab = documentId && !documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.documentSessions.find((/** @type {TabSession} */ s) => s.state && s.state.documentId === documentId && s.state.storageKind === storageKind) : null;
     if (alreadyOpenTab && alreadyOpenTab.tabId !== S.activeTabId) {
@@ -482,6 +484,7 @@ export async function saveTab(tabId) {
     return false;
   }
   if (!(await settleSavedElsewhere(tabId, session))) return false;
+  if (!session && !(await cryptBeforeSave())) return false; // `(org-crypt-use-before-save-magic)`: entries with the crypt tag are encrypted first
   savesInFlight.add(tabId);
   const { documentId, doc, storageKind } = state;
   setStatus('Saving\u2026');

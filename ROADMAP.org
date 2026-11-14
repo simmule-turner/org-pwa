@@ -14,6 +14,9 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
+** [#C] Tag completion from all agenda files (=org-complete-tags-always-offer-all-agenda-tags=)
+Off by default, as in Emacs. On, tagging from an outline also offers every tag used in the agenda files, as an agenda view already does. One Settings row and one change to the documents completion reads (S). Bundle into the next release that has other changes.
+
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
@@ -24,6 +27,15 @@ The Android app writes into =local:= agenda files while a local file is open. In
 ** [#C] HTML preamble and postamble functions: the rest of the export options
 A function given as =org-html-preamble= or =org-html-postamble= gets =:title=, =:subtitle=, =:author=, =:date=, =:email=, =:language= and =:creator=; Emacs's property list has every export option, and a title with markup is a list of objects rather than the text already turned into HTML.
 - Effort: M. Impact: S.
+
+* Org Crypt
+** [#C] Decrypt an entry when it is revealed (=org-fold-reveal-start-hook=)
+Emacs decrypts an encrypted entry when a command reveals it (a search hit, =org-reveal=, a jump from the agenda). Here the commands *Decrypt entry* and *Decrypt all crypt entries* do it; the reveal paths (search results, agenda jumps, links) would call the same decrypt after asking for the passphrase, which needs a passphrase prompt that does not interrupt a jump on a phone.
+- Effort: M. Impact: S.
+
+** [#C] Encrypt to =epa-file-encrypt-to=
+When no key matches =org-crypt-key=, Emacs uses the recipients in the file-local variable =epa-file-encrypt-to= before falling back to a passphrase.
+- Effort: S. Impact: S.
 
 * Security
 Left from the security reviews. Each is small, none lets a document run code without the "Run code?" prompt.

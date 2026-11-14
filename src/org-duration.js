@@ -130,4 +130,34 @@ function parseOrgDuration(text) {
   return BARE_NUMBER_RE.test(s) ? Number(s) : null;
 }
 
-export { parseOrgDuration, parseDurationUnits, applyDurationVariables };
+/**
+ * org-duration-h:mm-only-p: every duration is H:MM or H:MM:SS, none written with units. Returns 'h:mm:ss' when any has seconds.
+ * @param {string[]} times @returns {'h:mm' | 'h:mm:ss' | null}
+ */
+function durationHmmOnly(times) {
+  const { full, mixed } = current.table;
+  let seconds = false;
+  for (const time of times) {
+    if (full.test(time) || mixed.test(time)) return null;
+    if (/^[ \t]*\d+:\d{2}:\d{2}[ \t]*$/.test(time)) seconds = true;
+  }
+  return seconds ? 'h:mm:ss' : 'h:mm';
+}
+
+/**
+ * org-duration-from-minutes with the default org-duration-format `(("d" . nil) (special . h:mm))`: "H:MM", and with whole days
+ * "1d 2:00". `mode` (from durationHmmOnly) forces plain H:MM or H:MM:SS.
+ * @param {number} minutes @param {'h:mm' | 'h:mm:ss' | null} [mode]
+ * @returns {string}
+ */
+function durationFromMinutes(minutes, mode = null) {
+  const hmm = (/** @type {number} */ m) => `${Math.trunc(m / 60)}:${String(Math.trunc(((m % 60) + 60) % 60)).padStart(2, '0')}`;
+  if (mode === 'h:mm:ss') return `${hmm(Math.floor(minutes))}:${String(Math.trunc(((minutes * 60) % 60 + 60) % 60)).padStart(2, '0')}`;
+  if (mode === 'h:mm') return hmm(minutes);
+  const day = /** @type {number} */ (current.table.minutes.get('d')) || 1440;
+  if (minutes < day) return hmm(minutes);
+  const days = Math.floor(minutes / day);
+  return `${days}d ${hmm(minutes - days * day)}`;
+}
+
+export { parseOrgDuration, parseDurationUnits, applyDurationVariables, durationHmmOnly, durationFromMinutes };

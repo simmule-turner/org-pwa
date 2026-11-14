@@ -123,6 +123,7 @@ export function normalizeAsciiCharset(value) {
  *   globalMargin: number, innerMargin: number, quoteMargin: number, listMargin: number,
  *   headlineLevels: number, numbering: boolean | number, toc: boolean | number,
  *   withTitle: boolean, withAuthor: boolean, withEmail: boolean, withDate: boolean, withCreator: boolean,
+ *   emphasis: boolean, statistics: boolean,
  *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean, withPlanning: boolean,
  *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean, drawers: boolean | string[],
  *   fixedWidth: boolean, tex: boolean,
@@ -148,7 +149,7 @@ function optionTable(doc) {
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'OPTIONS') continue;
     for (const token of kw.value.trim().split(/\s+/)) {
-      const m = /^(\\n|\^|-|:|<|\||[A-Za-z][A-Za-z-]*):(.*)$/.exec(token);
+      const m = /^(\\n|\^|-|:|<|\||\*|'|[A-Za-z][A-Za-z-]*):(.*)$/.exec(token);
       if (m) map.set(m[1], m[2]);
     }
   }
@@ -190,6 +191,8 @@ function makeInfo(doc, scope, textWidth, charset, sup, broken) {
     withPriority: flag(o.get('pri'), false),
     withPlanning: flag(o.get('p'), false),
     preserveBreaks: flag(o.get('\\n'), false),
+    emphasis: flag(o.get('*'), true),
+    statistics: flag(o.get('stat'), true),
     specialStrings: flag(o.get('-'), true),
     entities: flag(o.get('e'), true),
     footnotes: flag(o.get('f'), true),
@@ -310,7 +313,7 @@ let inlineCode = [];
  * @returns {Item[]}
  */
 export function objects(text, parent, I, radio = true) {
-  if (!I.htmlOptions.stat) text = text.replace(/[ \t]*\[(?:\d*\/\d*|\d*%)\](?=[ \t]*(?:\n|$))|\[(?:\d*\/\d*|\d*%)\]/g, ''); // stat:nil leaves out statistics cookies
+  if (!I.htmlOptions.stat && !I.odt) text = text.replace(/[ \t]*\[(?:\d*\/\d*|\d*%)\](?=[ \t]*(?:\n|$))|\[(?:\d*\/\d*|\d*%)\]/g, ''); // stat:nil leaves out statistics cookies
   const marked = text.split('\n').map((l, i, all) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, HARD) : l + (i < all.length - 1 ? '\n' : ''))).join(''); // a forced break takes the line end after it with it
   const outer = inlineCode;
   inlineCode = [];

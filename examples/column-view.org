@@ -1,0 +1,94 @@
+#+TITLE: Column view
+#+STARTUP: showall
+#+COLUMNS: %30ITEM(Task) %TODO %10Effort(Estimate){:} %CLOCKSUM(Spent) %Cost(Cost){+;%.2f}
+
+Column view shows headings as table rows and properties as columns. Open the command palette and choose *Column view* (C-c C-x C-c) with the cursor on a heading to see that subtree, or above the first heading to see the whole file. Tap a cell to change it. The columns come from the =#+COLUMNS:= line above, and a =:COLUMNS:= property on a heading replaces them for its subtree. Parent rows show the sum of their children (=Estimate= as hours, =Cost= with two decimals).
+
+* Website relaunch
+:PROPERTIES:
+:EFFORT:   2d 7:00
+:COST:     2096.50
+:END:
+** TODO Design
+:PROPERTIES:
+:Effort: 6:00
+:Cost: 1200
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-02 Mon 09:00]--[2026-11-02 Mon 12:30] =>  3:30
+:END:
+** TODO Build
+:PROPERTIES:
+:EFFORT:   2d 0:00
+:Cost: 800.5
+:END:
+*** TODO Templates
+:PROPERTIES:
+:Effort: 1d
+:END:
+*** TODO Forms
+:PROPERTIES:
+:Effort: 1d
+:END:
+** DONE Hosting
+:PROPERTIES:
+:Effort: 1:00
+:Cost: 96
+:END:
+:LOGBOOK:
+CLOCK: [2026-11-03 Tue 10:00]--[2026-11-03 Tue 10:45] =>  0:45
+:END:
+
+* Another view of the same data
+:PROPERTIES:
+:COLUMNS: %25ITEM %TODO %Cost(Cost){min} %Cost(Mean){mean}
+:END:
+This heading has its own =:COLUMNS:= property: the cheapest and the average cost of the entries below it, instead of the sum. The block below is made from this heading (=:id local=), so it uses that format.
+
+#+BEGIN: columnview :id local
+| ITEM                          | TODO | Cost | Mean |
+|-------------------------------+------+------+------|
+| Another view of the same data |      |   10 | 20.0 |
+| One                           |      |   10 |   10 |
+| Two                           |      |   30 |   30 |
+#+END:
+
+** One
+:PROPERTIES:
+:Cost: 10
+:END:
+** Two
+:PROPERTIES:
+:Cost: 30
+:END:
+
+* A dynamic block
+A =columnview= block is a table that is written into the file, to read or export. =org-update-dblock= (C-c C-x C-u) on the block, or =org-update-all-dblocks= for the file, writes it again. Here =:id= names the heading it is made from, =:hlines 1= puts a line under the first level, =:skip-empty-rows t= leaves out rows with nothing in the columns, and =:maxlevel 2= stops at the second level.
+
+#+BEGIN: columnview :id global :hlines 1 :maxlevel 2
+| Task                          | TODO | Estimate | Spent |    Cost |
+|-------------------------------+------+----------+-------+---------|
+| Website relaunch              |      | 2d 7:00  |  4:15 | 2096.50 |
+| Design                        | TODO | 6:00     |  3:30 | 1200.00 |
+| Build                         | TODO | 2d 0:00  |       |  800.50 |
+| Hosting                       | DONE | 1:00     |  0:45 |   96.00 |
+|-------------------------------+------+----------+-------+---------|
+| Another view of the same data |      |          |       |   40.00 |
+| One                           |      |          |       |   10.00 |
+| Two                           |      |          |       |   30.00 |
+|-------------------------------+------+----------+-------+---------|
+| A dynamic block               |      |          |       |    0.00 |
+| Only the entries that match   |      |          |       |    0.00 |
+#+END:
+
+** Only the entries that match
+=:match= takes a tag, property or TODO match, as the agenda does; only the entries that are still TODO are listed.
+
+#+BEGIN: columnview :id global :match "TODO=\"TODO\"" :skip-empty-rows t
+| Task      | TODO | Estimate | Spent |    Cost |
+|-----------+------+----------+-------+---------|
+| Design    | TODO |     6:00 |  3:30 | 1200.00 |
+| Build     | TODO |  2d 0:00 |       |  800.50 |
+| Templates | TODO |       1d |       |    0.00 |
+| Forms     | TODO |       1d |       |    0.00 |
+#+END:

@@ -1,0 +1,30 @@
+#+OPTIONS: *:nil
+#+TITLE: Rich title
+#+AUTHOR: Jane Doe
+#+EMAIL: jane@example.com
+#+DATE: 2024-03-15
+* TODO [#A] First :tag1:tag2:
+:PROPERTIES:
+:CUSTOM_ID: first
+:END:
+SCHEDULED: <2024-03-15 Fri>
+Text with *bold*, /italic/, x_i, y^2, \alpha, a -- b, "quotes", footnote[fn:1] and <2024-03-15 Fri>.
+** DONE Child [1/2] :tag1:
+- [X] done item
+- [ ] open item
+*** Grandchild
+Line one\\
+Line two
+* Second :noexport:
+hidden
+* Third
+: fixed width
+| a | b |
+|---+---|
+| 1 | 2 |
+
+#+BEGIN_SRC python
+print(1)
+#+END_SRC
+
+[fn:1] The note.
