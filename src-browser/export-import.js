@@ -95,7 +95,15 @@ export async function performExport(format, scope) {
   if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
     await noteMissingSetupFiles(S.state.doc, S.state.documentId, S.state.storageKind); // a #+SETUPFILE: that cannot be had is reported; the export goes on, as in Emacs
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
-    const prepared = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus }));
+    /** @type {import('../src/types.js').Doc} */ let included;
+    try {
+      included = await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus });
+    } catch (err) {
+      setStatus(`Couldn't export: ${/** @type {Error} */ (err).message}`); // an #+INCLUDE: that cannot be had stops the export, as in Emacs
+      render();
+      return;
+    }
+    const prepared = prepareBabelExport(included);
     const withVariables = withExportVariables(prepared, scope && typeof scope === 'object' ? scope : null, S.state.localVariables, { backend: format === 'html' || format === 'slides' ? 'html' : 'other' }); // org-export-with-*, global macros and snippet shortcuts
     const doc = withVariables.doc;
     const exportScope = withVariables.scope ?? scope;

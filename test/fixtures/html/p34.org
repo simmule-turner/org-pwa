@@ -1,0 +1,7 @@
+#+TITLE: Special chars
+#+OPTIONS: toc:nil ^:t
+a < b > c & d "e" 'f' -- --- ... \\ x\vert y \pi \_ \- \\
+5 \le 6, H_2O, E=mc^2, x^{y z}, a_{b c}, \ae \AA \ss \copy \reg \ldots
+* H_1 and ^up
+  leading spaces
+   more

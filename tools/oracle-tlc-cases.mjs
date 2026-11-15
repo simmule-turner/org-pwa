@@ -143,6 +143,20 @@ function logCases(/** @type {Case[]} */ out) {
       add(`vars ${JSON.stringify(vars)} with notes: ${hn} ->DONE`, keywordLines.mixed + hd, 'DONE', vars);
     }
   }
+  // 3a. org-adapt-indentation t (and headline-data): log items, the CLOSED line, drawers and notes follow the heading's level
+  const adaptSets = [
+    { 'org-adapt-indentation': 't', 'org-log-done': "'time" },
+    { 'org-adapt-indentation': 't', 'org-log-done': "'note" },
+    { 'org-adapt-indentation': 't', 'org-log-done': "'note", 'org-log-into-drawer': 't' },
+    { 'org-adapt-indentation': 't', 'org-log-into-drawer': 't' },
+    { 'org-adapt-indentation': "'headline-data", 'org-log-done': "'time" },
+    { 'org-adapt-indentation': "'headline-data", 'org-log-done': "'note", 'org-log-into-drawer': 't' },
+  ];
+  for (const vars of adaptSets) {
+    for (const [hn, hd] of [['plain', heads.plain], ['body', heads.body], ['logbook', heads.logbook], ['repeat', heads.repeat], ['props', heads.props], ['last', heads.last], ['level 2', '* Parent\n** TODO Task\nbody\n']]) {
+      for (const to of ['DONE', 'NEXT']) add(`adapt ${JSON.stringify(vars)}: ${hn} ->${to}`, keywordLines.mixed + hd, to, vars, 'a note\nover two lines', hn === 'level 2' ? 'Task' : null);
+    }
+  }
   // 3b. where a repeating task goes back to: org-todo-repeat-to-state and the REPEAT_TO_STATE property (inherited only when org-use-property-inheritance says so)
   const repeatVars = [{}, { 'org-todo-repeat-to-state': 't' }, { 'org-todo-repeat-to-state': '"NEXT"' }, { 'org-todo-repeat-to-state': '"NOPE"' }, { 'org-todo-repeat-to-state': '"DONE"' }, { 'org-todo-repeat-to-state': 'nil' }];
   const repeatTask = '* TODO Task\nSCHEDULED: <2026-10-05 Mon +1w>\n';
@@ -293,6 +307,17 @@ function clockCases(/** @type {Case[]} */ out) {
         kind: 'clock', name: `org-clock-into-drawer ${d} in ${base}`, org: ctx[/** @type {keyof typeof ctx} */ (base)], start: starts[0], span: 30, drawer: d,
         lisp: `(let ((org-clock-persist nil) (org-clock-into-drawer ${d})) (unwind-protect (progn ${find} (org-clock-in nil ${startStamp(starts[0])}) (org-clock-out nil nil ${lt(starts[0], 30)}) (buffer-string)) (oc-reset)))`,
       });
+    }
+  }
+  // 4b. org-adapt-indentation t and headline-data: the CLOCK lines and the drawer made for them line up with the entry
+  for (const adapt of ['t', "'headline-data"]) {
+    for (const d of ['nil', 't', '"CLOCKING"']) {
+      for (const base of ['plain', 'body', 'planning', 'oneClock', 'bareClock', 'twoClocks', 'planClock', 'logbook', 'props', 'clockingDrawer', 'child']) {
+        out.push({
+          kind: 'clock', name: `adapt ${adapt} org-clock-into-drawer ${d} in ${base}`, org: ctx[/** @type {keyof typeof ctx} */ (base)], start: starts[0], span: 30, drawer: d, adapt,
+          lisp: `(let ((org-clock-persist nil) (org-adapt-indentation ${adapt}) (org-clock-into-drawer ${d})) (unwind-protect (progn ${find} (org-clock-in nil ${startStamp(starts[0])}) (org-clock-out nil nil ${lt(starts[0], 30)}) (buffer-string)) (oc-reset)))`,
+        });
+      }
     }
   }
   // the CLOCK_INTO_DRAWER property overrides the variable, and is inherited

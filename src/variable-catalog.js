@@ -337,6 +337,11 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-blank-before-new-entry",
+    "doc": "Should `org-insert-heading' leave a blank line before new heading/item?",
+    "default": "((heading . auto) (plain-list-item . auto))"
+  },
+  {
     "name": "org-cite-basic-author-year-separator",
     "doc": "String used to separate cites in an author-year configuration.",
     "default": "\", \""
@@ -467,34 +472,9 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
-    "name": "org-export-headline-levels",
-    "doc": "The last level which is still exported as a headline.",
-    "default": "3"
-  },
-  {
-    "name": "org-export-preserve-breaks",
-    "doc": "Non-nil means preserve all line breaks when exporting.",
-    "default": "nil"
-  },
-  {
     "name": "org-export-snippet-translation-alist",
     "doc": "Alist between export snippets back-ends and exporter back-ends.",
     "default": "nil"
-  },
-  {
-    "name": "org-export-time-stamp-file",
-    "doc": "Non-nil means insert a time stamp into the exported file.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-archived-trees",
-    "doc": "Whether sub-trees with the ARCHIVE tag should be exported.",
-    "default": "headline"
-  },
-  {
-    "name": "org-export-with-author",
-    "doc": "Non-nil means insert author name into the exported file.",
-    "default": "t"
   },
   {
     "name": "org-export-with-broken-links",
@@ -502,49 +482,9 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
-    "name": "org-export-with-clocks",
-    "doc": "Non-nil means export CLOCK keywords.",
-    "default": "nil"
-  },
-  {
-    "name": "org-export-with-creator",
-    "doc": "Non-nil means the postamble should contain a creator sentence.",
-    "default": "nil"
-  },
-  {
-    "name": "org-export-with-date",
-    "doc": "Non-nil means insert date in the exported document.",
-    "default": "t"
-  },
-  {
     "name": "org-export-with-drawers",
     "doc": "Non-nil means export contents of standard drawers.",
     "default": "(not \"LOGBOOK\")"
-  },
-  {
-    "name": "org-export-with-email",
-    "doc": "Non-nil means insert author email into the exported file.",
-    "default": "nil"
-  },
-  {
-    "name": "org-export-with-emphasize",
-    "doc": "Non-nil means interpret *word*, /word/, _word_ and +word+.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-entities",
-    "doc": "Non-nil means interpret entities when exporting.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-fixed-width",
-    "doc": "Non-nil means export lines starting with \":\".",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-footnotes",
-    "doc": "Non-nil means Org footnotes should be exported.",
-    "default": "t"
   },
   {
     "name": "org-export-with-inlinetasks",
@@ -552,84 +492,9 @@ export const VARIABLE_CATALOG = [
     "default": "t"
   },
   {
-    "name": "org-export-with-latex",
-    "doc": "Non-nil means process LaTeX environments and fragments.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-planning",
-    "doc": "Non-nil means include planning info in export.",
-    "default": "nil"
-  },
-  {
-    "name": "org-export-with-priority",
-    "doc": "Non-nil means include priority cookies in export.",
-    "default": "nil"
-  },
-  {
     "name": "org-export-with-properties",
     "doc": "Non-nil means export contents of properties drawers.",
     "default": "nil"
-  },
-  {
-    "name": "org-export-with-section-numbers",
-    "doc": "Non-nil means add section numbers to headlines when exporting.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-smart-quotes",
-    "doc": "Non-nil means activate smart quotes during export.",
-    "default": "nil"
-  },
-  {
-    "name": "org-export-with-special-strings",
-    "doc": "Non-nil means interpret \"\\-\", \"--\" and \"---\" for export.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-statistics-cookies",
-    "doc": "Non-nil means include statistics cookies in export.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-sub-superscripts",
-    "doc": "Non-nil means interpret \"_\" and \"^\" for export.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-tables",
-    "doc": "Non-nil means export tables.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-tags",
-    "doc": "If nil, do not export tags, just remove them from headlines.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-tasks",
-    "doc": "Non-nil means include TODO items for export.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-timestamps",
-    "doc": "Non-nil means allow timestamps in export.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-title",
-    "doc": "Non-nil means print title into the exported file.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-toc",
-    "doc": "Non-nil means create a table of contents in exported files.",
-    "default": "t"
-  },
-  {
-    "name": "org-export-with-todo-keywords",
-    "doc": "Non-nil means include TODO keywords in export.",
-    "default": "t"
   },
   {
     "name": "org-footnote-auto-adjust",

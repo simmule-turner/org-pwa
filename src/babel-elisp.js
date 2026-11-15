@@ -4,6 +4,7 @@
  * (`:var` bindings in a `let`, `with-output-to-string` for `:results output`, dynamic binding unless `:lexical yes`), and the value is laid out under `#+RESULTS:` as `org-babel-insert-result` lays out a Lisp value.
  */
 import { Cons, Flt, NIL, Sym, T, print, toArray } from './elisp-data.js';
+import { firstForm } from './lisp-read.js';
 import { run } from './elisp.js';
 import { blockLanguage, layoutResult } from './babel.js';
 
@@ -33,7 +34,7 @@ export function expandedSource(body, vars, spec) {
   const names = Object.keys(vars);
   const inner = names.length ? `(let (${names.map((n) => `(${n} '${print(toLisp(vars[n]))})`).join('\n      ')})\n${body}\n)` : body + '\n';
   const wrapped = spec.collect === 'output' ? `(with-output-to-string ${inner}\n)` : `(progn ${inner}\n)`;
-  return wrapped;
+  return firstForm(wrapped); // Emacs `read`s one form: whatever follows the list that closes first is never read
 }
 
 /** Does `org-babel-result-cond` take these `:results` words for text (the scalar form) rather than for a table? @param {ResultsSpec} spec */
@@ -118,14 +119,14 @@ const cellsOf = (text) => text.split('\n')[0].split('|').map((c) => c.trim());
  * The lines to put under `#+RESULTS:` for what a block gave (`org-babel-execute:emacs-lisp` and `org-babel-insert-result`).
  * @param {LObj} value  the block's value, or the string it wrote with `:results output`
  * @param {ResultsSpec} spec
- * @param {{ wrap?: string | null, file?: string | null, fileDesc?: string | null }} [options]
+ * @param {{ wrap?: string | null, file?: string | null, fileDesc?: string | true | null }} [options]
  * @returns {string[]}
  */
 export function formatElispResult(value, spec, { wrap = null, file = null, fileDesc = null } = {}) {
   if (spec.file) {
     // `:results file`: a link to the file :file names, else to the value itself; `:file-desc` is its description (the file when bare)
     const target = file !== null && file !== undefined ? file : typeof value === 'string' ? value : print(value, false);
-    const description = fileDesc === null || fileDesc === undefined ? '' : `[${fileDesc || target}]`;
+    const description = fileDesc === null || fileDesc === undefined ? '' : `[${fileDesc === true ? target : fileDesc}]`;
     return layoutResult({ text: `[[file:${target}]${description}]` }, { ...spec, words: new Set(['raw']) }, { wrap, lang: 'emacs-lisp' });
   }
   const w = spec.words;

@@ -1,0 +1,10 @@
+#+TITLE: Inline tasks and cookies
+#+OPTIONS: toc:nil
+* H [33%] [1/3]
+- [X] a
+- [ ] b
+- [ ] c
+*************** TODO inline task :t:
+body
+*************** END
+* H2 :a:

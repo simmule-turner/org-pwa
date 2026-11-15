@@ -13,6 +13,7 @@
 import { buildExportTree, objects, isNumbered, lowLevel, resolveLink, ordinalOf, walk, lineage, parentHeadline } from './export-ascii.js';
 import { drawerAllowed } from './export-html.js';
 import { ENTITIES } from './entities.js';
+import { translate } from './export-dictionary.js';
 import { tableModel } from './table-model.js';
 import { createZip } from './zip-writer.js';
 import { ODT_STYLES_XML, ODT_CONTENT_TEMPLATE } from './odt-assets.js';
@@ -396,12 +397,13 @@ function formatLabel(el, C, op) {
   else if (enumerableImage(el)) [key, pred] = ['__Figure__', enumerableImage];
   else if (enumerableFormula(el)) [key, pred] = ['__MathFormula__', enumerableFormula];
   else return null;
-  const [counter, style, category] = CATEGORY_MAP[key];
+  const [counter, style, categoryName] = CATEGORY_MAP[key];
+  const category = translate(categoryName, C.I.language, 'utf-8'); // `org-export-translate` of the category
   const seq = enumerate(el, C, pred);
   const spec = LABEL_STYLES[/** @type {keyof typeof LABEL_STYLES} */ (style)];
   if (op === 'definition') {
     const n = `<text:sequence text:ref-name="${label}" text:name="${counter}" text:formula="ooow:${counter}+1" style:num-format="1">${seq}</text:sequence>`;
-    return { caption: `\n<text:bookmark text:name="${label}"/>` + spec[0].replace('%e', category).replace('%n', n).replace('%c', caption || '') };
+    return { caption: `\n<text:bookmark text:name="${label}"/>` + translate(spec[0], C.I.language, 'utf-8').replace('%e', category).replace('%n', n).replace('%c', caption || '') };
   }
   return `<text:sequence-ref text:reference-format="${spec[1]}" text:ref-name="${label}">${spec[2].replace('%e', category).replace('%n', seq)}</text:sequence-ref>`;
 }
@@ -696,36 +698,99 @@ function highlightLines(lines, language, C) {
     .split('\n')
     .map((/** @type {string} */ html) => {
       let out = '';
-      const re = /<span class="org-([a-z-]+)">([\s\S]*?)<\/span>|([^<]+)/g;
+      const re = /<span class="org-([a-z0-9-]+)">([\s\S]*?)<\/span>|([^<]+)/g;
       for (const m of html.matchAll(re)) {
         const decode = (/** @type {string} */ t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         if (m[3] !== undefined) out += encodePlain(decode(m[3]));
         else {
-          const face = 'OrgSrcFontLock' + m[1].split("-").map((/** @type {string} */ w) => w[0].toUpperCase() + w.slice(1)).join('') + 'Face';
           C.faces.add(m[1]);
-          out += span(face, encodePlain(decode(m[2])));
+          out += span(faceStyle(m[1]), encodePlain(decode(m[2])));
         }
       }
       return out;
     });
 }
 
-/** Colors Emacs's default theme gives the faces the lexer names. */
-const FACE_COLORS = /** @type {Record<string, string>} */ ({
-  keyword: '#a020f0',
-  string: '#8b2252',
-  comment: '#b22222',
-  constant: '#5f9ea0',
-  builtin: '#483d8b',
-  type: '#228b22',
-  'function-name': '#0000ff',
-  'variable-name': '#b8860b',
-  preprocessor: '#483d8b',
-  doc: '#8b2252',
-  'comment-delimiter': '#b22222',
-  warning: '#ff0000',
-  'c-annotation': '#5f9ea0',
+/** The faces Emacs calls font-lock-NAME-face; its other faces (org-level-1, bold, error) keep their own names in the style names. */
+const FONT_LOCK_FACES = new Set(['builtin', 'c-annotation', 'comment', 'comment-delimiter', 'constant', 'doc', 'function-name', 'keyword', 'negation-char', 'operator', 'preprocessor', 'string', 'type', 'variable-name', 'warning']);
+const camelFace = (/** @type {string} */ face) => face.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join('');
+/** The style htmlfontify names for a face: `OrgSrcFontLockKeywordFace` for font-lock-keyword-face, `OrgSrcOrgLevel1` for org-level-1. @param {string} face */
+const faceStyle = (face) => (FONT_LOCK_FACES.has(face) ? `OrgSrcFontLock${camelFace(face)}Face` : `OrgSrc${camelFace(face)}`);
+
+/** What Emacs's default theme (light background) gives the faces the lexers name: color, and bold, italic, underline or strike-through. */
+const FACE_PROPS = /** @type {Record<string, { color?: string, bold?: boolean, italic?: boolean, underline?: boolean, strike?: boolean }>} */ ({
+  keyword: { color: '#a020f0' },
+  string: { color: '#8b2252' },
+  comment: { color: '#b22222' },
+  constant: { color: '#5f9ea0' },
+  builtin: { color: '#483d8b' },
+  type: { color: '#228b22' },
+  'function-name': { color: '#0000ff' },
+  'variable-name': { color: '#b8860b' },
+  preprocessor: { color: '#483d8b' },
+  doc: { color: '#8b2252' },
+  'comment-delimiter': { color: '#b22222' },
+  warning: { color: '#ff0000' },
+  'c-annotation': { color: '#5f9ea0' },
+  'org-level-1': { color: '#0000ff' },
+  'org-level-2': { color: '#a0522d' },
+  'org-level-3': { color: '#a020f0' },
+  'org-level-4': { color: '#b22222' },
+  'org-level-5': { color: '#228b22' },
+  'org-level-6': { color: '#008b8b' },
+  'org-level-7': { color: '#483d8b' },
+  'org-level-8': { color: '#8b2252' },
+  'org-todo': { color: '#ff0000', bold: true },
+  'org-done': { color: '#228b22', bold: true },
+  'org-headline-done': { color: '#bc8f8f' },
+  'org-priority': { color: '#a020f0' },
+  'org-tag': { bold: true },
+  'org-archived': { color: '#7f7f7f' },
+  'org-special-keyword': { color: '#a020f0' },
+  'org-drawer': { color: '#0000ff' },
+  'org-property-value': {},
+  'org-date': { color: '#a020f0', underline: true },
+  'org-sexp-date': { color: '#a020f0' },
+  'org-meta-line': { color: '#b22222' },
+  'org-document-title': { color: '#191970', bold: true },
+  'org-document-info': { color: '#191970' },
+  'org-document-info-keyword': { color: '#7f7f7f' },
+  'org-block': { color: '#7f7f7f' },
+  'org-block-begin-line': { color: '#b22222' },
+  'org-block-end-line': { color: '#b22222' },
+  'org-code': { color: '#7f7f7f' },
+  'org-verbatim': { color: '#7f7f7f' },
+  'org-table': { color: '#0000ff' },
+  'org-formula': { color: '#b22222' },
+  'org-link': { color: '#3a5fcd', underline: true },
+  'org-cite': { color: '#3a5fcd', underline: true },
+  'org-footnote': { color: '#a020f0', underline: true },
+  'org-target': { underline: true },
+  'org-macro': { color: '#8b4513' },
+  'org-checkbox': { bold: true },
+  'org-checkbox-statistics-todo': { color: '#ff0000', bold: true },
+  'org-checkbox-statistics-done': { color: '#228b22', bold: true },
+  'org-list-dt': { bold: true },
+  'org-inline-src-block': { color: '#7f7f7f' },
+  error: { color: '#ff0000', bold: true },
+  shadow: { color: '#7f7f7f' },
+  bold: { bold: true },
+  italic: { italic: true },
+  underline: { underline: true },
+  'strike-through': { strike: true },
+  // shell and HTML coloring (sh-script.el, sgml-mode.el): the faces' default (light background) looks; negation-char, default, highlight and mode-line add none here
+  'sh-heredoc': { color: '#ffa54f' },
+  'sh-quoted-exec': { color: '#ff00ff' },
+  'sh-escaped-newline': { color: '#8b2252' },
+  'sgml-namespace': { color: '#483d8b' },
+  'bold-italic': { bold: true, italic: true },
 });
+
+/** The paragraph properties of a face's text style. @param {string} face */
+function faceProperties(face) {
+  const p = FACE_PROPS[face] || {};
+  return `<style:text-properties fo:color="${p.color || '#000000'}"${p.bold ? ' fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"' : ''}${p.italic ? ' fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : ''}${p.underline ? ' style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : ''}${p.strike ? ' style:text-line-through-style="solid"' : ''}/>`;
+}
 
 // ---- elements --------------------------------------------------------------------------------------
 
@@ -857,7 +922,7 @@ function tocXml(depth, C, scope = null) {
       return `\n<text:p text:style-name="Contents_20_${h.level}"><text:a xlink:type="simple" xlink:href="#${ref(h, C)}">${number}${t.todo}${t.priority}${t.title}${t.tags}</text:a></text:p>`;
     })
     .join('\n');
-  const title = scope ? null : 'Table of Contents';
+  const title = scope ? null : translate('Table of Contents', C.I.language, 'utf-8');
   const templates = Array.from({ length: 10 }, (_, k) => k + 1)
     .map(
       (level) => `
@@ -1294,7 +1359,7 @@ const XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n';
 /** Org's styles.xml, with outline numbering kept only up to the `num:` level. @param {Info} I */
 function stylesXml(/** @type {any} */ I, /** @type {Ctx} */ C) {
   const numbering = I.numbering;
-  const faces = [...C.faces].sort().map((f) => `<style:style style:name="OrgSrcFontLock${f.split("-").map((/** @type {string} */ w) => w[0].toUpperCase() + w.slice(1)).join('')}Face" style:family="text">\n <style:text-properties fo:color="${FACE_COLORS[f] || '#000000'}"/>\n</style:style>`).join('\n');
+  const faces = [...C.faces].sort().map((f) => `<style:style style:name="${faceStyle(f)}" style:family="text">\n ${faceProperties(f)}\n</style:style>`).join('\n');
   const extra = C.faces.size || C.highlighted ? `\n<!-- Org Htmlfontify Styles -->\n<style:style style:name="OrgSrcBlock" style:family="paragraph" style:parent-style-name="Preformatted_20_Text">\n <style:paragraph-properties fo:background-color="#f5f5f5" fo:padding="0.049cm" fo:border="0.51pt solid #000000" style:shadow="none">\n  <style:background-image/>\n </style:paragraph-properties>\n <style:text-properties fo:color="#000000"/>\n</style:style>\n${faces}\n` : '';
   return ODT_STYLES_XML.replace('</office:styles>', () => extra + '</office:styles>').replace(/<text:outline-level-style([^>]*)text:level="([^"]*)"([^>]*)>/g, (whole, a, level) => {
     const keep = typeof numbering === 'number' ? Number(level) <= numbering : numbering;

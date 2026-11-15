@@ -1,0 +1,74 @@
+{
+ "i1": {
+  "files": {
+   "sub/a.org": "Text[fn:1] and [[file:img.png]]\n\n[fn:1] Note\n"
+  },
+  "main": "Main[fn:1]\n\n[fn:1] Main note\n\n#+INCLUDE: \"sub/a.org\"\n"
+ },
+ "i2": {
+  "files": {
+   "sub/b.org": "[[file:img.png]] [[file:../up.png][d]] [[file:/abs.png]] [[./rel.org]] [[https://x.org]] [[file:~/h.png]] [[file:a.org::*Head]] <file:foo.org> [[*local]]\n"
+  },
+  "main": "#+INCLUDE: \"sub/b.org\"\n"
+ },
+ "i3": {
+  "files": {},
+  "main": "#+INCLUDE: \"missing.org\"\n"
+ },
+ "i4": {
+  "files": {
+   "sub/c.org": "* A\n"
+  },
+  "main": "#+INCLUDE: \"sub/c.org::*Nope\"\n"
+ },
+ "i4b": {
+  "files": {
+   "sub/c.org": "* A\n"
+  },
+  "main": "#+INCLUDE: \"sub/c.org::#nope\"\n"
+ },
+ "i4c": {
+  "files": {
+   "sub/c.org": "* A\n"
+  },
+  "main": "#+INCLUDE: \"sub/c.org::nope\"\n"
+ },
+ "i5": {
+  "files": {
+   "sub/d.org": "x\n"
+  },
+  "main": "#+INCLUDE: \"sub/d.org\" :lines \"5-9\"\n"
+ },
+ "i6b": {
+  "files": {
+   "sub/e2.org": "R[fn:a]\n\n[fn:a] other\n"
+  },
+  "main": "#+INCLUDE: \"sub/e.org\"\n\n#+INCLUDE: \"sub/e2.org\"\n"
+ },
+ "i9": {
+  "files": {
+   "sub/g.org": "A[fn:x] B[fn:y]\n\n[fn:x] X text\n\n[fn:y] Y text\nmore\n\nlast\n"
+  },
+  "main": "#+INCLUDE: \"sub/g.org\" :lines \"1-2\"\n"
+ },
+ "i10": {
+  "files": {
+   "sub/n1.org": "[[file:p.png]]\n#+INCLUDE: \"n2.org\"\n",
+   "sub/n2.org": "[[file:q.png]]\n"
+  },
+  "main": "#+INCLUDE: \"sub/n1.org\"\n"
+ },
+ "i11": {
+  "files": {
+   "r.org": "#+INCLUDE: \"r.org\"\n"
+  },
+  "main": "#+INCLUDE: \"r.org\"\n"
+ },
+ "i13": {
+  "files": {
+   "sub/a.org": "* A\ntext\n** B\nmore\n",
+   "sub/b.org": "x\ny\nz\n"
+  },
+  "main": "* Top\n#+INCLUDE: \"sub/a.org\" :minlevel 2\n#+INCLUDE: \"sub/b.org\" :lines \"2-3\"\n#+INCLUDE: \"sub/b.org\" quote\n"
+ }
+}

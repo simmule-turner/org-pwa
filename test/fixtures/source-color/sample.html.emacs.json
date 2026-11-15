@@ -1,0 +1,194 @@
+{
+ "lang": "html",
+ "mode": "html-mode",
+ "runs": [
+  [
+   "<",
+   null
+  ],
+  [
+   "!DOCTYPE",
+   "keyword"
+  ],
+  [
+   " html>\n<",
+   null
+  ],
+  [
+   "html",
+   "function-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "lang",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"en\"",
+   "string"
+  ],
+  [
+   ">\n<",
+   null
+  ],
+  [
+   "head",
+   "function-name"
+  ],
+  [
+   ">\n  <",
+   null
+  ],
+  [
+   "meta",
+   "function-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "charset",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"utf-8\"",
+   "string"
+  ],
+  [
+   ">\n  <",
+   null
+  ],
+  [
+   "title",
+   "function-name"
+  ],
+  [
+   ">",
+   null
+  ],
+  [
+   "Hello ",
+   "bold"
+  ],
+  [
+   "&amp;",
+   "bold"
+  ],
+  [
+   " welcome",
+   "bold"
+  ],
+  [
+   "</",
+   null
+  ],
+  [
+   "title",
+   "function-name"
+  ],
+  [
+   ">\n  <",
+   null
+  ],
+  [
+   "style",
+   "function-name"
+  ],
+  [
+   ">body { color: red; }</",
+   null
+  ],
+  [
+   "style",
+   "function-name"
+  ],
+  [
+   ">\n  <",
+   null
+  ],
+  [
+   "script",
+   "function-name"
+  ],
+  [
+   ">var x = \"a<",
+   null
+  ],
+  [
+   "b",
+   "function-name"
+  ],
+  [
+   "\";</script>\n</head>\n<body class=\"",
+   "string"
+  ],
+  [
+   "main",
+   null
+  ],
+  [
+   "\" id=top data-x='1'>\n  <!-- a comment -->\n  <h1>",
+   "string"
+  ],
+  [
+   "Title",
+   "bold"
+  ],
+  [
+   "</h1>\n  <p>Some <b>",
+   "string"
+  ],
+  [
+   "bold",
+   "bold"
+  ],
+  [
+   "</b> and <i>",
+   "string"
+  ],
+  [
+   "italic",
+   "italic"
+  ],
+  [
+   "</i> text &lt; &#169; &copy;.</p>\n  <a href=\"",
+   "string"
+  ],
+  [
+   "http://example.com/?a=1",
+   null
+  ],
+  [
+   "&b",
+   "variable-name"
+  ],
+  [
+   "=2",
+   null
+  ],
+  [
+   "\">link</a>\n  <img src=\"",
+   "string"
+  ],
+  [
+   "x.png",
+   null
+  ],
+  [
+   "\" alt=\"\">\n  <br/>\n  <input type=text disabled>\n  <?php echo 1 ?>\n</body>\n</html>\n",
+   "string"
+  ]
+ ]
+}

@@ -1,0 +1,13 @@
+#+TITLE: Select
+#+OPTIONS: toc:nil
+#+SELECT_TAGS: keep
+#+EXCLUDE_TAGS: drop
+* Unmarked
+text
+* Keep me :keep:
+text keep
+** child
+* Drop me :drop:
+text drop
+* Other :noexport:
+x

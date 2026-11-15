@@ -25,6 +25,7 @@ import { parseOrg, serializeOrg, serializeHeadingSubtree, serializeHeadingLine, 
 import { parseBody } from './body-parser.js';
 import { fixupIndentation } from './indent-fixup.js';
 import { getAdaptIndentation, getAutoAlignTags, getSrcPreserveIndentation } from './indent-settings.js';
+import { blankBeforeNew } from './blank-before-entry.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -263,6 +264,11 @@ export function insertChildHeading(parent, opts = {}, prepend = false) {
  * @returns {boolean}
  */
 function blankBeforeNewEntry(doc, heading) {
+  return blankBeforeNew('heading', () => blankBeforeAuto(doc, heading));
+}
+
+/** @param {Doc} doc @param {Heading} heading @returns {boolean} */
+function blankBeforeAuto(doc, heading) {
   const text = serializeOrg(doc);
   const lines = text.split('\n');
   const at = headingLineIndex(doc).lines.get(heading);

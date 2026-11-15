@@ -1,0 +1,9 @@
+#+TITLE: Probe markup
+#+OPTIONS: toc:nil
+* Lists and snippets
+- =LEVEL=2= :: a verbatim term with an equals sign
+- =a :: b= text
+- term :: =x :: y=
+- =priority:A= as =PRIORITY="A"= :: two spans
+
+Code keeps snippets: ~@@h:x@@~ and =@@h:y@@= and ~one @@h:z@@ two~.

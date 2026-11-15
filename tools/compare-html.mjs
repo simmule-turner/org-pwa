@@ -12,6 +12,7 @@ import { exportToHtml } from '../src/export-html.js';
 import { cacheBibliography } from '../src/cite.js';
 
 const file = process.argv[2];
+const fixtureAt = process.argv.indexOf('--fixture'); // --fixture N: also write test/fixtures/html/pN.org and pN.expected.html from this file and Emacs's output
 if (!file) {
   console.error('usage: node tools/compare-html.mjs file.org');
   process.exit(2);
@@ -41,6 +42,12 @@ for (const m of source.matchAll(/^#\+BIBLIOGRAPHY:\s*"?([^"\n]+?)"?\s*$/gim)) {
   if (fs.existsSync(f)) cacheBibliography(m[1], fs.readFileSync(f, 'utf8'));
 }
 const ours = exportToHtml(parseOrg(source));
+if (fixtureAt > 0) {
+  const n = process.argv[fixtureAt + 1];
+  const dest = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'test', 'fixtures', 'html');
+  fs.writeFileSync(path.join(dest, `p${n}.org`), source);
+  fs.writeFileSync(path.join(dest, `p${n}.expected.html`), skeleton(emacs) + '\n');
+}
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cmp-html-'));
 fs.writeFileSync(path.join(dir, 'emacs.txt'), skeleton(emacs) + '\n');
 fs.writeFileSync(path.join(dir, 'ours.txt'), skeleton(ours) + '\n');

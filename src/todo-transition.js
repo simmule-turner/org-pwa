@@ -10,6 +10,7 @@ import { formatNoteLine, formatStateLogLine } from './logbook.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
 import { entryRepeats, shiftEntryRepeaters, hasClockLine, RepeatError } from './repeater-shift.js';
 import { setProperty } from './archive-model.js';
+import { logIndent, logbookIndent } from './org-parser.js';
 
 /** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string, kind: 'state' | 'done' }} PendingNote */
 
@@ -37,30 +38,35 @@ function setClosed(heading, stamp) {
  * @param {boolean} [blankBeforeNextHeading] whether a drawer made on an otherwise empty entry leaves a blank line (it does for log notes, not for clocks) */
 export function insertLogLines(heading, lines, intoDrawer, blankBeforeNextHeading = true) {
   const drawer = intoDrawer === true ? 'LOGBOOK' : intoDrawer || null;
+  const indented = (/** @type {string[]} */ ls, /** @type {string} */ indent) => (indent ? ls.map((l) => (l.trim() ? indent + l : l)) : ls);
   if (drawer && drawer !== 'LOGBOOK') {
     // a drawer of another name lives among the body lines, above the text
     const isOpen = (/** @type {string} */ l) => l.trim().toLowerCase() === `:${drawer.toLowerCase()}:`;
     const pre = heading.preLogLines || [];
     const openPre = pre.findIndex(isOpen);
     const open = heading.bodyLines.findIndex(isOpen);
-    if (openPre >= 0) pre.splice(openPre + 1, 0, ...lines);
-    else if (open >= 0) heading.bodyLines.splice(open + 1, 0, ...lines);
-    else if (heading.logbookLines.length > 0) heading.preLogLines = [`:${drawer}:`, ...lines, ':END:', ...pre]; // above the :LOGBOOK: drawer
+    const margin = (/** @type {string} */ l) => (/^\s*/.exec(l) || [''])[0];
+    if (openPre >= 0) pre.splice(openPre + 1, 0, ...indented(lines, margin(pre[openPre])));
+    else if (open >= 0) heading.bodyLines.splice(open + 1, 0, ...indented(lines, margin(heading.bodyLines[open])));
     else {
-      heading.bodyLines.splice(0, 0, `:${drawer}:`, ...lines, ':END:');
-      // as for :LOGBOOK:, a drawer made on an entry with nothing else leaves a blank line before the next heading
-      if (blankBeforeNextHeading && heading.bodyLines.length === lines.length + 2 && heading.logbookLines.length === 0) heading.bodyLines.push('');
+      const indent = logIndent(heading);
+      if (heading.logbookLines.length > 0) heading.preLogLines = indented([`:${drawer}:`, ...lines, ':END:'], indent).concat(pre); // above the :LOGBOOK: drawer
+      else {
+        heading.bodyLines.splice(0, 0, ...indented([`:${drawer}:`, ...lines, ':END:'], indent));
+        // as for :LOGBOOK:, a drawer made on an entry with nothing else leaves a blank line before the next heading
+        if (blankBeforeNextHeading && heading.bodyLines.length === lines.length + 2 && heading.logbookLines.length === 0) heading.bodyLines.push('');
+      }
     }
   } else if (drawer) {
     // Emacs, creating the drawer on an entry with nothing after it but the next heading, leaves a blank line before that heading
     if (blankBeforeNextHeading && heading.logbookLines.length === 0 && heading.bodyLines.length === 0) heading.bodyLines.push('');
-    heading.logbookLines.splice(0, 0, ...lines);
+    heading.logbookLines.splice(0, 0, ...indented(lines, logbookIndent(heading)));
   } else if (heading.logbookLines.length > 0) {
-    heading.preLogLines = [...lines, ...(heading.preLogLines || [])];
+    heading.preLogLines = [...indented(lines, logIndent(heading)), ...(heading.preLogLines || [])];
   } else {
     let at = heading.bodyLines.findIndex((l) => l.trim() !== '');
     if (at < 0) at = 0;
-    heading.bodyLines.splice(at, 0, ...lines);
+    heading.bodyLines.splice(at, 0, ...indented(lines, logIndent(heading)));
   }
 }
 

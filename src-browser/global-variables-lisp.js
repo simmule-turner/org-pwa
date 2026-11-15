@@ -41,7 +41,7 @@ export const globalVariablesCodec = {
     if (CHARS.test(name) && /^[A-Za-z]$/.test(v)) return `?${v}`;
     if (STRINGS.test(name)) return v === 'nil' || v.startsWith('"') ? v : quote(v);
     if (isLispForm(v)) return v.startsWith('(') ? `'${v}` : v;
-    if (field.type === 'select') return SYMBOL_LIKE.test(v) ? `'${v}` : quote(v);
+    if (field.type === 'select') return SYMBOL_LIKE.test(v) || v === '{}' ? `'${v}` : quote(v);
     if (field.type === 'longtext') return SYMBOL_LIKE.test(v) || /\s/.test(v) ? `'(${v})` : quote(v); // a list of names
     return v.split(/\s+/).length > 1 && v.split(/\s+/).every((w) => SYMBOL_LIKE.test(w)) ? `'(${v})` : quote(v);
   },

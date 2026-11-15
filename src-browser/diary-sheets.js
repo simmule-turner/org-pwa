@@ -9,6 +9,7 @@ import { agendaSexpOptions } from './agenda-settings.js';
 import { S } from './app-state.js';
 import { buildSheet, cancelButton } from './bottom-sheet.js';
 import { applyTextEdit } from './text-view.js';
+import { typedDateRow } from './typed-date.js';
 
 /** The diary's settings in force now. */
 function options() {
@@ -200,6 +201,7 @@ export function openDatePickerSheet(textarea) {
   const { panel, close } = buildSheet('Insert a date', `Written as ${dateOrderHint(opts.dateStyle)} would read it`);
   const pick = input(new Date().toISOString().slice(0, 10), 'date');
   panel.appendChild(div('margin:10px 0;', '')).appendChild(pick);
+  panel.appendChild(typedDateRow(pick, null, null));
   const buttons = div('display:flex;justify-content:flex-end;gap:10px;margin-top:10px;');
   buttons.append(
     button('Cancel', close),

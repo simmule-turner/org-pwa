@@ -1,0 +1,410 @@
+{
+ "lang": "sh",
+ "mode": "sh-mode",
+ "runs": [
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "no shebang; sh-style words\n",
+   "comment"
+  ],
+  [
+   "FOO",
+   "variable-name"
+  ],
+  [
+   "=1 ",
+   null
+  ],
+  [
+   "BAR",
+   "variable-name"
+  ],
+  [
+   "+=2 ",
+   null
+  ],
+  [
+   "arr",
+   "variable-name"
+  ],
+  [
+   "[3]=x cmd\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"${a:-\"",
+   "string"
+  ],
+  [
+   "x y",
+   null
+  ],
+  [
+   "\"}\"",
+   "string"
+  ],
+  [
+   " ${",
+   null
+  ],
+  [
+   "#",
+   "variable-name"
+  ],
+  [
+   "} $",
+   null
+  ],
+  [
+   "$",
+   "variable-name"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "*",
+   "variable-name"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "_",
+   "variable-name"
+  ],
+  [
+   " ${",
+   null
+  ],
+  [
+   "@",
+   "variable-name"
+  ],
+  [
+   "}\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " a; ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " b && ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " c || ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " d | tee x\n(",
+   null
+  ],
+  [
+   "cd",
+   "builtin"
+  ],
+  [
+   " /tmp; ls) { ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " hi; }\n",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " [ $",
+   null
+  ],
+  [
+   "a",
+   "variable-name"
+  ],
+  [
+   " = 1 ]; ",
+   null
+  ],
+  [
+   "then ",
+   "keyword"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"yes\"",
+   "string"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "elif",
+   "keyword"
+  ],
+  [
+   " [ x ]; ",
+   null
+  ],
+  [
+   "then ",
+   "keyword"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " no; ",
+   null
+  ],
+  [
+   "else ",
+   "keyword"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " e; ",
+   null
+  ],
+  [
+   "fi",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "while",
+   "keyword"
+  ],
+  [
+   " :; ",
+   null
+  ],
+  [
+   "do ",
+   "keyword"
+  ],
+  [
+   "read",
+   "builtin"
+  ],
+  [
+   " x; ",
+   null
+  ],
+  [
+   "done",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " ((",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   "=0;i<3;i++)); ",
+   null
+  ],
+  [
+   "do ",
+   "keyword"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "i",
+   "variable-name"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "done",
+   "keyword"
+  ],
+  [
+   "\ncat <<EOF1 <<EOF2",
+   null
+  ],
+  [
+   "\none\nEOF1\ntwo\nEOF2\n",
+   "sh-heredoc"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " done\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "`echo \\`inner\\``",
+   "sh-quoted-exec"
+  ],
+  [
+   " ok\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "'a\\'",
+   "string"
+  ],
+  [
+   "b",
+   null
+  ],
+  [
+   "' c\necho \"a\\\\\" '",
+   "string"
+  ],
+  [
+   "x",
+   null
+  ],
+  [
+   "'\nx=$(",
+   "string"
+  ],
+  [
+   "cat <<EOT",
+   "sh-quoted-exec"
+  ],
+  [
+   "\ninside $(",
+   "string"
+  ],
+  [
+   "date",
+   "sh-quoted-exec"
+  ],
+  [
+   ")\nEOT\n)\necho $(",
+   "string"
+  ],
+  [
+   "( x << 1 ",
+   "sh-quoted-exec"
+  ],
+  [
+   ")) <<< \"here string\"\na=b c=d; echo ${a}${c}\necho \"$(",
+   "string"
+  ],
+  [
+   "( 3 + 4 ",
+   "sh-quoted-exec"
+  ],
+  [
+   "))\" '",
+   "string"
+  ],
+  [
+   "$(",
+   null
+  ],
+  [
+   "not",
+   "sh-quoted-exec"
+  ],
+  [
+   ")",
+   null
+  ],
+  [
+   "' $(",
+   "string"
+  ],
+  [
+   "not exec",
+   "sh-quoted-exec"
+  ],
+  [
+   ")\nfunction f() { local -r z=1; }\nfoo-bar() { :; }\nls -l | while read -r l; do echo \"$l\"; done\necho é \"ünï\" $é\ncat << EOF\nspaced\n EOF\nlast\n",
+   "string"
+  ]
+ ]
+}

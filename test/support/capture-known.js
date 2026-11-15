@@ -4,10 +4,6 @@ export const CAPTURE_KNOWN = {
   expand: [
     { template: '%[/nonexistent/capture-file.txt]', reason: '%[file] inserts a file read synchronously from the disk; the app has no synchronous file system (files are GitHub, WebDAV or local buffers read asynchronously), so the text stays as written' },
   ],
-  /** Table captures (test/capture-columns.test.js). */
-  columns: [
-    { create: 'nil', reason: 'a field formula for a column the table lacks: Emacs aborts the capture with "Missing columns in the table.  Aborting"; the app files the row and leaves the table\'s formulas uncomputed' },
-  ],
   /** Column view over inline tasks (test/inlinetask-oracle.test.js). */
   inlineColumns: [
     { reason: 'with org-inlinetask loaded, Emacs reads a property of a task through org-entry-get such that the task\'s END line counts as an entry with the task\'s own value (a parent sums it twice), and a task with no END shows an empty value; the app counts the task once, from its own drawer' },

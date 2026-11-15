@@ -33,6 +33,18 @@ test('org-pwa.info and src/help-nodes.js were made from this README.org (run: no
   assert.equal(crypto.createHash('sha256').update(readme).digest('hex'), README_SHA256);
 });
 
+test('README.org exports to Texinfo as it stands: a title and the Texinfo keywords, tagged source blocks, no heading line inside a block', () => {
+  for (const key of ['TITLE', 'TEXINFO_FILENAME', 'TEXINFO_DIR_CATEGORY', 'TEXINFO_DIR_TITLE', 'TEXINFO_DIR_DESC']) assert.match(readme, new RegExp(`^#\\+${key}: .+`, 'm'), key);
+  assert.doesNotMatch(readme, /^[ \t]*#\+begin_src[ \t]*$/im, 'a #+BEGIN_SRC without a language (Org\'s Texinfo export takes minutes over it)');
+  let block = null;
+  for (const [i, line] of readme.split('\n').entries()) {
+    const begin = /^[ \t]*#\+begin_(\w+)/i.exec(line);
+    if (block === null && begin) block = begin[1].toLowerCase();
+    else if (block !== null && new RegExp(`^[ \\t]*#\\+end_${block}[ \\t]*$`, 'i').test(line)) block = null;
+    else if (block !== null) assert.doesNotMatch(line, /^\*+ /, `line ${i + 1}: a heading line inside a #+BEGIN_${block.toUpperCase()} block needs a comma before it`);
+  }
+});
+
 test('org-pwa.info is a whole Info file with its own directory entry', () => {
   const [group] = groupFiles([{ name: 'org-pwa.info', text: info, encoding: 'utf-8', size: info.length }]);
   assert.equal(group.status, 'ready', group.note);

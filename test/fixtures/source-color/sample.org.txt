@@ -1,0 +1,995 @@
+#+BEGIN_SRC emacs-lisp :var n=3
+(mapcar (lambda (x) (* x n)) '(1 2 3))
+#+END_SRC
+  * Mary Doe
+  :PROPERTIES:
+  :BIRTHDAY: 2000-01-01
+  :ANNIVERSARY: 2015-06-15
+  :SPOUSE: John Doe
+  :END:
+* TODO Plan sprint
+SCHEDULED: <2027-03-15 Mon>
+* DONE Ship release
+CLOSED: [2027-03-16 Tue 08:30]
+SCHEDULED: <2027-03-16 Tue>
+* TODO Write report
+SCHEDULED: <2027-03-17 Wed 10:00>
+* TODO Dentist <2027-03-19 Fri 15:00>
+* TODO Review budget
+SCHEDULED: <2027-03-20 Sat>
+* Website :project:
+** NEXT Draft copy
+* Garden :project:
+** TODO Buy seeds
+#+CATEGORY: home
+* TODO Mow the lawn :garden:
+SCHEDULED: <2027-03-16 Tue>
+* TODO Call the plumber
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+* Projects :work:
+** Plan the year
+* Home
+** Chores
+#    -*- mode: org -*-
+
+
+Archived entries from file /home/me/org/notes.org
+
+
+* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+** Gather receipts
+#+ARCHIVE: ::* Archived Tasks
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+#+ARCHIVE: ::* Archived Tasks
+* Projects :work:
+** Plan the year
+* Home
+** Chores
+
+* Archived Tasks
+
+** TODO [#A] File taxes                                            :work:tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+*** Gather receipts
+#+ARCHIVE: archive.org::* From %s
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+#+ARCHIVE: archive.org::* From %s
+* Projects :work:
+** Plan the year
+* Home
+** Chores
+
+Archived entries from file /home/me/org/notes.org
+
+
+* From notes.org
+
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+*** Gather receipts
+#+ARCHIVE: archive.org::
+* Projects :work:
+** TODO File taxes :tax:
+:PROPERTIES:
+:ARCHIVE: ::* Tax papers
+:END:
+** Plan the year
+#+ARCHIVE: archive.org::
+* Projects :work:
+** Plan the year
+
+* Tax papers
+
+** TODO File taxes                                                 :work:tax:
+:PROPERTIES:
+:ARCHIVE: ::* Tax papers
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+#    -*- mode: org -*-
+
+
+Archived entries from file /home/me/org/notes.org
+
+
+* Home
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_CATEGORY: notes
+:END:
+** Chores
+#+CATEGORY: finance
+#+FILETAGS: :office:
+#+ARCHIVE: ::* Done
+* Projects :work:
+** Q4 :money:work:
+*** TODO Pay :tax:money:
+* Done
+#+CATEGORY: finance
+#+FILETAGS: :office:
+#+ARCHIVE: ::* Done
+* Projects :work:
+** Q4 :money:work:
+* Done
+
+** TODO Pay                                           :office:work:tax:money:
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects/Q4
+:ARCHIVE_CATEGORY: finance
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: office work
+:END:
+#+ARCHIVE: ::* Archived Tasks
+* Home
+** TODO Sweep
+* Archived Tasks
+** DONE Old chore
+body
+#+ARCHIVE: ::* Archived Tasks
+* Home
+* Archived Tasks
+** DONE Old chore
+body
+
+** TODO Sweep
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Home
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:END:
+* Projects :work:
+** TODO Old plan
+body
+** Plan the year
+* Projects :work:
+** TODO Old plan                                                    :ARCHIVE:
+body
+** Plan the year
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+* Projects :work:
+** Plan the year
+* Home
+** Chores
+** TODO [#A] File taxes                                                 :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+* Projects :work:
+** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+** Plan the year
+* Home
+** Chores
+* Inbox
+** Call Pat
+* Later
+* Projects :work:
+** Plan the year
+* Home
+** Chores
+* Inbox
+** Call Pat
+** TODO [#A] File taxes                                                 :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+*** Gather receipts
+* Later
+* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:ARCHIVE_FILE: /home/me/org/notes.org
+:ARCHIVE_OLPATH: Projects
+:ARCHIVE_CATEGORY: notes
+:ARCHIVE_TODO: TODO
+:ARCHIVE_ITAGS: work
+:END:
+See the form.
+** Gather receipts
+* TODO [#A] File taxes                                                  :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+** Gather receipts
+* Taxes :work:
+:PROPERTIES:
+:ID: 7a3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+:END:
+** Form 1040
+** Receipts
+:PROPERTIES:
+:ID: 11223344-5d6f-4a8b-9c0d-1e2f3a4b5c6d
+:END:
+* Trips
+:PROPERTIES:
+:DIR: files/trips
+:END:
+** Packing list
+* Ideas
+* Taxes                                                         :work:ATTACH:
+** Form 1040
+** Receipts
+* Trips
+** Packing list
+* Ideas
+* Taxes                                                         :work:ATTACH:
+** Form 1040
+** Receipts
+* Trips
+** Packing list
+* Ideas
+* Taxes :work:
+** Form 1040
+** Receipts
+* Trips                                                              :ATTACH:
+** Packing list
+* Ideas
+* Taxes                                                         :work:ATTACH:
+** Form 1040
+** Receipts
+* Trips
+** Packing list
+* Ideas
+* Taxes                                                                :work:
+** Form 1040
+** Receipts
+* Trips
+** Packing list
+* Ideas
+#+TITLE: Journal
+#+TITLE: Journal
+* 2026
+** 2026-11 November
+*** 2026-11-07 Saturday
+**** Walked the dog
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+**** Called Mom
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+**** Called Mom
+*** 2026-11-07 Saturday
+**** Walked the dog
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+**** Called Mom
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+**** Walked the dog
+**** Called Mom
+* Journal
+* Archive
+old notes
+* Journal
+** 2026
+*** 2026-11 November
+**** 2026-11-07 Saturday
+***** Walked the dog
+* Archive
+old notes
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+- Called Mom
+* 2026
+** 2026-11 November
+*** 2026-11-05 Thursday
+- Called Mom
+- Bought milk
+#+TITLE: Journal
+#+TITLE: Journal
+* 2025
+** 2025-W01
+*** 2024-12-30 Monday
+**** Walked the dog
+* 2026
+** 2026-11 November
+*** Earlier
+* 2026
+** 2026-11 November
+*** Earlier
+*** Walked the dog
+#+TITLE: Journal
+#+TITLE: Journal
+* 2026
+** 2026-W45
+*** 2026-11-07 Saturday
+**** Walked the dog
+* Inbox
+* Other
+* Inbox
+
+** [[https://orgmode.org/guide/][Org mode compact guide]]
+:PROPERTIES:
+:CREATED: [2026-11-07 Sat 09:30]
+:END:
+  
+  read this later
+
+* Other
+* Inbox
+** Earlier
+* Inbox
+** Earlier
+
+** A fox
+:PROPERTIES:
+:CREATED: [2026-11-07 Sat 09:30]
+:END:
+  The quick brown fox
+  jumps over the lazy dog.
+  
+
+* Lists
+** Shopping
+- Eggs
+* Lists
+** Shopping
+- Eggs
+
+- Milk
+* Lists
+** Errands
+- Pay rent
+* Lists
+** Errands
+- Pay rent
+- Call the plumber
+* Expenses
+|   | Date | What | Amount |
+|---+------+------+--------|
+| 1 | [2026-11-02 Mon 08:10] | Bus | 2.00 |
+#+TBLFM: $1=@#-1
+* Expenses
+|   | Date                   | What   | Amount |
+|---+------------------------+--------+--------|
+| 1 | [2026-11-02 Mon 08:10] | Bus    |   2.00 |
+| 2 | [2026-11-07 Sat 09:30] | Coffee |   3.50 |
+#+TBLFM: $1=@#-1
+* 📔 Journal - journal and diary
+** 2026-10 Oct
+*** 2026-10-30
+- 09:00 - old entry
+* Other
+* 📔 Journal - journal and diary
+** 2026-10 Oct
+*** 2026-10-30
+- 09:00 - old entry
+** 2026-11 Nov
+*** 2026-11-08
+- second
+- 01:19 - first
+* Other
+* 📥 Inbox - unprocessed
+** Meeting Notes
+*** Earlier meeting
+* 📥 Inbox - unprocessed
+** Meeting Notes
+*** Planning                                                        :meeting:
+:PROPERTIES:
+:CREATED: [2026-11-07 Sat 18:30]
+:END:
+**** Attendees
+- 
+**** Notes
+- 
+**** Action Items
+***** TODO [#A] Send the agenda
+*** Earlier meeting
+* 📔 Journal - journal and diary
+** 2026
+*** 2026-11 November
+**** 2026-11-07 Saturday
+- 09:15 - Breakfast
+* 📔 Journal - journal and diary
+** 2026
+*** 2026-11 November
+**** 2026-11-07 Saturday
+- 18:30 - 
+- 09:15 - Breakfast
+* 📔 Journal - journal and diary
+* 📔 Journal - journal and diary
+** 2026
+*** 2026-11 November
+**** 2026-11-07 Saturday
+- 
+* 2025
+** old
+* Other
+* 2025
+** old
+* Other
+* 2026
+** Dentist <2026-11-09 Mon 14:30>
+** Dentist <2026-11-09 Mon 14:30>
+
+* New
+** existing
+* New
+** existing
+** Ann Lee
+BEGIN:VCARD
+VERSION:3.0
+FN:Ann Lee
+N:Lee;Ann;;;
+EMAIL:ann@x.org
+TEL;TYPE=voice:555-1
+ADR;TYPE=home:;;;Troy;NY;;
+END:VCARD
+
+
+* 2026
+** 2026-11 November
+*** 2026-11-07 Saturday
+* 2026
+** 2026-11 November
+*** 2026-11-07 Saturday
+*** 2026-11-09 Monday
+**** 14:30 Call back
+[2026-11-09 Mon 14:30]
+* 2026
+** 2026-11 November
+*** 2026-11-07 Saturday
+* 2026
+** 2026-11 November
+*** 2026-11-07 Saturday
+*** 2026-11-10 Tuesday
+**** 00:00 Pay rent
+[2026-11-10 Tue 00:00]
+* Inbox
+** Earlier
+* Inbox
+** Earlier
+** TODO Water the plants
+:PROPERTIES:
+:CREATED: [2026-11-07 Sat 18:30]
+:END:
+
+* Inbox
+** Earlier
+* Inbox
+** Earlier
+** NEXT Standup with Sam
+* Ideas
+** Earlier idea
+* Other
+* Ideas
+** Earlier idea
+** Try a standing desk
+:PROPERTIES:
+:EFFORT:   1:00
+:END:
+
+Ask facilities first.
+* Other
+* Ideas
+** Earlier idea
+* Other
+* Ideas
+** Learn to juggle
+** Earlier idea
+* Other
+* 🛍️ Bag - lists and notes
+** ❤️ Health
+*** 🏩 Tracking
+*** Other
+* 🛍️ Bag - lists and notes
+** ❤️ Health
+*** 🏩 Tracking
+**** 2026-11
+#+PLOT: title:"Tracking" ind:4 deps:1 with:points ticks:6
+|   |            |      |    |
+|---+------------+------+----|
+| 1 | 2026-11-07 | 1830 | 19 |
+| 2 | 2026-11-07 | 1830 | 19 |
+#+TBLFM: $1=@#-1 :: $4=if(round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60) == 24, 0, round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60))
+**** 2026-10
+#+PLOT: title:"Tracking" ind:4 deps:1 with:points ticks:6
+|   |            |      |   |
+|---+------------+------+---|
+| 1 | 2026-10-31 | 0800 | 8 |
+#+TBLFM: $1=@#-1 :: $4=if(round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60) == 24, 0, round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60))
+*** Other
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+See [cite:@knuth84] and [cite:@knuth84;@lamport94].
+
+* References
+#+PRINT_BIBLIOGRAPHY:
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+[cite/t:@knuth84], [cite/na:@knuth84], [cite/b:@knuth84], [cite/n:@three].
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+Details in [cite:see @knuth84, p. 5] and [cite/t:@lamport94, chapter 2].
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+Prior work: [cite:@three].
+
+#+PRINT_BIBLIOGRAPHY:
+#+CITE_EXPORT: natbib plain
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+See [cite:@knuth84], [cite/t:@lamport94] and [cite/a:@knuth84].
+
+#+PRINT_BIBLIOGRAPHY:
+#+CITE_EXPORT: biblatex
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+See [cite:@knuth84], [cite/t:@lamport94] and [cite/a:@knuth84].
+
+#+PRINT_BIBLIOGRAPHY:
+#+BIBLIOGRAPHY: refs.bib
+* Notes
+By [cite/a:@knuth84].
+* A
+** B
+** C
+** D
+* A
+** B
+* C
+** D
+* A
+** B
+** C
+*** C1
+* A
+** B
+*** C
+**** C1
+* A
+** B
+* C
+** C1
+* D
+* C
+** C1
+* A
+** B
+* D
+* Steps
+1. Mix
+2. Bake
+3. Cool
+* Steps
+1. Mix
+2. Bake
+3. 
+4. Cool
+* Shopping
+- Fruit
+  - apples
+  - pears
+- Bread
+* Shopping
+- Fruit
+- 
+  - apples
+  - pears
+- Bread
+* Terms
+- org :: outliner
+- pwa :: web app
+* Terms
+- org :: outliner
+-  :: 
+- pwa :: web app
+* Packing [0/2]
+- [-] Bag [1/2]
+  - [ ] shirts
+  - [X] shoes
+- [ ] Passport
+* Packing [1/2]
+- [X] Bag [2/2]
+  - [X] shirts
+  - [X] shoes
+- [ ] Passport
+| a | b |
+|---+---|
+| 1 | 2 |
+#+TBLFM: $2=$1*2
+| a |   | b |
+|---+---+---|
+| 1 |   | 2 |
+#+TBLFM: $3=$1*2
+| n | sq |
+|---+----|
+| 1 |  1 |
+| 2 |  4 |
+| 3 |  9 |
+#+TBLFM: @4$2=@3$1*@3$1
+| n | sq |
+|---+----|
+| 2 |  4 |
+| 3 |  9 |
+#+TBLFM: @3$2=@2$1*@2$1
+| Name | Qty |
+|------+-----|
+| ab   |   3 |
+| Name               | Qty |
+|--------------------+-----|
+| a much longer name |   3 |
+#+MACRO: version 1.2
+#+MACRO: greet Hello, $1!
+* Notes
+Release {{{version}}}. {{{greet(world)}}}
+#+MACRO: gnustamp (eval (concat "GNU/" (capitalize $1)))
+#+MACRO: plural (eval (if (equal $1 "1") (concat $1 " file") (concat $1 " files")))
+* Notes
+Running {{{gnustamp(linux)}}} on {{{plural(1)}}}, then {{{plural(3)}}}.
+#+OPTIONS: pri:t
+* TODO [#A] Write the report :work:urgent:
+** DONE Outline
+* Plain heading
+#+OPTIONS: todo:nil pri:t tags:nil
+* TODO [#B] Write the report :work:
+#+OPTIONS: tasks:todo arch:nil d:nil
+* TODO Open
+The meeting runs long.
+:LOGBOOK:
+- Note taken
+:END:
+* DONE Closed
+closed text
+* Old :ARCHIVE:
+hidden
+* Plain
+stays
+* TODO Write the report :work:
+* Read the notes
+* TODO Open task
+* DONE Finished task
+#+LATEX_CLASS: memo
+* To the team
+** Schedule
+We meet on Friday.
+#+CAPTION: Prices
+#+ATTR_LATEX: :align lrr :booktabs t
+| Item | Price | Qty |
+|------+-------+-----|
+| Pen  |  1.50 |   4 |
+| Book | 12.00 |   2 |
+#+CAPTION: A cat
+#+NAME: fig-cat
+#+ATTR_LATEX: :width 0.5\textwidth :placement [h]
+[[file:cat.png]]
+
+See [[fig-cat]].
+#+CAPTION: A cat
+#+NAME: fig:cat
+[[file:cat.png]]
+
+See [[fig:cat]].
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* TODO Call the bank
+SCHEDULED: <2026-10-12 Mon>
+The number is on the card.
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* NEXT Call the bank
+SCHEDULED: <2026-10-12 Mon>
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Waiting for the card
+The number is on the card.
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* TODO Call the bank
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* NEXT Call the bank
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Waiting for the card.
+  Pat said Tuesday.
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* TODO Call the bank
+#+TODO: TODO NEXT(n@) | DONE(d!)
+* NEXT Call the bank
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+#+TODO: TODO NEXT(n/!) | DONE(d)
+* NEXT Call the bank
+#+TODO: TODO NEXT(n/!) | DONE(d)
+* DONE Call the bank
+- State "DONE"       from "NEXT"       [2026-10-11 Sun 16:30]
+#+TODO: TODO NEXT(n@/!) | DONE(d)
+* NEXT Call the bank
+#+TODO: TODO NEXT(n@/!) | DONE(d)
+* TODO Call the bank
+- State "TODO"       from "NEXT"       [2026-10-11 Sun 16:30]
+#+STARTUP: lognotedone
+* TODO Send the form
+SCHEDULED: <2026-10-12 Mon>
+#+STARTUP: lognotedone
+* DONE Send the form
+CLOSED: [2026-10-11 Sun 16:30] SCHEDULED: <2026-10-12 Mon>
+- CLOSING NOTE [2026-10-11 Sun 16:30] \\
+  Mailed it with the receipt.
+#+STARTUP: lognoterepeat
+* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+#+STARTUP: lognoterepeat
+* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30] \\
+  Gave the ferns extra.
+* Taxes
+:PROPERTIES:
+:LOGGING: logdone
+:END:
+** TODO File the form
+* Taxes
+:PROPERTIES:
+:LOGGING: logdone
+:END:
+** DONE File the form
+CLOSED: [2026-10-11 Sun 16:30]
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* Taxes
+:PROPERTIES:
+:LOG_INTO_DRAWER: t
+:END:
+** TODO File the form
+* TODO Call Pat
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* Taxes
+:PROPERTIES:
+:LOG_INTO_DRAWER: t
+:END:
+** NEXT File the form
+:LOGBOOK:
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+:END:
+
+* TODO Call Pat
+#+STARTUP: logdone
+* Taxes
+:PROPERTIES:
+:LOGGING: nil
+:END:
+** TODO File the form
+#+STARTUP: logdone
+* Taxes
+:PROPERTIES:
+:LOGGING: nil
+:END:
+** DONE File the form
+#+TODO: TODO WAITING | DONE
+#+CATEGORY: sample
+* TODO [#A] Buy a computer :shopping:work:
+:PROPERTIES:
+:assignee: Bob
+:END:
+Needs wifi, no ethernet port. Budget 800.
+* WAITING Fix the wifi router :home:urgent:
+:PROPERTIES:
+:assignee: Alice
+:END:
+The vendor's colour chart is wrong. Call on Tuesday.
+* DONE Buy a colour printer :shopping:
+Bought with ethernet and wifi.
+* Plan the quarter :work:
+** TODO [#B] Fix the budget :urgent:
+:PROPERTIES:
+:assignee: Bob
+:END:
+Review the Q4 plan.
+** Colour palette for slides
+Colors are checked.
+* Notes (a) :home:
+Version 2.1 (draft) {final} aa
+- Needs wifi, no ethernet port. Budget 800.
++ Needs Wi-Fi, no ethernet port. Budget 800.
+- * WAITING Fix the wifi router :home:urgent:
++ * WAITING Fix the Wi-Fi router :home:urgent:
+- Bought with ethernet and wifi.
++ Bought with ethernet and Wi-Fi.
+- * WAITING Fix the wifi router :home:urgent:
++ * WAITING Repair the wifi router :home:urgent:
+- ** TODO [#B] Fix the budget :urgent:
++ ** TODO [#B] Repair the budget :urgent:
+- Version 2.1 (draft) {final} aa
++ Version 1.2 (draft) {final} aa
+- The vendor's colour chart is wrong. Call on Tuesday.
++ The vendor's color chart is wrong. Call on Tuesday.
+- * DONE Buy a colour printer :shopping:
++ * DONE Buy a color printer :shopping:
+- ** Colour palette for slides
++ ** Color palette for slides
+- Needs wifi, no ethernet port. Budget 800.
++ Needs wifi, no ethernet port. Plan 800.
+- ** TODO [#B] Fix the budget :urgent:
++ ** TODO [#B] Fix the plan :urgent:
+- Needs wifi, no ethernet port. Budget 800.
++ Needs wifi, no ethernet port. Budget <800>.
+- Review the Q4 plan.
++ Review the Q<4> plan.
+- Version 2.1 (draft) {final} aa
++ Version <2>.<1> (draft) {final} aa
+- Version 2.1 (draft) {final} aa
++ Version 2.1 (draft) {final} a\a
+* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+* TODO Cumulate
+SCHEDULED: <2026-10-05 Mon +1d>
+* TODO Cumulate
+SCHEDULED: <2026-10-06 Tue +1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+* TODO Catch up
+SCHEDULED: <2026-10-05 Mon ++1d>
+* TODO Catch up
+SCHEDULED: <2026-10-12 Mon ++1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+* TODO Restart
+SCHEDULED: <2026-10-05 Mon .+1d>
+* TODO Restart
+SCHEDULED: <2026-10-12 Mon .+1d>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+* TODO Standup <2026-10-05 Mon 09:00-09:15 +1w>
+SCHEDULED: <2026-10-05 Mon>
+DEADLINE: <2026-10-20 Tue +1m -3d>
+* TODO Standup <2026-10-12 Mon 09:00-09:15 +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+DEADLINE: <2026-11-20 Fri +1m -3d>
+#+TODO: TODO NEXT | DONE
+* TODO Review
+SCHEDULED: <2026-10-05 Mon +1d>
+:PROPERTIES:
+:REPEAT_TO_STATE: NEXT
+:END:
+#+TODO: TODO NEXT | DONE
+* NEXT Review
+SCHEDULED: <2026-10-06 Tue +1d>
+:PROPERTIES:
+:REPEAT_TO_STATE: NEXT
+:LAST_REPEAT: [2026-10-11 Sun 16:30]
+:END:
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+#+STARTUP: nologrepeat
+* TODO Water the plants
+SCHEDULED: <2026-10-05 Mon +1w>
+#+STARTUP: nologrepeat
+* TODO Water the plants
+SCHEDULED: <2026-10-12 Mon +1w>
+#+STARTUP: logdone
+* TODO Write the report
+#+STARTUP: logdone
+* DONE Write the report
+CLOSED: [2026-10-11 Sun 16:30]
+#+STARTUP: logdone
+* DONE Write the report
+CLOSED: [2026-10-10 Sat 09:00]
+#+STARTUP: logdone
+* TODO Write the report
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* NEXT Call the bank
+SCHEDULED: <2026-10-12 Mon>
+The number is on the card.
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* DONE Call the bank
+SCHEDULED: <2026-10-12 Mon>
+- State "DONE"       from "NEXT"       [2026-10-11 Sun 16:30]
+The number is on the card.
+#+STARTUP: logdone logdrawer
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* TODO Call the bank
+The number is on the card.
+#+STARTUP: logdone logdrawer
+#+TODO: TODO NEXT(n!) | DONE(d!)
+* NEXT Call the bank
+:LOGBOOK:
+- State "NEXT"       from "TODO"       [2026-10-11 Sun 16:30]
+:END:
+The number is on the card.
+#+TODO: TODO | DONE(d!)
+* TODO Call the bank
+:LOGBOOK:
+CLOCK: [2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30] =>  0:30
+:END:
+#+TODO: TODO | DONE(d!)
+* DONE Call the bank
+- State "DONE"       from "TODO"       [2026-10-11 Sun 16:30]
+:LOGBOOK:
+CLOCK: [2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30] =>  0:30
+:END:

@@ -71,7 +71,7 @@ import { aproposVariableCommand } from './apropos-variable.js';
 import { lintBufferActive, lintKey, orgLintCommand } from './org-lint-flow.js';
 import { listHolidaysCommand } from './holiday-list.js';
 import { recalculateAllTables } from './table-recalc.js';
-import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
+import { chooseTodoWorkflowState, openTodoOrPickWorkflow, updateAllCookies } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
 import { infoCommand, openInfo } from './info-view.js';
 import { openHelp, switchToView } from './views.js';
@@ -666,6 +666,7 @@ export function paletteCommandList() {
     { id: 'effort', label: 'Set effort estimate', orgName: 'org-set-effort', keys: 'C-c C-x e', group: 'Heading', needs: HEAD, run: onHeading(openEffortEditor) },
     { id: 'columns', label: 'Column view', orgName: 'org-columns', keys: 'C-c C-x C-c', group: 'Document', keywords: ['columns', 'colview', 'table', 'properties', 'effort', 'summary'], needs: ['doc'], run: () => openColumnsPanel(false) },
     { id: 'dblock-update', label: 'Update dynamic block', orgName: 'org-dblock-update', keys: 'C-c C-x C-u', group: 'Heading', keywords: ['dynamic block', 'columnview', 'refresh'], needs: HEAD, run: () => updateDynamicBlocksAtFocus() },
+    { id: 'update-statistics-cookies', label: 'Update all statistics cookies', orgName: 'org-update-statistics-cookies', group: 'Document', keywords: ['cookie', 'checkbox', 'progress', 'recount', 'statistics'], needs: ['doc', 'writable'], run: () => updateAllCookies() },
     { id: 'dblock-update-all', label: 'Update all dynamic blocks', orgName: 'org-update-all-dblocks', group: 'Document', keywords: ['dynamic block', 'columnview', 'refresh'], needs: ['doc', 'writable'], run: () => updateAllDynamicBlocks() },
     { id: 'time-stamp', label: 'Insert or replace time stamp', orgName: 'org-time-stamp', keys: 'C-c .', group: 'Document', keywords: ['date', 'timestamp', 'active'], needs: ['doc', 'writable'], run: () => void insertTimeStamp() },
     { id: 'time-stamp-inactive', label: 'Insert or replace inactive time stamp', orgName: 'org-time-stamp-inactive', keys: 'C-c !', group: 'Document', keywords: ['date', 'timestamp', 'inactive'], needs: ['doc', 'writable'], run: () => void insertTimeStamp({ inactive: true }) },

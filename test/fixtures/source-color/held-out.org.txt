@@ -1,0 +1,109 @@
+#+TITLE: Held-out probe
+#+AUTHOR: Ann Lee
+#+DATE: 2026-11-15
+#+OPTIONS: toc:nil num:t
+#+STARTUP: showall
+#+TODO: TODO WAIT(w) | DONE CANCELED(c@)
+* Deep levels
+** Level two
+*** Level three
+**** Level four
+***** Level five
+****** Level six
+******* Level seven
+******** Level eight
+********* Level nine wraps to one
+********** Level ten wraps to two
+* WAIT [#B] Waiting on a reply :mail:
+* CANCELED Dropped idea :old:
+* DONE [#C] Finished with a *bold* title [1/1] :done:
+* TODO Cookies [2/5] and [40%] in the title
+* Plain *bold* and /italic/ and _underline_ and +strike+ and =verbatim= and ~code~
+Text with *bold text*, /italic text/, _under line_, +struck text+, =verb atim=, ~co de~ and a*b*c not emphasis.
+A *bold /italic/ nest* and **not bold** and * spaced * and *a*.
+- Item with *bold* inside
+- [ ] open box
+- [X] done box
+- [-] partial box [1/2]
+  - [ ] child one
+  - [X] child two
+1. First
+2. Second [@5]
+3) Third
+- term :: description with *bold*
++ plus item
+* star item at column zero is a heading
+  * indented star is a list
+Links: [[https://example.org][Example]], [[file:notes.org::*Heading][Notes]], [[#custom-id]], [[Heading name]], and plain https://example.org/path?q=1.
+Angle <https://example.org> and mail <mailto:me@example.org> and bare me@example.org.
+Footnotes[fn:1] and inline[fn:note:text here] and [fn::anonymous].
+Targets <<target>> and radio <<<radio>>> and a reference to target.
+Macros {{{title}}} and {{{keyword(arg)}}} and {{{n(x)}}}.
+Timestamps <2026-11-15 Sun> [2026-11-15 Sun 10:30] <2026-11-15 Sun 10:00-11:00> <2026-11-15 Sun +1w> <2026-11-15 Sun>--<2026-11-16 Mon>.
+Citations [cite:@key1;@key2] and [cite/t:see @key1 p. 4] done.
+LaTeX \alpha and \(x^2\) and $a+b$ and \begin{equation}x\end{equation} in text.
+Inline src_python{print(1)} and call_name(x=1) and a ^superscript and a_{sub}.
+Entities \alpha \to \nbsp and a line break \\
+-----
+# a comment line
+#+begin_comment
+hidden *words*
+#+end_comment
+#+begin_quote
+A quoted *line* with /style/.
+#+end_quote
+#+begin_verse
+Verse line one
+  Verse line two
+#+end_verse
+#+begin_example
+* not a heading
+  plain example text
+#+end_example
+#+begin_center
+Centered text
+#+end_center
+#+begin_export html
+<b>raw</b>
+#+end_export
+#+begin_src python
+def f(x):
+    return x + 1  # comment
+#+end_src
+#+begin_src sh :results output
+echo hi
+#+end_src
+#+begin_src org
+* TODO nested org
+#+end_src
+#+name: tbl
+#+caption: A table caption
+| a | b |
+|---+---|
+| 1 | *bold* |
+| [2026-11-15 Sun] | =v= |
+#+TBLFM: $2=$1*2
+#+results:
+: fixed width line
+: another
+Fixed width above and drawer below.
+:LOGBOOK:
+- State "DONE" from "TODO" [2026-11-15 Sun 10:00]
+CLOCK: [2026-11-15 Sun 09:00]--[2026-11-15 Sun 10:00] =>  1:00
+:END:
+:MYDRAWER:
+drawer content
+:END:
+* TODO Task with properties :tag1:tag2:
+SCHEDULED: <2026-11-16 Mon> DEADLINE: <2026-11-20 Fri>
+:PROPERTIES:
+:ID: 1234
+:CUSTOM_ID: custom
+:Effort: 1:30
+:header-args+: :results silent
+:END:
+#+BEGIN: clocktable :scope file
+#+END:
+%%(org-anniversary 1990 1 1) birthday
+CLOSED: [2026-11-15 Sun 10:00]
+End of the held-out sample.

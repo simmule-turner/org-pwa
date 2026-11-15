@@ -19,13 +19,14 @@
  */
 
 import { insertLogLines } from './todo-transition.js';
+import { logIndent, logbookIndent } from './org-parser.js';
 
 /** How clock lines are written: `into` is `org-clock-into-drawer` (true, false, a drawer name or an integer), `logDrawer` is
  *  `org-log-into-drawer` (the drawer `t` stands for), `removeZero` is `org-clock-out-remove-zero-time-clocks`.
  * @typedef {{ into?: boolean | number | string, logDrawer?: string | null, removeZero?: boolean }} ClockOptions */
 
-const RUNNING_CLOCK_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)\s*$/;
-const COMPLETED_CLOCK_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+):(\d+)\s*$/;
+const RUNNING_CLOCK_RE = /^\s*CLOCK:\s+(\[[^\]]+\]|<[^>]+>)\s*$/;
+const COMPLETED_CLOCK_RE = /^\s*CLOCK:\s+(\[[^\]]+\]|<[^>]+>)--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+):(\d+)\s*$/;
 
 /** Every array of a heading's lines that can hold CLOCK lines, in the order they are written: lines of other drawers before the
  *  :LOGBOOK: drawer, the :LOGBOOK: drawer itself, then the body.
@@ -91,7 +92,7 @@ function clockIn(heading, timestamp, options = {}) {
   // no such drawer yet: it is made, and the clock lines already in the entry move into it with the new one (the older ones in
   // reverse order, as Emacs leaves them); a :LOGBOOK: drawer emptied by that stays, empty
   const hadLogbook = heading.logbookLines.length > 0;
-  const old = takeClockLines(heading).reverse();
+  const old = takeClockLines(heading).reverse().map((l) => l.trimStart()); // insertLogLines indents them with the new one
   insertLogLines(heading, [line, ...old], target, false);
   if (hadLogbook && heading.logbookLines.length === 0 && target.toUpperCase() !== 'LOGBOOK') heading.bodyLines.splice(old.length + 3, 0, ':LOGBOOK:', ':END:');
   return true;
@@ -100,15 +101,17 @@ function clockIn(heading, timestamp, options = {}) {
 /** Puts `lines` at the top of drawer `name` when the entry has it (in any case): the :LOGBOOK: lines, or a drawer among the body lines.
  * @param {Heading} heading @param {string} name @param {string[]} lines @returns {boolean} */
 function insertIntoDrawer(heading, name, lines) {
+  const margin = (/** @type {string} */ l) => (/^\s*/.exec(l) || [''])[0];
+  const indented = (/** @type {string} */ indent) => lines.map((l) => indent + l);
   if (name.toUpperCase() === 'LOGBOOK' && heading.logbookLines.length > 0) {
-    heading.logbookLines.splice(0, 0, ...lines);
+    heading.logbookLines.splice(0, 0, ...indented(logbookIndent(heading)));
     return true;
   }
   const isOpen = (/** @type {string} */ l) => l.trim().toLowerCase() === `:${name.toLowerCase()}:`;
   for (const arr of [heading.preLogLines || [], heading.bodyLines]) {
     const open = arr.findIndex(isOpen);
     if (open >= 0) {
-      arr.splice(open + 1, 0, ...lines);
+      arr.splice(open + 1, 0, ...indented(margin(arr[open])));
       return true;
     }
   }
@@ -138,7 +141,7 @@ function takeClockLines(heading) {
   const taken = [];
   for (const lines of clockLineArrays(heading)) {
     for (let i = 0; i < lines.length; ) {
-      if (/^CLOCK:/.test(lines[i])) taken.push(...lines.splice(i, 1));
+      if (/^\s*CLOCK:/.test(lines[i])) taken.push(...lines.splice(i, 1));
       else i++;
     }
   }
@@ -149,14 +152,17 @@ function takeClockLines(heading) {
  * @param {Heading} heading @param {string} line */
 function insertBareClock(heading, line) {
   for (const lines of clockLineArrays(heading)) {
-    const first = lines.findIndex((l) => /^CLOCK:/.test(l));
+    const first = lines.findIndex((l) => /^\s*CLOCK:/.test(l));
     if (first >= 0) {
-      lines.splice(first, 0, line);
+      // like the element above it, or at the top of the entry or drawer like a log item
+      const above = first > 0 && lines[first - 1].trim() ? (/^\s*/.exec(lines[first - 1]) || [''])[0] : lines === heading.logbookLines ? logbookIndent(heading) : logIndent(heading);
+      lines.splice(first, 0, above + line);
       return;
     }
   }
-  if (heading.logbookLines.length > 0) heading.preLogLines = [line, ...(heading.preLogLines || [])];
-  else heading.bodyLines.splice(0, 0, line);
+  const indented = logIndent(heading) + line;
+  if (heading.logbookLines.length > 0) heading.preLogLines = [indented, ...(heading.preLogLines || [])];
+  else heading.bodyLines.splice(0, 0, indented);
 }
 
 /** Stops `heading`'s currently-running clock: replaces its bare
@@ -192,7 +198,8 @@ function clockOut(heading, endTimestamp, endDate, options = {}) {
     return true;
   }
   // Emacs writes the duration as "=> " and the hours in two columns: "=>  2:05", "=> 24:00", "=> 100:00"
-  at.lines[at.idx] = `CLOCK: ${startRaw}--${endTimestamp} => ${formatClockDuration(minutes).padStart(5, ' ')}`;
+  const margin = (/^\s*/.exec(at.lines[at.idx]) || [''])[0];
+  at.lines[at.idx] = `${margin}CLOCK: ${startRaw}--${endTimestamp} => ${formatClockDuration(minutes).padStart(5, ' ')}`;
   return true;
 }
 
@@ -237,7 +244,7 @@ function parseClockDuration(raw) {
 /** The CLOCK lines of a heading: those in its :LOGBOOK: drawer and those written without a drawer (Emacs with `org-clock-into-drawer` nil).
  * @param {Heading} heading */
 function allClockLines(heading) {
-  const clocks = (/** @type {string[] | undefined} */ lines) => (lines || []).filter((l) => /^CLOCK:/.test(l));
+  const clocks = (/** @type {string[] | undefined} */ lines) => (lines || []).filter((l) => /^\s*CLOCK:/.test(l));
   return [...clocks(heading.logbookLines), ...clocks(heading.preLogLines), ...clocks(heading.bodyLines)];
 }
 
@@ -280,6 +287,17 @@ function totalClockedMinutes(heading, now = new Date()) {
   for (const child of heading.children || []) {
     total += totalClockedMinutes(child, now);
   }
+  return total;
+}
+
+/**
+ * Minutes of the completed CLOCK lines of the heading and everything under it: what `org-clock-sum` stores in `:org-clock-minutes`
+ * (a running clock is not counted here; `totalClockedMinutes` counts it).
+ * @param {Heading} heading @returns {number}
+ */
+function clockSumMinutes(heading) {
+  let total = ownClockedMinutes(heading);
+  for (const child of heading.children || []) total += clockSumMinutes(child);
   return total;
 }
 
@@ -475,6 +493,7 @@ export {
   formatClockDuration,
   parseClockDuration,
   totalClockedMinutes,
+  clockSumMinutes,
   currentClockSessionMinutes,
   findHeadingWithRunningClock,
   findMostRecentlyClockedHeading,

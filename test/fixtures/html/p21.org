@@ -1,0 +1,9 @@
+#+TITLE: Probe numbers
+#+OPTIONS: toc:nil
+* Number columns
+A column that is mostly numbers is right-aligned, radix and hex numbers included.
+
+| a     | b    | c     |
+|-------+------+-------|
+| 8#17  | 0x1F | -0x10 |
+| 16    | 2    | text  |

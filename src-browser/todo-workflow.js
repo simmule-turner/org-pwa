@@ -3,7 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: todo workflow.
 import { computeNonCollidingKeys } from '../src/capture-template.js';
-import { updateTodoCookiesUpward } from '../src/checkbox-cookie.js';
+import { updateAllStatisticsCookies, updateTodoCookiesUpward } from '../src/checkbox-cookie.js';
 import { getClosedKeepWhenNoTodo, getEnforceTodoCheckboxDependencies, getEnforceTodoDependencies, parseLocalVariables } from '../src/local-variables.js';
 import { blockedBy, blockedMessage } from '../src/todo-blocking.js';
 import { findAncestorPath } from '../src/archive-model.js';
@@ -95,6 +95,16 @@ export function applyTodoTransition(heading, performChange, options = {}) {
   updateTodoCookiesUpward(S.state.doc, heading, sequence.doneKeywords);
   if (fromTodo !== heading.todo) emitExtensionEvent('todo-change', { heading, from: fromTodo || null, to: heading.todo || null });
   return true;
+}
+
+/** org-update-statistics-cookies with a prefix argument: every [n/m] and [n%] cookie of the file counted again. */
+export function updateAllCookies() {
+  const done = resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT).flatMap((s) => s.doneKeywords);
+  if (!updateAllStatisticsCookies(S.state.doc, done)) {
+    setStatus('All statistics cookies are up to date.');
+    return;
+  }
+  commitAndRender('Statistics cookies updated');
 }
 
 /** Shows a small dedicated panel for taking (or skipping) the log note

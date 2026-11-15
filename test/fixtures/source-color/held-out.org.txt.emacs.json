@@ -1,0 +1,1286 @@
+{
+ "lang": "org",
+ "mode": "org-mode",
+ "runs": [
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Held-out probe\n",
+   "org-document-title"
+  ],
+  [
+   "#+AUTHOR:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Ann Lee\n",
+   "org-document-info"
+  ],
+  [
+   "#+DATE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-11-15\n",
+   "org-document-info"
+  ],
+  [
+   "#+OPTIONS: toc:nil num:t",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: showall",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO WAIT(w) | DONE CANCELED(c@)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Deep levels",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Level two",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Level three",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Level four",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "***** Level five",
+   "org-level-5"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "****** Level six",
+   "org-level-6"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "******* Level seven",
+   "org-level-7"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "******** Level eight",
+   "org-level-8"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "********* Level nine wraps to one",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "********** Level ten wraps to two",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "WAIT",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#B]",
+   "org-priority"
+  ],
+  [
+   " Waiting on a reply ",
+   "org-level-1"
+  ],
+  [
+   ":mail:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "CANCELED",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Dropped idea ",
+   "org-headline-done"
+  ],
+  [
+   ":old:",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#C]",
+   "org-priority"
+  ],
+  [
+   " Finished with a ",
+   "org-headline-done"
+  ],
+  [
+   "*bold*",
+   "bold"
+  ],
+  [
+   " title ",
+   "org-headline-done"
+  ],
+  [
+   "[1/1]",
+   "org-checkbox-statistics-done"
+  ],
+  [
+   " ",
+   "org-headline-done"
+  ],
+  [
+   ":done:",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Cookies ",
+   "org-level-1"
+  ],
+  [
+   "[2/5]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "[40%]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   " in the title",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Plain ",
+   "org-level-1"
+  ],
+  [
+   "*bold*",
+   "bold"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "/italic/",
+   "italic"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "_underline_",
+   "underline"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "+strike+",
+   "strike-through"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "=verbatim=",
+   "org-verbatim"
+  ],
+  [
+   " and ",
+   "org-level-1"
+  ],
+  [
+   "~code~",
+   "org-code"
+  ],
+  [
+   "\nText with ",
+   null
+  ],
+  [
+   "*bold text*",
+   "bold"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "/italic text/",
+   "italic"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "_under line_",
+   "underline"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "+struck text+",
+   "strike-through"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "=verb atim=",
+   "org-verbatim"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "~co de~",
+   "org-code"
+  ],
+  [
+   " and a*b*c not emphasis.\nA ",
+   null
+  ],
+  [
+   "*bold ",
+   "bold"
+  ],
+  [
+   "/italic/",
+   "italic"
+  ],
+  [
+   " nest*",
+   "bold"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "**not bold**",
+   "bold"
+  ],
+  [
+   " and * spaced * and ",
+   null
+  ],
+  [
+   "*a*",
+   "bold"
+  ],
+  [
+   ".\n- Item with ",
+   null
+  ],
+  [
+   "*bold*",
+   "bold"
+  ],
+  [
+   " inside\n- ",
+   null
+  ],
+  [
+   "[ ]",
+   "org-checkbox"
+  ],
+  [
+   " open box\n- ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " done box\n- ",
+   null
+  ],
+  [
+   "[-]",
+   "org-checkbox"
+  ],
+  [
+   " partial box ",
+   null
+  ],
+  [
+   "[1/2]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   "\n  - ",
+   null
+  ],
+  [
+   "[ ]",
+   "org-checkbox"
+  ],
+  [
+   " child one\n  - ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " child two\n1. First\n2. Second [@5]\n3) Third\n- ",
+   null
+  ],
+  [
+   "term ::",
+   "org-list-dt"
+  ],
+  [
+   " description with ",
+   null
+  ],
+  [
+   "*bold*",
+   "bold"
+  ],
+  [
+   "\n+ plus item\n",
+   null
+  ],
+  [
+   "* star item at column zero is a heading",
+   "org-level-1"
+  ],
+  [
+   "\n  * indented star is a list\nLinks: ",
+   null
+  ],
+  [
+   "[[https://example.org][Example]]",
+   "org-link"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[[file:notes.org::*Heading][Notes]]",
+   "org-link"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[[#custom-id]]",
+   "org-link"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[[Heading name]]",
+   "org-link"
+  ],
+  [
+   ", and plain ",
+   null
+  ],
+  [
+   "https://example.org/path?q=1",
+   "org-link"
+  ],
+  [
+   ".\nAngle ",
+   null
+  ],
+  [
+   "<https://example.org>",
+   "org-link"
+  ],
+  [
+   " and mail ",
+   null
+  ],
+  [
+   "<mailto:me@example.org>",
+   "org-link"
+  ],
+  [
+   " and bare me@example.org.\nFootnotes",
+   null
+  ],
+  [
+   "[fn:1]",
+   "org-footnote"
+  ],
+  [
+   " and inline",
+   null
+  ],
+  [
+   "[fn:note:text here]",
+   "org-footnote"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[fn::anonymous]",
+   "org-footnote"
+  ],
+  [
+   ".\nTargets ",
+   null
+  ],
+  [
+   "<<target>>",
+   "org-target"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "radio",
+   "org-link"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<<<radio>>>",
+   "org-target"
+  ],
+  [
+   " and a reference to target.\nMacros ",
+   null
+  ],
+  [
+   "{{{title}}}",
+   "org-macro"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "{{{keyword(arg)}}}",
+   "org-macro"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "{{{n(x)}}}",
+   "org-macro"
+  ],
+  [
+   ".\nTimestamps ",
+   null
+  ],
+  [
+   "<2026-11-15 Sun>",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-15 Sun 10:30]",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-15 Sun 10:00-11:00>",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-15 Sun +1w>",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-15 Sun>--<2026-11-16 Mon>",
+   "org-date"
+  ],
+  [
+   ".\nCitations ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@key1",
+   "error"
+  ],
+  [
+   ";",
+   "org-cite"
+  ],
+  [
+   "@key2",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[cite/t:see ",
+   "org-cite"
+  ],
+  [
+   "@key1",
+   "error"
+  ],
+  [
+   " p. 4]",
+   "org-cite"
+  ],
+  [
+   " done.\nLaTeX \\alpha and \\(x^2\\) and $a+b$ and \\begin{equation}x\\end{equation} in text.\nInline ",
+   null
+  ],
+  [
+   "src_",
+   "shadow"
+  ],
+  [
+   "python",
+   "org-meta-line"
+  ],
+  [
+   "{",
+   "org-inline-src-block"
+  ],
+  [
+   "print",
+   "builtin"
+  ],
+  [
+   "(1)",
+   "org-block"
+  ],
+  [
+   "}",
+   "org-inline-src-block"
+  ],
+  [
+   " and call_name(x=1) and a ^superscript and a_{sub}.\nEntities \\alpha \\to \\nbsp and a line break \\\\\n-----\n",
+   null
+  ],
+  [
+   "# a comment line",
+   "comment"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+begin_comment\n",
+   "org-block-begin-line"
+  ],
+  [
+   "hidden ",
+   null
+  ],
+  [
+   "*words*",
+   "bold"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+end_comment\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_quote\n",
+   "org-block-begin-line"
+  ],
+  [
+   "A quoted ",
+   null
+  ],
+  [
+   "*line*",
+   "bold"
+  ],
+  [
+   " with ",
+   null
+  ],
+  [
+   "/style/",
+   "italic"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+end_quote\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_verse\n",
+   "org-block-begin-line"
+  ],
+  [
+   "Verse line one\n  Verse line two\n",
+   null
+  ],
+  [
+   "#+end_verse\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_example\n",
+   "org-block-begin-line"
+  ],
+  [
+   "* not a heading",
+   "org-level-1"
+  ],
+  [
+   "\n  plain example text\n",
+   null
+  ],
+  [
+   "#+end_example",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+begin_center\n",
+   "org-block-begin-line"
+  ],
+  [
+   "Centered text\n",
+   null
+  ],
+  [
+   "#+end_center\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_export html\n",
+   "org-block-begin-line"
+  ],
+  [
+   "<",
+   "org-block"
+  ],
+  [
+   "b",
+   "function-name"
+  ],
+  [
+   ">",
+   "org-block"
+  ],
+  [
+   "raw",
+   "bold"
+  ],
+  [
+   "</",
+   "org-block"
+  ],
+  [
+   "b",
+   "function-name"
+  ],
+  [
+   ">\n",
+   "org-block"
+  ],
+  [
+   "#+end_export\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_src python\n",
+   "org-block-begin-line"
+  ],
+  [
+   "def",
+   "keyword"
+  ],
+  [
+   " ",
+   "org-block"
+  ],
+  [
+   "f",
+   "function-name"
+  ],
+  [
+   "(x):\n    ",
+   "org-block"
+  ],
+  [
+   "return",
+   "keyword"
+  ],
+  [
+   " x ",
+   "org-block"
+  ],
+  [
+   "+",
+   "operator"
+  ],
+  [
+   " 1  ",
+   "org-block"
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "comment\n",
+   "comment"
+  ],
+  [
+   "#+end_src\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_src sh :results output\n",
+   "org-block-begin-line"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " hi\n",
+   "org-block"
+  ],
+  [
+   "#+end_src\n",
+   "org-block-end-line"
+  ],
+  [
+   "#+begin_src org\n",
+   "org-block-begin-line"
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " nested org",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+end_src",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+name: tbl",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+caption:",
+   "org-meta-line"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "A table caption",
+   "org-block"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| a | b |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+---|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | ",
+   "org-table"
+  ],
+  [
+   "*bold*",
+   "bold"
+  ],
+  [
+   " |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| ",
+   "org-table"
+  ],
+  [
+   "[2026-11-15 Sun]",
+   "org-date"
+  ],
+  [
+   " | ",
+   "org-table"
+  ],
+  [
+   "=v=",
+   "org-verbatim"
+  ],
+  [
+   " ",
+   "org-formula"
+  ],
+  [
+   "|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $2=$1*2",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+results:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ": fixed width line\n: another\n",
+   "org-code"
+  ],
+  [
+   "Fixed width above and drawer below.\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\" from \"TODO\" ",
+   null
+  ],
+  [
+   "[2026-11-15 Sun 10:00]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOCK:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-15 Sun 09:00]--[2026-11-15 Sun 10:00]",
+   "org-date"
+  ],
+  [
+   " =>  1:00\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":MYDRAWER:",
+   "org-drawer"
+  ],
+  [
+   "\ndrawer content\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Task with properties ",
+   "org-level-1"
+  ],
+  [
+   ":tag1:tag2:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-16 Mon>",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "DEADLINE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-20 Fri>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ID:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "1234",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":CUSTOM_ID:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "custom",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":Effort:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "1:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":header-args+:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   ":results silent",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BEGIN: clocktable :scope file",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+END:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "%%(org-anniversary 1990 1 1) birthday",
+   "org-sexp-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-15 Sun 10:00]",
+   "org-date"
+  ],
+  [
+   "\nEnd of the held-out sample.\n",
+   null
+  ]
+ ]
+}

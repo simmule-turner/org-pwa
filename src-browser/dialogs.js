@@ -14,6 +14,7 @@ import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
 import { render } from './render.js';
+import { typedDateRow } from './typed-date.js';
 import { fieldRow, keepOverlayInVisibleViewport, menuButton, modalFieldRow, modalOverlayCleanups, tableActionButton, textInputStyle } from './ui-widgets.js';
 
 /** Same explicit sizing as wizardButton (needed outside a .panel-
@@ -265,6 +266,7 @@ export function openTimestampPickerPopup(kind) {
       endNote.style.cssText = 'font-size:12px;color:var(--danger,#c0392b);min-height:0;';
       modal.appendChild(endNote);
     }
+    modal.appendChild(typedDateRow(dateInput, timeInput, endInput));
 
     const buttonRow = document.createElement('div');
     buttonRow.className = 'panel-row';

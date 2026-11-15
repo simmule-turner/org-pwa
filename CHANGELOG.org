@@ -7,6 +7,22 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v710 — Export settings, blank lines before new entries, date boxes
+Settings has an Export section: headline levels, table of contents, numbering, author, date, tags, TODO keywords, timestamps, smart quotes and the other common export variables. org-blank-before-new-entry (t, nil or auto, for headings and list items) is read from Global Variables. The clock report range and the diary date sheet take typed dates (+1w, fri). A capture whose table formula needs a missing column stops with Emacs's message and leaves the row. The palette can update all statistics cookies.
+Verified: Emacs 29.3 comparisons for the blank-line settings and the capture stop.
+
+* v709 — Shell and HTML coloring, #+INCLUDE, indented log lines
+Source in sh and HTML blocks is colored as Emacs's sh-mode and html-mode color it, at top level and inside an org block; #+INCLUDE lines read the file, lines range, :only-contents, src and example forms as Emacs exports them. Under org-adapt-indentation t, state changes, notes and CLOCK lines are written indented, and indented CLOCK lines are now found when you clock out. Sort adds type k (clocked time).
+Verified: Emacs 29.3 face-by-face on shell and HTML samples, include cases, and log and clock lines under indentation.
+
+* v708 — Closer to Emacs in exports, date prompts, formulas and Babel
+The date pickers take typed dates (+1w, fri, 12, 14:30-15:30) as Emacs's prompt reads them. Formulas read timestamps, typeof of fractions, infinities and dates, nan maxima, #+CONSTANTS: inside headings and $PROP_ITEM, TODO, DEADLINE and the other special properties. New Babel results get a blank line before the headline below, and every block run asks before it evaluates, as Emacs does. LaTeX, ASCII and the receiver-error position match Emacs; drawers and dynamic blocks were checked against it.
+Verified: Emacs 29.3 comparisons for each case above, 10 new Babel cases, 4 drawer fixtures.
+
+* v707 — Org source coloring, translated export labels, and Babel fixes
+Org source blocks are colored as Emacs colors them, in HTML and in ODT, so a README or notes file looks the same as in Emacs. Export labels follow #+LANGUAGE: Table, Figure, Listing and the table of contents come out in your language, in HTML and ODT. Babel blocks ignore trailing text after the first Lisp form and honor :file-desc as Emacs does, and cl-concatenate and cl-map work. A source block needs its own #+END_ and a * line inside one needs a comma, as in Emacs; the README and examples follow it.
+Verified: Emacs 29.3 comparisons for the Org coloring, 19 more HTML fixtures, ODT labels in three languages and 40 Babel cases.
+
 * v706 — Info paragraphs, a steady Find sheet, and an index
 Info pages reflow their paragraphs to the screen on narrow displays, so the manual no longer wraps twice; the new Info Paragraphs setting chooses Narrow screens, Always or Never. The Find sheet no longer jumps as results change or as you switch between Find and Go to. Index now works in the built-in manual, with an entry for every heading and every setting, and it narrows as you type.
 Verified: smoke checks of the Index, the Find sheet's stability and the Info Paragraphs setting.

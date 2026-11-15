@@ -5703,7 +5703,7 @@ check('settings page order: six categories in order; Sync and storage lists GitH
   expect(foot, 'the update check sits at the foot of the Settings list, below the last category');
   await settingsCategory(page, 'appearance');
   const appearance = await page.evaluate(() => [...document.querySelectorAll('[data-settings-page] .panel-section-title')].map((t) => t.textContent));
-  expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
+  expect(JSON.stringify(appearance) === JSON.stringify(['Appearance', 'Font', 'Font Size', 'Paragraph Spacing', 'Reading Width', 'Menu Size', 'Info Paragraphs']), `Paragraph Spacing follows Font Size: ${JSON.stringify(appearance)}`);
   await page.locator('[data-settings-back]').click();
   await settingsCategory(page, 'sync');
   const disabled = await page.evaluate(() => {

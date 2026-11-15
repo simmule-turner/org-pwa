@@ -268,24 +268,36 @@ test('findHeadingLineNumber works correctly across multiple siblings with varied
 // #+BEGIN_.../#+END_... block was being incorrectly split off as a real
 // heading, with zero awareness of block context -----------------------
 
-test('a line starting with "*" inside a #+BEGIN_SRC block is NOT treated as a heading', () => {
-  const doc = parseOrg('* Real heading\n#+BEGIN_SRC org\n* Example heading shown as literal text\n#+END_SRC\n');
+test('a comma-escaped "*" line inside a #+BEGIN_SRC block is not a heading', () => {
+  const doc = parseOrg('* Real heading\n#+BEGIN_SRC org\n,* Example heading shown as literal text\n#+END_SRC\n');
   assert.equal(doc.children.length, 1, 'only the one real heading should exist');
   assert.equal(doc.children[0].title, 'Real heading');
-  assert.ok(doc.children[0].bodyLines.some((l) => l === '* Example heading shown as literal text'));
+  assert.ok(doc.children[0].bodyLines.some((l) => l === ',* Example heading shown as literal text'));
 });
 
-test('multiple "*"-prefixed lines inside a block all stay literal, not split into several fake headings', () => {
-  const doc = parseOrg('* Real heading\n#+BEGIN_EXAMPLE\n* one\n** two\n*** three\n#+END_EXAMPLE\n');
+test('as in Org, a "*" line ends the section, so a block that holds one is not a block and the line is a heading', () => {
+  const doc = parseOrg('* Real heading\n#+BEGIN_SRC org\n* Example heading\n#+END_SRC\n');
+  assert.equal(doc.children.length, 2);
+  assert.equal(doc.children[1].title, 'Example heading');
+  assert.deepEqual(doc.children[0].bodyLines, ['#+BEGIN_SRC org']);
+});
+
+test('multiple comma-escaped "*" lines inside a block all stay literal', () => {
+  const doc = parseOrg('* Real heading\n#+BEGIN_EXAMPLE\n,* one\n,** two\n,*** three\n#+END_EXAMPLE\n');
   assert.equal(doc.children.length, 1);
-  assert.equal(doc.children[0].bodyLines.filter((l) => l.trim().length > 0).length, 5); // BEGIN + 3 stars lines + END
+  assert.equal(doc.children[0].bodyLines.filter((l) => l.trim().length > 0).length, 5); // BEGIN + 3 star lines + END
 });
 
 test('heading detection resumes correctly for a real heading right after a block closes', () => {
-  const doc = parseOrg('* First\n#+BEGIN_SRC text\n* not a heading\n#+END_SRC\n* Second\n');
+  const doc = parseOrg('* First\n#+BEGIN_SRC text\n,* not a heading\n#+END_SRC\n* Second\n');
   assert.equal(doc.children.length, 2);
   assert.equal(doc.children[0].title, 'First');
   assert.equal(doc.children[1].title, 'Second');
+});
+
+test('a block needs its own #+END_ line: an #+END_ of another kind does not close it', () => {
+  const doc = parseOrg('* A\n#+BEGIN_SRC text\n#+END_EXAMPLE\n* B\n');
+  assert.equal(doc.children.length, 2);
 });
 
 test('an unclosed block (missing #+END_) does not leak inBlock state and swallow the rest of the document as literal text forever -- still round-trips safely even if imperfectly', () => {

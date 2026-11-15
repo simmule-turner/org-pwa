@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v706';
+const CACHE_NAME = 'org-pwa-shell-v710';
 
 const SHELL_FILES = [
   './',
@@ -50,7 +50,6 @@ const SHELL_FILES = [
   './src/calendar-lisp.js',
   './src/babel-elisp.js',
   './src/babel-ref.js',
-  './src/babel-trust.js',
   './src/babel-ops.js',
   './src/babel-lob.js',
   './src/babel-options.js',
@@ -213,6 +212,7 @@ const SHELL_FILES = [
   './src/heading-edit.js',
   './src/indent-fixup.js',
   './src/indent-settings.js',
+  './src/blank-before-entry.js',
   './src/outline-sort.js',
   './src/todo-blocking.js',
   './src/tags-column.js',
@@ -283,6 +283,13 @@ const SHELL_FILES = [
   './src/syntax-highlight.js',
   './src/agenda-buffer.js',
   './src/source-color.js',
+  './src/source-paint.js',
+  './src/typed-date-fields.js',
+  './src/special-properties.js',
+  './src-browser/typed-date.js',
+  './src/source-color-org.js',
+  './src/source-color-sh.js',
+  './src/source-color-html.js',
   './src/source-color-data.js',
   './src/export-html.js',
   './src/verbatim-spans.js',

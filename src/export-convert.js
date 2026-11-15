@@ -10,6 +10,7 @@ import { defun, state } from './elisp-core.js';
 import { collapseHeader, tableTextToLisp, tableToGeneric } from './export-convert-table.js';
 import { listToGeneric, listToLisp, listToOrg, listToSubtree } from './export-convert-list.js';
 import { combine, pget, plistOf, text } from './export-convert-lisp.js';
+import { blankBeforeNew } from './blank-before-entry.js';
 
 /** @typedef {import('./elisp-data.js').LObj} LObj */
 
@@ -108,7 +109,7 @@ defun('org-list-to-subtree', 1, 3, ([l, level = NIL, params = NIL]) => {
   const lines = b.text.slice(0, b.pt - 1).split('\n');
   let h = lines.length - 1;
   while (h >= 0 && !/^\*+ /.test(lines[h])) h--;
-  const blank = h <= 0 ? true : lines[h - 1].trim() === '';
+  const blank = blankBeforeNew('heading', () => (h <= 0 ? true : lines[h - 1].trim() === ''));
   return listToSubtree(l, level, params, blank, odd !== undefined && odd !== NIL);
 });
 

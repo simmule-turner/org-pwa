@@ -7,6 +7,8 @@
  * count), and a checkbox with checkbox sub-items shows what they add up to.
  */
 
+import { blankSetting } from './blank-before-entry.js';
+
 /** The blocks whose lines Org keeps as plain text; a list can stand inside the others (quote, center, special). */
 const RAW_BEGIN_RE = /^[ \t]*#\+begin_(?:src|example|export|comment|verse)\b/i;
 const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:([ \t]+)|$)/;
@@ -312,6 +314,8 @@ export function listKind(lines, line) {
  * @param {string[]} lines @param {number} line
  */
 export function separatingBlankLines(lines, line) {
+  const setting = blankSetting('item');
+  if (setting !== 'auto') return setting === 't' ? 1 : 0;
   const found = listAt(lines, line);
   if (!found) return 0;
   const { items } = found.list;

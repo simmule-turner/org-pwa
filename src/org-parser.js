@@ -84,7 +84,6 @@ const PRIORITY_RE = /^ *\[#(.)\](?:\s+|$)/; // as org-heading-components reads i
 
 const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])([ \t]*)/g;
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
-const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
 /** @param {string} line */
 function parsePlanningLine(line) {
@@ -251,12 +250,14 @@ function parseOrg(text, opts = {}) {
   const stack = [{ node: doc, level: 0 }];
   let i = 0;
   let inBlock = false; // true while between a #+BEGIN_.../#+END_... pair -- content in that range is literal, never re-parsed as a heading even if it starts with '*'
+  /** @type {RegExp | null} the #+END_ line of the block being read: a block needs its own end before the next heading, as in Org, or its #+BEGIN_ line is only text */
+  let blockEnd = null;
 
   while (i < lines.length) {
     const line = lines[i];
 
     if (inBlock) {
-      if (BLOCK_END_RE.test(line)) inBlock = false;
+      if (blockEnd?.test(line)) inBlock = false;
       const current = stack[stack.length - 1].node;
       current.bodyLines.push(line);
       i++;
@@ -389,7 +390,17 @@ function parseOrg(text, opts = {}) {
       }
     }
     current.bodyLines.push(line);
-    if (BLOCK_START_RE.test(line)) inBlock = true;
+    const blockStart = BLOCK_START_RE.exec(line);
+    if (blockStart) {
+      const end = new RegExp(`^[ \\t]*#\\+end_${blockStart[1]}[ \\t]*$`, 'i');
+      for (let j = i + 1; j < lines.length && !HEADING_RE.test(lines[j]); j++) {
+        if (end.test(lines[j])) {
+          inBlock = true;
+          blockEnd = end;
+          break;
+        }
+      }
+    }
     i++;
   }
 
@@ -523,9 +534,34 @@ function headingPreambleLines(node) {
     const keep = (/** @type {string} */ type) => /** @type {import('./types.js').HeadingRaw} */ (raw).drawers.filter((d) => d.type === type).flatMap((d) => d.lines);
     lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node, planningLine)));
     lines.push(...(logUnchanged ? keep('prelog') : node.preLogLines || []));
-    lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node, planningLine)));
+    // a drawer made now lines up with the element above it: the properties drawer, else the planning line
+    const above = lines.slice(1).find((l) => /^\s*:PROPERTIES:\s*$/i.test(l)) ?? planningLine;
+    lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node, above)));
   }
   return lines;
+}
+
+const PLANNING_LINE = /^\s*(?:SCHEDULED|DEADLINE|CLOSED):/;
+
+/** The indentation Org gives a log item or clock line written at the top of an entry: that of the element above it (the properties drawer, else the
+ * planning line), and under a heading alone `org-adapt-indentation` t or headline-data indents it to the level plus one.
+ * @param {Heading} node */
+function logIndent(node) {
+  const lines = headingPreambleLines(node);
+  const props = lines.find((l, i) => i > 0 && /^\s*:PROPERTIES:\s*$/i.test(l));
+  if (props !== undefined) return leadingSpace(props);
+  if (lines.length > 1 && PLANNING_LINE.test(lines[1])) return leadingSpace(lines[1]);
+  return adaptedIndent(node);
+}
+
+/** The indentation of the :LOGBOOK: drawer of `node`, as it is or as it will be written when it is made; log items inside it line up with it.
+ * @param {Heading} node */
+function logbookIndent(node) {
+  const first = node.raw && node.raw.drawers.find((d) => d.type === 'logbook');
+  if (first) return leadingSpace(first.lines[0]);
+  const lines = headingPreambleLines(node);
+  const above = lines.slice(1).find((l) => /^\s*:PROPERTIES:\s*$/i.test(l)) ?? (lines.length > 1 && PLANNING_LINE.test(lines[1]) ? lines[1] : null);
+  return drawerIndent(node, above);
 }
 
 /**
@@ -677,6 +713,8 @@ export {
   serializeHeadingSubtree,
   serializeHeadingLine,
   headingPreambleLines,
+  logIndent,
+  logbookIndent,
   findHeadingLineNumber,
   headingLineIndex,
   findHeadingAtLine,

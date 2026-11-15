@@ -1,0 +1,18 @@
+#+TITLE: Language and attributes
+#+LANGUAGE: fr
+#+OPTIONS: toc:nil
+#+CAPTION: Ex caption
+#+BEGIN_EXAMPLE
+x
+#+END_EXAMPLE
+#+CAPTION: Src caption
+#+NAME: s1
+#+BEGIN_SRC js
+let a = 1;
+#+END_SRC
+#+ATTR_HTML: :width 100 :alt alt text
+[[file:a.png]]
+#+CAPTION: T
+| a |
+#+CAPTION: L
+- x

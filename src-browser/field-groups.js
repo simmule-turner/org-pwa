@@ -10,6 +10,7 @@ import { fieldRow, textInputStyle, wizardButton } from './ui-widgets.js';
 import { priorityCookies } from '../src/priorities.js';
 import { getPriorityRange } from '../src/local-variables.js';
 import { S } from './app-state.js';
+import { typedDateRow } from './typed-date.js';
 
 // Contextual action row shown below a heading/list-item when its text has
 // been tapped. `actions` is [{ icon, label, onClick }]. Icons are the only
@@ -131,6 +132,7 @@ export function buildTimestampFieldGroup(label, currentRaw) {
     timeInput.value = `${h}:${min}`;
   }
   fields.appendChild(fieldRow('Start time (optional)', timeInput));
+  fields.appendChild(typedDateRow(dateInput, timeInput, null));
 
   const repeaterRow = document.createElement('div');
   repeaterRow.style.display = 'flex';

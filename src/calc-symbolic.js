@@ -999,6 +999,18 @@ export function angleIsDegrees() {
   return hooks.degrees;
 }
 
+/** Calc's typeof() of a form that stays symbolic: 1 integer, 2 fraction, 3 float, 12 inf, uinf and nan, 100 a name, 101 a vector, 102 a matrix. */
+registered.set('typeof', (args) => {
+  const a = args.length === 1 ? args[0] : null;
+  if (!a) return null;
+  if (a.t === 'int') return I(1);
+  if (a.t === 'frac') return I(2);
+  if (a.t === 'flt') return I(3);
+  if (a.t === 'var') return I(INFINITIES.has(a.name) ? 12 : 100);
+  if (a.t === 'vec') return I(a.items.length > 0 && a.items.every((/** @type {Form} */ x) => x.t === 'vec') ? 102 : 101);
+  return null;
+});
+
 /** Lets another module supply a Calc function. @param {string} name @param {(args: Form[]) => Form | null} fn */
 export function registerFunction(name, fn) {
   registered.set(name, fn);
@@ -1149,7 +1161,10 @@ export function callFunction(name, args) {
       break;
     case 'max':
     case 'min':
-      if (args.length === 2 && ((isNum(args[0]) && args[1].t === 'var' && args[1].name === 'nan') || (isNum(args[1]) && args[0].t === 'var' && args[0].name === 'nan'))) return V('nan');
+      {
+        const isNan = (/** @type {Form} */ x) => x.t === 'var' && x.name === 'nan';
+        if (args.length === 2 && (((isNum(args[0]) || isNan(args[0])) && isNan(args[1])) || (isNum(args[1]) && isNan(args[0])))) return V('nan');
+      }
       if (args.length === 2 && isNum(args[0]) && isNum(args[1])) {
         const pickFirst = name === 'max' ? toNumber(args[0]) >= toNumber(args[1]) : toNumber(args[0]) <= toNumber(args[1]);
         return pickFirst ? args[0] : args[1];

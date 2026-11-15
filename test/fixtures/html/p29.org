@@ -1,0 +1,20 @@
+#+TITLE: Footnotes and misc
+#+OPTIONS: toc:nil
+Text[fn:1] and[fn:name: inline def] and [fn::anon].
+Line break \\
+next, entity \alpha \to \nbsp done, \(x^2\) and $y$, \[ z \].
+
+-----
+
+Timestamp <2026-01-02 Fri> [2026-01-02 Fri 10:00] <2026-01-02 Fri>--<2026-01-04 Sun>.
+* Heading
+SCHEDULED: <2026-01-02 Fri> DEADLINE: <2026-01-05 Mon>
+:LOGBOOK:
+- note
+:END:
+:MYDR:
+dr
+:END:
+** COMMENT hidden
+** Archived :ARCHIVE:
+[fn:1] Footnote text.

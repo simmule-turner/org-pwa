@@ -485,6 +485,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
           return null;
         }
         captured = result;
+        if (result.aborted) return true; // filed, then stopped (the row stays, as in Emacs)
         clocked = clockCapturedEntry(template, result, doc);
         return true;
       },
@@ -494,6 +495,11 @@ export async function runCaptureWithAnswers(template, answers, at) {
       return;
     }
 
+    if (captured && captured.aborted) {
+      setStatus(`${captured.aborted}. The row is in ${targetFileId}${UNSAVED_NOTE}.`);
+      afterSuccessfulCapture();
+      return;
+    }
     setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}${afterNote(captured)}${takeWarnings()}`);
     if (template.jumpToCaptured && captured) {
       // :jump-to-captured t visits the other file's buffer, as Emacs does
@@ -512,6 +518,12 @@ export async function runCaptureWithAnswers(template, answers, at) {
   if (!result.ok) {
     setStatus(result.message);
     renderCapturePanel();
+    return;
+  }
+  if (result.aborted) {
+    commitAndRender(`Captured (stopped): ${template.description}`);
+    setStatus(`${result.aborted}. The row is in the table.`);
+    afterSuccessfulCapture();
     return;
   }
   const { target } = result;

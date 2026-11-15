@@ -421,7 +421,7 @@ function renderInline(state, rawText) {
     return state.options.brk ? addToken(state, `<br${closing}` + (nl ? '\n' : ''), '\\\\') : addToken(state, `<br${closing}`, '\\\\') + (nl ? '\n' : ''); // `\n:t` adds no second break after this one
   });
   // export snippets
-  text = text.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : backend.toLowerCase() === 'comment' ? '' : ''));
+  text = outsideVerbatim(text, (/** @type {string} */ piece) => piece.replace(/@@([A-Za-z0-9-]+):([\s\S]*?)@@/g, (whole, backend, value) => (backend.toLowerCase() === 'html' ? addToken(state, value, whole) : ''))); // not inside =verbatim= or ~code~
   // inline source code
   text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
   // inline calls to Babel blocks print nothing when nothing is run
@@ -869,7 +869,7 @@ function figureHtml(state, el, image) {
   const id = aff && aff.name ? aff.name : uniqueId(state, 'figure');
   state.namedElements.set(aff && aff.name ? aff.name : id, id);
   let out = `<div id="${escapeAttr(id)}" class="figure">\n<p>${img}\n</p>`;
-  if (caption !== null) out += `\n<p><span class="figure-number">${tr(state, 'Figure')} ${++state.counters.figure}: </span>${caption}</p>`;
+  if (caption !== null) out += `\n<p><span class="figure-number">${tr(state, 'Figure %d:').replace('%d', () => String(++state.counters.figure))} </span>${caption}</p>`;
   return out + '\n</div>';
 }
 
@@ -942,7 +942,7 @@ function tableHtml(state, el) {
   if (!firstRow || !all.some((r, i) => !r.rule && !specials[i])) return `<table${idAttr}${tableAttrs}>\n</table>`;
   const caption = captionHtml(state, aff);
   let out = `<table${idAttr}${tableAttrs}>\n`;
-  if (caption !== null) out += `<caption class="t-above"><span class="table-number">${tr(state, '%e %n: %c').replace('%e', () => tr(state, 'Table')).replace('%n', () => String(++state.counters.table)).replace(/ ?%c/, '').replace(/&nbsp;/g, ' ')}</span> ${caption}</caption>\n`;
+  if (caption !== null) out += `<caption class="t-above"><span class="table-number">${tr(state, 'Table %d:').replace('%d', () => String(++state.counters.table))}</span> ${caption}</caption>\n`;
   const specs = [];
   for (let c = offset; c < firstRow.cells.length; c++) {
     const starts = c === offset || leftBorder(c);
@@ -1038,7 +1038,7 @@ function srcBlockHtml(state, el) {
   const code = formatCodeHtml(block, highlightToHtml(block.lines.join('\n'), lang).split('\n'));
   const caption = captionHtml(state, el.aff);
   const cls = lang ? `src src-${escapeAttr(lang)}` : 'src';
-  const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">${tr(state, 'Listing')} ${++state.counters.listing}: </span>${caption}</label>` : '';
+  const label = caption !== null ? `<label class="org-src-name"><span class="listing-number">${tr(state, 'Listing %d:').replace('%d', () => String(++state.counters.listing))} </span>${caption}</label>` : '';
   const id = el.__id && el.aff && el.aff.name ? ` id="${escapeAttr(el.__id)}"` : '';
   return `<div class="org-src-container">\n${label}<pre class="${cls}"${id}>${code}\n</pre>\n</div>`;
 }
@@ -1607,6 +1607,17 @@ const PAGE_CSS = `
   .org-doc { color: #a31515; }
   .org-warning { color: #e00; font-weight: 600; }
   .org-c-annotation { color: #0b6e99; }
+  .org-org-level-1 { color: #0000ff; } .org-org-level-2 { color: #a0522d; } .org-org-level-3 { color: #7a1fc4; } .org-org-level-4 { color: #b22222; }
+  .org-org-level-5 { color: #228b22; } .org-org-level-6 { color: #008b8b; } .org-org-level-7 { color: #483d8b; } .org-org-level-8 { color: #8b2252; }
+  .org-org-todo, .org-org-checkbox-statistics-todo { color: #e00; font-weight: 600; } .org-org-done, .org-org-checkbox-statistics-done { color: #228b22; font-weight: 600; }
+  .org-org-headline-done { color: #bc8f8f; } .org-org-priority, .org-org-special-keyword, .org-org-sexp-date { color: #7a1fc4; } .org-org-tag, .org-org-checkbox, .org-org-list-dt, .org-bold { font-weight: 600; }
+  .org-org-drawer, .org-org-table { color: #0000ff; } .org-org-date, .org-org-footnote { color: #7a1fc4; text-decoration: underline; }
+  .org-org-meta-line, .org-org-block-begin-line, .org-org-block-end-line, .org-org-formula { color: #b22222; }
+  .org-org-document-title { color: #191970; font-weight: 600; } .org-org-document-info { color: #191970; }
+  .org-org-document-info-keyword, .org-org-block, .org-org-code, .org-org-verbatim, .org-org-archived, .org-org-inline-src-block, .org-shadow { color: #666; }
+  .org-org-link, .org-org-cite { color: #3a5fcd; text-decoration: underline; } .org-org-target, .org-underline { text-decoration: underline; } .org-org-macro { color: #8b4513; }
+  .org-error { color: #e00; font-weight: 600; } .org-italic { font-style: italic; } .org-strike-through { text-decoration: line-through; }
+  .org-sh-heredoc { color: #b5651d; } .org-sh-quoted-exec { color: #b000b0; } .org-sh-escaped-newline { color: #a31515; } .org-sgml-namespace { color: #7a4e00; } .org-bold-italic { font-weight: 600; font-style: italic; }
   .subtitle { text-align: center; font-weight: bold; margin-top: 0; }
   #postamble { margin-top: 3em; border-top: 1px solid #ddd; color: #666; }
   #postamble p, #preamble p { font-size: 90%; margin: 0.2em; }

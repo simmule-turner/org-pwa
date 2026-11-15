@@ -23,6 +23,34 @@ const CONTROLLED = [
   ['org-adapt-indentation', 'Whether lines under a heading are indented to its level: t, nil or headline-data.', { app: 'nil' }],
   ['org-auto-align-tags', 'Whether tags stay aligned to org-tags-column when a heading changes.'],
   ['org-src-preserve-indentation', 'Whether source and example blocks keep their indentation when lines are shifted.'],
+  ['org-export-headline-levels', 'How many levels of headings an export keeps as headings.'],
+  ['org-export-with-toc', 'Whether an export has a table of contents: t, nil or a number of levels.'],
+  ['org-export-with-section-numbers', 'Whether an export numbers its headings: t, nil or a number of levels.'],
+  ['org-export-preserve-breaks', 'Whether an export keeps line breaks as written.'],
+  ['org-export-time-stamp-file', 'Whether an export writes the time it was made.'],
+  ['org-export-with-title', 'Whether an export has the title.'],
+  ['org-export-with-author', 'Whether an export has the author.'],
+  ['org-export-with-email', 'Whether an export has the email address.'],
+  ['org-export-with-date', 'Whether an export has the date.'],
+  ['org-export-with-creator', 'Whether an export has the creator line: nil, t or comment.'],
+  ['org-export-with-tags', 'Whether an export has the tags of headings: t, nil or not-in-toc.'],
+  ['org-export-with-todo-keywords', 'Whether an export has TODO keywords: t, nil, todo or done.'],
+  ['org-export-with-tasks', 'Whether an export has tasks: t, nil, todo or done.'],
+  ['org-export-with-priority', 'Whether an export has priorities.'],
+  ['org-export-with-planning', 'Whether an export has SCHEDULED and DEADLINE lines.'],
+  ['org-export-with-clocks', 'Whether an export has CLOCK lines.'],
+  ['org-export-with-timestamps', 'Whether an export has timestamps in text: t, nil, active or inactive.'],
+  ['org-export-with-archived-trees', 'What an export does with archived subtrees: headline, t or nil.'],
+  ['org-export-with-latex', 'What an export does with LaTeX fragments: t, nil or verbatim.'],
+  ['org-export-with-sub-superscripts', 'Whether an export reads _ and ^ as subscript and superscript: t, nil or {}.'],
+  ['org-export-with-smart-quotes', 'Whether an export turns quotes into curly ones.'],
+  ['org-export-with-special-strings', 'Whether an export turns -- and ... into special strings.'],
+  ['org-export-with-entities', 'Whether an export turns entities such as \\alpha into characters.'],
+  ['org-export-with-emphasize', 'Whether an export keeps bold, italic and the other emphasis.'],
+  ['org-export-with-footnotes', 'Whether an export has footnotes.'],
+  ['org-export-with-statistics-cookies', 'Whether an export keeps statistics cookies.'],
+  ['org-export-with-fixed-width', 'Whether an export keeps fixed-width lines.'],
+  ['org-export-with-tables', 'Whether an export has tables.'],
   ['org-agenda-files', 'More files for the Agenda and TODO views.', { app: 'nil', note: 'nil: the open file only' }],
   ['org-agenda-include-diary', 'Whether the entries of diary-file are in the Agenda.'],
   ['org-agenda-show-all-dates', 'Whether days with nothing on them show in the Agenda.'],
@@ -88,7 +116,7 @@ const cut = VARIABLE_CATALOG.filter((c) => c.default.endsWith('...')).map((c) =>
 const emacsNames = [...CONTROLLED.filter(([, , o]) => !o || !o.own).map(([n]) => n), ...cut];
 const askEmacs = () => {
   const forms = emacsNames.map((n) => `(princ (format "%s\\t%s\\n" '${n} (if (boundp '${n}) (let ((print-length nil) (print-level nil)) (prin1-to-string (default-value '${n}))) "UNBOUND")))`).join('');
-  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-habit org-attach ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob recentf)) (require f)) ${forms})`], { encoding: 'utf8' });
+  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-habit org-attach ox ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob recentf)) (require f)) ${forms})`], { encoding: 'utf8' });
   const defaults = {};
   for (const line of out.split('\n')) {
     const m = /^(\S+)\t([\s\S]*)$/.exec(line);

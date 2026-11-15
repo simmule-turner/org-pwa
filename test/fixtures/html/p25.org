@@ -1,0 +1,16 @@
+#+TITLE: Tables
+#+OPTIONS: toc:nil
+#+CAPTION: A table
+#+NAME: t1
+| h1 | h2 | h3 |
+|----+----+----|
+| 1 | 22 | 333 |
+| <l> | <c> | <r> |
+| left | mid | right |
+#+ATTR_HTML: :border 2 :rules all :frame box :class foo
+| a | b |
+| / | < | > |
+| c | d |
+|---+---|
+| e | f |
+| g |

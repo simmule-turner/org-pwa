@@ -1,0 +1,46 @@
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\date{}
+\title{Snippets in code}
+\hypersetup{
+ pdfauthor={root},
+ pdftitle={Snippets in code},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 29.3 (Org mode 9.6.15)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+Verbatim \texttt{@@latex:ASC@@ and @@html:H@@} and code \texttt{@@latex:L@@ \{\{\{m\}\}\}} text.
+
+Inline shown and  and hidden here.
+
+\begin{verbatim}
+@@latex:in example@@ {{{m}}} [[https://example.org]] *b*
+\end{verbatim}
+
+\begin{verbatim}
+echo @@latex:in src@@ {{{m}}}
+\end{verbatim}
+
+\begin{verbatim}
+fixed @@latex:width@@ {{{m}}}
+\end{verbatim}
+
+
+\begin{verse}
+verse snippet and \textbf{bold} MACRO-VALUE\\[0pt]
+\end{verse}
+\end{document}

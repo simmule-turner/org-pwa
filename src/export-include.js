@@ -13,9 +13,11 @@
  *    syntax) or `path::some text` include just that part, with `:only-contents t` only what is inside it.
  *  - `example`, `src [language ...]`, `export [backend]` (or any other word): the text goes in a block of that name, as it is.
  *  - `:lines "N-M"` keeps lines N up to, not counting, M (either may be left out).
- *  - Left as the app has it: a file that cannot be read, a search that finds nothing, or an include that includes itself is skipped
- *    where Emacs stops with an error; footnote labels of an included file are not renamed and relative file links in it are not
- *    rewritten.
+ *  - A file that cannot be read, an include that includes itself and a search that finds nothing stop the export with Emacs's messages
+ *    ("Cannot include file ...", "Recursive file inclusion: ...", "No match for fuzzy expression: ... for FILE::LOCATION").
+ *  - The footnote labels of an included Org file become `-N-label` (N counts the files in the order they are first included), and a
+ *    definition outside the included lines is added at the end of the document; relative file links of a file included from the
+ *    document itself are made relative to the document. Left as the app has it: `:coding` (the text is always UTF-8) and URLs.
  */
 
 import { serializeOrg } from './org-parser.js';
@@ -272,7 +274,7 @@ function resolvePath(dir, path) {
 }
 
 /** @typedef {{ max: number, used: number, warned: boolean, onSkip?: (message: string) => void }} IncludeBudget */
-/** @typedef {{ dir: string, included: string[], fetchPath: any, budget: IncludeBudget }} IncludeContext */
+/** @typedef {{ dir: string, included: string[], fetchPath: any, budget: IncludeBudget, ids: Map<string, number>, footnotes: Map<string, string> }} IncludeContext */
 
 /**
  * `lines` with every #+INCLUDE: keyword replaced by what it includes (recursively).
@@ -316,6 +318,102 @@ async function expandLines(lines, ctx) {
   return out;
 }
 
+/** The positions of the lines that lie inside a src, example, export or comment block: links and footnotes there are text. @param {string[]} lines */
+function literalLines(lines) {
+  /** @type {Set<number>} */ const inside = new Set();
+  let open = '';
+  lines.forEach((line, i) => {
+    if (open) {
+      inside.add(i);
+      if (new RegExp(`^[ \\t]*#\\+END_${quoteRegExp(open)}\\s*$`, 'i').test(line)) open = '';
+      return;
+    }
+    const m = BEGIN_RE.exec(line);
+    if (m && LITERAL_BLOCK_RE.test(m[1])) {
+      open = m[1];
+      inside.add(i);
+    }
+  });
+  return inside;
+}
+
+/** `path` as seen from `to`, both made from the root: org-export--update-included-link's `file-relative-name (expand-file-name path from) to`. @param {string} path @param {string} from @param {string} to */
+function relativePath(path, from, to) {
+  const full = resolvePath(from, path).split('/');
+  const base = to.split('/').filter((part) => part !== '');
+  const parts = full;
+  let common = 0;
+  while (common < base.length && common < parts.length - 1 && parts[common] === base[common]) common++;
+  return [...Array(base.length - common).fill('..'), ...parts.slice(common)].join('/');
+}
+
+/**
+ * The relative file links of an included file made relative to the including document (org-export--update-included-link); links with an
+ * absolute, `~` or remote path and links of other types stay as they are.
+ * @param {string[]} lines @param {string} fileDir @param {string} includerDir
+ */
+function rewriteFileLinks(lines, fileDir, includerDir) {
+  if (fileDir === includerDir) return lines;
+  const inside = literalLines(lines);
+  const fix = (/** @type {string} */ target) => {
+    const search = target.indexOf('::');
+    const path = search < 0 ? target : target.slice(0, search);
+    if (path === '' || path.startsWith('/') || path.startsWith('~') || /^[a-z][a-z0-9+.-]*:/i.test(path)) return target;
+    return relativePath(path, fileDir, includerDir) + (search < 0 ? '' : target.slice(search));
+  };
+  return lines.map((line, i) => {
+    if (inside.has(i)) return line;
+    return line
+      .replace(/\[\[([^\]]+)\](\[[^\]]*\])?\]/g, (whole, target, description) => {
+        const typed = target.startsWith('file:');
+        if (!typed && !/^\.{1,2}\//.test(target)) return whole; // a fuzzy or other link: not a file link
+        return `[[file:${fix(typed ? target.slice(5) : target)}]${description || ''}]`;
+      })
+      .replace(/<file:([^>\n]+)>/g, (_whole, target) => `<file:${fix(target)}>`);
+  });
+}
+
+/**
+ * The footnote labels of an included Org file made its own (`-N-label`), so two files cannot collide; a definition outside the lines taken is
+ * collected into `store` (the document gets it at its end).
+ * @param {string[]} lines the lines included @param {string[]} whole the whole file @param {number} id @param {Map<string, string>} store
+ */
+function relabelFootnotes(lines, whole, id, store) {
+  const inside = literalLines(lines);
+  const seen = new Map();
+  const label = (/** @type {string} */ old) => {
+    let fresh = seen.get(old);
+    if (fresh === undefined) {
+      fresh = `-${id}-${old}`;
+      seen.set(old, fresh);
+      if (!lines.some((l, i) => !inside.has(i) && new RegExp(`^\\[fn:${quoteRegExp(old)}\\]`).test(l))) {
+        const text = definitionOutside(whole, old);
+        if (text !== null) store.set(fresh, text);
+      }
+    }
+    return fresh;
+  };
+  return lines.map((line, i) => (inside.has(i) ? line : line.replace(/\[fn:([-\w]+)(?=[\]:])/g, (_m, old) => `[fn:${label(old)}`)));
+}
+
+/** The text of the definition of footnote `label` in `lines`, normalized to end in a newline; null when there is none. @param {string[]} lines @param {string} label */
+function definitionOutside(lines, label) {
+  const start = lines.findIndex((l) => new RegExp(`^\\[fn:${quoteRegExp(label)}\\]`).test(l));
+  if (start < 0) return null;
+  let end = start + 1;
+  while (end < lines.length && !HEADLINE_RE.test(lines[end]) && !/^\[fn:[-\w]+\]/.test(lines[end]) && !(isBlank(lines[end]) && (end + 1 >= lines.length || isBlank(lines[end + 1])))) end++;
+  const text = lines.slice(start, end).join('\n').replace(new RegExp(`^\\[fn:${quoteRegExp(label)}\\]\\s*`), '').replace(/\s+$/, '');
+  return text + '\n';
+}
+
+/** The message of a search that finds nothing, as org-link-search words it. @param {string} location */
+function noMatch(location) {
+  const text = location.trim();
+  if (text.startsWith('#')) return `No match for custom ID: ${text.slice(1)}`;
+  if (text.startsWith('(') && text.endsWith(')')) return `No match for coderef: ${text.slice(1, -1)}`;
+  return `No match for fuzzy expression: ${text}`;
+}
+
 /**
  * The lines one #+INCLUDE: keyword stands for.
  * @param {number} indent @param {string} value @param {number} inducedLevel
@@ -327,14 +425,14 @@ async function includeAt(indent, value, inducedLevel, ctx) {
   if (d.path === null) return [];
   const file = resolvePath(ctx.dir, d.path);
   const key = `${file}\u0000${d.lines ?? ''}`;
-  if (ctx.included.includes(key)) return []; // a file that includes itself
   let result;
   try {
     result = await ctx.fetchPath(file);
   } catch {
-    return [];
+    result = null;
   }
-  if (!result || typeof result.content !== 'string') return [];
+  if (!result || typeof result.content !== 'string') throw new Error(`Cannot include file ${file}`);
+  if (ctx.included.includes(key)) throw new Error(`Recursive file inclusion: ${file}`);
   // Each file has its own size limit (where it is read); this one bounds all of them together, so many #+INCLUDE lines
   // cannot add up to a document larger than the app would open.
   const { budget } = ctx;
@@ -354,9 +452,13 @@ async function includeAt(indent, value, inducedLevel, ctx) {
   }
   if (d.block !== null) return [`${pad}#+BEGIN_${d.block}`, ...prepare(applyLineRange(all, d.lines), 0, null), `${pad}#+END_${d.block}`];
   const chosen = d.location !== null ? locate(all, d.location, d.onlyContents, d.lines) : applyLineRange(all, d.lines);
-  if (chosen === null) return []; // the search finds nothing
-  const text = prepare(chosen, indent, d.minlevel ?? inducedLevel);
-  return expandLines(text, { ...ctx, dir: directoryOf(file), included: [...ctx.included, key] });
+  if (chosen === null) throw new Error(`${noMatch(d.location ?? '')} for ${file}::${d.location}`);
+  const fileDir = directoryOf(file);
+  let id = ctx.ids.get(file);
+  if (id === undefined) ctx.ids.set(file, (id = ctx.ids.size + 1));
+  const linked = ctx.included.length === 0 ? rewriteFileLinks(chosen, fileDir, ctx.dir) : chosen; // only a file included by the document itself has its links rewritten
+  const text = relabelFootnotes(prepare(linked, indent, d.minlevel ?? inducedLevel), all, id, ctx.footnotes);
+  return expandLines(text, { ...ctx, dir: fileDir, included: [...ctx.included, key] });
 }
 
 /**
@@ -378,7 +480,7 @@ function hasAnyInclude(doc) {
  * `doc` with its #+INCLUDE: keywords expanded: a new document, `doc` itself is never changed.
  *
  * `fetchPath(path)` is an async function the caller supplies, giving `{ content: string }` for a path as written in the keyword (a path
- * in an included file is made relative to that file); anything else it returns, or a throw, skips that include. `parseOrgFn` is
+ * in an included file is made relative to that file); anything else it returns, or a throw, is the error "Cannot include file". `parseOrgFn` is
  * the caller's parseOrg, which this module is given rather than importing it.
  * `options.maxTotalBytes` is the most all the included files may add up to (default: the Org file limit; 0 for no limit); an include
  * that would go past it is left out, and `options.onSkip` is told once.
@@ -392,8 +494,9 @@ async function expandIncludes(doc, fetchPath, parseOrgFn, options = {}) {
   if (!hasAnyInclude(doc)) return doc;
   /** @type {IncludeBudget} */
   const budget = { max: options.maxTotalBytes ?? getSizeLimits().orgFile.max, used: 0, warned: false, onSkip: options.onSkip };
-  const lines = await expandLines(serializeOrg(doc).split('\n'), { dir: '', included: [], fetchPath, budget });
-  const parsed = parseOrgFn(lines.join('\n'));
+  /** @type {Map<string, string>} */ const footnotes = new Map();
+  const lines = await expandLines(serializeOrg(doc).split('\n'), { dir: '', included: [], fetchPath, budget, ids: new Map(), footnotes });
+  const parsed = parseOrgFn(lines.join('\n') + [...footnotes].map(([label, text]) => `\n[fn:${label}] ${text}\n`).join(''));
   return { ...doc, keywords: parsed.keywords, bodyLines: parsed.bodyLines, body: parsed.body, children: parsed.children };
 }
 

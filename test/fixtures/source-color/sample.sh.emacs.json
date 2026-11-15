@@ -1,0 +1,462 @@
+{
+ "lang": "sh",
+ "mode": "sh-mode",
+ "runs": [
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "!/bin/",
+   "comment"
+  ],
+  [
+   "bash",
+   "keyword"
+  ],
+  [
+   "\n",
+   "comment"
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "build script\n",
+   "comment"
+  ],
+  [
+   "set",
+   "builtin"
+  ],
+  [
+   " -eu\n",
+   null
+  ],
+  [
+   "NAME",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"world\"",
+   "string"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "count",
+   "variable-name"
+  ],
+  [
+   "=0\n",
+   null
+  ],
+  [
+   "export",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "PATH",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"$HOME/bin:$PATH\"",
+   "string"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "greet",
+   "function-name"
+  ],
+  [
+   "() {\n  ",
+   null
+  ],
+  [
+   "local",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "who",
+   "variable-name"
+  ],
+  [
+   "=$",
+   null
+  ],
+  [
+   "1",
+   "variable-name"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"Hello, ${who}! $(",
+   "string"
+  ],
+  [
+   "date +%Y",
+   "sh-quoted-exec"
+  ],
+  [
+   ") `uname`\"",
+   "string"
+  ],
+  [
+   "\n}\n",
+   null
+  ],
+  [
+   "function",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "cleanup",
+   "function-name"
+  ],
+  [
+   " {\n  rm -rf /tmp/x\n}\n",
+   null
+  ],
+  [
+   "for",
+   "keyword"
+  ],
+  [
+   " f",
+   null
+  ],
+  [
+   " in",
+   "keyword"
+  ],
+  [
+   " *.txt; ",
+   null
+  ],
+  [
+   "do",
+   "keyword"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " [ -f ",
+   null
+  ],
+  [
+   "\"$f\"",
+   "string"
+  ],
+  [
+   " ] && [[ $",
+   null
+  ],
+  [
+   "f",
+   "variable-name"
+  ],
+  [
+   " == a* ]]; ",
+   null
+  ],
+  [
+   "then",
+   "keyword"
+  ],
+  [
+   "\n    cat ",
+   null
+  ],
+  [
+   "\"$f\"",
+   "string"
+  ],
+  [
+   " | grep -v ",
+   null
+  ],
+  [
+   "'skip'",
+   "string"
+  ],
+  [
+   " >> out.log\n  ",
+   null
+  ],
+  [
+   "elif ",
+   "keyword"
+  ],
+  [
+   "test",
+   "builtin"
+  ],
+  [
+   " -d ",
+   null
+  ],
+  [
+   "\"$f\"",
+   "string"
+  ],
+  [
+   "; ",
+   null
+  ],
+  [
+   "then",
+   "keyword"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "'single $quoted'",
+   "string"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "else",
+   "keyword"
+  ],
+  [
+   "\n    ",
+   null
+  ],
+  [
+   "continue",
+   "keyword"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "fi",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "done",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "while ",
+   "keyword"
+  ],
+  [
+   "read",
+   "builtin"
+  ],
+  [
+   " -r line; ",
+   null
+  ],
+  [
+   "do",
+   "keyword"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "case",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"$line\"",
+   "string"
+  ],
+  [
+   " in",
+   "keyword"
+  ],
+  [
+   "\n    start) ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " go ;;\n    *) ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"$line\"",
+   "string"
+  ],
+  [
+   " ;;\n  ",
+   null
+  ],
+  [
+   "esac",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "done",
+   "keyword"
+  ],
+  [
+   " < input.txt\ncat <<EOT",
+   null
+  ],
+  [
+   "\nheredoc $NAME\nEOT\n",
+   "sh-heredoc"
+  ],
+  [
+   "x",
+   "variable-name"
+  ],
+  [
+   "=$(",
+   null
+  ],
+  [
+   "(count + 1",
+   "sh-quoted-exec"
+  ],
+  [
+   "))\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "x",
+   "variable-name"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "?",
+   "variable-name"
+  ],
+  [
+   " $",
+   null
+  ],
+  [
+   "#",
+   "variable-name"
+  ],
+  [
+   " ${",
+   null
+  ],
+  [
+   "arr",
+   "variable-name"
+  ],
+  [
+   "[@]} ",
+   null
+  ],
+  [
+   "\"$@\"",
+   "string"
+  ],
+  [
+   "\nls -la --color=auto | sort -k2 &\n",
+   null
+  ],
+  [
+   "trap",
+   "keyword"
+  ],
+  [
+   " cleanup EXIT\n",
+   null
+  ]
+ ]
+}

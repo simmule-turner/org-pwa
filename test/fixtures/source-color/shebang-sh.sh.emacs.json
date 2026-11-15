@@ -1,0 +1,274 @@
+{
+ "lang": "sh",
+ "mode": "sh-mode",
+ "runs": [
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "!/bin/",
+   "comment"
+  ],
+  [
+   "sh",
+   "keyword"
+  ],
+  [
+   "\n",
+   "comment"
+  ],
+  [
+   "A",
+   "variable-name"
+  ],
+  [
+   "=1; B[2]=3\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " $(date) ",
+   null
+  ],
+  [
+   "`date`",
+   "sh-quoted-exec"
+  ],
+  [
+   "\ncat <<EOF ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "trailing commen",
+   "comment"
+  ],
+  [
+   "t",
+   "comment-delimiter"
+  ],
+  [
+   "\nbody\nEOF\n",
+   "sh-heredoc"
+  ],
+  [
+   "case",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"$x\"",
+   "string"
+  ],
+  [
+   " in",
+   "keyword"
+  ],
+  [
+   "\n  start|stop) ",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " s ;; ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "c\n",
+   "comment"
+  ],
+  [
+   "  *) ",
+   null
+  ],
+  [
+   "esac",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "esac",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " $((a<<2)) a<<EOF2\nEOF2\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"x $(cat <<E\nin\nE\n)\"",
+   "string"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "if",
+   "keyword"
+  ],
+  [
+   " true\n",
+   null
+  ],
+  [
+   "then",
+   "keyword"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   "! ",
+   "keyword"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " x\n",
+   null
+  ],
+  [
+   "fi",
+   "keyword"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " foo",
+   null
+  ],
+  [
+   "\\",
+   "sh-escaped-newline"
+  ],
+  [
+   "\nbar ",
+   null
+  ],
+  [
+   "\\",
+   "sh-escaped-newline"
+  ],
+  [
+   "\n  baz\n",
+   null
+  ],
+  [
+   "x",
+   "variable-name"
+  ],
+  [
+   "=1 ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "c1\n",
+   "comment"
+  ],
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "!notshebang\n",
+   "comment"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " a#b ;",
+   null
+  ],
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "c\n",
+   "comment"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ( ",
+   null
+  ],
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "not\n",
+   "comment"
+  ],
+  [
+   "f",
+   "function-name"
+  ],
+  [
+   "() { :; } ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "c\n",
+   "comment"
+  ]
+ ]
+}

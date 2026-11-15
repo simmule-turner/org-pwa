@@ -392,3 +392,11 @@ test('an empty or missing document gives an empty list, not an error', () => {
   assert.deepEqual(listRecentlyClockedHeadings(null), []);
   assert.deepEqual(listRecentlyClockedHeadings({ children: [] }), []);
 });
+
+test('clockOut closes an indented CLOCK line and keeps its indentation', () => {
+  const doc = parseOrg('* Task\n  :LOGBOOK:\n  CLOCK: [2026-07-31 Fri 09:00]\n  :END:\n');
+  const heading = doc.children[0];
+  assert.equal(isClockRunning(heading), true);
+  clockOut(heading, ts(new Date(2026, 6, 31, 10, 30), '10:30'), new Date(2026, 6, 31, 10, 30));
+  assert.match(heading.logbookLines.join('\n'), /^ {2}CLOCK: \[2026-07-31 Fri 09:00\]--\[2026-07-31 Fri 10:30\] =>  1:30$/m);
+});

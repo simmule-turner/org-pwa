@@ -1,0 +1,130 @@
+{
+ "lang": "sh",
+ "mode": "sh-mode",
+ "runs": [
+  [
+   "#",
+   "comment-delimiter"
+  ],
+  [
+   "!/usr/bin/",
+   "comment"
+  ],
+  [
+   "env",
+   "keyword"
+  ],
+  [
+   " bash\n",
+   "comment"
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "edge cases: comments, quotes, heredocs\n",
+   "comment"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " foo#bar ",
+   null
+  ],
+  [
+   "# ",
+   "comment-delimiter"
+  ],
+  [
+   "real comment\n",
+   "comment"
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\\#",
+   "string"
+  ],
+  [
+   " not a comment ${#",
+   null
+  ],
+  [
+   "arr",
+   "variable-name"
+  ],
+  [
+   "[@]} $",
+   null
+  ],
+  [
+   "#",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"a#b\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "'c # d'",
+   "string"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "echo",
+   "builtin"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "\"$(",
+   "string"
+  ],
+  [
+   "echo \"nested \\\"q\\\" $(date",
+   "sh-quoted-exec"
+  ],
+  [
+   "))\" tail\nx=`echo \"a b\"` y=\"$(",
+   "string"
+  ],
+  [
+   "cmd 'it''s' \"z\"",
+   "sh-quoted-exec"
+  ],
+  [
+   ")\"\ncat <<-'END' | grep x\n\tindented $HOME `no`\n\tEND\ncat <<\"E2\" >f; echo after\nraw \"text\nE2\necho $(",
+   "string"
+  ],
+  [
+   "(1 << 2",
+   "sh-quoted-exec"
+  ],
+  [
+   ")) ${v:-default} ${v%%.*} $[1+2]\narr=(one two \"three four\")\narr+=(five)\ndeclare -A map; map[k]=v\n[[ ! -n $x ]] && ! false\nif ! [ -z \"$x\" ]; then :; fi\ncase $1 in\n  a|b) echo ab ;;\n  (c) echo c ;;\n  *) ;;\nesac\nfoo() { echo \"$1\"; }\nfunction bar() { return 0; }\nfunction baz { :; }\necho a \\\n  b \\\\\n  c\ntrap 'echo bye' INT\ntime ls\nuntil false; do break; done\nselect x in a b; do echo $x; done\nexport -f foo\n. ./lib.sh\nsource ./lib2.sh\necho \"unterminated\n",
+   "string"
+  ]
+ ]
+}

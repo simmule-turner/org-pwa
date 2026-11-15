@@ -70,3 +70,18 @@ test('org-table-export: TSV by default, the property or the file extension picks
   const t = /** @type {any} */ (h.body).find((/** @type {any} */ n) => n.type === 'table');
   assert.deepEqual(exportTable(doc, h, t), { fileName: 'out.tex', text: 'a\\\\[0pt]\n' });
 });
+
+// Emacs 29.3 reports the 1-based character position of the line after the unclosed BEGIN RECEIVE line (multibyte text counts as one each).
+test('an unclosed receiver reports the character position Emacs reports', () => {
+  const cases = [
+    ['head\n#+ORGTBL: SEND t orgtbl-to-latex\n| a |\n\n# BEGIN RECEIVE ORGTBL t\nx\n', 71],
+    ['* H\ntext é ü\n#+ORGTBL: SEND t orgtbl-to-latex\n| a |\n\n# BEGIN RECEIVE ORGTBL t\n', 79],
+    ['head\n#+ORGTBL: SEND t orgtbl-to-latex\n| a |\n\n% BEGIN RECEIVE ORGTBL t\n% END RECEIVE ORGTBL t\n% BEGIN RECEIVE ORGTBL t\nno end\n', 161],
+  ];
+  for (const [text, at] of cases) {
+    const doc = parseOrg(String(text));
+    const owner = String(text).startsWith('*') ? /** @type {any} */ (doc).children[0] : doc;
+    const table = /** @type {any} */ (owner.body).find((/** @type {any} */ n) => n.type === 'table');
+    assert.throws(() => sendTable(doc, owner, table), new RegExp(`Cannot find end of receiver location at ${at}$`));
+  }
+});

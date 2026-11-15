@@ -1,0 +1,17 @@
+#+TITLE: Lists
+#+OPTIONS: toc:nil
+1. one
+2. [@5] five
+   - nested
+     1. deep
+   - [-] part
+     - [X] done
+     - [ ] todo
+- term :: def
+- another :: def two
+  continued
++ plus
+  + inner
+
+a) alpha
+b) beta

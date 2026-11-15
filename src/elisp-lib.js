@@ -951,6 +951,15 @@ defun('cl-mapcar', 2, -1, ([f, ...seqs]) => {
   const n = Math.min(...arrays.map((a) => a.length));
   return list(Array.from({ length: n }, (_, i) => funcall(f, arrays.map((a) => a[i]))));
 });
+defun('cl-concatenate', 1, -1, (args) => funcall(intern('seq-concatenate'), args));
+defun('cl-map', 3, -1, ([type, f, ...seqs]) => {
+  const mapped = toArray(funcall(intern('cl-mapcar'), [f, ...seqs]));
+  const t = /** @type {Sym} */ (type).name;
+  if (t === 'list') return list(mapped);
+  if (t === 'vector' || t === 'array') return mapped;
+  if (t === 'string') return String.fromCodePoint(...mapped.map(Number));
+  throw signal('error', [`Not a sequence type name: ${print(type)}`]);
+});
 defun('cl-parse-integer', 1, -1, ([s, ...kw]) => {
   const opt = (/** @type {string} */ name) => { const at = kw.indexOf(intern(name)); return at >= 0 ? kw[at + 1] : NIL; };
   const radix = opt(':radix') === NIL ? 10 : Number(opt(':radix'));

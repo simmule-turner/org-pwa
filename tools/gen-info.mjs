@@ -15,45 +15,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readme = fs.readFileSync(path.join(ROOT, 'README.org'), 'utf8');
 
 /**
- * README.org as Emacs's Texinfo exporter needs it. In Org a line inside a block that starts with `*` or `#+` is written with a leading
- * comma, an untagged source block has no language to export, and ` :: ` in a list item's first line starts a description list;
- * the app's own reader needs none of that, so it is done here and README.org stays as it is.
+ * README.org as it is exported: it is a complete Org manual (#+TITLE, the Texinfo keywords, tagged blocks) that Emacs exports as it stands
+ * (C-c C-e i i), so the only thing added here is the index, which would make README.org longer than a reader wants.
  * @param {string} text
  */
 export function forTexinfo(text) {
-  /** @type {string[]} */
-  const out = [];
-  /** @type {string | null} */
-  let block = null;
-  for (let line of text.split('\n')) {
-    if (line.startsWith('# -*-') || line.startsWith('#+STARTUP')) continue;
-    const begin = /^(\s*)#\+BEGIN_(\w+)(.*)$/i.exec(line);
-    if (block === null && begin) {
-      block = begin[2].toUpperCase();
-      if (block === 'SRC' && !begin[3].trim()) line = begin[1] + '#+BEGIN_SRC text';
-      out.push(line);
-      continue;
-    }
-    if (block !== null) {
-      if (new RegExp('^\\s*#\\+END_' + block + '\\s*$', 'i').test(line)) block = null;
-      else if (/^\*+ /.test(line) || line.startsWith('#+')) line = ',' + line;
-    } else if (/^\s*(?:[-+]|\d+[.)])\s/.test(line)) {
-      line = line.replace(/~[^~]*~/g, (verbatim) => verbatim.replace(/ :: /g, ' :: '));
-    }
-    out.push(line);
-  }
-  return HEADER.join('\n') + withIndex(out).join('\n');
+  return withIndex(text.split('\n')).join('\n');
 }
-
-const HEADER = [
-  '#+TITLE: org-pwa',
-  '#+TEXINFO_FILENAME: org-pwa.info',
-  '#+TEXINFO_DIR_CATEGORY: Emacs',
-  '#+TEXINFO_DIR_TITLE: org-pwa: (org-pwa)',
-  '#+TEXINFO_DIR_DESC: Mobile-first Org mode in the browser',
-  '#+OPTIONS: toc:nil num:nil ^:nil author:nil date:nil email:nil creator:nil',
-  '',
-];
 
 /** A heading's title as an index entry: the text without markup, tags and keyword, and with the characters Texinfo reads escaped. @param {string} line */
 function entryOfHeading(line) {

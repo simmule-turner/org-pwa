@@ -146,3 +146,9 @@ test('LibreOffice opens the file and keeps headings, text, list items, table cel
   for (const piece of ['Round', 'Head', 'Some bold text', 'item one', 'item two']) assert.ok(txt.includes(piece), piece + '\n' + txt);
   assert.match(txt, /a\s+b/);
 });
+
+test('an org source block is colored with the styles Emacs names, and the styles are defined', () => {
+  const doc = parseOrg('#+begin_src org\n,* TODO Water :a:\nSCHEDULED: <2027-03-15 Mon>\n#+end_src\n');
+  const xml = odtContentXml(doc, null, { highlight: true });
+  for (const style of ['OrgSrcOrgLevel1', 'OrgSrcOrgTodo', 'OrgSrcOrgTag', 'OrgSrcOrgSpecialKeyword', 'OrgSrcOrgDate']) assert.ok(xml.includes(`text:style-name="${style}"`), style);
+});

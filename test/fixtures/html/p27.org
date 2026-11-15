@@ -1,0 +1,33 @@
+#+TITLE: Blocks
+#+OPTIONS: toc:nil
+#+BEGIN_QUOTE
+quoted /text/
+#+END_QUOTE
+#+BEGIN_CENTER
+centered
+#+END_CENTER
+#+BEGIN_VERSE
+verse line
+  indented
+#+END_VERSE
+#+BEGIN_EXAMPLE -n
+ex 1
+ex 2
+#+END_EXAMPLE
+#+BEGIN_SRC python -n 5 :exports both
+def f(): pass
+#+END_SRC
+#+BEGIN_EXPORT html
+<p>raw</p>
+#+END_EXPORT
+#+BEGIN_COMMENT
+hidden
+#+END_COMMENT
+#+BEGIN_foo :class bar
+special
+#+END_foo
+#+HTML: <hr class="x">
+#+ATTR_HTML: :class boxed :id idd
+#+BEGIN_QUOTE
+attr
+#+END_QUOTE

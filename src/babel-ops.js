@@ -7,7 +7,7 @@
  */
 import { collectDocumentBlocks, scanSourceBlocks } from './babel-blocks.js';
 import { inheritedProperty, mergeHeaderArgs, splitHeaderArgs, readHeaderValue } from './babel-args.js';
-import { HLINE, evalAllowed, formatError, formatResult, parseResultsSpec, pickedNames, placeResults, resolveVars, resultsEnd } from './babel.js';
+import { HLINE, evalAllowed, formatError, formatResult, parseResultsSpec, pickedNames, headingFollows, placeResults, resolveVars, resultsEnd } from './babel.js';
 import { babelOptions } from './babel-options.js';
 import { babelLibrary } from './babel-lob.js';
 import { plainVariables, referenceLookup } from './babel-ref.js';
@@ -314,6 +314,18 @@ export function resultFile(args, name) {
   return null;
 }
 
+/** `org-babel--file-desc`: what `:file-desc` asks of a results link: null for no description, true for the file itself (the argument has no value),
+ * else the text. Emacs reads the value: a string or a symbol (`foo`, `nil`) is the text; a number, a vector, a quoted form gives none.
+ * @param {string | undefined} raw @returns {string | true | null} */
+export function fileDescription(raw) {
+  if (raw === undefined) return null;
+  const v = String(raw).trim();
+  if (v === '') return true;
+  if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') return String(readHeaderValue(v));
+  if (/^[-+]?\.?\d|^[[('#?`]/.test(v)) return null;
+  return v;
+}
+
 /**
  * The link text for a results file, as `org-babel-result-to-file` writes it: relative to the document, so a `:dir` below the document's
  * folder shows in the path. (The document's own folder is the one the app has no name for, so a path that leaves it is written as it is.)
@@ -391,9 +403,9 @@ export function blockResultLines(env, outcome, info) {
   }
   let value = /** @type {import('./elisp-data.js').LObj} */ (outcome.value);
   const file = spec.file ? resultFile(args, info.name) : null;
-  const description = args['file-desc'] === undefined ? null : readHeaderValue(args['file-desc']);
+  const description = fileDescription(args['file-desc']);
   if (args.post !== undefined) {
-    const linked = file !== null ? fileLink(file, args.dir, description === '' ? file : description) : null;
+    const linked = file !== null ? fileLink(file, args.dir, description === true ? file : description) : null;
     const posted = resolvePost(env, String(readHeaderValue(args.post)), linked ?? value);
     value = valueToLisp(posted);
     if (file !== null) spec = parseResultsSpec(String(args.results).replace(/\bfile\b/g, ''));
@@ -432,8 +444,8 @@ export function inlineResultText(value, args, lang, spec, context) {
   const target = spec.file ? resultFile(args, context && context.info.name) : null;
   if (spec.file && (target !== null || typeof value === 'string')) {
     const file = target ?? /** @type {string} */ (value);
-    const description = args['file-desc'] === undefined ? null : readHeaderValue(args['file-desc']);
-    result = fileLink(file, args.dir, description === '' ? file : description);
+    const description = fileDescription(args['file-desc']);
+    result = fileLink(file, args.dir, description === true ? file : description);
   }
   const warning = (words.has('table') && "`:results table'") || (isList && 'list result') || (result !== null && /\n./.test(result) && 'multiline result') || (resultWords.includes('list') && "`:results list'");
   if (warning) throw new Error(`Inline error: ${warning} cannot be used`);
@@ -518,7 +530,7 @@ export async function executeElement(env, element, deps) {
     if (outcome.skipped) return null;
     const result = blockResultLines(env, outcome, info);
     if (result === null) return null;
-    return placeResults(lines, { lineIndex: block.beginIndex, lineCount: block.endIndex - block.beginIndex + 1 }, result, { handling: outcome.spec.handling, name: block.name || '' });
+    return placeResults(lines, { lineIndex: block.beginIndex, lineCount: block.endIndex - block.beginIndex + 1 }, result, { handling: outcome.spec.handling, name: block.name || '', headingFollows: headingFollows(env.doc, env.ancestors[env.ancestors.length - 1]) });
   }
   if (element.type === 'babel-call') {
     const name = affiliatedName(lines, element.line);
@@ -528,7 +540,7 @@ export async function executeElement(env, element, deps) {
     if (outcome.skipped) return null;
     const result = blockResultLines(env, outcome, info);
     if (result === null) return null;
-    return placeResults(lines, { lineIndex: element.line, lineCount: 1 }, result, { handling: outcome.spec.handling, name: name || '' });
+    return placeResults(lines, { lineIndex: element.line, lineCount: 1 }, result, { handling: outcome.spec.handling, name: name || '', headingFollows: headingFollows(env.doc, env.ancestors[env.ancestors.length - 1]) });
   }
   const { object, paragraph } = element;
   const info = elementInfo(env, element);

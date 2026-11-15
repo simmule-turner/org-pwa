@@ -891,7 +891,7 @@ function itemBody(children, depth, last) {
     const text = el.type === 'list' ? list(el, depth + 1) : element(el);
     if (text) out += text + '\n'.repeat(el.postBlank || 0);
   }
-  return last ? trimEnd(out) : out.endsWith('\n') ? out : out + '\n';
+  return last ? trimEnd(out) : out.replace(/\n+$/, '') + '\n'; // the blanks that end the contents go (a left-out table after the text leaves its own), the item's come after
 }
 
 // ---- tables ---------------------------------------------------------------

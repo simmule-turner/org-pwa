@@ -1,0 +1,182 @@
+{
+ "lang": "html",
+ "mode": "html-mode",
+ "runs": [
+  [
+   "<",
+   null
+  ],
+  [
+   "p",
+   "function-name"
+  ],
+  [
+   ">a</",
+   null
+  ],
+  [
+   "p",
+   "function-name"
+  ],
+  [
+   ">\n",
+   null
+  ],
+  [
+   "<!-- ",
+   "comment-delimiter"
+  ],
+  [
+   "c1",
+   "comment"
+  ],
+  [
+   " -->",
+   "comment-delimiter"
+  ],
+  [
+   "x",
+   null
+  ],
+  [
+   "<!--",
+   "comment-delimiter"
+  ],
+  [
+   "c2--\n>",
+   "comment"
+  ],
+  [
+   "y ",
+   null
+  ],
+  [
+   "<!-- ",
+   "comment-delimiter"
+  ],
+  [
+   "c3\nmore",
+   "comment"
+  ],
+  [
+   " -->",
+   "comment-delimiter"
+  ],
+  [
+   "\n<",
+   null
+  ],
+  [
+   "!ELEMENT",
+   "keyword"
+  ],
+  [
+   " a b>\n<![CDATA[ x ]]>\n<",
+   null
+  ],
+  [
+   "?xml",
+   "keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "v",
+   "variable-name"
+  ],
+  [
+   "=\"1\"?> <",
+   null
+  ],
+  [
+   "a",
+   "function-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "b",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"1\"",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "c",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "'2'",
+   "string"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "d",
+   "sgml-namespace"
+  ],
+  [
+   ":",
+   null
+  ],
+  [
+   "e",
+   "variable-name"
+  ],
+  [
+   "=",
+   null
+  ],
+  [
+   "\"3\"",
+   "string"
+  ],
+  [
+   " f=4>t ",
+   null
+  ],
+  [
+   "&amp;",
+   "variable-name"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "%x;",
+   "variable-name"
+  ],
+  [
+   " z</",
+   null
+  ],
+  [
+   "a",
+   "function-name"
+  ],
+  [
+   ">\n",
+   null
+  ]
+ ]
+}

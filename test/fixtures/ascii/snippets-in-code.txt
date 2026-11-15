@@ -1,0 +1,25 @@
+                           __________________
+
+                            SNIPPETS IN CODE
+                           __________________
+
+
+Verbatim `@@ascii:ASC@@ and @@html:H@@' and code `@@latex:L@@ {{{m}}}'
+text.
+
+Inline shown and and here.
+
+,----
+| @@ascii:in example@@ {{{m}}} [[https://example.org]] *b*
+`----
+
+,----
+| echo @@ascii:in src@@ {{{m}}}
+`----
+
+,----
+| fixed @@ascii:width@@ {{{m}}}
+`----
+
+
+      verse snippet and *bold* MACRO-VALUE

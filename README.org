@@ -1,5 +1,11 @@
 # -*- buffer-read-only: t; -*-
 #+STARTUP: show2levels
+#+TITLE: org-pwa
+#+OPTIONS: toc:nil num:nil ^:nil author:nil date:nil email:nil creator:nil
+#+TEXINFO_FILENAME: org-pwa.info
+#+TEXINFO_DIR_CATEGORY: Emacs
+#+TEXINFO_DIR_TITLE: org-pwa: (org-pwa)
+#+TEXINFO_DIR_DESC: Mobile-first Org mode in the browser
 * org-pwa
 :PROPERTIES:
 :CUSTOM_ID: org-pwa
@@ -113,9 +119,9 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, wh
 - *Archive* (*Unarchive* for an archived heading) moves the subtree to its ~org-archive-location~ or back, from a panel that shows the destination first (see [[#archiving][Archiving]]). The ~:ARCHIVE:~ tag and ~ARCHIVE_*~ properties can be edited or removed in the general editor.
 - *Moving in steps* (↑ ↓ ← →): ↑ and ↓ reorder a heading among its siblings with its subtree. ← promotes the heading with its subtree one level, as ~org-promote-subtree~ does: it stays where it is in the text, and the siblings after it become its children. → demotes it one level: after a sibling it becomes that sibling's last child, as a first child it stays under its parent. A top-level heading can't be promoted, and a short status message says so.
 - *Heading alone*: ~org-promote~ and ~org-demote~ (~M-←~, ~M-→~, in the command palette) change the level of the heading only; its children keep theirs, so a demoted heading may stop being their parent. With ~org-adapt-indentation~ the lines under the heading follow. ~org-toggle-comment~ (~C-c ;~) puts ~COMMENT~ in front of the title or takes it off. ~org-insert-property-drawer~ adds an empty ~:PROPERTIES:~ drawer.
-- *Sort*: ~org-sort-entries~ (~C-c ^~ on a heading, in the palette as ~org-sort~) asks for a key and sorts the heading's children, or the top-level entries when no heading is focused: ~a~ alphabetically, ~n~ numerically, ~t~ by the first timestamp, ~s~ by SCHEDULED, ~d~ by DEADLINE, ~c~ by the first inactive timestamp at the start of a line, ~p~ by priority, ~o~ by TODO order, ~r~ by a property, ~f~ by a function (one that gets the key, one that compares); a capital reverses. Case is ignored (*Sort entries, case sensitive* in the palette does not); keys are compared by character code.
+- *Sort*: ~org-sort-entries~ (~C-c ^~ on a heading, in the palette as ~org-sort~) asks for a key and sorts the heading's children, or the top-level entries when no heading is focused: ~a~ alphabetically, ~n~ numerically, ~t~ by the first timestamp, ~s~ by SCHEDULED, ~d~ by DEADLINE, ~c~ by the first inactive timestamp at the start of a line, ~k~ by clocked time (completed clocks of the entry and its subtree), ~p~ by priority, ~o~ by TODO order, ~r~ by a property, ~f~ by a function (one that gets the key, one that compares); a capital reverses. Case is ignored (*Sort entries, case sensitive* in the palette does not); keys are compared by character code.
 - *The general editor* (📋 *Edit details*) is a popup with five tabs, so nothing is a long scroll: *Dates*, *Tags*, *Props*, *Files* and *More* (priority and tables). A tab you have edited shows a dot, and a note beside the buttons names them ("Changed: Dates, Tags"). Each tab shows how many items it holds.
-  - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers, a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. *Move the date* at the end of each group shifts its date by +1 or -1 day, week or month, as ~S-up~ and ~S-down~ do (~2026-11-30~ plus a month is ~2026-12-30~); OK saves it. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
+  - *SCHEDULED, DEADLINE and a plain timestamp*: date and time pickers (or a box that takes what Emacs's date prompt takes: ~+1w~, ~fri~, ~12~, ~2025-12-24 14:30-15:30~), a repeat selector (every N hours, days, weeks, months or years) and an optional warning delay (~-3d~ shows a deadline three days early). The three are independent, each with its own *Clear*. *Move the date* at the end of each group shifts its date by +1 or -1 day, week or month, as ~S-up~ and ~S-down~ do (~2026-11-30~ plus a month is ~2026-12-30~); OK saves it. See [[#agenda][Agenda]] for how a plain timestamp differs (it doesn't carry forward, and lives in the title).
   - *Tags*: removable chips (tap to remove) and an input with an *Add* button (Enter also adds). Suggestions appear as you type: every tag used in the open document (from an agenda view, in your agenda files) plus tags declared on a ~#+TAGS:~ line or listed in ~org-tag-alist~ or ~org-tag-persistent-alist~, most used first, narrowed to what you typed and excluding tags the heading already has. One tap adds one.
   - *Priority*: a button for each priority of the range (A, B, C unless ~org-priority-highest~ and ~org-priority-lowest~ say otherwise) and None.
   - *Properties*: an editable key/value row for each, with a remove button and an *Add property* row. The Key field completes from every key used in the open document (from an agenda view, in your agenda files), most used first, plus ones the app reads or writes (~CUSTOM_ID~, ~EFFORT~, ~Effort_ALL~, ~ID~, the ~ARCHIVE_*~ set); other keys still work. A row with a blank key is dropped on commit. A property that is new or changed is written as Org writes it, with the ~:KEY:~ padded to ten columns (~:ID:       abc~). This is also how you set a ~CUSTOM_ID~ for ~[[#id]]~-style links (see [[#links-and-images][Links and images]]).
@@ -169,9 +175,9 @@ Landing on a step identical to the last saved text clears the modified indicator
 :CUSTOM_ID: lists-tables-and-body-text
 :END:
 
-- *Lists*: ordered, unordered, checkboxes, description lists (~term :: description~) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term only when the list's first item has one; an item with nothing after its bullet gets the new item above it; blank lines between items are kept). Lists inside drawers and example blocks edit like any other list. *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
+- *Lists*: ordered, unordered, checkboxes, description lists (a term, then ~::~ and its description) and nested sub-lists. Tap an item's text for edit, add-below and delete actions. *Add item below* puts the new item right under the item's line, as ~M-RET~ does, with the item's sub-items following it, and numbers an ordered list again (a description item gets an empty term only when the list's first item has one; an item with nothing after its bullet gets the new item above it; blank lines between items are kept). Lists inside drawers and example blocks edit like any other list. *Add checkbox below* does the same with a box. Deleting an item removes its text and sub-items.
 - *List commands* act on the focused list item as in ~org-list.el~ (palette group List): ~M-<right>~ / ~M-<left>~ indent or outdent the item, ~M-S-<right>~ / ~M-S-<left>~ with its sub-items, ~M-<up>~ / ~M-<down>~ move it, ~C-c -~ cycles the bullet, ~C-c ^~ sorts the list (a, n, t, x; a capital reverses), ~C-c C-x C-b~ toggles the box, and *org-list-repair* fixes bullets, indentation and boxes. A whole list is one list node: continuation paragraphs, tables, blocks and sub-lists belong to their item, also after a blank line (two blank lines end the list).
-- *Checkboxes* toggle between unchecked and done. A box that has boxes under it shows what they add up to (~[-]~ when some are done), as in Org, so tapping it changes nothing. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down.
+- *Checkboxes* toggle between unchecked and done. A box that has boxes under it shows what they add up to (~[-]~ when some are done), as in Org, so tapping it changes nothing. A progress cookie (~[3/8]~, ~[40%]~, or the blank ~[/]~) in a heading's title or a list item is recalculated when a checkbox changes: a heading counts the top-level items of its own lists, an item counts its sub-list. ~:COOKIE_DATA: recursive~ counts nested items too. Changing a TODO state recalculates the parent heading's cookie from its TODO children (~:COOKIE_DATA: recursive~ reaches all descendants; ~checkbox~ keeps a heading on checkbox counting, ~todo~ on TODO counting). Percentages round down. *Update all statistics cookies* (~org-update-statistics-cookies~, in the command palette) counts every cookie of the file again.
 - *Tables*: tap a cell to edit it in place. The *⎌* button beside the field discards the edit and restores the cell's text (on a phone there is no Escape key). Row and column controls sit below the table; *⋯ Table* opens more (see [[#table-pad][Table pad]]). Every edit aligns the table the way ~org-table-align~ does (deleting a row leaves the others as they are), and the references in ~#+TBLFM:~ follow an inserted or deleted row or column. ~#+TBLFM:~ formulas are evaluated (see [[#table-formulas][Table formulas]]). *Header rows* are the rows before the table's first horizontal rule (~|---+---|~) and show bold; a table with no rule has no header, and a later rule only separates groups.
 - *Paragraphs*: tap the text for edit, add-below and delete actions.
 - *Captions, names and image sizes*: ~#+CAPTION:~, ~#+NAME:~, ~#+ATTR_HTML:~ (or ~#+ATTR_ORG:~), ~#+HEADER:~ and ~#+RESULTS:~ lines directly above a paragraph, image, table or block describe it. A caption shows in italics with its markup rendered; ~#+ATTR_HTML: :width 300 :align center~ sizes and centers the images in that paragraph (a plain number is pixels; ~%~ and ~em~ work). The other lines stay visible as small muted text, exactly as written.
@@ -412,7 +418,7 @@ Math renders in the outline, the Docs viewer and HTML export. LaTeX export write
 
 Example: ~The quadratic formula is \(x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}\).~ renders inline with a fraction bar and a radical. An ~align~ environment renders right-aligned, numbered equations, lined up at the ~&~ marks (see =examples/inline-latex.org=):
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 \begin{align}
 E &= mc^2 \\
 F &= ma
@@ -649,11 +655,11 @@ Cycling a heading to fully expanded always reveals its properties and blocks, wh
 
 Two forms, both general Emacs mechanisms: a first-line ~-*- var: val; -*-~ cookie, and a ~# Local Variables: ... # End:~ block, conventionally at the end of the file. Both can appear in one file, and the block wins a conflict. Every line of the block starts with the same prefix as the ~Local Variables:~ line; a block Emacs cannot read (a line without the prefix, a line that is not ~name: value~, a value that is cut off, no ~End:~) gives no variables, and the message shows in Emacs's words, such as ~Local variables list is not properly terminated~. Most variables below also have a labeled control on the Settings screen (see [[#settings][Settings]]) for the app-wide baseline.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 # -*- buffer-read-only: t; -*-
 #+END_SRC
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 # Local Variables:
 # org-agenda-start-on-weekday: 1
 # org-cycle-open-archived-trees: nil
@@ -691,7 +697,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~display-time-24hr-format~ | ~nil~ | Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23; set in Global Variables or the Lisp init |
 | ~large-file-warning-threshold~ | ~512000~ | Ask before opening an Org file above this many bytes (500KB here; Emacs asks at 10000000); ~nil~ never asks; set in Global Variables or the Lisp init |
-| ~org-adapt-indentation~ | ~nil~ | ~t~ indents the lines under a heading to its level (promoting and demoting shift them), ~headline-data~ only the planning line and the drawers; new planning lines and drawers are indented the same way; also Settings → Editing |
+| ~org-adapt-indentation~ | ~nil~ | ~t~ indents the lines under a heading to its level (promoting and demoting shift them), ~headline-data~ only the planning line and the drawers; new planning lines, drawers, log notes, state-change lines and CLOCK lines are indented the same way (under ~headline-data~, Emacs indents a log note by one more column than this app does); also Settings → Editing |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-clock-consistency-checks~ | Emacs's own list | Limits for the clock consistency checks, shown as a line above each Clocked row with an issue (white on dark red) in the Agenda's *ClkCk* log mode: ~:max-duration~, ~:min-duration~, ~:max-gap~ and ~:gap-ok-around~ of a property list; its face keys are not read. Set in Global Variables or the Lisp init |
 | ~org-agenda-cmp-user-defined~ | unset | A function of two agenda lines for the ~user-defined-up~ and ~-down~ sort keys: it returns ~-1~ (the first goes first), ~1~ or ~nil~ (no opinion), as ~(lambda (a b) (cond ((string-match-p "URGENT" a) -1) ((string-match-p "URGENT" b) 1)))~. The lines are the category and headline as text, without Emacs's text properties |
@@ -741,6 +747,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-attach-method~ | ~cp~ | What Attach does with a file you pick: ~cp~ copies it, ~mv~ asks to delete the original after copying, ~ln~ (or ~lns~) keeps a link to it; ~mv~ and ~ln~ copy where the app cannot do them (see [[#attachments][Attachments]]); also Settings → Attachments |
 | ~org-auto-align-tags~ | ~t~ | Align the tags again when promoting or demoting a heading; also Settings → Editing |
 | ~org-babel-load-languages~ | ~((emacs-lisp . t))~ | ~(js . t)~ in the list lets ~js~ source blocks run (see [[#source-blocks][Source blocks]]); read from Global Variables only, never from a file; also Settings → Editing and startup → *Editing* |
+| ~org-blank-before-new-entry~ | ~((heading . auto) (plain-list-item . auto))~ | Whether a new heading or list item gets an empty line before it: ~t~ always, ~nil~ never (an entry left out counts as ~nil~), ~auto~ as the entries around it do; set in Global Variables |
 | ~org-cite-basic-author-year-separator~ | ~", "~ | Text between author and year in a citation, a string |
 | ~org-cite-basic-sorting-field~ | ~author~ | Field the reference list is sorted by |
 | ~org-cite-global-bibliography~ | unset | Bibliography files used by every document, as a Lisp list of paths (see [[#citations][Citations]]) |
@@ -764,7 +771,35 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-deadline-warning-days~ | ~14~ | How many days before its date a DEADLINE with no warning suffix starts showing in the agenda |
 | ~org-duration-format~ | ~((special . h:mm))~ | How a duration is written (clock tables, Effort, column view, the agenda clock report): ~h:mm~, ~h:mm:ss~, a list of units such as ~((special . h:mm))~, ~(("d" . nil) ("h" . t) ("min" . t))~ or ~(compact)~ (see [[#typed-dates][Typed dates and durations]]) |
 | ~org-duration-units~ | the Emacs list | An alist such as ~(("min" . 1) ("h" . 60) ("d" . 480))~: the units a duration may use, and how many minutes each is. A value that is not an alist shows an error naming it. The units are used as given: ~("min" . 1)~ need not be in the list, ~nil~ means no units, and the first of two entries with the same name is used |
+| ~org-export-headline-levels~ | ~3~ | How many levels of headings an export keeps as headings (~H:~); also Settings → Export |
+| ~org-export-preserve-breaks~ | ~nil~ | ~t~ keeps line breaks as written (~\n:~); also Settings → Export |
+| ~org-export-time-stamp-file~ | ~t~ | ~t~ writes the time of the export (~timestamp:~); also Settings → Export |
+| ~org-export-with-archived-trees~ | ~headline~ | Archived subtrees: ~headline~ (the heading only), ~t~ or ~nil~ (~arch:~); also Settings → Export |
+| ~org-export-with-author~ | ~t~ | The author (~author:~); also Settings → Export |
 | ~org-export-with-broken-links~ | ~nil~ | What export does with a link that leads nowhere (a heading, target, custom id or code reference that is not there): ~nil~ stops with "Unable to resolve link: …", ~t~ leaves the link out, ~mark~ writes ~[BROKEN LINK: path]~; also Settings → Export. A file's ~#+OPTIONS: broken-links:~ wins |
+| ~org-export-with-clocks~ | ~nil~ | CLOCK lines (~c:~); also Settings → Export |
+| ~org-export-with-creator~ | ~nil~ | The creator line: ~nil~, ~t~ or ~comment~ (~creator:~); also Settings → Export |
+| ~org-export-with-date~ | ~t~ | The date (~date:~); also Settings → Export |
+| ~org-export-with-email~ | ~nil~ | The email address (~email:~); also Settings → Export |
+| ~org-export-with-emphasize~ | ~t~ | Bold, italic and the other emphasis (~*:~); also Settings → Export |
+| ~org-export-with-entities~ | ~t~ | Entities such as ~\alpha~ (~e:~); also Settings → Export |
+| ~org-export-with-fixed-width~ | ~t~ | Fixed-width lines (~::~); also Settings → Export |
+| ~org-export-with-footnotes~ | ~t~ | Footnotes (~f:~); also Settings → Export |
+| ~org-export-with-latex~ | ~t~ | LaTeX fragments: ~t~ typeset, ~nil~ dropped, ~verbatim~ as typed (~tex:~); also Settings → Export |
+| ~org-export-with-planning~ | ~nil~ | SCHEDULED and DEADLINE lines (~p:~); also Settings → Export |
+| ~org-export-with-priority~ | ~nil~ | Priorities (~pri:~); also Settings → Export |
+| ~org-export-with-section-numbers~ | ~t~ | Numbered headings: ~t~, ~nil~ or a number of levels (~num:~); also Settings → Export |
+| ~org-export-with-smart-quotes~ | ~nil~ | Curly quotes (~':~); also Settings → Export |
+| ~org-export-with-special-strings~ | ~t~ | Special strings such as ~--~ (~-:~); also Settings → Export |
+| ~org-export-with-statistics-cookies~ | ~t~ | Statistics cookies (~stat:~); also Settings → Export |
+| ~org-export-with-sub-superscripts~ | ~t~ | ~_~ and ~^~ as subscript and superscript: ~t~, ~nil~ or ~{}~ (~^:~); also Settings → Export |
+| ~org-export-with-tables~ | ~t~ | Tables; also Settings → Export |
+| ~org-export-with-tags~ | ~t~ | Tags of headings: ~t~, ~nil~ or ~not-in-toc~ (~tags:~); also Settings → Export |
+| ~org-export-with-tasks~ | ~t~ | Tasks: ~t~, ~nil~, ~todo~ or ~done~ (~tasks:~); also Settings → Export |
+| ~org-export-with-timestamps~ | ~t~ | Timestamps in text: ~t~, ~nil~, ~active~ or ~inactive~ (~<:~); also Settings → Export |
+| ~org-export-with-title~ | ~t~ | The title (~title:~); also Settings → Export |
+| ~org-export-with-toc~ | ~t~ | A table of contents: ~t~, ~nil~ or a number of levels (~toc:~); also Settings → Export |
+| ~org-export-with-todo-keywords~ | ~t~ | TODO keywords: ~t~, ~nil~, ~todo~ or ~done~ (~todo:~); also Settings → Export |
 | ~org-extend-today-until~ | ~0~ | The hour the day ends: before it, "today" is still yesterday; also Settings → Agenda |
 | ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
@@ -868,7 +903,7 @@ A variable the app does not read is kept with the file's variables and has no ef
 
 Settings → Advanced → *Lisp init* takes Emacs Lisp, run as Emacs runs an init file. ~setq~ gives any setting in the table above a value, written as in Emacs:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 (setq org-agenda-files '("github:home.org" "github:journal.org")
       org-deadline-warning-days (* 2 7)
       org-log-done 'time)
@@ -949,9 +984,9 @@ The interpreter behind the Lisp init, ~emacs-lisp~ source blocks, holiday lists,
 
 ~calendar-absolute-from-gregorian~ ~calendar-check-holidays~ ~calendar-current-date~ ~calendar-date-equal~ ~calendar-date-is-valid-p~ ~calendar-date-is-visible-p~ ~calendar-day-name~ ~calendar-day-number~ ~calendar-day-of-week~ ~calendar-dayname-on-or-before~ ~calendar-extract-day~ ~calendar-extract-month~ ~calendar-extract-year~ ~calendar-gregorian-from-absolute~ ~calendar-hebrew-from-absolute~ ~calendar-hebrew-last-day-of-month~ ~calendar-hebrew-last-month-of-year~ ~calendar-hebrew-leap-year-p~ ~calendar-hebrew-to-absolute~ ~calendar-islamic-from-absolute~ ~calendar-islamic-last-day-of-month~ ~calendar-islamic-leap-year-p~ ~calendar-islamic-to-absolute~ ~calendar-julian-from-absolute~ ~calendar-julian-to-absolute~ ~calendar-last-day-of-month~ ~calendar-leap-year-p~ ~calendar-month-name~ ~calendar-nth-named-absday~ ~calendar-nth-named-day~ ~diary-anniversary~ ~diary-astro-day-number~ ~diary-bahai-date~ ~diary-block~ ~diary-chinese-date~ ~diary-cyclic~ ~diary-date~ ~diary-day-of-year~ ~diary-entry-time~ ~diary-float~ ~diary-hebrew-birthday~ ~diary-hebrew-date~ ~diary-hebrew-omer~ ~diary-hebrew-parasha~ ~diary-hebrew-rosh-hodesh~ ~diary-hebrew-sabbath-candles~ ~diary-hebrew-yahrzeit~ ~diary-islamic-date~ ~diary-iso-date~ ~diary-julian-date~ ~diary-lunar-phases~ ~diary-offset~ ~diary-ordinal-suffix~ ~diary-remind~ ~diary-sunrise-sunset~ ~holiday-advent~ ~holiday-bahai~ ~holiday-bahai-new-year~ ~holiday-bahai-ridvan~ ~holiday-chinese~ ~holiday-chinese-new-year~ ~holiday-chinese-qingming~ ~holiday-chinese-winter-solstice~ ~holiday-easter-etc~ ~holiday-filter-visible-calendar~ ~holiday-fixed~ ~holiday-float~ ~holiday-greek-orthodox-easter~ ~holiday-hebrew~ ~holiday-hebrew-hanukkah~ ~holiday-hebrew-misc~ ~holiday-hebrew-passover~ ~holiday-hebrew-rosh-hashanah~ ~holiday-hebrew-tisha-b-av~ ~holiday-islamic~ ~holiday-islamic-new-year~ ~holiday-julian~ ~holiday-sexp~ ~org-anniversary~ ~org-block~ ~org-class~ ~org-cyclic~ ~org-date~ ~org-weather~ (own) ~org-xx-dst-date~ (own) ~solar-equinoxes-solstices~ ~solar-sunrise-sunset~ ~solar-time-string~ ~today-p~ (own)
 
-*cl-lib* (80): The common cl-lib functions and macros, including ~cl-loop~ with its usual clauses.
+*cl-lib* (82): The common cl-lib functions and macros, including ~cl-loop~ with its usual clauses.
 
-~cl-adjoin~ ~cl-assert~ ~cl-assoc~ ~cl-block~ ~cl-case~ ~cl-ceiling~ ~cl-copy-list~ ~cl-count~ ~cl-count-if~ ~cl-decf~ ~cl-defmacro~ ~cl-defun~ ~cl-delete~ ~cl-destructuring-bind~ ~cl-dolist~ ~cl-dotimes~ ~cl-endp~ ~cl-equalp~ ~cl-evenp~ ~cl-every~ ~cl-find~ ~cl-find-if~ ~cl-first~ ~cl-flet~ ~cl-floor~ ~cl-function~ ~cl-gcd~ ~cl-getf~ ~cl-incf~ ~cl-intersection~ ~cl-isqrt~ ~cl-labels~ ~cl-lcm~ ~cl-ldiff~ ~cl-letf~ ~cl-letf*~ ~cl-list*~ ~cl-list-length~ ~cl-loop~ ~cl-mapcan~ ~cl-mapcar~ ~cl-maplist~ ~cl-member~ ~cl-minusp~ ~cl-mismatch~ ~cl-mod~ ~cl-multiple-value-bind~ ~cl-notany~ ~cl-notevery~ ~cl-oddp~ ~cl-parse-integer~ ~cl-plusp~ ~cl-position~ ~cl-pushnew~ ~cl-reduce~ ~cl-rem~ ~cl-remove~ ~cl-remove-duplicates~ ~cl-remove-if~ ~cl-remove-if-not~ ~cl-rest~ ~cl-return~ ~cl-return-from~ ~cl-round~ ~cl-search~ ~cl-second~ ~cl-set-difference~ ~cl-signum~ ~cl-some~ ~cl-sort~ ~cl-stable-sort~ ~cl-subseq~ ~cl-subst~ ~cl-substitute~ ~cl-tailp~ ~cl-third~ ~cl-truncate~ ~cl-typep~ ~cl-union~ ~cl-values~
+~cl-adjoin~ ~cl-assert~ ~cl-assoc~ ~cl-block~ ~cl-case~ ~cl-ceiling~ ~cl-concatenate~ ~cl-copy-list~ ~cl-count~ ~cl-count-if~ ~cl-decf~ ~cl-defmacro~ ~cl-defun~ ~cl-delete~ ~cl-destructuring-bind~ ~cl-dolist~ ~cl-dotimes~ ~cl-endp~ ~cl-equalp~ ~cl-evenp~ ~cl-every~ ~cl-find~ ~cl-find-if~ ~cl-first~ ~cl-flet~ ~cl-floor~ ~cl-function~ ~cl-gcd~ ~cl-getf~ ~cl-incf~ ~cl-intersection~ ~cl-isqrt~ ~cl-labels~ ~cl-lcm~ ~cl-ldiff~ ~cl-letf~ ~cl-letf*~ ~cl-list*~ ~cl-list-length~ ~cl-loop~ ~cl-map~ ~cl-mapcan~ ~cl-mapcar~ ~cl-maplist~ ~cl-member~ ~cl-minusp~ ~cl-mismatch~ ~cl-mod~ ~cl-multiple-value-bind~ ~cl-notany~ ~cl-notevery~ ~cl-oddp~ ~cl-parse-integer~ ~cl-plusp~ ~cl-position~ ~cl-pushnew~ ~cl-reduce~ ~cl-rem~ ~cl-remove~ ~cl-remove-duplicates~ ~cl-remove-if~ ~cl-remove-if-not~ ~cl-rest~ ~cl-return~ ~cl-return-from~ ~cl-round~ ~cl-search~ ~cl-second~ ~cl-set-difference~ ~cl-signum~ ~cl-some~ ~cl-sort~ ~cl-stable-sort~ ~cl-subseq~ ~cl-subst~ ~cl-substitute~ ~cl-tailp~ ~cl-third~ ~cl-truncate~ ~cl-typep~ ~cl-union~ ~cl-values~
 # END lisp-reference
 
 -----
@@ -986,7 +1021,7 @@ Marking a task with a repeating timestamp done moves every repeating active time
 
 The spec overrides ~org-log-done~ for any keyword. It uses the fast-key syntax of ~#+TODO:~:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 #+TODO: TODO(t) WAIT(w@/!) | DONE(d!) KILL(k@)
 #+END_SRC
 
@@ -1047,7 +1082,7 @@ Open the archive file (*File → Open* lists ~_archive~ files), tap the archived
 
 Targets come from ~org-refile-targets~, written as in Emacs; the default, also for ~nil~, is the current file's top-level headings. A value that cannot be read as a list names the variable. Each entry is ~(FILES :KEY . VALUE)~:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 (setq org-refile-targets
       '((nil :maxlevel . 3)
         ("notes.org" :tag . "work")
@@ -1074,21 +1109,21 @@ An init script can add your own diary functions. Set *Run extension scripts* to 
 
 ~org.sexp(name, fn)~: makes ~%%(name args)~ work in an agenda file. ~fn~ is called once per day with ~ctx~ (~date~, ~year~, ~month~, ~day~, ~weekday~ with 0 for Sunday, ~today~, ~calendarLatitude~, ~calendarLongitude~) and then your arguments as plain values. Return ~true~ for an entry with the line's own text, a string for an entry with that text, anything else for none.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org.sexp("every-other-friday", (ctx, start) => {
   const days = (Date.parse(ctx.date) - Date.parse(start)) / 86400000;
   return days >= 0 && days % 14 === 0;
 });
 #+END_SRC
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 ,* Pay day
 %%(every-other-friday "2026-01-02") Pay day
 #+END_SRC
 
 ~org.command(id, label, fn)~: adds *label* to the command palette. ~fn(ctx)~ gets ~ctx.heading~, the heading the command was run on (or null), and can read the whole file through ~org.document~: its ~name~ and its ~headings~, each with ~index~, ~level~, ~title~, ~todo~, ~priority~, ~tags~, ~properties~, ~scheduled~, ~deadline~, ~closed~, ~body~ and ~path~. It changes the file with ~org.edit~: ~setTitle~, ~setTodo~, ~setTags~, ~setProperty~, ~deleteProperty~ and ~appendBody~, each taking a heading's ~index~. The edits are checked, then applied together as one undo step; none is applied if one is invalid, the buffer is read-only or the file changed while the command ran. ~org.notify(text)~, or a string returned from ~fn~, shows a message in the status line.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org.command("tag-urgent", "Tag as urgent", (ctx) => {
   if (!ctx.heading) return "Put the cursor on a heading first";
   org.edit.setTags(ctx.heading.index, [...ctx.heading.tags, "urgent"]);
@@ -1097,7 +1132,7 @@ org.command("tag-urgent", "Tag as urgent", (ctx) => {
 
 ~org.on(event, fn)~: runs ~fn(ctx)~ when something happens. The events are ~open~ (a file finished loading), ~save~ (a save succeeded), ~todo-change~ (a heading's TODO state changed; ~ctx.heading~, ~ctx.from~ and ~ctx.to~) and ~capture~ (a capture was filed; ~ctx.description~, ~ctx.file~). A hook can use ~org.notify~ in any event, and ~org.edit~ after ~todo-change~ and ~capture~ (one separate undo step; edits after ~save~ or ~open~ are ignored). A hook that fails is logged and never blocks saving or opening.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org.on("todo-change", (ctx) => {
   if (ctx.to === "DONE") org.edit.setProperty(ctx.heading.index, "FINISHED", new Date().toISOString().slice(0, 10));
 });
@@ -1153,7 +1188,7 @@ You are asked before the first use. A block lists what it needs: ~#+BEGIN_SRC js
 
 ~js~ blocks are off until *Run JavaScript source blocks* is ~On~ in Settings → Editing and startup → *Editing*. The setting comes from Global Variables, never from a file, so a document cannot turn it on. Each block then has a *Run* button (or ~C-c C-c~, or *Run source block* in the palette). The result is written under it as ~#+RESULTS:~ and replaced on the next run; one Undo removes it. The first run in a saved document asks for confirmation; an unsaved one asks every time. Code runs in a sandbox with no access to the page, your files or your accounts, and no network unless the header asks and you allow it (see Network, position and cache). Examples with Emacs's results: =examples/babel-js.org=.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 ,#+NAME: sales
 | q  |  n |
 |----+----|
@@ -1492,7 +1527,7 @@ Sunrise, sunset, the twilights and the day's length are computed as Emacs's ~sol
 
 This entry shows today's sun times; leave out ~when~ and ~today-p~ to show them every day:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 ,*** <%%(when (today-p) (let ((l (solar-sunrise-sunset date))) (format "Sun times: 🌅 %s | 🌇 %s | ⌛ %s" (apply 'solar-time-string (car l)) (apply 'solar-time-string (cadr l)) (nth 2 l))))>
 #+END_SRC
 
@@ -1559,7 +1594,7 @@ The link is Org's ~[[elisp:(customize-variable 'NAME)]]~. It opens the variable'
 
 Change them in Settings → Advanced → *Lisp init*; ~remove~ and ~delete~ take one entry out of a group. =examples/holidays.org= shows the default entries, every flag turned on, how to switch groups and single entries off, how to add each kind of entry, and a description link for every holiday. This switches the built-in groups off and keeps three days of your own:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 (setq holiday-general-holidays nil
       holiday-christian-holidays nil
       holiday-hebrew-holidays nil
@@ -1585,7 +1620,7 @@ Each entry is Lisp, evaluated for the month shown, so ~if~, ~let~, ~mapcar~ and 
 
 A ~<%%(expression)>~ goes where a plain timestamp would, in a heading's title. The expression is evaluated for each day shown, and every day it is non-nil is an occurrence. It is a matcher, not a repeater: marking the heading DONE has no effect. It is skipped when the heading has SCHEDULED or DEADLINE, and never carries forward.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 ,* Weekly Sync <%%(when (org-cyclic 7 2026 8 9) "Weekly sync")>
 ,* TODO Team Sync <%%(diary-float t 6 1)>
 #+END_SRC
@@ -1622,7 +1657,7 @@ A trailing tag needs a space before it (~<2000-01-01 Sat +1y> :BDAY:~), as in Or
 A habit is an open TODO with ~:STYLE: habit~ and a repeating SCHEDULED date, as in Emacs's ~org-habit~. The agenda row gets a strip of days: 21 before today, today (outlined, ~!~) and 6 after, 28 in all. Blue: not yet due. Green: can be done. Yellow: last chance. Red: overdue. A ~*~ is a day it was done.
 
 #+begin_example
-* TODO Shave
+,* TODO Shave
 SCHEDULED: <2026-10-13 Tue .+2d/4d>
 :PROPERTIES:
 :STYLE: habit
@@ -1738,7 +1773,7 @@ If a capture fails (network error, sync conflict) the form keeps your text. Ever
 - ~:clock-in t~: clock in the new entry (for ~item~, ~checkitem~, ~plain~ and ~table-line~, the heading it went under); a running clock is stopped first. ~:clock-keep t~ leaves the new clock running; otherwise it is stopped again at once, as when you finish a capture buffer in Emacs. ~:clock-resume t~ then starts the clock that was interrupted. ~:clock-keep~ wins over ~:clock-resume~.
 - ~:after-finalize FN~: a function, a ~(lambda () …)~ or a list of them, run once the entry is filed, in a buffer with no text (the capture buffer is gone, as in Emacs); an error is shown and the entry stays filed.
 - ~:prepare-finalize FN~ and ~:before-finalize FN~: a function, a ~(lambda () …)~ or a list of them, run on the text of the capture once every ~%~ escape and prompt is filled in, with point at its start; what is in the buffer afterwards is filed. ~:before-finalize~ runs after ~:prepare-finalize~.
-- A table row filed by ~table-line~ works out the table's ~#+TBLFM~ again. A formula for a column the table lacks follows ~org-table-formula-create-columns~ (Settings, Editing): ~t~ adds the column, ~warn~ adds it and the status line says so, ~nil~ and ~prompt~ add none.
+- A table row filed by ~table-line~ works out the table's ~#+TBLFM~ again. A formula for a column the table lacks follows ~org-table-formula-create-columns~ (Settings, Editing): ~t~ adds the column, ~warn~ adds it and the status line says so, ~nil~ and ~prompt~ add none and stop the capture after the row is filed ("Missing columns in the table.  Aborting"), leaving the table's formulas uncalculated, as Emacs does.
 - ~:prepend t~: put the new entry at the top instead of the bottom. A new list item goes before the first item, and a new table row goes right after the header row and rule. For ~item~, ~checkitem~ and ~plain~ it also puts any auto-created heading of the path first among its siblings.
 - ~:empty-lines N~, ~:empty-lines-before N~, ~:empty-lines-after N~ (default 0): the blank lines left before and after the new text. The blank lines around the place it goes are replaced by that many. A new item in a list changes only the separation of items, by at most one line; a table row ignores them.
 - ~:table-line-pos "I+1"~ (~table-line~ only): where the row goes: ~"I+1"~ is the line after the first rule, ~"II-1"~ the line before the second.
@@ -1861,7 +1896,7 @@ A floating ☰ button at bottom-right opens a configurable list of quick actions
 
 *Syntax*: a sequence of double-quoted ~"SPEC;LABEL"~ entries, spread over several lines with a trailing ~\~ (see [[#configuration][Configuration]] for line continuation). Settings → Advanced → *Global Variables* takes it in this one-entry-per-line form (see [[#settings][Settings]]):
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org-xx-extra-menu: "j;📔 Journal" \
                    "c;✅ Checklist" \
                    "m;👥 Meeting" \
@@ -1907,7 +1942,7 @@ An entry with no label, or whose spec is not a template key, an OLP path or a qu
 
 *Syntax*: double-quoted ~"menu:Label;alias"~ entries, space-separated and spread over several lines with a trailing ~\~. ~menu~ is ~file~, ~more~, ~export~, ~import~ or ~view~. Settings → Advanced → *Global Variables* takes it one entry per line (see [[#settings][Settings]]):
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org-xx-menu-aliases: "more:Commands;💲 Commands" \
                      "more:Export;📤 Export" \
                      "more:Import;📥 Import" \
@@ -1928,7 +1963,7 @@ Export and Import are steps within the More menu with their own namespaces, ~exp
 
 *Order*: once every label of a menu is listed, buttons follow the order written; a partial list leaves the order alone. To keep a button visible in a full list, repeat its text (~"more:Settings;Settings"~). Showing More as Settings, Commands, Import, Export:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 org-xx-menu-aliases: "more:Settings;Settings" "more:Commands;Commands" \
                      "more:Import;Import" "more:Export;Export"
 #+END_SRC
@@ -2055,7 +2090,7 @@ HTML export also takes these, with Org's defaults:
 | ~<:~, ~title:~, ~email:~ | Timestamps, the title, the author's address |
 | ~c:~ | CLOCK lines (off) |
 
-Each key has an Org variable that sets it for every file (Global Variables; ~#+OPTIONS:~ wins): ~org-export-with-toc~, ~-with-section-numbers~, ~-headline-levels~ (~H:~), ~-preserve-breaks~ (~\n:~), ~-time-stamp-file~ (~timestamp:~), ~-with-author~, ~-with-clocks~, ~-with-creator~, ~-with-date~, ~-with-drawers~, ~-with-email~, ~-with-emphasize~, ~-with-entities~, ~-with-fixed-width~, ~-with-footnotes~, ~-with-inlinetasks~, ~-with-latex~ (HTML reads ~org-html-with-latex~, as Emacs does), ~-with-planning~, ~-with-priority~, ~-with-properties~, ~-with-smart-quotes~, ~-with-special-strings~, ~-with-statistics-cookies~, ~-with-sub-superscripts~, ~-with-tables~, ~-with-tags~, ~-with-tasks~, ~-with-timestamps~, ~-with-title~, ~-with-todo-keywords~ and ~-with-archived-trees~. ~org-export-global-macros~ adds ~{{{macros}}}~ that a ~#+MACRO:~ of the file overrides, and ~org-export-snippet-translation-alist~ makes ~@@h:...@@~ an HTML snippet (shortcut for a back end).
+Each key has an Org variable that sets it for every file (Global Variables; ~#+OPTIONS:~ wins): ~org-export-with-toc~, ~-with-section-numbers~, ~-headline-levels~ (~H:~), ~-preserve-breaks~ (~\n:~), ~-time-stamp-file~ (~timestamp:~), ~-with-author~, ~-with-clocks~, ~-with-creator~, ~-with-date~, ~-with-drawers~, ~-with-email~, ~-with-emphasize~, ~-with-entities~, ~-with-fixed-width~, ~-with-footnotes~, ~-with-inlinetasks~, ~-with-latex~ (HTML reads ~org-html-with-latex~, as Emacs does), ~-with-planning~, ~-with-priority~, ~-with-properties~, ~-with-smart-quotes~, ~-with-special-strings~, ~-with-statistics-cookies~, ~-with-sub-superscripts~, ~-with-tables~, ~-with-tags~, ~-with-tasks~, ~-with-timestamps~, ~-with-title~, ~-with-todo-keywords~ and ~-with-archived-trees~; most of them also have a control in Settings, under Export. ~org-export-global-macros~ adds ~{{{macros}}}~ that a ~#+MACRO:~ of the file overrides, and ~org-export-snippet-translation-alist~ makes ~@@h:...@@~ an HTML snippet (shortcut for a back end).
 
 ~#+EXCLUDE_TAGS:~ (default ~noexport~), ~#+SELECT_TAGS:~ (default ~export~), ~#+FILETAGS:~ and ~#+TAGS:~ groups, COMMENT headings, ~#+SUBTITLE:~, ~#+DESCRIPTION:~, ~#+KEYWORDS:~, ~#+LANGUAGE:~ and ~#+MACRO:~ are honored. Other formats ignore these HTML-only keys.
 
@@ -2064,6 +2099,7 @@ Each key has an Org variable that sets it for every file (Global Variables; ~#+O
 - With no block type, the file is read as org: its keywords (~#+MACRO:~, ~#+TITLE:~ and so on), its text before the first heading and its headings come in. ~::*Heading~, ~::#custom-id~, ~::name~, ~::<<target>>~, ~::/regexp/~ or plain text includes that part of the file, and ~:only-contents t~ what is inside it. ~:minlevel N~ shifts its top level to N.
 - With a block type (~src~, ~example~, ~quote~ or ~export~, optionally with a language or backend, as in ~#+INCLUDE: "path" export html~), the raw text is wrapped in that block and placed in the body.
 - ~:lines "N-M"~, ~"-M"~ or ~"N-"~ filters the text first. The end line is exclusive, as in org, despite the manual's wording.
+- A file that cannot be read, a file that includes itself and a search that finds nothing stop the export with a message (~Cannot include file x.org~). In an included org file, footnote labels become ~-1-label~ so they cannot collide with the document's, and relative file links are made relative to the document.
 
 ~#+HTML_HEAD:~ inserts raw HTML before ~</head>~, in HTML export only and for subtree exports too; several lines are joined in order. ~#+BEGIN_EXPORT <backend>~ ... ~#+END_EXPORT~ passes its content through unescaped when the backend matches the current format (~html~, ~ascii~, ~odt~, where the content must already be ODF XML) and is omitted otherwise.
 
@@ -2108,7 +2144,7 @@ HTML puts ~<span class="linenr">~ before each line and a ~coderef~ anchor on lab
 
 A ~.tex~ file that compiles with ~pdflatex~, ~xelatex~ or ~lualatex~, laid out as ~org-latex-export-to-latex~ lays it out: sections, lists, tables (~#+ATTR_LATEX:~), figures, footnotes, citations, links, math and source blocks. With pictures the app can read the export is a ~.zip~ with them in ~images/~; otherwise just the ~.tex~. Settings → Export → LaTeX also has *Fix wide TOC numbers*, which adds the ~tocloft~ lines that keep numbers such as 1.11.1 from running into titles, as an ~(add-to-list 'org-latex-packages-alist …)~ form in the Lisp init. Examples with Emacs's results: =examples/export-latex.org=.
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 #+LATEX_CLASS: report
 #+MACRO: stamp (eval (format-time-string "%Y" (current-time)))
 #+OPTIONS: todo:nil tags:nil
@@ -2573,7 +2609,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Agenda* (see [[#agenda][Agenda]]): the sexp evaluator is a Lisp subset; functions of your own come from an [[#extensions][Extensions]] script. ~org-class~ skips the days in your holiday lists. The diary file and ~local:~ agenda files feed the Agenda; to change one, open it (*File → Open*) and save as usual; in the Android app Refile and Replace also write into a ~local:~ agenda file while a local file is open.
 
-*Babel*: ~emacs-lisp~ and ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Source in ~emacs-lisp~, ~python~, ~js~ and ~java~ is colored as Emacs's font-lock colors it (keyword, string, comment and its starter, doc, constant, builtin, type, function-name, variable-name, operator, warning and annotation; numbers are plain), checked face by face against Emacs 29.3 on a sample of each; HTML export names the faces ~org-keyword~, ~org-doc~ and so on, and ODT export has a style for each. Other languages get a simpler coloring. ~go~ is among them: Emacs 29.3 without ~go-mode~ shows Go plain, so Go is colored though Emacs would not be.
+*Babel*: ~emacs-lisp~ and ~js~ blocks run, with ~:results~, ~:var~, ~:timeout~, ~:wrap~, ~:net~, ~:location~, ~:cache~, ~:noweb~ and tangling (see [[#source-blocks][Source blocks]] and [[#literate-programming][Literate programming]]). Source in ~emacs-lisp~, ~python~, ~js~, ~java~, ~org~, ~sh~ (and ~bash~) and ~html~ (and ~export html~) is colored as Emacs's font-lock colors it (keyword, string, comment and its starter, doc, constant, builtin, type, function-name, variable-name, operator, warning and annotation; numbers are plain), checked face by face against Emacs 29.3 on a sample of each; HTML export names the faces ~org-keyword~, ~org-doc~ and so on, and ODT export has a style for each. Inside an ~org~ block, ~emacs-lisp~, ~python~, ~js~, ~java~, ~sh~ and ~export html~ source is colored as Emacs colors it. ~zsh~, ~ksh~, ~csh~, ~htm~, ~xhtml~ and ~svg~ source is not colored, where Emacs uses the same shell and HTML modes. Where Emacs's ~sh-mode~ raises an error on an unusual script, the text is left plain. Other languages get a simpler coloring. ~go~ is among them: Emacs 29.3 without ~go-mode~ shows Go plain, so Go is colored though Emacs would not be. In an ~emacs-lisp~ block, ~(point)~ in a ~:var~ gives 1 where Emacs gives the block's position, and a block that writes a file with ~with-temp-file~ stops with an error, where Emacs writes the file. ~:file-desc ""~ writes the file's name as the description, where Emacs writes an empty one.
 
 *Links and structure*: ~[[id:...]]~ links are followed through the open tabs and Agenda Files, then the files opened here before, using a table kept in this browser in place of ~org-id-locations~. ~<<targets>>~ and radio targets work in the outline and in every export. ~#+SETUPFILE:~ is read from the same place as the document, or from an http(s) URL, and kept for the session. One that cannot be read is named in a message with Emacs's words ("Unable to fetch file from …") and the export goes on without it. A web address is fetched only after you allow it: *Load once*, *Always load from this address* or *Never* (the same goes for a ~#+BIBLIOGRAPHY:~ address).
 
@@ -2583,7 +2619,7 @@ For readers who know Emacs org-mode: where org-pwa differs. A topic not listed h
 
 *Search* (see [[#searching][Searching]]): Search and Replace both reach every file in ~org-agenda-files~, as org's ~org-search-view~ and ~tags-query-replace~ do. Subtree narrowing (see [[#narrowing][Narrowing]]) and Search's Narrow survive a reload.
 
-*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ (see Babel above for the languages matched to Emacs) and KaTeX in place of MathJax. ODT is a port of ox-odt that follows it on the files compared. It differs on purpose in these places: LaTeX becomes KaTeX formula objects (Emacs needs an outside converter and otherwise prints the source), source blocks are colored with this app's highlighter, verse blocks keep their line breaks, a link to a target without a description prints the target's name (Emacs prints "nil"), and a character such as =<= from an entity is escaped. A missing author is left out unless ~user-full-name~ is set. HTML, LaTeX, ASCII and Org follow ox on tables, ~UNNUMBERED~ and the ~f:~ and ~|:~ options.
+*Export* (see [[#export][Export]]): HTML export uses its own coloring in place of ~htmlize~ (see Babel above for the languages matched to Emacs) and KaTeX in place of MathJax, so the ~#+HTML_MATHJAX:~ options (path, scale, font, align) are read and not used. The words an export writes for itself ("Table 1:", "Figure 1:", "Listing 1:", "Table of Contents") follow ~#+LANGUAGE:~ in HTML and ODT, as in Emacs. ODT is a port of ox-odt that follows it on the files compared. It differs on purpose in these places: LaTeX becomes KaTeX formula objects (Emacs needs an outside converter and otherwise prints the source), source blocks are colored with this app's highlighter, verse blocks keep their line breaks, a link to a target without a description prints the target's name (Emacs prints "nil"), a table, listing or figure with a caption and no ~#+NAME:~ gets a bookmark named for the export (Emacs names every such bookmark "nil"), and a character such as =<= from an entity is escaped. A missing author is left out unless ~user-full-name~ is set. HTML, LaTeX, ASCII and Org follow ox on tables, ~UNNUMBERED~ and the ~f:~ and ~|:~ options.
 
 *Refile* (see [[#refile][Refile]]): the destination is an existing heading.
 
@@ -2620,7 +2656,7 @@ The one exception is ~src/vendor/mathjs/mathjs-custom.min.js~, a tree-shaken cus
 
 *Tests*: the engine (~src/~) and the browser adapters (~src-browser/~) use Node's built-in test runner, with no external dependencies:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 npm test
 #+END_SRC
 
@@ -2640,7 +2676,7 @@ Everything the app asks of the device (files on the device, saving a file out, t
 
 *Browser smoke test*: it covers what unit tests can't reach, since ~app.js~ is UI wiring:
 
-#+BEGIN_SRC
+#+BEGIN_SRC text
 node tools/smoke.mjs             # everything
 node tools/smoke.mjs conflict    # only checks whose name contains "conflict"
 SMOKE_SLICE=0:27 node tools/smoke.mjs    # only the first 27 checks; 27: runs the rest

@@ -12,6 +12,7 @@ import { createHeading } from './heading-edit.js';
 import { buildArchivedClone, cloneHeading, findAncestorPath, parseArchiveLocation, setProperty, getArchiveLocation } from './archive-model.js';
 import { readArchiveSettings } from './archive-settings.js';
 import { formatTimeString } from './format-time.js';
+import { blankBeforeNew } from './blank-before-entry.js';
 
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
@@ -179,6 +180,11 @@ class Buf {
 
   /** org--blank-before-heading-p with org-blank-before-new-entry at its default (auto); throws where Org signals an error. */
   blankBeforeHeading() {
+    return blankBeforeNew('heading', () => this.blankBeforeHeadingAuto());
+  }
+
+  /** The `auto` case of blankBeforeHeading. */
+  blankBeforeHeadingAuto() {
     const keep = this.pt;
     try {
       const before = (() => {

@@ -166,26 +166,6 @@ function isOrderedMarker(marker) {
   return /^\d+[.)]$/.test(marker);
 }
 
-/** Whether position `pos` in `text` falls inside an active ~...~ or
- *  =...= span -- an odd count of the corresponding delimiter having
- *  appeared before this point means we're "inside" one of those spans
- *  right now. A lightweight approximation (not a full reimplementation
- *  of the inline parser's own border rules), but sufficient for this
- *  specific purpose: deciding whether a "::" match is real tag-separator
- * @param {string} text
- * @param {number} pos
- *  syntax or just literal text living inside a code/verbatim span. */
-function isInsideLiteralSpan(text, pos) {
-  for (const delim of ['~', '=']) {
-    let count = 0;
-    for (let i = 0; i < pos; i++) {
-      if (text[i] === delim) count++;
-    }
-    if (count % 2 === 1) return true;
-  }
-  return false;
-}
-
 /** @param {string} line */
 function parseListItemLine(line) {
   const m = /** @type {RegExpExecArray} */ (LIST_ITEM_RE.exec(line));
@@ -203,7 +183,6 @@ function parseListItemLine(line) {
   let tagMatch;
   let found = null;
   while (/^[-+*]$/.test(marker) && (tagMatch = TAG_SEP_RE.exec(text))) {
-    if (isInsideLiteralSpan(text, tagMatch.index)) continue; // e.g. a "~term :: description~" example within the item's own text, not a real tag separator
     found = tagMatch;
   }
   if (found) {

@@ -11,6 +11,7 @@ import { readLogSettings } from '../src/log-settings.js';
 import { resolveTodoSequence, resolveTodoSequences, findSequenceForHeading, cycleTodoState, setTodoState } from '../src/todo-cycle.js';
 import { applyTransitionEffects, writePendingNote } from '../src/todo-transition.js';
 import { findAncestorPath } from '../src/archive-model.js';
+import { adaptIndentationOf, setAdaptIndentation } from '../src/indent-settings.js';
 import { nextPriority, readPriorityRange, prioritiesKeyword, priorityInRange } from '../src/priorities.js';
 import { clockIn, clockOut, clockCancel, clockInSwitchingTasks } from '../src/clock.js';
 import { readClockSettings, clockOutSwitchState } from '../src/clock-settings.js';
@@ -66,9 +67,14 @@ function runLog(c) {
   else setTodoState(heading, c.to, sequence);
   const path = [...(findAncestorPath(doc, heading) || []), heading];
   const settings = readLogSettings(doc, parseLocalVariables(serializeOrg(doc)), c.vars || {}, path);
-  const pending = applyTransitionEffects(heading, from, sequence, { settings, keepWhenNoTodo: getClosedKeepWhenNoTodo({}), now: at(oracle.now.replace(' ', 'T').slice(0, 16).replace('T', ' ')) });
-  if (pending && c.note !== null) writePendingNote(pending, c.note, settings);
-  return serializeOrg(doc);
+  setAdaptIndentation(adaptIndentationOf(c.vars || {})); // org-adapt-indentation, as a case binds it
+  try {
+    const pending = applyTransitionEffects(heading, from, sequence, { settings, keepWhenNoTodo: getClosedKeepWhenNoTodo({}), now: at(oracle.now.replace(' ', 'T').slice(0, 16).replace('T', ' ')) });
+    if (pending && c.note !== null) writePendingNote(pending, c.note, settings);
+    return serializeOrg(doc);
+  } finally {
+    setAdaptIndentation('nil');
+  }
 }
 
 /** @param {Case} c */
@@ -98,6 +104,16 @@ function runClock(c) {
   };
   const settings = readClockSettings(doc, parseLocalVariables(serializeOrg(doc)), vars, path);
   const start = at(c.start);
+  setAdaptIndentation(adaptIndentationOf(c.adapt === undefined ? {} : { 'org-adapt-indentation': c.adapt })); // org-adapt-indentation, as a case binds it
+  try {
+    return runClockWith(c, doc, heading, path, settings, start);
+  } finally {
+    setAdaptIndentation('nil');
+  }
+}
+
+/** @param {Case} c @param {any} doc @param {any} heading @param {any} path @param {any} settings @param {Date} start */
+function runClockWith(c, doc, heading, path, settings, start) {
   clockIn(heading, stamp(start), settings);
   if (c.cancel) clockCancel(heading);
   else if (c.span !== null) {

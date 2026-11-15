@@ -1,0 +1,9250 @@
+{
+ "lang": "org",
+ "mode": "org-mode",
+ "runs": [
+  [
+   "#+BEGIN_SRC emacs-lisp :var n=3\n",
+   "org-block-begin-line"
+  ],
+  [
+   "(mapcar (",
+   "org-block"
+  ],
+  [
+   "lambda",
+   "keyword"
+  ],
+  [
+   " (x) (* x n)) '(1 2 3))\n",
+   "org-block"
+  ],
+  [
+   "#+END_SRC\n",
+   "org-block-end-line"
+  ],
+  [
+   "  * Mary Doe\n  ",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   ":BIRTHDAY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2000-01-01",
+   "org-property-value"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   ":ANNIVERSARY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2015-06-15",
+   "org-property-value"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   ":SPOUSE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "John Doe",
+   "org-property-value"
+  ],
+  [
+   "\n  ",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Plan sprint",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2027-03-15 Mon>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Ship release",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2027-03-16 Tue 08:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2027-03-16 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Write report",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2027-03-17 Wed 10:00>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Dentist ",
+   "org-level-1"
+  ],
+  [
+   "<2027-03-19 Fri 15:00>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Review budget",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2027-03-20 Sat>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Website ",
+   "org-level-1"
+  ],
+  [
+   ":project:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Draft copy",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Garden ",
+   "org-level-1"
+  ],
+  [
+   ":project:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Buy seeds",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CATEGORY: home",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Mow the lawn ",
+   "org-level-1"
+  ],
+  [
+   ":garden:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2027-03-16 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the plumber",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#    -*- mode: org -*-",
+   "comment"
+  ],
+  [
+   "\n\n\nArchived entries from file /home/me/org/notes.org\n\n\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                                  ",
+   "org-level-1"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "** Gather receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Archived Tasks",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Archived Tasks",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "* Archived Tasks",
+   "org-level-1"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                            ",
+   "org-level-2"
+  ],
+  [
+   ":work:tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: archive.org::* From %s",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: archive.org::* From %s",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n\nArchived entries from file /home/me/org/notes.org\n\n\n",
+   null
+  ],
+  [
+   "* From notes.org",
+   "org-level-1"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: archive.org::",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "::* Tax papers",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: archive.org::",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "* Tax papers",
+   "org-level-1"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " File taxes                                                 ",
+   "org-level-2"
+  ],
+  [
+   ":work:tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "::* Tax papers",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#    -*- mode: org -*-",
+   "comment"
+  ],
+  [
+   "\n\n\nArchived entries from file /home/me/org/notes.org\n\n\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CATEGORY: finance",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+FILETAGS: :office:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Done",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Q4 ",
+   "org-level-2"
+  ],
+  [
+   ":money:work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** ",
+   "org-level-3"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Pay ",
+   "org-level-3"
+  ],
+  [
+   ":tax:money:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Done",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CATEGORY: finance",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+FILETAGS: :office:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Done",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Q4 ",
+   "org-level-2"
+  ],
+  [
+   ":money:work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Done",
+   "org-level-1"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Pay                                           ",
+   "org-level-2"
+  ],
+  [
+   ":office:work:tax:money:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects/Q4",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "finance",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "office work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Archived Tasks",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Sweep",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Archived Tasks",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "Old chore",
+   "org-headline-done"
+  ],
+  [
+   "\nbody\n",
+   null
+  ],
+  [
+   "#+ARCHIVE: ::* Archived Tasks",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Archived Tasks",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "Old chore",
+   "org-headline-done"
+  ],
+  [
+   "\nbody\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Sweep",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Home",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Old plan",
+   "org-level-2"
+  ],
+  [
+   "\nbody\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-archived"
+  ],
+  [
+   " Old plan                                                    ",
+   "org-archived"
+  ],
+  [
+   ":ARCHIVE:",
+   "org-archived"
+  ],
+  [
+   "\nbody\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                                 ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Call Pat",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Later",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Projects ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Plan the year",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Home",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Chores",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Call Pat",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                                 ",
+   "org-level-2"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "*** Gather receipts",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Later",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                                  ",
+   "org-level-1"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TIME:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "2026-10-11 Sun 16:30",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_FILE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "/home/me/org/notes.org",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_OLPATH:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Projects",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_CATEGORY:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "notes",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_TODO:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "TODO",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ARCHIVE_ITAGS:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "work",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "** Gather receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " File taxes                                                  ",
+   "org-level-1"
+  ],
+  [
+   ":tax:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue>",
+   "org-date"
+  ],
+  [
+   "\nSee the form.\n",
+   null
+  ],
+  [
+   "** Gather receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ID:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "7a3b9c4e-5d6f-4a8b-9c0d-1e2f3a4b5c6d",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":ID:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "11223344-5d6f-4a8b-9c0d-1e2f3a4b5c6d",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":DIR:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "files/trips",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes                                                         ",
+   "org-level-1"
+  ],
+  [
+   ":work:ATTACH:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes                                                         ",
+   "org-level-1"
+  ],
+  [
+   ":work:ATTACH:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips                                                              ",
+   "org-level-1"
+  ],
+  [
+   ":ATTACH:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes                                                         ",
+   "org-level-1"
+  ],
+  [
+   ":work:ATTACH:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes                                                                ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Form 1040",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Receipts",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Trips",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Packing list",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Walked the dog",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Called Mom",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Called Mom",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Walked the dog",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Called Mom",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Walked the dog",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Called Mom",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Journal",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Archive",
+   "org-level-1"
+  ],
+  [
+   "\nold notes\n",
+   null
+  ],
+  [
+   "* Journal",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11 November",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-11-07 Saturday",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "***** Walked the dog",
+   "org-level-5"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Archive",
+   "org-level-1"
+  ],
+  [
+   "\nold notes\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n- Called Mom\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-05 Thursday",
+   "org-level-3"
+  ],
+  [
+   "\n- Called Mom\n- Bought milk\n",
+   null
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "* 2025",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2025-W01",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2024-12-30 Monday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Walked the dog",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Earlier",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Earlier",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Walked the dog",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "#+TITLE:",
+   "org-document-info-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Journal\n",
+   "org-document-title"
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-W45",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Walked the dog",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "[[https://orgmode.org/guide/][",
+   "org-link"
+  ],
+  [
+   "Org mode compact guide",
+   "org-link"
+  ],
+  [
+   "]",
+   "org-link"
+  ],
+  [
+   "]",
+   "org-link"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":CREATED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-07 Sat 09:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n  \n  read this later\n\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "** A fox",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":CREATED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-07 Sat 09:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n  The quick brown fox\n  jumps over the lazy dog.\n  \n\n",
+   null
+  ],
+  [
+   "* Lists",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Shopping",
+   "org-level-2"
+  ],
+  [
+   "\n- Eggs\n",
+   null
+  ],
+  [
+   "* Lists",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Shopping",
+   "org-level-2"
+  ],
+  [
+   "\n- Eggs\n\n- Milk\n",
+   null
+  ],
+  [
+   "* Lists",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Errands",
+   "org-level-2"
+  ],
+  [
+   "\n- Pay rent\n",
+   null
+  ],
+  [
+   "* Lists",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Errands",
+   "org-level-2"
+  ],
+  [
+   "\n- Pay rent\n- Call the plumber\n",
+   null
+  ],
+  [
+   "* Expenses",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|   | Date | What | Amount |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+------+------+--------|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | ",
+   "org-table"
+  ],
+  [
+   "[2026-11-02 Mon 08:10]",
+   "org-date"
+  ],
+  [
+   " | Bus | 2.00 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $1=@#-1",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Expenses",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|   | Date                   | What   | Amount |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+------------------------+--------+--------|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | ",
+   "org-table"
+  ],
+  [
+   "[2026-11-02 Mon 08:10]",
+   "org-date"
+  ],
+  [
+   " | Bus    |   2.00 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 2 | ",
+   "org-table"
+  ],
+  [
+   "[2026-11-07 Sat 09:30]",
+   "org-date"
+  ],
+  [
+   " | Coffee |   3.50 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $1=@#-1",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-10 Oct",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-10-30",
+   "org-level-3"
+  ],
+  [
+   "\n- 09:00 - old entry\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-10 Oct",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-10-30",
+   "org-level-3"
+  ],
+  [
+   "\n- 09:00 - old entry\n",
+   null
+  ],
+  [
+   "** 2026-11 Nov",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-08",
+   "org-level-3"
+  ],
+  [
+   "\n- second\n- 01:19 - first\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📥 Inbox - unprocessed",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Meeting Notes",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Earlier meeting",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📥 Inbox - unprocessed",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Meeting Notes",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Planning                                                        ",
+   "org-level-3"
+  ],
+  [
+   ":meeting:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":CREATED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-07 Sat 18:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** Attendees",
+   "org-level-4"
+  ],
+  [
+   "\n- \n",
+   null
+  ],
+  [
+   "**** Notes",
+   "org-level-4"
+  ],
+  [
+   "\n- \n",
+   null
+  ],
+  [
+   "**** Action Items",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "***** ",
+   "org-level-5"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-5"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " Send the agenda",
+   "org-level-5"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Earlier meeting",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11 November",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-11-07 Saturday",
+   "org-level-4"
+  ],
+  [
+   "\n- 09:15 - Breakfast\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11 November",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-11-07 Saturday",
+   "org-level-4"
+  ],
+  [
+   "\n- 18:30 - \n- 09:15 - Breakfast\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 📔 Journal - journal and diary",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11 November",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-11-07 Saturday",
+   "org-level-4"
+  ],
+  [
+   "\n- \n",
+   null
+  ],
+  [
+   "* 2025",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** old",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2025",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** old",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Dentist ",
+   "org-level-2"
+  ],
+  [
+   "<2026-11-09 Mon 14:30>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Dentist ",
+   "org-level-2"
+  ],
+  [
+   "<2026-11-09 Mon 14:30>",
+   "org-date"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "* New",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** existing",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* New",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** existing",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Ann Lee",
+   "org-level-2"
+  ],
+  [
+   "\nBEGIN:VCARD\nVERSION:3.0\nFN:Ann Lee\nN:Lee;Ann;;;\nEMAIL:ann@x.org\nTEL;TYPE=voice:555-1\nADR;TYPE=home:;;;Troy;NY;;\nEND:VCARD\n\n\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-09 Monday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 14:30 Call back",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "[2026-11-09 Mon 14:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 2026",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** 2026-11 November",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-07 Saturday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 2026-11-10 Tuesday",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 00:00 Pay rent",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "[2026-11-10 Tue 00:00]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":CREATED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-11-07 Sat 18:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Inbox",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Standup with Sam",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier idea",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier idea",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Try a standing desk",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":EFFORT:",
+   "org-special-keyword"
+  ],
+  [
+   "   ",
+   null
+  ],
+  [
+   "1:00",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n\nAsk facilities first.\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier idea",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Ideas",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Learn to juggle",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Earlier idea",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Other",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 🛍️ Bag - lists and notes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ❤️ Health",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 🏩 Tracking",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Other",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* 🛍️ Bag - lists and notes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ❤️ Health",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** 🏩 Tracking",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-11",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+PLOT: title:\"Tracking\" ind:4 deps:1 with:points ticks:6",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|   |            |      |    |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+------------+------+----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | 2026-11-07 | 1830 | 19 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 2 | 2026-11-07 | 1830 | 19 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $1=@#-1 :: $4=if(round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60) == 24, 0, round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60))",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** 2026-10",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+PLOT: title:\"Tracking\" ind:4 deps:1 with:points ticks:6",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|   |            |      |   |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+------------+------+---|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | 2026-10-31 | 0800 | 8 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $1=@#-1 :: $4=if(round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60) == 24, 0, round(trunc($3/100) + 100*($3/100 - trunc($3/100)) / 60))",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** Other",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nSee ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   ";",
+   "org-cite"
+  ],
+  [
+   "@lamport94",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n\n",
+   null
+  ],
+  [
+   "* References",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+PRINT_BIBLIOGRAPHY:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "[cite/t:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[cite/na:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[cite/b:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[cite/n:",
+   "org-cite"
+  ],
+  [
+   "@three",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nDetails in ",
+   null
+  ],
+  [
+   "[cite:see ",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   ", p. 5]",
+   "org-cite"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[cite/t:",
+   "org-cite"
+  ],
+  [
+   "@lamport94",
+   "error"
+  ],
+  [
+   ", chapter 2]",
+   "org-cite"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nPrior work: ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@three",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n\n",
+   null
+  ],
+  [
+   "#+PRINT_BIBLIOGRAPHY:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CITE_EXPORT: natbib plain",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nSee ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[cite/t:",
+   "org-cite"
+  ],
+  [
+   "@lamport94",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[cite/a:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n\n",
+   null
+  ],
+  [
+   "#+PRINT_BIBLIOGRAPHY:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CITE_EXPORT: biblatex",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nSee ",
+   null
+  ],
+  [
+   "[cite:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ", ",
+   null
+  ],
+  [
+   "[cite/t:",
+   "org-cite"
+  ],
+  [
+   "@lamport94",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   " and ",
+   null
+  ],
+  [
+   "[cite/a:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n\n",
+   null
+  ],
+  [
+   "#+PRINT_BIBLIOGRAPHY:",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+BIBLIOGRAPHY: refs.bib",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nBy ",
+   null
+  ],
+  [
+   "[cite/a:",
+   "org-cite"
+  ],
+  [
+   "@knuth84",
+   "error"
+  ],
+  [
+   "]",
+   "org-cite"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** C",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** D",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* C",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** D",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** C",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** C1",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "*** C",
+   "org-level-3"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "**** C1",
+   "org-level-4"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* C",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** C1",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* D",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* C",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** C1",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* A",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** B",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* D",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Steps",
+   "org-level-1"
+  ],
+  [
+   "\n1. Mix\n2. Bake\n3. Cool\n",
+   null
+  ],
+  [
+   "* Steps",
+   "org-level-1"
+  ],
+  [
+   "\n1. Mix\n2. Bake\n3. \n4. Cool\n",
+   null
+  ],
+  [
+   "* Shopping",
+   "org-level-1"
+  ],
+  [
+   "\n- Fruit\n  - apples\n  - pears\n- Bread\n",
+   null
+  ],
+  [
+   "* Shopping",
+   "org-level-1"
+  ],
+  [
+   "\n- Fruit\n- \n  - apples\n  - pears\n- Bread\n",
+   null
+  ],
+  [
+   "* Terms",
+   "org-level-1"
+  ],
+  [
+   "\n- ",
+   null
+  ],
+  [
+   "org ::",
+   "org-list-dt"
+  ],
+  [
+   " outliner\n- ",
+   null
+  ],
+  [
+   "pwa ::",
+   "org-list-dt"
+  ],
+  [
+   " web app\n",
+   null
+  ],
+  [
+   "* Terms",
+   "org-level-1"
+  ],
+  [
+   "\n- ",
+   null
+  ],
+  [
+   "org ::",
+   "org-list-dt"
+  ],
+  [
+   " outliner\n- ",
+   null
+  ],
+  [
+   " ::",
+   "org-list-dt"
+  ],
+  [
+   " \n- ",
+   null
+  ],
+  [
+   "pwa ::",
+   "org-list-dt"
+  ],
+  [
+   " web app\n",
+   null
+  ],
+  [
+   "* Packing ",
+   "org-level-1"
+  ],
+  [
+   "[0/2]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   "\n- ",
+   null
+  ],
+  [
+   "[-]",
+   "org-checkbox"
+  ],
+  [
+   " Bag ",
+   null
+  ],
+  [
+   "[1/2]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   "\n  - ",
+   null
+  ],
+  [
+   "[ ]",
+   "org-checkbox"
+  ],
+  [
+   " shirts\n  - ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " shoes\n- ",
+   null
+  ],
+  [
+   "[ ]",
+   "org-checkbox"
+  ],
+  [
+   " Passport\n",
+   null
+  ],
+  [
+   "* Packing ",
+   "org-level-1"
+  ],
+  [
+   "[1/2]",
+   "org-checkbox-statistics-todo"
+  ],
+  [
+   "\n- ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " Bag ",
+   null
+  ],
+  [
+   "[2/2]",
+   "org-checkbox-statistics-done"
+  ],
+  [
+   "\n  - ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " shirts\n  - ",
+   null
+  ],
+  [
+   "[X]",
+   "org-checkbox"
+  ],
+  [
+   " shoes\n- ",
+   null
+  ],
+  [
+   "[ ]",
+   "org-checkbox"
+  ],
+  [
+   " Passport\n",
+   null
+  ],
+  [
+   "| a | b |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+---|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 | 2 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $2=$1*2",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| a |   | b |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+---+---|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 |   | 2 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: $3=$1*2",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| n | sq |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 1 |  1 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 2 |  4 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 3 |  9 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: @4$2=@3$1*@3$1",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| n | sq |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|---+----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 2 |  4 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| 3 |  9 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TBLFM: @3$2=@2$1*@2$1",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| Name | Qty |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|------+-----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| ab   |   3 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| Name               | Qty |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|--------------------+-----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| a much longer name |   3 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+MACRO: version 1.2",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+MACRO: greet Hello, $1!",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nRelease ",
+   null
+  ],
+  [
+   "{{{version}}}",
+   "org-macro"
+  ],
+  [
+   ". ",
+   null
+  ],
+  [
+   "{{{greet(world)}}}",
+   "org-macro"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+MACRO: gnustamp (eval (concat \"GNU/\" (capitalize $1)))",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+MACRO: plural (eval (if (equal $1 \"1\") (concat $1 \" file\") (concat $1 \" files\")))",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Notes",
+   "org-level-1"
+  ],
+  [
+   "\nRunning ",
+   null
+  ],
+  [
+   "{{{gnustamp(linux)}}}",
+   "org-macro"
+  ],
+  [
+   " on ",
+   null
+  ],
+  [
+   "{{{plural(1)}}}",
+   "org-macro"
+  ],
+  [
+   ", then ",
+   null
+  ],
+  [
+   "{{{plural(3)}}}",
+   "org-macro"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+OPTIONS: pri:t",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " Write the report ",
+   "org-level-1"
+  ],
+  [
+   ":work:urgent:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "Outline",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Plain heading",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+OPTIONS: todo:nil pri:t tags:nil",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#B]",
+   "org-priority"
+  ],
+  [
+   " Write the report ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+OPTIONS: tasks:todo arch:nil d:nil",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Open",
+   "org-level-1"
+  ],
+  [
+   "\nThe meeting runs long.\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n- Note taken\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Closed",
+   "org-headline-done"
+  ],
+  [
+   "\nclosed text\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "Old ",
+   "org-archived"
+  ],
+  [
+   ":ARCHIVE:",
+   "org-archived"
+  ],
+  [
+   "\nhidden\n",
+   null
+  ],
+  [
+   "* Plain",
+   "org-level-1"
+  ],
+  [
+   "\nstays\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Write the report ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Read the notes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Open task",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Finished task",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+LATEX_CLASS: memo",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* To the team",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** Schedule",
+   "org-level-2"
+  ],
+  [
+   "\nWe meet on Friday.\n",
+   null
+  ],
+  [
+   "#+CAPTION:",
+   "org-meta-line"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Prices",
+   "org-block"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ATTR_LATEX: :align lrr :booktabs t",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| Item | Price | Qty |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "|------+-------+-----|",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| Pen  |  1.50 |   4 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "| Book | 12.00 |   2 |",
+   "org-table"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CAPTION:",
+   "org-meta-line"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "A cat",
+   "org-block"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+NAME: fig-cat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+ATTR_LATEX: :width 0.5\\textwidth :placement [h]",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "[[file:cat.png]]",
+   "org-link"
+  ],
+  [
+   "\n\nSee ",
+   null
+  ],
+  [
+   "[[fig-cat]]",
+   "org-link"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+CAPTION:",
+   "org-meta-line"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "A cat",
+   "org-block"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+NAME: fig:cat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "[[file:cat.png]]",
+   "org-link"
+  ],
+  [
+   "\n\nSee ",
+   null
+  ],
+  [
+   "[[fig:cat]]",
+   "org-link"
+  ],
+  [
+   ".\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\n- State \"NEXT\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   " \\\\\n  Waiting for the card\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n- State \"NEXT\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   " \\\\\n  Waiting for the card.\n  Pat said Tuesday.\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n- State \"NEXT\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n/!) | DONE(d)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n/!) | DONE(d)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Call the bank",
+   "org-headline-done"
+  ],
+  [
+   "\n- State \"DONE\"       from \"NEXT\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@/!) | DONE(d)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n@/!) | DONE(d)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n- State \"TODO\"       from \"NEXT\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: lognotedone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Send the form",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: lognotedone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Send the form",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\n- CLOSING NOTE ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   " \\\\\n  Mailed it with the receipt.\n",
+   null
+  ],
+  [
+   "#+STARTUP: lognoterepeat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: lognoterepeat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   " \\\\\n  Gave the ferns extra.\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGGING:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "logdone",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " File the form",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGGING:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "logdone",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "File the form",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOG_INTO_DRAWER:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "t",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " File the form",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call Pat",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOG_INTO_DRAWER:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "t",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " File the form",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"NEXT\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call Pat",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGGING:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "nil",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " File the form",
+   "org-level-2"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* Taxes",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGGING:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "nil",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "File the form",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO WAITING | DONE",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+CATEGORY: sample",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "[#A]",
+   "org-priority"
+  ],
+  [
+   " Buy a computer ",
+   "org-level-1"
+  ],
+  [
+   ":shopping:work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":assignee:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Bob",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nNeeds wifi, no ethernet port. Budget 800.\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "WAITING",
+   "org-todo"
+  ],
+  [
+   " Fix the wifi router ",
+   "org-level-1"
+  ],
+  [
+   ":home:urgent:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":assignee:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Alice",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nThe vendor's colour chart is wrong. Call on Tuesday.\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Buy a colour printer ",
+   "org-headline-done"
+  ],
+  [
+   ":shopping:",
+   "org-headline-done"
+  ],
+  [
+   "\nBought with ethernet and wifi.\n",
+   null
+  ],
+  [
+   "* Plan the quarter ",
+   "org-level-1"
+  ],
+  [
+   ":work:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "** ",
+   "org-level-2"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " ",
+   "org-level-2"
+  ],
+  [
+   "[#B]",
+   "org-priority"
+  ],
+  [
+   " Fix the budget ",
+   "org-level-2"
+  ],
+  [
+   ":urgent:",
+   "org-tag"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":assignee:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "Bob",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nReview the Q4 plan.\n",
+   null
+  ],
+  [
+   "** Colour palette for slides",
+   "org-level-2"
+  ],
+  [
+   "\nColors are checked.\n",
+   null
+  ],
+  [
+   "* Notes (a) ",
+   "org-level-1"
+  ],
+  [
+   ":home:",
+   "org-tag"
+  ],
+  [
+   "\nVersion 2.1 (draft) {final} aa\n- Needs wifi, no ethernet port. Budget 800.\n+ Needs Wi-Fi, no ethernet port. Budget 800.\n- * WAITING Fix the wifi router :home:urgent:\n+ * WAITING Fix the Wi-Fi router :home:urgent:\n- Bought with ethernet and wifi.\n+ Bought with ethernet and Wi-Fi.\n- * WAITING Fix the wifi router :home:urgent:\n+ * WAITING Repair the wifi router :home:urgent:\n- ** TODO [#B] Fix the budget :urgent:\n+ ** TODO [#B] Repair the budget :urgent:\n- Version 2.1 (draft) {final} aa\n+ Version 1.2 (draft) {final} aa\n- The vendor's colour chart is wrong. Call on Tuesday.\n+ The vendor's color chart is wrong. Call on Tuesday.\n- * DONE Buy a colour printer :shopping:\n+ * DONE Buy a color printer :shopping:\n- ** Colour palette for slides\n+ ** Color palette for slides\n- Needs wifi, no ethernet port. Budget 800.\n+ Needs wifi, no ethernet port. Plan 800.\n- ** TODO [#B] Fix the budget :urgent:\n+ ** TODO [#B] Fix the plan :urgent:\n- Needs wifi, no ethernet port. Budget 800.\n+ Needs wifi, no ethernet port. Budget <800>.\n- Review the Q4 plan.\n+ Review the Q<4> plan.\n- Version 2.1 (draft) {final} aa\n+ Version <2>.<1> (draft) {final} aa\n- Version 2.1 (draft) {final} aa\n+ Version 2.1 (draft) {final} a\\a\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Cumulate",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon +1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Cumulate",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-06 Tue +1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Catch up",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon ++1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Catch up",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon ++1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Restart",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon .+1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Restart",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon .+1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Standup ",
+   "org-level-1"
+  ],
+  [
+   "<2026-10-05 Mon 09:00-09:15 +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "DEADLINE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-20 Tue +1m -3d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Standup ",
+   "org-level-1"
+  ],
+  [
+   "<2026-10-12 Mon 09:00-09:15 +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "DEADLINE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-11-20 Fri +1m -3d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT | DONE",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Review",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon +1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":REPEAT_TO_STATE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "NEXT",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT | DONE",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Review",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-06 Tue +1d>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":PROPERTIES:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":REPEAT_TO_STATE:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "NEXT",
+   "org-property-value"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LAST_REPEAT:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: nologrepeat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-05 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: nologrepeat",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Water the plants",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon +1w>",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Write the report",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Write the report",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Write the report",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOSED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-10 Sat 09:00]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Write the report",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Call the bank",
+   "org-headline-done"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "SCHEDULED:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "<2026-10-12 Mon>",
+   "org-date"
+  ],
+  [
+   "\n- State \"DONE\"       from \"NEXT\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone logdrawer",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+STARTUP: logdone logdrawer",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO NEXT(n!) | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "NEXT",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n- State \"NEXT\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\nThe number is on the card.\n",
+   null
+  ],
+  [
+   "#+TODO: TODO | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "TODO",
+   "org-todo"
+  ],
+  [
+   " Call the bank",
+   "org-level-1"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOCK:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30]",
+   "org-date"
+  ],
+  [
+   " =>  0:30\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "#+TODO: TODO | DONE(d!)",
+   "org-meta-line"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "* ",
+   "org-level-1"
+  ],
+  [
+   "DONE",
+   "org-done"
+  ],
+  [
+   " ",
+   "org-level-1"
+  ],
+  [
+   "Call the bank",
+   "org-headline-done"
+  ],
+  [
+   "\n- State \"DONE\"       from \"TODO\"       ",
+   null
+  ],
+  [
+   "[2026-10-11 Sun 16:30]",
+   "org-date"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   ":LOGBOOK:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ],
+  [
+   "CLOCK:",
+   "org-special-keyword"
+  ],
+  [
+   " ",
+   null
+  ],
+  [
+   "[2026-10-10 Sat 09:00]--[2026-10-10 Sat 09:30]",
+   "org-date"
+  ],
+  [
+   " =>  0:30\n",
+   null
+  ],
+  [
+   ":END:",
+   "org-drawer"
+  ],
+  [
+   "\n",
+   null
+  ]
+ ]
+}

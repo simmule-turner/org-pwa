@@ -8,9 +8,14 @@ import { highlightRuns } from '../src/source-color.js';
 // highlighter must give the same face to every character. A line break is not part of a span, so it is not compared.
 const DIR = new URL('./fixtures/source-color/', import.meta.url);
 const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java'],
-  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java']];
+  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java'], ['org', 'sample.org.txt'], ['org', 'held-out.org.txt'], ['sh', 'sample.sh'], ['sh', 'held-out.sh'], ['sh', 'more.sh'], ['sh', 'shebang-sh.sh'], ['html', 'sample.html'], ['html', 'held-out.html'], ['html', 'more.html']];
 /** Where the app differs from Emacs on a sample, as `character index: emacs face`; empty when nothing differs. */
-const KNOWN_DEVIATIONS = /** @type {Record<string, string[]>} */ ({});
+// held-out.org.txt: a table line ending a `=v=` cell right before #+TBLFM gets org-formula in Emacs (the face of the formula line starts one cell early).
+const KNOWN_DEVIATIONS = /** @type {Record<string, string[]>} */ ({
+  'held-out.org.txt': [
+    '2465: org-formula (the app: org-table) at " |\\n#+TBLFM: "',
+  ],
+});
 
 /** @param {[string, string | null][]} runs @returns {(string | null)[]} */
 const perChar = (runs) => runs.flatMap(([text, face]) => [...text].map(() => face));

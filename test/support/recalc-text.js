@@ -1,7 +1,7 @@
 // Recalculates every table of an org text the way Emacs's org-table-recalculate-buffer-tables does, for the tests that hold the formula engine to Emacs.
 import { recalculateTable, parseTableConstants, parseNamedTables } from '../../src/table-formula.js';
 import { parseOrg } from '../../src/org-parser.js';
-import { inheritedProperty } from '../../src/babel-args.js';
+import { entryProperty } from '../../src/special-properties.js';
 
 const cellsOf = (/** @type {string} */ line) => line.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => c.trim());
 
@@ -50,7 +50,7 @@ export function recalcGrid(org, { pick = 0, createColumns = false, confirm, warn
     if (!m) { out.push(...rows.map((r) => (r.type === 'rule' ? '---' : /** @type {any} */ (r).cells.join('|')))); continue; }
     const headings = lines.slice(0, start).filter((l) => /^\*+ /.test(l)).length;
     const chain = headings > 0 ? chains[headings - 1] : [];
-    const properties = (/** @type {string} */ name) => inheritedProperty(doc, chain, name);
+    const properties = (/** @type {string} */ name) => entryProperty(doc, chain, name);
     const res = recalculateTable(/** @type {any} */ ({ tblfm: m[1].trim(), rows }), { constants, tables, properties, createColumns, confirm, warn });
     out.push(...(res || rows).map((r) => (r.type === 'rule' ? '---' : /** @type {any} */ (r).cells.join('|').split('|').map((/** @type {string} */ c) => c.trim()).join('|'))));
   }

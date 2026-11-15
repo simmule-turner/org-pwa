@@ -1,0 +1,12 @@
+#+TITLE: Lang fr
+#+LANGUAGE: fr
+#+OPTIONS: toc:t
+* One
+#+CAPTION: Tab cap
+| a | b |
+#+CAPTION: Src cap
+#+BEGIN_SRC js
+let a = 1;
+#+END_SRC
+** Two
+text

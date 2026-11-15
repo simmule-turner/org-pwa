@@ -9,7 +9,7 @@ import { highlightToHtml } from '../src/syntax-highlight.js';
 const DIR = new URL('../test/fixtures/source-color/', import.meta.url);
 /** language (an Org src block language), sample file */
 const SAMPLES = [['emacs-lisp', 'sample.el'], ['python', 'sample.py'], ['js', 'sample.js'], ['java', 'Sample.java'], ['go', 'sample.go'],
-  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java']];
+  ['emacs-lisp', 'held-out.el'], ['python', 'held-out.py'], ['js', 'held-out.js'], ['java', 'HeldOut.java'], ['emacs-lisp', 'more.el'], ['python', 'more.py'], ['java', 'more.java'], ['org', 'sample.org.txt'], ['org', 'held-out.org.txt'], ['sh', 'sample.sh'], ['sh', 'held-out.sh'], ['sh', 'more.sh'], ['sh', 'shebang-sh.sh'], ['html', 'sample.html'], ['html', 'held-out.html'], ['html', 'more.html']];
 
 /** Runs of equal face in Emacs for one sample: [[text, face|null], ...]; face is the first face symbol without font-lock-/-face. */
 function emacsRuns(lang, file) {
@@ -24,7 +24,10 @@ function emacsRuns(lang, file) {
           (while (< pos (point-max))
             (let* ((next (next-single-property-change pos 'face nil (point-max))) (f (get-text-property pos 'face))
                    (f1 (if (consp f) (car f) f))
-                   (name (and f1 (replace-regexp-in-string "-face$" "" (replace-regexp-in-string "^font-lock-" "" (symbol-name f1))))))
+                   (name (cond ((null f1) nil)
+                                  ((symbolp f1) (replace-regexp-in-string "-face$" "" (replace-regexp-in-string "^font-lock-" "" (symbol-name f1))))
+                                  ((keywordp (car f1)) (substring (symbol-name (car f1)) 1))
+                                  (t (prin1-to-string f1)))))
               (push (vector (buffer-substring-no-properties pos next) name) runs)
               (setq pos next)))))
       (princ (json-encode (list :mode (if (fboundp mode) (symbol-name mode) (concat (symbol-name mode) " (not defined: plain text)")) :runs (vconcat (nreverse runs)))))))`;

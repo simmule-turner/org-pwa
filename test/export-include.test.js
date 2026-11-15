@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseIncludeValue, applyLineRange, expandIncludes } from '../src/export-include.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 
-// What Emacs does with each of these is held by test/oracle-export-include.test.js; these are the unit tests of the pieces.
+// What Emacs does with each of these is held by test/oracle-include.test.js; these are the unit tests of the pieces.
 
 // ---- parseIncludeValue ------------------------------------------------------
 
@@ -112,8 +112,8 @@ test('a path in an included file is relative to that file', async () => {
   assert.equal(await expandText('#+INCLUDE: "dir/a.org"\n', { 'dir/a.org': '#+INCLUDE: "b.org"\n', 'dir/b.org': 'in b\n' }), 'in b\n');
 });
 
-test('an include that includes itself, a commented heading and a block of code are left alone', async () => {
-  assert.equal(await expandText('#+INCLUDE: "a.org"\n', { 'a.org': 'x\n#+INCLUDE: "a.org"\n' }), 'x\n');
+test('an include that includes itself stops the export; a commented heading and a block of code are left alone', async () => {
+  await assert.rejects(expandText('#+INCLUDE: "a.org"\n', { 'a.org': 'x\n#+INCLUDE: "a.org"\n' }), /^Error: Recursive file inclusion: a\.org$/);
   assert.equal(await expandText('* COMMENT c\n#+INCLUDE: "a.org"\n', { 'a.org': 'x\n' }), '* COMMENT c\n#+INCLUDE: "a.org"\n');
   assert.equal(await expandText('#+BEGIN_SRC org\n#+INCLUDE: "a.org"\n#+END_SRC\n', { 'a.org': 'x\n' }), '#+BEGIN_SRC org\n#+INCLUDE: "a.org"\n#+END_SRC\n');
 });
@@ -123,14 +123,14 @@ test('multiple #+INCLUDE lines all expand, in their own source order', async () 
   assert.deepEqual(doc.children.map((h) => h.title), ['A', 'B', 'Main']);
 });
 
-test('a missing file, a failing search and a fetcher that throws are skipped, and the rest is exported', async () => {
-  assert.equal(await expandText('#+INCLUDE: "none.org"\n\n* Main\n', {}), '\n* Main\n');
-  assert.equal(await expandText('#+INCLUDE: "a.org::*nothing"\n* Main\n', { 'a.org': '* A\n' }), '* Main\n');
+test('a missing file, a failing search and a fetcher that throws stop the export with the words Emacs uses', async () => {
+  await assert.rejects(expandText('#+INCLUDE: "none.org"\n\n* Main\n', {}), /^Error: Cannot include file none\.org$/);
+  await assert.rejects(expandText('#+INCLUDE: "a.org::*nothing"\n* Main\n', { 'a.org': '* A\n' }), /^Error: No match for fuzzy expression: \*nothing for a\.org::\*nothing$/);
+  await assert.rejects(expandText('#+INCLUDE: "a.org::#nothing"\n', { 'a.org': '* A\n' }), /^Error: No match for custom ID: nothing for a\.org::#nothing$/);
   const throwing = async () => {
     throw new Error('network error');
   };
-  const doc = await expandIncludes(parseOrg('#+INCLUDE: "broken.org"\n\n* Main\nText.\n'), throwing, parseOrg);
-  assert.deepEqual(doc.children.map((h) => h.title), ['Main']);
+  await assert.rejects(expandIncludes(parseOrg('#+INCLUDE: "broken.org"\n\n* Main\nText.\n'), throwing, parseOrg), /^Error: Cannot include file broken\.org$/);
 });
 
 test('a document with no #+INCLUDE returns the same object, and one with includes is never changed', async () => {

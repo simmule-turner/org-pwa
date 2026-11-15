@@ -33,10 +33,12 @@
  * for how each one is actually shown.
  */
 
-const STATE_LINE_RE = /^-\s+State\s+"([^"]*)"(?:\s+from(?:\s+"([^"]*)")?)?\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
-const NOTE_LINE_RE = /^-\s+Note taken on\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
-const CLOCK_LINE_RE = /^CLOCK:\s+(\[[^\]]+\]|<[^>]+>)(?:--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+:\d+))?\s*$/;
+const STATE_LINE_RE = /^\s*-\s+State\s+"([^"]*)"(?:\s+from(?:\s+"([^"]*)")?)?\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
+const NOTE_LINE_RE = /^\s*-\s+Note taken on\s+(\[[^\]]+\])(\s+\\{1,2})?\s*$/;
+const CLOCK_LINE_RE = /^\s*CLOCK:\s+(\[[^\]]+\]|<[^>]+>)(?:--(\[[^\]]+\]|<[^>]+>)\s*=>\s*(-?\d+:\d+))?\s*$/;
 const CONTINUATION_INDENT_RE = /^\s+\S/; // a note-continuation line: indented, not blank
+/** Whether `line` continues the item at `item`: it is indented deeper than the item (items are indented under `org-adapt-indentation`). @param {string} line @param {string} item */
+const continuesItem = (line, item) => CONTINUATION_INDENT_RE.test(line) && (/^\s*/.exec(line) || [''])[0].length > (/^\s*/.exec(item) || [''])[0].length;
 
 /**
  * Parses the raw lines of a :LOGBOOK: drawer (everything between
@@ -72,7 +74,7 @@ function parseLogbookEntries(lines) {
       let note = null;
       if (continues) {
         const collected = [];
-        while (i < lines.length && CONTINUATION_INDENT_RE.test(lines[i])) {
+        while (i < lines.length && continuesItem(lines[i], line)) {
           collected.push(lines[i].replace(/^\s+/, ''));
           i++;
         }
@@ -88,7 +90,7 @@ function parseLogbookEntries(lines) {
       i++;
       const collected = [];
       if (continues) {
-        while (i < lines.length && CONTINUATION_INDENT_RE.test(lines[i])) {
+        while (i < lines.length && continuesItem(lines[i], line)) {
           collected.push(lines[i].replace(/^\s+/, ''));
           i++;
         }

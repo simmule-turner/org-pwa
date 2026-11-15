@@ -155,6 +155,30 @@ export function datum(f) {
 /** Plays an init text; see lisp-init.js. */
 export { runInit } from './lisp-init.js';
 
+/** What Emacs's `read` returns first from `text`: the text up to the parenthesis that closes the first list (the rest is not read), or all of it when that list does not close.
+ * @param {string} text */
+export function firstForm(text) {
+  let depth = 0;
+  for (let at = 0; at < text.length; at++) {
+    const c = text[at];
+    if (c === ';') {
+      while (at < text.length && text[at] !== '\n') at++;
+    } else if (c === '"') {
+      for (at++; at < text.length && text[at] !== '"'; at++) if (text[at] === '\\') at++;
+    } else if (c === '?') {
+      at += text[at + 1] === '\\' ? 2 : 1;
+    } else if (c === '\\') {
+      at++;
+    } else if (c === '(' || c === '[') {
+      depth++;
+    } else if (c === ')' || c === ']') {
+      depth--;
+      if (depth <= 0) return text.slice(0, at + 1);
+    }
+  }
+  return text;
+}
+
 /** What Emacs's `read` would complain about in `text`: an unclosed list or string ("End of file during parsing") or a stray closing
  * parenthesis ("Invalid read syntax: \")\""). null when the parentheses balance. The reader above is lenient on purpose (it
  * serves partial text in the editor); a variable's value is checked with this first.

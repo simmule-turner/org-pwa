@@ -273,6 +273,9 @@ Setting every line below to the value shown changes nothing.
 ;; * org-babel-uppercase-example-markers: When non-nil, begin/end example markers will be inserted in upper case.
 ;; (setq org-babel-uppercase-example-markers nil)
 
+;; * org-blank-before-new-entry: Should `org-insert-heading' leave a blank line before new heading/item?
+;; (setq org-blank-before-new-entry '((heading . auto) (plain-list-item . auto)))
+
 ;; * org-cite-basic-author-year-separator: String used to separate cites in an author-year configuration.
 ;; (setq org-cite-basic-author-year-separator ", ")
 
@@ -360,103 +363,103 @@ Setting every line below to the value shown changes nothing.
 ;; * org-export-global-macros: Alist between macro names and expansion templates.
 ;; (setq org-export-global-macros nil)
 
-;; * org-export-headline-levels: The last level which is still exported as a headline.
+;;   org-export-headline-levels: How many levels of headings an export keeps as headings.
 ;; (setq org-export-headline-levels 3)
 
-;; * org-export-preserve-breaks: Non-nil means preserve all line breaks when exporting.
+;;   org-export-preserve-breaks: Whether an export keeps line breaks as written.
 ;; (setq org-export-preserve-breaks nil)
 
 ;; * org-export-snippet-translation-alist: Alist between export snippets back-ends and exporter back-ends.
 ;; (setq org-export-snippet-translation-alist nil)
 
-;; * org-export-time-stamp-file: Non-nil means insert a time stamp into the exported file.
+;;   org-export-time-stamp-file: Whether an export writes the time it was made.
 ;; (setq org-export-time-stamp-file t)
 
-;; * org-export-with-archived-trees: Whether sub-trees with the ARCHIVE tag should be exported.
+;;   org-export-with-archived-trees: What an export does with archived subtrees: headline, t or nil.
 ;; (setq org-export-with-archived-trees 'headline)
 
-;; * org-export-with-author: Non-nil means insert author name into the exported file.
+;;   org-export-with-author: Whether an export has the author.
 ;; (setq org-export-with-author t)
 
 ;; * org-export-with-broken-links: Non-nil means do not raise an error on broken links.
 ;; (setq org-export-with-broken-links nil)
 
-;; * org-export-with-clocks: Non-nil means export CLOCK keywords.
+;;   org-export-with-clocks: Whether an export has CLOCK lines.
 ;; (setq org-export-with-clocks nil)
 
-;; * org-export-with-creator: Non-nil means the postamble should contain a creator sentence.
+;;   org-export-with-creator: Whether an export has the creator line: nil, t or comment.
 ;; (setq org-export-with-creator nil)
 
-;; * org-export-with-date: Non-nil means insert date in the exported document.
+;;   org-export-with-date: Whether an export has the date.
 ;; (setq org-export-with-date t)
 
 ;; * org-export-with-drawers: Non-nil means export contents of standard drawers.
 ;; (setq org-export-with-drawers '(not "LOGBOOK"))
 
-;; * org-export-with-email: Non-nil means insert author email into the exported file.
+;;   org-export-with-email: Whether an export has the email address.
 ;; (setq org-export-with-email nil)
 
-;; * org-export-with-emphasize: Non-nil means interpret *word*, /word/, _word_ and +word+.
+;;   org-export-with-emphasize: Whether an export keeps bold, italic and the other emphasis.
 ;; (setq org-export-with-emphasize t)
 
-;; * org-export-with-entities: Non-nil means interpret entities when exporting.
+;;   org-export-with-entities: Whether an export turns entities such as \alpha into characters.
 ;; (setq org-export-with-entities t)
 
-;; * org-export-with-fixed-width: Non-nil means export lines starting with ":".
+;;   org-export-with-fixed-width: Whether an export keeps fixed-width lines.
 ;; (setq org-export-with-fixed-width t)
 
-;; * org-export-with-footnotes: Non-nil means Org footnotes should be exported.
+;;   org-export-with-footnotes: Whether an export has footnotes.
 ;; (setq org-export-with-footnotes t)
 
 ;; * org-export-with-inlinetasks: Non-nil means inlinetasks should be exported.
 ;; (setq org-export-with-inlinetasks t)
 
-;; * org-export-with-latex: Non-nil means process LaTeX environments and fragments.
+;;   org-export-with-latex: What an export does with LaTeX fragments: t, nil or verbatim.
 ;; (setq org-export-with-latex t)
 
-;; * org-export-with-planning: Non-nil means include planning info in export.
+;;   org-export-with-planning: Whether an export has SCHEDULED and DEADLINE lines.
 ;; (setq org-export-with-planning nil)
 
-;; * org-export-with-priority: Non-nil means include priority cookies in export.
+;;   org-export-with-priority: Whether an export has priorities.
 ;; (setq org-export-with-priority nil)
 
 ;; * org-export-with-properties: Non-nil means export contents of properties drawers.
 ;; (setq org-export-with-properties nil)
 
-;; * org-export-with-section-numbers: Non-nil means add section numbers to headlines when exporting.
+;;   org-export-with-section-numbers: Whether an export numbers its headings: t, nil or a number of levels.
 ;; (setq org-export-with-section-numbers t)
 
-;; * org-export-with-smart-quotes: Non-nil means activate smart quotes during export.
+;;   org-export-with-smart-quotes: Whether an export turns quotes into curly ones.
 ;; (setq org-export-with-smart-quotes nil)
 
-;; * org-export-with-special-strings: Non-nil means interpret "\-", "--" and "---" for export.
+;;   org-export-with-special-strings: Whether an export turns -- and ... into special strings.
 ;; (setq org-export-with-special-strings t)
 
-;; * org-export-with-statistics-cookies: Non-nil means include statistics cookies in export.
+;;   org-export-with-statistics-cookies: Whether an export keeps statistics cookies.
 ;; (setq org-export-with-statistics-cookies t)
 
-;; * org-export-with-sub-superscripts: Non-nil means interpret "_" and "^" for export.
+;;   org-export-with-sub-superscripts: Whether an export reads _ and ^ as subscript and superscript: t, nil or {}.
 ;; (setq org-export-with-sub-superscripts t)
 
-;; * org-export-with-tables: Non-nil means export tables.
+;;   org-export-with-tables: Whether an export has tables.
 ;; (setq org-export-with-tables t)
 
-;; * org-export-with-tags: If nil, do not export tags, just remove them from headlines.
+;;   org-export-with-tags: Whether an export has the tags of headings: t, nil or not-in-toc.
 ;; (setq org-export-with-tags t)
 
-;; * org-export-with-tasks: Non-nil means include TODO items for export.
+;;   org-export-with-tasks: Whether an export has tasks: t, nil, todo or done.
 ;; (setq org-export-with-tasks t)
 
-;; * org-export-with-timestamps: Non-nil means allow timestamps in export.
+;;   org-export-with-timestamps: Whether an export has timestamps in text: t, nil, active or inactive.
 ;; (setq org-export-with-timestamps t)
 
-;; * org-export-with-title: Non-nil means print title into the exported file.
+;;   org-export-with-title: Whether an export has the title.
 ;; (setq org-export-with-title t)
 
-;; * org-export-with-toc: Non-nil means create a table of contents in exported files.
+;;   org-export-with-toc: Whether an export has a table of contents: t, nil or a number of levels.
 ;; (setq org-export-with-toc t)
 
-;; * org-export-with-todo-keywords: Non-nil means include TODO keywords in export.
+;;   org-export-with-todo-keywords: Whether an export has TODO keywords: t, nil, todo or done.
 ;; (setq org-export-with-todo-keywords t)
 
 ;;   org-extend-today-until: Hour at which the day ends; before it, typed dates still mean the previous day.

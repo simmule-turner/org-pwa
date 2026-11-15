@@ -1,0 +1,583 @@
+{
+ "emacs": "Emacs 29.3, Org 9.6.15",
+ "headings": [
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\nbody\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "auto",
+   "index": 1,
+   "want": "* A\nbody\n* B\nbody\n* \n"
+  },
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\nbody\n\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "t",
+   "index": 1,
+   "want": "* A\nbody\n* B\nbody\n\n* \n"
+  },
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\nbody\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n* B\nbody\n",
+   "setting": "nil",
+   "index": 1,
+   "want": "* A\nbody\n* B\nbody\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\nbody\n\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "auto",
+   "index": 1,
+   "want": "* A\nbody\n\n* B\nbody\n\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\nbody\n\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "t",
+   "index": 1,
+   "want": "* A\nbody\n\n* B\nbody\n\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\nbody\n* \n* B\nbody\n"
+  },
+  {
+   "text": "* A\nbody\n\n* B\nbody\n",
+   "setting": "nil",
+   "index": 1,
+   "want": "* A\nbody\n\n* B\nbody\n* \n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\n\n* \n* B\n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "auto",
+   "index": 1,
+   "want": "* A\n\n* B\n\n* \n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\n\n* \n* B\n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "t",
+   "index": 1,
+   "want": "* A\n\n* B\n\n* \n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\n* \n* B\n"
+  },
+  {
+   "text": "* A\n\n* B\n",
+   "setting": "nil",
+   "index": 1,
+   "want": "* A\n\n* B\n* \n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\n** A1\n\n** A2\n* \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "auto",
+   "index": 1,
+   "want": "* A\n** A1\n** \n** A2\n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "auto",
+   "index": 2,
+   "want": "* A\n** A1\n\n** A2\n\n** \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "auto",
+   "index": 3,
+   "want": "* A\n** A1\n\n** A2\n* B\n* \n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\n** A1\n\n** A2\n\n* \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "t",
+   "index": 1,
+   "want": "* A\n** A1\n\n** \n** A2\n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "t",
+   "index": 2,
+   "want": "* A\n** A1\n\n** A2\n\n** \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "t",
+   "index": 3,
+   "want": "* A\n** A1\n\n** A2\n* B\n\n* \n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\n** A1\n\n** A2\n* \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "nil",
+   "index": 1,
+   "want": "* A\n** A1\n** \n** A2\n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "nil",
+   "index": 2,
+   "want": "* A\n** A1\n\n** A2\n** \n* B\n"
+  },
+  {
+   "text": "* A\n** A1\n\n** A2\n* B\n",
+   "setting": "nil",
+   "index": 3,
+   "want": "* A\n** A1\n\n** A2\n* B\n* \n"
+  },
+  {
+   "text": "\n* A\nbody\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "\n* A\nbody\n\n* \n"
+  },
+  {
+   "text": "\n* A\nbody\n",
+   "setting": "t",
+   "index": 0,
+   "want": "\n* A\nbody\n\n* \n"
+  },
+  {
+   "text": "\n* A\nbody\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "\n* A\nbody\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\nbody\n\n\n* \n* B\n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "auto",
+   "index": 1,
+   "want": "* A\nbody\n\n\n* B\n\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\nbody\n\n\n* \n* B\n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "t",
+   "index": 1,
+   "want": "* A\nbody\n\n\n* B\n\n* \n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\nbody\n* \n* B\n"
+  },
+  {
+   "text": "* A\nbody\n\n\n* B\n",
+   "setting": "nil",
+   "index": 1,
+   "want": "* A\nbody\n\n\n* B\n* \n"
+  },
+  {
+   "text": "* A",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\n* \n"
+  },
+  {
+   "text": "* A",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\n\n* \n"
+  },
+  {
+   "text": "* A",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\n* \n"
+  },
+  {
+   "text": "* A\n",
+   "setting": "auto",
+   "index": 0,
+   "want": "* A\n* \n"
+  },
+  {
+   "text": "* A\n",
+   "setting": "t",
+   "index": 0,
+   "want": "* A\n\n* \n"
+  },
+  {
+   "text": "* A\n",
+   "setting": "nil",
+   "index": 0,
+   "want": "* A\n* \n"
+  }
+ ],
+ "lists": [
+  {
+   "text": "- one\n- two\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n- two\n",
+   "setting": "auto",
+   "line": 1,
+   "want": 0
+  },
+  {
+   "text": "- one\n- two\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n- two\n",
+   "setting": "t",
+   "line": 1,
+   "want": 1
+  },
+  {
+   "text": "- one\n- two\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n- two\n",
+   "setting": "nil",
+   "line": 1,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "auto",
+   "line": 2,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "t",
+   "line": 2,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n- two\n",
+   "setting": "nil",
+   "line": 2,
+   "want": 0
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "auto",
+   "line": 4,
+   "want": 0
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "t",
+   "line": 4,
+   "want": 1
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n  para\n\n  more\n- two\n",
+   "setting": "nil",
+   "line": 4,
+   "want": 0
+  },
+  {
+   "text": "- one\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "auto",
+   "line": 1,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "auto",
+   "line": 2,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "t",
+   "line": 1,
+   "want": 1
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "t",
+   "line": 2,
+   "want": 1
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "nil",
+   "line": 1,
+   "want": 0
+  },
+  {
+   "text": "- one\n  - sub\n- two\n",
+   "setting": "nil",
+   "line": 2,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "auto",
+   "line": 2,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "auto",
+   "line": 4,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "auto",
+   "line": 6,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "t",
+   "line": 2,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "t",
+   "line": 4,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "t",
+   "line": 6,
+   "want": 1
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "nil",
+   "line": 2,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "nil",
+   "line": 4,
+   "want": 0
+  },
+  {
+   "text": "- one\n\n  - sub\n\n  - sub2\n\n- two\n",
+   "setting": "nil",
+   "line": 6,
+   "want": 0
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "auto",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "auto",
+   "line": 1,
+   "want": 1
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "auto",
+   "line": 3,
+   "want": 1
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "t",
+   "line": 0,
+   "want": 1
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "t",
+   "line": 1,
+   "want": 1
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "t",
+   "line": 3,
+   "want": 1
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "nil",
+   "line": 0,
+   "want": 0
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "nil",
+   "line": 1,
+   "want": 0
+  },
+  {
+   "text": "1. a\n2. b\n\n3. c\n",
+   "setting": "nil",
+   "line": 3,
+   "want": 0
+  }
+ ]
+}

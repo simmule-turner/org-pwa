@@ -33,6 +33,7 @@ import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tas
 import { withBufferKeywords, withSubtreeKeywords, subtreeSetting } from './export-keywords.js';
 import { translate } from './export-dictionary.js';
 import { newCodeCounter, codeStart, unravelCode, parseCodeSwitches, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
+import { NUMBER_RE } from './table-number.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -682,6 +683,19 @@ function buildTree(I) {
     const section = mk('section', root);
     section.contents = buildElements(elements, section, I);
     root.contents.push(section);
+  } else if (!scope && !skip.selective) {
+    // a section of file-level keywords alone exports as nothing, but the blank line after them leaves a newline that the headline filter widens: `#+OPTIONS: toc:t`, a blank line and a headline
+    const body = I.doc.bodyLines || [];
+    let blanks = 0;
+    for (const k of I.doc.keywords || []) {
+      if (k.virtual) continue;
+      for (let i = k.bodyLineIndex || 0; i < body.length && !(body[i] || '').trim(); i++) blanks++;
+    }
+    if (blanks) {
+      const section = mk('section', root);
+      section.postBlank = 1; // the section keeps one blank line, which the headline filter widens to the usual two
+      root.contents.push(section);
+    }
   }
   buildHeadlines(scope ? scope.children || [] : I.doc.children || [], root, I, scope ? -scope.level : 0, skip);
   // a definition is found wherever it is (before the first heading, in a tree left out or outside the exported one), but not in a COMMENT tree
@@ -1257,7 +1271,6 @@ function sourceBulletString(item) {
  * }} TableInfo
  */
 
-const NUMBER_RE = /^([<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%:]*|0[xX][0-9a-fA-F]+|nan|[-+u]?inf)$/;
 
 /** What the table's special rows and columns say, and the width and alignment of each column. @param {Node} table @param {Info} I @returns {TableInfo} */
 function tableInfo(table, I) {

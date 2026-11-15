@@ -39,6 +39,7 @@ import { seedAgendaDefaults } from './agenda-seed.js';
 import { buildViewFilterRow, filterItemsForView } from './view-filter-ui.js';
 import { ancestorTitles, appendTagChips } from './tag-display.js';
 import { menuButton, textInputStyle } from './ui-widgets.js';
+import { typedDateRow } from './typed-date.js';
 import { agendaRowIsFocused, markAgendaItemKey } from './agenda-row-focus.js';
 import { getWindowingThreshold } from '../src/local-variables.js';
 import { destroyWindow, mountWindow } from './windowing.js';
@@ -1052,6 +1053,8 @@ export function buildClocktableSection() {
   rangeRow.appendChild(maxlevelSelect);
 
   reportNest.appendChild(rangeRow);
+  reportNest.appendChild(typedDateRow(startInput, null, null, 'Or type the start'));
+  reportNest.appendChild(typedDateRow(endInput, null, null, 'Or type the end'));
 
   // the parameters of a `#+BEGIN: clocktable` line (:scope :block :step :tags :match :link ...); when filled they replace the pickers
   const paramsInput = document.createElement('input');

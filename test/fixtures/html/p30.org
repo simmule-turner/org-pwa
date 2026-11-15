@@ -1,0 +1,17 @@
+#+TITLE: Settings
+#+AUTHOR: Me
+#+EMAIL: a@b.c
+#+LANGUAGE: de
+#+DESCRIPTION: desc
+#+KEYWORDS: k1, k2
+#+OPTIONS: author:t email:t creator:t date:t toc:t num:nil
+#+DATE: 2026-01-02
+#+HTML_HEAD: <meta name="x" content="y">
+#+HTML_LINK_HOME: http://home
+#+HTML_LINK_UP: http://up
+#+HTML_CONTAINER: section
+#+HTML_DOCTYPE: html5
+* A
+body
+** B
+body

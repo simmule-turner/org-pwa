@@ -9,6 +9,7 @@
  */
 
 import { createHeading } from './heading-edit.js';
+import { blankSetting } from './blank-before-entry.js';
 import { formatTimeString } from './format-time.js';
 import { headingPreambleLines } from './org-parser.js';
 
@@ -110,6 +111,8 @@ function endsDocument(doc, root) {
  * @param {string} text @param {number} point
  */
 function blankBeforeHeading(text, point) {
+  const setting = blankSetting('heading');
+  if (setting !== 'auto') return setting === 't';
   const lines = text.split('\n');
   let p = 0;
   let col = point;

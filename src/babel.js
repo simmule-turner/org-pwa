@@ -465,8 +465,9 @@ function listItemIndent(lines, at) {
  * @param {any} block
  * @param {string[]} resultLines
  *  below the block, with a blank line either side as Org does. `hash` goes into the results line (`#+RESULTS[hash]:`) for `:cache yes`;
- *  `name` is the block's `#+NAME:`, which Org writes after `#+RESULTS:`. */
-export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null), handling = 'replace', name = '' } = {}) {
+ *  `name` is the block's `#+NAME:`, which Org writes after `#+RESULTS:`. New results at the end of the section, with a headline right below,
+ *  get a blank line before it (`headingFollows`). */
+export function placeResults(bodyLines, block, resultLines, { hash = /** @type {string | null} */ (null), handling = 'replace', name = '', headingFollows = false } = {}) {
   const indentOf = (/** @type {string} */ l) => (/^(\s*)/.exec(l) || ['', ''])[1];
   const indent = indentOf(bodyLines[block.lineIndex]);
   /** The results of a block keep the indentation of their `#+RESULTS:` line. @param {string} lead @returns {(l: string) => string} */
@@ -507,7 +508,7 @@ export function placeResults(bodyLines, block, resultLines, { hash = /** @type {
     return { start: j, removeCount: end - j, insert: [bodyLines[j].replace(/^(\s*#\+RESULTS)(\[[^\]]*\])?:/i, hash ? `$1[${hash}]:` : '$1$2:'), ...resultLines.map(pad)] };
   }
   const insert = ['', pad((hash ? `#+${babelOptions.resultsKeyword}[${hash}]:` : `#+${babelOptions.resultsKeyword}:`) + label), ...resultLines.map(pad)];
-  if (blockEnd < bodyLines.length && bodyLines[blockEnd].trim() !== '') insert.push('');
+  if (blockEnd < bodyLines.length ? bodyLines[blockEnd].trim() !== '' : headingFollows) insert.push('');
   return { start: blockEnd, removeCount: 0, insert };
 }
 
@@ -527,4 +528,22 @@ export function existingResultsHash(bodyLines, block) {
   while (j < bodyLines.length && bodyLines[j].trim() === '') j++;
   const m = j < bodyLines.length ? /^\s*#\+RESULTS\[([^\]]*)\]:/i.exec(bodyLines[j]) : null;
   return m ? m[1] : null;
+}
+
+/**
+ * Whether a headline comes right after the text of `owner` (a heading, or the document for the text before the first one): a child or any later heading.
+ * @param {import('./types.js').Doc} doc @param {import('./types.js').Heading | import('./types.js').Doc | null} owner
+ */
+export function headingFollows(doc, owner) {
+  /** @type {import('./types.js').Heading[]} */ const order = [];
+  const walk = (/** @type {import('./types.js').Heading[] | undefined} */ list) => {
+    for (const h of list || []) {
+      order.push(h);
+      walk(h.children);
+    }
+  };
+  walk(doc.children);
+  if (!owner || owner === doc) return order.length > 0;
+  const at = order.indexOf(/** @type {import('./types.js').Heading} */ (owner));
+  return at >= 0 && at < order.length - 1;
 }

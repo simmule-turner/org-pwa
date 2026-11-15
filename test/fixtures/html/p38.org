@@ -1,0 +1,11 @@
+#+TITLE: Lang
+#+LANGUAGE: de
+#+OPTIONS: toc:nil
+#+CAPTION: Cap fig
+[[file:a.png]]
+#+CAPTION: Src
+#+BEGIN_SRC js
+1
+#+END_SRC
+#+CAPTION: Tab
+| a |

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Source coloring as Emacs 29.3 does it for emacs-lisp, python, js and java: the faces font-lock gives (keyword, string, comment,
+ * Source coloring as Emacs 29.3 does it for emacs-lisp, python, js, java, org, shell (sh-mode) and HTML (html-mode): the faces font-lock gives (keyword, string, comment,
  * comment-delimiter, doc, constant, builtin, type, function-name, variable-name, operator, warning, c-annotation; numbers stay plain).
  * The word lists come from Emacs's own font-lock variables (src/source-color-data.js, written by tools/gen-source-color-data.mjs) and the
  * rules follow python.el, js.el, elisp-mode and cc-fonts, in their order: a rule paints only what no earlier rule has painted, as
@@ -9,6 +9,10 @@
  * highlightRuns(code, language) -> [[text, face | null], ...], or null for a language this module does not color.
  */
 
+import { Paint } from './source-paint.js';
+import { orgRuns } from './source-color-org.js';
+import { shRuns } from './source-color-sh.js';
+import { htmlRuns } from './source-color-html.js';
 import {
   EL_DEFINERS, EL_DOC_ELT, EL_KEYWORDS, JAVA_CONSTANTS, JAVA_KEYWORDS, JAVA_MODIFIERS, JAVA_TYPES, JS_CONSTANTS, JS_KEYWORDS, JS_TYPES,
   PY_BUILTINS, PY_CONSTANTS, PY_EXCEPTIONS, PY_KEYWORDS,
@@ -16,40 +20,6 @@ import {
 
 /** @typedef {string | null} Face */
 /** @typedef {{ s: number, e: number, text: string }} Token */
-
-/** One face per UTF-16 unit of the code; `set` overrides, `fill` paints only what is still plain (a font-lock rule without OVERRIDE). */
-class Paint {
-  /** @param {number} n */
-  constructor(n) {
-    /** @type {Face[]} */
-    this.faces = new Array(n).fill(null);
-  }
-
-  /** @param {number} a @param {number} b @param {string | null} face */
-  set(a, b, face) {
-    for (let i = a; i < b; i++) this.faces[i] = face;
-  }
-
-  /** Paints the range only when none of it has a face yet, as font-lock does for a rule that does not override (font-lock-apply-highlight). @param {number} a @param {number} b @param {string} face */
-  fill(a, b, face) {
-    for (let i = a; i < b; i++) if (this.faces[i] !== null) return;
-    for (let i = a; i < b; i++) this.faces[i] = face;
-  }
-
-  /** @param {string} code @returns {[string, Face][]} */
-  runs(code) {
-    /** @type {[string, Face][]} */
-    const out = [];
-    let start = 0;
-    for (let i = 1; i <= code.length; i++) {
-      if (i === code.length || this.faces[i] !== this.faces[start]) {
-        out.push([code.slice(start, i), this.faces[start] ?? null]);
-        start = i;
-      }
-    }
-    return code.length ? out : [];
-  }
-}
 
 const TOKEN_RE = /[\p{L}_$][\p{L}\p{N}_$]*|\d[\w.]*|\.\.\.|\S/gu;
 
@@ -744,7 +714,7 @@ function java(code) {
   return paint.runs(code);
 }
 
-const LANGUAGES = /** @type {Record<string, (code: string) => [string, Face][]>} */ ({ elisp, python, js, java });
+const LANGUAGES = /** @type {Record<string, (code: string) => [string, Face][]>} */ ({ elisp, python, js, java, org: (code) => orgRuns(code, highlightRuns), sh: shRuns, html: htmlRuns, plain: (code) => (code ? [[code, null]] : []) });
 
 /** The language names this module colors the way Emacs does, and which of its colorings each one gets. */
 export const EMACS_ALIASES = /** @type {Record<string, string>} */ ({
@@ -752,6 +722,11 @@ export const EMACS_ALIASES = /** @type {Record<string, string>} */ ({
   python: 'python', py: 'python', python3: 'python',
   js: 'js', javascript: 'js', jsx: 'js', mjs: 'js', node: 'js',
   java: 'java',
+  org: 'org',
+  sh: 'sh', bash: 'sh', shell: 'sh',
+  html: 'html',
+  // Emacs has no major mode for these (zsh-mode, htm-mode and the like are not defined), so Org's export leaves the text uncolored.
+  zsh: 'plain', ksh: 'plain', csh: 'plain', htm: 'plain', xhtml: 'plain', svg: 'plain',
 });
 
 /**

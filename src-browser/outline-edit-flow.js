@@ -97,9 +97,9 @@ export function askSortEntries(target, withCase = false) {
     run(type, { keyFn: /** @type {import('../src/elisp-data.js').LObj} */ (key.fn), compareFn: compare.fn });
   };
   /** @type {[string, string][]} */
-  const kinds = [['a', 'Alphabetic'], ['n', 'Numeric'], ['p', 'Priority'], ['o', 'TODO order'], ['t', 'Time'], ['s', 'Scheduled'], ['d', 'Deadline'], ['c', 'Created'], ['r', 'Property…'], ['f', 'Function…']];
+  const kinds = [['a', 'Alphabetic'], ['n', 'Numeric'], ['p', 'Priority'], ['o', 'TODO order'], ['t', 'Time'], ['s', 'Scheduled'], ['d', 'Deadline'], ['c', 'Created'], ['k', 'Clocking'], ['r', 'Property…'], ['f', 'Function…']];
   openGridChoiceModal({
-    label: `Sort ${what}: [a]lpha [n]umeric [p]riority p[r]operty todo[o]rder [f]unc [t]ime [s]cheduled [d]eadline [c]reated. A/N/P/R/O/F/T/S/D/C means reversed:`,
+    label: `Sort ${what}: [a]lpha [n]umeric [p]riority p[r]operty todo[o]rder [f]unc [t]ime [s]cheduled [d]eadline [c]reated cloc[k]ing. A/N/P/R/O/F/T/S/D/C/K means reversed:`,
     buttons: kinds.flatMap(([key, text]) => [false, true].map((reversed) => {
       const type = reversed ? key.toUpperCase() : key;
       const onClick = key === 'r' ? byProperty(type) : key === 'f' ? byFunction(type) : () => run(type);

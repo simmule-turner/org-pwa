@@ -317,12 +317,8 @@ test('round-trip: a blank-line-separated nested list preserves its exact origina
   assert.equal(body[0].items[0].children[0].items[0].text, 'Child'); // the fix took effect
 });
 
-// ---- description-list "::" tag detection respects literal-span boundaries ----
-// A real bug this coverage caught: "::" appearing inside a ~code~ or =verbatim=
-// span (e.g. a list item whose prose demonstrates description-list syntax itself,
-// like "(~term :: description~)") was being matched as if it were THIS item's own
-// real tag separator, splitting the item incorrectly at that literal example's
-// own "::" rather than treating the whole thing as ordinary text.
+// ---- description-list "::" tag detection, as Org reads it: the tag runs to the last " ::" of the item's first line, and markup does not matter ----
+// (checked against Emacs 29.3: `- =a :: b= text` has the tag `=a` and `- term :: =x :: y=` the tag `term :: =x`)
 
 test('a legitimate description-list item still parses its tag/text correctly (the pre-existing, already-working case)', () => {
   const body = parseBody(['- term :: an actual definition']);
@@ -330,15 +326,15 @@ test('a legitimate description-list item still parses its tag/text correctly (th
   assert.equal(body[0].items[0].text, 'an actual definition');
 });
 
-test('a "::" appearing inside a ~code~ span is NOT treated as this item\u0027s own tag separator', () => {
+test('a "::" inside a ~code~ span is a tag separator, as in Org', () => {
   const body = parseBody(['- description lists use (~term :: description~) syntax']);
-  assert.equal(body[0].items[0].tag, null);
-  assert.equal(body[0].items[0].text, 'description lists use (~term :: description~) syntax');
+  assert.equal(body[0].items[0].tag, 'description lists use (~term');
+  assert.equal(body[0].items[0].text, 'description~) syntax');
 });
 
-test('a "::" appearing inside an =verbatim= span is also correctly skipped', () => {
-  const body = parseBody(['- like (=term :: description=) for example']);
-  assert.equal(body[0].items[0].tag, null);
+test('a "::" inside an =verbatim= span is a tag separator too, and a term with = signs keeps them', () => {
+  assert.equal(parseBody(['- =a :: b= text'])[0].items[0].tag, '=a');
+  assert.equal(parseBody(['- =LEVEL=2= :: a term'])[0].items[0].tag, '=LEVEL=2=');
 });
 
 test('a real tag separator AFTER a literal-span "::" example is still correctly found', () => {
@@ -347,11 +343,10 @@ test('a real tag separator AFTER a literal-span "::" example is still correctly 
   assert.equal(body[0].items[0].text, 'this is the real definition');
 });
 
-test('the inline-parsed content for a literal-span "::" case correctly renders the code span as ONE unit, not split', () => {
-  const body = parseBody(['- description lists (~term :: description~) work']);
-  const codeNodes = body[0].items[0].inline.filter((n) => n.type === 'code');
-  assert.equal(codeNodes.length, 1);
-  assert.equal(codeNodes[0].value, 'term :: description');
+test('the text after the last " ::" is what is parsed as inline content', () => {
+  const body = parseBody(['- term :: =x :: y=']);
+  assert.equal(body[0].items[0].tag, 'term :: =x');
+  assert.equal(body[0].items[0].text, 'y=');
 });
 
 // ---- THE FIX: multi-line LaTeX fragments don't get split by paragraph boundaries ----

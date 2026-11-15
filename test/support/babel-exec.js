@@ -6,9 +6,10 @@ import { expandNoweb, nowebAllows } from '../../src/noweb.js';
 import { runElisp } from '../../src/babel-elisp.js';
 import { blockResultLines } from '../../src/babel-ops.js';
 import { parseBody } from '../../src/body-parser.js';
-import { evalAllowed, existingResultsHash, formatError, parseResultsSpec, pickedNames, placeResults, resolveVars } from '../../src/babel.js';
+import { evalAllowed, existingResultsHash, formatError, parseResultsSpec, pickedNames, headingFollows, placeResults, resolveVars } from '../../src/babel.js';
 import { referenceLookup } from '../../src/babel-ref.js';
 import { cacheInput } from '../../src/babel-cache.js';
+import { codeRefRegexp, parseCodeSwitches } from '../../src/code-lines.js';
 
 /** What the app's C-c C-c on the INDEXth block leaves in the text: the pipeline of src-browser/babel-flow.js (header arguments, :var,
  * Noweb, run, format, place) without the dialogs and the cache.  @param {string} text @param {number} index */
@@ -24,7 +25,7 @@ export function executed(text, index) {
   const block = { lineIndex: info.beginIndex, lineCount: info.endIndex - info.beginIndex + 1 };
   /** @type {string | null} */ let hash = null;
   const place = (/** @type {string[]} */ lines, handling = 'replace') => {
-    const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling, name: info.name || '' });
+    const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling, name: info.name || '', headingFollows: headingFollows(doc, heading) });
     const bodyLines = heading.bodyLines.slice();
     bodyLines.splice(start, removeCount, ...insert);
     const changed = { ...heading, bodyLines, body: parseBody(bodyLines) };
@@ -39,6 +40,9 @@ export function executed(text, index) {
     return 'ERROR ' + /** @type {Error} */ (err).message; // Emacs stops with the error and writes nothing
   }
   let code = info.rawLines.map((/** @type {string} */ l) => l.replace(/^(\s*),(?=\*|#\+)/, '$1')).join('\n');
+  // Org takes the coderef labels (`(ref:foo)`, or what the block's -l switch says) off the end of each line before the code runs
+  const labels = codeRefRegexp(parseCodeSwitches(/^\s*#\+begin_src\s+\S+\s*(.*?)(?:\s+:.*)?$/i.exec(info.beginLineText)?.[1] || '').labelFormat);
+  code = code.split('\n').map((/** @type {string} */ l) => { const m = labels.exec(l); return m ? l.slice(0, m.index) + l.slice(m.index + m[1].length) : l; }).join('\n');
   if (nowebAllows(args, 'eval')) {
     try {
       code = expandNoweb(doc, all, info);

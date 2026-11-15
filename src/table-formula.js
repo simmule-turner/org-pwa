@@ -310,6 +310,12 @@ function tokenize(expr, fractions = false) {
       pos = afterWs + fraction[0].length;
       continue;
     }
+    const stamp = /^<(\d{4}-\d{2}-\d{2}(?:\s+[A-Za-z.]+)?(?:\s+\d{1,2}:\d{2})?)\s*>/.exec(expr.slice(afterWs)); // <2024-03-15 Fri 10:00> is a date, as Calc reads the timestamp
+    if (stamp) {
+      tokens.push('\u0001' + stamp[0]);
+      pos = afterWs + stamp[0].length;
+      continue;
+    }
     const hyphenated = HYPHENATED_FUNCTION_RE.exec(expr.slice(afterWs));
     if (hyphenated) {
       tokens.push(hyphenated[1]);
@@ -938,6 +944,10 @@ function parseExpression(tokens, allowNames = false) {
   function parseAtom() {
     const tok = peek();
     if (tok === undefined) throw new Error('Unexpected end of formula');
+    if (tok.startsWith('\u0001')) {
+      next();
+      return { type: 'dateLiteral', text: tok.slice(1) };
+    }
     if (tok === '(') {
       next();
       /** @type {any} */ const node = parseExpr();
@@ -1821,6 +1831,11 @@ function calcSubvec(args, ctx) {
       if (text === null) throw new Error('string() leaves what is not a string as written');
       return new RawText(text);
     }
+    case 'dateLiteral': {
+      const stamp = parseCellTimestamp(node.text);
+      if (!stamp) throw new Error(`Invalid date: ${node.text}`);
+      return stamp;
+    }
     case 'typeofCall': return calcTypeOf(evaluateAst(node.args[0], ctx), node.args[0], ctx);
     case 'subvecCall': return calcSubvec(node.args.map((/** @type {any} */ a) => evaluateAst(a, ctx)), ctx);
     case 'vectorLiteral': {
@@ -2626,6 +2641,7 @@ function symbolicForm(source, ctx) {
       out.push(String(tok === '@#' ? ctx.currentRow : ctx.currentCol));
       continue;
     }
+    if (tok.startsWith('\u0001')) throw new Sym.SymbolicUnsupported(tok); // a date stays with the numeric engine
     if (isRef(tok)) {
       if (tokens[i + 1] === '..' && tokens[i + 2] !== undefined && isRef(tokens[i + 2])) {
         hold(symbolicRange(parseExpression([tok, '..', tokens[i + 2]]), ctx));
@@ -3321,9 +3337,26 @@ export function parseTableConstants(doc) {
   const constants = {};
   /** @type {Record<string, string>} */ const texts = {}; // what each constant was written as: Calc reads that text, so 1.5 is a float and x a name
   Object.defineProperty(constants, '$texts', { value: texts, enumerable: false });
-  for (const kw of doc.keywords || []) {
-    if (kw.key.toUpperCase() !== 'CONSTANTS') continue;
-    for (const pair of kw.value.trim().split(/\s+/)) {
+  /** Every #+CONSTANTS: line of the buffer in reading order, the ones in the text before the first heading first, then those inside the headings' own text (org-collect-keywords reads the whole buffer). */
+  const values = [];
+  for (const kw of doc.keywords || []) if (kw.key.toUpperCase() === 'CONSTANTS') values.push(kw.value);
+  const walk = (/** @type {import('./types.js').Heading[] | undefined} */ headings) => {
+    for (const h of headings || []) {
+      let inBlock = false;
+      for (const line of h.bodyLines || []) {
+        if (/^[ \t]*#\+begin_/i.test(line)) inBlock = true;
+        else if (/^[ \t]*#\+end_/i.test(line)) inBlock = false;
+        else if (!inBlock) {
+          const m = /^[ \t]*#\+CONSTANTS:(.*)$/i.exec(line);
+          if (m) values.push(m[1]);
+        }
+      }
+      walk(h.children);
+    }
+  };
+  walk(doc.children);
+  for (const value of values) {
+    for (const pair of value.trim().split(/\s+/)) {
       const eq = pair.indexOf('=');
       if (eq === -1) continue;
       const name = pair.slice(0, eq);

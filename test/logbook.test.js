@@ -172,3 +172,18 @@ test('round-trip: a multi-line note formats and re-parses back to the exact same
   const reparsed = parseLogbookEntries(lines);
   assert.equal(reparsed[0].note, 'Line one.\nLine two.');
 });
+
+// ---- indented items (org-adapt-indentation) ---------------------------------
+
+test('parses state-change and note lines that are indented under the heading', () => {
+  const entries = parseLogbookEntries([
+    '  - State "DONE"       from "TODO"       [2026-07-31 Fri 14:22] \\',
+    '    Shipped.',
+    '  - Note taken on [2026-07-30 Thu 09:10] \\',
+    '    Second line.',
+  ]);
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].type, 'state');
+  assert.equal(entries[0].note, 'Shipped.');
+  assert.equal(entries[1].type, 'note');
+});

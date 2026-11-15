@@ -1,0 +1,12 @@
+#+TITLE: Links
+#+OPTIONS: toc:nil
+* H1
+:PROPERTIES:
+:CUSTOM_ID: cid
+:END:
+<<tgt>> and <<<radio>>> radio text.
+[[#cid][custom]] [[*H1][heading]] [[tgt][target]] [[https://x.org/a b][web]] [[mailto:a@b.c][mail]] [[file:foo.org][file]] [[file:foo.png]] [[./img.jpg][img desc]] https://plain.example/x [[doi:10.1/x][doi]]
+#+NAME: fig
+#+CAPTION: Fig cap
+[[file:p.png]]
+See [[fig]].

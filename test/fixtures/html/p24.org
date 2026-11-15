@@ -1,0 +1,10 @@
+#+TITLE: Options B
+#+OPTIONS: tags:nil todo:nil pri:t stat:nil inline:nil p:t broken-links:mark
+#+TODO: TODO NEXT | DONE
+* TODO [#A] Headline one [1/2] :a:b:
+- [ ] x
+- [X] y
+* NEXT Headline two
+Paragraph with =verb= and ~code~ and src_sh{ls} and call_foo().
+* DONE Done :c:
+CLOSED: [2026-01-02 Fri 10:00]

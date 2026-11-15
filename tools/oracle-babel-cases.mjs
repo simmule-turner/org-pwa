@@ -423,6 +423,30 @@ export const REF_DOCS = [
 /** `:var` spellings, Lisp forms, table cells, named elements of every kind, indexes, CUSTOM_ID, duplicates and commented headings;
  * `:colnames`/`:rownames` on every kind of value; `:results wrap`, `:file-desc`; results that keep the indentation of their `#+RESULTS:` line. */
 const FIX_EXEC = [
+  // from Org's own test-ob.el and test-ob-emacs-lisp.el
+  // blocks inside drawers and dynamic blocks run where they stand
+  '* H\n:MYDRAWER:\n#+begin_src emacs-lisp\n(+ 1 2)\n#+end_src\n:END:\n',
+  '* H\n:MYDRAWER:\n#+begin_src emacs-lisp\n(+ 1 2)\n#+end_src\n\n#+RESULTS:\n: 0\n:END:\n',
+  '* H\n#+begin: foo\n#+begin_src emacs-lisp\n(+ 1 2)\n#+end_src\n#+end:\n',
+  '* H\n:MYDRAWER:\n#+name: a\n#+begin_src emacs-lisp\n5\n#+end_src\n:END:\n#+begin_src emacs-lisp :var x=a\nx\n#+end_src\n',
+  // new results at the end of a section get a blank line before the headline below
+  '* H\n#+begin_src emacs-lisp\n1\n#+end_src\n* Next\n',
+  '* H\n#+begin_src emacs-lisp :results drawer\n1\n#+end_src\n** Sub\n',
+  '* H\n#+name: foo\n#+begin_src emacs-lisp\n(list 1)\n#+end_src\n* Next\n',
+  '* H\n- item\n  #+begin_src emacs-lisp\n  1\n  #+end_src\n* Next\n',
+  '* H\n#+begin_src emacs-lisp\n1\n#+end_src\n\n#+RESULTS:\n: 0\n* Next\n',
+  '* H\n#+begin_src emacs-lisp\n1\n#+end_src\n',
+  ...['[]', 'foo', '5', '"a b"', 'nil', 't', "'x", '[a]', '1.5', ''].map((v) => `* H\n#+begin_src emacs-lisp :results file :file-desc ${v}\n  "foo"\n#+end_src\n`),
+  '* H\n#+begin_src emacs-lisp\n"I /am/ working!")\n#+end_src\n',
+  '* H\n#+begin_src emacs-lisp -l "#(ref:%s)"\n2 #(ref:foo)\n#+end_src\n',
+  '* H\n#+begin_src emacs-lisp\n2 (ref:foo)\n#+end_src\n',
+  '* H\n#+begin_src emacs-lisp :results pp\n"I /am/ working!")\n#+end_src\n',
+  '* H\n#+begin_src emacs-lisp\n(list 1 2) (list 3)\n#+end_src\n',
+  "* H\n#+begin_src emacs-lisp\n(cl-concatenate 'string \"a\" \"b\")\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp\n(cl-concatenate 'list '(1) '(2 3))\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp\n(cl-map 'list #'list '(1 2) '(a b))\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp\n(cl-map 'vector #'1+ '(1 2))\n#+end_src\n",
+  "* H\n#+begin_src emacs-lisp :results verbatim\n(cl-map 'string #'upcase \"ab\")\n#+end_src\n",
   "* H\n#+begin_src emacs-lisp :var a = 1 b = 2 c= 3 d =4\n(+ a b c d)\n#+end_src\n",
   "* H\n#+begin_src emacs-lisp :var a=1 b\n(list a)\n#+end_src\n",
   "* H\n#+begin_src emacs-lisp :var a 5\n(list a)\n#+end_src\n",

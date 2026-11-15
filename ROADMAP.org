@@ -28,6 +28,15 @@ Off by default, as in Emacs. On, tagging from an outline also offers every tag u
 A function given as =org-html-preamble= or =org-html-postamble= gets =:title=, =:subtitle=, =:author=, =:date=, =:email=, =:language= and =:creator=; Emacs's property list has every export option, and a title with markup is a list of objects rather than the text already turned into HTML.
 - Effort: M. Impact: S.
 
+** [#C] MathJax markup and =#+HTML_MATHJAX= in HTML export
+Emacs writes MathJax configuration and typesets math with MathJax; the app typesets with KaTeX, so the =#+HTML_MATHJAX:= options (path, scale, font, align, autonumber, linebreaks) have no effect. Org's =test-ox-html.el= is 43 tests of exactly these options.
+- Benefit: HTML math as Emacs writes it, the options honored, and a wider LaTeX subset (more environments and packages than KaTeX).
+- Cost, download: the release zip is 7.3 MB. MathJax 3 with its fonts is 1.2 MB of script plus 0.4 MB of fonts (CHTML output), or 2.1 MB of script alone (SVG output), against 0.55 MB for KaTeX with its fonts: +1.0 MB (+14%) or +1.5 MB (+21%) in the zip. Compressed on the wire the difference is about +0.3 MB. At 10 Mbit/s that is 1 s more for the zip (0.3 s on the wire); at 2 Mbit/s, 4 s (1.3 s).
+- Cost, speed (320 formulas, one desktop core): KaTeX 68 ms, MathJax 390 ms (SVG) to 450 ms (CHTML), about 6 times slower per formula (0.2 ms against 1.3 ms); loading the library takes 18 ms against 70 ms. A phone is slower than this by a few times, so a document with 100 formulas costs roughly 20 ms with KaTeX and 130 ms or more with MathJax, then several times that on a phone.
+- Cost, work: MathJax's modern API is asynchronous while the preview and the ODT export (formulas become MathML through KaTeX) call KaTeX synchronously; keeping both engines doubles the quirks to test, and moving all to MathJax needs the math fixtures regenerated.
+- Cheaper option: keep KaTeX for the editor and ODT, honor the =#+HTML_MATHJAX:= keywords, and write Emacs's MathJax markup in exported HTML that loads MathJax when the page is opened online (the exported page then needs the network to typeset math).
+- Effort: L. Impact: S.
+
 * Org Crypt
 ** [#C] Decrypt an entry when it is revealed (=org-fold-reveal-start-hook=)
 Emacs decrypts an encrypted entry when a command reveals it (a search hit, =org-reveal=, a jump from the agenda). Here the commands *Decrypt entry* and *Decrypt all crypt entries* do it; the reveal paths (search results, agenda jumps, links) would call the same decrypt after asking for the passphrase, which needs a passphrase prompt that does not interrupt a jump on a phone.
@@ -58,21 +67,18 @@ Differences from Emacs that remain: =Info-history= as a node (=L=), prefix compl
 ** [#C] Odd levels and top-level promotion
 =org-odd-levels-only= and =org-allow-promoting-top-level-subtree= (promoting a level-1 heading currently refuses).
 - Effort: M. Impact: S.
-** [#C] Sort: clocking key and locale
-Sort type =k= (by clocking) and locale collation for the alphabetic sort (it compares by character code, as the C locale does).
+** [#C] Sort locale, and indentation details
+Locale collation for the alphabetic sort (it compares by character code, as the C locale does). Under =org-adapt-indentation= =headline-data= Emacs indents a log note one column further than this app does. =zsh=, =ksh=, =csh=, =htm=, =xhtml= and =svg= source is not colored.
 - Effort: S. Impact: S.
 ** [#C] =org-entry-properties= details
-The =pom= argument and the =CLOCKSUM= property (it needs a clock-sum text property).
+The =pom= argument (the Lisp environment has no buffer positions to name an entry by) and the =CLOCKSUM= property (Emacs has it only after a clock sum has run in the buffer).
 - Effort: S. Impact: S.
-** [#C] Log items under =org-adapt-indentation= t
-Log notes written by the todo and clock modules are not indented under =t=; the planning line and drawers are.
+** [#C] Settings control for =org-blank-before-new-entry=
+The variable is read from Global Variables (all three values work for headings and list items); a control needs a Settings pattern for alist values (two choices, one for headings and one for list items).
 - Effort: S. Impact: S.
 ** [#C] Cursor-text commands
 =org-return=, =org-meta-return=, =org-open-line= and =org-drag-element-*=. They act at a text cursor; the touch editor has no equivalent, so build them only for the Text view.
 - Effort: M. Impact: S.
-** [#C] =org-blank-before-new-entry= nil and t
-Only the default (=auto=) is implemented; the alist form needs a Settings pattern for alist values.
-- Effort: S. Impact: S.
 ** [#C] Archive extras and blocking
 BLOCKER and TRIGGER properties (org-edna and org-depend territory, not Org core), =org-toggle-ordered-property= (=C-c C-x o=), =org-toggle-archive-tag= (=C-c C-x a=) and direct archive on =C-c C-x C-s=.
 - Effort: S. Impact: S.
@@ -81,20 +87,19 @@ BLOCKER and TRIGGER properties (org-edna and org-depend territory, not Org core)
 - Effort: M. Impact: S.
 
 * Lists, parser and editor model
-** [#B] Drawers and dynamic blocks as containers
-Their contents are editor nodes today; make them parsed container nodes as org-element does, including a second or detached =#+TBLFM:= line.
-- Effort: M. Impact: M.
+** [#C] Drawers and dynamic blocks as containers
+The editor keeps the contents of a drawer (=:NAME:= ... =:END:=) or a dynamic block (=#+begin:= ... =#+end:=) as flat lines: the marker lines show as paragraph text and a source block inside =:LOGBOOK:= is not found. Make them parsed container nodes holding their paragraphs, tables and lists, as org-element does.
+Checked against Emacs in v708: export, table formulas (including a second or detached =#+TBLFM:=) and Babel inside drawers and dynamic blocks already give Emacs's results, so the gain is only in the editor: drawer markers drawn as drawers, blocks in =:LOGBOOK:= that run, and a base for folding or commands on one drawer.
+Cost: about 30 modules read these lines as flat paragraphs (search, query-replace, targets, link resolution, checkboxes, table commands); each must keep finding and editing text inside a drawer, and a miss fails silently. Do it as its own change, with before and after checks on search, replace and tables in drawers.
+- Effort: L. Impact: S.
 ** [#C] table.el tables
 The editor shows one verbatim paragraph and the exporters write it as written. Render it as a table-like block and convert it as Emacs's table package does.
 - Effort: M. Impact: S.
 ** [#C] List leftovers
-=org-list-send-item=, a palette entry for =org-update-statistics-cookies= on lists, the join space when a link spans lines, and the three known list-command groups (sorting inside a drawer or example block, =C-u C-c C-c= over a subtree with a double-blank gap, =M-S-right= on a first item with a cookie).
+=org-list-send-item=, the join space when a link spans lines, and the three known list-command groups (sorting inside a drawer or example block, =C-u C-c C-c= over a subtree with a double-blank gap, =M-S-right= on a first item with a cookie).
 - Effort: S. Impact: S.
 
 * Dates and durations
-** [#B] Date prompts everywhere
-The typed-date grammar (=org-read-date=) is used by the agenda start-day prompt and by capture. Check every other place that parses a typed date (schedule and deadline prompts, filters) and move them onto =src/read-date.js=.
-- Effort: S. Impact: M.
 ** [#C] Timestamp commands without a text cursor
 =S-up= and =S-down= on a timestamp and the =C-c .= family need a text cursor (Text view or the Date tool). Edit details has a "Move the date" stepper for SCHEDULED, DEADLINE and a plain timestamp; a timestamp in the middle of body text still needs the cursor, and the CLOCK-line variant of =C-S-up= is palette-only.
 - Effort: S. Impact: S.
@@ -109,7 +114,7 @@ The typed-date grammar (=org-read-date=) is used by the agenda start-day prompt 
 
 * Capture
 ** [#C] Capture leftovers
-=%[file]= (the app has no synchronous file reads); =prompt= for =org-table-formula-create-columns= in capture is treated as nil; with nil, Emacs aborts the capture when a field formula needs a missing column, and the app files the row without recalculating.
+=%[file]= (the app has no synchronous file reads); =prompt= for =org-table-formula-create-columns= in capture is treated as nil.
 - Effort: S. Impact: S.
 
 * Babel
@@ -121,9 +126,6 @@ New results directly above a following heading get no blank line (a section here
 - Effort: M. Impact: S.
 
 * Export
-** [#B] Settings controls for the export variables
-The =org-export-with-*= variables, =org-export-headline-levels=, =-preserve-breaks=, =-time-stamp-file=, =-global-macros= and =-snippet-translation-alist= are catalog-only (Global Variables). Give the common ones a Settings control.
-- Effort: S. Impact: M.
 ** [#C] More export variables
 =org-export-select-tags=, =org-export-exclude-tags=, =org-export-creator-string=, =org-export-date-timestamp-format=; snippet shortcuts inside =#+TITLE:= and similar keywords.
 - Effort: S. Impact: S.
@@ -136,9 +138,6 @@ Footnote relabeling, relative-link rewriting, =:coding= and URLs; missing files 
 ** [#C] MathJax and ox-publish
 KaTeX stands in for MathJax by decision; ox-publish needs a project model.
 - Effort: L. Impact: S.
-** [#C] Export differences found by the Org tests
-A table left out by =|:nil= inside a list item gives one blank line too many in LaTeX; ASCII output for a document that starts with a headline has three fewer blank lines after the table of contents; the "Cannot find end of receiver" error shows a line number where Emacs shows a character position.
-- Effort: S. Impact: S.
 
 * Org lint
 ** [#C] Report buffer keys
@@ -148,15 +147,9 @@ A table left out by =|:nil= inside a list item gives one blank line too many in 
 The parser does not model inline tasks, radio links, timestamps, entities, LaTeX fragments, sub and superscripts or statistics cookies, so the checkers that use them are not covered. =wrong-header-value= skips Lisp-evaluated values; cite processors are fixed; loaded Babel languages default to emacs-lisp.
 - Effort: M. Impact: S.
 
-* Tables
-** [#C] Formula leftovers
-=typeof(1:2)=, =typeof(uinf)= and =typeof(<2024-03-15>)=; =vmax= over only-nan under the =E= flag shows =max(nan, nan)= where Emacs shows =nan=; =#+CONSTANTS:= lines inside a heading body are not read; special properties such as =$PROP_ITEM=. Calc algebra of non-numeric text and unit simplification are deliberately not matched.
-- Effort: S. Impact: S.
-
 * Order for the next release
-1. Date prompts everywhere, and Settings controls for the export variables: small, and they finish what the latest release started.
-2. Drawers and dynamic blocks as containers, then inline-task commands.
-3. Detangle and jump for Babel.
+1. Inline-task commands, then drawers and dynamic blocks as containers (only if the editor needs them).
+2. Detangle and jump for Babel.
 Refile and Replace into =local:= files from the web and other backends are [#C].
 
 * Appendix: a Lisp interpreter

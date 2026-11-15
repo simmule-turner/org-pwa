@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 import { setTagsColumn, tagsColumnOf } from './tags-column.js';
+import { blankBeforeNewEntryOf, setBlankBeforeNewEntry } from './blank-before-entry.js';
 import { adaptIndentationOf, autoAlignTagsOf, setAdaptIndentation, setAutoAlignTags, setSrcPreserveIndentation, srcPreserveIndentationOf } from './indent-settings.js';
 import { setSizeLimits, sizeLimitsOf } from './size-limits.js';
 import { VariableValueError } from './variable-error.js';
@@ -158,6 +159,7 @@ export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   }
   setAdaptIndentation(adaptIndentationOf(merged)); // promote, demote, planning lines and drawers indent as org-adapt-indentation says
   setAutoAlignTags(autoAlignTagsOf(merged));
+  setBlankBeforeNewEntry(blankBeforeNewEntryOf(merged)); // new headings and list items get an empty line before them as org-blank-before-new-entry says
   setSrcPreserveIndentation(srcPreserveIndentationOf(merged));
   try {
     setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused

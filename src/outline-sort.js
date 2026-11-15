@@ -8,6 +8,7 @@
 import { parseInline } from './inline-markup.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { callFunction } from './agenda-lisp.js';
+import { clockSumMinutes } from './clock.js';
 import { sortFunctions } from './table-sort-lisp.js';
 
 /** @typedef {import('./types.js').Heading} Heading */
@@ -89,7 +90,7 @@ export function sortEntries(doc, parent, type, opts = {}) {
   const hasShallower = (nodes) => nodes.some((n) => n.level === first - 1 || hasShallower(n.children));
   if (first > 1 && hasShallower(container)) throw new Error('Region to sort contains a level above the first entry');
   const kind = type.toLowerCase();
-  if (!'nat opdsrcf'.includes(kind) || kind === ' ' || type.length !== 1) throw new Error(`Invalid sorting type \`${type}'`);
+  if (!'nat opdsrcfk'.includes(kind) || kind === ' ' || type.length !== 1) throw new Error(`Invalid sorting type \`${type}'`);
   const reverse = type !== kind;
   const withCase = !!opts.withCase;
   const caseFunc = (/** @type {string} */ s) => (withCase ? s : s.toLowerCase());
@@ -122,6 +123,7 @@ export function sortEntries(doc, parent, type, opts = {}) {
         const m = DEADLINE.exec(entryText(h));
         return m ? seconds(m[1]) : now;
       }
+      case 'k': return clockSumMinutes(h);
       case 'p': return h.priority ? h.priority.charCodeAt(0) : priorityDefault;
       case 'r': return (opts.propertyOf ? opts.propertyOf(h, opts.property || '') : null) ?? '';
       case 'o': {

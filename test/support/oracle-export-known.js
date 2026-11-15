@@ -13,6 +13,11 @@ export const KNOWN_DEVIATIONS = [
     matches: ({ backend, name }) => backend === 'orgx' && name === 'block-src-tab',
   },
   {
+    id: 'html-src-org-color',
+    reason: 'Emacs run in batch mode without htmlize writes a source block\'s text uncolored; the app colors an org source block as Emacs\'s Org font-lock does (the colors Emacs gives it in an HTML file made with htmlize, and in ODT)',
+    matches: ({ backend, name }) => backend === 'html' && name === 'block-src-comma-escape',
+  },
+  {
     id: 'org-crlf',
     reason: 'chosen: app behavior -- the app reads a file with CRLF line ends as LF and writes the file back in its own style (a Windows file is not rewritten); Emacs decodes such a file the same way, so its carriage returns appear only when text is given to the exporter with them still in it',
     matches: ({ backend, name }) => backend === 'orgx' && name === 'doc-crlf',
@@ -36,7 +41,6 @@ KNOWN_DEVIATIONS.push(
   rule("unicode-space", {"ascii":["inline-115"],"utf8":["inline-029","inline-115"]}),
   rule("table-el", {"ascii":["table-table-el"],"utf8":["table-table-el"],"html":["table-table-el"],"latex":["table-table-el"]}),
   rule("src-tab", {"ascii":["block-src-tab"],"utf8":["block-src-tab"],"html":["block-src-tab"],"latex":["block-src-tab"]}),
-  rule("src-org-lang", {"ascii":["block-src-org-lang"],"utf8":["block-src-org-lang"],"html":["block-src-org-lang"],"latex":["block-src-org-lang"]}),
   rule("env-home", {"html":["inline-074"],"latex":["inline-074"]}),
   rule("nil-bug", {"html":["block-quote-empty"],"latex":["block-quote-empty"]}),
   rule("crlf-bom", {"html":["doc-crlf"],"latex":["doc-crlf","doc-bom"]}),

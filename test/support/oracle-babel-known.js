@@ -10,12 +10,6 @@ export const BABEL_RULES = [
   },
   {
     kind: 'blocks',
-    id: 'heading-line-inside-block',
-    reason: 'Emacs ends the section at a line that looks like a heading, so a source block holding one is not a block; the app keeps the block (its parser knows source blocks).',
-    match: (c) => /#\+begin_src[^\n]*\n(?:[^\n]*\n)*?\*+ /i.test(c.text) && Array.isArray(c.emacs) && c.emacs.length === 0,
-  },
-  {
-    kind: 'blocks',
     id: 'crlf-block',
     reason: 'Emacs does not close a block whose `#+end_src` ends in a carriage return, so finds none; the app reads CRLF text like LF.',
     match: (c) => c.text.includes('\r\n') && Array.isArray(c.emacs) && c.emacs.length === 0,

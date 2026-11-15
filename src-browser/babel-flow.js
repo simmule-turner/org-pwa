@@ -3,11 +3,10 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 /** @typedef {import('../src/types.js').Block & { resultsName?: string }} SourceBlock */
 // Running JavaScript source blocks (Org Babel's C-c C-c) -- the commands around the sandbox.
-import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { commitLines } from '../src/body-edit.js';
 import { parseLocationHeader, parseNetHeader } from '../src/extension-net.js';
 import { cacheHash } from '../src/babel-cache.js';
-import { evalAllowed, headerText, existingResultsHash, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, pickedNames, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
+import { evalAllowed, headerText, existingResultsHash, formatError, formatResult, isJsBlock, parseHeaderArgs, parseResultsSpec, pickedNames, headingFollows, placeResults, resolveVars, timeoutMs } from '../src/babel.js';
 import { collectDocumentBlocks } from '../src/babel-blocks.js';
 import { findAncestorPath } from '../src/archive-model.js';
 import { flatBodyNodes } from '../src/body-parser.js';
@@ -21,8 +20,6 @@ import { expandNoweb, nowebAllows } from '../src/noweb.js';
 import { getBabelJs, getBabelLisp } from '../src/local-variables.js';
 import { isElispBlock, runElisp } from '../src/babel-elisp.js';
 import { blockResultLines } from '../src/babel-ops.js';
-import { trustDigest } from '../src/babel-trust.js';
-import { serializeOrg } from '../src/org-parser.js';
 import { S } from './app-state.js';
 import { runJavaScript } from './babel-run.js';
 import { syncBabelOptions } from './babel-options-sync.js';
@@ -40,9 +37,6 @@ import { authorizeBlock, createServices, documentOwner } from './extension-servi
 // `(org-sbe ...)` in a table formula calls the named blocks of the document in view
 setSbeHandler((args) => sbeEvaluate(S.state.doc, args));
 
-// each answer is kept with a digest of the document's executable parts (src/babel-trust.js); the earlier list of bare ids is not read
-const TRUSTED_DOCUMENTS_KEY = 'org-pwa-babel-trust';
-const MAX_TRUSTED_DOCUMENTS = 200;
 const SECRET_NAME_RE = /token|password|secret|credential|auth|key/i;
 
 /** Whether JavaScript blocks may run. Read from the app's Global Variables only, never from a
@@ -56,45 +50,17 @@ export function babelLispEnabled() {
   return getBabelLisp(S.globalVariables);
 }
 
-function trustedDocuments() {
-  try {
-    const list = JSON.parse(localStorage.getItem(TRUSTED_DOCUMENTS_KEY) || '[]');
-    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === 'string' && typeof e.digest === 'string') : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-/** Asks once per document on this device, as Emacs's org-confirm-babel-evaluate does, and again when the document's code changes.
- *  An unsaved document is asked every time. */
-async function confirmDocumentTrust(lisp = false) {
-  const id = S.state.documentId || '';
-  const savedId = id && !id.startsWith(UNSAVED_DOCUMENT_ID) ? id : '';
-  const digest = savedId ? await trustDigest(serializeOrg(S.state.doc)) : '';
-  if (savedId && trustedDocuments().some((e) => e.id === savedId && e.digest === digest)) return true;
-  const ok = await confirmDialog(
-    lisp
-      ? 'Run Emacs Lisp from this document? It runs in the app\'s own interpreter, with no access to your files, accounts or the network. Run only code you trust.'
-      : 'Run JavaScript from this document? It runs in a sandbox with no access to your files or accounts, and reaches the network or your position only if its header asks and you allow it. Run only code you trust.',
-    { confirmLabel: 'Run', danger: false },
-  );
-  if (ok && savedId) {
-    try {
-      localStorage.setItem(TRUSTED_DOCUMENTS_KEY, JSON.stringify([...trustedDocuments().filter((e) => e.id !== savedId), { id: savedId, digest }].slice(-MAX_TRUSTED_DOCUMENTS)));
-    } catch (e) {
-      /* not remembered; asked again next time */
-    }
-  }
-  return ok;
-}
-
-/** `org-confirm-babel-evaluate` and `:eval query`: a block that asks (`:eval query`) is asked every time; otherwise nothing is asked when the
- *  global variable is nil, and once per document (see confirmDocumentTrust) when it is t. @param {boolean} lisp @param {Record<string, any>} args */
-async function confirmEvaluation(lisp, args) {
+/** `org-confirm-babel-evaluate` and `:eval query`: a block that asks (`:eval query`) is asked every time, and so is every block while the global
+ *  variable is t, its default, as in Emacs (`org-babel-check-confirm-evaluate`, once for each run). @param {boolean} lisp @param {Record<string, any>} args @param {string} [name] the block's name */
+async function confirmEvaluation(lisp, args, name = '') {
   syncBabelOptions();
-  if (String(args.eval || '').trim() === 'query') return confirmDialog(`Evaluate this ${lisp ? 'emacs-lisp' : 'js'} code block on your system?`, { confirmLabel: 'Evaluate', danger: false });
-  if (!babelOptions.confirm) return true;
-  return confirmDocumentTrust(lisp);
+  const query = String(args.eval || '').trim() === 'query';
+  if (!query && !babelOptions.confirm) return true;
+  const label = `${lisp ? 'emacs-lisp' : 'js'} code block${name ? ` (${name})` : ''}`;
+  const where = lisp
+    ? "It runs in the app's own interpreter, with no access to your files, accounts or the network."
+    : 'It runs in a sandbox with no access to your files or accounts, and reaches the network or your position only if its header asks and you allow it.';
+  return confirmDialog(`Evaluate this ${label} on your system? ${where}`, { confirmLabel: 'Evaluate', danger: false });
 }
 
 /** The variables a script can read with org.vars.get: the effective settings, minus anything
@@ -115,7 +81,7 @@ function visibleVariables() {
  * @param {string} label
  */
 function writeResults(heading, block, lines, label, hash = /** @type {string | null} */ (null), handling = 'replace') {
-  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling, name: block.resultsName || '' });
+  const { start, removeCount, insert } = placeResults(heading.bodyLines, block, lines, { hash, handling, name: block.resultsName || '', headingFollows: headingFollows(S.state.doc, heading) });
   // the cursor stays on the block, whose body is re-parsed by the edit
   withKeyboardFocusPreserved(heading, () => commitLines(heading, start, removeCount, insert));
   commitAndRender(label);
@@ -163,7 +129,7 @@ export async function executeSourceBlock(heading, block) {
     setStatus(`Evaluation of this block is disabled (:eval ${args.eval}).`);
     return true; // (Emacs only says so, and goes on)
   }
-  if (!(await confirmEvaluation(lisp, args))) return false;
+  if (!(await confirmEvaluation(lisp, args, block.resultsName || ''))) return false;
 
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
@@ -331,7 +297,7 @@ async function executeOtherElement(heading, element) {
     setStatus(`Evaluation of this block is disabled (:eval ${info.args.eval}).`);
     return true;
   }
-  if (!(await confirmEvaluation(lisp, info.args))) return false;
+  if (!(await confirmEvaluation(lisp, info.args, info.name || ''))) return false;
   const beginLine = heading.bodyLines[element.line];
   try {
     const edit = await executeElement(env, element, { runJs: jsRunner() });

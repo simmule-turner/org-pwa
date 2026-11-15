@@ -250,7 +250,7 @@ function parseList(lines, start) {
     }
     // the tag runs to the last ` ::` that ends the text or is followed by blanks; only an unordered item has one
     const tagMatch = /^[-+*]/.test(m[2]) ? /^(.*)[ \t]+::(?:[ \t]+(.*)|)$/.exec(rest) : null;
-    if (tagMatch && !isInsideCode(rest, tagMatch[1].length)) {
+    if (tagMatch) {
       item.tag = tagMatch[1];
       rest = tagMatch[2] || '';
     }
@@ -272,21 +272,6 @@ function parseList(lines, start) {
   }
   const listType = items[0].tag !== null ? 'descriptive' : /^\d/.test(first[2]) ? 'ordered' : 'unordered';
   return [/** @type {OrgElement} */ ({ type: 'list', listType, items }), i];
-}
-
-/**
- * True when index `at` in `text` is inside a `=verbatim=` or `~code~` span, where `::` is not a tag separator.
- * @param {string} text
- * @param {number} at
- */
-function isInsideCode(text, at) {
-  if (at < 0) return false;
-  for (const delim of ['=', '~']) {
-    let count = 0;
-    for (let k = 0; k < at; k++) if (text[k] === delim) count++;
-    if (count % 2 === 1) return true;
-  }
-  return false;
 }
 
 /**

@@ -3,8 +3,8 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: table recalc.
+import { entryProperty } from '../src/special-properties.js';
 import { allTablesInBody, commitLines, serializeTable } from '../src/body-edit.js';
-import { inheritedProperty } from '../src/babel-args.js';
 import { ancestorsOf } from '../src/org-lisp.js';
 import { getOrgTableDurationHourZeroPadding, getOrgTableFormulaCreateColumns } from '../src/local-variables.js';
 import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
@@ -72,7 +72,7 @@ export async function recalculateOneTable(heading, table) {
       createColumns: CREATE_COLUMNS[getOrgTableFormulaCreateColumns(S.state.localVariables)],
       constants: parseTableConstants(S.state.doc),
       tables: parseNamedTables(S.state.doc),
-      properties: (/** @type {string} */ name) => inheritedProperty(S.state.doc, [...ancestorsOf(S.state.doc, heading), heading], name),
+      properties: (/** @type {string} */ name) => entryProperty(S.state.doc, [...ancestorsOf(S.state.doc, heading), heading], name),
       userCall: tableUserCall,
     });
     const warning = warnings.length ? `Warning: ${warnings[0]}.` : '';

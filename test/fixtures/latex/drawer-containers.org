@@ -1,0 +1,24 @@
+#+OPTIONS: d:t
+* H
+text
+:MYDRAWER:
+| a | b |
+| 1 | 2 |
+
+- item
+  - sub
+
+#+begin_quote
+q
+#+end_quote
+:END:
+after
+:OTHER:
+[fn:1] def
+
+ref[fn:1]
+:END:
+#+begin: foo
+- item
+| a |
+#+end:

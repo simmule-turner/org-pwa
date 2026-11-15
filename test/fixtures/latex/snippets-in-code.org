@@ -1,0 +1,21 @@
+#+OPTIONS: toc:nil author:nil date:nil
+#+TITLE: Snippets in code
+#+MACRO: m MACRO-VALUE
+
+Verbatim =@@latex:ASC@@ and @@html:H@@= and code ~@@latex:L@@ {{{m}}}~ text.
+
+Inline @@latex:shown@@ and @@html:hidden@@ and @@latex:hidden@@ here.
+
+#+begin_example
+@@latex:in example@@ {{{m}}} [[https://example.org]] *b*
+#+end_example
+
+#+begin_src sh
+echo @@latex:in src@@ {{{m}}}
+#+end_src
+
+: fixed @@latex:width@@ {{{m}}}
+
+#+begin_verse
+verse @@latex:snippet@@ and *bold* {{{m}}}
+#+end_verse

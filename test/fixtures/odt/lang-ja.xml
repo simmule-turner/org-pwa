@@ -1,0 +1,113 @@
+<text:p text:style-name="OrgTitle">
+<text:title>Lang ja</text:title>
+</text:p>
+<text:p text:style-name="OrgTitle"/>
+<text:table-of-content text:style-name="OrgIndexSection" text:protected="true" text:name="Table of Contents">
+<text:table-of-content-source text:outline-level="3">
+<text:index-title-template text:style-name="Contents_20_Heading">目次</text:index-title-template>
+<text:table-of-content-entry-template text:outline-level="1" text:style-name="Contents_20_1">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="2" text:style-name="Contents_20_2">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="3" text:style-name="Contents_20_3">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="4" text:style-name="Contents_20_4">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="5" text:style-name="Contents_20_5">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="6" text:style-name="Contents_20_6">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="7" text:style-name="Contents_20_7">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="8" text:style-name="Contents_20_8">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="9" text:style-name="Contents_20_9">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+<text:table-of-content-entry-template text:outline-level="10" text:style-name="Contents_20_10">
+<text:index-entry-link-start text:style-name="Internet_20_link"/>
+<text:index-entry-chapter/>
+<text:index-entry-text/>
+<text:index-entry-link-end/>
+</text:table-of-content-entry-template>
+</text:table-of-content-source>
+<text:index-body>
+<text:index-title text:style-name="Sect1" text:name="Table of Contents1_Head">
+<text:p text:style-name="Contents_20_Heading">目次</text:p>
+</text:index-title>
+<text:p text:style-name="Contents_20_1">
+<text:a xlink:type="simple" xlink:href="#ORG">1. One</text:a>
+</text:p>
+<text:p text:style-name="Contents_20_2">
+<text:a xlink:type="simple" xlink:href="#ORG">1.1. Two</text:a>
+</text:p>
+</text:index-body>
+</text:table-of-content>
+<text:h text:style-name="Heading_20_1" text:outline-level="1" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>One
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:section text:style-name="OrgIndentedSection-Level-0" >
+<text:p text:style-name="Table">
+<text:bookmark text:name="ORG"/>表 <text:sequence text:ref-name="ORG" text:name="Table" text:formula="ooow:Table+1" style:num-format="1">1.1</text:sequence>: Tab cap</text:p>
+<table:table table:style-name="OrgTable">
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-column table:style-name="OrgTableColumn"/>
+<table:table-rows>
+<table:table-row>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">a</text:p>
+</table:table-cell>
+<table:table-cell table:style-name="OrgTblCellTB">
+<text:p text:style-name="OrgTableContentsLeft">b</text:p>
+</table:table-cell>
+</table:table-row>
+</table:table-rows>
+</table:table>
+</text:section>
+<text:p text:style-name="Listing">
+<text:bookmark text:name="ORG"/>ソースコード <text:sequence text:ref-name="ORG" text:name="Listing" text:formula="ooow:Listing+1" style:num-format="1">1.1</text:sequence>: Src cap</text:p>
+<text:p text:style-name="OrgFixedWidthBlockLastLine">let a = 1;</text:p>
+<text:h text:style-name="Heading_20_2" text:outline-level="2" text:is-list-header="false">
+<text:bookmark-start text:name="OrgXref.ORG"/>
+<text:bookmark text:name="ORG"/>Two
+<text:bookmark-end text:name="OrgXref.ORG"/>
+</text:h>
+<text:p text:style-name="Text_20_body">text
+</text:p>

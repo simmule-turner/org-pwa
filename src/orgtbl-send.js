@@ -10,6 +10,7 @@ import { intern } from './elisp-data.js';
 import { tableTextToLisp } from './export-convert-table.js';
 import './export-convert.js';
 import { commitLines } from './body-edit.js';
+import { serializeOrg } from './org-parser.js';
 import { inheritedProperty } from './babel-args.js';
 import { ancestorsOf } from './org-lisp.js';
 
@@ -70,6 +71,17 @@ function bodies(doc) {
   return out;
 }
 
+/** The buffer position (1-based, in characters) of the line after the SEENth `BEGIN RECEIVE` line of the document: what Emacs names in its error. @param {Doc} doc @param {RegExp} begin @param {number} seen */
+function receiverPosition(doc, begin, seen) {
+  let at = 1;
+  let n = 0;
+  for (const line of serializeOrg(doc).split('\n')) {
+    at += [...line].length + 1;
+    if (begin.test(line) && ++n === seen) return at;
+  }
+  return at;
+}
+
 /** `orgtbl-send-replace-tbl`: the text between every `BEGIN RECEIVE ORGTBL name` and its `END RECEIVE ORGTBL name` line becomes `text`.
  * @param {Doc} doc @param {string} name @param {string} text */
 function replaceReceivers(doc, name, text) {
@@ -77,13 +89,15 @@ function replaceReceivers(doc, name, text) {
   const begin = new RegExp(`BEGIN +RECEIVE +ORGTBL +${quoted}([ \\t]|$)`);
   const end = new RegExp(`END +RECEIVE +ORGTBL +${quoted}([ \\t]|$)`);
   let found = false;
+  let seen = 0; // the BEGIN lines passed so far, in document order
   for (const body of bodies(doc)) {
     for (let i = 0; i < body.bodyLines.length; i++) {
       if (!begin.test(body.bodyLines[i])) continue;
       found = true;
+      seen++;
       let j = i + 1;
       while (j < body.bodyLines.length && !end.test(body.bodyLines[j])) j++;
-      if (j >= body.bodyLines.length) throw new Error(`Cannot find end of receiver location at ${i + 2}`);
+      if (j >= body.bodyLines.length) throw new Error(`Cannot find end of receiver location at ${receiverPosition(doc, begin, seen)}`);
       commitLines(/** @type {Heading} */ (body), i + 1, j - i - 1, text.split('\n'));
       i = i + 1 + text.split('\n').length;
     }
