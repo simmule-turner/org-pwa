@@ -9130,6 +9130,74 @@ check('footnotes: heading text: the Edit heading text popup has the Footnote but
   await context.close();
 });
 
+check('text editors: Footnote, Timer and Date icons sit above the text in every text editor, with no Reset, and a footnote goes into a new paragraph and a heading title', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* One\nSome text here.\n- item\n');
+  const open = (name) => page.evaluate(async (which) => {
+    const { S } = await import('/src-browser/app-state.js');
+    const editing = await import('/src-browser/editing.js');
+    const dialogs = await import('/src-browser/dialogs.js');
+    const h = S.state.doc.children[0];
+    const para = h.body.find((b) => b.type === 'paragraph');
+    const item = h.body.find((b) => b.type === 'list').items[0];
+    if (which === 'paragraph') editing.openParagraphEditor(h, para);
+    else if (which === 'new paragraph') editing.openNewParagraphEditor(h, para);
+    else if (which === 'list item') editing.openListItemEditor(h, item);
+    else if (which === 'heading title') editing.startEditingTitle(h, false);
+    else dialogs.openHeadingTextEditor(h);
+  }, name);
+  const inspect = () => page.evaluate(() => {
+    const overlay = [...document.querySelectorAll('textarea')].map((t) => t.closest('[id$="-edit-popup"]')).find(Boolean);
+    const textarea = overlay.querySelector('textarea');
+    const tools = [...overlay.querySelectorAll('[data-editor-tool]')];
+    const labels = [...overlay.querySelectorAll('button')].map((b) => b.textContent.trim());
+    const ta = textarea.getBoundingClientRect();
+    return {
+      ids: tools.map((b) => b.getAttribute('data-editor-tool')),
+      names: tools.map((b) => b.getAttribute('aria-label')),
+      above: tools.every((b) => b.getBoundingClientRect().bottom <= ta.top),
+      size: Math.min(...tools.map((b) => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height))),
+      inView: tools.every((b) => b.getBoundingClientRect().left >= 0 && b.getBoundingClientRect().right <= innerWidth),
+      reset: labels.includes('Reset'),
+      cancel: labels.includes('Cancel'),
+      ok: labels.includes('OK'),
+    };
+  });
+  const cancel = () => page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Cancel').click());
+  for (const name of ['heading text', 'paragraph', 'new paragraph', 'list item', 'heading title']) {
+    await open(name);
+    await page.waitForSelector('[id$="-edit-popup"] textarea', { timeout: 5000 });
+    const r = await inspect();
+    expect(r.ids.join() === 'footnote,timer,date' && r.names.join() === 'Footnote,Timer,Date', `${name}: the three tools, in order: ${JSON.stringify(r)}`);
+    expect(r.above && r.inView && r.size >= 36, `${name}: the tools are icon buttons above the text, on screen and big enough: ${JSON.stringify(r)}`);
+    expect(!r.reset && r.cancel && r.ok, `${name}: Cancel and OK, no Reset: ${JSON.stringify(r)}`);
+    await cancel();
+    await page.waitForFunction(() => !document.querySelector('[id$="-edit-popup"]'), null, { timeout: 5000 });
+  }
+  const insertFootnote = async (name, text) => {
+    await open(name);
+    await page.waitForSelector('[id$="-edit-popup"] textarea', { timeout: 5000 });
+    await page.evaluate((v) => { const t = document.querySelector('[id$="-edit-popup"] textarea'); t.value = v; t.focus(); t.setSelectionRange(v.length, v.length); }, text);
+    await page.click('[data-editor-tool="footnote"]');
+    await page.waitForSelector('[data-bottom-sheet] textarea', { timeout: 5000 });
+    await page.fill('[data-bottom-sheet] textarea', 'A note.');
+    await page.click('[data-bottom-sheet] button:has-text("Insert")');
+    await page.waitForSelector('#undoToast', { timeout: 5000 });
+    return page.evaluate(async () => {
+      const { S } = await import('/src-browser/app-state.js');
+      const { serializeOrg } = await import('/src/org-parser.js');
+      return { text: serializeOrg(S.state.doc), popup: !!document.querySelector('[id$="-edit-popup"]'), editingHeading: !!S.editingHeading };
+    });
+  };
+  const p = await insertFootnote('new paragraph', 'Fresh words');
+  expect(p.text.includes('Fresh words[fn:1]') && p.text.includes('[fn:1] A note.') && !p.popup, `a footnote in a new paragraph: ${JSON.stringify(p)}`);
+  const t = await insertFootnote('heading title', 'One more');
+  expect(t.text.includes('* One more[fn:') && !t.popup && !t.editingHeading, `a footnote in a heading title: ${JSON.stringify(t)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('id: links: a local file opened before is found again by its ID after its tab is closed', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 412, height: 900 });

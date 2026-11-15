@@ -1371,7 +1371,7 @@ function planningHtml(state, heading) {
    * @param {string} kw
    * @param {string | null} v
    */
-  const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(withDayName(v))}</span>` : '');
+  const stamp = (kw, v) => (v ? `<span class="timestamp-kwd">${kw}:</span> <span class="timestamp">${escapeHtml(withDayName(v))}${(heading.planning.blanks && heading.planning.blanks[kw.toLowerCase()]) || ''}</span>` : ''); // the blanks after a timestamp stay, as in Emacs
   const parts = [stamp('CLOSED', closed), stamp('DEADLINE', deadline), stamp('SCHEDULED', scheduled)].filter(Boolean);
   return parts.length ? `<p><span class="timestamp-wrapper">${parts.join(' ')}</span></p>` : '';
 }

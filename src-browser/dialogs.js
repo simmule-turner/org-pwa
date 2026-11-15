@@ -427,7 +427,6 @@ export function openHeadingTextEditor(heading) {
     label: 'Edit heading text',
     value: originalText,
     placeholder: 'All content for this heading — lists, notes, etc. — as org text',
-    resetInPlace: true,
     tools: [footnoteEditorTool(heading, 'heading-text', null), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingHeadingText = null;
@@ -442,9 +441,29 @@ export function openHeadingTextEditor(heading) {
   overlay.id = 'heading-text-edit-popup';
 }
 
-/** `tools` are extra buttons at the left of the button row (Footnote, in the paragraph editor); each is given the textarea and a
+/** The icons of the editor tools, by tool id: the path data of a 24 by 24 drawing. */
+const EDITOR_TOOL_ICONS = {
+  footnote: ['M3 19l5-12 5 12M4.8 15h6.4', 'M17 5.5l1.8-1.5V11'],
+  timer: ['M19 13.5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z', 'M12 13.5V9.5M10 3h4'],
+  date: ['M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z', 'M4 10h16M8 3v4M16 3v4'],
+};
+
+/** @param {'footnote' | 'timer' | 'date'} id */
+function editorToolIcon(id) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  for (const [name, value] of Object.entries({ width: '22', height: '22', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(name, value);
+  for (const d of EDITOR_TOOL_ICONS[id]) {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+  }
+  return svg;
+}
+
+/** `tools` are icon buttons in a row above the text (Footnote, Timer and Date in the text editors); each is given the textarea and a
  * `close` that closes the popup without calling onCancel or onSave.
- * @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any, tools?: { text: string, title?: string, id?: string, onClick: (textarea: HTMLTextAreaElement, close: () => void) => void }[] }} options */
+ * @param {{ label?: any, value?: any, defaultValue?: any, onSave?: any, onReset?: any, onCancel?: any, resetInPlace?: boolean, placeholder?: any, choices?: any, tools?: { text: string, title?: string, id: 'footnote' | 'timer' | 'date', onClick: (textarea: HTMLTextAreaElement, close: () => void) => void }[] }} options */
 export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset, onCancel, resetInPlace, placeholder, choices, tools }) {
   const overlay = document.createElement('div');
   overlay.className = 'ui-overlay';
@@ -542,21 +561,19 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
   document.addEventListener('keydown', onKeyDown, true);
 
   if (tools && tools.length) {
+    // the tools are icon buttons in a row above the text; Cancel and OK stay in the row below it
     const toolBox = document.createElement('div');
-    toolBox.style.cssText = 'display:flex;gap:8px;margin-right:auto;';
-    if (tools.length > 2) {
-      // three or more tools do not fit beside Cancel and OK on a phone: they take a row of their own above them
-      btnRow.style.flexWrap = 'wrap';
-      toolBox.style.flex = '1 0 100%';
-      toolBox.style.flexWrap = 'wrap';
-    }
+    toolBox.style.cssText = 'display:flex;gap:8px;flex-shrink:0;';
     for (const tool of tools) {
-      const btn = menuButton(tool.text, () => tool.onClick(textarea, close));
-      if (tool.title) btn.title = tool.title;
-      if (tool.id) btn.setAttribute('data-editor-tool', tool.id);
+      const btn = menuButton('', () => tool.onClick(textarea, close));
+      btn.setAttribute('aria-label', tool.text);
+      btn.title = tool.title || tool.text;
+      btn.setAttribute('data-editor-tool', tool.id);
+      btn.style.cssText = 'width:var(--target);height:var(--target);padding:0;display:flex;align-items:center;justify-content:center;';
+      btn.appendChild(editorToolIcon(tool.id));
       toolBox.appendChild(btn);
     }
-    btnRow.appendChild(toolBox);
+    modal.insertBefore(toolBox, textarea);
   }
 
   btnRow.appendChild(

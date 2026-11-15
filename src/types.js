@@ -14,7 +14,7 @@
  *   titleTail?: string,
  *   tagsTail?: string,
  *   tags: string[],
- *   planning: { scheduled: string | null, deadline: string | null, closed: string | null, order?: string[] },
+ *   planning: { scheduled: string | null, deadline: string | null, closed: string | null, order?: string[], blanks?: Record<string, string> },
  *   properties: Record<string, string>,
  *   propertyOrder: string[],
  *   logbookLines: string[],

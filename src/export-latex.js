@@ -237,10 +237,15 @@ function inline(text) {
   return nodes(parseText(text));
 }
 
+/** stat:nil leaves out the statistics cookies, and the blanks after them, outside =verbatim= and ~code~. @param {string} text */
+function withoutCookies(text) {
+  return S.opts.stat ? text : outsideVerbatim(text, (piece) => piece.replace(/\[(?:\d*\/\d*|\d*%)\][ \t]*/g, ''));
+}
+
 /** @param {string} text @returns {InlineNode[]} */
 function parseText(text) {
-  const marked = outsideVerbatim(text
-    .replace(/^[ \t]*call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, ''), (piece) => piece.replace(/\bcall_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, '')) // an inline call prints nothing (not inside =verbatim= or ~code~), and at the start of a paragraph its blanks go too
+  const marked = withoutCookies(outsideVerbatim(text
+    .replace(/^[ \t]*call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, ''), (piece) => piece.replace(/\bcall_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, ''))) // an inline call prints nothing (not inside =verbatim= or ~code~), and at the start of a paragraph its blanks go too
     .split('\n')
     .map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, BREAK) : l))
     .join('\n')
@@ -619,7 +624,9 @@ function elements(list) {
     out += text + '\n'.repeat(el.postBlank || 0);
     lastShown = i;
   });
-  return lastShown >= 0 && lastShown < list.length - 1 ? trimEnd(out) : out; // elements that print nothing (footnote definitions ...) after the last one swallow its blank lines
+  if (lastShown < 0 || lastShown === list.length - 1) return out;
+  const tail = list[list.length - 1];
+  return trimEnd(out) + (tail.type === 'table' && !S.opts.tables ? '\n'.repeat(tail.postBlank || 0) : ''); // elements that print nothing (footnote definitions ...) after the last one swallow its blank lines; a left-out table at the end leaves its own blank lines
 }
 
 /** `\\n:t`: every line of a paragraph ends in a forced break, `\\\\[0pt]`. @param {string} text */
@@ -1047,7 +1054,21 @@ function headingBody(h, ctx, base, section = true) {
   const body = text ? '\n'.repeat(lead) + text : !S.beamer && lead > 0 && lead === lines.length ? '\n'.repeat(lead) : S.beamer && lead > 0 && lead === lines.length ? '\n'.repeat(section ? lead : lead + 1) : '';
   const children = headings(h.children || [], S.beamer ? { ...ctx, parents: [...ctx.parents, h] } : ctx, base);
   const stop = section && S.localToc.has(h) ? '\\stopcontents[level-' + (h.level - base) + ']\n' : '';
+  const kids = h.children || [];
+  const dropped = kids.length && !S.beamer && ctx.skip(kids[kids.length - 1]) ? kids[kids.length - 1] : null;
+  // a left-out last subtree (tasks:todo, COMMENT, noexport ...) leaves its own blank lines at the end, in place of those of the text before it
+  if (dropped) return (body + children ? trimEnd(body + children) : '') + '\n'.repeat(trailingBlanks(dropped, ctx.doc)) + stop;
   return body + children + stop;
+}
+
+/** The blank lines that end a headline's subtree. @param {Heading} h @param {Doc} doc */
+function trailingBlanks(h, doc) {
+  let last = h;
+  while ((last.children || []).length) last = /** @type {Heading[]} */ (last.children)[(last.children || []).length - 1];
+  const lines = last.bodyLines || [];
+  let n = 0;
+  while (n < lines.length && lines[lines.length - 1 - n] === '') n++;
+  return last === lastHeading(doc) ? Math.max(0, n - 1) : n; // the line end that finishes the file is no blank line
 }
 
 /** The last headline of the file, deepest last descendant of the last top-level one. @param {Doc} doc @returns {Heading | null} */

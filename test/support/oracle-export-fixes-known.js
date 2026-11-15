@@ -11,9 +11,4 @@ export const FIXES_KNOWN = [
     reason: 'Emacs 29.3 writes a stray "nil" after an inline task that has no text in HTML and drops its END line in Org (defects); the app writes neither',
     matches: ({ backend, name }) => (backend === 'html' || backend === 'orgx') && name === 'inlinetask-select-tag',
   },
-  {
-    id: 'html-planning-trailing-blank',
-    reason: 'Emacs 29.3 HTML writes a blank inside the last timestamp span of a planning line when the line holds two entries',
-    matches: ({ backend, name }) => backend === 'html' && name === 'timestamp-planning',
-  },
 ];

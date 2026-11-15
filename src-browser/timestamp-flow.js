@@ -79,12 +79,12 @@ export function changeClockTimeStamps(updown, area = null) {
 }
 
 /** The Date button of the text editors: a sheet of the time stamp commands at the cursor.
- * @returns {{ text: string, title: string, id: string, onClick: (textarea: HTMLTextAreaElement) => void }} */
+ * @returns {{ text: string, title: string, id: 'date', onClick: (textarea: HTMLTextAreaElement) => void }} */
 export function dateEditorTool() {
   return {
     text: 'Date',
     title: 'Insert or change a time stamp at the cursor',
-    id: 'date',
+    id: /** @type {const} */ ('date'),
     onClick: (area) => {
       const cursor = area.selectionStart;
       openActionSheet({

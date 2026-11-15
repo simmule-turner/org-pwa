@@ -140,7 +140,7 @@ Footnote relabeling, relative-link rewriting, =:coding= and URLs; missing files 
 KaTeX stands in for MathJax by decision; ox-publish needs a project model.
 - Effort: L. Impact: S.
 ** [#C] Export differences found by the Org tests
-HTML =p:t= and ASCII trailing blank after planning; =stat:nil= leaves the cookie in a LaTeX list item; LaTeX blank-line differences with =|:nil= and =tasks:todo=; ASCII output for a document that starts with a headline has three fewer blank lines after the table of contents; the "Cannot find end of receiver" error shows a line number where Emacs shows a character position.
+A table left out by =|:nil= inside a list item gives one blank line too many in LaTeX; ASCII output for a document that starts with a headline has three fewer blank lines after the table of contents; the "Cannot find end of receiver" error shows a line number where Emacs shows a character position.
 - Effort: S. Impact: S.
 
 * Org lint

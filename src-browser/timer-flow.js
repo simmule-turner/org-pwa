@@ -163,12 +163,12 @@ export function timerStamp() {
   return valueString();
 }
 
-/** The Timer button of the text editors: `org-timer` inserts the stamp at the cursor. @returns {{ text: string, title: string, id: string, onClick: (textarea: HTMLTextAreaElement) => void }} */
+/** The Timer button of the text editors: `org-timer` inserts the stamp at the cursor. @returns {{ text: string, title: string, id: 'timer', onClick: (textarea: HTMLTextAreaElement) => void }} */
 export function timerEditorTool() {
   return {
     text: 'Timer',
     title: 'Insert the timer at the cursor',
-    id: 'timer',
+    id: /** @type {const} */ ('timer'),
     onClick: (textarea) => {
       const stamp = timerStamp();
       const { selectionStart: a, selectionEnd: b } = textarea;

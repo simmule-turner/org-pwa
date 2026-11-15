@@ -82,26 +82,31 @@ const PROPERTY_LINE_RE = /^\s*:(\S+):[ \t]*(.*?)[ \t]*$/;
 const TAGS_RE = /(?:^|[ \t]+)(:[\p{L}\p{N}_@#%:]+:)[ \t]*$/u; // Org's tag characters: letters and digits of any script, and _ @ # %; nbsp is not a separator
 const PRIORITY_RE = /^ *\[#(.)\](?:\s+|$)/; // as org-heading-components reads it: one character, then a space or the end of the line
 
-const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])/g;
+const PLANNING_KEYWORD_RE = /(SCHEDULED|DEADLINE|CLOSED):\s*([<[][^>\]]+[>\]])([ \t]*)/g;
 const BLOCK_START_RE = /^\s*#\+begin_(\w+)(?:\s+(.*))?$/i;
 const BLOCK_END_RE = /^\s*#\+end_(\w+)\s*$/i;
 
 /** @param {string} line */
 function parsePlanningLine(line) {
-  const planning = /** @type {{scheduled: string|null, deadline: string|null, closed: string|null, order?: string[]}} */ ({ scheduled: null, deadline: null, closed: null });
+  const planning = /** @type {{scheduled: string|null, deadline: string|null, closed: string|null, order?: string[], blanks?: Record<string, string>}} */ ({ scheduled: null, deadline: null, closed: null });
   /** @type {string[]} */ const order = [];
+  /** @type {Record<string, string>} */ const blanks = {}; // the blanks after each timestamp: Emacs keeps them as its post-blank, and the exporters write them
   let match;
   let found = false;
   PLANNING_KEYWORD_RE.lastIndex = 0;
   while ((match = PLANNING_KEYWORD_RE.exec(line)) !== null) {
     found = true;
-    const [, kw, stamp] = match;
+    const [, kw, stamp, blank] = match;
+    blanks[kw.toLowerCase()] = blank;
     if (kw === 'SCHEDULED') planning.scheduled = stamp;
     else if (kw === 'DEADLINE') planning.deadline = stamp;
     else if (kw === 'CLOSED') planning.closed = stamp;
     order.push(kw.toLowerCase());
   }
-  if (found) Object.defineProperty(planning, 'order', { value: order, writable: true, enumerable: false });
+  if (found) {
+    Object.defineProperty(planning, 'order', { value: order, writable: true, enumerable: false });
+    Object.defineProperty(planning, 'blanks', { value: blanks, writable: true, enumerable: false });
+  }
   return found ? planning : null;
 }
 

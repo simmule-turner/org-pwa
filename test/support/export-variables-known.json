@@ -1,7 +1,1 @@
-{
-  "planning t / ascii": "Emacs leaves a blank after the last planning timestamp (the same with #+OPTIONS: p:t)",
-  "planning t / html": "Emacs leaves a blank inside the last planning timestamp's span (the same with #+OPTIONS: p:t)",
-  "statistics-cookies nil / latex": "the cookie of a list item stays in LaTeX (the same with #+OPTIONS: stat:nil)",
-  "tables nil / latex": "one blank line more or less where the table was (the same with #+OPTIONS: |:nil)",
-  "tasks todo / latex": "one blank line more where a done task is left out (the same with #+OPTIONS: tasks:todo)"
-}
+{}

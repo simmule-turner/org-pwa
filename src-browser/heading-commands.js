@@ -48,7 +48,6 @@ export function openEffortEditor(heading) {
     label: 'Effort estimate (e.g. 1:30, 2h, 1d 3h; blank to clear)',
     value: getProperty(heading, 'EFFORT') || '',
     placeholder: '1:30',
-    resetInPlace: true,
     // Effort_ALL, when one is defined for this heading (see src/effort-values.js)
     choices,
     onSave: (/** @type {string} */ raw) => {

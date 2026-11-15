@@ -623,7 +623,8 @@ function sectionHead(h, parent, I) {
   const out = [];
   const { planning } = h;
   if (I.withPlanning && planning && (planning.closed || planning.deadline || planning.scheduled)) {
-    const text = [planning.closed && `CLOSED: ${withDayName(planning.closed)}`, planning.deadline && `DEADLINE: ${withDayName(planning.deadline)}`, planning.scheduled && `SCHEDULED: ${withDayName(planning.scheduled)}`].filter(Boolean).join(' ');
+    const blank = (/** @type {string} */ k) => (planning.blanks && planning.blanks[k]) || ''; // the blanks after a timestamp stay, as in Emacs
+    const text = [planning.closed && `CLOSED: ${withDayName(planning.closed)}${blank('closed')}`, planning.deadline && `DEADLINE: ${withDayName(planning.deadline)}${blank('deadline')}`, planning.scheduled && `SCHEDULED: ${withDayName(planning.scheduled)}${blank('scheduled')}`].filter(Boolean).join(' ');
     out.push(mk('planning', parent, { value: text }));
   }
   const wanted = I.htmlOptions.properties;

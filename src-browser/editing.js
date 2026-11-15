@@ -88,7 +88,6 @@ export function openParagraphEditor(heading, paragraph) {
   const overlay = openTextFieldPopup({
     label: 'Edit paragraph',
     value: originalText,
-    resetInPlace: true,
     tools: [footnoteEditorTool(heading, 'paragraph', paragraph), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingParagraph = null;
@@ -115,7 +114,7 @@ export function openNewParagraphEditor(heading, afterParagraph) {
   const overlay = openTextFieldPopup({
     label: 'New paragraph',
     value: '',
-    resetInPlace: true,
+    tools: [footnoteEditorTool(heading, 'new-paragraph', afterParagraph), timerEditorTool(), dateEditorTool()],
     onCancel: () => {},
     onSave: (/** @type {string} */ newText) => {
       if (!newText.trim()) return;
@@ -138,7 +137,6 @@ export function openListItemEditor(heading, item) {
   const overlay = openTextFieldPopup({
     label: 'Edit list item',
     value: originalText,
-    resetInPlace: true,
     tools: [footnoteEditorTool(heading, 'list-item', item), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingListItem = null;
@@ -161,7 +159,7 @@ export function openHeadingTitleEditor(heading) {
   const overlay = openTextFieldPopup({
     label: S.editingIsNew ? 'New heading' : 'Edit heading title',
     value: originalTitle,
-    resetInPlace: true,
+    tools: [footnoteEditorTool(heading, 'heading-title', null), timerEditorTool(), dateEditorTool()],
     onCancel: () => cancelTitleEdit(),
     onSave: (/** @type {any} */ newTitle) => commitTitleEdit(newTitle),
   });

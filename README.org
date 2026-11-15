@@ -139,7 +139,7 @@ The modeline (see [[#modeline][Modeline and minibuffer]]) shows the filename, wh
 :CUSTOM_ID: a-headings-text
 :END:
 
-Org has no separate description field: everything after a heading, up to the next heading, belongs to it, and can include several paragraphs, lists and tables in any order. *Edit text* opens all of it as one block of raw org syntax in a popup, like Settings' *Menu labels* editor (see [[#menu-customization][Menu customization]]): a large textarea with *Cancel* (discard and close), *Reset* (reload the original text and keep the popup open) and *OK* (save and close). The heading's rendered body is hidden from the outline while the popup is open. Typing ~- [ ]~ at the start of a line becomes a checklist item on save, as in the file.
+Org has no separate description field: everything after a heading, up to the next heading, belongs to it, and can include several paragraphs, lists and tables in any order. *Edit text* opens all of it as one block of raw org syntax in a popup, like Settings' *Menu labels* editor (see [[#menu-customization][Menu customization]]): a large textarea with *Cancel* (discard and close) and *OK* (save and close). Every text editor (heading text, paragraph, new paragraph, list item and heading title) has the same row of icons above the text: *Footnote*, *Timer* and *Date*, each inserting at the cursor; press and hold an icon to see its name. The heading's rendered body is hidden from the outline while the popup is open. Typing ~- [ ]~ at the start of a line becomes a checklist item on save, as in the file.
 
 -----
 
@@ -378,7 +378,7 @@ Table cells render inline markup too; tap one to edit its raw text and tap away 
 :CUSTOM_ID: footnotes
 :END:
 
-In the outline, open a paragraph, a list item or a heading's text with *Edit text*, put the cursor after the words the note belongs to and tap *Footnote*. A sheet (a dialog on a large screen) asks for the label, already the next free number, and the note, with a switch to write it inline; *Insert* adds the reference and the note under ~* Footnotes~, and Undo takes it back. Tap a reference to see its note and *Edit note*, *Go to the note* or *Delete footnote*; a reference with no note offers *Create the note*. With a paragraph selected from the keyboard, the *Footnote* command opens that paragraph's sheet.
+In the outline, open a paragraph, a list item or a heading's text with *Edit text*, put the cursor after the words the note belongs to and tap the *Footnote* icon. A sheet (a dialog on a large screen) asks for the label, already the next free number, and the note, with a switch to write it inline; *Insert* adds the reference and the note under ~* Footnotes~, and Undo takes it back. Tap a reference to see its note and *Edit note*, *Go to the note* or *Delete footnote*; a reference with no note offers *Create the note*. With a paragraph selected from the keyboard, the *Footnote* command opens that paragraph's sheet.
 
 In Text view, *Footnote* (~org-footnote-action~, ~C-c C-x f~, palette) does the right thing at the cursor: on a reference it jumps to the definition (offering to create one if there is none), on a definition's label it jumps back to the reference, and anywhere else it adds a new footnote. Where a footnote can't go (start of a line, source blocks, comments, links, inside another reference) it offers the one-key menu: ~s~ort, ~r~enumber, ~S~ both, ~n~ormalize, ~d~elete.
 
