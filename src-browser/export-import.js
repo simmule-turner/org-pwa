@@ -2,7 +2,9 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: export import.
+import { syncBabelOptions } from './babel-options-sync.js';
 import { initText } from './lisp-init-text.js';
+import { withExportVariables } from '../src/export-variables.js';
 import { htmlExportDefaults, icalendarExportSettings, latexExportDefaults, lispStringValue } from '../src/export-defaults.js';
 import { exportToAscii } from '../src/export-ascii.js';
 import { prefetchBibliography } from './bibliography.js';
@@ -87,25 +89,29 @@ function dataUrlBytes(url) {
  * @param {any} [scope]
  *  done. */
 export async function performExport(format, scope) {
+  syncBabelOptions();
   const rawName = scope && typeof scope === 'object' ? scope.title : suggestedSaveAsName('export').replace(/\.[a-zA-Z0-9]+$/, '');
   const baseName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, '_').replace(/[. ]+$/, '').trim() || 'export';
   if (format === 'ascii' || format === 'html' || format === 'odt' || format === 'latex' || format === 'beamer' || format === 'slides') {
     await noteMissingSetupFiles(S.state.doc, S.state.documentId, S.state.storageKind); // a #+SETUPFILE: that cannot be had is reported; the export goes on, as in Emacs
     await prefetchBibliography(S.state.doc, S.state.documentId, S.state.storageKind, { again: true }); // #+BIBLIOGRAPHY: files, for citations
-    const doc = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus }));
+    const prepared = prepareBabelExport(await expandIncludes(S.state.doc, resolveIncludePath, parseOrg, { onSkip: setStatus }));
+    const withVariables = withExportVariables(prepared, scope && typeof scope === 'object' ? scope : null, S.state.localVariables, { backend: format === 'html' || format === 'slides' ? 'html' : 'other' }); // org-export-with-*, global macros and snippet shortcuts
+    const doc = withVariables.doc;
+    const exportScope = withVariables.scope ?? scope;
     try {
     if (format === 'ascii') {
-      saveOut(baseName + '.txt', exportToAscii(doc, scope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
+      saveOut(baseName + '.txt', exportToAscii(doc, exportScope, getAsciiTextWidth(S.state.localVariables), { charset: getAsciiCharset(S.state.localVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }), 'text/plain');
     } else if (format === 'html') {
-      saveOut(baseName + '.html', exportToHtml(doc, scope, { images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
+      saveOut(baseName + '.html', exportToHtml(doc, exportScope, { images: await collectExportImages(doc, exportScope && typeof exportScope === 'object' ? exportScope : null), defaults: { ...htmlExportDefaults(S.globalVariables), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'slides') {
-      const heading = scope && typeof scope === 'object' ? scope : null;
+      const heading = exportScope && typeof exportScope === 'object' ? exportScope : null;
       saveOut(baseName + '.html', exportToSlides(doc, heading, { images: await collectExportImages(doc, heading), defaults: { ...htmlExportDefaults(S.globalVariables), init: latexExportDefaults(S.globalVariables, initText.text).init, sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) } }), 'text/html');
     } else if (format === 'latex' || format === 'beamer') {
       const beamer = format === 'beamer'; // a presentation: the same .tex and .zip, from the Beamer back end
       const saved = S.state.documentId && !S.state.documentId.startsWith(UNSAVED_DOCUMENT_ID) ? S.state.documentId.split('/').pop() : undefined; // {{{input-file}}} and {{{modification-time}}} need a file
       const defaults = { ...latexExportDefaults(S.globalVariables, initText.text), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables), file: { name: saved, mtime: new Date() } };
-      const heading = scope && typeof scope === 'object' ? scope : null;
+      const heading = exportScope && typeof exportScope === 'object' ? exportScope : null;
       // pictures this app can read go into a .zip beside the .tex; with none, the .tex alone
       const pictures = await collectExportImages(doc, heading);
       if (pictures.size) {
@@ -115,7 +121,7 @@ export async function performExport(format, scope) {
         saveOut(baseName + '.tex', (beamer ? exportToBeamer : exportToLatex)(doc, heading, { defaults }), 'application/x-tex');
       }
     } else {
-      saveOut(baseName + '.odt', exportToOdt(doc, scope, { userFullName: lispStringValue(S.globalVariables['user-full-name']) || '', init: lispStringValue(S.globalVariables['org-xx-lisp-init']) || '', images: await collectExportImages(doc, scope && typeof scope === 'object' ? scope : null), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }).slice(), 'application/vnd.oasis.opendocument.text');
+      saveOut(baseName + '.odt', exportToOdt(doc, exportScope, { userFullName: lispStringValue(S.globalVariables['user-full-name']) || '', init: lispStringValue(S.globalVariables['org-xx-lisp-init']) || '', images: await collectExportImages(doc, exportScope && typeof exportScope === 'object' ? exportScope : null), sup: getUseSubSuperscripts(S.state.localVariables), brokenLinks: getExportWithBrokenLinks(S.state.localVariables) }).slice(), 'application/vnd.oasis.opendocument.text');
     }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err)); // e.g. "Unable to resolve link: ..." (org-export-with-broken-links)
@@ -221,6 +227,7 @@ export async function performExport(format, scope) {
  *  untouched"). */
 export async function performOrgOrgExport() {
   if (!S.state.doc) return;
+  syncBabelOptions();
   setStatus('Exporting\u2026');
   let text;
   try {

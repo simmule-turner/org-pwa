@@ -1,0 +1,94 @@
+{
+ "cases": [
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{sq}\"\n#+END:\n",
+   "types": "'((\"sq\" . (lambda (vals pf) (format \"%d\" (apply #'+ (mapcar (lambda (s) (* (string-to-number s) (string-to-number s))) vals))))))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     5\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{sq}\"\n| ITEM   | Cost |\n|--------+------|\n| Tasks  |   59 |\n| one    |    3 |\n| two    |    5 |\n| two-a  |    1 |\n| two-b  |    2 |\n| three  |    5 |\n| Report |      |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+} %Cost(Sq){sq}\"\n#+END:\n",
+   "types": "'((\"sq\" . (lambda (vals pf) (format \"%d\" (apply #'+ (mapcar (lambda (s) (* (string-to-number s) (string-to-number s))) vals))))))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     3\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+} %Cost(Sq){sq}\"\n| ITEM   | Cost | Sq |\n|--------+------+----|\n| Tasks  |   11 | 59 |\n| one    |    3 |  3 |\n| two    |    3 |  5 |\n| two-a  |    1 |  1 |\n| two-b  |    2 |  2 |\n| three  |    5 |  5 |\n| Report |      |    |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{pf;%.1f}\"\n#+END:\n",
+   "types": "'((\"pf\" . (lambda (vals pf) (format \"%s|%d\" pf (length vals)))))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     %.1f|2\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{pf;%.1f}\"\n| ITEM   | Cost |\n|--------+------|\n| Tasks  |  0.0 |\n| one    |  3.0 |\n| two    |  0.0 |\n| two-a  |  1.0 |\n| two-b  |  2.0 |\n| three  |  5.0 |\n| Report |  0.0 |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{pf}\"\n#+END:\n",
+   "types": "'((\"pf\" . (lambda (vals pf) (format \"%s|%d\" pf (length vals)))))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     nil|2\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{pf}\"\n| ITEM   |      Cost |\n|--------+-----------|\n| Tasks  | nil\\vert3 |\n| one    |         3 |\n| two    | nil\\vert2 |\n| two-a  |         1 |\n| two-b  |         2 |\n| three  |         5 |\n| Report |           |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{cc}\"\n#+END:\n",
+   "types": "'((\"cc\" (lambda (vals pf) (format \"%d\" (apply #'+ (mapcar #'string-to-number vals)))) (lambda (prop) (if (equal (org-entry-get nil \"Ok\") \"yes\") (org-entry-get nil prop) \"\"))))",
+   "modify": null,
+   "emacs": "* Tasks\n:PROPERTIES:\n:COST:     11\n:END:\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     3\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{cc}\"\n| ITEM   | Cost |\n|--------+------|\n| Tasks  |   11 |\n| one    |    3 |\n| two    |    3 |\n| two-a  |    1 |\n| two-b  |    2 |\n| three  |    5 |\n| Report |      |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+}\"\n#+END:\n",
+   "types": "'((\"+\" . (lambda (vals pf) \"X\")))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     X\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+}\"\n| ITEM   | Cost |\n|--------+------|\n| Tasks  |    X |\n| one    |    3 |\n| two    |    X |\n| two-a  |    1 |\n| two-b  |    2 |\n| three  |    5 |\n| Report |      |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{max} %Cost(S){sq}\"\n#+END:\n",
+   "types": "'((\"sq\" . (lambda (vals pf) (format \"%d\" (apply #'+ (mapcar (lambda (s) (* (string-to-number s) (string-to-number s))) vals))))))",
+   "modify": null,
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     2\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{max} %Cost(S){sq}\"\n| ITEM   | Cost |  S |\n|--------+------+----|\n| Tasks  |    5 | 59 |\n| one    |    3 |  3 |\n| two    |    2 |  5 |\n| two-a  |    1 |  1 |\n| two-b  |    2 |  2 |\n| three  |    5 |  5 |\n| Report |      |    |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{bad}\"\n#+END:\n",
+   "types": "'((\"bad\" 1))",
+   "modify": null,
+   "emacs": "ERROR Invalid definition for operator \"bad\""
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{bad}\"\n#+END:\n",
+   "types": "'((\"bad\" . 1))",
+   "modify": null,
+   "emacs": "ERROR Invalid definition for operator \"bad\""
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{boom}\"\n#+END:\n",
+   "types": "'((\"boom\" . (lambda (vals pf) (error \"boom\"))))",
+   "modify": null,
+   "emacs": "ERROR boom"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{num}\"\n#+END:\n",
+   "types": "'((\"num\" . (lambda (vals pf) 5)))",
+   "modify": null,
+   "emacs": "ERROR Wrong type argument: sequencep, 5"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{nope}\"\n#+END:\n",
+   "types": "'((\"sq\" . (lambda (vals pf) (format \"%d\" (apply #'+ (mapcar (lambda (s) (* (string-to-number s) (string-to-number s))) vals))))))",
+   "modify": null,
+   "emacs": "ERROR Unknown \"nope\" operator"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+}\"\n#+END:\n",
+   "types": "nil",
+   "modify": "(lambda (title value) (if (equal title \"Cost\") (concat \"$\" value) nil))",
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     3\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+}\"\n| ITEM   | Cost |\n|--------+------|\n| Tasks  | $11  |\n| one    | $3   |\n| two    | $3   |\n| two-a  | $1   |\n| two-b  | $2   |\n| three  | $5   |\n| Report | $    |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM(Name) %Cost{+}\"\n#+END:\n",
+   "types": "nil",
+   "modify": "(lambda (title value) (upcase value))",
+   "emacs": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:COST:     3\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM(Name) %Cost{+}\"\n| Name   | Cost |\n|--------+------|\n| Tasks  |   11 |\n| one    |    3 |\n| two    |    3 |\n| two-a  |    1 |\n| two-b  |    2 |\n| three  |    5 |\n| Report |      |\n#+END:\n"
+  },
+  {
+   "text": "* Tasks\n** one\n:PROPERTIES:\n:Cost: 3\n:Ok: yes\n:END:\n** two\n:PROPERTIES:\n:Cost: 4\n:Ok: no\n:END:\n*** two-a\n:PROPERTIES:\n:Cost: 1\n:Ok: yes\n:END:\n*** two-b\n:PROPERTIES:\n:Cost: 2\n:Ok: yes\n:END:\n** three\n:PROPERTIES:\n:Cost: 5\n:Ok: yes\n:END:\n* Report\n#+BEGIN: columnview :id global :format \"%ITEM %Cost{+}\"\n#+END:\n",
+   "types": "nil",
+   "modify": "(lambda (title value) 7)",
+   "emacs": "ERROR Wrong type argument: sequencep, 7"
+  }
+ ]
+}

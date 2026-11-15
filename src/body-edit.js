@@ -36,7 +36,7 @@
  * silently half-done here.
  */
 
-import { parseBody } from './body-parser.js';
+import { flatBodyNodes, parseBody } from './body-parser.js';
 import { layoutTable } from './org-table-layout.js';
 import { fixBoxes, inBlockAt, isItemLine, itemEnd, listKind, renumber, separatingBlankLines } from './list-edit.js';
 import { updateCheckboxCookie } from './checkbox-cookie.js';
@@ -111,7 +111,7 @@ export function isTableHeaderRow(table, rowIndex) {
  * @param {Heading} heading
  *  one. */
 export function lastTableInBody(heading) {
-  const body = heading.body || [];
+  const body = flatBodyNodes(heading.body || []);
   for (let i = body.length - 1; i >= 0; i--) {
     if (body[i].type === 'table') return /** @type {import('./types.js').Table} */ (body[i]);
   }
@@ -130,7 +130,7 @@ export function lastTableInBody(heading) {
  * @param {Heading} heading
  *  a valid one. */
 export function allTablesInBody(heading) {
-  return (heading.body || []).filter(/** @param {import('./types.js').BodyNode} node @returns {node is import('./types.js').Table} */ (node) => node.type === 'table');
+  return flatBodyNodes(heading.body || []).filter(/** @param {import('./types.js').BodyNode} node @returns {node is import('./types.js').Table} */ (node) => node.type === 'table');
 }
 
 // ---- commit: flush a mutated table/paragraph back to bodyLines ----------
@@ -537,7 +537,7 @@ export function insertParagraphAfter(heading, afterParagraph, text = '') {
   commitLines(heading, insertAt, 0, toInsert);
 
   const newParagraphLineIndex = insertAt + 1;
-  return heading.body.find(/** @param {import('./types.js').BodyNode} n @returns {n is import('./types.js').Paragraph} */ (n) => n.type === 'paragraph' && n.lineIndex === newParagraphLineIndex) || null;
+  return flatBodyNodes(heading.body).find(/** @param {import('./types.js').BodyNode} n @returns {n is import('./types.js').Paragraph} */ (n) => n.type === 'paragraph' && n.lineIndex === newParagraphLineIndex) || null;
 }
 
 // ---- heading "body text" (everything belonging to the heading) --------

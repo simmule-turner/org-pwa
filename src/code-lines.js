@@ -3,13 +3,14 @@
  * (`org-export-unravel-code`, `org-export-get-loc`, `org-export-format-code-default`,
  * `org-export-resolve-coderef`) and org-element's switch parsing.
  */
+import { babelOptions } from './babel-options.js';
 
 /**
  * @typedef {{ numberLines: { kind: 'new' | 'continued', n: number } | null, preserveIndent: boolean, retainLabels: boolean, useLabels: boolean, labelFormat: string }} CodeSwitches
  * @typedef {{ lines: string[], refs: Map<number, string>, switches: CodeSwitches }} CodeBlock
  */
 
-/** The label format when no -l switch is given. */
+/** The label format when no -l switch is given (the variable `org-coderef-label-format` replaces it, see src/babel-options.js). */
 export const DEFAULT_LABEL_FORMAT = '(ref:%s)';
 
 /**
@@ -40,7 +41,7 @@ export function parseCodeSwitches(text) {
     preserveIndent: /(?:^|\s)-i(?![A-Za-z0-9_])/.test(t),
     retainLabels,
     useLabels,
-    labelFormat: fmt ? fmt[1] : DEFAULT_LABEL_FORMAT,
+    labelFormat: fmt ? fmt[1] : babelOptions.coderefFormat,
   };
 }
 

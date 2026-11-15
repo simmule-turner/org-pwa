@@ -17,6 +17,7 @@ import { findPaletteCommandByOrgName, runPaletteCommand } from './god-mode-palet
 import { openEffortEditor } from './heading-commands.js';
 import { setKeyboardFocusToHeading } from './keyboard-focus.js';
 import { render } from './render.js';
+import { modifyValueFunction, summaryTypes } from '../src/column-summary-types.js';
 
 /** @typedef {import('../src/types.js').Heading} Heading */
 
@@ -34,6 +35,8 @@ export function columnsContext() {
     doneKeywords: resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT).doneKeywords,
     defaultFormat: lispStringValue((vars || {})['org-columns-default-format']) ?? DEFAULT_COLUMNS_FORMAT,
     ellipses: ellipses ?? '..',
+    summaryTypes: summaryTypes((vars || {})['org-columns-summary-types']) ?? undefined,
+    modifyValue: modifyValueFunction((vars || {})['org-columns-modify-value-for-display-function']) ?? undefined,
   };
 }
 

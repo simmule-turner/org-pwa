@@ -4,6 +4,7 @@
 // Extracted from app.js: field groups. These have no dependency on the app's shared mutable state,
 // so they moved verbatim (see tools/ notes in CHANGELOG v412).
 import { parseRepeater } from '../src/agenda.js';
+import { DATE_SHIFTS, shiftTimestamp } from '../src/timestamp-shift.js';
 import { formatOrgTimestamp, parseDelay, parseOrgTimestamp } from '../src/org-timestamp.js';
 import { fieldRow, textInputStyle, wizardButton } from './ui-widgets.js';
 import { priorityCookies } from '../src/priorities.js';
@@ -218,6 +219,28 @@ export function buildTimestampFieldGroup(label, currentRaw) {
   delayRow.appendChild(delayAmountInput);
   delayRow.appendChild(delayUnitSelect);
   fields.appendChild(fieldRow('Warn ahead by (optional \u2014 e.g. see a deadline coming a few days early)', delayRow));
+
+  // after the other fields: the date moved by a day, a week or a month, as S-up and S-down move it in Emacs
+  const shiftGrid = document.createElement('div');
+  shiftGrid.setAttribute('data-timestamp-shift', '');
+  shiftGrid.style.display = 'grid';
+  shiftGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+  shiftGrid.style.gap = '6px';
+  for (const [shiftLabel, n, what] of DATE_SHIFTS) {
+    const shiftBtn = document.createElement('button');
+    shiftBtn.type = 'button';
+    shiftBtn.textContent = shiftLabel;
+    shiftBtn.style.minHeight = 'var(--target)';
+    shiftBtn.style.borderRadius = 'var(--radius-control)';
+    shiftBtn.style.fontSize = '14px';
+    shiftBtn.onclick = () => {
+      const raw = getRawValue();
+      const moved = raw ? parseOrgTimestamp(shiftTimestamp(raw, n, what)) : null;
+      if (moved) dateInput.value = dateInputValue(moved.date);
+    };
+    shiftGrid.appendChild(shiftBtn);
+  }
+  fields.appendChild(fieldRow('Move the date', shiftGrid));
 
   wrap.appendChild(fields);
 

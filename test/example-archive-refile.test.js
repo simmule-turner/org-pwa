@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { buildArchivedClone, buildRestoredClone, getArchiveLocation, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, archiveInPlace, appendRefiled, shiftLevels } from '../src/archive-model.js';
+import { archiveSubtree } from '../src/archive-text.js';
+import { buildRestoredClone, getArchiveLocation, parseArchiveLocation, resolveArchiveFileId, archiveInPlace, appendRefiled, shiftLevels } from '../src/archive-model.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { setTagsColumn } from '../src/tags-column.js';
 setTagsColumn(0); // its oracle ran at org-tags-column 0
@@ -55,15 +56,14 @@ function appResult(s) {
       const target = /** @type {import('../src/types.js').Heading} */ (find(doc.children, /** @type {string} */ (s.to)));
       appendRefiled(doc, target, heading);
     } else {
-      const { filePart, headlinePart } = parseArchiveLocation(getArchiveLocation(src, heading));
+      const { filePart } = parseArchiveLocation(getArchiveLocation(src, heading));
       const targetId = resolveArchiveFileId(filePart, DIR + '/notes.org');
       const infile = targetId === null || targetId === DIR + '/notes.org';
-      const clone = buildArchivedClone(src, heading, DIR + '/notes.org', { now: nowNY(), infile });
-      removeHeading(src, heading);
       const name = targetId === null ? 'notes.org' : targetId.split('/').pop() || '';
-      const created = !(name in docs);
-      docs[name] ||= parseOrg('');
-      insertAtArchiveLocation(docs[name], clone, headlinePart, { sourceFileId: DIR + '/notes.org', targetFileId: targetId ?? DIR + '/notes.org', created });
+      const created = !infile && !(name in docs);
+      const done = archiveSubtree(src, heading, { srcPath: DIR + '/notes.org', infile, now: nowNY(), tgtDoc: infile ? null : docs[name] || null, newFile: created, tgtName: name });
+      docs['notes.org'] = parseOrg(done.srcText);
+      if (!infile) docs[name] = parseOrg(/** @type {string} */ (done.tgtText));
     }
     return Object.fromEntries(Object.entries(docs).map(([n, d]) => [n, serializeOrg(d)]));
   } finally {

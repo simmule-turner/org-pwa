@@ -15,12 +15,33 @@ import { blanksAfter, blanksBefore, expandCaptureText, linesAtPoint, fileCapture
 import { findHeadingWithRunningClock } from './clock.js';
 import { findHeadingById } from './link-resolve.js';
 import { findHeadingAtLine, headingLineIndex, parseOrg, serializeOrg } from './org-parser.js';
-import { parseBody } from './body-parser.js';
+import { flatBodyNodes, parseBody } from './body-parser.js';
+import { getOrgTableDurationHourZeroPadding, getOrgTableFormulaCreateColumns } from './local-variables.js';
+import { parseNamedTables, parseTableConstants, recalculateTable } from './table-formula.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').CaptureTemplate} CaptureTemplate */
 /** @typedef {import('./elisp-data.js').LObj} LObj */
+
+/**
+ * What a capture does to a table it adds a row to: its #+TBLFM is worked out again, with org-table-formula-create-columns as the settings have it.
+ * `prompt` counts as nil here (see test/support/capture-known.js): there is no one to ask in the middle of a capture. A formula that adds columns
+ * under `warn` reports it through `warn`. Where the formulas fail the table is left as it is.
+ * @param {Doc} doc @param {Record<string, string>} vars the local variables @param {(message: string) => void} warn
+ * @param {Parameters<typeof recalculateTable>[1]} [extra] more for the calculation, such as the user's table functions
+ * @returns {(table: import('./types.js').Table) => import('./types.js').TableRow[] | null}
+ */
+export function captureRecalculator(doc, vars, warn, extra = {}) {
+  const create = getOrgTableFormulaCreateColumns(vars);
+  return (table) => {
+    try {
+      return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(vars), constants: parseTableConstants(doc), tables: parseNamedTables(doc), createColumns: create === 't' ? true : create === 'warn' ? 'warn' : false, warn, ...extra });
+    } catch {
+      return null;
+    }
+  };
+}
 
 /** The function a template names: a symbol's name, or a `(lambda ...)` form, as the Lisp init text gave it. @param {string} source @returns {LObj} */
 function functionOf(source) {
@@ -210,10 +231,11 @@ export function bodyNodeAt(host, line) {
   /** @type {object | null} */
   let found = null;
   if (line < 0 || line >= (host.bodyLines || []).length) return null;
-  for (const node of host.body || []) {
+  let at = -1; // what a list item or another node holds nests, so the one that starts last wins
+  for (const node of flatBodyNodes(host.body || [])) {
     if (node.type === 'list') {
-      for (const item of node.items) if (item.lineIndex <= line) found = item;
-    } else if (node.lineIndex !== undefined && node.lineIndex <= line && line < node.lineIndex + (node.lineCount || 1)) found = node;
+      for (const item of node.items) if (item.lineIndex <= line && item.lineIndex >= at) { found = item; at = item.lineIndex; }
+    } else if (node.lineIndex !== undefined && node.lineIndex <= line && line < node.lineIndex + (node.lineCount || 1) && node.lineIndex >= at) { found = node; at = node.lineIndex; }
   }
   return found;
 }
@@ -241,7 +263,7 @@ export function revealAtLine(doc, line) {
  * on a failure nothing has been filed and `message` says why.
  * @param {Doc} doc
  * @param {CaptureTemplate} template
- * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number } }} options
+ * @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number }, datetreeTimestamp?: 'active' | 'inactive' | null }} options
  *   `context` is what the template can read besides the clock and its answers; `place` gives the options of filing (blank lines, table).
  * @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null, afterFinalizeMessage?: string } | { ok: false, message: string }}  `reveal`: where the new text is on screen; `afterFinalizeMessage`: why an :after-finalize function failed (the entry is filed all the same)
  */
@@ -255,7 +277,7 @@ export function captureInto(doc, template, options) {
   return result;
 }
 
-/** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number } }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
+/** @param {Doc} doc @param {CaptureTemplate} template @param {{ now: Date, answers?: string[], context: Record<string, any>, place: (doc: Doc) => any, here?: { line: number, column: number }, datetreeTimestamp?: 'active' | 'inactive' | null }} options @returns {{ ok: true, target: Doc | Heading, placed: any, reveal: Reveal | null } | { ok: false, message: string }} */
 function captureIntoDoc(doc, template, options) {
   const { now, answers, context, place } = options;
   // Emacs files nothing for a type it does not know; here the capture is refused and says why, so the text is never lost
@@ -289,7 +311,7 @@ function captureIntoDoc(doc, template, options) {
     target = heading;
   } else {
     try {
-      target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend, unique: true, datetree: !!template.datetree, treeType: template.treeType, mustExist: !!template.olpMustExist }) : doc; // no path: the file's top level
+      target = (template.olp || []).length || template.datetree ? resolveOlpTarget(doc, template.olp || [], { now, prepend, unique: true, datetree: !!template.datetree, treeType: template.treeType, datetreeTimestamp: options.datetreeTimestamp ?? null, mustExist: !!template.olpMustExist }) : doc; // no path: the file's top level
     } catch (err) {
       return { ok: false, message: `Capture failed: ${/** @type {Error} */ (err).message}` };
     }

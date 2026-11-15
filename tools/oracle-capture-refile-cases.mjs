@@ -1,7 +1,7 @@
 // The corpus of tools/gen-oracle-capture-refile.mjs: archiving, the archive tag, refiling, refile targets and capture targets.
 // Every case is run in Emacs 29.3 (clock 2026-10-11 16:30 New York, org-tags-column 0) and test/oracle-capture-refile.test.js holds the app to it.
 
-/** @typedef {{ kind: 'archive' | 'toggle' | 'refile', files: Record<string, string>, find: string, to?: string, toFile?: string }} FileCase */
+/** @typedef {{ kind: 'archive' | 'archive-sibling' | 'toggle' | 'refile', files: Record<string, string>, find: string, to?: string, toFile?: string, vars?: Record<string, string> }} FileCase */
 /** @typedef {{ kind: 'targets', files: Record<string, string>, current: string, spec: { file: string, criteria: Record<string, string | number> }[] }} TargetsCase */
 /** @typedef {{ kind: 'capture', init: string, type: string, template: string, target: string[], opts: Record<string, unknown> }} CaptureCase */
 
@@ -81,6 +81,126 @@ function archiveCases() {
   }
   // archiving twice
   out.push({ kind: 'archive', files: { 'notes.org': '* Home\n** TODO Sweep\n** TODO Mop\n', 'notes.org_archive': '* Archived\n' }, find: 'Mop' });
+  return out;
+}
+
+
+/** Archiving with the org-archive-* settings, to a date tree, and to the archive sibling.
+ * @returns {FileCase[]} */
+function archiveSettingCases() {
+  /** @type {FileCase[]} */ const out = [];
+  const trees = [
+    [tree1, ['File taxes', 'Gather receipts', 'Plan the year']],
+    [tree2, ['Pay bills', 'Old bill', 'Q4']],
+    [tree3, ['Deep one', 'B']],
+    [tree4, ['Closed thing']],
+    [tree5, ['Child two']],
+    ['#+TODO: TODO NEXT | DONE CANC\n* Projects :work:\n** NEXT Plan :tax:\n** CANC Dropped\n** Other\n', ['Plan', 'Dropped', 'Other']],
+  ];
+  const locations = [null, '::* Archive', 'other.org::* Arc', 'other.org::'];
+  const sets = [
+    { 'org-archive-reversed-order': 't' },
+    { 'org-archive-mark-done': 't' },
+    { 'org-archive-mark-done': '"DONE"' },
+    { 'org-archive-mark-done': '"CANC"' },
+    { 'org-archive-mark-done': '"NOPE"' },
+    { 'org-archive-save-context-info': "'(time)" },
+    { 'org-archive-save-context-info': 'nil' },
+    { 'org-archive-save-context-info': "'(file olpath)" },
+    { 'org-archive-save-context-info': "'(ltags itags)" },
+    { 'org-archive-save-context-info': "'(todo category)" },
+    { 'org-archive-save-context-info': "'(olpath category itags ltags todo file time)" },
+    { 'org-archive-subtree-add-inherited-tags': 'nil' },
+    { 'org-archive-subtree-add-inherited-tags': 't' },
+    { 'org-archive-subtree-add-inherited-tags': "'infile" },
+    { 'org-archive-file-header-format': 'nil' },
+    { 'org-archive-file-header-format': '"* Header for %s\\n\\n"' },
+    { 'org-archive-reversed-order': 't', 'org-archive-mark-done': 't', 'org-archive-subtree-add-inherited-tags': 't' },
+  ];
+  for (const [tree, finds] of trees) {
+    for (const find of finds) {
+      for (const loc of locations) {
+        for (const vars of sets) out.push({ kind: 'archive', files: { 'notes.org': (loc === null ? '' : `#+ARCHIVE: ${loc}\n`) + tree }, find, vars });
+      }
+    }
+  }
+  // the target in different states, reversed
+  const states = ['* Archive\n** DONE Old\nbody\n\n\n', '* Archive\n', '* Archive\n** DONE Old\n* Last\n', '* Zone\n** Archive\n*** DONE Old\n', 'intro\n* Archive\ntext\n* Z\n'];
+  for (const extra of states) {
+    for (const rev of ['t', 'nil']) {
+      out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ::* Archive\n* Home\n** TODO Sweep\n` + extra }, find: 'Sweep', vars: { 'org-archive-reversed-order': rev } });
+      out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: other.org::* Archive\n* Home\n** TODO Sweep\n`, 'other.org': extra }, find: 'Sweep', vars: { 'org-archive-reversed-order': rev } });
+      out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: other.org::\n* Home\n** TODO Sweep\n`, 'other.org': extra }, find: 'Sweep', vars: { 'org-archive-reversed-order': rev } });
+    }
+  }
+  // the archive sibling
+  const sib = {
+    'none': '* H\n',
+    'before': '* H\n* Archive :ARCHIVE:\n',
+    'after': '* Archive :ARCHIVE:\n* H\n',
+    'with entries': '* H\n* Archive :ARCHIVE:\n** A\n** B\ntext\n',
+    'other levels': '* Archive :ARCHIVE:\n* Top\n** H\n',
+    'nested, one there': '* Top\n** H\n** Archive :ARCHIVE:\n*** Old\n* Next\n',
+    'nested, none': '* Top\n** H\n*** Child\nbody\n* Next\n',
+    'deep': '* A\n** B\n*** C\n**** H\n**** Z\n',
+    'two siblings': '* H\n* K\n',
+    'heading with todo': '* TODO [#A] H :x:\nSCHEDULED: <2026-10-20 Tue>\nbody\n\n* After\n',
+    'blank lines': '* H\n\n* Archive :ARCHIVE:\n\n** A\n\n',
+    'a tagged archive': '* H\n* Archive :other:ARCHIVE:\n** A\n',
+    'wrong tag': '* H\n* Archive :other:\n',
+    'no final newline': '* H\n* Archive :ARCHIVE:',
+    'children done': '* TODO Top [%]\n** TODO H\n** DONE Two\n',
+    'preamble': '#+TITLE: x\ntext\n* H\nbody\n',
+    'archived': '* H :ARCHIVE:\n* Other\n',
+  };
+  for (const [, text] of Object.entries(sib)) {
+    const finds = [...text.matchAll(/^\*+ (?:TODO |DONE )?(?:\[#.\] )?([^\s:]+)/gm)].map((m) => m[1]).filter((t, i, a) => a.indexOf(t) === i && t !== 'Archive' && t !== 'Top' || t === 'Top');
+    for (const find of finds) {
+      for (const vars of [{}, { 'org-archive-reversed-order': 't' }, { 'org-archive-sibling-heading': '"Done"' }, { 'org-archive-sibling-heading': '"Archive"', 'org-archive-tag': '"OLD"' }]) {
+        out.push({ kind: 'archive-sibling', files: { 'notes.org': text }, find, vars });
+      }
+    }
+  }
+  // a date tree
+  const dtTrees = {
+    'plain': '* A\n** TODO B\n* C\n',
+    'closed': '* A\n** DONE B\nCLOSED: [2025-03-04 Tue 10:00]\n* C\n',
+    'closed on the parent': '* DONE A\nCLOSED: [2025-03-04 Tue 10:00]\n** TODO B\n',
+    'last': '* A\n* TODO B',
+    'with body': '* A\n** TODO B\nbody\n\n** TODO D\n',
+    'sibling after': '* A\n* TODO B\n* C\n',
+    'only': '* TODO B\n',
+    'jan': '* DONE B\nCLOSED: [2024-01-31 Wed 23:59]\n',
+    'future': '* DONE B\nCLOSED: [2027-12-01 Wed 08:00]\n* Z\n',
+    'tags and category': '#+CATEGORY: cat\n#+FILETAGS: :f:\n* P :p:\n** TODO B :b:\n* Q\n',
+  };
+  const dtStates = {
+    'none': '',
+    'year there': '* 2026\n',
+    'month there': '* 2026\n** 2026-10 October\n',
+    'day there': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n',
+    'day with entries': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n**** Existing\ntext\n',
+    'day with a blank': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n**** Existing\ntext\n\n',
+    'day followed': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n**** Existing\ntext\n*** 2026-10-12 Monday\n',
+    'day followed blank': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n**** Existing\n\n*** 2026-10-12 Monday\n',
+    'earlier days': '* 2026\n** 2026-10 October\n*** 2026-10-05 Monday\n',
+    'other years': '* 2025\n** 2025-03 March\n*** 2025-03-04 Tuesday\n* 2027\n',
+    'sub heading there': '* 2026\n** 2026-10 October\n*** 2026-10-11 Sunday\n**** Foo\ntext\n**** Bar\n',
+    'DATE_TREE': '* Journal\n:PROPERTIES:\n:DATE_TREE: t\n:END:\n',
+  };
+  const dtLocs = ['::datetree/', '::datetree/*', '::datetree/** Foo', '::datetree/* Foo %s', 'other.org::datetree/', 'other.org::datetree/* Foo'];
+  for (const [, tree] of Object.entries(dtTrees)) {
+    const find = tree.includes('TODO B') || tree.includes('DONE B') ? 'B' : 'A';
+    for (const loc of dtLocs) {
+      for (const [, st] of Object.entries(dtStates)) {
+        if (loc.startsWith('other.org')) out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ${loc}\n${tree}`, 'other.org': st }, find });
+        else out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ${loc}\n${st && !tree.endsWith('\n') ? tree + '\n' : tree}${st}` }, find });
+      }
+    }
+    for (const ts of ['inactive', 'active', 'nil']) out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ::datetree/\n${tree}` }, find, vars: { 'org-datetree-add-timestamp': ts === 'nil' ? 'nil' : `'${ts}` } });
+    out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ::datetree/\n${tree}` }, find, vars: { 'org-archive-reversed-order': 't' } });
+    out.push({ kind: 'archive', files: { 'notes.org': `#+ARCHIVE: ::datetree/* Foo\n${tree}` }, find, vars: { 'org-archive-reversed-order': 't' } });
+  }
   return out;
 }
 
@@ -193,6 +313,6 @@ function captureCases() {
   return out;
 }
 
-export const FILE_CASES = [...archiveCases(), ...toggleCases(), ...refileCases()];
+export const FILE_CASES = [...archiveCases(), ...archiveSettingCases(), ...toggleCases(), ...refileCases()];
 export const TARGET_CASES = targetsCases();
 export const CAPTURE_CASES = captureCases();

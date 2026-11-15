@@ -12,8 +12,9 @@ const openPrompt = { cancel: /** @type {(() => void) | null} */ (null) };
 /**
  * @param {string} prompt  e.g. 'Rename buffer (to new name): '
  * @param {string} [initial]
+ * @param {string[]} [choices]  what completing-read would offer: the browser lists them under the input as it is typed in
  * @returns {Promise<string | null>} */
-export function readFromMinibuffer(prompt, initial = '') {
+export function readFromMinibuffer(prompt, initial = '', choices = []) {
   return new Promise((resolve) => {
     if (openPrompt.cancel) openPrompt.cancel();
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);
@@ -33,6 +34,17 @@ export function readFromMinibuffer(prompt, initial = '') {
     label.appendChild(document.createElement('span'));
     row.appendChild(label);
     row.appendChild(input);
+    if (choices.length) {
+      const list = document.createElement('datalist');
+      list.id = MINIBUFFER_PROMPT_ID + 'Choices';
+      for (const choice of choices) {
+        const option = document.createElement('option');
+        option.value = choice;
+        list.appendChild(option);
+      }
+      input.setAttribute('list', list.id);
+      row.appendChild(list);
+    }
     let done = false;
     /** @param {string | null} value */
     const finish = (value) => {

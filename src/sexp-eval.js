@@ -40,7 +40,6 @@
 import { userSexpResult } from './extensions.js';
 import { evalSource, toJs, installUserFunctions, reorderDiaryDates, solarTimeString } from './diary-lisp.js';
 import { NIL } from './elisp-data.js';
-import { isOrgWeatherLine } from './org-weather.js';
 
 // ---- tokenizing + parsing ---------------------------------------------------
 
@@ -278,31 +277,6 @@ function findSexpTimestamps(text) {
   return results;
 }
 
-/** True if %%(org-weather), in either its standalone-line form or
- *  within a <%%(...)> timestamp, is used anywhere in `doc` -- what
- *  decides whether the "Refresh weather now" action in Settings
- *  (app.js's own renderSettingsView) shows up at all, rather than
- *  cluttering Settings with an action nobody's actual document has
- *  any use for. Lives here, not alongside the rest of org-weather's
- *  own logic in org-weather.js, specifically because it needs
- *  findSexpTimestamps -- which is native to this file -- and this
- *  file already imports from org-weather.js (formatWeatherLine), so
- *  the reverse import direction would create a circular dependency
- * @param {Doc} doc
- *  between the two modules. */
-function documentUsesOrgWeather(doc) {
-  if (!doc) return false;
-  /** @param {Heading} heading */
-  const usesIt = (heading) => {
-    if (findSexpTimestamps(heading.title).some((ts) => /\borg-weather\b/.test(ts.raw))) return true;
-    for (const line of heading.bodyLines || []) {
-      if (isOrgWeatherLine(line)) return true;
-    }
-    return (heading.children || []).some(usesIt);
-  };
-  return (doc.children || []).some(usesIt);
-}
-
 // The heads a "%%(...) text" body line is evaluated by the general evaluator
 // for. Every other function a body line can use (org-anniversary, org-cyclic,
 // org-block, diary-float, the solar lines, org-weather) has its own dedicated
@@ -371,4 +345,4 @@ function evaluateSexpWithError(expr, context) {
   return { result: value };
 }
 
-export { solarTimeString, canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, evaluateSexpDetailed, evaluateSexprValue, findSexpTimestamps, evaluateSexpTimestamp, evaluateSexpWithError, parseGeneralBodyLine, isTruthy, documentUsesOrgWeather };
+export { solarTimeString, canonicalDiaryLine, setUserSexps, parseSexpr, evaluateSexpr, evaluateSexpDetailed, evaluateSexprValue, findSexpTimestamps, evaluateSexpTimestamp, evaluateSexpWithError, parseGeneralBodyLine, isTruthy };

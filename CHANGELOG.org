@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v703 — Info reader, date commands, Babel and export variables
+Read GNU Info manuals on your device (~C-h i~), with ~info:~ links in documents. Dates follow Org: ~org-read-date~ typing, ~C-c .~, ~S-up~ and ~S-down~, clone with time shift, a Date button in the text editors, and a "Move the date" stepper in Edit details. Outline commands: single-heading promote and demote, sorting, list commands, archive options, blocking. Babel gains inline blocks, ~#+CALL~, the Library of Babel and ~C-c C-v~. Export honors ~org-export-with-*~ variables. ~*Org Lint*~ has Emacs's keys, and every file category now comes from one shared rule.
+Verified: Emacs 29.3 checks of the Info reader, dates, outline, Babel, export variables, lint and file categories.
+
 * v702 — Matching Org's own test suite
 Org's test suite fed inputs to Emacs and to the app, and where they differed the app now follows Emacs. Table formulas gain ~string()~, ~typeof()~, ~subvec()~, inherited ~$PROP_name~ and ~org-table-formula-create-columns~; table align and sort follow Org (with a case-sensitive sort). Repeating tasks skip comments and blocks, and the parser, export options, ~#+INCLUDE~, babel ~:var~ handling, footnotes, capture, attach and column view agree with Emacs more closely.
 Verified: Emacs 29.3 oracle cases for each area (about 2,000 new parser, 900 todo and 3,000 formula cases).

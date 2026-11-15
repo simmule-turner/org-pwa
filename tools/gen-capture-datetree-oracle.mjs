@@ -61,6 +61,16 @@ for (const init of [TREE, '* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\
   }
 }
 
+for (const init of ['', '* Foo\n', TREE, '* 2026\n** 2026-11 November\n', '* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n']) {
+  for (const stamp of ['inactive', 'active']) {
+    for (const ymd of DATES.slice(0, 3)) add(init, 'entry', '* New', [], ymd, { stamp });
+    add(init, 'entry', '* New', [], [2026, 11, 7], { stamp, treeType: 'week' });
+    add(init, 'entry', '* New', [], [2026, 11, 7], { stamp, treeType: 'month' });
+    add(init, 'item', 'new', [], [2026, 11, 7], { stamp });
+    add(init, 'entry', '* New', [], [2026, 11, 7], { stamp, prepend: true });
+  }
+}
+
 const q = (s) => JSON.stringify(s);
 const kw = (o) => [o.prepend ? ':prepend t' : '', o.emptyLines !== undefined ? `:empty-lines ${o.emptyLines}` : '', o.emptyLinesBefore !== undefined ? `:empty-lines-before ${o.emptyLinesBefore}` : '', o.emptyLinesAfter !== undefined ? `:empty-lines-after ${o.emptyLinesAfter}` : '', o.treeType ? `:tree-type ${o.treeType}` : ''].filter(Boolean).join(' ');
 const el = `
@@ -77,7 +87,7 @@ const el = `
                  (prog1 (substring-no-properties (buffer-string)) (set-buffer-modified-p nil))))
       (error (concat "ERROR " (error-message-string err))))))
 (let (out)
-  ${cases.map((c) => `(push (run-case ${q(c.init)} '${c.type} ${q(c.template)} '${q(c.olp).replace(/^\[/, '(').replace(/\]$/, ')').replace(/,/g, ' ')} '(${c.ymd.join(' ')}) (car (read-from-string ${q(`(${kw(c.opts)})`)}))) out)`).join('\n  ')}
+  ${cases.map((c) => `(setq org-datetree-add-timestamp ${c.opts.stamp ? "'" + c.opts.stamp : 'nil'}) (push (run-case ${q(c.init)} '${c.type} ${q(c.template)} '${q(c.olp).replace(/^\[/, '(').replace(/\]$/, ')').replace(/,/g, ' ')} '(${c.ymd.join(' ')}) (car (read-from-string ${q(`(${kw(c.opts)})`)}))) out)`).join('\n  ')}
   (princ (json-encode (vconcat (nreverse out)))))
 `;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'datetree-'));

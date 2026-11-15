@@ -15,6 +15,7 @@ import { bufferKeywordValues } from './file-keywords.js';
 import { commitLines } from './body-edit.js';
 import { parseOrg, serializeOrg } from './org-parser.js';
 import { clockSum } from './clock-report.js';
+import { fileCategory } from './file-category.js';
 import { isNil, listItems, NIL, readLisp } from './lisp-read.js';
 import { inlineTaskLevel, isEnd } from './inline-tasks.js';
 
@@ -33,6 +34,7 @@ import { inlineTaskLevel, isEnd } from './inline-tasks.js';
  * @property {string} [defaultFormat]  org-columns-default-format
  * @property {Map<string, string[]>} [tagGroups]
  * @property {string} [ellipses]  org-columns-ellipses
+ * @property {(operator: string) => import('./column-summary-types.js').SummaryType | null} [summaryTypes]  org-columns-summary-types: the user's own summary types, which win over the built-in ones
  * @property {(name: string, value: string) => string | null} [modifyValue]  org-columns-modify-value-for-display-function
  * @property {(id: string) => { doc: Doc, heading: Heading, file?: string, category?: string } | null} [findId]  where an ID lives, in any file
  * @property {(path: string) => { doc: Doc, file?: string, category?: string } | null} [findFile]  a file by its path
@@ -96,7 +98,7 @@ const applyTimes = (/** @type {(...n: number[]) => number} */ fun, times) => {
     if (m === null) throw new Error(`Invalid duration: ${JSON.stringify(t)}`);
     return m;
   });
-  return durationFromMinutes(fun(...minutes), durationHmmOnly(times));
+  return durationFromMinutes(fun(...minutes), durationHmmOnly(times) ?? undefined);
 };
 
 /** org-columns--age-to-minutes. @param {string} s @param {number} now */
@@ -226,8 +228,7 @@ export class ColumnView {
     this.entries = entriesOf(doc);
     this.fileProps = filePropertyEntries(doc);
     this.fileTags = (doc.keywords || []).filter((k) => String(k.key).toUpperCase() === 'FILETAGS').flatMap((k) => String(k.value).split(/[:\s]+/).filter(Boolean));
-    const cat = (doc.keywords || []).find((k) => String(k.key).toUpperCase() === 'CATEGORY');
-    this.fileCategory = cat && String(cat.value).trim() ? String(cat.value).trim() : context.category ?? '';
+    this.fileCategory = fileCategory(doc, context.category ?? '');
     /** @type {ColumnSpec[]} */
     this.specs = [];
     this.top = /** @type {Entry | null} */ (null);
@@ -282,11 +283,14 @@ export class ColumnView {
   computeSpec(spec, update) {
     const op = SPECIAL.has(spec.prop) ? null : spec.op;
     if (op === null) return;
-    const summarize = SUMMARIES[op];
-    if (!summarize) throw new Error(`Unknown "${op}" operator`);
+    const own = this.context.summaryTypes ? this.context.summaryTypes(op) : null;
+    const builtin = SUMMARIES[op];
+    if (!own && !builtin) throw new Error(`Unknown ${JSON.stringify(op)} operator`);
+    const summarize = own ? own.summarize : builtin;
+    const collect = own ? own.collect : null;
     const first = this.top ? this.top.index : 0;
     const last = this.top ? this.top.end : this.entries.length;
-    const lmax = 29;
+    const lmax = inlineTaskLevel() ?? 29; // org-inlinetask-min-level when org-inlinetask is loaded
     /** @type {string[][]} */
     const lvals = Array.from({ length: lmax + 1 }, () => []);
     let level = 0;
@@ -297,7 +301,8 @@ export class ColumnView {
       const entry = this.entries[i];
       if (!(level === 0 || level === inminlevel)) lastLevel = level;
       level = entry.level;
-      const value = ownProperty(entry.heading, spec.prop);
+      if (level > lmax) throw new Error(`Args out of range: [${lvals.slice(0, lmax + 1).map((l) => (l.length ? `(${l.map((v) => JSON.stringify(v)).join(' ')})` : 'nil')).join(' ')}], ${level}`); // Emacs indexes lvals by the level
+      const value = collect ? collect(spec.prop, { doc: this.doc, heading: entry.heading, ancestors: entry.ancestors, category: this.fileCategory, doneKeywords: this.context.doneKeywords }) : ownProperty(entry.heading, spec.prop);
       const valueSet = value !== null && /\S/.test(value);
       if (level < lastLevel) {
         const values = [...(lastLevel !== inminlevel ? lvals[lastLevel] : []), ...lvals[inminlevel]];

@@ -10,6 +10,7 @@
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 import { propertyInherits, tagInherits, effectiveTagsOf } from './tag-inheritance.js';
+import { fileCategory as fileCategoryOf } from './file-category.js';
 /**
  * Whole-document search — walks the full tree regardless of current fold
  * state (a folded heading's content is still searchable, it just isn't
@@ -429,9 +430,7 @@ function headingPassesFilters(heading, filters, ancestors, useTagInheritance, us
 function listContainsKeyword(items, matches) {
   for (const item of items) {
     if (matches(item.text)) return true;
-    for (const nested of item.children || []) {
-      if (listContainsKeyword(nested.items, matches)) return true;
-    }
+    if (bodyContainsKeyword(item.content, matches)) return true;
   }
   return false;
 }
@@ -501,9 +500,7 @@ function walkListForMatches(results, heading, items, query, matches, useRegex) {
     if (matches(item.text)) {
       results.push({ type: 'list-item', heading, node: item, snippet: makeSnippet(item.text, query, useRegex) });
     }
-    for (const nested of item.children || []) {
-      walkListForMatches(results, heading, nested.items, query, matches, useRegex);
-    }
+    walkBodyForMatches(results, heading, item.content, query, matches, useRegex);
   }
 }
 
@@ -835,7 +832,7 @@ function buildMatchEntry(heading, ancestors, useTagInheritance, usePropertyInher
     tags: all,
     todo: heading.todo || null,
     level: heading.level,
-    category: effectivePropertyValue(heading, ancestors, 'CATEGORY', true) || fileCategory,
+    category: effectivePropertyValue(heading, ancestors, 'CATEGORY', true) ?? fileCategory,
     property(name) {
       switch (name) {
         case 'PRIORITY':
@@ -880,8 +877,7 @@ export function searchDocumentsByMatchQuery(docs, query, opts = /** @type {Searc
 
   /** @type {any[]} */ const results = [];
   for (const { documentId, doc } of docs) {
-    const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'CATEGORY');
-    const fileCategory = kw && kw.value.trim() ? kw.value.trim() : (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
+    const fileCategory = fileCategoryOf(doc, (String(documentId).split('/').pop() || '').replace(/\.org$/i, ''));
     const fileProperties = filePropertyEntries(doc);
     const fileTags = (doc.keywords || []).filter((k) => k.key.toUpperCase() === 'FILETAGS').flatMap((k) => k.value.split(/[:\s]+/).filter(Boolean));
     /**

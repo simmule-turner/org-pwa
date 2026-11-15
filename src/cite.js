@@ -323,7 +323,7 @@ function visitNodes(nodes, fn) {
 function visitItems(items, fn) {
   for (const item of items || []) {
     visitNodes(item.inline, fn);
-    for (const nested of item.children || []) visitItems(nested.items, fn);
+    visitBody(item.content, fn);
   }
 }
 

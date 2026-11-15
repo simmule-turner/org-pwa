@@ -7,6 +7,7 @@
 /** @typedef {import('../src/types.js').BodyRow} BodyRow */
 // Extracted from app.js: keyboard focus.
 import { findAncestorPath } from '../src/archive-model.js';
+import { flatBodyNodes } from '../src/body-parser.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { S } from './app-state.js';
 import { findListItemByLineIndex, firstDataRowIndex, hasBodyContent } from './doc-helpers.js';
@@ -292,12 +293,12 @@ export function resyncKeyboardFocusToBodyRow(heading, oldRowType, oldLineIndex) 
   if (!S.keyboardFocusedBodyRow || S.keyboardFocusedBodyRow.heading !== heading || S.keyboardFocusedBodyRow.rowType !== oldRowType) return;
   if (oldRowType === 'list-item') {
     if (/** @type {ListItemRow} */ (S.keyboardFocusedBodyRow).item.lineIndex !== oldLineIndex) return;
-    const freshItem = findListItemByLineIndex((heading.body || []).filter(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').List} */ (n) => n.type === 'list').flatMap((n) => n.items), oldLineIndex);
+    const freshItem = findListItemByLineIndex(flatBodyNodes(heading.body || []).filter(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').List} */ (n) => n.type === 'list').flatMap((n) => n.items), oldLineIndex);
     if (freshItem) S.keyboardFocusedBodyRow = { .../** @type {ListItemRow} */ (S.keyboardFocusedBodyRow), item: freshItem };
     return;
   }
   if (/** @type {NodeRow} */ (S.keyboardFocusedBodyRow).node.lineIndex !== oldLineIndex) return;
-  const freshNode = (heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
+  const freshNode = flatBodyNodes(heading.body || []).find((node) => node.type === oldRowType && node.lineIndex === oldLineIndex);
   if (freshNode) S.keyboardFocusedBodyRow = /** @type {NodeRow} */ ({ ...S.keyboardFocusedBodyRow, node: freshNode });
 }
 

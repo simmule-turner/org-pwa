@@ -81,9 +81,11 @@ function flattenVisibleRows(doc) {
       }
       const key = `${keyPrefix}${i}`;
       rows.push({ rowType: 'list-item', key, item, depth, step, heading: headingNode, displayNumber });
-      for (const nestedList of item.children || []) {
-        flattenListItems(nestedList.items, headingNode, depth + 1, `${key}.`, step + 1);
-      }
+      // what the item holds below its first line, in order: sub-lists, paragraphs, tables, blocks and rules, one step in
+      (item.content || []).forEach((/** @type {any} */ node, /** @type {number} */ n) => {
+        if (node.type === 'list') flattenListItems(node.items, headingNode, depth + 1, `${key}.${n}.`, step + 1);
+        else rows.push({ rowType: node.type, key: `${key}.c${n}`, node, depth: depth + 1, step: step + 1, heading: headingNode });
+      });
     });
   }
 
@@ -224,8 +226,8 @@ function toggleFold(heading) {
  *  comment). A blank heading starts in the file's first-defined
  * @param {Doc} doc
  * @param {Heading} heading
- * @param {any} [globalDefault]
- * @param {any} [opts]
+ * @param {ReturnType<typeof resolveTodoSequences>[number]} [globalDefault]
+ * @param {{ direction?: 'forward' | 'backward' }} [opts]
  *  sequence, matching real org's own actual default. */
 function cycleHeadingTodo(doc, heading, globalDefault, opts) {
   const sequences = resolveTodoSequences(doc, globalDefault);
@@ -244,7 +246,7 @@ function cycleHeadingTodo(doc, heading, globalDefault, opts) {
  * not force stepping through every state in between.
  * @param {Doc} doc
  * @param {Heading} heading
- * @param {any} [globalDefault]
+ * @param {ReturnType<typeof resolveTodoSequences>[number]} [globalDefault]
  */
 function toggleHeadingTodo(doc, heading, globalDefault) {
   if (heading.todo === null) {
@@ -264,7 +266,9 @@ function toggleHeadingTodo(doc, heading, globalDefault) {
  * @param {any} [item]
  */
 function cycleItemCheckbox(heading, item) {
-  if (item.checkbox === null) {
+  // a lower-case `[x]` is text to the parser, but a box to Org's own commands (org-list-struct reads boxes without regard to case)
+  const lower = item.checkbox === null && typeof item.lineIndex === 'number' && /^[ \t]*(?:[-+*]|\d+[.)])[ \t]+(?:\[@\d+\][ \t]*)?\[x\]/.test((heading[/** @type {'bodyLines'} */ (item.linesKey || 'bodyLines')] || [])[item.lineIndex] || '');
+  if (item.checkbox === null && !lower) {
     throw new Error('cycleItemCheckbox: item has no checkbox to cycle');
   }
   // Org's org-toggle-checkbox: [X] becomes [ ], anything else becomes [X]; then every box that has boxes under it shows what

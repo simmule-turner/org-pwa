@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { flatBodyNodes } from './body-parser.js';
 import { editParagraphText, editListItemText, setTableCell } from './body-edit.js';
 import { renameHeading } from './heading-edit.js';
 
@@ -43,7 +44,7 @@ function collectReplaceTargets(doc) {
         getText: () => item.text,
         setText: (/** @type {any} */ t) => editListItemText(heading, item, t),
       });
-      for (const nested of item.children || []) walkList(heading, nested.items);
+      walkBody(heading, item.content);
     }
   }
 
@@ -59,7 +60,7 @@ function collectReplaceTargets(doc) {
           type: 'paragraph',
           label: 'paragraph',
           getText: () => node.lines.join(' '),
-          setText: (/** @type {any} */ t) => editParagraphText(heading, node, t),
+          setText: (/** @type {any} */ t) => editParagraphText(heading, node, (/^[ \t]*/.exec(node.lines[0]) || [''])[0] + t), // a paragraph in a list item keeps its indentation
         });
       } else if (node.type === 'list') {
         walkList(heading, node.items);
@@ -103,7 +104,7 @@ function countBlockOnlyMatches(doc, re) {
   const pattern = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
   /** @param {Heading} heading */
   function walk(heading) {
-    for (const node of heading.body || []) {
+    for (const node of flatBodyNodes(heading.body)) {
       if (node.type === 'block') {
         const text = (node.lines || []).join('\n');
         const matches = text.match(pattern);

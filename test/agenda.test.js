@@ -1442,14 +1442,13 @@ test('THE EXACT EXAMPLE: <%%(org-anniversary 2018 5 14)> -- yearly anniversary a
   assert.equal(items[0].title, 'Company Anniversary');
 });
 
-test('a heading with SCHEDULED/DEADLINE already set is not double-shown via the sexp-timestamp path too', () => {
+test('a heading with SCHEDULED/DEADLINE also shows its sexp timestamp, as Emacs does (context ctx-sexp-title-sched of test/oracle-agenda.test.js)', () => {
   const doc = parseOrg('* Meeting <%%(org-anniversary 2018 5 14)>\nSCHEDULED: <2026-05-14 Thu>\n');
   const items = buildAgendaItems([{ documentId: 'test.org', doc }], {
     rangeStart: new Date(2026, 4, 14),
     rangeEnd: new Date(2026, 4, 14),
   });
-  assert.equal(items.length, 1);
-  assert.equal(items[0].kind, 'scheduled');
+  assert.deepEqual(items.map((i) => i.kind).sort(), ['scheduled', 'sexp-timestamp']);
 });
 
 test('a sexp-timestamp result never carries forward -- it only shows on days it actually matches, unlike SCHEDULED/DEADLINE', () => {

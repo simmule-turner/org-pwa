@@ -516,5 +516,83 @@ function clocks() {
   return out.join('\n') + '\n';
 }
 
-export const DOCS = { ...dated(), todos: todos(), habits: habitsDoc(), log: logs(), stuck: stuck(), clocks: clocks() };
-export const SCENARIOS = scenarios();
+/**
+ * Small documents of one heading each (E001) for what the agenda takes a time stamp from (plain and sexp) and for the category of a
+ * file: a context is a body line or lines placed under the heading; "today" is <2026-10-11 Sun>.
+ * @returns {Record<string, string>}
+ */
+function contextDocs() {
+  const T = stamp(0);
+  const S = '<%%(diary-date 10 11 2026)>';
+  const A = '<%%(org-anniversary 2000 10 11)>';
+  /** @type {[string, string][]} */ const bodies = [
+    ['plain', `text ${T} more`], ['sched', `SCHEDULED: ${T}`], ['fixed', `: ${T}`], ['fixed-sched', `: SCHEDULED: ${T}`], ['fixed-deadline', `: DEADLINE: ${T}`],
+    ['latex-env', `\\begin{x}\n${T}\n\\end{x}`], ['latex-env-open', `\\begin{x}\n${T}`], ['macro', `{{{x(${T})}}}`], ['macro-text', `a {{{x(${T})}}} b`],
+    ['export-snippet', `@@html:${T}@@`], ['export-snippet-text', `a @@html:${T}@@ b ${T}`], ['inline-src', `src_emacs-lisp{${T}}`], ['inline-call', `call_x(${T})`],
+    ['target', `<<${T}>>`], ['link-target', `[[file:${T}]]`], ['link-desc', `[[https://x.org][${T}]]`], ['verbatim', `=${T}=`], ['code', `~${T}~`],
+    ['comment', `# ${T}`], ['keyword', `#+CAPTION: ${T}`], ['table', `| ${T} |`], ['list', `- item ${T}`], ['footnote', `[fn:1] ${T}`],
+    ['quote', `#+BEGIN_QUOTE\n${T}\n#+END_QUOTE`], ['src', `#+BEGIN_SRC emacs-lisp\n${T}\n#+END_SRC`], ['export', `#+BEGIN_EXPORT html\n${T}\n#+END_EXPORT`],
+    ['verse', `#+BEGIN_VERSE\n${T}\n#+END_VERSE`], ['center', `#+BEGIN_CENTER\n${T}\n#+END_CENTER`],
+    ['drawer', `:MYDRAWER:\n${T}\n:END:`], ['props', `:PROPERTIES:\n:FOO: ${T}\n:END:`], ['logbook', `:LOGBOOK:\n- Note taken ${T}\n:END:`],
+    ['sexp-body', S], ['sexp-text', `see ${S} here`], ['sexp-anniversary', A], ['sexp-props', `:PROPERTIES:\n:CREATED: ${S}\n:END:`], ['sexp-logbook', `:LOGBOOK:\n- Note ${S}\n:END:`],
+    ['sexp-drawer', `:MYDRAWER:\n${S}\n:END:`], ['sexp-sched', `SCHEDULED: ${T}\n${S}`], ['sexp-fixed', `: ${S}`], ['sexp-comment', `# ${S}`], ['sexp-keyword', `#+CAPTION: ${S}`],
+    ['sexp-src', `#+BEGIN_SRC emacs-lisp\n${S}\n#+END_SRC`], ['sexp-example', `#+BEGIN_EXAMPLE\n${S}\n#+END_EXAMPLE`], ['sexp-quote', `#+BEGIN_QUOTE\n${S}\n#+END_QUOTE`],
+    ['sexp-verbatim', `=${S}=`], ['sexp-code', `~${S}~`], ['sexp-link', `[[https://x.org][${S}]]`], ['sexp-macro', `{{{x(${S})}}}`], ['sexp-export-snippet', `@@html:${S}@@`],
+    ['sexp-latex-env', `\\begin{x}\n${S}\n\\end{x}`], ['sexp-two', `${S} and ${A}`], ['sexp-other-day', '<%%(diary-date 10 12 2026)>'], ['sexp-plain-too', `${S} ${T}`],
+    ['sexp-list', `- item ${S}`], ['sexp-table', `| ${S} |`], ['sexp-child', `** TODO E002 sub\n${S}`], ['sexp-unclosed', '<%%(diary-date 10 11 2026'], ['sexp-inactive', '[%%(diary-date 10 11 2026)]'],
+  ];
+  /** @type {Record<string, string>} */ const docs = {};
+  for (const [name, body] of bodies) docs[`ctx-${name}`] = `* TODO E001 ${name}\n${body}\n`;
+  docs['ctx-sexp-title'] = `* TODO E001 title ${S}\nbody\n`;
+  docs['ctx-sexp-title-sched'] = `* TODO E001 title ${S}\nSCHEDULED: ${T}\n`;
+  const head = (/** @type {string} */ t = 'E001 x') => `* TODO ${t}\nSCHEDULED: ${T}\n`;
+  /** @type {[string, string][]} */ const cats = [
+    ['none', head()],
+    ['top-drawer', `:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['top-drawer-lower', `:PROPERTIES:\n:category: top\n:END:\n${head()}`],
+    ['top-drawer-spaces', `:PROPERTIES:\n:CATEGORY:    top two   \n:END:\n${head()}`],
+    ['top-drawer-empty', `:PROPERTIES:\n:CATEGORY:\n:END:\n${head()}`],
+    ['top-drawer-kw', `:PROPERTIES:\n:CATEGORY: top\n:END:\n#+CATEGORY: kw\n${head()}`],
+    ['kw-top-drawer', `#+CATEGORY: kw\n:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['title-drawer', `#+TITLE: t\n:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['text-drawer', `some text\n:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['comment-drawer', `# note\n:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['blank-drawer', `\n:PROPERTIES:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['drawer-other', `:LOGBOOK:\n:CATEGORY: top\n:END:\n${head()}`],
+    ['kw', `#+CATEGORY: kw\n${head()}`],
+    ['kw-lower', `#+category: kw\n${head()}`],
+    ['kw-spaces', `#+CATEGORY:    kw two   \n${head()}`],
+    ['kw-empty', `#+CATEGORY:\n${head()}`],
+    ['kw-two', `#+CATEGORY: first\n#+CATEGORY: second\n${head()}`],
+    ['kw-late', `${head()}#+CATEGORY: late\n`],
+    ['kw-late-text', `${head()}text\n#+CATEGORY: late\n* TODO E002 y\nSCHEDULED: ${T}\n`],
+    ['kw-in-body-two', `#+CATEGORY: first\n${head()}#+CATEGORY: body\n* TODO E002 y\nSCHEDULED: ${T}\n`],
+    ['kw-in-src', `#+CATEGORY: kw\n${head()}#+BEGIN_SRC x\n#+CATEGORY: no\n#+END_SRC\n`],
+    ['kw-in-quote', `#+CATEGORY: kw\n${head()}#+BEGIN_QUOTE\n#+CATEGORY: inq\n#+END_QUOTE\n`],
+    ['kw-in-example', `#+CATEGORY: kw\n${head()}#+BEGIN_EXAMPLE\n#+CATEGORY: no\n#+END_EXAMPLE\n`],
+    ['kw-in-comment-block', `#+CATEGORY: kw\n${head()}#+BEGIN_COMMENT\n#+CATEGORY: no\n#+END_COMMENT\n`],
+    ['kw-in-drawer', `#+CATEGORY: kw\n${head()}:MYD:\n#+CATEGORY: ind\n:END:\n`],
+    ['kw-in-paragraph', `#+CATEGORY: kw\n${head()}text\n#+CATEGORY: para\n`],
+    ['kw-indented', `  #+CATEGORY: kw\n${head()}`],
+    ['kw-comment', `# #+CATEGORY: no\n${head()}`],
+    ['heading-prop', `* TODO E001 x\n:PROPERTIES:\n:CATEGORY: own\n:END:\nSCHEDULED: ${T}\n`],
+    ['heading-prop-kw', `#+CATEGORY: kw\n* TODO E001 x\n:PROPERTIES:\n:CATEGORY: own\n:END:\nSCHEDULED: ${T}\n* TODO E002 y\nSCHEDULED: ${T}\n`],
+    ['heading-prop-top', `:PROPERTIES:\n:CATEGORY: top\n:END:\n* TODO E001 x\n:PROPERTIES:\n:CATEGORY: own\n:END:\nSCHEDULED: ${T}\n** TODO E002 child\nSCHEDULED: ${T}\n* TODO E003 sib\nSCHEDULED: ${T}\n`],
+    ['heading-prop-nested', `* TODO E001 x\n:PROPERTIES:\n:CATEGORY: own\n:END:\n** TODO E002 child\n:PROPERTIES:\n:CATEGORY: inner\n:END:\nSCHEDULED: ${T}\n*** TODO E003 grand\nSCHEDULED: ${T}\n** TODO E004 child2\nSCHEDULED: ${T}\n`],
+    ['heading-prop-empty', `#+CATEGORY: kw\n* TODO E001 x\n:PROPERTIES:\n:CATEGORY:\n:END:\nSCHEDULED: ${T}\n`],
+    ['heading-prop-planning-first', `#+CATEGORY: kw\n* TODO E001 x\nSCHEDULED: ${T}\n:PROPERTIES:\n:CATEGORY: own\n:END:\n`],
+  ];
+  for (const [name, text] of cats) docs[`ctx-cat-${name}`] = text;
+  return docs;
+}
+
+export const DOCS = { ...dated(), todos: todos(), habits: habitsDoc(), log: logs(), stuck: stuck(), clocks: clocks(), ...contextDocs() };
+export const SCENARIOS = [
+  ...scenarios(),
+  ...Object.keys(contextDocs()).map((doc) => ({ id: `context ${doc}`, doc, view: 'agenda', date: TODAY, span: 'day', vars: {}, sorting: null })),
+  // the category of an entry in the TODO list and the match view
+  ...Object.keys(contextDocs()).filter((doc) => doc.startsWith('ctx-cat-')).flatMap((doc) => [
+    { id: `context todo ${doc}`, doc, view: 'todo', date: null, query: null, vars: {}, sorting: null },
+    { id: `context match ${doc}`, doc, view: 'match', date: null, query: 'LEVEL>0', vars: {}, sorting: null },
+  ]),
+];

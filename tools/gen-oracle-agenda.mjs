@@ -66,8 +66,8 @@ const el = `
            (span (let ((sp (or (cdr (assq 'span c)) "day"))) (if (string-match-p "^[0-9]+$" sp) (string-to-number sp) (intern sp)))) (date (cdr (assq 'date c))))
       (condition-case e
           (progn
-            ;; the first listing of a session leaves out deadlines: list once with the same settings and throw it away
-            (when (eq c (car cases)) (eval \`(let ,binds ,(view-form view nil date span key)) t) (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*")))
+            ;; the first listing of a session leaves out deadlines: list once with the same settings (a match view needs its query: without one org-tags-view prompts for it and reads stdin) and throw it away
+            (when (eq c (car cases)) (eval \`(let ,binds ,(view-form view (if (equal view "match") query nil) date span key)) t) (when (get-buffer "*Org Agenda*") (kill-buffer "*Org Agenda*")))
             (eval \`(let ,binds ,(view-form view query date span key)) t)
             (let ((r (scan)))
               (push (list (cons 'id (cdr (assq 'id c))) (cons 'days (nth 0 r)) (cons 'rows (nth 1 r))) out)))

@@ -2,6 +2,7 @@
 // The table commands of Org that move things about: insert a row above, move a row or column, insert a rule, sort. Each is what
 // Emacs 29.3 does (tools/gen-table-oracle.mjs holds them to it) and returns where the cursor goes, [row, column] (0-based, rules
 // count as rows). A refusal is an Error with Emacs's own message.
+import { flatBodyNodes } from './body-parser.js';
 import { commitLines, dataLineNumber, fixTableFormulas, insertTableRow, serializeTable } from './body-edit.js';
 import { width } from './org-table-layout.js';
 
@@ -98,7 +99,7 @@ export function insertRule(heading, table, [row, col], { above = false } = {}) {
 export function insertRuleAndMove(heading, table, [row, col]) {
   const start = table.lineIndex;
   insertRule(heading, table, [row, col]);
-  const t = /** @type {Table} */ (heading.body.find((b) => b.type === 'table' && b.lineIndex === start));
+  const t = /** @type {Table} */ (flatBodyNodes(heading.body).find((b) => b.type === 'table' && b.lineIndex === start));
   const next = row + 2;
   if (next < t.rows.length && t.rows[next].type === 'rule') {
     t.rows.splice(next, 0, { type: 'row', cells: Array(columnCount(t)).fill('') });

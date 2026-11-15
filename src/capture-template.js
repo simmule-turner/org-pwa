@@ -28,13 +28,20 @@
 import { placeInsertedText, sharedAnnotation } from './capture-shared.js';
 import { makeLinkString } from './link-string.js';
 import { formatOrgTimestamp } from './org-timestamp.js';
+import { readDate, readDateSettings } from './read-date.js';
 import { formatTimeString } from './format-time.js';
 import { parseOrg, serializeOrg } from './org-parser.js';
 import { insertTopLevelHeading, insertChildHeading } from './heading-edit.js';
 import { commitLines, fixTableFormulas, serializeTable } from './body-edit.js';
 import { findLists, listAt, renumber } from './list-edit.js';
-import { parseBody } from './body-parser.js';
+import { flatBodyNodes, parseBody } from './body-parser.js';
 import { endCreated, findOrCreateDatetree } from './capture-datetree.js';
+import { Reader } from './elisp-read.js';
+import { defun, evalPlain, normalizeError, topScope, withDynamic } from './elisp-core.js';
+import { Cons, LispSignal, NIL, intern, print } from './elisp-data.js';
+import { withDefaultTime } from './elisp-time.js';
+import { describeFailure } from './elisp.js';
+import { withContext } from './diary-lisp.js';
 
 // ---- %<FORMAT> (format-time-string) ---------------------------------------
 
@@ -61,6 +68,11 @@ const TIMESTAMP_PROMPT_KINDS = {
 };
 
 const PLAIN_ESCAPE_RE = /%(:[-A-Za-z]+|<([^>\n]+)>|[aAcfFikKlLntTuUx])|@#(?:\s*([+-])\s*(\d+))?/g;
+/** The escapes inside a `%(sexp)`: those of PLAIN_ESCAPE_RE, without `@#` (which Emacs leaves to the table). */
+const SEXP_ESCAPE_RE = /%(:[-A-Za-z]+|<([^>\n]+)>|[aAcfFikKlLntTuUx])/g;
+/** Stands in the text for the Nth `%(sexp)` until it is evaluated. */
+const SEXP_MARK = (/** @type {number} */ n) => `\uE003${n}\uE004`;
+const SEXP_MARK_RE = /\uE003(\d+)\uE004/g;
 const PROMPT_ESCAPE_RE = /%\^(?:\{([^}]*)\})?([CgGLptTuU])?|%\?/g;
 const BACKREF_RE = /%\\([1-9][0-9]*)/g;
 const LINK_RE = /\[\[(.*?)\](\[.*?\])?\]/;
@@ -241,6 +253,73 @@ function templateValues(context) {
 }
 
 /**
+ * `org-capture-expand-embedded-elisp` marking: each `%(sexp)` that is not escaped and reads as one form is cut out of the text and
+ * replaced by a mark. The backslash rule of org-capture-escaped-% applies.
+ * @param {Cursor} st @returns {string[]} the sexps, `%(...)` as written
+ */
+function markSexps(st) {
+  /** @type {string[]} */
+  const sexps = [];
+  for (;;) {
+    const at = st.buf.indexOf('%(', st.pos);
+    if (at < 0) return sexps;
+    let n = 0;
+    while (n < at && st.buf[at - 1 - n] === '\\') n++;
+    const cut = Math.floor((n + 1) / 2);
+    st.buf = st.buf.slice(0, at - n) + st.buf.slice(at - n + cut);
+    const start = at - cut;
+    st.pos = start + 2;
+    if (n % 2 === 1) continue;
+    const reader = new Reader(st.buf, start + 1);
+    try {
+      reader.read();
+    } catch {
+      continue; // not a whole form: stays as text
+    }
+    const mark = SEXP_MARK(sexps.length);
+    sexps.push(st.buf.slice(start, reader.pos));
+    st.buf = st.buf.slice(0, start) + mark + st.buf.slice(reader.pos);
+    st.pos = start + mark.length;
+  }
+}
+
+/** `(user-full-name)`: the variable of that name, which a capture sees as the `user-full-name` setting. */
+defun('user-full-name', 0, 1, () => intern('user-full-name').value ?? '');
+
+/**
+ * Evaluates one `%(sexp)` (after its own %-escapes are expanded) as org-eval does: an error is not raised but becomes the text
+ * `%![Error: ...]`; the value must be a string, or nil for nothing. Text after the form stays.
+ * @param {string} text `%(...)` @param {Date} now @param {string} fullName `user-full-name`
+ */
+function evalEmbedded(text, now, fullName) {
+  /** @type {import('./elisp-data.js').LObj} */
+  let form;
+  /** @type {number} */
+  let end;
+  try {
+    const reader = new Reader(text, 1);
+    form = reader.read();
+    end = reader.pos;
+  } catch (raw) {
+    throw new Error(describeFailure(raw).message);
+  }
+  /** @type {import('./elisp-data.js').LObj | string} */
+  let value;
+  try {
+    const name = intern('user-full-name');
+    name.special = true;
+    value = withContext({}, () => withDefaultTime(now, () => withDynamic([[name, fullName]], () => evalPlain(form, topScope()))));
+  } catch (raw) {
+    const e = normalizeError(raw);
+    if (!(e instanceof LispSignal)) throw new Error(describeFailure(raw).message);
+    return `%![Error: ${print(new Cons(e.symbol, e.data), false)}]` + text.slice(end);
+  }
+  if (value === NIL) return text.slice(end);
+  if (typeof value !== 'string') throw new Error(`Capture template sexp \`${print(form, false)}' must evaluate to string or nil`);
+  return value + text.slice(end);
+}
+
+/**
  * Runs the three expansion passes. `answers` are matched to the interactive placeholders in the order they appear in
  * the pass-one result; a missing answer is the placeholder's default. Returns the text (before the final cleanup)
  * and the placeholders found, which is what a caller asks the person about.
@@ -250,6 +329,8 @@ function runExpansion(template, context, answers) {
   const v = templateValues(context);
   /** @type {Cursor} */
   const st = { buf: template, pos: 0 };
+  const sexps = markSexps(st);
+  st.pos = 0;
 
   sweep(st, PLAIN_ESCAPE_RE, (m, cur) => {
     if (m[0].startsWith('@#')) {
@@ -268,6 +349,19 @@ function runExpansion(template, context, answers) {
       insertAt(cur, placeInsertedText(key === 'x' ? v.x : v.c, lead));
     } else insertAt(cur, /** @type {any} */ (v)[key]);
   });
+
+  // inside a %(sexp) the same escapes are filled in, with a backslash or a quote in the value escaped so that it stays in its string
+  const inSexp = sexps.map((text) => {
+    /** @type {Cursor} */
+    const sc = { buf: text, pos: 0 };
+    sweep(sc, SEXP_ESCAPE_RE, (m, cur) => {
+      const key = m[1][0];
+      const value = key === '<' ? formatTime(v.now, m[2]) : key === ':' ? v.props[m[1]] || '' : String(/** @type {Record<string, string>} */ (/** @type {unknown} */ (v))[key]);
+      insertAt(cur, value.replace(/[\\"]/g, '\\$&'));
+    });
+    return sc.buf;
+  });
+  st.buf = st.buf.replace(SEXP_MARK_RE, (_m, n) => evalEmbedded(inSexp[Number(n)], v.now, v.n));
 
   st.pos = 0;
   /** @type {any[]} */ const prompts = [];
@@ -437,9 +531,9 @@ function expandCaptureText(template, context = {}) {
  * Emacs's file+olp; false takes the first.
  * `datetree` (file+olp+datetree): after the path, the day (or month, or week and day) heading for `now` is found or created under it,
  * and that heading is the target; `treeType` is Org's :tree-type, week or month. Nothing is created where `allowCreate` is false.
- * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean, datetree?: boolean, treeType?: string, mustExist?: boolean }} [options]
+ * @param {Doc} doc @param {any} olpPath @param {{ now?: Date, prepend?: boolean, allowCreate?: boolean, unique?: boolean, datetree?: boolean, treeType?: string, datetreeTimestamp?: 'active' | 'inactive' | null, mustExist?: boolean }} [options]
  */
-function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false, datetree = false, treeType, mustExist = false } = {}) {
+function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = true, unique = false, datetree = false, treeType, datetreeTimestamp = null, mustExist = false } = {}) {
   const at = now instanceof Date ? now : new Date();
   let siblings = doc.children;
   let parent = null;
@@ -469,7 +563,7 @@ function resolveOlpTarget(doc, olpPath, { now, prepend = false, allowCreate = tr
     siblings = found.children;
   }
 
-  if (datetree) return allowCreate ? findOrCreateDatetree(doc, found, at, treeType) : null;
+  if (datetree) return allowCreate ? findOrCreateDatetree(doc, found, at, treeType, datetreeTimestamp) : null;
   return found;
 }
 
@@ -725,13 +819,13 @@ function repairList(lines, line, cycle) {
     const bullet = /^\d/.test(lead) ? '1' + lead.slice(-1) : lead;
     out[it.line] = out[it.line].replace(/^([ \t]*)([-+*]|\d+[.)])/, (_m, sp) => sp + bullet);
   }
-  if (/^\d/.test(lead)) out = renumber(out, line);
+  out = renumber(out, line); // org-list-repair also puts the indentation in order: the old first item of a list indented further goes under the new one
   return out;
 }
 
 /** @param {Host} host @returns {Table[]} */
 function tablesOf(host) {
-  return /** @type {Table[]} */ ((host.body || []).filter((n) => n.type === 'table'));
+  return /** @type {Table[]} */ (flatBodyNodes(host.body || []).filter((n) => n.type === 'table'));
 }
 
 /** `commitLines` takes a heading; a file's top level has the same lines and body.
@@ -855,7 +949,7 @@ function insertCapture(target, type, expandedText, prepend = false, opts = {}) {
   if (type === 'item' || type === 'checkitem') {
     const placed = placeItem(target, '- ', expandedText, prepend, before, after, !!opts.cursorAtEnd, opts.exact);
     opts.onFiled?.({ host: placed.host, line: placed.line });
-    for (const node of placed.host.body || []) {
+    for (const node of flatBodyNodes(placed.host.body || [])) {
       if (node.type === 'list') for (const it of node.items) if (it.lineIndex === placed.line) return it;
     }
     return null;
@@ -916,42 +1010,18 @@ function linesAtPoint(type, expandedText, level) {
 }
 
 /**
- * The date and time a template with :time-prompt is filed for, from what was typed, as org-read-date takes it: nothing is now, a date
- * (2026-12-01) is for 00:00 of that day, or the time of day of `base` if it is today, a date with a time (2026-12-01 9:05) sets it, an Org timestamp is read, and +2d, -1w, +1m, +1y or a weekday name
- * (the next one) count from `base`. Returns null for anything else.
- * @param {string} text @param {Date} base @returns {Date | null}
+ * The date and time a template with :time-prompt is filed for, from what was typed, as org-capture takes it: `org-read-date` (the date
+ * prompt of src/read-date.js, every form Emacs reads) with the time range bound; a date other than today with no time typed is for
+ * the hour org-extend-today-until (0: midnight).
+ * @param {string} text @param {Date} base the current time @param {Record<string, string>} [vars] org-read-date-prefer-future, org-extend-today-until
+ * @returns {Date}
  */
-function parseTimePrompt(text, base) {
-  const date = readTimePrompt(text, base);
-  // org-capture: a date other than today with no time given is filed for 00:00 (org-extend-today-until)
-  if (date && text.trim() !== '' && !/\d{1,2}:\d\d/.test(text) && date.toDateString() !== base.toDateString()) date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-/** @param {string} text @param {Date} base @returns {Date | null} */
-function readTimePrompt(text, base) {
-  const typed = text.trim().replace(/^[<[]|[>\]]$/g, '').replace(/^(\d{4}-\d{1,2}-\d{1,2})( [A-Za-z]{2,}\.?)/, '$1').trim();
-  if (typed === '') return new Date(base.getTime());
-  const abs = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d\d))?$/.exec(typed);
-  if (abs) {
-    const date = new Date(Number(abs[1]), Number(abs[2]) - 1, Number(abs[3]), abs[4] === undefined ? base.getHours() : Number(abs[4]), abs[4] === undefined ? base.getMinutes() : Number(abs[5]));
-    return date.getMonth() === Number(abs[2]) - 1 ? date : null;
-  }
-  const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(typed.slice(0, 3).toLowerCase());
-  if (day >= 0 && /^[a-z]+$/i.test(typed) && ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].some((w) => w.startsWith(typed.toLowerCase()) && typed.length >= 3)) {
-    const date = new Date(base.getTime()); // the next one, not today
-    date.setDate(date.getDate() + (((day - base.getDay() + 6) % 7) + 1));
-    return date;
-  }
-  const rel = /^([+-]?)(\d+)([dwmy])$/.exec(typed);
-  if (!rel) return null;
-  const n = (rel[1] === '-' ? -1 : 1) * Number(rel[2]);
-  const date = new Date(base.getTime());
-  if (rel[3] === 'd') date.setDate(date.getDate() + n);
-  else if (rel[3] === 'w') date.setDate(date.getDate() + 7 * n);
-  else if (rel[3] === 'm') date.setMonth(date.getMonth() + n);
-  else date.setFullYear(date.getFullYear() + n);
-  return date;
+function parseTimePrompt(text, base, vars) {
+  const settings = readDateSettings(vars);
+  const typed = readDate(text, { now: base, ...settings, endBound: true });
+  const today = (/** @type {Date} */ d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getHours() < settings.extendTodayUntil ? 1 : 0)).getTime();
+  if (typed.timeGiven || today(typed.date) === today(base)) return typed.date;
+  return new Date(typed.date.getFullYear(), typed.date.getMonth(), typed.date.getDate(), settings.extendTodayUntil, 0, 0);
 }
 
 /** Whether `text` has a heading line, which a plain capture puts in as written. @param {string} text */

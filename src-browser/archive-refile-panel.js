@@ -68,7 +68,7 @@ export function closeArchiveRefilePanel() {
  * @param {Heading} heading */
 function archivePart(heading) {
   const frag = document.createDocumentFragment();
-  const location = getArchiveLocation(S.state.doc, heading);
+  const location = getArchiveLocation(S.state.doc, heading, S.state.localVariables);
   const { filePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, S.state.documentId);
   const crossFile = targetFileId !== null && targetFileId !== S.state.documentId;

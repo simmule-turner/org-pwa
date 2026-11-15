@@ -32,6 +32,7 @@ import { isPlainTextFile, documentName } from '../src/plain-file.js';
 import { syntaxKindFor } from '../src/text-syntax.js';
 import { isDiaryDocument } from './diary-file-load.js';
 import { diaryToolsRow } from './diary-flow.js';
+import { lintToolsRow } from './org-lint-flow.js';
 import { buildTextEditor, landInTextView } from './text-view.js';
 import { scheduleBibliography } from './bibliography.js';
 import { draggedHeading } from './heading-drag.js';
@@ -145,7 +146,7 @@ function renderNow() {
     const editor = buildTextEditor({
       textarea,
       kind: plainText ? syntaxKindFor(documentName(S.state.documentId), diary) : 'org',
-      extraRow: diary ? diaryToolsRow(textarea) : null,
+      extraRow: diary ? diaryToolsRow(textarea) : lintToolsRow(textarea),
       compact: !!S.narrowedHeading,
       height: VH_UNIT === 'dvh' ? 'calc(100dvh - 155px)' : 'calc(100vh - 155px)',
     });

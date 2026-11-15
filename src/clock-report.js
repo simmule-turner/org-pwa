@@ -12,6 +12,8 @@
  */
 
 import { readLisp, isNil, listItems } from './lisp-read.js';
+import { durationFromMinutes } from './org-duration.js';
+import { fileCategory } from './file-category.js';
 import { ClockReportError, clockSpecialRange, dateOfAbsoluteDay, inactiveStamp, matcherTime } from './clock-range.js';
 import { layoutTable, widthWithLinks } from './org-table-layout.js';
 import { searchDocumentsByMatchQuery } from './search.js';
@@ -25,12 +27,9 @@ export { ClockReportError };
 const CLOCK_RE = /^[ \t]*CLOCK:[ \t]*(?:(\[.*?\])-+(\[.*?\])|=>[ \t]+([0-9]+):([0-9]+))/;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** "H:MM"; a day or more reads "1d 2:05" (`org-duration-from-minutes` with Org's default format). @param {number} minutes */
+/** `org-duration-from-minutes` with org-duration-format ("H:MM" by default; a day or more reads "1d 2:05"). @param {number} minutes */
 export function formatClocktableDuration(minutes) {
-  const days = Math.floor(minutes / 1440);
-  const rest = minutes % 1440;
-  const clock = `${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`;
-  return days ? `${days}d ${clock}` : clock;
+  return durationFromMinutes(minutes);
 }
 
 /** "2026-08-07 Fri 12:11": the moment of a clock report's caption. @param {Date} date */
@@ -204,8 +203,7 @@ function entryProperty(heading, ancestors, name, inherit, file) {
       const v = own(h);
       if (v !== null) return v.trim();
     }
-    const kw = (file.doc.keywords || []).find((k) => k.key.toUpperCase() === 'CATEGORY');
-    return kw && kw.value.trim() ? kw.value.trim() : file.name.replace(/\.org$/i, '');
+    return fileCategory(file.doc, file.name.replace(/\.org$/i, ''));
   };
   switch (upper) {
     case 'CATEGORY': return category();

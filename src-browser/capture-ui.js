@@ -1,9 +1,8 @@
 // @ts-check
 // Extracted from app.js: capture ui.
+import { readArchiveSettings } from '../src/archive-settings.js';
 import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandTemplate, getCaptureFileScheme, parseTimePrompt, resolveCaptureFileId, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
-import { captureInto } from '../src/capture-run.js';
-import { getOrgTableDurationHourZeroPadding } from '../src/local-variables.js';
-import { parseTableConstants, parseNamedTables, recalculateTable } from '../src/table-formula.js';
+import { captureInto, captureRecalculator } from '../src/capture-run.js';
 import { tableUserCall } from './extension-flow.js';
 import { emitExtensionEvent } from './extension-events.js';
 import { S } from './app-state.js';
@@ -261,7 +260,7 @@ export function renderCapturePromptForm() {
   capturePanelBox.appendChild(preview);
 
   function updatePreview() {
-    const context = { ...templateContext(), now: (template.timePrompt && parseTimePrompt(S.captureTimeValue, previewBase)) || previewBase, promptAnswers: S.capturePromptValues };
+    const context = { ...templateContext(), now: template.timePrompt ? parseTimePrompt(S.captureTimeValue, previewBase, S.state.localVariables || S.globalVariables) : previewBase, promptAnswers: S.capturePromptValues };
     try {
       preview.textContent = expandTemplate(template.template, context).text;
     } catch (err) {
@@ -395,11 +394,7 @@ export function renderCapturePromptForm() {
       const answers = S.capturePromptValues.slice();
       let at;
       if (template.timePrompt) {
-        at = parseTimePrompt(S.captureTimeValue, new Date()) ?? undefined;
-        if (!at) {
-          setStatus('Can\u2019t capture: the date and time were not understood. Try 2026-12-01 9:05, +2d or fri.');
-          return;
-        }
+        at = parseTimePrompt(S.captureTimeValue, new Date(), S.state.localVariables || S.globalVariables);
       }
       runCaptureWithAnswers(template, answers, at);
     })
@@ -484,7 +479,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
       historyLabel: `Captured: ${template.description}`,
       allowMissing: true,
       mutate: (doc) => {
-        const result = captureInto(doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d) });
+        const result = captureInto(doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d), datetreeTimestamp: readArchiveSettings(S.state.localVariables).datetreeTimestamp });
         if (!result.ok) {
           setStatus(result.message);
           return null;
@@ -499,7 +494,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
       return;
     }
 
-    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}${afterNote(captured)}`);
+    setStatus(`Captured to ${targetFileId}${UNSAVED_NOTE}.${clocked}${afterNote(captured)}${takeWarnings()}`);
     if (template.jumpToCaptured && captured) {
       // :jump-to-captured t visits the other file's buffer, as Emacs does
       const tab = S.documentSessions.find((x) => x.state && x.state.documentId === targetFileId);
@@ -513,7 +508,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
     return;
   }
 
-  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d), ...(here ? { here } : {}) });
+  const result = captureInto(S.state.doc, template, { now, answers, context: templateContext(), place: (d) => placeOptions(template, d), datetreeTimestamp: readArchiveSettings(S.state.localVariables).datetreeTimestamp, ...(here ? { here } : {}) });
   if (!result.ok) {
     setStatus(result.message);
     renderCapturePanel();
@@ -526,7 +521,7 @@ export async function runCaptureWithAnswers(template, answers, at) {
   const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction || template.targetId !== undefined || template.targetClock;
   // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry
   if (template.jumpToCaptured) showCaptured(template, result);
-  setStatus('Captured.' + clocked + afterNote(result));
+  setStatus('Captured.' + clocked + afterNote(result) + takeWarnings());
   afterSuccessfulCapture();
   emitExtensionEvent('capture', { description: template.description || '', file: targetFileId, sameFile: true, heading: hasTarget && 'level' in target ? target : null });
 }
@@ -567,21 +562,26 @@ function showCaptured(template, result) {
   } else if (shown) navigateToHeading(/** @type {any} */ (shown), { revealOwnBody: true });
 }
 
+/** What org-table-formula-create-columns `warn` said while the capture in hand recalculated a table: shown with its status line. @type {string[]} */
+const captureWarnings = [];
+
+/** The warnings of the capture just filed, as text for the status line (empty when there were none), and forget them. */
+function takeWarnings() {
+  const text = captureWarnings.map((m) => ` Warning: ${m}.`).join('');
+  captureWarnings.length = 0;
+  return text;
+}
+
 /** What a template says about how its text is filed: the blank lines around it, the table row, and the sums of a table it joins.
  * @param {import('../src/types.js').CaptureTemplate} template @param {import('../src/types.js').Doc} doc */
 function placeOptions(template, doc) {
+  captureWarnings.length = 0; // the warnings of an earlier capture are not this one's
   return {
     emptyLines: template.emptyLines,
     emptyLinesBefore: template.emptyLinesBefore,
     emptyLinesAfter: template.emptyLinesAfter,
     tableLinePos: template.tableLinePos,
-    recalculate: (/** @type {import('../src/types.js').Table} */ table) => {
-      try {
-        return recalculateTable(table, { hourZeroPad: getOrgTableDurationHourZeroPadding(S.state.localVariables), constants: parseTableConstants(doc), tables: parseNamedTables(doc), userCall: tableUserCall });
-      } catch {
-        return null;
-      }
-    },
+    recalculate: captureRecalculator(doc, S.state.localVariables, (message) => captureWarnings.push(message), { userCall: tableUserCall }),
   };
 }
 

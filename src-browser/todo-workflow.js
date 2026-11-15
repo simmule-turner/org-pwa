@@ -4,7 +4,8 @@
 // Extracted from app.js: todo workflow.
 import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { updateTodoCookiesUpward } from '../src/checkbox-cookie.js';
-import { getClosedKeepWhenNoTodo, parseLocalVariables } from '../src/local-variables.js';
+import { getClosedKeepWhenNoTodo, getEnforceTodoCheckboxDependencies, getEnforceTodoDependencies, parseLocalVariables } from '../src/local-variables.js';
+import { blockedBy, blockedMessage } from '../src/todo-blocking.js';
 import { findAncestorPath } from '../src/archive-model.js';
 import { serializeOrg } from '../src/org-parser.js';
 import { cycleHeadingTodo } from '../src/outline-view-model.js';
@@ -54,7 +55,8 @@ function headingPath(doc, heading) {
  * risking a stale read.
  * @param {Heading} heading
  * @param {() => void} performChange
- * @param {{ inhibitLogging?: boolean }} [options] `inhibitLogging` writes no log item or note (Emacs's org-inhibit-logging); CLOSED still follows org-log-done
+ * @param {{ inhibitLogging?: boolean, inhibitBlocking?: boolean }} [options] `inhibitLogging` writes no log item or note (Emacs's org-inhibit-logging); CLOSED still follows org-log-done; `inhibitBlocking` is org-inhibit-blocking
+ * @returns {boolean} false when the dependency settings blocked the change (the heading is as it was)
  */
 export function applyTodoTransition(heading, performChange, options = {}) {
   const fromTodo = heading.todo;
@@ -62,6 +64,17 @@ export function applyTodoTransition(heading, performChange, options = {}) {
   performChange();
 
   const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
+  // org-blocker-hook: a change the dependency settings refuse is not made, and org-todo says why
+  if (!options.inhibitBlocking) {
+    const vars = S.state.localVariables;
+    const block = blockedBy(S.state.doc, heading, fromTodo, heading.todo, { enforceDependencies: getEnforceTodoDependencies(vars), enforceCheckboxes: getEnforceTodoCheckboxDependencies(vars), todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords });
+    if (block) {
+      const to = heading.todo;
+      heading.todo = fromTodo;
+      setStatus(blockedMessage(fromTodo, to, block));
+      return false;
+    }
+  }
   const fileLocalVarsOnly = parseLocalVariables(serializeOrg(S.state.doc));
   const settings = readLogSettings(S.state.doc, fileLocalVarsOnly, S.globalVariables, headingPath(S.state.doc, heading));
   const keepWhenNoTodo = getClosedKeepWhenNoTodo(S.state.localVariables);
@@ -81,6 +94,7 @@ export function applyTodoTransition(heading, performChange, options = {}) {
   // has its own updateCheckboxCookie call for.
   updateTodoCookiesUpward(S.state.doc, heading, sequence.doneKeywords);
   if (fromTodo !== heading.todo) emitExtensionEvent('todo-change', { heading, from: fromTodo || null, to: heading.todo || null });
+  return true;
 }
 
 /** Shows a small dedicated panel for taking (or skipping) the log note
@@ -166,8 +180,7 @@ export function openTodoOrPickWorkflow(heading) {
   const sequences = resolveTodoSequences(S.state.doc, GLOBAL_TODO_DEFAULT);
   if (heading.todo || sequences.length <= 1) {
     const hadTodo = !!heading.todo;
-    applyTodoTransition(heading, () => cycleHeadingTodo(S.state.doc, heading, GLOBAL_TODO_DEFAULT));
-    commitAndRender(hadTodo ? 'Cycled TODO state' : 'Marked as TODO');
+    if (applyTodoTransition(heading, () => cycleHeadingTodo(S.state.doc, heading, GLOBAL_TODO_DEFAULT))) commitAndRender(hadTodo ? 'Cycled TODO state' : 'Marked as TODO');
     return;
   }
   const viaGodMode = S.godModeActive;
@@ -188,8 +201,7 @@ export function openTodoOrPickWorkflow(heading) {
 export function chooseTodoWorkflowState(heading, keyword, seq) {
   S.pendingTodoWorkflowChoice = null;
   renderTodoWorkflowPanel();
-  applyTodoTransition(heading, () => setTodoState(heading, keyword, seq));
-  commitAndRender('Set TODO state');
+  if (applyTodoTransition(heading, () => setTodoState(heading, keyword, seq))) commitAndRender('Set TODO state');
 }
 
 /** Renders the full-state picker (see openTodoOrPickWorkflow above): one
@@ -277,10 +289,12 @@ export function renderTodoWorkflowPanel() {
     menuButton('Clear', () => {
       S.pendingTodoWorkflowChoice = null;
       renderTodoWorkflowPanel();
-      applyTodoTransition(heading, () => {
-        heading.todo = null;
-      });
-      commitAndRender('Removed TODO/DONE state');
+      if (
+        applyTodoTransition(heading, () => {
+          heading.todo = null;
+        })
+      )
+        commitAndRender('Removed TODO/DONE state');
     })
   );
   actionRow.appendChild(

@@ -14,7 +14,8 @@
 (setq org-confirm-babel-evaluate nil
       make-backup-files nil
       create-lockfiles nil
-      inhibit-message t)
+      inhibit-message t
+      default-directory (file-name-as-directory (make-temp-file "ob" t)))
 
 (defun ob--s (v) (cond ((null v) "") ((stringp v) v) (t (format "%s" v))))
 

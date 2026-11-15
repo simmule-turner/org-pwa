@@ -109,7 +109,7 @@ export function applyTransitionEffects(heading, fromTodo, sequence, { settings, 
 
   if (repeated) {
     // A repeating task is not finished: its dates move on and the state goes back to where the sequence starts.
-    const repeatTo = heading.properties.REPEAT_TO_STATE?.trim();
+    const repeatTo = settings.repeatToState === true ? fromTodo : settings.repeatToState;
     heading.todo = repeatTo && [...sequence.todoKeywords, ...sequence.doneKeywords].includes(repeatTo) ? repeatTo : fromTodo === null ? null : ownSequence.type === 'type' ? fromTodo : ownSequence.todoKeywords[0] || null;
     heading.planning.closed = null;
     if (settings.logSpecs && heading.todo !== toTodo) {

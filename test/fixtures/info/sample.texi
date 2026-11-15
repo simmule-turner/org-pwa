@@ -1,0 +1,108 @@
+\input texinfo
+@setfilename sample.info
+@settitle Sample Manual
+@dircategory Software development
+@direntry
+* Sample: (sample).     A small manual for the Info reader tests.
+* Sample sort::         Sorting, an entry that points into sample.
+@end direntry
+
+@copying
+Sample manual text.
+@end copying
+
+@titlepage
+@title Sample Manual
+@end titlepage
+
+@node Top
+@top Sample Manual
+
+This manual has @emph{several} nodes.  See @ref{Sorting}, and
+@pxref{Formulas, the field syntax}.  An external reference is
+@xref{Top,,, other, The Other Manual}.
+
+@menu
+* Basics::          Opening files, editing.
+* Tables::          Formulas, sort, align.
+                    A second line of the description.
+* Lisp functions::  Variables and the functions.
+* Concept Index::   Concepts.
+* Function Index::  Functions.
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Tables
+
+* Formulas::        Field formulas.
+* Sorting::         Sorting rows.
+@end detailmenu
+@end menu
+
+@node Basics
+@chapter Basics
+@cindex basics
+@cindex opening files
+@anchor{An anchor}
+
+Plain text with @code{org-open} and @kbd{C-c C-o}.  See also
+@ref{Formulas} for a long cross reference that wraps across
+two lines: @ref{Lisp functions,the Lisp function reference text}.
+
+@example
+| a | b |
+|---+---|
+| 1 | 2 |
+@end example
+
+@node Tables
+@chapter Tables
+@cindex tables
+
+Tables hold fields.
+
+@menu
+* Formulas::    Field formulas.
+* Sorting::     Sorting rows.
+@end menu
+
+@node Formulas
+@section Formulas
+@cindex formulas
+@findex org-table-recalculate
+@findex org-table-sort-lines
+
+A formula fills a field.@footnote{A footnote.}  An image follows.
+
+@image{pic,,,A picture,.png}
+
+Visit @url{https://example.org/manual} too.
+
+@node Sorting
+@section Sorting
+@cindex sorting a table
+@cindex sorting rows
+@findex org-table-sort-lines
+
+Rows are sorted.
+
+@node Lisp functions
+@chapter Lisp functions
+@cindex Lisp
+@deffn Command org-sort-entries
+Sort the entries.
+@end deffn
+@defvr {User Option} org-sort-case
+Case.
+@end defvr
+
+@node Concept Index
+@unnumbered Concept Index
+@printindex cp
+
+@node Function Index
+@unnumbered Function Index
+@printindex fn
+
+@bye

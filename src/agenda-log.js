@@ -6,7 +6,7 @@
 import { dayNumberOf, lispValue } from './agenda-emacs-days.js';
 import { allLogLines } from './logbook.js';
 import { datum, listItems, readLisp, stringValue, symbolName } from './lisp-read.js';
-import { parseOrgDuration } from './org-duration.js';
+import { durationFromMinutes, parseOrgDuration } from './org-duration.js';
 
 /** @typedef {'closed' | 'clock' | 'state'} LogKind */
 /** @typedef {{ mode: boolean | 'only' | 'clockcheck', kinds: LogKind[], addNotes: boolean }} LogSettings */
@@ -201,13 +201,8 @@ export function readClockChecks(vars) {
   };
 }
 
-/** org-duration-from-minutes in Emacs's default form: days when there is a whole one, then h:mm. @param {number} m */
-const hmm = (m) => {
-  const a = Math.abs(m);
-  const days = Math.floor(a / 1440);
-  const rest = a % 1440;
-  return `${m < 0 ? '-' : ''}${days ? `${days}d ` : ''}${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`;
-};
+/** org-duration-from-minutes with org-duration-format. @param {number} m */
+const hmm = (m) => durationFromMinutes(m);
 
 /** org-agenda-check-clock-gap: does the gap from `t1` to `t2` (ms) hold one of the OK times of day? @param {number} t1 @param {number} t2 @param {number[]} ok */
 function gapIsOk(t1, t2, ok) {

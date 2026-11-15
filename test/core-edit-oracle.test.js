@@ -5,9 +5,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { buildArchivedClone, insertAtArchiveLocation, setProperty } from '../src/archive-model.js';
-import { headingAfterSubtree, updateCookiesAfterArchive } from '../src/checkbox-cookie.js';
-import { pasteSubtreeAfter, removeHeading } from '../src/heading-edit.js';
+import { setProperty } from '../src/archive-model.js';
+import { applyArchiveToSource, archiveSubtree } from '../src/archive-text.js';
+import { pasteSubtreeAfter } from '../src/heading-edit.js';
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/core-edit-oracle.json', import.meta.url), 'utf8'));
 const flat = (doc) => {
@@ -27,11 +27,7 @@ function ours(c) {
   const doc = parseOrg(c.org);
   const h = flat(doc)[c.index];
   if (c.kind === 'archive') {
-    const next = headingAfterSubtree(doc, h); // before the subtree goes, as the archive flow does
-    const clone = buildArchivedClone(doc, h, '/tmp/core-edit-oracle-buffer.org', { infile: true });
-    removeHeading(doc, h);
-    insertAtArchiveLocation(doc, clone, '* Archive', { sourceFileId: '/tmp/core-edit-oracle-buffer.org' });
-    updateCookiesAfterArchive(doc, next, ['DONE']);
+    applyArchiveToSource(doc, archiveSubtree(doc, h, { srcPath: '/tmp/core-edit-oracle-buffer.org', infile: true, location: '* Archive', now: new Date(), doneKeywords: ['DONE'] }), ['DONE']);
     return cookieLines(serializeOrg(doc)).join('\n');
   }
   if (c.kind === 'paste') {

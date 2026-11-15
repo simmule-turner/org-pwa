@@ -28,7 +28,7 @@ import { withBufferKeywords, withSubtreeKeywords, subtreeSetting } from './expor
 import { translateTimestamps, withoutIsolatedTimestamps } from './export-timestamps.js';
 import { foldInlineTasks, inlineTaskInfo, INLINE_TASK_BLOCK } from './inline-tasks.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText, formatCodePlain } from './code-lines.js';
-import { parseElements, parseAttributes } from './org-elements.js';
+import { parseElements, parseAttributes, clockOf } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { parseExportOptions, rawExportOptions, getDocTitle, getDocAuthor, getDocDate } from './export-options.js';
 import { brokenPathOf, brokenLinkText, finishDropped } from './broken-links.js';
@@ -46,6 +46,7 @@ import { bibliographyFiles, citeDefaults, citeExportFor, citeExportSetting } fro
 import { radioTargetRegExp } from './targets.js';
 import { latexConfig } from './latex-config.js';
 import * as bm from './export-beamer.js';
+import { outsideVerbatim } from './verbatim-spans.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -238,9 +239,8 @@ function inline(text) {
 
 /** @param {string} text @returns {InlineNode[]} */
 function parseText(text) {
-  const marked = text
-    .replace(/^[ \t]*call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, '') // an inline call prints nothing, and at the start of a paragraph its blanks go too
-    .replace(/\bcall_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, '')
+  const marked = outsideVerbatim(text
+    .replace(/^[ \t]*call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, ''), (piece) => piece.replace(/\bcall_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, '')) // an inline call prints nothing (not inside =verbatim= or ~code~), and at the start of a paragraph its blanks go too
     .split('\n')
     .map((l) => (LINE_BREAK_RE.test(l) ? l.replace(LINE_BREAK_RE, BREAK) : l))
     .join('\n')
@@ -632,6 +632,8 @@ const trimEnd = (s) => s.replace(/\n+$/, '') + '\n';
 function element(el) {
   switch (el.type) {
     case 'paragraph': {
+      const clock = clockOf(el.lines);
+      if (clock) return S.raw.c === undefined || S.raw.c === 'nil' ? '' : `\\noindent\\textbf{CLOCK:} ${S.cfg.vars.inactiveTimestamp.replace(/%s/g, () => plain(clock.value + (clock.duration ? ` (${clock.duration})` : '')))}\\\\[0pt]\n`; // org-latex-clock; a clock is left out unless org-export-with-clocks
       const lines = withoutIsolatedTimestamps(el.lines.join('\n'), S.opts.stamps).split('\n'); // `<:` leaves out the timestamps that stand alone
       const parsed = parseText([lines[0].trimStart(), ...lines.slice(1)].join('\n'));
       const content = parsed.filter((x) => !(x.type === 'text' && !x.value.trim()));
@@ -1490,6 +1492,19 @@ export function exportToLatex(doc, scope = null, { beamer = false, images = /** 
   const body = (zeroth === '' ? '\n'.repeat(preamble.filter((l) => !l.trim()).length - finalNewline) : zeroth) + headings(roots, ctx, base);
   const creator = S.opts.creator ? (keywordList(doc, 'CREATOR')[0] || 'Org Mode PWA') + '\n' : ''; // creator:t ends the text with who made it
   const text = head.join('\n') + '\n' + (body ? trimEnd(body) : '') + creator + '\\end{document}\n';
+  return finishDropped(text.replace(new RegExp(SNIPPET_OPEN + '(\\d+)' + SNIPPET_CLOSE + '([ \\t]*)', 'g'), (_m, i, blanks) => { const sn = S.snippets[Number(i)]; const t = snippetText(sn); return t + (sn.backend === 'src' && t === '' ? '' : blanks); }));
+}
+
+/**
+ * A line of Org text as `org-export-data` writes it for the LaTeX back end: the objects only, not set as a paragraph. The converters
+ * of the tables and lists (orgtbl-to-latex) use it for cells.
+ * @param {Doc} doc  the document it belongs to (its #+OPTIONS apply)
+ * @param {string} raw
+ */
+export function exportLatexObjects(doc, raw) {
+  exportToLatex(doc);
+  S.snippets = [];
+  const text = inline(raw);
   return finishDropped(text.replace(new RegExp(SNIPPET_OPEN + '(\\d+)' + SNIPPET_CLOSE + '([ \\t]*)', 'g'), (_m, i, blanks) => { const sn = S.snippets[Number(i)]; const t = snippetText(sn); return t + (sn.backend === 'src' && t === '' ? '' : blanks); }));
 }
 

@@ -16,7 +16,7 @@
  * other than the text width and the character set (the exporter reads them from one place, `makeInfo`).
  */
 
-import { parseElements, parseAttributes } from './org-elements.js';
+import { parseElements, parseAttributes, clockOf } from './org-elements.js';
 import { parseInline } from './inline-markup.js';
 import { citeExportFor, dropSilentCitations } from './cite.js';
 import { removeIndentation } from './babel-blocks.js';
@@ -128,7 +128,7 @@ export function normalizeAsciiCharset(value) {
  *   withTags: boolean | 'not-in-toc', withTodo: boolean, withPriority: boolean, withPlanning: boolean,
  *   preserveBreaks: boolean, specialStrings: boolean, entities: boolean, footnotes: boolean, tables: boolean,
  *   fixedWidth: boolean, tex: boolean,
- *   linksToNotes: boolean, noFootnotes?: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
+ *   linksToNotes: boolean, noFootnotes?: boolean, noSectionNotes?: boolean, sup: string, widen: boolean, broken: import('./broken-links.js').BrokenLinks,
  *   verbatimFormat: string,
  *   doc: Doc, scope: Heading | null, radioRe: RegExp | null,
  *   headlines: Node[], defs: Map<string, Node>, fnLabels: Map<string, number>, fnList: { number: number, label: string | null, inline: Item[] | null, def: Node | null }[],
@@ -468,9 +468,9 @@ function unescapeCode(lines, preserveIndent) {
 function buildElement(el, parent, I) {
   switch (el.type) {
     case 'paragraph': {
+      const clock = clockOf(el.lines);
+      if (clock) return I.htmlOptions.clocks ? mk('clock', parent, { value: `CLOCK: ${clock.value}${clock.duration ? ` => ${clock.duration.replace(/^(\d+):(\d+)$/, (_m, h, m) => `${h.padStart(2)}:${m.padStart(2, '0')}`)}` : ''}\n` }) : null; // org-ascii-clock; a clock is left out unless org-export-with-clocks
       const lines = withoutIsolatedTimestamps(el.lines.join('\n'), I.htmlOptions.stamps).split('\n'); // `<:` leaves out the timestamps that stand alone
-      // clock lines are elements of their own, and not exported
-      while (lines.length && /^[ \t]*CLOCK:[ \t]*\[/.test(lines[0])) lines.shift();
       if (lines.length === 0) return null;
       const node = mk('paragraph', parent);
       node.contents = objects([lines[0].replace(/^[ \t]+/, '').replace(I.odt ? /^(call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?)[ \t]+/ : /^(<<[^<>\n]+>>|call_[\w-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?)[ \t]+/, '$1'), ...lines.slice(1)].join('\n') + '\n', node, I);
@@ -911,7 +911,7 @@ function codeOf(n) {
 
 /** The greater elements: their contents are normalized before they are handed on. */
 const GREATER = new Set(['org-data', 'headline', 'inlinetask', 'section', 'plain-list', 'item', 'quote-block', 'center-block', 'special-block', 'drawer', 'dynamic-block', 'footnote-definition', 'table']);
-const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'planning', 'property-drawer', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
+const ELEMENTS = new Set([...GREATER, 'paragraph', 'src-block', 'example-block', 'verse-block', 'export-block', 'fixed-width', 'planning', 'clock', 'property-drawer', 'horizontal-rule', 'keyword', 'latex-environment', 'table-row', 'table-cell']);
 
 /**
  * `org-export-data`: an element or object as text.
@@ -985,6 +985,7 @@ const TRANSCODERS = {
   link: (n, _c, I) => (/** @type {{ inDescription?: boolean }} */ (n).inDescription ? plainText(n.raw || '', I) : linkText(n, I)),
   paragraph: (n, c, I) => justifyElement(I.preserveBreaks ? c.replace(/^ */gm, '') : c, n, I), // only `\n:t` strips the blanks that start the lines
   planning: (n) => n.value || '',
+  clock: (n, _c, I) => justifyElement(n.value || '', n, I),
   'property-drawer': (n) => n.value || '',
   'plain-list': (_n, c, I) => (I.listMargin < 1 ? c : indentString(c, I.listMargin)),
   item: (n, c, I) => itemText(n, c, I),
@@ -1018,7 +1019,7 @@ const TRANSCODERS = {
   section: (n, c, I) => {
     const headline = parentHeadline(n);
     const text = indentString(c, !headline || lowLevel(headline, I) ? 0 : I.innerMargin);
-    const links = I.linksToNotes && !headline ? describeLinks(uniqueLinks([n]), currentTextWidth(n, I), I) : '';
+    const links = I.linksToNotes && !headline && !I.noSectionNotes ? describeLinks(uniqueLinks([n]), currentTextWidth(n, I), I) : '';
     return links.trim() ? headlineSpacing(normalizeString(text)) + links : text;
   },
   headline: (n, c, I) => headlineText(n, c, I),
@@ -1441,6 +1442,7 @@ function tableCellText(cell, contents, I) {
   const T = tableInfo(table, I);
   const col = (row.cells || []).indexOf(cell);
   const width = T.widths[col] || 0;
+  if (!I.widen && stringWidth(contents) > width) contents = contents.slice(0, Math.max(0, width - 2)) + '=>'; // org-ascii-table-widen-columns nil: too large contents are truncated
   const data = justifyLines(contents, width, /** @type {'left' | 'center' | 'right'} */ (T.aligns[col] || 'left'));
   const padded = data + ' '.repeat(Math.max(0, width - stringWidth(data)));
   return ` ${padded} ` + (sideBorders(T, col).includes('right') ? (I.cs.utf8 ? '│' : '|') : '');
@@ -1622,14 +1624,16 @@ function footnoteSection(I) {
  * @param {Doc} doc
  * @param {Heading | null} [scope]
  * @param {number} [textWidth]
- * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, linksToNotes?: boolean, bodyOnly?: boolean }} [options]
+ * @param {{ charset?: string, sup?: string, brokenLinks?: import('./broken-links.js').BrokenLinks, linksToNotes?: boolean, bodyOnly?: boolean, widenColumns?: boolean, sectionNotes?: boolean }} [options]
  */
-export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil', linksToNotes = true, bodyOnly = false } = {}) {
+export function exportToAscii(doc, scope = /** @type {Heading | null | undefined} */ (null), textWidth = 72, { charset = 'ascii', sup = 't', brokenLinks = 'nil', linksToNotes = true, bodyOnly = false, widenColumns = true, sectionNotes = true } = {}) {
   doc = withSubtreeKeywords(withBufferKeywords(doc), scope);
   ({ doc, scope } = foldInlineTasks(doc, scope, undefined, inlineTaskFilter(doc)));
   ({ doc, scope } = expandMacrosForExport(doc, scope, new Date()));
   const I = makeInfo(doc, scope || null, textWidth, normalizeAsciiCharset(charset), sup, brokenLinks);
   I.linksToNotes = linksToNotes;
+  I.widen = widenColumns; // org-ascii-table-widen-columns
+  I.noSectionNotes = !sectionNotes; // a table alone has no section to list its links after
   I.noFootnotes = bodyOnly; // the iCalendar back end leaves footnote references out
   const skip = exclusion(doc);
   const roots = scope ? scope.children || [] : doc.children || [];

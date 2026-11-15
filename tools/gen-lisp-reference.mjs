@@ -119,7 +119,7 @@ export const GROUPS = [
     id: 'org', title: 'Org functions',
     intro: 'The read-only Org functions an agenda setting, skip function, capture template or HTML preamble function may call.',
     note: 'They work on the entry being processed, as when Emacs runs them with the cursor on a heading.',
-    names: 'org-agenda-skip-entry-if org-agenda-skip-if org-agenda-skip-subtree-if org-entry-get org-entry-get-with-inheritance org-entry-is-done-p org-entry-is-todo-p org-get-category org-get-heading org-get-tags org-get-todo-state org-link-escape org-link-make-string org-lookup-all org-lookup-first org-lookup-last org-outline-level orgtbl-ascii-draw org-export-data',
+    names: 'org-inlinetask-at-task-p org-inlinetask-end-p org-inlinetask-get-task-level org-inlinetask-goto-beginning org-inlinetask-goto-end org-inlinetask-in-task-p org-inlinetask-outline-regexp org-match-line user-full-name org-agenda-skip-entry-if org-agenda-skip-if org-agenda-skip-subtree-if org-entry-get org-entry-get-with-inheritance org-entry-properties org-entry-is-done-p org-entry-is-todo-p org-get-category org-get-heading org-get-tags org-get-todo-state org-link-escape org-link-make-string org-lookup-all org-lookup-first org-lookup-last org-outline-level orgtbl-ascii-draw org-export-data org-sbe org-combine-plists org-quote-csv-field org-table-collapse-header org-table-to-lisp orgtbl-to-generic orgtbl-to-csv orgtbl-to-tsv orgtbl-to-latex orgtbl-to-html orgtbl-to-orgtbl orgtbl-to-unicode org-list-to-generic org-list-to-lisp org-list-to-org org-list-to-html org-list-to-latex org-list-to-subtree',
   },
   {
     id: 'calendar', title: 'Calendar, diary and holiday functions',

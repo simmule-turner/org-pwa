@@ -4,6 +4,7 @@
 import { createZip } from '../src/zip-writer.js';
 import { tangleDocument } from '../src/tangle.js';
 import { S } from './app-state.js';
+import { syncBabelOptions } from './babel-options-sync.js';
 import { suggestedSaveAsName } from './documents-io.js';
 import { setStatus } from './editing.js';
 import { saveOut } from './save-out.js';
@@ -12,6 +13,7 @@ import { saveOut } from './save-out.js';
 const baseOf = (path) => String(path).split('/').pop() || '';
 
 export function tangleCurrentDocument() {
+  syncBabelOptions();
   const documentName = baseOf(suggestedSaveAsName('untitled.org')).replace(/(\.org)?$/, '.org');
   let result;
   try {

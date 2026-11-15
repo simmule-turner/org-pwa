@@ -18,6 +18,7 @@ import { parseElements } from './org-elements.js';
 import { serializeOrg } from './org-parser.js';
 import { resolveTodoSequences } from './todo-cycle.js';
 import { getProperty } from './archive-model.js';
+import { fileCategory } from './file-category.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -242,7 +243,7 @@ function isBlocked(h, ancestors, c) {
 function categoryOf(chain, c) {
   for (let i = chain.length - 1; i >= 0; i--) {
     const v = getProperty(chain[i], 'CATEGORY');
-    if (v !== undefined && v !== '') return v;
+    if (v !== undefined) return v;
   }
   return c.category;
 }
@@ -411,7 +412,7 @@ export function exportOrgIcalendar(docs, options = {}) {
     const sequences = resolveTodoSequences(doc);
     const done = new Set(sequences.flatMap((q) => q.doneKeywords));
     const keep = buildFilter(/** @type {Parameters<typeof buildFilter>[0]} */ (/** @type {unknown} */ ({ doc: filterDoc, options: { comments: false, tasks: true }, doneKeywords: [...done] })));
-    const category = [...serializeOrg(doc).matchAll(/^[ \t]*#\+CATEGORY:[ \t]*(.*)$/gim)].map((m) => m[1].trim()).at(-1) || nameOf.replace(/\.[^./]*$/, '');
+    const category = fileCategory(doc, nameOf.replace(/\.[^./]*$/, ''));
     const ctx = {
       doc, name: nameOf, documentId, settings, stamp, category, done, uids: new Set(), keep, stripped,
       priorityHighest: options.priorityHighest ?? 65, priorityLowest: options.priorityLowest ?? 67,

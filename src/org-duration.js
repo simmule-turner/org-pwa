@@ -85,13 +85,54 @@ function parseDurationUnits(text) {
 }
 
 /**
- * Takes org-duration-units from the Global Variables; Emacs's default when it is unset. A value that cannot be used is a
+ * @typedef {{ k: 'unit', unit: string, required: boolean } | { k: 'special', value: import('./lisp-read.js').Lisp } | { k: 'compact' } | { k: 'other', shown: string }} FormatEntry
+ * @typedef {'h:mm' | 'h:mm:ss' | FormatEntry[] | null} DurationFormat  org-duration-format: a symbol, a list of entries, or nil (an error when used)
+ */
+
+/** The cdr of a list form. @param {import('./lisp-read.js').Lisp} f @returns {import('./lisp-read.js').Lisp} */
+const cdrOf = (f) => (f.k === 'list' && f.items.length ? (f.items.length > 1 ? { k: 'list', items: f.items.slice(1), ...(f.tail ? { tail: f.tail } : {}) } : (f.tail ?? { k: 'list', items: [] })) : { k: 'list', items: [] });
+
+/**
+ * The value of org-duration-format: `h:mm`, `h:mm:ss` or a list such as (("d") ("h" . t) (special . h:mm) compact), as Emacs reads it. What
+ * is no entry of the kinds Emacs knows is kept and is an error when a duration is formatted.
+ * @param {string} text
+ * @returns {DurationFormat}
+ */
+function parseDurationFormat(text) {
+  const source = String(text == null ? '' : text);
+  const syntax = lispSyntaxError(source);
+  if (syntax) throw new VariableValueError('org-duration-format', source, 'a list', `org-duration-format: ${syntax}`);
+  const forms = readLisp(source);
+  if (forms.length !== 1) throw new VariableValueError('org-duration-format', source, 'h:mm, h:mm:ss or a list of units', `org-duration-format: Wrong type argument: listp, ${source.trim() || 'nil'}`);
+  const data = datum(forms[0]) || forms[0];
+  if (data.k === 'sym' && (data.v === 'h:mm' || data.v === 'h:mm:ss')) return data.v;
+  const rows = isNil(data) ? null : listItems(data);
+  if (!rows) return null;
+  return rows.map((row) => {
+    if (row.k === 'sym' && row.v === 'compact') return { k: 'compact' };
+    const car = row.k === 'list' ? row.items[0] : undefined;
+    if (car && car.k === 'sym' && car.v === 'special') return { k: 'special', value: cdrOf(row) };
+    const name = car ? stringValue(car) : null;
+    if (name !== null) return { k: 'unit', unit: name, required: !isNil(cdrOf(row)) };
+    return { k: 'other', shown: shownRow(row) };
+  });
+}
+
+/** org-duration-format as Emacs ships it. @type {DurationFormat} */
+const DEFAULT_FORMAT = [{ k: 'unit', unit: 'd', required: false }, { k: 'special', value: { k: 'sym', v: 'h:mm' } }];
+/** The format in force; changed by org-duration-format (applyDurationVariables). */
+const format = { current: /** @type {DurationFormat} */ (DEFAULT_FORMAT) };
+
+/**
+ * Takes org-duration-units and org-duration-format from the Global Variables; Emacs's default when unset. A value that cannot be used is a
  * VariableValueError and the units stay as they were.
  * @param {Record<string, string> | undefined} vars
  */
 function applyDurationVariables(vars) {
   const raw = vars && vars['org-duration-units'];
   current.table = unitTable(raw === undefined || String(raw).trim() === '' ? DEFAULT_UNITS : parseDurationUnits(raw));
+  const shape = vars && vars['org-duration-format'];
+  format.current = shape === undefined || String(shape).trim() === '' ? DEFAULT_FORMAT : parseDurationFormat(shape);
 }
 
 const BARE_NUMBER_RE = /^\d+(?:\.\d*)?$/;
@@ -144,20 +185,85 @@ function durationHmmOnly(times) {
   return seconds ? 'h:mm:ss' : 'h:mm';
 }
 
-/**
- * org-duration-from-minutes with the default org-duration-format `(("d" . nil) (special . h:mm))`: "H:MM", and with whole days
- * "1d 2:00". `mode` (from durationHmmOnly) forces plain H:MM or H:MM:SS.
- * @param {number} minutes @param {'h:mm' | 'h:mm:ss' | null} [mode]
- * @returns {string}
- */
-function durationFromMinutes(minutes, mode = null) {
-  const hmm = (/** @type {number} */ m) => `${Math.trunc(m / 60)}:${String(Math.trunc(((m % 60) + 60) % 60)).padStart(2, '0')}`;
-  if (mode === 'h:mm:ss') return `${hmm(Math.floor(minutes))}:${String(Math.trunc(((minutes * 60) % 60 + 60) % 60)).padStart(2, '0')}`;
-  if (mode === 'h:mm') return hmm(minutes);
-  const day = /** @type {number} */ (current.table.minutes.get('d')) || 1440;
-  if (minutes < day) return hmm(minutes);
-  const days = Math.floor(minutes / day);
-  return `${days}d ${hmm(minutes - days * day)}`;
+/** org-duration-canonical-units. */
+const CANONICAL_UNITS = new Map(DEFAULT_UNITS.slice(0, 3));
+
+/** org-duration--modifier: the minutes of a unit, in org-duration-units or (`canonical`) Org's own units. @param {unknown} unit @param {boolean} [canonical] @returns {number} */
+function modifier(unit, canonical = false) {
+  const found = typeof unit === 'string' ? (canonical ? CANONICAL_UNITS : current.table.minutes).get(unit) : undefined;
+  if (found === undefined) throw new Error(`Unknown unit: ${typeof unit === 'string' ? JSON.stringify(unit) : String(unit)}`);
+  return found;
 }
 
-export { parseOrgDuration, parseDurationUnits, applyDurationVariables, durationHmmOnly, durationFromMinutes };
+/** `%.Nf` of a number: ties round to the even digit, as C's printf does. @param {number} x @param {number} digits */
+const printfFixed = (x, digits) => {
+  const exact = Math.abs(x).toFixed(Math.min(100, digits + 60)); // the exact decimal expansion
+  const cut = exact.length - 60;
+  if (/^50*$/.test(exact.slice(cut))) {
+    const kept = exact.slice(0, cut).replace(/\.$/, '');
+    const last = Number(kept[kept.length - 1]);
+    if (last % 2 === 0) return `${x < 0 ? '-' : ''}${kept}`;
+  }
+  return x.toFixed(digits);
+};
+
+/** `%d` of a number. @param {number} n */
+const dnum = (n) => String(Math.trunc(n));
+
+/**
+ * org-duration-from-minutes: `minutes` as `fmt` (h:mm, h:mm:ss or entries, as org-duration-format has them; the variable when
+ * undefined). `canonical` uses Org's own units, not org-duration-units. Errors as Emacs's do.
+ * @param {number} minutes @param {DurationFormat | undefined} [fmt] @param {boolean} [canonical]
+ * @returns {string}
+ */
+function durationFromMinutes(minutes, fmt, canonical = false) {
+  const shape = fmt === undefined ? format.current : fmt;
+  if (shape === 'h:mm') return `${dnum(minutes / 60)}:${String(Math.trunc(((minutes % 60) + 60) % 60)).padStart(2, '0')}`;
+  if (shape === 'h:mm:ss') return `${durationFromMinutes(Math.floor(minutes), 'h:mm')}:${String(Math.trunc((((minutes * 60) % 60) + 60) % 60)).padStart(2, '0')}`;
+  if (shape === null) throw new Error(`Invalid duration format specification: ${fmt === undefined ? 'nil' : 'nil'}`);
+  const special = shape.find((e) => e.k === 'special');
+  const mode = special && special.k === 'special' && special.value.k === 'sym' && (special.value.v === 'h:mm' || special.value.v === 'h:mm:ss') ? special.value.v : null;
+  if (mode) {
+    const truncated = shape.filter((e) => e.k === 'unit' && modifier(e.unit, canonical) > 60);
+    const minModifier = truncated.length ? Math.min(...truncated.map((e) => modifier(/** @type {{ unit: string }} */ (e).unit, canonical))) : null;
+    if (minModifier === null || minutes < minModifier) return durationFromMinutes(minutes, mode, canonical);
+    const unitsPart = minModifier * Math.trunc(Math.floor(minutes) / minModifier);
+    const minutesPart = minutes - unitsPart;
+    const compact = shape.some((e) => e.k === 'compact');
+    return durationFromMinutes(unitsPart, truncated, canonical) + (compact ? '' : ' ') + durationFromMinutes(minutesPart, mode, canonical);
+  }
+  const digitsEntry = special && special.k === 'special' ? special.value : null;
+  let fractional = null;
+  if (digitsEntry && !isNil(digitsEntry)) {
+    if (digitsEntry.k !== 'num' || !Number.isInteger(digitsEntry.v) || digitsEntry.v < 0) throw new Error(`Unknown formatting directive: ${shownRow(digitsEntry)}`);
+    fractional = digitsEntry.v;
+  }
+  const pairs = shape.filter((e) => e.k !== 'compact' && e.k !== 'special');
+  const selected = pairs.map((e) => ({ unit: e.k === 'unit' ? e.unit : null, required: e.k === 'unit' && e.required, shown: e.k === 'other' ? e.shown : '' }));
+  for (const e of selected) modifier(e.unit ?? e.shown, canonical);
+  selected.sort((a, b) => modifier(b.unit, canonical) - modifier(a.unit, canonical));
+  const separator = shape.some((e) => e.k === 'compact') ? '' : ' ';
+  if (fractional !== null) {
+    const picked = selected.find((e) => e.required || modifier(e.unit, canonical) <= minutes) ?? selected[selected.length - 1];
+    const unit = /** @type {string} */ (picked && picked.unit);
+    return `${printfFixed(minutes / modifier(unit, canonical), fractional)}${unit}`;
+  }
+  let left = minutes;
+  const built = selected
+    .map((e) => {
+      const m = modifier(e.unit, canonical);
+      if (m <= left) {
+        const value = Math.floor(left / m);
+        left -= value * m;
+        return `${separator}${value}${e.unit}`;
+      }
+      return e.required ? `${separator}0${e.unit}` : '';
+    })
+    .join('')
+    .replace(/^[ \t\n\r]+|[ \t\n\r]+$/g, '');
+  if (built !== '') return built;
+  const last = selected[selected.length - 1];
+  return `0${last ? last.unit : ''}`;
+}
+
+export { parseOrgDuration, parseDurationUnits, parseDurationFormat, applyDurationVariables, durationHmmOnly, durationFromMinutes };

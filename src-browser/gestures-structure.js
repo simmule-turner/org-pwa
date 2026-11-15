@@ -104,8 +104,7 @@ export function attachSlideRightToComplete(el, heading, opts = {}) {
     const sequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
     const hasActiveTodo = heading.todo !== null && !isDoneKeyword(heading.todo, sequence) && sequence.doneKeywords.length > 0;
     if (hasActiveTodo) {
-      applyTodoTransition(heading, () => setTodoState(heading, sequence.doneKeywords[0], sequence));
-      onDone();
+      if (applyTodoTransition(heading, () => setTodoState(heading, sequence.doneKeywords[0], sequence))) onDone();
     } else {
       openArchiveRefilePanel(heading);
     }

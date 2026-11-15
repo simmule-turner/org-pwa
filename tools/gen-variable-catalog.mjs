@@ -9,8 +9,8 @@ const NAMES = `org-agenda-category-filter-preset org-agenda-cmp-user-defined org
 org-agenda-prefix-format org-agenda-regexp-filter-preset org-agenda-search-view-always-boolean org-agenda-search-view-force-full-words
 org-agenda-search-view-max-outline-level org-agenda-tag-filter-preset calendar-bahai-all-holidays-flag calendar-christian-all-holidays-flag
 calendar-hebrew-all-holidays-flag calendar-islamic-all-holidays-flag diary-hebrew-sabbath-candles-minutes diary-include-string
-diary-nonmarking-symbol diary-sexp-entry-symbol org-log-into-drawer org-log-repeat org-clock-idle-time org-clock-sound
-org-duration-units org-priority-get-priority-function buffer-read-only
+diary-nonmarking-symbol diary-sexp-entry-symbol org-log-into-drawer org-log-repeat org-todo-repeat-to-state org-archive-location org-archive-reversed-order org-archive-mark-done org-archive-save-context-info org-archive-subtree-add-inherited-tags org-archive-file-header-format org-archive-sibling-heading org-archive-tag org-datetree-add-timestamp org-enforce-todo-dependencies org-enforce-todo-checkbox-dependencies org-clock-idle-time org-clock-sound
+org-duration-units org-duration-format org-priority-get-priority-function buffer-read-only
 org-agenda-clock-consistency-checks org-agenda-include-inactive-timestamps org-agenda-log-mode-add-notes org-agenda-log-mode-items
 org-agenda-prefer-last-repeat org-agenda-skip-additional-timestamps-same-entry org-agenda-skip-deadline-prewarning-if-scheduled
 org-agenda-skip-function org-agenda-skip-function-global org-agenda-skip-scheduled-delay-if-deadline
@@ -25,10 +25,10 @@ org-agenda-skip-archived-trees org-agenda-skip-comment-trees org-agenda-remove-t
 org-cite-basic-sorting-field org-cite-basic-author-year-separator org-footnote-section org-footnote-auto-label org-footnote-auto-adjust
 org-footnote-define-inline org-tags-exclude-from-inheritance org-agenda-show-inherited-tags org-agenda-use-tag-inheritance
 org-use-property-inheritance org-refile-allow-creating-parent-nodes org-priority-start-cycle-with-default org-priority-faces
-org-priority-default org-table-duration-hour-zero-padding org-table-formula-create-columns org-export-with-broken-links org-html-doctype org-html-checkbox-type org-html-preamble-format org-html-postamble-format org-html-validation-link
+org-priority-default org-table-duration-hour-zero-padding org-export-with-broken-links org-export-headline-levels org-export-preserve-breaks org-export-with-section-numbers org-export-time-stamp-file org-export-with-archived-trees org-export-with-author org-export-with-clocks org-export-with-creator org-export-with-date org-export-with-drawers org-export-with-email org-export-with-emphasize org-export-with-entities org-export-with-fixed-width org-export-with-footnotes org-export-with-inlinetasks org-export-with-latex org-export-with-planning org-export-with-priority org-export-with-properties org-export-with-smart-quotes org-export-with-special-strings org-export-with-statistics-cookies org-export-with-sub-superscripts org-export-with-toc org-export-with-tables org-export-with-tags org-export-with-tasks org-export-with-timestamps org-export-with-title org-export-with-todo-keywords org-export-global-macros org-export-snippet-translation-alist org-html-with-latex org-table-export-default-format org-html-doctype org-html-checkbox-type org-html-preamble-format org-html-postamble-format org-html-validation-link
 org-icalendar-include-todo org-icalendar-use-scheduled org-icalendar-use-deadline org-icalendar-with-timestamps org-icalendar-alarm-time
 org-agenda-sorting-strategy org-agenda-custom-commands org-modules org-inlinetask-min-level org-global-properties
-org-columns-default-format org-columns-ellipses org-timer-format org-timer-default-timer org-timer-display org-crypt-key org-crypt-tag-matcher org-crypt-disable-auto-save before-save-hook diary-list-entries-hook diary-nongregorian-listing-hook diary-date-forms display-time-format large-file-warning-threshold`.split(/\s+/);
+org-columns-default-format org-columns-ellipses org-columns-summary-types org-columns-modify-value-for-display-function org-timer-format org-timer-default-timer org-timer-display org-crypt-key org-crypt-tag-matcher org-crypt-disable-auto-save before-save-hook diary-list-entries-hook diary-nongregorian-listing-hook diary-date-forms display-time-format large-file-warning-threshold org-babel-min-lines-for-block-output org-babel-inline-result-wrap org-babel-results-keyword org-babel-uppercase-example-markers org-coderef-label-format org-confirm-babel-evaluate`.split(/\s+/);
 
 // Where this app's default is not Emacs's: the default as the app has it, and what the description says about it.
 const APP_DEFAULTS = {
@@ -59,7 +59,7 @@ const DOC_OVERRIDES = {
   'org-icalendar-timezone': 'The time zone string for iCalendar export (the system zone by default).',
 };
 
-const el = `(progn (require 'org) (require 'org-inlinetask) (require 'org-crypt) (require 'org-timer) (require 'org-footnote) (require 'oc) (require 'oc-basic) (require 'ox-html) (require 'org-table) (require 'org-agenda) (require 'org-clock) (require 'org-duration) (require 'ox-icalendar) (require 'diary-lib) (require 'holidays) (require 'cal-hebrew) (require 'cal-islam) (require 'cal-bahai) (require 'time)
+const el = `(progn (require 'org) (require 'org-inlinetask) (require 'org-crypt) (require 'org-timer) (require 'org-colview) (require 'org-footnote) (require 'oc) (require 'oc-basic) (require 'ox-html) (require 'org-table) (require 'org-agenda) (require 'org-clock) (require 'org-archive) (require 'org-datetree) (require 'org-duration) (require 'ox-icalendar) (require 'diary-lib) (require 'holidays) (require 'cal-hebrew) (require 'cal-islam) (require 'cal-bahai) (require 'time)
 (let ((print-length 40) (print-level 6))
  (dolist (v '(${NAMES.join(' ')}))
   (princ (format "%s\\t%s\\t%s\\n" v (if (boundp v) (replace-regexp-in-string "[\\n\\t]+" " " (prin1-to-string (default-value v))) "?")

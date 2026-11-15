@@ -1372,6 +1372,92 @@ check('details editor: five tabs, a dot on each tab that was edited, a footer no
   await context.close();
 });
 
+check('details editor: the date steppers come after the other fields and move the date by a day, a week or a month as Emacs does', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Alpha\nSCHEDULED: <2026-11-30 Mon>\n');
+  await page.locator('.heading-title', { hasText: 'Alpha' }).first().click();
+  await page.locator('[aria-label="Edit details (scheduled/deadline, tags, priority, properties)"]').first().click();
+  await page.waitForSelector('[data-details-tab="dates"]');
+  const grid = page.locator('[data-timestamp-shift]').first();
+  const labels = await grid.locator('button').allInnerTexts();
+  expect(labels.join(',') === '+1 day,-1 day,+1 week,-1 week,+1 month,-1 month', `steppers: ${labels}`);
+  const lastInGroup = await grid.evaluate((el) => el.parentElement.parentElement.lastElementChild === el.parentElement);
+  expect(lastInGroup, 'the steppers are the last row of the group, after the existing fields');
+  const date = () => page.locator('input[type=date]').first().inputValue();
+  await grid.getByText('+1 day', { exact: true }).click();
+  expect((await date()) === '2026-12-01', `+1 day: ${await date()}`);
+  await grid.getByText('-1 week', { exact: true }).click();
+  expect((await date()) === '2026-11-24', `-1 week: ${await date()}`);
+  await grid.getByText('+1 month', { exact: true }).click();
+  expect((await date()) === '2026-12-24', `+1 month: ${await date()}`);
+  await page.getByText('OK', { exact: true }).last().click();
+  await page.waitForTimeout(500);
+  const text = await documentText(page);
+  expect(text.includes('SCHEDULED: <2026-12-24 Thu>'), `saved: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-lint buffer: h hides a checker, S sorts, g makes the reports again, i ignores a checker, Enter goes to the reported line', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, ['* A', ':PROPERTIES:', ':CUSTOM_ID: x', ':END:', '* B', ':PROPERTIES:', ':CUSTOM_ID: x', ':END:', '#+NAME: n', 'one', '', '#+NAME: n', 'two', ''].join('\n'));
+  await runCommand(page, 'Check for syntax mistakes (org-lint)');
+  await page.waitForSelector('#lint-tools');
+  const box = page.locator('#document-text-edit-input');
+  const text = () => box.inputValue();
+  const goTo = (needle) => box.evaluate((t, n) => { t.focus(); const at = t.value.indexOf(n); t.setSelectionRange(at, at); }, needle);
+  const first = await text();
+  expect(first.startsWith('  Line Trust Warning'), `the report text: ${JSON.stringify(first)}`);
+  expect(first.includes('Duplicate CUSTOM_ID') && first.includes('Duplicate NAME'), `two checkers report: ${JSON.stringify(first)}`);
+  const buttons = await page.locator('#lint-tools button').allInnerTexts();
+  expect(buttons.join(',') === 'Jump,Hide,Ignore,Sort,Refresh', `tools: ${buttons}`);
+  await goTo('Duplicate CUSTOM_ID');
+  await page.keyboard.press('h');
+  expect(!(await text()).includes('Duplicate CUSTOM_ID') && (await text()).includes('Duplicate NAME'), `h hides the checker of the report: ${JSON.stringify(await text())}`);
+  await page.getByText('Refresh', { exact: true }).click();
+  expect((await text()).includes('Duplicate CUSTOM_ID'), 'g brings the hidden reports back');
+  await goTo('Duplicate CUSTOM_ID');
+  await page.keyboard.press('i');
+  await page.getByText('Refresh', { exact: true }).click();
+  expect(!(await text()).includes('Duplicate CUSTOM_ID') && (await text()).includes('Duplicate NAME'), 'an ignored checker stays out of a refresh');
+  await goTo('Duplicate NAME');
+  await box.evaluate((t) => { const at = t.value.indexOf('Duplicate NAME'); t.setSelectionRange(at, at); });
+  await page.keyboard.press('S');
+  expect((await page.locator('#status').innerText()).includes('Sorted by Warning'), `S sorts by the column: ${await page.locator('#status').innerText()}`);
+  await goTo('Duplicate NAME');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  const picked = await box.evaluate((t) => t.value.slice(t.selectionStart, t.selectionEnd));
+  expect(picked === '#+NAME: n', `Enter goes to the reported line of the document: ${JSON.stringify(picked)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('org-lint prefix argument: C-u asks for a category, C-u C-u for one checker, and only those run', async () => {
+  const { context, page, errors } = await freshPage();
+  const source = ['* A', ':PROPERTIES:', ':CUSTOM_ID: x', ':END:', '* B', ':PROPERTIES:', ':CUSTOM_ID: x', ':END:', '#+NAME: n', 'one', '', '#+NAME: n', 'two', ''].join('\n');
+  await newDocument(page, source);
+  await runCommand(page, 'Check for syntax mistakes in one category');
+  await page.waitForSelector('#minibufferPrompt');
+  expect((await page.locator('#minibufferPrompt label').innerText()).startsWith('Checker category'), 'the minibuffer asks for the category');
+  await page.keyboard.type('link');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#lint-tools');
+  const text = await page.locator('#document-text-edit-input').inputValue();
+  expect(text.includes('Duplicate CUSTOM_ID') && !text.includes('Duplicate NAME'), `only the checkers of the category run (duplicate-name is not in "link" in Emacs): ${JSON.stringify(text)}`);
+  await fileMenu(page, 'New');
+  await newDocument(page, source);
+  await runCommand(page, 'Check for syntax mistakes with one checker');
+  await page.waitForSelector('#minibufferPrompt');
+  await page.keyboard.type('duplicate-name');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#lint-tools');
+  const one = await page.locator('#document-text-edit-input').inputValue();
+  expect(one.includes('Duplicate NAME') && !one.includes('Duplicate CUSTOM_ID'), `one checker runs: ${JSON.stringify(one)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('capture: a heading a target function makes before a heading of another level is drawn under its parent at once', async () => {
   const { page, errors } = await freshPage();
   await newDocument(page, '* Journal\n** Old\n* Bag\n');
@@ -4474,7 +4560,7 @@ check('a file+olp target stops at a missing heading as Emacs does and files noth
   await context.close();
 });
 
-check(':time-prompt t on a date-tree template asks for the date and time, files the capture for them, and does not capture when they are not understood', async () => {
+check(':time-prompt t on a date-tree template asks for the date and time and files the capture for them', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* Other\n');
   await setCaptureInit(page, `(setq org-capture-templates
@@ -4482,12 +4568,7 @@ check(':time-prompt t on a date-tree template asks for the date and time, files 
     ("e" "Elsewhere" entry (file+olp "" "Other") "* Plain %?" :time-prompt t)))`);
   await runCapture(page, 'day');
   await page.waitForSelector('[data-capture-time]');
-  await page.locator('[data-capture-time]').fill('not a date');
   await page.locator('#capturePanel input').nth(1).fill('Dentist');
-  await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
-  await page.waitForTimeout(300);
-  expect((await page.locator('#status').innerText()).includes('not understood'), `a date that is not understood says so: ${await page.locator('#status').innerText()}`);
-  expect((await page.locator('[data-capture-time]').count()) === 1, 'and the form stays');
   await page.locator('[data-capture-time]').fill('2026-03-05 9:15');
   await page.locator('#capturePanel button', { hasText: 'OK' }).first().click();
   await page.waitForTimeout(500);
@@ -10317,6 +10398,54 @@ check('org-timer: the timer shows in the modeline, pauses, stops, and a countdow
   await page.waitForFunction(() => /<0:00:0[12]>/.test(document.body.innerText), null, { timeout: 5000 });
   await page.waitForFunction(() => document.body.innerText.includes('time out'), null, { timeout: 8000 });
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('info reader: add a split compressed manual from the palette, then follow a menu entry and a cross reference, go to a node, search the index, go back, and open an info: link', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await newDocument(page, '* Notes\n[[info:zsplit#Tables][tables manual]] and [[info:nomanual#Top][missing manual]]\n');
+  const view = page.locator('#info-view');
+  await openPalette(page);
+  await page.keyboard.type('Info: add manuals');
+  await page.keyboard.press('Enter');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: /Choose files/ }).click()]);
+  const dir = path.join(ROOT, 'test/fixtures/info');
+  await chooser.setFiles(['zsplit.info-1.gz', 'zsplit.info-2.gz'].map((f) => path.join(dir, f)));
+  await page.waitForFunction(() => document.body.innerText.includes('incomplete'), null, { timeout: 5000 });
+  expect((await page.locator('[data-bottom-sheet]').innerText()).includes('Add zsplit.info'), 'parts without their main file are incomplete and say what to add');
+  const [again] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: /Choose files/ }).click()]);
+  await again.setFiles([path.join(dir, 'zsplit.info.gz')]);
+  await page.getByRole('button', { name: 'Add 1 manual', exact: true }).click();
+  await runCommand(page, 'Info: directory');
+  await view.waitFor({ timeout: 5000 });
+  expect((await view.innerText()).includes('Info directory'), 'the directory opens');
+  await view.locator('button', { hasText: 'A small manual for the Info reader tests' }).click();
+  expect((await view.innerText()).includes('(zsplit.info)Top'), 'the Top node of the added manual opens');
+  await view.getByRole('link', { name: 'Tables', exact: true }).first().click();
+  expect((await view.innerText()).includes('Tables'), 'a menu entry opens its node');
+  await page.keyboard.press('u');
+  await page.keyboard.press('f');
+  await page.locator('[data-bottom-sheet]').getByRole('button', { name: 'Sorting', exact: true }).click();
+  expect((await view.innerText()).includes('Sorting'), 'a cross reference opens its node');
+  await page.keyboard.press('g');
+  await page.keyboard.type('Lisp functions');
+  await page.keyboard.press('Enter');
+  expect((await view.innerText()).includes('Lisp functions'), 'go to node reaches the node');
+  await page.keyboard.press('i');
+  await view.getByLabel('Index topic').fill('sorting');
+  await view.getByRole('button', { name: /Sorting/ }).first().click();
+  expect((await view.innerText()).includes('Sorting'), 'an index entry goes to its node');
+  await page.keyboard.press('l');
+  expect((await view.innerText()).includes('Lisp functions'), 'back returns to the node before');
+  await page.keyboard.press('q');
+  expect((await page.locator('#info-view').count()) === 0, 'q closes the reader');
+  await page.locator('#outline a', { hasText: 'tables manual' }).first().click();
+  await view.waitFor({ timeout: 5000 });
+  expect((await view.innerText()).includes('(zsplit.info)Top > Tables'), 'an info: link opens the reader at its node');
+  await page.keyboard.press('q');
+  await page.locator('#outline a', { hasText: 'missing manual' }).first().click();
+  await page.waitForFunction(() => document.body.innerText.includes('is not on this device'), null, { timeout: 5000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
 

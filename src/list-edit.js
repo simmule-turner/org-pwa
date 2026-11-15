@@ -14,7 +14,7 @@ const ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])(?:([ \t]+)|$)/;
 /** @typedef {{ line: number, indent: number, bullet: string, parent: number, end: number }} ListItemInfo */
 
 /** @param {string} line @returns {number} */
-function indentWidth(line) {
+export function indentWidth(line) {
   let w = 0;
   for (const ch of line) {
     if (ch === ' ') w += 1;
@@ -105,6 +105,59 @@ export function findLists(lines, inBlocks = false) {
     i = Math.max(end, i + 1);
   }
   return lists;
+}
+
+/**
+ * The items of the list that starts on line `start`, as `org-element--list-struct` reads them (the structure org-element builds the
+ * plain-list and item elements from): each item with its indentation and `end`, the line where it stops (the next item that is not
+ * deeper, a text line that is not deeper, the first of two blank lines, or `limit`); a block or drawer opened by an indented text
+ * line is skipped whole.  Ends before blank lines are those of the last text line.
+ * @param {string[]} lines @param {number} start @param {number} [limit] first line the list cannot reach
+ * @returns {{ line: number, ind: number, end: number }[]}
+ */
+export function elementListStruct(lines, start, limit = lines.length) {
+  /** @type {{ line: number, ind: number, end: number }[]} */ const open = [];
+  /** @type {{ line: number, ind: number, end: number }[]} */ const done = [];
+  const afterText = (/** @type {number} */ at) => {
+    let k = at;
+    while (k > start && lines[k - 1].trim() === '') k -= 1;
+    return k;
+  };
+  const finish = (/** @type {number} */ end) => {
+    for (const it of open) { it.end = end; done.push(it); }
+    return done.sort((a, b) => a.line - b.line);
+  };
+  let i = start;
+  for (;;) {
+    if (i >= limit) return finish(afterText(Math.min(limit, lines.length)));
+    const line = lines[i];
+    if (line.trim() === '' && i + 1 < limit && lines[i + 1].trim() === '') return finish(i);
+    if (isItemLine(line)) {
+      const ind = indentWidth(line);
+      while (open.length && ind <= open[open.length - 1].ind) {
+        const it = /** @type {{ line: number, ind: number, end: number }} */ (open.pop());
+        it.end = i;
+        done.push(it);
+      }
+      open.push({ line: i, ind, end: -1 });
+      i += 1;
+    } else if (line.trim() === '') i += 1;
+    else {
+      const ind = indentWidth(line);
+      const end = afterText(i);
+      while (open.length && ind <= open[open.length - 1].ind) {
+        const it = /** @type {{ line: number, ind: number, end: number }} */ (open.pop());
+        it.end = end;
+        done.push(it);
+      }
+      if (!open.length) return done.sort((a, b) => a.line - b.line);
+      const block = /^[ \t]*#\+begin(:|_\S+)/i.exec(line);
+      let skip = -1;
+      if (block) skip = lines.findIndex((l, n) => n > i && n < limit && new RegExp('^[ \\t]*#\\+end' + block[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[ \\t]*$', 'i').test(l));
+      else if (/^[ \t]*:[\p{L}\p{N}_-]+:[ \t]*$/u.test(line) && !/^[ \t]*:end:[ \t]*$/i.test(line)) skip = lines.findIndex((l, n) => n > i && n < limit && /^[ \t]*:END:[ \t]*$/i.test(l));
+      i = skip > i ? skip + 1 : i + 1;
+    }
+  }
 }
 
 /** The list that has an item on `line`, and that item's index in it.

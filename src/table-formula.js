@@ -90,9 +90,10 @@ import './calc-solve.js'; // registers solve, fsolve and expand with the symboli
 import './calc-deriv.js'; // registers deriv and tderiv
 import './calc-prfac.js'; // registers prfac
 import { formatTimeString } from './format-time.js';
+import { flatBodyNodes } from './body-parser.js';
 import { run as runLisp } from './elisp.js';
-import { defun as defineLispFunction, funcall as callLisp } from './elisp-core.js';
-import { Flt, print as printLisp, wrongType, NIL, Cons, equal as lispEqual, list as lispList } from './elisp-data.js';
+import { defun as defineLispFunction, defSpecial, funcall as callLisp } from './elisp-core.js';
+import { Flt, print as printLisp, wrongType, NIL, Cons, equal as lispEqual, list as lispList, signal } from './elisp-data.js';
 import { floatToString } from './elisp-data.js';
 import {
   isVector, makeVector, parseVectorCell, flattenVector, vNeg, vBinop, vEquals, vDet, vInv, vTrn, vTrace, vCross, vLength, vAbs, formatCalcValue,
@@ -1571,6 +1572,21 @@ function evaluateMathjsScalarCall(name, argValues, ctx) {
   }
 }
 
+// ---- org-sbe (see src/babel-sbe.js): a named source block called from a '(...) formula ----------------------------------------------
+
+/** @type {((args: import('./elisp-data.js').LObj) => string) | null} */
+let sbeHandler = null;
+
+/** Sets what `(org-sbe ...)` does in a formula: the app gives it the document whose blocks are called. @param {((args: import('./elisp-data.js').LObj) => string) | null} handler */
+export function setSbeHandler(handler) {
+  sbeHandler = handler;
+}
+
+defSpecial('org-sbe', (args) => {
+  if (!sbeHandler) throw signal('error', ['org-sbe: no source blocks to call here']);
+  return sbeHandler(args);
+}, 1);
+
 // ---- complex support (see calc-complex.js) -----------------------------------------------------------------------
 
 /**
@@ -2145,12 +2161,12 @@ export function parseNamedTables(doc) {
   const visit = (nodes) => {
     for (const node of nodes || []) {
       if (node.type === 'table' && node.name && !tables.has(node.name)) tables.set(node.name, node.rows);
-      if (node.type === 'heading') { visit(node.body); visit(node.children); }
+      if (node.type === 'heading') { visit(flatBodyNodes(node.body)); visit(node.children); }
     }
   };
-  visit(doc.body);
+  visit(flatBodyNodes(doc.body));
   // before the first heading the parser takes the #+NAME: lines out of the text and keeps the line they stood before
-  for (const node of doc.body || []) {
+  for (const node of flatBodyNodes(doc.body)) {
     if (node.type !== 'table' || node.name) continue;
     const kw = (doc.keywords || []).find((k) => k.key.toUpperCase() === 'NAME' && k.bodyLineIndex === node.lineIndex);
     if (kw && !tables.has(kw.value.trim())) tables.set(kw.value.trim(), node.rows);

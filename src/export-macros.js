@@ -187,4 +187,4 @@ function expandMacrosForExport(doc, scope, now, file = null) {
   return { doc: expanded, scope: counterpart(doc.children || [], expanded.children || []) || scope };
 }
 
-export { expandMacros, expandMacrosForExport, buildMacroTable, splitMacroArgs };
+export { expandMacros, expandMacrosForExport, buildMacroTable, splitMacroArgs, PROTECTED_RE, MACRO_FREE_BLOCK_RE };

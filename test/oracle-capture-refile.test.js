@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import { removeHeading } from '../src/heading-edit.js';
-import { appendRefiled, archiveInPlace, buildArchivedClone, endsDocument, getArchiveLocation, insertAtArchiveLocation, isArchivedInPlace, parseArchiveLocation, resolveArchiveFileId, unarchiveInPlace } from '../src/archive-model.js';
+import { appendRefiled, archiveInPlace, getArchiveLocation, isArchivedInPlace, parseArchiveLocation, resolveArchiveFileId, unarchiveInPlace } from '../src/archive-model.js';
+import { archiveSubtree, archiveToSibling } from '../src/archive-text.js';
+import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { collectSubtreeHeadings, getRefileCandidates, parseRefileTargetsWithErrors } from '../src/refile.js';
 import { fileCapture, resolveOlpTarget } from '../src/capture-template.js';
 import { KNOWN, knownFor } from './support/oracle-capture-refile-known.js';
@@ -51,17 +53,18 @@ function ourFiles(c) {
       if (doc === src && collectSubtreeHeadings(heading).has(target)) return 'ERROR Cannot refile to position inside the tree or region';
       removeHeading(src, heading);
       appendRefiled(doc, target, heading);
+    } else if (c.kind === 'archive-sibling') {
+      docs['notes.org'] = parseOrg(archiveToSibling(src, heading, { vars: c.vars || {}, now }));
     } else {
-      const { filePart, headlinePart } = parseArchiveLocation(getArchiveLocation(src, heading));
+      const { filePart } = parseArchiveLocation(getArchiveLocation(src, heading));
       const targetId = resolveArchiveFileId(filePart, DIR + '/notes.org');
       const infile = targetId === null || targetId === DIR + '/notes.org';
-      const clone = buildArchivedClone(src, heading, DIR + '/notes.org', { now, infile });
-      const tailRemoved = infile && endsDocument(src, heading);
-      removeHeading(src, heading);
       const name = targetId === null ? 'notes.org' : targetId.split('/').pop() || '';
-      const created = !(name in docs);
-      docs[name] ||= parseOrg('');
-      insertAtArchiveLocation(docs[name], clone, headlinePart, { sourceFileId: DIR + '/notes.org', targetFileId: targetId ?? DIR + '/notes.org', created, tailRemoved });
+      const created = !infile && !(name in docs);
+      const seq = resolveTodoSequence(src, { todoKeywords: ['TODO'], doneKeywords: ['DONE'] });
+      const done = archiveSubtree(src, heading, { srcPath: DIR + '/notes.org', infile, vars: c.vars || {}, now, doneKeywords: seq.doneKeywords, tgtDoc: infile ? null : docs[name] || null, newFile: created, tgtName: name });
+      docs['notes.org'] = parseOrg(done.srcText);
+      if (!infile) docs[name] = parseOrg(/** @type {string} */ (done.tgtText));
     }
     // the file layer ends a written file with a line break; the serializer leaves the last line as it is
     return Object.fromEntries(Object.entries(docs).map(([n, d]) => [n, endLine(serializeOrg(d))]));

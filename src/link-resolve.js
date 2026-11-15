@@ -1,7 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
-/** @typedef {{ type: 'external', url: string } | { type: 'heading', heading: Heading } | { type: 'id', id: string } | { type: 'attachment', target: string } | { type: 'help', name: string } | { type: 'file', scheme: string, path: string, inFileTarget: string | null, byId?: string } | { type: 'unresolved', target: string }} LinkResolution */
+/** @typedef {{ type: 'external', url: string } | { type: 'heading', heading: Heading } | { type: 'id', id: string } | { type: 'attachment', target: string } | { type: 'help', name: string } | { type: 'info', manual: string, node: string } | { type: 'file', scheme: string, path: string, inFileTarget: string | null, byId?: string } | { type: 'unresolved', target: string }} LinkResolution */
 /**
  * Resolves what an org link target actually points to, given a document.
  * Pure and DOM-free — the UI layer decides what to *do* with a resolution
@@ -38,8 +38,10 @@
 
 import { findAncestorPath, getProperty } from './archive-model.js';
 import { isSafeAttachmentName, ownAttachmentDirectory } from './attach.js';
+import { parseInfoLink } from './info-link.js';
 import { VariableValueError } from './variable-error.js';
 import { findDedicatedTargetHeading } from './targets.js';
+import { flatBodyNodes } from './body-parser.js';
 
 // Org's http:, https: and ftp: links, with or without the slashes; any other scheme:// is a text search, as in Org
 const EXTERNAL_URL_RE = /^(?:https?|ftp):/i;
@@ -517,16 +519,12 @@ export function findFootnoteDefinition(doc, label) {
         found = { heading, kind: 'inline-definition', node: item };
         return;
       }
-      for (const nestedList of item.children) {
-        if (found) return;
-        checkListItems(nestedList.items, heading);
-      }
     }
   }
 
   walkHeadings(doc, (/** @type {any} */ heading) => {
     if (found) return;
-    for (const node of heading.body) {
+    for (const node of flatBodyNodes(heading.body)) {
       if (found) return;
       if (node.type === 'paragraph') checkParagraph(node, heading);
       else if (node.type === 'list') checkListItems(node.items, heading);
@@ -582,6 +580,7 @@ export function resolveLinkTarget(doc, rawTarget) {
   const target = String(rawTarget); // blanks around it count, as in Org
 
   if (/^help:/i.test(target)) return { type: 'help', name: target.replace(/^help:/i, '').trim() }; // opens the app's Help
+  if (/^info:/i.test(target)) return { type: 'info', ...parseInfoLink(target.replace(/^info:/i, '')) }; // opens the Info reader
   if (isDoi(target)) {
     return { type: 'external', url: doiToUrl(target) };
   }

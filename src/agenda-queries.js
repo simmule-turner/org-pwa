@@ -36,7 +36,7 @@ function itemFor(hit, ofSearch) {
     samePriority: ofSearch || undefined,
     tags: heading.tags,
     title: heading.title,
-    category: hit.category || getCategoryForDocument(doc, documentId),
+    category: hit.category ?? getCategoryForDocument(doc, documentId),
   }));
 }
 

@@ -77,7 +77,7 @@
  * The body of a heading, as body-parser.js reads it. Each node says where it starts (`lineIndex`) and how many lines it spans
  * (`lineCount`) in the heading's `bodyLines`, which is what edits are written back to.
  * @typedef {{ type: 'paragraph', lines: string[], extractedLines: string[], inlineLines: InlineNode[][], footnoteLabel: string | null, lineIndex: number, lineCount: number }} Paragraph
- * @typedef {{ type: 'list-item', indent: number, marker: string, ordered: boolean, checkbox: string | null, startValue: number | null, tag: string | null, text: string, inline: InlineNode[], children: List[], lineIndex: number }} ListItem
+ * @typedef {{ type: 'list-item', indent: number, marker: string, ordered: boolean, checkbox: string | null, startValue: number | null, tag: string | null, text: string, inline: InlineNode[], children: List[], content: BodyNode[], lineIndex: number }} ListItem
  * @typedef {{ type: 'list', items: ListItem[] }} List
  * @typedef {{ type: 'table', rows: TableRow[], tblfm: string | null, lineIndex: number, lineCount: number, plot?: string, blankBeforeTblfm?: number, name?: string }} Table
  * @typedef {{ type: 'block', name: string, params: string, lines: string[], lineIndex: number, lineCount: number }} Block
@@ -167,7 +167,7 @@ export {};
  *   contactsFilesConfig: string[], searchExtraFilesConfig: string[], searchExtraFilesCacheLoadedFor: string | null, contactsFilesCacheLoadedFor: string | null,
  *   externalChangeCheckInFlight: boolean, externalChangeDismissedHash: string | null, externalChangeShownForHash: string | null, savedElsewherePending: boolean,
  *   paletteRecentIds: string[] | null,
- *   fileMenuOpen: boolean, moreMenuStep: string | null, fileScreen: any, settingsOpen: boolean, searchOpen: boolean,
+ *   fileMenuOpen: boolean, moreMenuStep: string | null, fileScreen: any, infoOpen: boolean, infoView: import('../src-browser/info-view.js').View | null, settingsOpen: boolean, searchOpen: boolean,
  *   confirmDialogOpen: boolean, captureOpen: boolean, captureInsertHere: boolean, extraMenuOpen: boolean, moreOpen: boolean, viewMenuOpen: boolean,
  *   timestampPickerOpen: boolean, textFieldPopupOpen: boolean, buttonChoiceModalOpen: boolean,
  *   exportFormat: string | null, exportPickingHeading: boolean, vcardStyle: string, exportVcardToNewBuffer: boolean,

@@ -38,6 +38,7 @@
 import { parseBody } from './body-parser.js';
 import { setupKeywords } from './setupfile.js';
 import { getTagsColumn, withTags } from './tags-column.js';
+import { getAdaptIndentation } from './indent-settings.js';
 
 const DEFAULT_TODO_KEYWORDS = ['TODO'];
 
@@ -453,6 +454,12 @@ function canonicalPropertyLine(key, value, indent = '') {
   return value === '' || value == null ? `${indent}:${key}:` : `${indent}${`:${key}:`.padEnd(10)} ${value}`;
 }
 
+/** The indentation a new planning line or drawer gets under `node`: the level plus one when org-adapt-indentation is set, else none. @param {Heading} node */
+const adaptedIndent = (node) => (getAdaptIndentation() === 'nil' ? '' : ' '.repeat(node.level + 1));
+
+/** The indentation a new drawer gets: that of the planning line above it when there is one (Org indents like the element before), else adaptedIndent. @param {Heading} node @param {string | null} planningLine */
+const drawerIndent = (node, planningLine) => (planningLine == null ? adaptedIndent(node) : leadingSpace(planningLine));
+
 /** @param {string} line */
 const leadingSpace = (line) => (/^\s*/.exec(line) || [''])[0];
 
@@ -460,12 +467,12 @@ const leadingSpace = (line) => (/^\s*/.exec(line) || [''])[0];
  *  line it was read from, spacing and all; one that is new or changed is
  * @param {Heading} node
  *  written fresh, in the drawer's own indentation. */
-function propertiesDrawerLines(node) {
+function propertiesDrawerLines(node, /** @type {string | null} */ planningLine = null) {
   const order = node.propertyOrder || [];
   if (!order.length) return [];
   const raw = node.raw;
   const first = raw && raw.drawers.find((d) => d.type === 'properties');
-  const indent = first ? leadingSpace(first.lines[0]) : '';
+  const indent = first ? leadingSpace(first.lines[0]) : drawerIndent(node, planningLine);
   const lines = [`${indent}:PROPERTIES:`];
   for (const key of order) {
     const kept = raw && raw.propertyLines && Object.prototype.hasOwnProperty.call(raw.propertyLines, key) ? raw.propertyLines[key] : null;
@@ -476,11 +483,11 @@ function propertiesDrawerLines(node) {
 }
 
 /** @param {Heading} node */
-function logbookDrawerLines(node) {
+function logbookDrawerLines(node, /** @type {string | null} */ planningLine = null) {
   const log = node.logbookLines || [];
   if (!log.length) return [];
   const first = node.raw && node.raw.drawers.find((d) => d.type === 'logbook');
-  const indent = first ? leadingSpace(first.lines[0]) : '';
+  const indent = first ? leadingSpace(first.lines[0]) : drawerIndent(node, planningLine);
   return [`${indent}:LOGBOOK:`, ...log, `${indent}:END:`];
 }
 
@@ -500,17 +507,18 @@ function headingPreambleLines(node) {
 
   const planning = serializePlanningLine(node.planning);
   if (raw && raw.planning != null && raw.planningSig === planning) lines.push(raw.planning);
-  else if (planning) lines.push(planning);
+  else if (planning) lines.push(raw && raw.planning != null ? leadingSpace(raw.planning) + planning : adaptedIndent(node) + planning); // a planning line that was there keeps its indentation
 
+  const planningLine = lines.length > 1 ? lines[1] : null;
   const propsUnchanged = !!raw && raw.propsSig === propertiesSignature(node);
   const logUnchanged = !!raw && raw.logSig === logSignature(node);
   if (propsUnchanged && logUnchanged) {
     for (const drawer of raw.drawers) lines.push(...drawer.lines); // exactly as read: order, indentation, repeats, empty drawers
   } else {
     const keep = (/** @type {string} */ type) => /** @type {import('./types.js').HeadingRaw} */ (raw).drawers.filter((d) => d.type === type).flatMap((d) => d.lines);
-    lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node)));
+    lines.push(...(propsUnchanged ? keep('properties') : propertiesDrawerLines(node, planningLine)));
     lines.push(...(logUnchanged ? keep('prelog') : node.preLogLines || []));
-    lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node)));
+    lines.push(...(logUnchanged ? keep('logbook') : logbookDrawerLines(node, planningLine)));
   }
   return lines;
 }

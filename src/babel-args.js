@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { headingPreambleLines } from './org-parser.js';
 /**
  * Header arguments of a source block, with the inheritance Org has: the defaults, then the
  * `header-args` and `header-args:LANG` properties (set for the whole file with
@@ -179,15 +180,14 @@ const keyEq = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
  * @returns {[string, string][]} */
 function headingPropertyPairs(h) {
   /** @type {[string, string][]} */ const out = [];
-  const drawers = (h.raw && h.raw.drawers) || [];
-  for (const d of drawers) {
-    if (d.type !== 'properties') continue;
-    for (const line of d.lines) {
-      const m = /^\s*:(\S+?):(?:\s+(.*?))?\s*$/.exec(line);
-      if (m && !/^(PROPERTIES|END)$/i.test(m[1])) out.push([m[1], m[2] || '']);
-    }
+  const lines = headingPreambleLines(h); // the drawer as read while untouched, as written once edited
+  let i = lines.findIndex((l) => /^\s*:PROPERTIES:\s*$/i.test(l));
+  if (i < 0) return out;
+  for (i++; i < lines.length && !/^\s*:END:\s*$/i.test(lines[i]); i++) {
+    const m = /^\s*:(\S+?):(?:\s+(.*?))?\s*$/.exec(lines[i]);
+    if (m) out.push([m[1], m[2] || '']);
   }
-  return out.length ? out : Object.entries(h.properties || {}).map(([k, v]) => /** @type {[string, string]} */ ([k, String(v)]));
+  return out;
 }
 
 /** The properties of the file-level drawer, as Emacs reads it: a `:PROPERTIES:` drawer at the top of the file, after nothing but

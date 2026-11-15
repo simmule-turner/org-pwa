@@ -17,6 +17,7 @@ import { INLINE_LINK_ATTR } from './constants.js';
 import { openFileLink } from './documents-io.js';
 import { setStatus } from './editing.js';
 import { openIdLink } from './id-links.js';
+import { openInfo } from './info-view.js';
 import { openHelpLink } from './views.js';
 import { activeDiskAdapter } from './external-sync.js';
 import { openFootnoteSheet } from './footnotes-ui.js';
@@ -265,6 +266,20 @@ export function renderLinkNode(node, linkContext = /** @type {any} */ (null), he
       e.preventDefault();
       e.stopPropagation();
       openAttachmentLink(resolution.target, heading);
+    };
+    return a;
+  }
+
+  if (resolution.type === 'info' && !linkContext) {
+    const a = document.createElement('a');
+    a.href = '#';
+    fillLabel(a);
+    a.style.color = 'var(--accent)';
+    a.setAttribute(INLINE_LINK_ATTR, '1');
+    a.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openInfo({ manual: resolution.manual, node: resolution.node });
     };
     return a;
   }

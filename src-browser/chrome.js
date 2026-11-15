@@ -17,6 +17,7 @@ import { contentAreaEl, extraMenuBtn, godModeBtn, minibufferSearchEl, modelineBa
 import { setStatus } from './editing.js';
 import { renderFileMenu } from './file-menu.js';
 import { closeFileScreen } from './file-screen.js';
+import { closeInfo } from './info-view.js';
 import { FLOATING_BUTTON_GAP, FLOATING_BUTTON_SIZE, positionFloatingKeyboard } from './floating-keyboard.js';
 import { renderExtraMenu, renderMoreMenu } from './menus.js';
 import { renderArchiveRefilePanel } from './archive-refile-panel.js';
@@ -65,7 +66,8 @@ export function anyOverlayPanelOpen() {
     S.historyOpen ||
     !!S.pendingTodoWorkflowChoice ||
     !!S.pendingRefile ||
-    !!S.fileScreen
+    !!S.fileScreen ||
+    S.infoOpen
   );
 }
 
@@ -125,6 +127,7 @@ export function closeAllOverlayPanels() {
     renderTodoWorkflowPanel();
   }
   if (S.fileScreen) closeFileScreen();
+  if (S.infoOpen) closeInfo();
   if (S.pendingRefile) {
     S.pendingRefile = null;
     renderArchiveRefilePanel();

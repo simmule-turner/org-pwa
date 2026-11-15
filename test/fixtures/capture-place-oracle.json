@@ -4075,6 +4075,42 @@
    "emacs": "* Tr\n    + a\n    + X\n      Line 2\n"
   },
   {
+   "init": "* Tr\n    + a\n",
+   "type": "item",
+   "template": "- X\n  Line 2",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  Line 2\n  + a\n"
+  },
+  {
+   "init": "* Tr\n    + a\n    + b\n",
+   "type": "item",
+   "template": "- X",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n- X\n  + a\n  + b\n"
+  },
+  {
+   "init": "* Tr\n    1. a\n    2. b\n",
+   "type": "item",
+   "template": "1. X",
+   "olp": [
+    "Tr"
+   ],
+   "opts": {
+    "prepend": true
+   },
+   "emacs": "* Tr\n1. X\n   1. a\n   2. b\n"
+  },
+  {
    "init": "* Tr\n",
    "type": "entry",
    "template": "** ",

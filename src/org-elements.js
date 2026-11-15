@@ -304,6 +304,19 @@ function findBlockEnd(lines, i, name) {
 const KEYWORD_LINE_RE = /^[ \t]*#\+\S+:/;
 const DUAL_KEYWORD_LINE_RE = /^[ \t]*#\+(\S+?)\[.*\]:/;
 
+/** A diary sexp (`%%(` at the start of the line) or a CLOCK line: an element of one line that also ends a paragraph. */
+/**
+ * The clock a one-line paragraph is (`org-element-clock-parser`): `CLOCK: [ts]` or `CLOCK: [ts]--[ts] =>  H:MM`. `value` is the timestamp as
+ * Org translates it (a blank follows it when a duration does), `duration` is the `H:MM` text or null. Null for any other line.
+ * @param {string[]} lines @returns {{ value: string, duration: string | null } | null}
+ */
+export function clockOf(lines) {
+  const m = lines.length === 1 ? /^[ \t]*CLOCK:[ \t]*(\[[^\]\n]*\](?:--\[[^\]\n]*\])?)[ \t]*(?:=>[ \t]+(\d+:\d\d))?[ \t]*$/.exec(lines[0]) : null;
+  return m ? { value: m[1] + (m[2] ? ' ' : ''), duration: m[2] ?? null } : null;
+}
+
+const SINGLE_LINE_RE = /^(?:%%\(|[ \t]*CLOCK:)/;
+
 /**
  * Does the line at `i` start something that ends a paragraph? A block, a drawer or a LaTeX environment ends it only when it is closed.
  * @param {string[]} lines
@@ -329,6 +342,7 @@ function interruptsParagraph(lines, i, nested) {
     (!!env && closed(latexEndRe(env[1]))) ||
     (DRAWER_RE.test(line) && closed(/^[ \t]*:END:[ \t]*$/i)) ||
     !!itemMatch(line) ||
+    SINGLE_LINE_RE.test(line) ||
     (!nested && FOOTNOTE_DEF_RE.test(line) && indentOf(line) === 0)
   );
 }
@@ -492,10 +506,10 @@ export function parseElements(lines, options = {}) {
       i = next;
       continue;
     }
-    // paragraph
+    // paragraph; a diary sexp and a CLOCK line are elements of one line, shown as a paragraph
     const para = [line];
     i++;
-    while (i < lines.length && !interruptsParagraph(lines, i, !!options.nested)) para.push(lines[i++]);
+    while (!SINGLE_LINE_RE.test(line) && i < lines.length && !interruptsParagraph(lines, i, !!options.nested)) para.push(lines[i++]);
     push({ type: 'paragraph', lines: removeCommonIndentation(para) });
   }
   return out;

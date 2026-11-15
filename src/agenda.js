@@ -40,7 +40,7 @@ import { defaultDaySettings, dayNumberOf, dateOfDay, planningOnDay, timestampOnD
 import { isArchived } from './archive-model.js';
 import { parseOrgDuration } from './org-duration.js';
 import { isCommentedHeading } from './comment-model.js';
-import { parseOrgTimestamp, findTimestamps, dateKey, isSameDay } from './org-timestamp.js';
+import { parseOrgTimestamp, findTimestamps, objectText, dateKey, isSameDay } from './org-timestamp.js';
 import { allLogLines } from './logbook.js';
 import { logRows, readLogSettings } from './agenda-log.js';
 import { resolveTodoSequence } from './todo-cycle.js';
@@ -61,6 +61,7 @@ import {
 } from './diary-sexp.js';
 import { isOrgWeatherLine, formatWeatherLine, DEFAULT_ORG_WEATHER_FORMAT } from './org-weather.js';
 import { buildDiaryItems } from './agenda-diary.js';
+import { fileCategory } from './file-category.js';
 
 const UNSAVED_DOCUMENT_ID = '\u0000unsaved-new-document';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -732,6 +733,22 @@ function entryTimestampText(heading) {
   return withoutInlineLiterals(lines.join('\n'));
 }
 
+/**
+ * True if org-weather is used anywhere in `doc`, as a standalone `%%(org-weather)` body line or in a `<%%(...)>` timestamp the agenda
+ * finds (title, body, property values, logbook), which is what decides whether Settings offers "Refresh weather now".
+ * @param {Doc | null | undefined} doc
+ */
+export function documentUsesOrgWeather(doc) {
+  if (!doc) return false;
+  /** @param {Heading} heading @returns {boolean} */
+  const usesIt = (heading) => {
+    if (findSexpTimestamps(objectText(entryTimestampText(heading))).some((ts) => /\borg-weather\b/.test(ts.raw))) return true;
+    if ((heading.bodyLines || []).some((line) => isOrgWeatherLine(line))) return true;
+    return (heading.children || []).some(usesIt);
+  };
+  return (doc.children || []).some(usesIt);
+}
+
 /** The indexes of the body lines Emacs passes over when it looks for time stamps: #+BEGIN_SRC/EXAMPLE/EXPORT/COMMENT blocks (one with no
  * #+END is not a block), "# " comment lines and #+KEYWORD lines.
  * @param {string[]} body @returns {Set<number>} */
@@ -772,18 +789,15 @@ export function withoutInlineLiterals(text) {
 /** The category label shown as a prefix before each agenda item --
  *  real org's own #+CATEGORY: keyword if the file sets one, otherwise
  *  the file's own basename (no directory path, no .org extension),
- *  matching real org's own actual default behavior exactly. Keyword
+ *  matching real org's own actual default behavior exactly (see file-category.js). Keyword
  *  lookup is case-insensitive, matching how every other #+KEYWORD:
  * @param {Doc} doc
  * @param {string} documentId
  *  line here already treats case as not meaningful. */
 function getCategoryForDocument(doc, documentId) {
-  /** @param {any} [kw] */
-  const categoryKw = (doc.keywords || []).find((kw) => kw.key.toUpperCase() === 'CATEGORY');
-  if (categoryKw && categoryKw.value.trim()) return categoryKw.value.trim();
-  if (!documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID)) return 'Untitled'; // an unsaved, in-memory-only document has no filename to derive a category from
   const base = (String(documentId).split('/').pop() || '').replace(/\.org$/i, '');
-  return base || documentId;
+  const unsaved = !documentId || documentId.startsWith(UNSAVED_DOCUMENT_ID); // an unsaved, in-memory-only document has no filename to derive a category from
+  return fileCategory(doc, unsaved ? 'Untitled' : base || documentId);
 }
 
 /**
@@ -1005,8 +1019,8 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
   /** @type {Map<any, string>} */ const categoryByHeading = new Map();
   for (const { documentId, doc } of docs) {
     walkHeadings(doc, (/** @type {any} */ heading, /** @type {any[]} */ ancestors) => {
-      const ownCategory = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string' && v.trim());
-      if (ownCategory) categoryByHeading.set(heading, ownCategory.trim()); // a CATEGORY property, its own or an ancestor's, names the category of the entry
+      const ownCategory = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string');
+      if (ownCategory !== undefined) categoryByHeading.set(heading, ownCategory.trim()); // a CATEGORY property, its own or an ancestor's, names the category of the entry (an empty one too, as in Emacs)
       if (!includeArchived && [...ancestors, heading].some(isArchived)) return; // a subtree of an archived or commented heading is skipped whole
       if (!includeCommented && [...ancestors, heading].some(isCommentedHeading)) return;
       if (tagFilter && !tagFilter(heading.tags)) return;
@@ -1050,13 +1064,11 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
 
       const headingIsDone = isDone ? isDone(heading.todo) : false;
 
-      let hasPlanning = false;
       for (const kind of ['scheduled', 'deadline']) {
         const raw = heading.planning && heading.planning[kind];
         if (!raw) continue;
         const parsed = parseOrgTimestamp(raw);
         if (!parsed || !parsed.active) continue; // as in Emacs, only an active date is a reminder
-        hasPlanning = true;
         addItem(documentId, heading, kind, parsed, headingIsDone, headingIsDone);
       }
 
@@ -1098,13 +1110,14 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
       // different mechanism from the plain <timestamp> case just
       // above: rather than one literal date, the expression is
       // evaluated once for every day being considered, and each day
-      // it evaluates truthy becomes its own agenda occurrence. Same
-      // "skip if this heading already has SCHEDULED/DEADLINE" guard,
-      // same "never carries forward" reasoning as the plain-timestamp
-      // case -- a sexp timestamp is a dynamic matcher, not a
-      // stateful "intend to do this" marker either.
-      if (!hasPlanning && rangeStart && rangeEnd) {
-        for (const sexpTs of findSexpTimestamps(heading.title)) {
+      // it evaluates truthy becomes its own agenda occurrence. Found
+      // wherever a plain timestamp is (title, body, property values,
+      // logbook; not in the contexts Emacs passes over), also next to
+      // SCHEDULED/DEADLINE; it never carries forward either -- a sexp
+      // timestamp is a dynamic matcher, not a stateful "intend to do
+      // this" marker.
+      if (rangeStart && rangeEnd) {
+        for (const sexpTs of findSexpTimestamps(objectText(entryTimestampText(heading)))) {
           const cleanTitle = heading.title.replace(sexpTs.raw, '').trim();
           /** @type {Map<string, Date>} */
           const failures = new Map(); // each distinct error once, on the first day it happened
@@ -1297,7 +1310,7 @@ function buildAgendaItems(docs, opts = /** @type {AgendaOptions} */ ({})) {
     if (!categoryByDocument.has(documentId)) categoryByDocument.set(documentId, getCategoryForDocument(doc, documentId));
   }
   for (const item of items) {
-    item.category = (item.heading && categoryByHeading.get(item.heading)) || categoryByDocument.get(item.documentId) || item.documentId;
+    item.category = (item.heading && categoryByHeading.get(item.heading)) ?? categoryByDocument.get(item.documentId) ?? item.documentId;
   }
   if (diary && rangeStart && rangeEnd && !logOnly) items.push(...buildDiaryItems(diary, rangeStart, rangeEnd, opts, buildAgendaItems));
 
@@ -1500,7 +1513,7 @@ function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
       if (skipEntry && skipEntry('todo', documentId, heading)) return; // org-agenda-skip-function
       if (!settings.sublevels) belowSkipped.add(heading); // org-agenda-todo-list-sublevels nil: one listed (or ignored) entry stands for its whole subtree
       if (ignoredForDates(entryText(heading), settings, todayN, deadlineWarningDays)) return;
-      const own = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string' && v.trim());
+      const own = [heading, ...[...ancestors].reverse()].map((h) => getPropertyCaseInsensitive(h, 'CATEGORY')).find((v) => typeof v === 'string');
       items.push({
         documentId,
         heading,
@@ -1509,7 +1522,7 @@ function buildTaskList(docs, opts = /** @type {AgendaOptions} */ ({})) {
         tags: heading.tags,
         title: heading.title,
         ...(headlineTime(heading.title || '') ? { timeOfDay: /** @type {number} */ (headlineClock(heading, today)?.timeOfDay) } : {}), // the time sort key takes a time written in the headline
-        category: own ? own.trim() : docCategory,
+        category: own !== undefined ? own.trim() : docCategory,
       });
     });
   }

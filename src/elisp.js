@@ -10,6 +10,7 @@ import './elisp-pcase.js';
 import './elisp-time.js';
 import './elisp-buffer.js';
 import './elisp-prelude.js';
+import './elisp-inlinetask.js';
 import {
   BudgetExceeded, Cons, LispSignal, LispThrow, NIL, errorMessageString, print, signal, unboxDeep,
 } from './elisp-data.js';

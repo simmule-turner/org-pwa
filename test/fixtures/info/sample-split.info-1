@@ -1,0 +1,78 @@
+This is sample-split.info, produced by makeinfo version 7.1 from
+sample.texi.
+
+Sample manual text.
+INFO-DIR-SECTION Software development
+START-INFO-DIR-ENTRY
+* Sample: (sample).     A small manual for the Info reader tests.
+* Sample sort::         Sorting, an entry that points into sample.
+END-INFO-DIR-ENTRY
+
+
+File: sample-split.info,  Node: Top,  Next: Basics,  Up: (dir)
+
+Sample Manual
+*************
+
+This manual has _several_ nodes.  See *note Sorting::, and *note the
+field syntax: Formulas.  An external reference is *Note (other)Top::.
+
+* Menu:
+
+* Basics::          Opening files, editing.
+* Tables::          Formulas, sort, align.
+                    A second line of the description.
+* Lisp functions::  Variables and the functions.
+* Concept Index::   Concepts.
+* Function Index::  Functions.
+
+ -- The Detailed Node Listing --
+
+Tables
+
+* Formulas::        Field formulas.
+* Sorting::         Sorting rows.
+
+
+File: sample-split.info,  Node: Basics,  Next: Tables,  Prev: Top,  Up: Top
+
+1 Basics
+********
+
+Plain text with ‘org-open’ and ‘C-c C-o’.  See also *note Formulas:: for
+a long cross reference that wraps across two lines: *note the Lisp
+function reference text: Lisp functions.
+
+     | a | b |
+     |---+---|
+     | 1 | 2 |
+
+
+File: sample-split.info,  Node: Tables,  Next: Lisp functions,  Prev: Basics,  Up: Top
+
+2 Tables
+********
+
+Tables hold fields.
+
+* Menu:
+
+* Formulas::    Field formulas.
+* Sorting::     Sorting rows.
+
+
+File: sample-split.info,  Node: Formulas,  Next: Sorting,  Up: Tables
+
+2.1 Formulas
+============
+
+A formula fills a field.(1)  An image follows.
+
+[A picture]
+
+   Visit <https://example.org/manual> too.
+
+   ---------- Footnotes ----------
+
+   (1) A footnote.
+

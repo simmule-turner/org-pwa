@@ -302,6 +302,110 @@
   {
    "template": "- [ ] %^{Item}\n  %U",
    "emacs": "- [ ] Grace\n  [2026-10-11 Sun 16:30]\n"
+  },
+  {
+   "template": "%(concat \"a\" \"b\")",
+   "emacs": "ab\n"
+  },
+  {
+   "template": "%(upcase \"x\") and %(downcase \"Y\")",
+   "emacs": "X and y\n"
+  },
+  {
+   "template": "%(identity nil)",
+   "emacs": ""
+  },
+  {
+   "template": "[%(identity nil)]",
+   "emacs": "[]\n"
+  },
+  {
+   "template": "%(+ 1 2)",
+   "emacs": "ERROR (error \"Capture template sexp `(+ 1 2)' must evaluate to string or nil\")"
+  },
+  {
+   "template": "%(concat \"a\" \"b\") tail",
+   "emacs": "ab tail\n"
+  },
+  {
+   "template": "\\%(concat \"a\" \"b\")",
+   "emacs": "%(concat \"a\" \"b\")\n"
+  },
+  {
+   "template": "\\\\%(concat \"a\" \"b\")",
+   "emacs": "\\ab\n"
+  },
+  {
+   "template": "%(concat \"%<%Y>\" \"x\")",
+   "emacs": "2026x\n"
+  },
+  {
+   "template": "%(concat \"%n\" \"!\")",
+   "emacs": "Ada Lovelace!\n"
+  },
+  {
+   "template": "%(concat \"%i\" \"!\")",
+   "emacs": "first line\nsecond line!\n"
+  },
+  {
+   "template": "%(concat \"%:type\" \"!\")",
+   "emacs": "https!\n"
+  },
+  {
+   "template": "%(concat \"%a\")",
+   "emacs": "[[https://example.org/page][An example]]\n"
+  },
+  {
+   "template": "%(concat \"%k\" \"|\" \"%f\")",
+   "emacs": "Write report|ideas.org\n"
+  },
+  {
+   "template": "%(error \"boom\")",
+   "emacs": "%![Error: (error boom)]\n"
+  },
+  {
+   "template": "%(foo-undefined)",
+   "emacs": "%![Error: (void-function foo-undefined)]\n"
+  },
+  {
+   "template": "%(unbalanced",
+   "emacs": "%(unbalanced\n"
+  },
+  {
+   "template": "%(concat \"a\" ; c\n \"b\")",
+   "emacs": "ab\n"
+  },
+  {
+   "template": "* %(concat \"T\" \"x\") %^{Name}",
+   "emacs": "* Tx Grace\n"
+  },
+  {
+   "template": "%(format \"%s-%s\" \"a\" \"b\")",
+   "emacs": "a-b\n"
+  },
+  {
+   "template": "%(format-time-string \"%Y-%m-%d\")",
+   "emacs": "2026-10-11\n"
+  },
+  {
+   "template": "%(user-full-name)",
+   "emacs": "Ada Lovelace\n"
+  },
+  {
+   "template": "%(concat \"line1\\nline2\")",
+   "emacs": "line1\nline2\n"
+  },
+  {
+   "template": "%(symbol-name (quote abc))",
+   "emacs": "abc\n"
+  },
+  {
+   "template": "%(car nil)",
+   "emacs": ""
+  },
+  {
+   "template": "%[/nonexistent/capture-file.txt]",
+   "emacs": "%![could not insert /nonexistent/capture-file.txt: (file-missing Opening input file No such file or directory /nonexistent/capture-file.txt)]\n"
   }
  ]
 }

@@ -137,18 +137,55 @@ export function emacsCoarse(outline) {
   return out;
 }
 
-/** The cases where an app parser still differs from Emacs on purpose or for want of a model, with the reason. Each entry: a test on the text. */
-const ITEM_LINE = /^([ \t]*)(?:[-+*]|\d+[.)])(?:[ \t]|$)/;
-const hasContinuation = (/** @type {string} */ text) => {
-  const lines = text.split('\n');
-  return lines.some((line, i) => {
-    const item = ITEM_LINE.exec(line);
-    if (!item) return false;
-    let j = i + 1;
-    while (j < lines.length && lines[j].trim() === '') j++;
-    return j < lines.length && /^[ \t]+\S/.test(lines[j]) && lines[j].match(/^[ \t]*/)[0].length > item[1].length;
+/** Runs of paragraphs are one (the editor and Org cut a text into paragraphs at different places). @param {any[]} sig @returns {any[]} */
+export function mergeParagraphs(sig) {
+  /** @type {any[]} */ const out = [];
+  for (const x of sig) {
+    if (x.k === 'paragraph' && out[out.length - 1]?.k === 'paragraph') continue;
+    const o = { ...x };
+    if (o.items) o.items = o.items.map((/** @type {any} */ i) => ({ ...i, ch: mergeParagraphs(i.ch) }));
+    if (o.ch) o.ch = mergeParagraphs(o.ch);
+    out.push(o);
+  }
+  return out;
+}
+
+/** What Emacs makes of a section, in detail, as the editor shows it: a table.el table is a paragraph. @param {any[]} outline @returns {any[]} */
+export function emacsBodyDetail(outline) {
+  const mapped = (/** @type {any[]} */ list) => list.map((x) => {
+    if (x.k === 'table' && x.tableType === 'table.el') return { k: 'paragraph', b: x.b, e: x.e, pb: x.pb };
+    if (x.items) return { ...x, items: x.items.map((/** @type {any} */ i) => ({ ...i, ch: mapped(i.ch) })) };
+    if (x.ch) return { ...x, ch: mapped(x.ch) };
+    return x;
   });
-};
+  return mergeParagraphs(emacsSignature(mapped(outline), true));
+}
+
+/** parseBody's nodes in the same detail: the items with what each holds (its text and the paragraph after it are one paragraph). @param {any[]} nodes @returns {any[]} */
+export function bodyDetail(nodes) {
+  const sig = nodes.map((n) => {
+    if (n.type === 'paragraph') return { k: 'paragraph' };
+    if (n.type === 'table') return { k: 'table', rows: n.rows.length };
+    if (n.type === 'hr') return { k: 'hr' };
+    if (n.type === 'block') return { k: 'block:' + String(n.name).toLowerCase(), lines: n.lineCount };
+    if (n.type === 'list') {
+      return {
+        k: 'list',
+        items: n.items.map((/** @type {any} */ it) => ({
+          b: it.marker,
+          cb: it.checkbox,
+          cn: it.startValue,
+          tag: it.tag ? 'T' : null,
+          ch: [...(it.text.trim() !== '' ? [{ k: 'paragraph' }] : []), ...bodyDetail(it.content || [])],
+        })),
+      };
+    }
+    return { k: n.type };
+  });
+  return mergeParagraphs(sig);
+}
+
+/** The cases where an app parser still differs from Emacs on purpose or for want of a model, with the reason. Each entry: a test on the text. */
 const hasClosedDrawer = (/** @type {string} */ text) => /(^|\n)[ \t]*:[\p{L}\p{N}_-]+:[ \t]*\n[\s\S]*\n[ \t]*:END:[ \t]*(\n|$)/iu.test(text);
 
 /** The cases where an app parser still differs from Emacs on purpose or for want of a model, with the reason. Each entry: a test on the text. */
@@ -157,17 +194,23 @@ export const KNOWN = {
   elements: [
     { reason: 'a lone tab line is a paragraph to Emacs only when no line break follows it (a quirk of the end of the buffer)', match: (t) => /(^|\n)\t$/.test(t) },
     { reason: 'a line of blanks only is a paragraph to Emacs only when no line break follows it (a quirk of the end of the buffer)', match: (t) => /(^|\n)[ \t]+$/.test(t) },
-    { reason: 'not built: a diary sexp (`%%(...)` at the start of a line) and a CLOCK line are elements of their own in Org, which end a paragraph; the app keeps them in the paragraph', match: (t) => /(^|\n)(?:%%\(|CLOCK:)/.test(t) },
     { reason: 'chosen: a `::` inside =verbatim= or ~code~ text is never a list tag here (a deliberate rule of the app, see org-elements.js); Org takes the last ` ::` of the line whatever is around it', match: (t) => /[=~][^\n]* :: [^\n]*[=~]/.test(t) },
   ],
   /** @type {{ reason: string, match: (text: string) => boolean }[]} */
   body: [
     { reason: 'a lone tab line is a paragraph to Emacs only when no line break follows it (a quirk of the end of the buffer)', match: (t) => /(^|\n)\t$/.test(t) },
     { reason: 'a line of blanks only is a paragraph to Emacs only when no line break follows it (a quirk of the end of the buffer)', match: (t) => /(^|\n)[ \t]+$/.test(t) },
-    { reason: 'not built: the editor model keeps what continues a list item (a paragraph, comment, table, rule or block, or a sub-list after a blank line) as nodes after the list, not inside the item, so a list with such a continuation is two nodes to it and one to Org', match: (t) => hasContinuation(t) || /(^|\n)- a\n c/.test(t) || /(^|\n)-\n[ \t]+\S/.test(t) },
     { reason: 'not built: the editor shows what a footnote definition holds after its first line (a list, table, rule or block) as nodes of their own, where Org has them in the definition', match: (t) => /(^|\n)\[fn:[^\]]+\]/i.test(t) && /\n[ \t]*(?:\||-----|[-+] |\d+[.)] |#\+begin_|:[\w-]+:|\\begin)/i.test(t) },
     { reason: 'not built: the editor shows what a drawer or a dynamic block holds (a list, table or block) as nodes of their own, where Org has them inside it', match: (t) => hasClosedDrawer(t) || /(^|\n)#\+BEGIN: /i.test(t) },
     { reason: 'not built: the editor reads one #+TBLFM: line per table; a second one (or one after a blank line) stays a paragraph, where Org reads every following line as the formulas', match: (t) => /#\+TBLFM: .*\n#\+TBLFM:/i.test(t) || /\|[^\n]*\n\n#\+TBLFM: /i.test(t) },
     { reason: 'chosen: a `* heading` inside a #+begin_ block does not end the block in the editor (deliberate, see org-parser.js)', match: (t) => /#\+begin_[\s\S]*\n\* /i.test(t) },
   ],
 };
+
+/** Where the detail of the editor's nodes (an item's content, in order) still differs from Org's, with the reason. */
+export const KNOWN_DETAIL = [
+  { reason: 'chosen: a `::` inside =verbatim= or ~code~ text is never a list tag here (a deliberate rule of the app, see org-elements.js)', match: (/** @type {string} */ t) => /[=~][^\n]* :: [^\n]*[=~]/.test(t) },
+  { reason: 'Org reads a lone lower-case `- [x]` as meta-data that leaves the item empty; the editor shows `[x]` as its text', match: (/** @type {string} */ t) => /(^|\n)[ \t]*[-+*] \[x\][ \t]*(\n|$)/.test(t) },
+  { reason: 'not built: a footnote definition holds its lines as an element of its own (see the body rule above)', match: (/** @type {string} */ t) => /(^|\n)\[fn:/i.test(t) },
+  { reason: 'not built yet: drawers and dynamic blocks are not elements of the editor model', match: (/** @type {string} */ t) => hasClosedDrawer(t) || /(^|\n)[ \t]*#\+BEGIN: /i.test(t) },
+];

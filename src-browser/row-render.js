@@ -12,6 +12,7 @@ import { readPriorityFaces } from '../src/priorities.js';
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isRestorable } from '../src/archive-model.js';
 import { deleteListItem, deleteParagraph, deleteTable, deleteTableColumn, deleteTableRow, insertListItem, insertTableColumn, insertTableRow, isTableHeaderRow, setTableCell } from '../src/body-edit.js';
+import { flatBodyNodes } from '../src/body-parser.js';
 import { updateCheckboxCookie } from '../src/checkbox-cookie.js';
 import { demoteHeading, insertChildHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
 import { extractLatexFragments, parseInline, parseInlineLines, stripLineBreakMarker } from '../src/inline-markup.js';
@@ -235,8 +236,7 @@ export function renderRow(row, todoSequence) {
       badge.className = 'todo-badge ' + (todoSequence.doneKeywords.includes(row.node.todo) ? 'done' : 'todo');
       badge.textContent = row.node.todo;
       badge.onclick = () => {
-        applyTodoTransition(row.node, () => cycleHeadingTodo(S.state.doc, row.node, GLOBAL_TODO_DEFAULT));
-        commitAndRender('Cycled TODO state');
+        if (applyTodoTransition(row.node, () => cycleHeadingTodo(S.state.doc, row.node, GLOBAL_TODO_DEFAULT))) commitAndRender('Cycled TODO state');
       };
       el.appendChild(badge);
     }
@@ -843,7 +843,7 @@ export function renderTableRow(row) {
           // heading. Re-finding it fresh by lineIndex, rather than
           // trusting the closure-captured row.node directly, is what
           // makes this correct either way.
-          const freshTable = (row.heading.body || []).find(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').Table} */ (n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
+          const freshTable = flatBodyNodes(row.heading.body || []).find(/** @param {import('../src/types.js').BodyNode} n @returns {n is import('../src/types.js').Table} */ (n) => n.type === 'table' && n.lineIndex === row.node.lineIndex) || row.node;
           S.editingCell = { heading: row.heading, table: freshTable, rowIndex, colIndex };
           commitAndRender('Edited table cell');
         });

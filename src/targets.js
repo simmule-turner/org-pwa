@@ -4,6 +4,7 @@
 // Link targets, as Org has them: a dedicated target `<<name>>` is something a link `[[name]]` can jump to, and a radio target
 // `<<<name>>>` is that and also makes every plain occurrence of `name` in the document a link to it.
 import { parseInline } from './inline-markup.js';
+import { flatBodyNodes } from './body-parser.js';
 
 /** @typedef {{ name: string, radio: boolean, heading: Heading }} TargetEntry */
 
@@ -24,8 +25,7 @@ function visit(nodes, heading, out) {
 /** @param {any[]} items @param {Heading} heading @param {TargetEntry[]} out */
 function visitItems(items, heading, out) {
   for (const item of items || []) {
-    visit(item.inline, heading, out);
-    for (const nested of item.children || []) visitItems(nested.items, heading, out);
+    visit(item.inline, heading, out); // what the item holds below its first line comes with the nodes of the body
   }
 }
 
@@ -42,7 +42,7 @@ export function collectTargets(doc) {
     for (const heading of nodes) {
       if (heading.type !== 'heading') continue;
       visit(parseInline(heading.title || ''), heading, out);
-      for (const node of heading.body || []) {
+      for (const node of flatBodyNodes(heading.body)) {
         if (node.type === 'paragraph') for (const line of node.inlineLines || []) visit(line, heading, out);
         else if (node.type === 'list') visitItems(node.items, heading, out);
         else if (node.type === 'table') for (const row of node.rows || []) for (const cell of ('cellsInline' in row ? row.cellsInline : null) || []) visit(cell, heading, out);
@@ -89,7 +89,7 @@ export function findDedicatedTargetHeading(doc, name) {
 export function radioTargetRegExp(doc) {
   /** @type {TargetEntry[]} */ const before = [];
   const top = /** @type {Heading} */ (/** @type {unknown} */ (doc));
-  for (const node of doc.body || []) {
+  for (const node of flatBodyNodes(doc.body)) {
     if (node.type === 'paragraph') for (const line of node.inlineLines || []) visit(line, top, before);
     else if (node.type === 'list') visitItems(node.items, top, before);
     else if (node.type === 'table') for (const row of node.rows || []) for (const cell of ('cellsInline' in row ? row.cellsInline : null) || []) visit(cell, top, before);

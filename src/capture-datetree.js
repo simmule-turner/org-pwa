@@ -141,10 +141,10 @@ function blankBeforeHeading(text, point) {
 /**
  * Adds the heading `label`, at `level`, to `root` where org-datetree-insert-line would put it: before `before` (a heading of
  * the searched part), or at the end of the part.
- * @param {Doc} doc @param {Heading | Doc} root @param {Heading | null} before @param {number} level @param {string} label
+ * @param {Doc} doc @param {Heading | Doc} root @param {Heading | null} before @param {number} level @param {string} label @param {string | null} [stamp] a line to put under the heading
  * @returns {Heading}
  */
-function insertHeading(doc, root, before, level, label) {
+function insertHeading(doc, root, before, level, label, stamp = null) {
   const { lines, spans } = layout(root);
   const atEof = endsDocument(doc, root);
   let text = lines.join('\n') + (atEof ? '' : '\n');
@@ -193,6 +193,7 @@ function insertHeading(doc, root, before, level, label) {
   }
 
   const node = createHeading({ level, title: label });
+  if (stamp) /** @type {string[]} */ (node.bodyLines).push(stamp); // org-datetree-add-timestamp: the date of a new day heading, on the line below it
   if (atEof && !before) /** @type {string[]} */ (node.bodyLines).push('');
   const fits = before ? before.level === level : root.type === 'heading' ? level === /** @type {Heading} */ (root).level + 1 : level === 1;
   if (fits) {
@@ -245,18 +246,18 @@ function locate(root, node) {
 /**
  * org-datetree--find-create: the first heading of `root` whose line matches `re` with a number (group 1) not below `value`
  * is used if the numbers are equal; otherwise the new heading goes before it, or at the end if there is none.
- * @param {Doc} doc @param {Heading | Doc} root @param {RegExp} re @param {number} value @param {number} level @param {string} label
+ * @param {Doc} doc @param {Heading | Doc} root @param {RegExp} re @param {number} value @param {number} level @param {string} label @param {string | null} [stamp]
  */
-function findCreate(doc, root, re, value, level, label) {
+function findCreate(doc, root, re, value, level, label, stamp = null) {
   for (const h of walk(root)) {
     const m = re.exec(headingPreambleLines(h)[0]);
     if (!m) continue;
     const n = Number(m[1]);
     if (n < value) continue;
     if (n === value) return h;
-    return insertHeading(doc, root, h, level, label);
+    return insertHeading(doc, root, h, level, label, stamp);
   }
-  return insertHeading(doc, root, null, level, label);
+  return insertHeading(doc, root, null, level, label, stamp);
 }
 
 const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
@@ -264,10 +265,12 @@ const pad2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
 /**
  * Finds or creates the date tree for `date` under `base` (a heading, or null for the whole document), and returns the
  * heading a capture files under: the day, or with `treeType` month the month.
- * @param {Doc} doc @param {Heading | null} base @param {Date} date @param {string} [treeType] 'week', 'month' or anything else for days
+ * @param {Doc} doc @param {Heading | null} base @param {Date} date @param {string} [treeType] 'week', 'month' or anything else for days @param {'active' | 'inactive' | null} [addTimestamp] org-datetree-add-timestamp
  * @returns {Heading}
  */
-export function findOrCreateDatetree(doc, base, date, treeType) {
+export function findOrCreateDatetree(doc, base, date, treeType, addTimestamp = null) {
+  const stamp = addTimestamp ? (/** @type {string} */ iso) => (addTimestamp === 'inactive' ? `[${iso}]` : `<${iso}>`) : null;
+  const dayStamp = stamp ? stamp(formatTimeString(date, '%Y-%m-%d %a')) : null;
   const week = treeType === 'week';
   const monthOnly = treeType === 'month';
   let root = base;
@@ -287,10 +290,10 @@ export function findOrCreateDatetree(doc, base, date, treeType) {
     const isoWeek = Number(formatTimeString(date, '%V'));
     const y = findCreate(doc, top, YEAR, isoYear, baseLevel, formatTimeString(date, '%G'));
     const w = findCreate(doc, y, new RegExp(`^\\*+[ \\t]+${isoYear}-W([0-5][0-9])$`, 'u'), isoWeek, baseLevel + 1, formatTimeString(date, '%G-W%V'));
-    return findCreate(doc, w, new RegExp(`^\\*+[ \\t]+${year}-${pad2(month)}-([0123][0-9]) ${WORD}$`, 'u'), day, baseLevel + 2, `${year}${formatTimeString(date, '-%m-%d %A')}`);
+    return findCreate(doc, w, new RegExp(`^\\*+[ \\t]+${year}-${pad2(month)}-([0123][0-9]) ${WORD}$`, 'u'), day, baseLevel + 2, `${year}${formatTimeString(date, '-%m-%d %A')}`, dayStamp);
   }
   const y = findCreate(doc, top, YEAR, year, baseLevel, String(year));
   const m = findCreate(doc, y, new RegExp(`^\\*+[ \\t]+${year}-([01][0-9]) ${WORD}$`, 'u'), month, baseLevel + 1, `${year}${formatTimeString(date, '-%m %B')}`);
   if (monthOnly) return m;
-  return findCreate(doc, m, new RegExp(`^\\*+[ \\t]+${year}-${pad2(month)}-([0123][0-9]) ${WORD}$`, 'u'), day, baseLevel + 2, `${year}${formatTimeString(date, '-%m-%d %A')}`);
+  return findCreate(doc, m, new RegExp(`^\\*+[ \\t]+${year}-${pad2(month)}-([0123][0-9]) ${WORD}$`, 'u'), day, baseLevel + 2, `${year}${formatTimeString(date, '-%m-%d %A')}`, dayStamp);
 }

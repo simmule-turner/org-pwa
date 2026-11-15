@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy, documentUsesOrgWeather } from '../src/sexp-eval.js';
+import { parseSexpr, evaluateSexpr, findSexpTimestamps, evaluateSexpTimestamp, isTruthy } from '../src/sexp-eval.js';
+import { documentUsesOrgWeather } from '../src/agenda.js';
 import { parseOrg } from '../src/org-parser.js';
 
 // ---- parseSexpr (the raw parser) --------------------------------------------
@@ -281,6 +282,15 @@ test('THE FIX: documentUsesOrgWeather is true for org-weather used within a <%%(
 test('documentUsesOrgWeather finds a usage on a deeply nested sub-heading, not just top-level ones', () => {
   const doc = parseOrg('* A\n** B\n*** C\n%%(org-weather)\n');
   assert.equal(documentUsesOrgWeather(doc), true);
+});
+
+test('documentUsesOrgWeather finds org-weather in a timestamp in the body, a property value or the logbook, not in a source block or a verbatim', () => {
+  for (const text of ['* A\nsee <%%(org-weather)> here\n', '* A\n:PROPERTIES:\n:WHEN: <%%(org-weather)>\n:END:\n', '* A\n:LOGBOOK:\n- Note <%%(org-weather)>\n:END:\n']) {
+    assert.equal(documentUsesOrgWeather(parseOrg(text)), true, text);
+  }
+  for (const text of ['* A\n#+BEGIN_SRC emacs-lisp\n<%%(org-weather)>\n#+END_SRC\n', '* A\n=<%%(org-weather)>=\n', '* A\n<%%(org-weatherx)>\n']) {
+    assert.equal(documentUsesOrgWeather(parseOrg(text)), false, text);
+  }
 });
 
 test('documentUsesOrgWeather handles a null/missing document gracefully', () => {

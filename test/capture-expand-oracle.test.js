@@ -4,13 +4,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { expandTemplate, scanPrompts } from '../src/capture-template.js';
+import { CAPTURE_KNOWN } from './support/capture-known.js';
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/capture-expand-oracle.json', import.meta.url), 'utf8'));
 
-// Cases that rely on Emacs facilities the app does not have: %? is a prompt here, and Emacs reads %^{..}p, %(..), %[..] itself.
+// Cases that rely on Emacs facilities the app does not have: %? is a prompt here, and Emacs reads %^{..}p and %[..] itself (see test/support/capture-known.js).
 // Reported deviation (chosen: app behavior): %? is the cursor position in the Emacs capture buffer, and with :immediate-finish the batch run leaves
 // the characters "%?" in the text; the app asks for the text to put there, so the answer replaces it.
-const APP_DIFFERS = new Set(['%?', '* %?', '- %?\n  more', 'a %? b', '* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?']);
+const APP_DIFFERS = new Set([...CAPTURE_KNOWN.expand.map((k) => k.template), '%?', '* %?', '- %?\n  more', 'a %? b', '* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?']);
 
 function context() {
   const c = oracle.ctx;

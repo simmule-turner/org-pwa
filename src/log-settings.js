@@ -1,5 +1,6 @@
 // @ts-check
 import { bufferKeywordValues } from './file-keywords.js';
+import { parsePropertyInheritance, propertyInherits } from './tag-inheritance.js';
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
 /**
@@ -12,7 +13,7 @@ import { bufferKeywordValues } from './file-keywords.js';
  *   #+STARTUP: logrepeat | lognoterepeat | nologrepeat
  */
 
-/** @typedef {{ logDone: 'time' | 'note' | null, logIntoDrawer: string | null, logRepeat: 'time' | 'note' | null, logSpecs: Record<string, string> | null }} LogSettings */
+/** @typedef {{ logDone: 'time' | 'note' | null, logIntoDrawer: string | null, logRepeat: 'time' | 'note' | null, logSpecs: Record<string, string> | null, repeatToState: string | true | null }} LogSettings */
 // logSpecs is null unless a LOGGING property is in force; then it replaces the `#+TODO:` keywords' own `(!)` and `(@)` settings.
 
 /** What `#+STARTUP:` says for each variable: undefined when it does not mention it, 'none' for the words that turn it off.
@@ -115,7 +116,27 @@ export function readLogSettings(doc, localVarsOnly = {}, globalVarsOnly = {}, pa
     logIntoDrawer: logIntoDrawer && logIntoDrawer !== 'none' ? logIntoDrawer : null,
     logRepeat: logRepeat === undefined ? 'time' : logRepeat === 'note' ? 'note' : logRepeat === 'none' ? null : 'time', // Emacs's default is `time`
     logSpecs,
+    repeatToState: readRepeatToState(path, localVarsOnly, globalVarsOnly),
   };
+}
+
+/**
+ * Where a repeating task goes back to: the REPEAT_TO_STATE property (org-entry-get with `selective`: the nearest heading's value when
+ * org-use-property-inheritance names the property, else the heading's own; the text "nil" counts as no value), then org-todo-repeat-to-state:
+ * a string is the state, t the state the task had before it was done (`true`). null: the sequence decides.
+ * @param {Heading[]} path @param {Record<string, string>} localVarsOnly @param {Record<string, string>} globalVarsOnly
+ * @returns {string | true | null}
+ */
+function readRepeatToState(path, localVarsOnly, globalVarsOnly) {
+  const policy = parsePropertyInheritance(localVarsOnly['org-use-property-inheritance'] ?? globalVarsOnly['org-use-property-inheritance']);
+  const inherits = policy !== null && propertyInherits(policy, 'REPEAT_TO_STATE');
+  const own = path.length > 0 ? nearestProperty(path.slice(-1), 'REPEAT_TO_STATE') : undefined;
+  const found = inherits ? nearestProperty(path, 'REPEAT_TO_STATE') : own;
+  if (found !== undefined && found !== 'nil') return found;
+  const raw = String(localVarsOnly['org-todo-repeat-to-state'] ?? globalVarsOnly['org-todo-repeat-to-state'] ?? 'nil').trim();
+  if (raw === 't') return true;
+  const quoted = /^"((?:[^"\\]|\\.)*)"$/.exec(raw);
+  return quoted ? quoted[1].replace(/\\(.)/g, '$1') : null;
 }
 
 /** @param {Heading[]} path @param {string} name @returns {string | undefined} */

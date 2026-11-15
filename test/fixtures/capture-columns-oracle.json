@@ -1,0 +1,113 @@
+{
+ "cases": [
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: $2=$1*2\n",
+   "create": "nil",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| 1 |    |\n|---+----|\n| 9 | 18 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: $2=$1*2\n",
+   "create": "t",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| 1 |    |\n|---+----|\n| 9 | 18 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| 1 |\n|---|\n| 9 |\n#+TBLFM: $2=$1*2\n",
+   "create": "warn",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| 1 |    |\n|---+----|\n| 9 | 18 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $3=$1+$2\n",
+   "create": "nil",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a | b |   |\n|---+---+---|\n| 1 | 2 | 3 |\n| 5 |   | 5 |\n#+TBLFM: $3=$1+$2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $3=$1+$2\n",
+   "create": "t",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a | b |   |\n|---+---+---|\n| 1 | 2 | 3 |\n| 5 |   | 5 |\n#+TBLFM: $3=$1+$2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $3=$1+$2\n",
+   "create": "warn",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a | b |   |\n|---+---+---|\n| 1 | 2 | 3 |\n| 5 |   | 5 |\n#+TBLFM: $3=$1+$2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "create": "nil",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a |  b |\n|---+----|\n| 1 |  2 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "create": "t",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a |  b |\n|---+----|\n| 1 |  2 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n",
+   "create": "warn",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a |  b |\n|---+----|\n| 1 |  2 |\n| 5 | 10 |\n#+TBLFM: $2=$1*2\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a |\n|---|\n| 1 |\n#+TBLFM: @2$3=7\n",
+   "create": "nil",
+   "template": "| 5 |",
+   "emacs": "ERROR Missing columns in the table.  Aborting",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a |\n|---|\n| 1 |\n#+TBLFM: @2$3=7\n",
+   "create": "t",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a |   |   |\n|---+---+---|\n| 1 |   | 7 |\n| 5 |   |   |\n#+TBLFM: @2$3=7\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated"
+   ]
+  },
+  {
+   "init": "* Tr\n| a |\n|---|\n| 1 |\n#+TBLFM: @2$3=7\n",
+   "create": "warn",
+   "template": "| 5 |",
+   "emacs": "* Tr\n| a |   |   |\n|---+---+---|\n| 1 |   | 7 |\n| 5 |   |   |\n#+TBLFM: @2$3=7\n",
+   "messages": [
+    "The formulas in #+TBLFM have been updated",
+    "Warning (org): Out-of-bounds formula added columns"
+   ]
+  }
+ ]
+}

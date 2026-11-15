@@ -2,14 +2,18 @@
 // The table commands of Org that change a table's shape or order, as the Table pad under a table and the god-mode / keyboard chords
 // (M-arrows, M-S-arrows, C-c -, C-c RET, C-c ^) offer them. They act at the table's cursor: the cell last tapped or stepped to.
 // What each does is in src/table-commands.js (held to Emacs 29.3); this file is the cursor, the status line and the undo step.
+import { flatBodyNodes } from '../src/body-parser.js';
 import { deleteTableColumn, deleteTableRow, insertTableColumn, insertTableRow, setTableCell } from '../src/body-edit.js';
 import { readFunction, sortFunctions } from '../src/table-sort-lisp.js';
 import { insertRowAbove, insertRule, insertRuleAndMove, moveColumn, moveRow, sortRows } from '../src/table-commands.js';
+import { lispStringValue } from '../src/export-defaults.js';
+import { exportTable, sendTable } from '../src/orgtbl-send.js';
 import { S } from './app-state.js';
 import { openGridChoiceModal, promptText } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { resyncKeyboardFocusToBodyRow } from './keyboard-focus.js';
 import { render } from './render.js';
+import { saveOut } from './save-out.js';
 
 /** @typedef {import('../src/types.js').Table} Table */
 /** @typedef {import('../src/types.js').Heading} Heading */
@@ -17,7 +21,7 @@ import { render } from './render.js';
 
 /** @param {Heading} heading @param {Table} table @returns {Table} the table as it is now (a commit makes a new one) */
 function fresh(heading, table) {
-  return /** @type {Table} */ ((heading.body || []).find((n) => n.type === 'table' && n.lineIndex === table.lineIndex) || table);
+  return /** @type {Table} */ (flatBodyNodes(heading.body || []).find((n) => n.type === 'table' && n.lineIndex === table.lineIndex) || table);
 }
 
 /** Writes the cell being edited, if any. A tap on a button would otherwise end the edit by blur, which draws the table again and loses the tap. */
@@ -207,4 +211,28 @@ export function askSort(heading, table) {
       { key: 'C', text: 'Alphabetic, case sensitive, reversed', onClick: sortBy('C') },
     ],
   });
+}
+
+/** `C-c C-c` on a table with `#+ORGTBL: SEND` lines (`orgtbl-send-table`): the converted table goes into the `BEGIN RECEIVE ORGTBL` places of the document. */
+export function sendFocusedTable() {
+  const t = focusedTable();
+  if (!t) return setStatus('Put the cursor in a table first (tap a cell).');
+  try {
+    const n = sendTable(S.state.doc, t.heading, t.table);
+    commitAndRender(`Table converted and installed at ${n} receiver location${n > 1 ? 's' : ''}`);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : String(error));
+  }
+}
+
+/** `org-table-export`: the table, as the TABLE_EXPORT_FORMAT and TABLE_EXPORT_FILE properties say (tab-separated by default), saved as a file. Nothing is asked. */
+export function exportFocusedTable() {
+  const t = focusedTable();
+  if (!t) return setStatus('Put the cursor in a table first (tap a cell).');
+  try {
+    const { fileName, text } = exportTable(S.state.doc, t.heading, t.table, { defaultFormat: lispStringValue(S.state.localVariables['org-table-export-default-format']) ?? undefined });
+    saveOut(fileName, text, 'text/plain');
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : String(error));
+  }
 }

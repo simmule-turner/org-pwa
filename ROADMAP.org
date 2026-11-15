@@ -43,7 +43,124 @@ Left from the security reviews. Each is small, none lets a document run code wit
 =minimatch= (GHSA-g3hv-75wg-m249, denial of service) comes in through eslint, including the latest eslint 10; dev-only, no runtime code. Update when eslint releases a fix.
 - Effort: S. Impact: S.
 
+* Info and manuals
+** [#A] Our own manual as Info (=org-pwa.info=), Help opens it
+Phases 1 to 3 (reader, storage, Add manuals, =info:= links) are built. Next: generate =org-pwa.info= from README.org at release time (Emacs's Texinfo export, then =makeinfo=; untagged source blocks need a language first), ship it with the app, make Help (=C-h m=) open its top node, and answer =[[help:NAME]]= links from its index. README.org stays the source in the repository.
+- Effort: M. Impact: M.
+** [#C] Texinfo exporter
+Export to =.texi= (nodes, menus, =@multitable=, =@footnote=) as the LaTeX exporter does, checked against Emacs's ox-texinfo. The hard part is node and menu generation. Worth doing if you write GNU-style manuals.
+- Effort: L. Impact: S.
+** [#C] Info reader leftovers
+Differences from Emacs that remain: =Info-history= as a node (=L=), prefix completion in go-to (it ranks substrings, as the mockup shows), search through the tag table and pseudo-nodes, and the point after back, forward and up in split manuals. Add the =edge*.info= fixtures and an Emacs check of the directory (=dirSections= against =Info-directory=), show images in Info files, and bookmarks on nodes. Info-mode keys are not shown as palette hints because the palette test requires every hint to be a god-mode chord.
+- Effort: S. Impact: S.
+
+* Outline and editing commands
+** [#B] Inline-task commands
+=org-inlinetask-promote=, =-demote=, =-insert-task= (=C-c C-x t=) and the settings =org-inlinetask-show-first-star= and =org-inlinetask-default-state=. They need the heading-edit model to treat an inline task as its own kind of heading, which promote and demote also need at inline-task boundaries.
+- Effort: M. Impact: S.
+** [#C] Odd levels and top-level promotion
+=org-odd-levels-only= and =org-allow-promoting-top-level-subtree= (promoting a level-1 heading currently refuses).
+- Effort: M. Impact: S.
+** [#C] Sort: clocking key and locale
+Sort type =k= (by clocking) and locale collation for the alphabetic sort (it compares by character code, as the C locale does).
+- Effort: S. Impact: S.
+** [#C] =org-entry-properties= details
+The =pom= argument and the =CLOCKSUM= property (it needs a clock-sum text property).
+- Effort: S. Impact: S.
+** [#C] Log items under =org-adapt-indentation= t
+Log notes written by the todo and clock modules are not indented under =t=; the planning line and drawers are.
+- Effort: S. Impact: S.
+** [#C] Cursor-text commands
+=org-return=, =org-meta-return=, =org-open-line= and =org-drag-element-*=. They act at a text cursor; the touch editor has no equivalent, so build them only for the Text view.
+- Effort: M. Impact: S.
+** [#C] =org-blank-before-new-entry= nil and t
+Only the default (=auto=) is implemented; the alist form needs a Settings pattern for alist values.
+- Effort: S. Impact: S.
+** [#C] Archive extras and blocking
+BLOCKER and TRIGGER properties (org-edna and org-depend territory, not Org core), =org-toggle-ordered-property= (=C-c C-x o=), =org-toggle-archive-tag= (=C-c C-x a=) and direct archive on =C-c C-x C-s=.
+- Effort: S. Impact: S.
+** [#C] =org-num= and =org-protocol=
+=org-num-mode= shows outline numbers beside headings; =org-protocol= needs operating-system integration, so it is only worth doing for a share-target flow on Android.
+- Effort: M. Impact: S.
+
+* Lists, parser and editor model
+** [#B] Drawers and dynamic blocks as containers
+Their contents are editor nodes today; make them parsed container nodes as org-element does, including a second or detached =#+TBLFM:= line.
+- Effort: M. Impact: M.
+** [#C] table.el tables
+The editor shows one verbatim paragraph and the exporters write it as written. Render it as a table-like block and convert it as Emacs's table package does.
+- Effort: M. Impact: S.
+** [#C] List leftovers
+=org-list-send-item=, a palette entry for =org-update-statistics-cookies= on lists, the join space when a link spans lines, and the three known list-command groups (sorting inside a drawer or example block, =C-u C-c C-c= over a subtree with a double-blank gap, =M-S-right= on a first item with a cookie).
+- Effort: S. Impact: S.
+
+* Dates and durations
+** [#B] Date prompts everywhere
+The typed-date grammar (=org-read-date=) is used by the agenda start-day prompt and by capture. Check every other place that parses a typed date (schedule and deadline prompts, filters) and move them onto =src/read-date.js=.
+- Effort: S. Impact: M.
+** [#C] Timestamp commands without a text cursor
+=S-up= and =S-down= on a timestamp and the =C-c .= family need a text cursor (Text view or the Date tool). Edit details has a "Move the date" stepper for SCHEDULED, DEADLINE and a plain timestamp; a timestamp in the middle of body text still needs the cursor, and the CLOCK-line variant of =C-S-up= is palette-only.
+- Effort: S. Impact: S.
+** [#C] Settings controls for date and duration variables
+=org-duration-format= (a Lisp value, catalog-only), =org-clone-delete-id= (not exposed).
+- Effort: S. Impact: S.
+
+* Agenda
+** [#C] Agenda commands
+=org-agenda-bulk-*=, the agenda priority key, =org-agenda-goto-date=, =org-agenda-redo= and text scale have no counterpart in the agenda view.
+- Effort: M. Impact: M.
+
+* Capture
+** [#C] Capture leftovers
+=%[file]= (the app has no synchronous file reads); =prompt= for =org-table-formula-create-columns= in capture is treated as nil; with nil, Emacs aborts the capture when a field formula needs a missing column, and the app files the row without recalculating.
+- Effort: S. Impact: S.
+
+* Babel
+** [#B] Detangle and jump
+=org-babel-detangle= and =org-babel-tangle-jump-to-org= (tangled files carry =[[file:...]]= comment links back to the Org source).
+- Effort: M. Impact: S.
+** [#C] Babel leftovers
+New results directly above a following heading get no blank line (a section here ends at its last line); trust is asked once per document, not once per block as Emacs does; =name[hdr](args)= call syntax, table cells that are Lisp forms, single-link paragraph references; sessions and external languages; evaluation at export (=org-export-use-babel=, deliberate).
+- Effort: M. Impact: S.
+
+* Export
+** [#B] Settings controls for the export variables
+The =org-export-with-*= variables, =org-export-headline-levels=, =-preserve-breaks=, =-time-stamp-file=, =-global-macros= and =-snippet-translation-alist= are catalog-only (Global Variables). Give the common ones a Settings control.
+- Effort: S. Impact: M.
+** [#C] More export variables
+=org-export-select-tags=, =org-export-exclude-tags=, =org-export-creator-string=, =org-export-date-timestamp-format=; snippet shortcuts inside =#+TITLE:= and similar keywords.
+- Effort: S. Impact: S.
+** [#C] =#+INCLUDE= leftovers
+Footnote relabeling, relative-link rewriting, =:coding= and URLs; missing files and failed searches are skipped where Emacs errors.
+- Effort: M. Impact: S.
+** [#C] =#+BIND:=, a Lisp backend API and org-cite processors
+=#+BIND:= runs Lisp from a document, so it needs your approval before it is built. A backend API (define and derive your own exporter) and the org-cite processors beyond basic, bibtex, biblatex, csl and natbib are large and the app has its own extension mechanism.
+- Effort: L. Impact: S.
+** [#C] MathJax and ox-publish
+KaTeX stands in for MathJax by decision; ox-publish needs a project model.
+- Effort: L. Impact: S.
+** [#C] Export differences found by the Org tests
+HTML =p:t= and ASCII trailing blank after planning; =stat:nil= leaves the cookie in a LaTeX list item; LaTeX blank-line differences with =|:nil= and =tasks:todo=; ASCII output for a document that starts with a headline has three fewer blank lines after the table of contents; the "Cannot find end of receiver" error shows a line number where Emacs shows a character position.
+- Effort: S. Impact: S.
+
+* Org lint
+** [#C] Report buffer keys
+=org-lint--show-source= (=TAB= and =C-j=) needs a second window; show the source in a sheet instead. =tabulated-list-sort= with a prefix of -1 (restore the original order) is not offered. A tap selects a report and a second tap jumps; the Line column's header sits in the buffer text rather than a header line.
+- Effort: S. Impact: S.
+** [#C] Parser objects the checkers need
+The parser does not model inline tasks, radio links, timestamps, entities, LaTeX fragments, sub and superscripts or statistics cookies, so the checkers that use them are not covered. =wrong-header-value= skips Lisp-evaluated values; cite processors are fixed; loaded Babel languages default to emacs-lisp.
+- Effort: M. Impact: S.
+
+* Tables
+** [#C] Formula leftovers
+=typeof(1:2)=, =typeof(uinf)= and =typeof(<2024-03-15>)=; =vmax= over only-nan under the =E= flag shows =max(nan, nan)= where Emacs shows =nan=; =#+CONSTANTS:= lines inside a heading body are not read; special properties such as =$PROP_ITEM=. Calc algebra of non-numeric text and unit simplification are deliberately not matched.
+- Effort: S. Impact: S.
+
 * Order for the next release
+1. Our own manual as Info (phase 4 of the Info reader): the largest gain for the effort now that the reader exists.
+2. Date prompts everywhere, and Settings controls for the export variables: small, and they finish what the latest release started.
+3. Drawers and dynamic blocks as containers, then inline-task commands.
+4. Detangle and jump for Babel.
 Refile and Replace into =local:= files from the web and other backends are [#C].
 
 * Appendix: a Lisp interpreter

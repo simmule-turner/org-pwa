@@ -1,0 +1,35 @@
+This is sample-split.info, produced by makeinfo version 7.1 from
+sample.texi.
+
+Sample manual text.
+INFO-DIR-SECTION Software development
+START-INFO-DIR-ENTRY
+* Sample: (sample).     A small manual for the Info reader tests.
+* Sample sort::         Sorting, an entry that points into sample.
+END-INFO-DIR-ENTRY
+
+
+Indirect:
+sample-split.info-1: 311
+sample-split.info-2: 2028
+sample-split.info-3: 3350
+
+Tag Table:
+(Indirect)
+Node: Top311
+Node: Basics920
+Ref: An anchor1018
+Node: Tables1254
+Node: Formulas1456
+Ref: Formulas-Footnote-11697
+Node: Sorting2028
+Node: Lisp functions2144
+Node: Concept Index2372
+Node: Function Index3350
+
+End Tag Table
+
+
+Local Variables:
+coding: utf-8
+End:

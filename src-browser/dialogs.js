@@ -9,6 +9,7 @@ import { assertWithinLimit } from '../src/size-limits.js';
 import { S } from './app-state.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
 import { timerEditorTool } from './timer-flow.js';
+import { dateEditorTool } from './timestamp-flow.js';
 import { scrollContainer } from './chrome.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { containTab, rememberOpener, restoreOpener } from './containers.js';
@@ -427,7 +428,7 @@ export function openHeadingTextEditor(heading) {
     value: originalText,
     placeholder: 'All content for this heading — lists, notes, etc. — as org text',
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'heading-text', null), timerEditorTool()],
+    tools: [footnoteEditorTool(heading, 'heading-text', null), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingHeadingText = null;
       render();
@@ -543,6 +544,12 @@ export function openTextFieldPopup({ label, value, defaultValue, onSave, onReset
   if (tools && tools.length) {
     const toolBox = document.createElement('div');
     toolBox.style.cssText = 'display:flex;gap:8px;margin-right:auto;';
+    if (tools.length > 2) {
+      // three or more tools do not fit beside Cancel and OK on a phone: they take a row of their own above them
+      btnRow.style.flexWrap = 'wrap';
+      toolBox.style.flex = '1 0 100%';
+      toolBox.style.flexWrap = 'wrap';
+    }
     for (const tool of tools) {
       const btn = menuButton(tool.text, () => tool.onClick(textarea, close));
       if (tool.title) btn.title = tool.title;

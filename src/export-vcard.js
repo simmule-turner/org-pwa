@@ -54,6 +54,7 @@ import { walkHeadings } from './agenda.js';
 import { isArchived, getProperty } from './archive-model.js';
 import { isCommentedHeading } from './comment-model.js';
 import { foldLine } from './export-icalendar.js';
+import { flatBodyNodes } from './body-parser.js';
 
 /** @param {string} text */
 function escapeVcardText(text) {
@@ -303,7 +304,7 @@ const TREE_FIELDTYPE_TO_VCARD_LINE = {
  *  block exists at all. */
 function blockText(heading) {
   /** @param {any} [b] */
-  const block = (heading.body || []).find(/** @param {import('./types.js').BodyNode} b @returns {b is import('./types.js').Block} */ (b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
+  const block = flatBodyNodes(heading.body || []).find(/** @param {import('./types.js').BodyNode} b @returns {b is import('./types.js').Block} */ (b) => b.type === 'block' && (b.name === 'VERSE' || b.name === 'QUOTE'));
   return block ? block.lines.join('\n') : null;
 }
 

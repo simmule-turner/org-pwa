@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').LocalVars} LocalVars */
 import { setTagsColumn, tagsColumnOf } from './tags-column.js';
+import { adaptIndentationOf, autoAlignTagsOf, setAdaptIndentation, setAutoAlignTags, setSrcPreserveIndentation, srcPreserveIndentationOf } from './indent-settings.js';
 import { setSizeLimits, sizeLimitsOf } from './size-limits.js';
 import { VariableValueError } from './variable-error.js';
 import { tokenize as tokenizeExtraMenu } from './extra-menu.js';
@@ -155,6 +156,9 @@ export function mergeGlobalAndLocalVariables(globalVars, localVars) {
   } catch (err) {
     if (!(err instanceof VariableValueError)) throw err; // a column that is not an integer is reported (variableProblems) and the column stays as it was
   }
+  setAdaptIndentation(adaptIndentationOf(merged)); // promote, demote, planning lines and drawers indent as org-adapt-indentation says
+  setAutoAlignTags(autoAlignTagsOf(merged));
+  setSrcPreserveIndentation(srcPreserveIndentationOf(merged));
   try {
     setSizeLimits(sizeLimitsOf(merged)); // the size a file may be before it is warned about or refused
   } catch (err) {

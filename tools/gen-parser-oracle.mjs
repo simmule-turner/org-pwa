@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { emacsOutline, emacsSignature, emacsCoarse } from '../test/support/parser-skeleton.js';
+import { emacsOutline, emacsSignature, emacsCoarse, emacsBodyDetail } from '../test/support/parser-skeleton.js';
 
 const S=[];
 const L=(s)=>s.split('|||').forEach(x=>S.push(x.replace(/\\n/g,'\n').replace(/\\t/g,'\t')));
@@ -113,8 +113,10 @@ for (const c of cases) {
     const cut = s.ch.filter((x) => x.type === 'planning' || x.type === 'property-drawer').map((x) => [x.b, x.e]).sort((a, b) => b[0] - a[0]);
     let text = c.text.slice(s.b, s.e);
     for (const [b, e] of cut) text = text.slice(0, b - s.b) + text.slice(e - s.b);
+    const detail = emacsBodyDetail(emacsOutline(s.ch, c.text, 'body'));
     return {
       text,
+      ...(/"(items|ch)"/.test(JSON.stringify(detail)) ? { bodyDetail: detail } : {}),
       elements: emacsSignature(emacsOutline(s.ch, c.text, 'elements'), true),
       body: emacsCoarse(emacsOutline(s.ch, c.text, 'body')),
     };

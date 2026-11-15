@@ -30,7 +30,7 @@ test('the variables with no control are the ones decided on, and the ones a pers
   const catalog = new Set(VARIABLE_CATALOG.map((c) => c.name));
   for (const k of [
     'org-tags-exclude-from-inheritance', 'org-agenda-show-inherited-tags', 'org-agenda-use-tag-inheritance', 'org-use-property-inheritance',
-    'org-priority-faces', 'org-priority-default', 'org-priority-start-cycle-with-default', 'org-table-duration-hour-zero-padding', 'org-table-formula-create-columns',
+    'org-priority-faces', 'org-priority-default', 'org-priority-start-cycle-with-default', 'org-table-duration-hour-zero-padding',
     'org-closed-keep-when-no-todo', 'org-refile-allow-creating-parent-nodes', 'org-agenda-skip-archived-trees', 'org-agenda-skip-comment-trees',
     'org-agenda-remove-times-when-in-prefix', 'org-agenda-sorting-strategy', 'org-agenda-custom-commands', 'org-modules', 'org-inlinetask-min-level',
     'org-global-properties', 'org-xx-extra-menu', 'org-xx-menu-aliases', 'diary-list-entries-hook', 'diary-nongregorian-listing-hook',
@@ -44,7 +44,7 @@ test('the variables with no control are the ones decided on, and the ones a pers
     'org-icalendar-use-deadline', 'org-icalendar-with-timestamps', 'org-icalendar-alarm-time',
   ]) assert.ok(catalog.has(k), `${k} has no control`);
   const fields = new Set(SETTINGS_FIELDS.map((f) => f.key));
-  for (const k of ['org-xx-lisp-init', 'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file', 'org-refile-targets', 'calendar-date-style', 'org-ascii-text-width', 'org-ascii-charset', 'org-agenda-show-future-repeats', 'org-startup-indented', 'org-xx-indent-tables']) {
+  for (const k of ['org-xx-lisp-init', 'org-agenda-files', 'org-contacts-files', 'org-agenda-text-search-extra-files', 'diary-file', 'org-refile-targets', 'calendar-date-style', 'org-ascii-text-width', 'org-ascii-charset', 'org-agenda-show-future-repeats', 'org-startup-indented', 'org-xx-indent-tables', 'org-table-formula-create-columns']) {
     assert.ok(fields.has(k), `${k} keeps its control`);
   }
 });
@@ -123,7 +123,7 @@ test('a variable that is not set reads as its Emacs default, the one the catalog
   assert.equal(getOrgWeatherFormat({}), JSON.parse(default_('org-weather-format')));
   assert.equal(getRefileAllowCreatingParentNodes({}), default_('org-refile-allow-creating-parent-nodes'));
   assert.equal(getExportWithBrokenLinks({}), default_('org-export-with-broken-links'));
-  assert.equal(getOrgTableFormulaCreateColumns({}), default_('org-table-formula-create-columns'));
+  assert.equal(getOrgTableFormulaCreateColumns({}), /** @type {any} */ (SETTINGS_FIELDS.find((f) => f.key === 'org-table-formula-create-columns')).default);
   assert.equal(readPriorityRange({}).default, Number(default_('org-priority-default')));
 });
 

@@ -9,7 +9,7 @@ import { parseElements } from '../src/org-elements.js';
 import { parseBody } from '../src/body-parser.js';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
 import * as inlineModule from '../src/inline-markup.js';
-import { elementsOutline, bodyOutline, emacsSignature, KNOWN } from './support/parser-skeleton.js';
+import { elementsOutline, bodyOutline, bodyDetail, emacsSignature, KNOWN, KNOWN_DETAIL } from './support/parser-skeleton.js';
 
 const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/parser-oracle.json', import.meta.url), 'utf8'));
 const AFFILIATED = /^\s*#\+(NAME|CAPTION|HEADERS?|RESULTS|PLOT|TBLNAME|ATTR_\w+)(\[[^\]]*\])?:/i;
@@ -38,6 +38,24 @@ test(`the nodes of ${oracle.cases.length} texts are the ones Org's elements make
       if (JSON.stringify(got) !== JSON.stringify(s.body)) wrong.push({ text: c.text, want: JSON.stringify(s.body), got: JSON.stringify(got) });
     }
   }
+  assert.equal(wrong.length, 0, `${wrong.length} differ, first: ${JSON.stringify(wrong[0], null, 1)}`);
+});
+
+test('a list is one node holding, per item, what Org puts in it (continuation text, tables, blocks, rules, sub-lists, after a blank line too)', () => {
+  const wrong = [];
+  let checked = 0;
+  for (const c of oracle.cases) {
+    if (KNOWN_DETAIL.some((k) => k.match(c.text))) continue;
+    for (const s of c.sections) {
+      if (!s.bodyDetail) continue;
+      const lines = s.text.split('\n').filter((l) => !AFFILIATED.test(l));
+      if (lines.every((l) => l.trim() === '')) continue;
+      checked++;
+      const got = bodyDetail(parseBody(lines));
+      if (JSON.stringify(got) !== JSON.stringify(s.bodyDetail)) wrong.push({ text: c.text, want: JSON.stringify(s.bodyDetail), got: JSON.stringify(got) });
+    }
+  }
+  assert.ok(checked > 400, `${checked} sections checked`);
   assert.equal(wrong.length, 0, `${wrong.length} differ, first: ${JSON.stringify(wrong[0], null, 1)}`);
 });
 

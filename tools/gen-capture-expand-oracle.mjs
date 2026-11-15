@@ -33,6 +33,12 @@ const T = [
   // prompts
   '%^{Name}', '%^{Name}!', '%^{Name|Ada}', '%^{Name|Ada|Bob|Cy}', '%^{A} and %^{B}', '%^{A} %\\1', '%^{A} %^{B} %\\2 %\\1', '%\\3', '* %^{Title} %^g', '* %^{Title} :a:%^g', '%^G', '%^C', '%^L', '%^t', '%^T', '%^u', '%^U', '%^{Due}t', '%^{When}T',
   '* %^{Title}\n:PROPERTIES:\n:AUTHOR: %n\n:END:\n%?', '- [ ] %^{Item}\n  %U',
+  // embedded Lisp
+  '%(concat "a" "b")', '%(upcase "x") and %(downcase "Y")', '%(identity nil)', '[%(identity nil)]', '%(+ 1 2)', '%(concat "a" "b") tail', '\\%(concat "a" "b")', '\\\\%(concat "a" "b")',
+  '%(concat "%<%Y>" "x")', '%(concat "%n" "!")', '%(concat "%i" "!")', '%(concat "%:type" "!")', '%(concat "%a")', '%(concat "%k" "|" "%f")', '%(error "boom")', '%(foo-undefined)', '%(unbalanced', '%(concat "a" ; c\n "b")',
+  '* %(concat "T" "x") %^{Name}', '%(format "%s-%s" "a" "b")', '%(format-time-string "%Y-%m-%d")', '%(user-full-name)', '%(concat "line1\\nline2")', '%(symbol-name (quote abc))', '%(car nil)',
+  // a file's contents
+  '%[/nonexistent/capture-file.txt]',
 ];
 const answers = { strings: ['Grace', 'Hopper', 'Third'], tags: 'work:home', date: '2026-11-03 14:30', clip: 'chosen clip' };
 const cases = T.map((template) => ({ template }));

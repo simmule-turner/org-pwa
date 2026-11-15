@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: weather flow.
 import { getCalendarLatitude, getCalendarLongitude, getWeatherRefreshInterval } from '../src/local-variables.js';
-import { documentUsesOrgWeather } from '../src/sexp-eval.js';
+import { documentUsesOrgWeather } from '../src/agenda.js';
 import { ensureAgendaFilesLoaded } from './agenda-files.js';
 import { scheduleCalendarSync } from './calendar-sync.js';
 import { S } from './app-state.js';

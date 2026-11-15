@@ -33,7 +33,7 @@ import { tagsColumnOf } from './tags-column.js';
 import { recentMaxOf } from './recent-files.js';
 import { parseExtraMenu } from './extra-menu.js';
 import { parseMenuAliases } from './menu-alias.js';
-import { parseDurationUnits } from './org-duration.js';
+import { parseDurationFormat, parseDurationUnits } from './org-duration.js';
 import { parseLispTagList, parsePropertyInheritance, parseTagInheritance, parseShowInheritedTags, parseAgendaUseTagInheritance } from './tag-inheritance.js';
 
 import { Reader } from './elisp-read.js';
@@ -415,6 +415,18 @@ export function getRefileAllowCreatingParentNodes(vars) {
   return value === 't' ? 't' : value === 'confirm' ? 'confirm' : 'nil';
 }
 
+/** org-enforce-todo-dependencies: Emacs's default is nil. With t an open task below a task, or an earlier open task under an ORDERED parent, blocks marking it done.
+ * @param {LocalVars} vars */
+export function getEnforceTodoDependencies(vars) {
+  return parseLispBoolean((vars || {})['org-enforce-todo-dependencies'], false);
+}
+
+/** org-enforce-todo-checkbox-dependencies: Emacs's default is nil. With t an unchecked box in the entry blocks marking it done.
+ * @param {LocalVars} vars */
+export function getEnforceTodoCheckboxDependencies(vars) {
+  return parseLispBoolean((vars || {})['org-enforce-todo-checkbox-dependencies'], false);
+}
+
 /** org-global-properties: real org's own variable name -- properties that
  *  apply everywhere unless a file or heading says otherwise. Here a plain
  *  line of semicolon-separated `NAME: value` entries (real org's is a Lisp
@@ -552,6 +564,26 @@ export function getDisplayTimeMode(vars) {
 function readLispString(raw) {
   const form = typeof raw === 'string' ? readLisp(raw)[0] : undefined;
   return form ? stringValue(form) : null;
+}
+
+/** The Org Babel variables as src/babel-options.js holds them: a variable that is not set (or does not read) keeps Emacs's default.
+ * @param {LocalVars} vars @returns {Partial<import('./babel-options.js').BabelOptions>} */
+export function babelOptionsFrom(vars) {
+  /** @type {Partial<import('./babel-options.js').BabelOptions>} */
+  const out = {};
+  const text = (/** @type {string} */ name) => readLispString((vars || {})[name]);
+  const minLines = Number(((vars || {})['org-babel-min-lines-for-block-output'] ?? '').toString().trim());
+  if (Number.isInteger(minLines) && String((vars || {})['org-babel-min-lines-for-block-output'] ?? '').trim() !== '') out.minLines = minLines;
+  const wrap = text('org-babel-inline-result-wrap');
+  if (wrap !== null) out.inlineWrap = wrap;
+  const keyword = text('org-babel-results-keyword');
+  if (keyword !== null) out.resultsKeyword = keyword;
+  const label = text('org-coderef-label-format');
+  if (label !== null) out.coderefFormat = label;
+  if ((vars || {})['org-babel-uppercase-example-markers'] !== undefined) out.uppercaseMarkers = parseLispBoolean(vars['org-babel-uppercase-example-markers'], false);
+  if ((vars || {})['org-src-preserve-indentation'] !== undefined) out.preserveIndentation = parseLispBoolean(vars['org-src-preserve-indentation'], false);
+  if ((vars || {})['org-confirm-babel-evaluate'] !== undefined) out.confirm = parseLispBoolean(vars['org-confirm-babel-evaluate'], true);
+  return out;
 }
 
 /** display-time-format: the format-time-string pattern of the modeline clock. When it is nil (as in Emacs by default) the clock is
@@ -1030,6 +1062,7 @@ export function variableProblems(vars) {
     getAgendaStartOnWeekday, getDeadlineWarningDays, getScheduledDelayDays, getHabitOptions, getAsciiTextWidth, getCalendarLatitude, getCalendarLongitude,
     getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getPriorityRange, sizeLimitsOf,
     (/** @type {LocalVars} */ v) => v['org-duration-units'] && parseDurationUnits(v['org-duration-units']),
+    (/** @type {LocalVars} */ v) => v['org-duration-format'] && parseDurationFormat(v['org-duration-format']),
     extensionsOn, (/** @type {LocalVars} */ v) => tagsColumnOf(v), recentMaxOf, getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,
   ];
   for (const read of readers) {

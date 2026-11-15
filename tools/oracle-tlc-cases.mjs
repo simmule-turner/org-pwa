@@ -143,6 +143,30 @@ function logCases(/** @type {Case[]} */ out) {
       add(`vars ${JSON.stringify(vars)} with notes: ${hn} ->DONE`, keywordLines.mixed + hd, 'DONE', vars);
     }
   }
+  // 3b. where a repeating task goes back to: org-todo-repeat-to-state and the REPEAT_TO_STATE property (inherited only when org-use-property-inheritance says so)
+  const repeatVars = [{}, { 'org-todo-repeat-to-state': 't' }, { 'org-todo-repeat-to-state': '"NEXT"' }, { 'org-todo-repeat-to-state': '"NOPE"' }, { 'org-todo-repeat-to-state': '"DONE"' }, { 'org-todo-repeat-to-state': 'nil' }];
+  const repeatTask = '* TODO Task\nSCHEDULED: <2026-10-05 Mon +1w>\n';
+  const heads2 = {
+    'no property': repeatTask,
+    'own NEXT': repeatTask + ':PROPERTIES:\n:REPEAT_TO_STATE: NEXT\n:END:\n',
+    'own unknown': repeatTask + ':PROPERTIES:\n:REPEAT_TO_STATE: NOPE\n:END:\n',
+    'own nil': repeatTask + ':PROPERTIES:\n:REPEAT_TO_STATE: nil\n:END:\n',
+    'own empty': repeatTask + ':PROPERTIES:\n:REPEAT_TO_STATE:\n:END:\n',
+  };
+  const inherited = '* Parent\n:PROPERTIES:\n:REPEAT_TO_STATE: NEXT\n:END:\n** TODO Task\nSCHEDULED: <2026-10-05 Mon +1w>\n';
+  const inheritVars = [{}, { 'org-use-property-inheritance': 't' }, { 'org-use-property-inheritance': "'(\"REPEAT_TO_STATE\")" }, { 'org-use-property-inheritance': '"REPEAT"' }, { 'org-use-property-inheritance': "'(\"OTHER\")" }];
+  for (const rv of repeatVars) {
+    for (const [hn, hd] of Object.entries(heads2)) {
+      for (const [from, kl] of [['TODO', keywordLines.plain], ['NEXT', keywordLines.plain], ['TODO', '#+TYP_TODO: TODO NEXT | DONE CANC\n'], ['TODO', '#+TODO: TODO NEXT | DONE\n#+TODO: A B | C\n'], ['TODO', '']]) {
+        add(`repeat-to-state ${JSON.stringify(rv)} ${hn} from ${from} (${kl.trim().replace(/\n/g, ' ') || 'default'})`, kl + hd.replace(/^\* TODO/m, `* ${from}`), 'DONE', rv);
+      }
+    }
+  }
+  for (const iv of inheritVars) {
+    for (const rv of [{}, { 'org-todo-repeat-to-state': '"CANC"' }]) {
+      add(`repeat-to-state inherited ${JSON.stringify(iv)} ${JSON.stringify(rv)}`, keywordLines.plain + inherited, 'DONE', { ...iv, ...rv }, note, 'Task');
+    }
+  }
   // 4. the notes typed: empty, long, several lines, with markup, blank lines
   const notes = ['', 'one', 'two\nlines', 'three\nline\nnote', 'with *bold* and [[link]]', '  leading spaces', 'trailing  ', 'a\n\nb', '* looks like a heading', 'back\\\\slash', 'colon: :tag:'];
   for (const n of notes) {

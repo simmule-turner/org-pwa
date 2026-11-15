@@ -12,6 +12,7 @@ import { parseBody } from './body-parser.js';
 import { listItems, symbolName, datum } from './lisp-read.js';
 import { runInit } from './lisp-init.js';
 import { lispStringValue } from './export-defaults.js';
+import { intern } from './elisp-data.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -25,6 +26,7 @@ const config = { level: /** @type {number | null} */ (null) };
 /** @param {number | null} level */
 export function setInlineTaskLevel(level) {
   config.level = level;
+  intern('org-inlinetask-min-level').value = level ?? DEFAULT_MIN_LEVEL; // what the Lisp functions of org-inlinetask see
 }
 
 /** The level from which headings are inline tasks, or null while org-inlinetask is not loaded. */

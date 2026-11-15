@@ -580,6 +580,8 @@ S.importCleanMode = true; // Google's and Apple's own real, non-standard vCard e
 
 // The Open / Save As screen (src-browser/file-screen.js); null while closed.
 S.fileScreen = null;
+S.infoOpen = false;
+S.infoView = null;
 S.settingsOpen = false;
 S.searchOpen = false;
 S.confirmDialogOpen = false; // true only while confirmDialog()'s own overlay is showing -- lets the global keydown handler cleanly step aside rather than racing this dialog's own key handling

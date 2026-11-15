@@ -52,7 +52,7 @@ function oursEdit(c) {
     const doc = parseOrg(toLf(c.org));
     const h = flat(doc)[c.index];
     if (c.op === 'copy') {
-      pasteSubtreeAfter(doc, h, subtreeText(doc, h));
+      pasteSubtreeAfter(doc, h, subtreeText(doc, h), undefined, false, true); // the oracle copies with point at the start of the heading line
       return fromLf(serializeOrg(doc), eol);
     }
     const edit = { promote: promoteHeading, demote: demoteHeading, up: moveHeadingUp, down: moveHeadingDown, delete: removeHeading, 'insert-after': insertHeadingAfter }[c.op];

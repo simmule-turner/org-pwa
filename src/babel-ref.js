@@ -10,6 +10,7 @@ import { findHeadingByCustomId, headingText } from './noweb.js';
 import { isCommentedHeading } from './comment-model.js';
 import { runElisp } from './babel-elisp.js';
 import { Cons, Flt, NIL, Sym, T, print, toArray } from './elisp-data.js';
+import { mergeHeaderArgs, splitHeaderArgs } from './babel-args.js';
 
 /** @typedef {import('./types.js').Doc} Doc */
 /** @typedef {import('./types.js').Heading} Heading */
@@ -69,6 +70,16 @@ function splitArguments(text) {
   return out;
 }
 
+/** The `[name, value]` pairs of merged header arguments, `:var` one by one: a layer for `mergeHeaderArgs`. @param {Record<string, any>} args @returns {string[][]} */
+export function argPairs(args) {
+  /** @type {string[][]} */ const out = [];
+  for (const [name, value] of Object.entries(args)) {
+    if (name === 'var') for (const v of value) out.push(['var', v]);
+    else out.push([name, String(value)]);
+  }
+  return out;
+}
+
 /** The variables for a script: floats made plain numbers. @param {Record<string, unknown>} vars */
 export function plainVariables(vars) {
   return Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, plainValue(v)]));
@@ -76,9 +87,9 @@ export function plainVariables(vars) {
 
 /**
  * The lookup for `resolveVars`: `(name, callText)` gives the rows of a table, `{ value }` for anything else, or null.
- * @param {Doc} doc @param {Block[]} blocks `collectDocumentBlocks(doc)` @param {number} [depth]
+ * @param {Doc} doc @param {Block[]} blocks `collectDocumentBlocks(doc)` @param {number} [depth] @param {unknown} [thisValue] what `*this*` stands for in a `:post` reference
  */
-export function referenceLookup(doc, blocks, depth = 0) {
+export function referenceLookup(doc, blocks, depth = 0, thisValue = undefined) {
   /** @type {{ name: string, kind: 'table' | 'list' | 'fixed' | 'example' | 'export' | 'quote' | 'paragraph' | 'block', lines: string[], at: number, block?: Block }[]} */
   const entries = [];
   /** @param {Heading | null} heading @param {string[]} lines */
@@ -120,7 +131,8 @@ export function referenceLookup(doc, blocks, depth = 0) {
     return body.length ? removeIndentation(body).join('\n') + '\n' : '';
   };
 
-  return (/** @type {string} */ name, /** @type {string | undefined} */ callText, /** @type {boolean} */ contents = false) => {
+  return (/** @type {string} */ name, /** @type {string | undefined} */ callText, /** @type {boolean} */ contents = false, /** @type {string | undefined} */ headerText = undefined) => {
+    if (name === '*this*' && thisValue !== undefined) return { value: lispToValue(/** @type {import('./elisp-data.js').LObj} */ (thisValue)) };
     if (/^'?\(/.test(name)) {
       // a Lisp form is evaluated (org-babel-read)
       const run = runElisp({ code: name, spec: parseResultsSpec('') });
@@ -168,7 +180,9 @@ export function referenceLookup(doc, blocks, depth = 0) {
     if (contents) return { value: (block.emacsBody ?? block.body) + '\n' }; // `name[]` is the text of a source block
     if (block.lang !== 'emacs-lisp' && block.lang !== 'elisp') throw new Error(`:var ${name}: only an Emacs Lisp block can be run from a reference`);
     if (depth >= MAX_DEPTH) throw new Error('References nest more than ' + MAX_DEPTH + ' levels deep');
-    /** @type {string[]} */ const specs = (block.args.var || []).map(String);
+    // `name[:header args](args)`: the header arguments given in the reference go over the block's own (org-babel-ref-resolve)
+    const blockArgs = headerText ? mergeHeaderArgs([argPairs(block.args), splitHeaderArgs(headerText)]) : block.args;
+    /** @type {string[]} */ const specs = (blockArgs.var || []).map(String);
     const declared = specs.map((s) => /^\s*([A-Za-z_$][\w$]*)=/.exec(s)?.[1] ?? '');
     const given = splitArguments(callText ?? '');
     /** @type {string[]} */ const calls = [];
@@ -179,9 +193,9 @@ export function referenceLookup(doc, blocks, depth = 0) {
     });
     const overridden = new Set(calls.map((c) => c.slice(0, c.indexOf('='))));
     /** @type {import('./babel.js').TableNames} */ const names = {};
-    const vars = resolveVars([...specs.filter((s, i) => !overridden.has(declared[i])), ...calls], referenceLookup(doc, blocks, depth + 1), { colnames: block.args.colnames, rownames: block.args.rownames, hlines: block.args.hlines, names });
-    const spec = parseResultsSpec(block.args.results);
-    const run = runElisp({ code: block.emacsBody ?? block.body, vars, spec, lexical: block.args.lexical, names: pickedNames(block.args, names) });
+    const vars = resolveVars([...specs.filter((s, i) => !overridden.has(declared[i])), ...calls], referenceLookup(doc, blocks, depth + 1, thisValue), { colnames: blockArgs.colnames, rownames: blockArgs.rownames, hlines: blockArgs.hlines, names });
+    const spec = parseResultsSpec(blockArgs.results);
+    const run = runElisp({ code: block.emacsBody ?? block.body, vars, spec, lexical: blockArgs.lexical, names: pickedNames(blockArgs, names) });
     if (!run.ok) throw new Error(run.message);
     return { value: lispToValue(run.value) };
   };

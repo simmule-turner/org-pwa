@@ -5,6 +5,7 @@
 import { editListItemText, editParagraphText, insertParagraphAfter } from '../src/body-edit.js';
 import { footnoteEditorTool } from './footnotes-ui.js';
 import { timerEditorTool } from './timer-flow.js';
+import { dateEditorTool } from './timestamp-flow.js';
 import { saveDocument } from '../src/document-store.js';
 import { applyStartupVisibility, captureFolds, restoreFolds } from '../src/fold-state.js';
 import { mergeGlobalAndLocalVariables } from '../src/global-variables.js';
@@ -88,7 +89,7 @@ export function openParagraphEditor(heading, paragraph) {
     label: 'Edit paragraph',
     value: originalText,
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'paragraph', paragraph), timerEditorTool()],
+    tools: [footnoteEditorTool(heading, 'paragraph', paragraph), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingParagraph = null;
       render();
@@ -138,7 +139,7 @@ export function openListItemEditor(heading, item) {
     label: 'Edit list item',
     value: originalText,
     resetInPlace: true,
-    tools: [footnoteEditorTool(heading, 'list-item', item), timerEditorTool()],
+    tools: [footnoteEditorTool(heading, 'list-item', item), timerEditorTool(), dateEditorTool()],
     onCancel: () => {
       S.editingListItem = null;
       render();

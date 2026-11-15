@@ -18,7 +18,7 @@ const EMACS_DEFECT = (/** @type {{ type: string, opts: { prepend?: boolean } }} 
 function file(c) {
   const doc = parseOrg(c.init);
   const [y, m, d] = c.ymd;
-  const target = resolveOlpTarget(doc, c.olp, { now: new Date(y, m - 1, d, 12), datetree: true, treeType: c.opts.treeType });
+  const target = resolveOlpTarget(doc, c.olp, { now: new Date(y, m - 1, d, 12), datetree: true, treeType: c.opts.treeType, datetreeTimestamp: c.opts.stamp ?? null });
   fileCapture(doc, target, c.type, c.template, !!c.opts.prepend, { ...c.opts, recalculate: (t) => recalculateTable(t, {}) });
   return serializeOrg(doc);
 }

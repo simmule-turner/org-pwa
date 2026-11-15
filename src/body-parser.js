@@ -1,7 +1,10 @@
 // @ts-check
 
+import { elementListStruct, isItemLine } from './list-edit.js';
 import { parseInline, parseInlineLines, stripLineBreakMarker, extractLatexFragments, matchLatexFragmentAt } from './inline-markup.js';
 
+/** @typedef {import('./types.js').BodyNode} BodyNode */
+/** @typedef {import('./types.js').List} List */
 /**
  * Body-content parser: text lines -> content nodes (list, table, block,
  * paragraph). This is deliberately additive to org-parser.js rather than a
@@ -74,9 +77,9 @@ function nameBefore(lines, at) {
   return undefined;
 }
 const PLOT_RE = /^\s*#\+PLOT:\s*(.*)$/i;
-// Org reads `a.` and `A)` as bullets only when org-list-allow-alphabetical is set. A lower-case `[x]` stays a checkbox here, as it is for
-// Org's own commands (C-c C-c toggles it)
-const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ xX-])\](?:\s+|$))?(.*)$/;
+// Org reads `a.` and `A)` as bullets only when org-list-allow-alphabetical is set. A lower-case `[x]` is no checkbox to org-element (it is
+// text of the item); only `[ ]`, `[X]` and `[-]` are
+const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z])\][ \t]*)?(?:\[([ X-])\](?:\s+|$))?(.*)$/;
 // Real org: "a line consisting of only dashes, and at least 5 of them,
 // is exported as a horizontal line." Whitespace around the dashes is
 // tolerated (indentation, trailing spaces), matching how org itself is
@@ -84,26 +87,16 @@ const LIST_ITEM_RE = /^(\s*)([-+]|\*|\d+[.)])(?:\s+|(?<!\*)$)(?:\[@(\d+|[A-Za-z]
 const HR_LINE_RE = /^\s*-{5,}\s*$/;
 
 /** @param {string} line */
-function leadingWhitespace(line) {
-  const m = /** @type {RegExpExecArray} */ (/^(\s*)/.exec(line));
-  return m[1];
-}
-
-/** @param {string} line */
 function isListItemLine(line) {
   return LIST_ITEM_RE.test(line);
-}
-
-/** @param {string} line */
-function indentOf(line) {
-  return leadingWhitespace(line).length;
 }
 
 // ---- blocks -------------------------------------------------------------
 
 /**
  * @param {string[]} lines
- * @param {any} [i]
+ * @param {number} i
+ * @returns {[import('./types.js').Block, number]}
  */
 function parseBlock(lines, i) {
   const startMatch = /** @type {RegExpExecArray} */ (BLOCK_START_RE.exec(lines[i]));
@@ -138,7 +131,8 @@ function parseTableRow(line) {
 
 /**
  * @param {string[]} lines
- * @param {any} [i]
+ * @param {number} i
+ * @returns {[import('./types.js').Table, number]}
  */
 function parseTable(lines, i) {
   const startIndex = i;
@@ -167,7 +161,7 @@ function parseTable(lines, i) {
 
 // ---- lists ------------------------------------------------------------
 
-/** @param {any} [marker] */
+/** @param {string} marker */
 function isOrderedMarker(marker) {
   return /^\d+[.)]$/.test(marker);
 }
@@ -179,7 +173,7 @@ function isOrderedMarker(marker) {
  *  of the inline parser's own border rules), but sufficient for this
  *  specific purpose: deciding whether a "::" match is real tag-separator
  * @param {string} text
- * @param {any} [pos]
+ * @param {number} pos
  *  syntax or just literal text living inside a code/verbatim span. */
 function isInsideLiteralSpan(text, pos) {
   for (const delim of ['~', '=']) {
@@ -226,69 +220,41 @@ function parseListItemLine(line) {
     tag,
     text,
     inline: parseInline(text),
-    children: /** @type {any[]} */ ([]),
+    children: /** @type {List[]} */ ([]),
+    content: /** @type {BodyNode[]} */ ([]),
   };
 }
 
 /**
- * Parses a run of list items at a given indent level, recursing into
- * more-indented runs as nested lists attached to the preceding item.
- * Each item's `lineIndex` records its position in the `lines` array it
- * was parsed from (a heading's `bodyLines`), so callers can write edits
- * (e.g. a checkbox toggle) back to the actual serialization source rather
- * than only mutating the derived `body` tree. Returns [listNode, nextIndex].
+ * Parses the list that starts on line `i` of `lines`, as org-element reads it (`org-element--list-struct`): an item runs from its
+ * bullet to the next item that is not deeper, a text line that is not deeper, or two blank lines; everything in between (more lines of
+ * its text, paragraphs, tables, blocks, a rule, sub-lists, also after a blank line) is the item's own `content`, in order, and
+ * `children` holds the sub-lists among it.  Each item's `lineIndex` records its position in the `lines` array it was parsed from (a
+ * heading's `bodyLines`), so callers can write edits (a checkbox toggle, a new item) back to the actual serialization source.
+ * Returns [listNode, nextIndex].
  * @param {string[]} lines
- * @param {any} [i]
- * @param {any} [baseIndent]
+ * @param {number} i
  */
-function parseList(lines, i, baseIndent) {
+function parseList(lines, i) {
+  const struct = elementListStruct(lines, i, lines.length);
+  const topIndent = struct[0].ind;
   const items = [];
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.trim() === '') {
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() === '') j++;
-      if (j - i < 2 && j < lines.length && isListItemLine(lines[j]) && indentOf(lines[j]) >= baseIndent) { // two blank lines end a list
-        i = j;
-        continue;
-      }
-      break;
-    }
-
-    if (!isListItemLine(line)) break;
-    const indent = indentOf(line);
-    if (indent < baseIndent) break;
-    if (indent > baseIndent) break; // handled via recursion below, not here
-
-    const item = parseListItemLine(line);
-    /** @type {any} */ (item).lineIndex = i;
-    i++;
-
-    // Look ahead for a more-indented nested sub-list, skipping over any
-    // blank line(s) first -- org's own convention commonly separates a
-    // list item from its nested sub-list with a blank line for
-    // readability (this is not an edge case; it's how many real org
-    // files, including this app's own README, are actually written),
-    // and without this the sub-list was silently parsed as a separate,
-    // un-nested sibling list instead -- same marker or not. i is only
-    // advanced past the blank line(s) when a nested sub-list is
-    // actually found there; otherwise i is left exactly as it was, so
-    // the main loop's own blank-line handling for same-level
-    // continuation (above) is completely unaffected.
-    let lookahead = i;
-    while (lookahead < lines.length && lines[lookahead].trim() === '') lookahead++;
-    if (lookahead - i < 2 && lookahead < lines.length && isListItemLine(lines[lookahead]) && indentOf(lines[lookahead]) > indent) {
-      const [nested, nextI] = parseList(lines, lookahead, indentOf(lines[lookahead]));
-      item.children.push(nested);
-      i = nextI;
-    }
-
+  /** @type {{ line: number, ind: number, end: number } | undefined} */
+  let at = struct[0];
+  let next = i;
+  while (at && at.ind === topIndent) {
+    /** @type {{ line: number, ind: number, end: number }} */ const own = at;
+    const item = parseListItemLine(lines[own.line]);
+    /** @type {any} */ (item).lineIndex = own.line;
+    let contentEnd = own.end;
+    while (contentEnd > own.line + 1 && lines[contentEnd - 1].trim() === '') contentEnd--;
+    item.content = contentEnd > own.line + 1 ? parseRange(lines.slice(0, contentEnd), own.line + 1) : [];
+    item.children = /** @type {List[]} */ (item.content.filter((n) => n.type === 'list'));
     items.push(item);
+    next = own.end;
+    at = struct.find((it) => it.line === own.end);
   }
-
-  return [{ type: 'list', items }, i];
+  return [/** @type {any} */ ({ type: 'list', items }), next];
 }
 
 // ---- paragraphs ---------------------------------------------------------
@@ -329,7 +295,8 @@ function findLatexProtectedLineIndices(lines) {
 
 /**
  * @param {string[]} lines
- * @param {any} [i]
+ * @param {number} i
+ * @returns {[import('./types.js').Paragraph, number]}
  */
 function parseParagraph(lines, i, protectedIndices = new Set()) {
   const startIndex = i;
@@ -373,9 +340,15 @@ function parseParagraph(lines, i, protectedIndices = new Set()) {
 
 /** @param {string[]} lines */
 function parseBody(lines) {
+  return parseRange(lines, 0);
+}
+
+/** The nodes of `lines` from line `from` on (their `lineIndex` counts from the start of `lines`); an item's content is parsed so.
+ * @param {string[]} lines @param {number} from @returns {any[]} */
+function parseRange(lines, from) {
   const nodes = [];
-  let i = 0;
-  const protectedIndices = findLatexProtectedLineIndices(lines);
+  let i = from;
+  const protectedIndices = new Set([...findLatexProtectedLineIndices(lines.slice(from))].map((k) => k + from));
 
   while (i < lines.length) {
     const line = lines[i];
@@ -431,8 +404,8 @@ function parseBody(lines) {
       i++;
       continue;
     }
-    if (isListItemLine(line)) {
-      const [node, next] = parseList(lines, i, indentOf(line));
+    if (isListItemLine(line) && isItemLine(line)) {
+      const [node, next] = parseList(lines, i);
       nodes.push(node);
       i = next;
       continue;
@@ -445,7 +418,22 @@ function parseBody(lines) {
   return nodes;
 }
 
+/**
+ * Every node of a body in the order of the text, those that sit in a list item's content (paragraphs, tables, blocks, rules and
+ * sub-lists) too; a list is given before what its items hold.
+ * @param {any[] | undefined} nodes @returns {any[]}
+ */
+function flatBodyNodes(nodes) {
+  /** @type {any[]} */ const out = [];
+  for (const n of nodes || []) {
+    out.push(n);
+    if (n.type === 'list') for (const it of n.items) out.push(...flatBodyNodes(it.content || []));
+  }
+  return out;
+}
+
 export {
+  flatBodyNodes,
   parseBody,
   parseList,
   parseTable,

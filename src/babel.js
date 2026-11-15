@@ -2,6 +2,7 @@
 import { inspect } from './js-inspect.js';
 import { layoutTable } from './org-table-layout.js';
 import { Flt, Sym } from './elisp-data.js';
+import { babelOptions } from './babel-options.js';
 
 /**
  * Org Babel for JavaScript blocks: the pure part. Header arguments, `:var`
@@ -77,6 +78,7 @@ export function parseResultsSpec(value) {
     if (COLLECT_WORDS.has(word)) spec.collect = /** @type {'value' | 'output'} */ (word);
     else if (FORMAT_WORDS.has(word)) spec.words.add(word === 'vector' ? 'table' : word);
     else if (word === 'file') spec.file = true;
+    else if (word === 'link' || word === 'graphics') spec.words.add(word); // they only keep the result out of :file
     else if (word === 'silent' || word === 'none') spec.silent = true;
     else if (word === 'append' || word === 'prepend' || word === 'replace') {
       spec.handling = word;
@@ -98,7 +100,7 @@ export function timeoutMs(args) {
 
 // ---- :var -------------------------------------------------------------------
 
-const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[A-Za-z_][\w.-]*\((?:[^()"]|"(?:[^"\\]|\\.)*"|\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))*\)(?:\[[^\]]*\])?|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\)|[^\s,[]+(?:\[[^\]]*\])?)/g;
+const VAR_ASSIGN_RE = /([A-Za-z_$][\w$]*)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'(?![(\w])|'\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|[A-Za-z_][\w.-]*(?:\[[^\]]*\](?=\())?\((?:[^()"]|"(?:[^"\\]|\\.)*"|\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))*\)(?:\[[^\]]*\])?|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\)|[^\s,[]+(?:\[[^\]]*\])?)/g;
 
 /**
  * A `:prologue` / `:epilogue` value as Org reads it: text in double quotes is a Lisp string (`\n`, `\"` and `\\` escapes),
@@ -275,12 +277,12 @@ export function resolveVars(varSpecs, lookupTable, tableOptions = {}) {
         vars[name] = Array.isArray(list) ? shapeTable(list, tableOptions) : list;
       } else {
         // a name is looked up first, as Org resolves a reference; only a name nothing has is read as a word
-        const parts = /^([^()[\]]+)(?:\(([\s\S]*)\))?(?:\[(.*)\])?$/.exec(raw);
+        const parts = /^([^()[\]]+)(?:\[([^\]]*)\](?=\())?(?:\(([\s\S]*)\))?(?:\[(.*)\])?$/.exec(raw);
         const tableName = parts ? parts[1] : raw;
-        const found = lookupTable ? lookupTable(tableName, parts?.[2], parts?.[3] === '') : null;
+        const found = lookupTable ? lookupTable(tableName, parts?.[3], parts?.[4] === '', parts?.[2]) : null;
         if (found) {
           const rows = Array.isArray(found) ? found : found.value;
-          const picked = parts?.[3] && Array.isArray(rows) ? indexList(parts[3], rows) : rows;
+          const picked = parts?.[4] && Array.isArray(rows) ? indexList(parts[4], rows) : rows;
           vars[name] = scriptValue(Array.isArray(picked) ? shapeTable(picked, tableOptions) : picked);
         } else if (raw === 'true' || raw === 't') vars[name] = true;
         else if (raw === 'false') vars[name] = false;
@@ -346,8 +348,9 @@ const escapeCode = (lines) => lines.map((l) => l.replace(/^([ \t]*)(,*(?:\*|#\+)
 /** The `: ` lines of a literal result, or an example block once there are ten of them (`org-babel-examplify-region`). @param {string[]} lines */
 function examplify(lines) {
   if (lines.length === 0) return lines;
-  if (lines.length < 10) return lines.map((l) => ': ' + l);
-  return ['#+begin_example', ...escapeCode(lines), '#+end_example'];
+  if (lines.length < babelOptions.minLines) return lines.map((l) => ': ' + l);
+  const cap = (/** @type {string} */ s) => (babelOptions.uppercaseMarkers ? s.toUpperCase() : s);
+  return [cap('#+begin_example'), ...escapeCode(lines), cap('#+end_example')];
 }
 
 /** The lines of `:results list`: an element that is itself a list is one item with a line for each of its parts. @param {Item[]} list */
@@ -503,7 +506,7 @@ export function placeResults(bodyLines, block, resultLines, { hash = /** @type {
     // without :cache yes the old `[hash]` stays on the line, as in Emacs
     return { start: j, removeCount: end - j, insert: [bodyLines[j].replace(/^(\s*#\+RESULTS)(\[[^\]]*\])?:/i, hash ? `$1[${hash}]:` : '$1$2:'), ...resultLines.map(pad)] };
   }
-  const insert = ['', pad((hash ? `#+RESULTS[${hash}]:` : '#+RESULTS:') + label), ...resultLines.map(pad)];
+  const insert = ['', pad((hash ? `#+${babelOptions.resultsKeyword}[${hash}]:` : `#+${babelOptions.resultsKeyword}:`) + label), ...resultLines.map(pad)];
   if (blockEnd < bodyLines.length && bodyLines[blockEnd].trim() !== '') insert.push('');
   return { start: blockEnd, removeCount: 0, insert };
 }

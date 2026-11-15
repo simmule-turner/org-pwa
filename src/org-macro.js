@@ -160,12 +160,16 @@ function valueOf(key, args, macros, ctx) {
 export function macroDefinitions(doc) {
   /** @type {Record<string, string>} */
   const out = {};
+  /** The global ones (`org-export-global-macros`, kept as keywords with `global` set) give way to every definition of the file; among themselves the last wins. @type {Record<string, string>} */
+  const global = {};
   for (const kw of doc.keywords || []) {
     if (kw.key.toUpperCase() !== 'MACRO') continue;
     const m = /^(\S+)[ \t]*([\s\S]*)$/.exec(kw.value.trim());
-    if (m && !(m[1] in out)) out[m[1]] = m[2];
+    if (!m) continue;
+    if (kw.global) global[m[1]] = m[2];
+    else if (!(m[1] in out)) out[m[1]] = m[2];
   }
-  return out;
+  return { ...global, ...out };
 }
 
 /**

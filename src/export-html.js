@@ -38,7 +38,7 @@ import { linkAbbreviations, expandAbbreviation } from './link-abbrev.js';
 import { INLINE_TASK_BLOCK, inlineTaskInfo, foldInlineTasks } from './inline-tasks.js';
 import { doctypeInfo, xmlDeclaration, htmlTag, charsetMeta } from './html-doctype.js';
 import { parseInline, extractLatexFragments } from './inline-markup.js';
-import { parseElements, parseAttributes } from './org-elements.js';
+import { parseElements, parseAttributes, clockOf } from './org-elements.js';
 import { translate } from './export-dictionary.js';
 import { leadingOverlay } from './export-beamer.js';
 import { evalMacro, isEvalTemplate } from './macro-eval.js';
@@ -53,6 +53,7 @@ import { getHtmlHead } from './export-options.js';
 import { getProperty } from './archive-model.js';
 import { highlightToHtml } from './syntax-highlight.js';
 import { callExportFunction } from './export-lisp.js';
+import { outsideVerbatim } from './verbatim-spans.js';
 import { brokenLinkPath, brokenLinkText, finishDropped, parseBrokenLinks } from './broken-links.js';
 import { newCodeCounter, codeStart, unravelCode, resolveCodeRef, coderefText, blockSwitchText } from './code-lines.js';
 
@@ -115,7 +116,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
     timestamp: true, // #+OPTIONS: timestamp: (org-export-time-stamp-file): the Created line of the auto postamble
     stamps: /** @type {boolean | string} */ (true), // #+OPTIONS: <: nil, active, inactive or t
     arch: 'headline',
-    comments: false,
+    clocks: false, // #+OPTIONS: c: (org-export-with-clocks)
     drawers: { all: false, exclude: ['LOGBOOK'], include: null },
     properties: /** @type {boolean | string[]} */ (false), // prop:t shows every property, a list only those
   };
@@ -177,7 +178,7 @@ export function parseHtmlOptions(doc, defaults = /** @type {import('./export-def
       case 'timestamp': o.timestamp = !isNil(v); break;
       case '<': o.stamps = isNil(v) ? false : v === 'active' || v === 'inactive' ? v : true; break;
       case 'arch': o.arch = isNil(v) ? false : v === 't' ? true : 'headline'; break;
-      case 'c': o.comments = v === 't'; break;
+      case 'c': o.clocks = !isNil(v); break;
       case 'prop': o.properties = isNil(v) ? false : v.startsWith('(') ? [...v.matchAll(/"([^"]*)"|([^\s()"]+)/g)].map((m) => (m[1] ?? m[2]).toUpperCase()) : true; break;
       case 'd':
         if (isNil(v)) o.drawers = { all: false, exclude: null, include: [] };
@@ -381,23 +382,6 @@ function expandMacrosIn(state, text) {
   });
 }
 
-// =verbatim= and ~code~ spans, with Org's border rules: the marker follows a space or opening punctuation and ends before a space or closing one
-const VERBATIM_SPAN_RE = /(^|[\s({'"])([=~])(?=\S)([^\n]*?\S)\2(?=$|[\s\-.,;:!?)}'"\\])/g;
-
-/** Runs `fn` on the parts of `text` that are not verbatim or code spans, and leaves the spans as they are.
- * @param {string} text
- * @param {(piece: string) => string} fn */
-function outsideVerbatim(text, fn) {
-  let out = '';
-  let last = 0;
-  for (const m of text.matchAll(VERBATIM_SPAN_RE)) {
-    const start = (m.index ?? 0) + m[1].length;
-    out += fn(text.slice(last, start)) + text.slice(start, (m.index ?? 0) + m[0].length);
-    last = (m.index ?? 0) + m[0].length;
-  }
-  return out + fn(text.slice(last));
-}
-
 /** The `<<target>>` and `<<<radio>>>` names written in these lines of text, leaving out source, example, export and comment
  * blocks, comment lines, and verbatim or code spans.
  * @param {string[]} lines
@@ -442,7 +426,7 @@ function renderInline(state, rawText) {
   text = text.replace(/\bsrc_([A-Za-z0-9_-]+)(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g, (whole, lang, code) => addToken(state, `<code class="src src-${escapeAttr(lang)}">${escapeHtml(code)}</code>`, whole));
   // inline calls to Babel blocks print nothing when nothing is run
   text = text.replace(/^[ \t]*call_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?[ \t]*/, (whole) => addToken(state, '', whole)); // at the start of a paragraph, the blanks after it go too
-  text = text.replace(/\bcall_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, (whole) => addToken(state, '', whole));
+  text = outsideVerbatim(text, (/** @type {string} */ piece) => piece.replace(/\bcall_[A-Za-z0-9_-]+(?:\[[^\]\n]*\])?\([^)\n]*\)(?:\[[^\]\n]*\])?/g, (whole) => addToken(state, '', whole))); // not inside =verbatim= or ~code~
   // radio targets and targets (not inside =verbatim= or ~code~, where they are just characters)
   text = outsideVerbatim(text, (/** @type {string} */ piece) =>
     piece
@@ -1146,8 +1130,11 @@ function drawerHtml(state, el, ctx) {
  */
 function elementHtml(state, el, ctx = {}) {
   switch (el.type) {
-    case 'paragraph':
+    case 'paragraph': {
+      const clock = clockOf(el.lines);
+      if (clock) return state.options.clocks ? `<p>\n<span class="timestamp-wrapper">\n<span class="timestamp-kwd">CLOCK:</span> <span class="timestamp">${escapeHtml(clock.value)}</span>${clock.duration ? ` <span class="timestamp">(${clock.duration})</span>` : ''}\n</span>\n</p>` : ''; // org-html-clock; a clock is left out unless org-export-with-clocks
       return paragraphHtml(state, el, ctx);
+    }
     case 'list':
       return listHtml(state, el, ctx);
     case 'table':
@@ -1274,7 +1261,7 @@ export function buildFilter(state) {
   if (select.size) markAncestors(doc.children || []);
   const done = new Set(state.doneKeywords);
   const keep = (/** @type {any} */ h) => {
-    if (!options.comments && isCommented(h)) return false;
+    if (isCommented(h)) return false;
     if (tagsOf(h).some((t) => exclude.has(t))) return false;
     if (select.size && !keepAncestor.has(h)) return false;
     if (options.tasks !== true && h.todo) {
@@ -1632,6 +1619,17 @@ const PAGE_CSS = `
     thead { display: table-header-group; }
   }
 `;
+
+/**
+ * A line of Org text as `org-export-data` writes it for the HTML back end: the objects only (`org-html-plain-text` and the
+ * transcoders of the objects), not wrapped in a paragraph. The converters of the tables and lists (orgtbl-to-html) use it for cells.
+ * @param {Doc} doc  the document it belongs to (its #+OPTIONS apply)
+ * @param {string} raw
+ */
+export function exportHtmlObjects(doc, raw) {
+  const { state } = prepareHtmlExport(doc, null, {});
+  return finishDropped(renderInline(state, raw));
+}
 
 /**
  * Exports `doc` (or the subtree at `scope`) to a complete standalone HTML document.

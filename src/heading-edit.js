@@ -21,7 +21,10 @@
 
 import { findContainer, findAncestorPath, shiftLevels } from './archive-model.js';
 import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
-import { parseOrg, serializeOrg, serializeHeadingSubtree, headingLineIndex } from './org-parser.js';
+import { parseOrg, serializeOrg, serializeHeadingSubtree, serializeHeadingLine, headingPreambleLines, headingLineIndex } from './org-parser.js';
+import { parseBody } from './body-parser.js';
+import { fixupIndentation } from './indent-fixup.js';
+import { getAdaptIndentation, getAutoAlignTags, getSrcPreserveIndentation } from './indent-settings.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -504,6 +507,121 @@ function demoteHeadingRaw(doc, heading) {
   return true;
 }
 
+/**
+ * Makes `lines` the text under the line of `heading` (planning line, drawers and body, as they would read in a file), keeping its
+ * heading line fields, so an edit made on the text can be applied to the heading in place.
+ * @param {Heading} heading
+ * @param {string[]} lines
+ * @param {string} header  the heading line as it is written now
+ */
+function adoptSectionLines(heading, lines, header) {
+  const parsed = parseOrg(['* x', ...lines].join('\n')).children[0];
+  heading.planning = parsed.planning;
+  heading.properties = parsed.properties;
+  heading.propertyOrder = parsed.propertyOrder;
+  heading.logbookLines = parsed.logbookLines;
+  heading.preLogLines = parsed.preLogLines;
+  heading.bodyLines = parsed.bodyLines;
+  heading.body = parsed.body;
+  const raw = /** @type {NonNullable<Heading['raw']>} */ (parsed.raw);
+  raw.header = header;
+  raw.headerSig = serializeHeadingLine(heading, 0);
+  heading.raw = raw;
+}
+
+/**
+ * org-insert-property-drawer: an empty property drawer under the heading line (under the planning line, when there is one), unless one
+ * is there; indented as org-adapt-indentation says. Returns false when there already is one.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ */
+function insertPropertyDrawerRaw(doc, heading) {
+  const preamble = headingPreambleLines(heading);
+  const rest = [...preamble.slice(1), ...heading.bodyLines];
+  const at = rest.length && /^[ \t]*(?:SCHEDULED|DEADLINE|CLOSED):/.test(rest[0]) ? 1 : 0;
+  if (at < rest.length && /^[ \t]*:PROPERTIES:[ \t]*$/i.test(rest[at])) return false;
+  const indent = at ? /^[ \t]*/.exec(rest[0])?.[0] ?? '' : getAdaptIndentation() === 'nil' ? '' : ' '.repeat(heading.level + 1); // like the planning line above it, else as adapting indentation says
+  const lines = [...rest.slice(0, at), `${indent}:PROPERTIES:`, `${indent}:END:`, ...rest.slice(at)];
+  if (lastHeading(doc) === heading && heading.bodyLines.length === 0 && rest.length === at) lines.push(''); // the file ends with a line break now
+  adoptSectionLines(heading, lines, preamble[0]);
+  return true;
+}
+
+/** org-insert-property-drawer (see insertPropertyDrawerRaw). @param {Doc} doc @param {Heading} heading */
+export const insertPropertyDrawer = keepFinalNewline(insertPropertyDrawerRaw, false);
+
+/**
+ * org-toggle-comment: puts COMMENT first in the title, or takes it off. Returns whether the heading is commented now.
+ * @param {Heading} heading
+ */
+export function toggleComment(heading) {
+  const was = /^COMMENT(\s|$)/.test(heading.title);
+  const old = headingPreambleLines(heading)[0];
+  let at = heading.level;
+  const after = (/** @type {RegExp} */ re) => {
+    const m = re.exec(old.slice(at));
+    if (m) at += m[0].length;
+  };
+  if (heading.todo) after(new RegExp(`^[ \\t]+${heading.todo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[ \\t]|$)`));
+  if (heading.priority) after(/^[ \t]+\[#.\]/);
+  at += /^[ \t]*/.exec(old.slice(at))?.[0].length ?? 0;
+  let text = old;
+  if (!/[ \t]/.test(text[at - 1] ?? '')) {
+    text = `${text.slice(0, at)} ${text.slice(at)}`;
+    at += 1;
+  }
+  if (was) text = text.slice(0, at) + text.slice(at).replace(/^[^ ]* ?[ \t]*/, '');
+  else text = text.slice(0, at) + 'COMMENT' + (at < text.length ? ' ' : '') + text.slice(at);
+  heading.title = was ? heading.title.replace(/^COMMENT[ \t]*/, '') : heading.title ? `COMMENT ${heading.title}` : 'COMMENT';
+  const raw = heading.raw || /** @type {NonNullable<Heading['raw']>} */ ({ header: '', headerSig: '', planning: null, planningSig: null, drawers: [], propertyLines: {}, propsSig: '', logSig: '' });
+  raw.header = text;
+  raw.headerSig = serializeHeadingLine(heading, 0);
+  heading.raw = raw;
+  return !was;
+}
+
+/**
+ * org-promote / org-demote: only the heading line changes level, its children keep theirs (the ones now deeper than it become its
+ * children, the others its siblings). The text under the heading follows as `org-adapt-indentation` says, and the tags are aligned
+ * again when `org-auto-align-tags` is set. Refuses (false) to promote at level 1.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ * @param {1 | -1} delta
+ */
+function shiftOneHeading(doc, heading, delta) {
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0 || (delta < 0 && heading.level <= 1)) return false;
+  const preamble = headingPreambleLines(heading);
+  const old = preamble[0];
+  const rest = [...preamble.slice(1), ...heading.bodyLines];
+  const was = heading.level;
+  heading.level += delta;
+  const adapt = getAdaptIndentation();
+  const lines = adapt === 'nil' ? rest : fixupIndentation(rest, delta, heading.level, adapt, getSrcPreserveIndentation());
+  if (lines.some((l, k) => l !== rest[k])) adoptSectionLines(heading, lines, old);
+  else if (!heading.raw) adoptSectionLines(heading, rest, old);
+  const raw = /** @type {NonNullable<Heading['raw']>} */ (heading.raw);
+  if (getAutoAlignTags() && heading.tags && heading.tags.length) {
+    raw.header = serializeHeadingLine(heading);
+  } else {
+    raw.header = '*'.repeat(heading.level) + old.slice(was);
+  }
+  raw.headerSig = serializeHeadingLine(heading, 0);
+  rebuildTree(doc, list);
+  if (delta > 0) {
+    const parent = list.slice(0, i).reverse().find((h) => h.level < heading.level);
+    if (parent) parent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
+  }
+  return true;
+}
+
+/** org-promote: promotes only `heading` (see shiftOneHeading). @param {Doc} doc @param {Heading} heading */
+export const promoteHeadingOnly = keepFinalNewline((/** @type {Doc} */ doc, /** @type {Heading} */ heading) => shiftOneHeading(doc, heading, -1));
+
+/** org-demote: demotes only `heading` (see shiftOneHeading). @param {Doc} doc @param {Heading} heading */
+export const demoteHeadingOnly = keepFinalNewline((/** @type {Doc} */ doc, /** @type {Heading} */ heading) => shiftOneHeading(doc, heading, 1));
+
 const insertHeadingAfterKeepingNewline = keepFinalNewline(insertHeadingAfterRaw);
 
 /** Inserts a new sibling heading after the subtree of `heading` (see insertHeadingAfterRaw). @param {Doc} doc @param {Heading} heading @param {Record<string, any>} [opts] */
@@ -535,35 +653,64 @@ export const promoteHeading = keepFinalNewline(promoteHeadingRaw);
 export const demoteHeading = keepFinalNewline(demoteHeadingRaw);
 
 /**
- * org-paste-subtree on `heading`: the subtrees in `text` go in after it, at its level (or at `level`, Emacs's numeric prefix). On a
- * heading that is nothing but its stars, with point after them (`atStars`), they take its place at its level; the empty line the
- * heading's own line break leaves stays above them. Returns the pasted headings, or null when `text` holds no heading or `heading` is
- * not in `doc`.
+ * org-paste-subtree with point on `heading`: the subtrees in `text` go in before the next visible heading (the first child of `heading`
+ * when it is not folded), at the level of `heading` or, with a numeric prefix, at `level`. On a heading that is nothing but its stars,
+ * with point after them (`atStars`) and no `level`, the stars go and the empty line stays; the heading's own text and children then
+ * come before the subtrees. With point at the start of the heading line (`atBol`) they go in before the heading. The kill must be a
+ * subtree (starts with a heading, no heading shallower than the first); otherwise null. Returns the pasted headings.
  * @param {Doc} doc
  * @param {Heading} heading
  * @param {string} text
  * @param {number} [level]
- * @param {boolean} [atStars] point is after the stars of `heading`, which is nothing else (not at the start of its line)
+ * @param {boolean} [atStars] point is after the stars of `heading`, which is nothing else
  * @param {boolean} [lineBreak] whether the line of `heading` ends with a line break (the last one of a file may not)
+ * @param {boolean} [atBol] point is at the start of the line of `heading`
  * @returns {Heading[] | null}
  */
-function pasteSubtreeAfterRaw(doc, heading, text, level, atStars = false, lineBreak = true) {
+function pasteSubtreeAfterRaw(doc, heading, text, level, atStars = false, lineBreak = true, atBol = false) {
   const parsed = parseOrg(text.replace(/\r?\n$/, ''));
-  if (!parsed.children || parsed.children.length === 0) return null;
-  const located = findContainer(doc, heading);
-  if (!located) return null;
-  const bare = atStars && heading.title === '' && !heading.todo && !heading.priority && heading.tags.length === 0 && heading.bodyLines.length === 0 && heading.children.length === 0;
-  for (const node of parsed.children) shiftLevels(node, level ?? heading.level);
-  if (bare && lineBreak) {
-    /** @type {Doc | Heading} */
-    let before = (findAncestorPath(doc, heading) || []).slice(-1)[0] || doc;
-    if (located.index > 0) {
-      before = located.container[located.index - 1];
-      while (before.children.length > 0) before = before.children[before.children.length - 1];
-    }
-    before.bodyLines.push('');
+  const trees = flatHeadings(parsed);
+  if (trees.length === 0 || parsed.keywords.length || parsed.bodyLines.some((l) => !/^[ \t\r]*$/.test(l))) return null;
+  const oldLevel = trees[0].level;
+  if (trees.some((h) => h.level < oldLevel)) return null;
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0) return null;
+  const bare = atStars && !atBol && level === undefined && heading.title === '' && !heading.todo && !heading.priority && heading.tags.length === 0;
+  // without a level of its own the subtree gets the larger of the levels of the previous visible heading and of this one
+  /** @type {number} */
+  let previousLevel;
+  if (i === 0) previousLevel = doc.keywords.length || doc.bodyLines.length ? 1 : heading.level;
+  else {
+    let k = i - 1;
+    const hidden = (/** @type {number} */ n) => list.some((a, ai) => ai < n && a.collapsed && n < subtreeEnd(list, ai));
+    while (k > 0 && hidden(k)) k--;
+    previousLevel = list[k].level;
   }
-  located.container.splice(located.index + (bare ? 0 : 1), bare ? 1 : 0, ...parsed.children);
+  const newLevel = level ?? (atBol || bare ? heading.level : Math.max(previousLevel, heading.level));
+  const shift = newLevel - oldLevel;
+  for (let k = 0; k < Math.abs(shift); k++) for (const h of flatHeadings(parsed)) shiftOneHeading(parsed, h, shift > 0 ? 1 : -1);
+  const lead = parsed.bodyLines.length ? parsed.bodyLines : [];
+  const pasted = flatHeadings(parsed);
+  /** @type {number} */
+  let at;
+  if (atBol) at = i;
+  else if (bare) {
+    const lines = [...(lineBreak ? [''] : []), ...headingPreambleLines(heading).slice(1), ...heading.bodyLines];
+    const before = i > 0 ? list[i - 1] : doc;
+    before.bodyLines.push(...lines);
+    before.body = parseBody(before.bodyLines);
+    at = heading.collapsed ? subtreeEnd(list, i) : i + 1;
+    list.splice(i, 1);
+    at -= 1;
+  } else at = heading.collapsed ? subtreeEnd(list, i) : i + 1;
+  const prev = at > 0 ? list[at - 1] : doc;
+  if (lead.length) {
+    prev.bodyLines.push(...lead);
+    prev.body = parseBody(prev.bodyLines);
+  }
+  list.splice(at, 0, ...pasted);
+  rebuildTree(doc, list);
   return parsed.children;
 }
 
@@ -580,9 +727,9 @@ export function subtreeText(doc, heading) {
 
 const pasteSubtreeAfterKeepingNewline = keepFinalNewline(pasteSubtreeAfterRaw, false);
 
-/** org-paste-subtree on `heading` (see pasteSubtreeAfterRaw). @param {Doc} doc @param {Heading} heading @param {string} text @param {number} [level] @param {boolean} [atStars] */
-export function pasteSubtreeAfter(doc, heading, text, level, atStars = false) {
+/** org-paste-subtree on `heading` (see pasteSubtreeAfterRaw). @param {Doc} doc @param {Heading} heading @param {string} text @param {number} [level] @param {boolean} [atStars] @param {boolean} [atBol] */
+export function pasteSubtreeAfter(doc, heading, text, level, atStars = false, atBol = false) {
   const last = lastHeading(doc);
   const lineBreak = last !== heading || (heading.bodyLines.length > 0 && heading.bodyLines[heading.bodyLines.length - 1] === ''); // the last line of a file may end without one
-  return pasteSubtreeAfterKeepingNewline(doc, heading, text, level, atStars, lineBreak);
+  return pasteSubtreeAfterKeepingNewline(doc, heading, text, level, atStars, lineBreak, atBol);
 }

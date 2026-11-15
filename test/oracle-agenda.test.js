@@ -51,7 +51,8 @@ function appRow(i) {
 /** The rows and day headers the app gives for a scenario. @param {any} s */
 function ours(s) {
   const doc = parseOrg(DOCS[s.doc]);
-  const docs = [{ documentId: 'dated.org', doc }];
+  const documentId = s.doc.startsWith('ctx-') ? `${s.doc}.org` : 'dated.org'; // a context document is named for its file, as its category may be the file name
+  const docs = [{ documentId, doc }];
   const sequence = resolveTodoSequence(doc, ['TODO', 'DONE']);
   if (s.view === 'todo') {
     const vars = s.vars || {};
@@ -64,13 +65,13 @@ function ours(s) {
       ...(vars['org-deadline-warning-days'] !== undefined ? { deadlineWarningDays: Number(vars['org-deadline-warning-days']) } : {}),
     });
     const keys = strategyFor(s.sorting, 'todo') ?? [];
-    const sorted = sortAgendaItems(items, keys, { documentOrder: ['dated.org'], todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords });
-    return { rows: sorted.map(appRow), days: [] };
+    const sorted = sortAgendaItems(items, keys, { documentOrder: [documentId], todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords });
+    return { rows: sorted.map(appRow), days: [], categories: sorted.map((i) => String(i.category ?? '')) };
   }
   if (s.view === 'match') {
     const vars = s.vars || {};
     const items = matchViewItems(docs, s.query, { doneKeywords: sequence.doneKeywords, todoKeywords: sequence.todoKeywords, now: new Date(2026, 9, 11, 16, 30), sortingStrategy: s.sorting, skipEntry: agendaSkipper(vars, docs, { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords }) });
-    return { rows: items.map(appRow), days: [] };
+    return { rows: items.map(appRow), days: [], categories: items.map((i) => String(i.category ?? '')) };
   }
   if (s.view === 'command') {
     const vars = s.vars || {};
@@ -110,20 +111,22 @@ function ours(s) {
   const keys = strategyFor(s.sorting, 'agenda') ?? [];
   const keywords = { todoKeywords: sequence.todoKeywords, doneKeywords: sequence.doneKeywords };
   /** @type {string[]} */ const rows = [];
+  /** @type {string[]} */ const categories = [];
   /** @type {string[]} */ const dayList = [];
   /** @type {import('../src/agenda.js').AgendaItem[]} */ const shown = [];
   for (let i = 0; i < days; i++) {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     dayList.push(isoOf(day));
-    const sorted = sortAgendaItems(itemsForDate(items, day), keys, { documentOrder: ['dated.org'], ...keywords });
+    const sorted = sortAgendaItems(itemsForDate(items, day), keys, { documentOrder: [documentId], ...keywords });
     for (const item of sorted) shown.push(item);
   }
   const issues = logSettings.mode === 'clockcheck' ? clockIssues(shown.map((i) => (i.logType === 'clock' ? i : { clockStart: null, clockEnd: null })), readClockChecks(vars), today) : [];
   shown.forEach((item, n) => {
     if (issues[n]) rows.push(`${isoOf(item.date)}|${/[ETKH]\d+/.exec(item.title)?.[0] ?? item.title}|clockissue|0|-1|${issues[n]}`);
     rows.push(appRow(item));
+    categories.push(String(item.category ?? ''));
   });
-  return { rows, days: dayList };
+  return { rows, days: dayList, categories };
 }
 
 test('the agenda shows the rows, in the order, Emacs shows for every day of a day, week or month under the settings', () => {
@@ -142,6 +145,7 @@ test('the agenda shows the rows, in the order, Emacs shows for every day of a da
         let shown = 0;
         for (let i = 0; i < n && shown < 14; i++) if (want[i] !== got.rows[i]) { console.log(`#${i} emacs ${want[i]}\n   ours  ${got.rows[i]}`); shown++; }
       }
+      if (s.doc.startsWith('ctx-cat-') && JSON.stringify(got.categories) !== JSON.stringify(s.emacs.rows.map((/** @type {any[]} */ r) => r[5]))) bad.push(`${s.id}: categories ${JSON.stringify(got.categories)} differ from Emacs ${JSON.stringify(s.emacs.rows.map((/** @type {any[]} */ r) => r[5]))}`);
       const known = agendaKnown(s, want, got.rows);
       if (known) continue;
       if (JSON.stringify(got.days) !== JSON.stringify(s.emacs.days) || JSON.stringify(got.rows) !== JSON.stringify(want)) {

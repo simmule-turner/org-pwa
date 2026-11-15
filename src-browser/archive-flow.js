@@ -2,11 +2,11 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: archive flow.
-import { buildArchivedClone, buildRestoredClone, getArchiveLocation, endsDocument, getProperty, insertAtArchiveLocation, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
+import { buildRestoredClone, getArchiveLocation, getProperty, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
+import { applyArchiveToSource, archiveSubtree, archiveToSibling, replaceDocText } from '../src/archive-text.js';
 import { displayName } from '../src/archive-refile-details.js';
 import { resolveOlpTarget } from '../src/capture-template.js';
 import { removeHeading } from '../src/heading-edit.js';
-import { headingAfterSubtree, updateCookiesAfterArchive } from '../src/checkbox-cookie.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { S } from './app-state.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -15,9 +15,13 @@ import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 
 /** @param {Heading} heading */
 export function getArchiveDestinationLabel(heading) {
-  const location = getArchiveLocation(S.state.doc, heading);
+  const location = getArchiveLocation(S.state.doc, heading, S.state.localVariables);
   const { filePart, headlinePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, S.state.documentId);
+  if (/^datetree\//.test(headlinePart.trim())) {
+    const where = targetFileId === null || targetFileId === S.state.documentId ? 'this file' : `"${displayName(targetFileId)}"`;
+    return `${where}, in the date tree`;
+  }
   return targetFileId === null || targetFileId === S.state.documentId
     ? headlinePart.trim()
       ? `this file, under "${headlinePart.trim().replace(/^\*+\s*/, '')}"`
@@ -27,50 +31,52 @@ export function getArchiveDestinationLabel(heading) {
       : `"${displayName(targetFileId)}" (top level)`;
 }
 
-/** Emacs refreshes a cookie where the cut leaves it (see updateCookiesAfterArchive). @param {Heading | null} next the heading that followed the archived subtree */
-function updateCookiesAfter(next) {
-  updateCookiesAfterArchive(S.state.doc, next, resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT).doneKeywords);
-}
-
 /** @param {Heading} heading */
 export async function archiveHeadingToLocation(heading) {
-  const next = headingAfterSubtree(S.state.doc, heading);
-  const location = getArchiveLocation(S.state.doc, heading);
-  const { filePart, headlinePart } = parseArchiveLocation(location);
+  const location = getArchiveLocation(S.state.doc, heading, S.state.localVariables);
+  const { filePart } = parseArchiveLocation(location);
   const targetFileId = resolveArchiveFileId(filePart, S.state.documentId);
+  const doneKeywords = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT).doneKeywords;
+  const context = { srcPath: S.state.documentId, vars: S.state.localVariables, now: new Date(), doneKeywords };
 
   if (targetFileId === null || targetFileId === S.state.documentId) {
-    // Same file: build the stamped copy, remove the original, insert
-    // the copy at the target location, save -- one atomic in-memory
-    // edit, no cross-file I/O risk to worry about.
-    const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId, { infile: true });
-    const tailRemoved = endsDocument(S.state.doc, heading);
-    removeHeading(S.state.doc, heading);
-    insertAtArchiveLocation(S.state.doc, clone, headlinePart, { sourceFileId: S.state.documentId, tailRemoved });
-    updateCookiesAfter(next);
+    // Same file: Org copies the subtree to its place, pastes it and cuts the original, all in the one buffer.
+    const result = archiveSubtree(S.state.doc, heading, { ...context, infile: true });
+    applyArchiveToSource(S.state.doc, result, doneKeywords);
     commitAndRender('Archived heading');
     setStatus('--- Archive complete.');
     return;
   }
 
   setStatus(`Archiving to ${targetFileId}\u2026`);
-  const clone = buildArchivedClone(S.state.doc, heading, S.state.documentId);
+  /** @type {{ srcText: string, cutAt: number } | null} */
+  let result = null;
   const { ok } = await writeToOtherFile(targetFileId, {
     label: 'archive',
     historyLabel: 'Archived heading (from another file)',
     allowMissing: true,
     mutate: (doc, info) => {
-      insertAtArchiveLocation(doc, clone, headlinePart, { sourceFileId: S.state.documentId, targetFileId, created: info?.created });
+      const done = archiveSubtree(S.state.doc, heading, { ...context, infile: false, tgtDoc: doc, newFile: !!info?.created, tgtName: targetFileId });
+      replaceDocText(doc, /** @type {string} */ (done.tgtText));
+      result = done;
       return true;
     },
   });
-  if (!ok) return;
+  if (!ok || !result) return;
 
   // The write succeeded -- now, and only now, remove the original.
-  removeHeading(S.state.doc, heading);
-  updateCookiesAfter(next);
+  applyArchiveToSource(S.state.doc, result, doneKeywords);
   commitAndRender('Archived heading');
   setStatus(`--- Archive complete. (${targetFileId})${UNSAVED_NOTE}`);
+}
+
+/** org-archive-to-archive-sibling (C-c C-x A): the heading goes under the sibling that holds the archive tag.
+ * @param {Heading} heading */
+export function archiveHeadingToSibling(heading) {
+  const doneKeywords = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT).doneKeywords;
+  archiveToSibling(S.state.doc, heading, { vars: S.state.localVariables, now: new Date(), doneKeywords });
+  commitAndRender('Archived heading');
+  setStatus('--- Archive complete.');
 }
 
 /**

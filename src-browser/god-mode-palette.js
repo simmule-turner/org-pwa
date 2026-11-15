@@ -12,7 +12,7 @@ import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-
 import { parseExtraMenu } from '../src/extra-menu.js';
 import { applyStartupVisibility, collapseFully, cycleFoldLevel, expandOneLevel } from '../src/fold-state.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from '../src/god-mode.js';
-import { demoteHeading, insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp, promoteHeading } from '../src/heading-edit.js';
+import { insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp } from '../src/heading-edit.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../src/local-variables.js';
 import { resolveTodoSequences } from '../src/todo-cycle.js';
 import { canRedo, canUndo } from '../src/undo-history.js';
@@ -28,11 +28,12 @@ import { effectiveContactsConfig, syncContactsToAddressBook } from './contacts-s
 import { chooseAttachmentsFolder } from './attachments-store.js';
 import { addLocalFile } from './local-file-add.js';
 import { addCaptureIconToHomeScreen } from './capture-shortcuts.js';
-import { executeFocusedBlock } from './babel-flow.js';
+import { executeBuffer, executeFocusedBlock, executeMaybe, executeSubtree, focusedHasExecutable, goToResult, gotoSrcBlock, ingestLibrary, removeResults } from './babel-flow.js';
 import { openColumnsPanel } from './columns-panel.js';
 import { insertColumnviewBlock, updateAllDynamicBlocks, updateDynamicBlocksAtFocus } from './dblocks.js';
 import { runCrypt } from './crypt-flow.js';
 import { timerChangeTimes, timerItem, timerPauseOrContinue, timerSetTimer, timerShowRemaining, timerStart, timerStartWithOffset, timerStop } from './timer-flow.js';
+import { changeClockTimeStamps, changeTimeStamp, changeTimeStampAtTextCursor, cloneSubtreeWithTimeShiftCommand, insertTimeStamp } from './timestamp-flow.js';
 import { tangleCurrentDocument } from './tangle-flow.js';
 import { extensionPaletteEntries } from './extension-flow.js';
 import { showDisplayMeasurements, showKeyboardDebugLog, showUpdateLog } from './display-info.js';
@@ -52,10 +53,13 @@ import { performExport, performOrgOrgExport } from './export-import.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
-import { tableChord, focusedTable, askSort } from './table-edit.js';
+import { askSortEntries, insertPropertyDrawerCommand, shiftHeadingOnly, shiftSubtree, toggleCommentCommand } from './outline-edit-flow.js';
+import { tableChord, focusedTable, askSort, sendFocusedTable, exportFocusedTable } from './table-edit.js';
+import { askListSort, listChord } from './list-edit-flow.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
+import { archiveHeadingToSibling } from './archive-flow.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
 import { agendaClockcheckKey, agendaLogKey, agendaShowing } from './agenda-log-keys.js';
@@ -64,10 +68,12 @@ import { kv } from './singletons.js';
 import { loadPaletteRecent } from './sync-helpers.js';
 import { renameBuffer } from './buffer-rename.js';
 import { aproposVariableCommand } from './apropos-variable.js';
+import { lintBufferActive, lintKey, orgLintCommand } from './org-lint-flow.js';
 import { listHolidaysCommand } from './holiday-list.js';
 import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
+import { infoCommand, openInfo } from './info-view.js';
 import { openOrSwitchToHelp, switchToView } from './views.js';
 import { openAgendaCommands, openQueryView } from './agenda-query-view.js';
 import { lockAgenda, unlockAgenda } from './agenda-scope-note.js';
@@ -145,9 +151,12 @@ function insertHeadingSmart(opts) {
  *  focused, up and down move focus to the previous or next heading.
  * @param {'up'|'down'|'left'|'right'} direction */
 export function shiftArrow(direction) {
+  if ((direction === 'up' || direction === 'down') && changeTimeStampAtTextCursor(direction === 'up' ? 1 : -1)) return;
   if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table') {
     const [dr, dc] = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] }[direction];
     moveTableCellFocus(dr, dc);
+  } else if (S.keyboardFocusedHeading && (direction === 'left' || direction === 'right')) {
+    shiftSubtree(direction === 'left' ? 'promote' : 'demote'); // the buttons' promote and demote act on the subtree
   } else if (S.keyboardFocusedHeading) {
     /** @type {any} */ (GOD_MODE_ACTIONS)['M-<' + direction + '>']();
   } else if (direction === 'up' || direction === 'down') {
@@ -189,6 +198,7 @@ export const GOD_MODE_ACTIONS = {
     render();
   },
   'M-<up>': () => {
+    if (listChord('move-item-up')) return;
     if (tableChord('row-up')) return;
     if (S.keyboardFocusedHeading && moveHeadingUp(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading up');
@@ -196,36 +206,39 @@ export const GOD_MODE_ACTIONS = {
     }
   },
   'M-<down>': () => {
+    if (listChord('move-item-down')) return;
     if (tableChord('row-down')) return;
     if (S.keyboardFocusedHeading && moveHeadingDown(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading down');
       scrollFocusedHeadingIntoView();
     }
   },
+  // org-metaright and org-metaleft: the heading alone changes level (org-demote, org-promote); its children keep theirs
   'M-<right>': () => {
+    if (listChord('indent-item')) return;
     if (tableChord('col-move-right')) return;
-    if (S.keyboardFocusedHeading && demoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Demoted heading');
+    shiftHeadingOnly('demote');
   },
   'M-<left>': () => {
+    if (listChord('outdent-item')) return;
     if (tableChord('col-move-left')) return;
-    if (S.keyboardFocusedHeading && promoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Promoted heading');
+    shiftHeadingOnly('promote');
   },
   // Real org's own C-x n s / C-x n w (narrow-to-subtree / widen).
   'C-x n s': () => {
     if (S.keyboardFocusedHeading) narrowToHeading(S.keyboardFocusedHeading);
   },
   'C-x n w': () => widen(),
-  // This app's own promote/demote already act on the whole subtree
-  // (see heading-edit.js's own docs) -- there's no separate single-
-  // heading-only version, so the "entire subtree" god-mode sequence
-  // maps to the exact same action as the plain one above.
+  // org-shiftmetaright and org-shiftmetaleft: the whole subtree changes level
   'M-S-<right>': () => {
+    if (listChord('indent-item-tree')) return;
     if (tableChord('col-left')) return;
-    if (S.keyboardFocusedHeading && demoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Demoted heading');
+    shiftSubtree('demote');
   },
   'M-S-<left>': () => {
+    if (listChord('outdent-item-tree')) return;
     if (tableChord('col-delete')) return;
-    if (S.keyboardFocusedHeading && promoteHeading(S.state.doc, S.keyboardFocusedHeading)) commitAndRender('Promoted heading');
+    shiftSubtree('promote');
   },
   // Org's table commands: M-S-up and M-S-down are not heading commands in this app, so they only act in a table
   'M-S-<up>': () => {
@@ -235,16 +248,19 @@ export const GOD_MODE_ACTIONS = {
     if (!tableChord('row-above')) godModeNotSupported('insert row needs the cursor in a table');
   },
   'C-c -': () => {
+    if (listChord('cycle-list-bullet')) return;
     if (!tableChord('rule-below')) godModeNotSupported('insert rule needs the cursor in a table');
   },
   'C-c RET': () => {
     if (!tableChord('rule-and-move')) godModeNotSupported('this needs the cursor in a table');
   },
   'C-c ^': () => {
+    if (askListSort()) return;
     const t = focusedTable();
     if (t) askSort(t.heading, t.table);
-    else godModeNotSupported('sort needs the cursor in a table');
+    else askSortEntries(S.keyboardFocusedHeading); // org-sort: on a heading, its children; before the first heading, the top-level entries
   },
+  'C-c ;': () => toggleCommentCommand(S.keyboardFocusedHeading),
   'C-c C-f': () => moveToSameLevelHeading(1),
   'C-c C-b': () => moveToSameLevelHeading(-1),
   'C-c C-u': () => moveToParentHeading(),
@@ -259,7 +275,8 @@ export const GOD_MODE_ACTIONS = {
   'M-RET': () => insertHeadingSmart({}),
   'M-S-RET': () => insertHeadingSmart({ todo: 'TODO' }),
   'C-c C-c': () => {
-    if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'block') return executeFocusedBlock();
+    if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table') return sendFocusedTable();
+    if (S.keyboardFocusedBodyRow && (S.keyboardFocusedBodyRow.rowType === 'block' || focusedHasExecutable())) return executeFocusedBlock();
     return godModeNotSupported('checkbox toggling needs a finer keyboard focus than headings -- tap the checkbox directly; C-c C-c runs a source block when the cursor is on one');
   },
 
@@ -268,6 +285,7 @@ export const GOD_MODE_ACTIONS = {
   'C-c ,': () => S.keyboardFocusedHeading && cyclePriorityFor(S.keyboardFocusedHeading),
   'C-c C-x e': () => S.keyboardFocusedHeading && openEffortEditor(S.keyboardFocusedHeading),
   'C-c C-x C-c': () => openColumnsPanel(false),
+  'C-c C-x C-b': () => { if (!listChord('toggle-checkbox')) godModeNotSupported('this needs the cursor in a list item'); },
   'C-c C-x 0': () => timerStart(),
   'C-u C-c C-x 0': () => timerStartWithOffset(),
   'C-c C-x ,': () => timerPauseOrContinue(),
@@ -293,24 +311,30 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-x f': () => footnoteActionCommand(),
   'C-c C-x C-j': () => clockGoto(),
   'C-u C-c C-x C-j': () => clockGotoRecent(),
-  'C-c C-v': () => {
-    if (!S.state.doc) return;
-    switchToView('tasklist');
-  },
+  // the Babel prefix, as in Emacs's org-babel-map (C-c C-v is no command of its own there)
+  'C-c C-v n': () => gotoSrcBlock(1, false),
+  'C-c C-v C-n': () => gotoSrcBlock(1, false),
+  'C-c C-v p': () => gotoSrcBlock(1, true),
+  'C-c C-v C-p': () => gotoSrcBlock(1, true),
+  'C-c C-v e': () => executeMaybe(),
+  'C-c C-v C-e': () => executeMaybe(),
+  'C-c C-v k': () => removeResults(false),
+  'C-u C-c C-v k': () => removeResults(true),
+  'C-c C-v b': () => executeBuffer(),
+  'C-c C-v C-b': () => executeBuffer(),
+  'C-c C-v s': () => executeSubtree(),
+  'C-c C-v C-s': () => executeSubtree(),
+  'C-c C-v i': () => ingestLibrary(),
+  'C-c C-v C-i': () => ingestLibrary(),
 
   // Section 4: Dates, Deadlines & Timestamps
-  'C-c .': () => {
-    if (S.keyboardFocusedHeading) {
-      S.editingGeneral = S.keyboardFocusedHeading;
-      openGeneralEditor(S.keyboardFocusedHeading);
-    }
-  },
-  'C-c !': () => {
-    if (S.keyboardFocusedHeading) {
-      S.editingGeneral = S.keyboardFocusedHeading;
-      openGeneralEditor(S.keyboardFocusedHeading);
-    }
-  },
+  'C-c .': () => void insertTimeStamp(),
+  'C-u C-c .': () => void insertTimeStamp({ arg: 'single' }),
+  'C-u C-u C-c .': () => void insertTimeStamp({ arg: 'double' }),
+  'C-c !': () => void insertTimeStamp({ inactive: true }),
+  'C-u C-c !': () => void insertTimeStamp({ inactive: true, arg: 'single' }),
+  'C-u C-u C-c !': () => void insertTimeStamp({ inactive: true, arg: 'double' }),
+  'C-c C-x c': () => void cloneSubtreeWithTimeShiftCommand(),
   'C-c C-d': () => {
     if (S.keyboardFocusedHeading) {
       S.editingGeneral = S.keyboardFocusedHeading;
@@ -341,6 +365,12 @@ export const GOD_MODE_ACTIONS = {
   'C-u l': () => void (agendaLogKey(1) || setStatus('C-u l works in the Agenda.')),
   'C-u C-u l': () => void (agendaLogKey(2) || setStatus('C-u C-u l works in the Agenda.')),
   'v c': () => void (agendaClockcheckKey() || setStatus('v c works in the Agenda.')),
+  // the *Org Lint* buffer's keys (org-lint--report-mode); they act on the report the Text view's cursor is on
+  'RET': () => void lintKey('jump'),
+  'h': () => void lintKey('hide'),
+  'i': () => void lintKey('ignore'),
+  'S': () => void lintKey('sort'),
+  'g': () => void lintKey('refresh'),
   // C-c a waits for a second key, as in Emacs: the agenda dispatcher
   'C-c a a': () => {
     if (S.state.doc) switchToView('agenda');
@@ -374,6 +404,10 @@ export const GOD_MODE_ACTIONS = {
     S.exportFormat = null;
     renderMoreMenu();
   },
+  'C-h i': () => {
+    S.godModeActive = false;
+    openInfo();
+  },
   'C-h m': () => {
     S.moreOpen = false;
     renderMoreMenu();
@@ -398,6 +432,8 @@ export const GOD_MODE_ACTIONS = {
   },
   '<up>': () => moveArrowVertical(-1),
   '<down>': () => moveArrowVertical(1),
+  'C-S-<up>': () => changeTimeStamp(1, { day: true }),
+  'C-S-<down>': () => changeTimeStamp(-1, { day: true }),
   'S-<up>': () => shiftArrow('up'),
   'S-<down>': () => shiftArrow('down'),
   'S-<left>': () => shiftArrow('left'),
@@ -407,6 +443,9 @@ export const GOD_MODE_ACTIONS = {
   },
   'C-c C-x C-y': () => {
     if (S.keyboardFocusedHeading) pasteSubtree(S.keyboardFocusedHeading);
+  },
+  'C-c C-x A': () => {
+    if (S.keyboardFocusedHeading) archiveHeadingToSibling(S.keyboardFocusedHeading);
   },
   // M-x: this app's command palette (real M-x's touch-friendly counterpart).
   'M-x': () => {
@@ -481,6 +520,7 @@ export function toggleBufferReadOnly() {
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
   agenda: () => (agendaShowing() ? null : 'open the Agenda first'),
+  lintBuffer: () => (lintBufferActive() ? null : 'open the *Org Lint* buffer first (Check for syntax mistakes)'),
   heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   nonUtf8: () => (isNonUtf8(S.state.documentId) ? null : 'this file is already UTF-8, or was not read as text'),
   writable: () => (S.isBufferReadOnly ? (isNonUtf8(S.state.documentId) ? 'the file is not valid UTF-8 \u2014 run Convert to UTF-8\u2026' : 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)') : null),
@@ -618,6 +658,8 @@ export function paletteCommandList() {
         else setStatus('Put the cursor in a table first (tap a cell).');
       },
     },
+    { id: 'orgtbl-send-table', label: 'Table: send to receiver (#+ORGTBL: SEND)', orgName: 'orgtbl-send-table', keys: 'C-c C-c', group: 'Table', keywords: ['table', 'send', 'receive', 'orgtbl', 'convert'], needs: ['doc', 'writable'], run: () => { S.actionMenuFor = null; sendFocusedTable(); } },
+    { id: 'org-table-export', label: 'Table: export to a file', orgName: 'org-table-export', keys: '', group: 'Table', keywords: ['table', 'export', 'csv', 'tsv', 'latex', 'html'], needs: ['doc'], run: () => { S.actionMenuFor = null; exportFocusedTable(); } },
     // -- Heading
     { id: 'todo', label: 'Cycle TODO state', orgName: 'org-todo', keys: 'C-c C-t', group: 'Heading', needs: HEAD, run: onHeading(openTodoOrPickWorkflow) },
     { id: 'priority', label: 'Set priority', orgName: 'org-priority', keys: 'C-c ,', group: 'Heading', needs: HEAD, run: onHeading(cyclePriorityFor) },
@@ -625,6 +667,15 @@ export function paletteCommandList() {
     { id: 'columns', label: 'Column view', orgName: 'org-columns', keys: 'C-c C-x C-c', group: 'Document', keywords: ['columns', 'colview', 'table', 'properties', 'effort', 'summary'], needs: ['doc'], run: () => openColumnsPanel(false) },
     { id: 'dblock-update', label: 'Update dynamic block', orgName: 'org-dblock-update', keys: 'C-c C-x C-u', group: 'Heading', keywords: ['dynamic block', 'columnview', 'refresh'], needs: HEAD, run: () => updateDynamicBlocksAtFocus() },
     { id: 'dblock-update-all', label: 'Update all dynamic blocks', orgName: 'org-update-all-dblocks', group: 'Document', keywords: ['dynamic block', 'columnview', 'refresh'], needs: ['doc', 'writable'], run: () => updateAllDynamicBlocks() },
+    { id: 'time-stamp', label: 'Insert or replace time stamp', orgName: 'org-time-stamp', keys: 'C-c .', group: 'Document', keywords: ['date', 'timestamp', 'active'], needs: ['doc', 'writable'], run: () => void insertTimeStamp() },
+    { id: 'time-stamp-inactive', label: 'Insert or replace inactive time stamp', orgName: 'org-time-stamp-inactive', keys: 'C-c !', group: 'Document', keywords: ['date', 'timestamp', 'inactive'], needs: ['doc', 'writable'], run: () => void insertTimeStamp({ inactive: true }) },
+    { id: 'timestamp-up', label: 'Time stamp up', orgName: 'org-timestamp-up', keys: 'S-<up>', group: 'Document', keywords: ['date', 'timestamp', 'increase'], needs: ['doc', 'writable'], run: () => changeTimeStamp(1) },
+    { id: 'timestamp-down', label: 'Time stamp down', orgName: 'org-timestamp-down', keys: 'S-<down>', group: 'Document', keywords: ['date', 'timestamp', 'decrease'], needs: ['doc', 'writable'], run: () => changeTimeStamp(-1) },
+    { id: 'timestamp-up-day', label: 'Time stamp up by a day', orgName: 'org-timestamp-up-day', keys: 'C-S-<up>', group: 'Document', keywords: ['date', 'timestamp'], needs: ['doc', 'writable'], run: () => changeTimeStamp(1, { day: true }) },
+    { id: 'timestamp-down-day', label: 'Time stamp down by a day', orgName: 'org-timestamp-down-day', keys: 'C-S-<down>', group: 'Document', keywords: ['date', 'timestamp'], needs: ['doc', 'writable'], run: () => changeTimeStamp(-1, { day: true }) },
+    { id: 'clock-timestamps-up', label: 'Clock time stamps up', orgName: 'org-clock-timestamps-up', group: 'Document', keywords: ['clock', 'timestamp', 'shift'], needs: ['doc', 'writable'], run: () => changeClockTimeStamps('up') },
+    { id: 'clock-timestamps-down', label: 'Clock time stamps down', orgName: 'org-clock-timestamps-down', group: 'Document', keywords: ['clock', 'timestamp', 'shift'], needs: ['doc', 'writable'], run: () => changeClockTimeStamps('down') },
+    { id: 'clone-subtree-with-time-shift', label: 'Clone subtree with time shift', orgName: 'org-clone-subtree-with-time-shift', keys: 'C-c C-x c', group: 'Heading', keywords: ['duplicate', 'repeat', 'copy', 'shift'], needs: HEAD, run: () => void cloneSubtreeWithTimeShiftCommand() },
     { id: 'timer-start', label: 'Start timer', orgName: 'org-timer-start', keys: 'C-c C-x 0', group: 'Document', keywords: ['timer', 'stopwatch', 'relative'], needs: ['doc'], run: () => timerStart() },
     { id: 'timer-start-offset', label: 'Start timer with an offset', keys: 'C-u C-c C-x 0', group: 'Document', keywords: ['timer', 'stopwatch', 'offset', 'restart'], needs: ['doc'], run: () => timerStartWithOffset() },
     { id: 'timer-pause', label: 'Pause or continue timer', orgName: 'org-timer-pause-or-continue', keys: 'C-c C-x ,', group: 'Document', keywords: ['timer', 'pause', 'continue', 'resume'], needs: ['doc'], run: () => timerPauseOrContinue() },
@@ -651,8 +702,25 @@ export function paletteCommandList() {
     },
     { id: 'add-heading', label: 'Add heading after', orgName: 'org-insert-heading', keys: 'M-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-RET') },
     { id: 'add-todo-heading', label: 'Add TODO heading after', orgName: 'org-insert-todo-heading', keys: 'M-S-RET', group: 'Heading', needs: ['doc', 'writable'], run: chord('M-S-RET') },
-    { id: 'promote', label: 'Promote subtree', orgName: 'org-promote-subtree', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: headingChord('M-<left>') },
-    { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: headingChord('M-<right>') },
+    { id: 'promote', label: 'Promote subtree', orgName: 'org-promote-subtree', keys: 'M-S-<left>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftSubtree('promote', t)) },
+    { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-S-<right>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftSubtree('demote', t)) },
+    { id: 'promote-heading', label: 'Promote heading (children keep their level)', orgName: 'org-promote', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftHeadingOnly('promote', t)) },
+    { id: 'demote-heading', label: 'Demote heading (children keep their level)', orgName: 'org-demote', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftHeadingOnly('demote', t)) },
+    { id: 'toggle-comment', label: 'Toggle COMMENT', orgName: 'org-toggle-comment', keys: 'C-c ;', group: 'Heading', keywords: ['comment', 'commented', 'export'], needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => toggleCommentCommand(t)) },
+    { id: 'insert-property-drawer', label: 'Insert property drawer', orgName: 'org-insert-property-drawer', group: 'Heading', keywords: ['properties', 'drawer'], needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => insertPropertyDrawerCommand(t)) },
+    { id: 'sort', label: 'Sort children (table: sort lines)', orgName: 'org-sort', keys: 'C-c ^', group: 'Heading', keywords: ['sort', 'order', 'children', 'entries'], needs: ['doc', 'writable'], run: onHeading((/** @type {Heading | null | undefined} */ t) => { const table = focusedTable(); if (table) askSort(table.heading, table.table); else askSortEntries(t); }) },
+    { id: 'org-indent-item', label: 'List: indent item', orgName: 'org-indent-item', keys: 'M-<right>', group: 'List', keywords: ['list', 'item', 'indent', 'demote'], needs: ['doc', 'writable'], run: () => { if (!listChord('indent-item')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-outdent-item', label: 'List: outdent item', orgName: 'org-outdent-item', keys: 'M-<left>', group: 'List', keywords: ['list', 'item', 'outdent', 'promote'], needs: ['doc', 'writable'], run: () => { if (!listChord('outdent-item')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-indent-item-tree', label: 'List: indent item with its sub-items', orgName: 'org-indent-item-tree', keys: 'M-S-<right>', group: 'List', keywords: ['list', 'item', 'indent', 'tree'], needs: ['doc', 'writable'], run: () => { if (!listChord('indent-item-tree')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-outdent-item-tree', label: 'List: outdent item with its sub-items', orgName: 'org-outdent-item-tree', keys: 'M-S-<left>', group: 'List', keywords: ['list', 'item', 'outdent', 'tree'], needs: ['doc', 'writable'], run: () => { if (!listChord('outdent-item-tree')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-move-item-up', label: 'List: move item up', orgName: 'org-move-item-up', keys: 'M-<up>', group: 'List', keywords: ['list', 'item', 'move'], needs: ['doc', 'writable'], run: () => { if (!listChord('move-item-up')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-move-item-down', label: 'List: move item down', orgName: 'org-move-item-down', keys: 'M-<down>', group: 'List', keywords: ['list', 'item', 'move'], needs: ['doc', 'writable'], run: () => { if (!listChord('move-item-down')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-cycle-list-bullet', label: 'List: cycle bullet type', orgName: 'org-cycle-list-bullet', keys: 'C-c -', group: 'List', keywords: ['list', 'bullet', 'cycle'], needs: ['doc', 'writable'], run: () => { if (!listChord('cycle-list-bullet')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-sort-list', label: 'List: sort', orgName: 'org-sort-list', keys: 'C-c ^', group: 'List', keywords: ['list', 'sort', 'order'], needs: ['doc', 'writable'], run: () => { if (!askListSort()) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-toggle-checkbox', label: 'List: toggle checkbox', orgName: 'org-toggle-checkbox', keys: 'C-c C-x C-b', group: 'List', keywords: ['list', 'checkbox', 'toggle'], needs: ['doc', 'writable'], run: () => { if (!listChord('toggle-checkbox')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'org-list-repair', label: 'List: repair (bullets, indentation, boxes)', orgName: 'org-list-repair', group: 'List', keywords: ['list', 'repair', 'renumber', 'fix'], needs: ['doc', 'writable'], run: () => { if (!listChord('list-repair')) godModeNotSupported('this needs the cursor in a list item'); } },
+    { id: 'sort-entries', label: 'Sort entries (children of this heading)', orgName: 'org-sort-entries', group: 'Heading', keywords: ['sort', 'order', 'children', 'entries'], needs: ['doc', 'writable'], run: onHeading((/** @type {Heading | null | undefined} */ t) => askSortEntries(t)) },
+    { id: 'sort-entries-case', label: 'Sort entries, case sensitive', group: 'Heading', keywords: ['sort', 'order', 'children', 'entries', 'case'], needs: ['doc', 'writable'], run: onHeading((/** @type {Heading | null | undefined} */ t) => askSortEntries(t, true)) },
     { id: 'move-up', label: 'Move subtree up', orgName: 'org-move-subtree-up', keys: 'M-<up>', group: 'Heading', needs: HEAD, run: headingChord('M-<up>') },
     { id: 'move-down', label: 'Move subtree down', orgName: 'org-move-subtree-down', keys: 'M-<down>', group: 'Heading', needs: HEAD, run: headingChord('M-<down>') },
     { id: 'footnote-action', label: 'Footnote: go to definition or reference, or add one', orgName: 'org-footnote-action', keys: 'C-c C-x f', group: 'Document', keywords: ['footnote', 'jump', 'definition', 'reference', 'fn'], needs: ['doc'], run: () => footnoteActionCommand() },
@@ -667,6 +735,7 @@ export function paletteCommandList() {
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveRefilePanel) },
+    { id: 'archive-sibling', label: 'Archive to sibling', orgName: 'org-archive-to-archive-sibling', keys: 'C-c C-x A', group: 'Heading', keywords: ['archive', 'sibling', 'archive tag'], needs: HEAD, run: onHeading(archiveHeadingToSibling) },
     { id: 'unarchive', label: 'Unarchive (restore)', orgName: 'org-unarchive-subtree', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(openArchiveRefilePanel) },
     { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openArchiveRefilePanel) },
     { id: 'attach', label: 'Attachments', orgName: 'org-attach', keys: 'C-c C-a', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
@@ -716,7 +785,7 @@ export function paletteCommandList() {
     { id: 'contacts-sync', label: 'Sync contacts to the address book', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true }) },
     { id: 'contacts-rebuild', label: 'Rebuild contacts from the contacts files', group: 'View', keywords: ['carddav', 'contacts', 'address book', 'radicale', 'mirror', 'reset', 'vcard'], needs: ['contacts'], run: () => syncContactsToAddressBook({ manual: true, rebuild: true }) },
     { id: 'calendar-rebuild', label: 'Rebuild calendar from the agenda', group: 'View', keywords: ['caldav', 'calendar', 'radicale', 'mirror', 'reset'], needs: ['calendar'], run: () => syncAgendaToCalendar({ manual: true, rebuild: true }) },
-    { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', keys: 'C-c C-v', group: 'View', keywords: ['tasks'], needs: ['doc'], run: chord('C-c C-v') },
+    { id: 'tasklist', label: 'TODO list', orgName: 'org-todo-list', group: 'View', keywords: ['tasks'], needs: ['doc'], run: () => switchToView('tasklist') },
     { id: 'tags-view', label: 'Match tags, properties and TODO state', orgName: 'org-tags-view', keys: 'C-c a m', group: 'View', keywords: ['tags', 'match', 'find', 'query'], needs: ['doc'], run: chord('C-c a m') },
     { id: 'search-view', label: 'Search for keywords in the agenda files', orgName: 'org-search-view', keys: 'C-c a s', group: 'View', keywords: ['find', 'words', 'phrase'], needs: ['doc'], run: chord('C-c a s') },
     { id: 'agenda-log', label: 'Agenda: toggle the log', orgName: 'org-agenda-log-mode', keys: 'l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('l') },
@@ -730,6 +799,14 @@ export function paletteCommandList() {
     { id: 'view-org', label: 'Outline view', orgName: 'org-mode', group: 'View', keywords: ['org'], needs: ['doc'], run: () => switchToView('org') },
     { id: 'view-text', label: 'Text view', orgName: 'text-mode', group: 'View', keywords: ['raw', 'source'], needs: ['doc'], run: () => switchToView('text') },
     { id: 'cycle-visibility', label: 'Cycle visibility of the whole document', orgName: 'org-global-cycle', keys: 'S-TAB', group: 'View', keywords: ['fold', 'unfold', 'collapse', 'expand'], needs: ['doc'], run: () => globalCycleFold() },
+    { id: 'org-lint', label: 'Check for syntax mistakes (org-lint)', orgName: 'org-lint', group: 'View', keywords: ['lint', 'check', 'syntax', 'errors', 'warnings', 'mistakes', 'validate'], run: () => orgLintCommand() },
+    { id: 'org-lint-category', label: 'Check for syntax mistakes in one category (C-u org-lint)', group: 'View', keywords: ['lint', 'check', 'category', 'checkers', 'prefix'], run: () => orgLintCommand('category') },
+    { id: 'org-lint-checker', label: 'Check for syntax mistakes with one checker (C-u C-u org-lint)', group: 'View', keywords: ['lint', 'check', 'checker', 'name', 'prefix'], run: () => orgLintCommand('checker') },
+    { id: 'org-lint-jump', label: 'Org Lint: go to the reported line', orgName: 'org-lint--jump-to-source', keys: 'RET', group: 'View', keywords: ['lint', 'report', 'jump', 'line', 'source'], needs: ['lintBuffer'], run: chord('RET') },
+    { id: 'org-lint-hide', label: 'Org Lint: hide the reports of this checker', orgName: 'org-lint--hide-checker', keys: 'h', group: 'View', keywords: ['lint', 'report', 'hide', 'checker'], needs: ['lintBuffer'], run: chord('h') },
+    { id: 'org-lint-ignore', label: 'Org Lint: ignore this checker from now on', orgName: 'org-lint--ignore-checker', keys: 'i', group: 'View', keywords: ['lint', 'report', 'ignore', 'checker'], needs: ['lintBuffer'], run: chord('i') },
+    { id: 'org-lint-sort', label: 'Org Lint: sort by the column under the cursor', orgName: 'tabulated-list-sort', keys: 'S', group: 'View', keywords: ['lint', 'report', 'sort', 'column', 'line', 'trust', 'warning'], needs: ['lintBuffer'], run: chord('S') },
+    { id: 'org-lint-refresh', label: 'Org Lint: make the reports again', orgName: 'org-lint--refresh-reports', keys: 'g', group: 'View', keywords: ['lint', 'report', 'refresh', 'revert'], needs: ['lintBuffer'], run: chord('g') },
     { id: 'apropos-variable', label: 'Apropos variable\u2026', orgName: 'apropos-variable', group: 'View', keywords: ['variables', 'settings', 'options', 'search', 'describe', 'customize'], run: () => aproposVariableCommand() },
     { id: 'list-holidays', label: 'List holidays\u2026', orgName: 'list-holidays', group: 'View', keywords: ['holiday', 'calendar', 'columbus', 'year'], run: () => listHolidaysCommand() },
     { id: 'calendar', label: 'Calendar', orgName: 'calendar', group: 'View', needs: ['doc'], run: () => openCalendarPanel() },
@@ -759,6 +836,15 @@ export function paletteCommandList() {
     { id: 'import-vcard', label: 'Import Contacts (.vcf)', orgName: 'org-vcard-import', group: 'Import', keywords: ['vcard', 'vcf', 'contacts', 'address book'], needs: ['doc'], run: () => openImport('vcard') },
     { id: 'import-icalendar', label: 'Import iCalendar (.ics)', orgName: 'icalendar-import-file', group: 'Import', keywords: ['ics', 'ical', 'calendar', 'events'], needs: ['doc'], run: () => openImport('icalendar') },
     { id: 'export-org', label: 'Export as an Org buffer', orgName: 'org-org-export-as-org', group: 'Export', needs: ['doc'], run: () => performOrgOrgExport() },
+    { id: 'babel-execute-maybe', label: 'Run the source block, call or inline block at the cursor', orgName: 'org-babel-execute-maybe', keys: 'C-c C-v e', group: 'Document', keywords: ['babel', 'call', 'inline', 'execute', 'code', 'src'], needs: ['doc', 'writable'], run: chord('C-c C-v e') },
+    { id: 'babel-next-block', label: 'Next source block', orgName: 'org-babel-next-src-block', keys: 'C-c C-v n', group: 'Document', keywords: ['babel', 'code', 'jump', 'src'], needs: ['doc'], run: chord('C-c C-v n') },
+    { id: 'babel-previous-block', label: 'Previous source block', orgName: 'org-babel-previous-src-block', keys: 'C-c C-v p', group: 'Document', keywords: ['babel', 'code', 'jump', 'src'], needs: ['doc'], run: chord('C-c C-v p') },
+    { id: 'babel-result', label: 'Go to the result of the source block', orgName: 'org-babel-where-is-src-block-result', group: 'Document', keywords: ['babel', 'results', 'jump'], needs: ['doc'], run: () => goToResult() },
+    { id: 'babel-remove-result', label: 'Remove the result of the source block', orgName: 'org-babel-remove-result-one-or-many', keys: 'C-c C-v k', group: 'Document', keywords: ['babel', 'results', 'clear', 'delete'], needs: ['doc', 'writable'], run: chord('C-c C-v k') },
+    { id: 'babel-remove-results', label: 'Remove the results of all source blocks', keys: 'C-u C-c C-v k', group: 'Document', keywords: ['babel', 'results', 'clear', 'delete', 'all'], needs: ['doc', 'writable'], run: chord('C-u C-c C-v k') },
+    { id: 'babel-execute-buffer', label: 'Run all source blocks and calls in this file', orgName: 'org-babel-execute-buffer', keys: 'C-c C-v b', group: 'Document', keywords: ['babel', 'execute', 'all', 'code'], needs: ['doc', 'writable'], run: chord('C-c C-v b') },
+    { id: 'babel-execute-subtree', label: 'Run all source blocks and calls in this subtree', orgName: 'org-babel-execute-subtree', keys: 'C-c C-v s', group: 'Heading', keywords: ['babel', 'execute', 'all', 'code'], needs: HEAD, run: chord('C-c C-v s') },
+    { id: 'babel-lob-ingest', label: 'Add the named blocks to the Library of Babel', orgName: 'org-babel-lob-ingest', keys: 'C-c C-v i', group: 'Document', keywords: ['babel', 'library', 'call', 'ingest'], needs: ['doc'], run: chord('C-c C-v i') },
     { id: 'tangle', label: 'Tangle this file', orgName: 'org-babel-tangle', group: 'Document', keywords: ['babel', 'noweb', 'literate', 'source', 'code', 'extract'], needs: ['doc'], run: () => tangleCurrentDocument() },
     { id: 'babel-execute', label: 'Run source block', orgName: 'org-babel-execute-src-block', keys: 'C-c C-c', group: 'Document', keywords: ['babel', 'javascript', 'js', 'execute', 'code'], needs: ['doc', 'writable'], run: () => executeFocusedBlock() },
     { id: 'recalculate-tables', label: 'Recalculate all tables', orgName: 'org-table-recalculate-buffer-tables', group: 'Document', keywords: ['formula', 'TBLFM'], needs: ['doc', 'writable'], run: () => recalculateAllTables() },
@@ -766,6 +852,13 @@ export function paletteCommandList() {
     // -- App
     { id: 'settings', label: 'Settings', orgName: 'customize', group: 'App', run: () => settingsBtn.click() },
     { id: 'help', label: 'Help', orgName: 'describe-mode', keys: 'C-h m', group: 'App', keywords: ['readme', 'docs', 'manual'], run: chord('C-h m') },
+    { id: 'info', label: 'Info', orgName: 'info', keys: 'C-h i', group: 'App', keywords: ['manual', 'reader', 'documentation', 'dir', 'elisp'], run: chord('C-h i') },
+    { id: 'info-goto-node', label: 'Info: go to node', orgName: 'Info-goto-node', group: 'App', keywords: ['manual', 'node', 'reader'], run: () => infoCommand('goto') },
+    { id: 'info-index', label: 'Info: index', orgName: 'Info-index', group: 'App', keywords: ['manual', 'topic', 'reader', 'lookup'], run: () => infoCommand('index') },
+    { id: 'info-search', label: 'Info: search text', orgName: 'Info-search', group: 'App', keywords: ['manual', 'regexp', 'reader', 'find'], run: () => infoCommand('search') },
+    { id: 'info-directory', label: 'Info: directory', orgName: 'Info-directory', group: 'App', keywords: ['manual', 'dir', 'reader', 'list'], run: () => infoCommand('directory') },
+    { id: 'info-toc', label: 'Info: table of contents', orgName: 'Info-toc', group: 'App', keywords: ['manual', 'contents', 'reader', 'outline'], run: () => infoCommand('toc') },
+    { id: 'info-add-manuals', label: 'Info: add manuals', group: 'App', keywords: ['manual', 'import', 'info file', 'gz', 'install'], run: () => infoCommand('add') },
     { id: 'keyboard-debug-log', label: 'Copy keyboard debug log', group: 'App', keywords: ['floating keyboard', 'cursor', 'caret', 'text view', 'debug', 'log'], run: () => showKeyboardDebugLog() },
     { id: 'security-diagnostics', label: 'Copy security diagnostics', group: 'App', keywords: ['sandbox', 'javascript', 'babel', 'native', 'bridge', 'android', 'capacitor', 'debug', 'check'], run: () => showSecurityDiagnostics() },
     { id: 'update-log', label: 'Copy update and startup log', group: 'App', keywords: ['update', 'reload', 'version', 'slow', 'startup', 'service worker', 'debug', 'log', 'timing'], run: () => showUpdateLog() },

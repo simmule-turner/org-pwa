@@ -101,7 +101,7 @@ function parseOrgTimestamp(raw) {
  * The text with everything that is no part of the objects of Org's paragraphs blanked out (the line breaks stay, so every position is
  * kept): comment, fixed-width, keyword, clock and property lines, the inside of source, example, comment and export blocks and of LaTeX
  * environments, `=verbatim=` and `~code~` text, a bracket link (its text as well), a target, a LaTeX fragment, a macro, and inline source
- * and call.
+ * and call, an export snippet.
  * @param {string} text
  */
 function objectText(text) {
@@ -146,6 +146,7 @@ function objectText(text) {
     .replace(/(^|[ \t\n\-({'"])([=~])(?=\S)((?:[^\n]*\n)?[^\n]*?[^\s])\2(?=$|[ \t\n\-.,;:!?'")}[])/g, (all, pre, mark, body) => pre + blank(mark + body + mark))
     .replace(/\[\[(?:[^\][\\]|\\[\][\\])+\](?:\[[\s\S]+?\])?\]/g, blank) // a bracket link: the address and the text
     .replace(/<<<?[^<>\n]+>>>?/g, blank)
+    .replace(/@@[-A-Za-z0-9]+:[\s\S]*?@@/g, blank) // an export snippet
     .replace(/\{\{\{[a-zA-Z][-a-zA-Z0-9_]*(?:\([\s\S]*?\))?\}\}\}/g, blank)
     .replace(/\b(?:src_[^ \t\n[{]+(?:\[[^\]\n]*\])?\{[^\n]*?\}|call_[^ \t\n[(]+(?:\[[^\]\n]*\])?\([^\n]*?\)(?:\[[^\]\n]*\])?)/g, blank);
 }
@@ -280,6 +281,7 @@ function parseDelay(raw) {
 export {
   parseOrgTimestamp,
   findTimestamps,
+  objectText,
   formatOrgTimestamp,
   addMinutesToTime,
   parseDelay,

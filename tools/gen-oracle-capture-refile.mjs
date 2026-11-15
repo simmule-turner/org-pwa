@@ -13,7 +13,7 @@ import { FILE_CASES, TARGET_CASES, CAPTURE_CASES } from './oracle-capture-refile
 
 export const DIR = '/home/me/org';
 const el = `
-(require 'org) (require 'org-capture) (require 'org-archive) (require 'json) (require 'cl-lib)
+(require 'org) (require 'org-capture) (require 'org-archive) (require 'org-datetree) (require 'json) (require 'cl-lib)
 (setq org-tags-column 0 make-backup-files nil auto-save-default nil org-refile-use-outline-path t org-refile-use-cache nil)
 (defun cr-dir () (file-name-as-directory (file-truename (make-temp-file "crdir" t))))
 (defun cr-write (dir name text) (with-temp-file (expand-file-name name dir) (insert text)))
@@ -25,22 +25,27 @@ const el = `
     (nreverse out)))
 (defun cr-find (title)
   (goto-char (point-min))
-  (re-search-forward (concat "^\\\\*+ \\\\(?:\\\\(?:TODO\\\\|DONE\\\\|NEXT\\\\|COMMENT\\\\) \\\\)?\\\\(?:\\\\[#.\\\\] \\\\)?" (regexp-quote title) "\\\\(?: +:[[:alnum:]_@#%:]+:\\\\)?$"))
+  (re-search-forward (concat "^\\\\*+ \\\\(?:\\\\(?:TODO\\\\|DONE\\\\|NEXT\\\\|CANC\\\\|COMMENT\\\\) \\\\)?\\\\(?:\\\\[#.\\\\] \\\\)?" (regexp-quote title) "\\\\(?: +:[[:alnum:]_@#%:]+:\\\\)?$"))
   (line-beginning-position))
 (defun cr-cleanup () (dolist (b (buffer-list)) (when (buffer-file-name b) (with-current-buffer b (set-buffer-modified-p nil)) (kill-buffer b))))
 (defun cr-file-case (c)
   (let* ((dir (cr-dir)) (kind (cdr (assq 'kind c))) (files (cdr (assq 'files c))) (err nil))
     (dolist (f files) (cr-write dir (symbol-name (car f)) (cdr f)))
     (condition-case e
-        (let* ((buf (find-file-noselect (expand-file-name "notes.org" dir))))
+        (let* ((buf (find-file-noselect (expand-file-name "notes.org" dir)))
+               (vars (cdr (assq 'vars c)))
+               (syms (mapcar (lambda (v) (intern (symbol-name (car v)))) vars))
+               (vals (mapcar (lambda (v) (eval (car (read-from-string (cdr v))) t)) vars)))
+          (cl-progv syms vals
           (with-current-buffer buf
             (cr-find (cdr (assq 'find c)))
             (cond ((equal kind "archive") (org-archive-subtree))
+                  ((equal kind "archive-sibling") (org-archive-to-archive-sibling))
                   ((equal kind "toggle") (org-toggle-archive-tag))
                   (t (let* ((tf (cdr (assq 'toFile c)))
                             (tbuf (if tf (find-file-noselect (expand-file-name tf dir)) buf))
                             (pos (with-current-buffer tbuf (save-excursion (cr-find (cdr (assq 'to c)))))))
-                       (org-refile nil nil (list (cdr (assq 'to c)) (buffer-file-name tbuf) nil pos)))))))
+                       (org-refile nil nil (list (cdr (assq 'to c)) (buffer-file-name tbuf) nil pos))))))))
       (error (setq err (error-message-string e))))
     (save-some-buffers t)
     (let ((res (cr-read-all dir))) (cr-cleanup) (list (cons 'files res) (cons 'error err)))))

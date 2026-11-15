@@ -114,7 +114,7 @@ export function markItemDone(/** @type {any} */ item) {
   const seq = sequenceOf(heading);
   const done = seq.doneKeywords[0];
   const title = plainTitle(heading);
-  applyTodoTransition(heading, () => setTodoState(heading, done, seq));
+  if (!applyTodoTransition(heading, () => setTodoState(heading, done, seq))) return;
   const moved = heading.todo !== done;
   commitAndRender(moved ? `Marked "${title}" ${done} (repeats)` : `Marked "${title}" ${done}`);
   showUndoToast(moved ? `Done: ${title}` : `${done}: ${title}`, moved ? nextDateText(heading) : undefined);

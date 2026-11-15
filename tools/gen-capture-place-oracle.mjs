@@ -90,7 +90,10 @@ for (const o of withP({}).concat(withP({ emptyLines: 1 }))) {
   add('* Tr\n  - a\n  - b\n', 'item', 'X\nLine 2', TR, o);
   add('* Tr\n- a\n- b\n', 'item', '- X\n  Line 2\n  Line 3', TR, o);
 }
-add('* Tr\n    + a\n', 'item', '- X\n  Line 2', TR, {}); // only appended: put first, Emacs re-indents the old first item (4 spaces) as a child of the new one, which is not matched
+add('* Tr\n    + a\n', 'item', '- X\n  Line 2', TR, {});
+add('* Tr\n    + a\n', 'item', '- X\n  Line 2', TR, { prepend: true }); // put first, Emacs re-indents the old first item (4 spaces) as a child of the new one
+add('* Tr\n    + a\n    + b\n', 'item', '- X', TR, { prepend: true });
+add('* Tr\n    1. a\n    2. b\n', 'item', '1. X', TR, { prepend: true });
 add('* Tr\n', 'entry', '** ', TR, {});
 add('* Tr\n', 'entry', '** ', TR, { prepend: true });
 

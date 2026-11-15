@@ -10012,6 +10012,1086 @@
     "treeType": "month"
    },
    "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** N\nbody\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n[2026-01-01 Thu]\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n[2024-12-30 Mon]\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "week"
+   },
+   "emacs": "\n* 2026\n** 2026-W45\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "month"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n- new\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "prepend": true
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n<2026-01-01 Thu>\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n<2024-12-30 Mon>\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "week"
+   },
+   "emacs": "\n* 2026\n** 2026-W45\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "month"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n- new\n"
+  },
+  {
+   "init": "",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "prepend": true
+   },
+   "emacs": "\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n[2026-01-01 Thu]\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* Foo\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n[2024-12-30 Mon]\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "week"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-W45\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "month"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n- new\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "prepend": true
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n<2026-01-01 Thu>\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* Foo\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n<2024-12-30 Mon>\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "week"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-W45\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "month"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n- new\n"
+  },
+  {
+   "init": "* Foo\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "prepend": true
+   },
+   "emacs": "* Foo\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n[2026-01-01 Thu]\n**** New\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n[2024-12-30 Mon]\n**** New\n* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n** 2026-W45\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n- new\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n<2026-01-01 Thu>\n**** New\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n<2024-12-30 Mon>\n**** New\n* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n** 2026-W45\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n- new\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-09 Monday\n**** y\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-05 Thursday\n**** x\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n*** 2026-11-09 Monday\n**** y\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n[2026-01-01 Thu]\n**** New\n** 2026-11 November\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n[2024-12-30 Mon]\n**** New\n* 2026\n** 2026-11 November\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n** 2026-W45\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n- new\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n<2026-01-01 Thu>\n**** New\n** 2026-11 November\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n<2024-12-30 Mon>\n**** New\n* 2026\n** 2026-11 November\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n** 2026-W45\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n- new\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n[2026-01-01 Thu]\n**** New\n** 2026-11 November\n*** 2026-11-07 Saturday\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n[2024-12-30 Mon]\n**** New\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n** 2026-W45\n*** 2026-11-07 Saturday\n[2026-11-07 Sat]\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n- new\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "inactive",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    1,
+    1
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-01 January\n*** 2026-01-01 Thursday\n<2026-01-01 Thu>\n**** New\n** 2026-11 November\n*** 2026-11-07 Saturday\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2024,
+    12,
+    30
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "\n* 2024\n** 2024-12 December\n*** 2024-12-30 Monday\n<2024-12-30 Mon>\n**** New\n* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "week"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n** 2026-W45\n*** 2026-11-07 Saturday\n<2026-11-07 Sat>\n**** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "treeType": "month"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n*** New\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "item",
+   "template": "new",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active"
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n- new\n"
+  },
+  {
+   "init": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n",
+   "type": "entry",
+   "template": "* New",
+   "olp": [],
+   "ymd": [
+    2026,
+    11,
+    7
+   ],
+   "opts": {
+    "stamp": "active",
+    "prepend": true
+   },
+   "emacs": "* 2026\n** 2026-11 November\n*** 2026-11-07 Saturday\n**** New\n"
   }
  ]
 }
