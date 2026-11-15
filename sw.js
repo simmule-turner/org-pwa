@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v705';
+const CACHE_NAME = 'org-pwa-shell-v706';
 
 const SHELL_FILES = [
   './',
@@ -110,6 +110,7 @@ const SHELL_FILES = [
   './src/info-link.js',
   './src/info-manual.js',
   './src/info-nav.js',
+  './src/info-reflow.js',
   './src/info-parse.js',
   './src/info-store.js',
   './src/lisp-load.js',

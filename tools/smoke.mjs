@@ -8275,6 +8275,102 @@ check('help: links: [[help:org-todo]] opens the manual at the node that document
   await context.close();
 });
 
+check('info reader: the search sheet keeps its place and size while you type, however many matches there are', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  await openHelp(page);
+  await page.keyboard.press('s');
+  const input = page.locator('[data-bottom-sheet] input[type=text], [data-bottom-sheet] input:not([type])').first();
+  await input.waitFor({ timeout: 5000 });
+  const sheet = page.locator('[data-bottom-sheet] [role=dialog]');
+  const where = async () => {
+    const i = await input.boundingBox();
+    const d = await sheet.boundingBox();
+    return { inputTop: Math.round(i.y), sheetTop: Math.round(d.y), sheetHeight: Math.round(d.height) };
+  };
+  const first = await where();
+  for (const text of ['a', 'capture', 'zzzzqqxx', 'Settings', '']) {
+    await input.fill(text);
+    await page.waitForTimeout(250);
+    const now = await where();
+    expect(JSON.stringify(now) === JSON.stringify(first), `typing "${text}" moved the sheet: ${JSON.stringify(first)} -> ${JSON.stringify(now)}`);
+  }
+  // the two tabs of the sheet (Find opens it on Go to node) are the same size, so the input does not move when you switch
+  for (const tab of ['Go to node', 'Search text', 'Go to node']) {
+    await sheet.getByRole('button', { name: tab }).click();
+    await page.waitForTimeout(250);
+    const now = await where();
+    expect(JSON.stringify(now) === JSON.stringify(first), `the ${tab} tab moved the sheet: ${JSON.stringify(first)} -> ${JSON.stringify(now)}`);
+  }
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('info reader: Info Paragraphs joins the lines of a paragraph on a narrow screen (the default), always, or never; links and Find still work, and the Settings control saves the choice', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  const lineOf = async () => page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { openInfo, closeInfo } = await import('/src-browser/info-view.js');
+    await openInfo({ manual: 'org-pwa', node: 'Local Variables' });
+    const pre = document.querySelector('#info-view [data-info-body] > div:last-child');
+    const text = pre.textContent;
+    const start = text.indexOf('Two forms, both general Emacs mechanisms');
+    const lineEnd = text.indexOf('\n', start);
+    const links = pre.querySelectorAll('a').length;
+    closeInfo();
+    return { length: lineEnd - start, links, setting: S.infoView };
+  });
+  const narrow = await lineOf();
+  expect(narrow.length > 400, `on a narrow screen the paragraph is one line: ${narrow.length}`);
+  expect(narrow.links > 0, 'the links are still links after the lines are joined');
+  await page.setViewportSize({ width: 900, height: 700 });
+  const wide = await lineOf();
+  expect(wide.length < 100, `on a wide screen the lines are the file's own: ${wide.length}`);
+  // the control in Settings → Appearance
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  await settingsCategory(page, 'appearance');
+  await page.getByRole('button', { name: 'Always', exact: true }).click();
+  await page.waitForTimeout(300);
+  expect((await lineOf()).length > 400, 'Always joins the lines on a wide screen too');
+  await page.getByRole('button', { name: 'Never', exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await lineOf()).length < 100, 'Never keeps the file\'s lines on a narrow screen');
+  const stored = await page.evaluate(async () => (await (await import('/src-browser/settings.js')).getInfoReflow((await import('/src-browser/singletons.js')).kv)));
+  expect(stored === 'never', `the choice is stored: ${stored}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('info reader: Index in the app\'s own manual lists its entries, narrows as you type, and opens the node of the one you tap', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  await openHelp(page);
+  await page.keyboard.press('i');
+  const input = page.locator('#info-view input[aria-label="Index topic"]');
+  await input.waitFor({ timeout: 5000 });
+  const rows = page.locator('#info-view [data-info-body] button');
+  expect((await rows.count()) > 100, `the index lists its entries before anything is typed: ${await rows.count()}`);
+  expect(!(await page.locator('#info-view').innerText()).includes('no index'), 'the manual has an index');
+  await input.fill('capture');
+  await page.waitForTimeout(300);
+  expect((await rows.count()) >= 1 && (await rows.allInnerTexts()).some((t) => t.includes('Capture Templates')), `typing narrows the entries: ${(await rows.allInnerTexts()).join(' | ').slice(0, 200)}`);
+  await rows.filter({ hasText: 'Capture Templates' }).first().click();
+  await waitForHelpManual(page, 'Capture Templates');
+  await page.keyboard.press('i');
+  await page.locator('#info-view input[aria-label="Index topic"]').fill('org-log-done');
+  await page.waitForTimeout(300);
+  expect((await page.locator('#info-view [data-info-body] button').count()) >= 2, 'a variable is in the index with each place that documents it');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('help: the manual ships with the app: Help and every Settings hint open it at their section, the Add manuals sheet lists it as built in, and it cannot be removed', async () => {
   const { context, page, errors } = await freshPage(main);
   await page.setViewportSize({ width: 412, height: 900 });

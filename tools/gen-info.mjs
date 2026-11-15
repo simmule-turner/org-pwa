@@ -42,16 +42,66 @@ export function forTexinfo(text) {
     }
     out.push(line);
   }
-  const header = [
-    '#+TITLE: org-pwa',
-    '#+TEXINFO_FILENAME: org-pwa.info',
-    '#+TEXINFO_DIR_CATEGORY: Emacs',
-    '#+TEXINFO_DIR_TITLE: org-pwa: (org-pwa)',
-    '#+TEXINFO_DIR_DESC: Mobile-first Org mode in the browser',
-    '#+OPTIONS: toc:nil num:nil ^:nil author:nil date:nil email:nil creator:nil',
-    '',
-  ];
-  return header.join('\n') + out.join('\n');
+  return HEADER.join('\n') + withIndex(out).join('\n');
+}
+
+const HEADER = [
+  '#+TITLE: org-pwa',
+  '#+TEXINFO_FILENAME: org-pwa.info',
+  '#+TEXINFO_DIR_CATEGORY: Emacs',
+  '#+TEXINFO_DIR_TITLE: org-pwa: (org-pwa)',
+  '#+TEXINFO_DIR_DESC: Mobile-first Org mode in the browser',
+  '#+OPTIONS: toc:nil num:nil ^:nil author:nil date:nil email:nil creator:nil',
+  '',
+];
+
+/** A heading's title as an index entry: the text without markup, tags and keyword, and with the characters Texinfo reads escaped. @param {string} line */
+function entryOfHeading(line) {
+  const title = line
+    .replace(/^\*+ +/, '')
+    .replace(/\s+:[\w@:]+:\s*$/, '')
+    .replace(/\[\[[^\]]*\]\[([^\]]*)\]\]/g, '$1')
+    .replace(/[~=*/+_]{1}(?=\S)([^~=*/+_]*)[~=*/+_]/g, '$1')
+    .replace(/[~=]/g, '')
+    .trim();
+  return title.replace(/[@{}]/g, '@$&');
+}
+
+/**
+ * The lines with index entries added for Texinfo: a concept entry for every heading (its title), a variable entry for every row of a table
+ * whose first cell is a `~name~`, and the two indexes as the last chapters, so Info's index command (`i`) has something to look up.
+ * @param {string[]} lines
+ */
+function withIndex(lines) {
+  /** @type {string[]} */
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    out.push(line);
+    i++;
+    if (/^\*+ /.test(line)) {
+      if (lines[i] === ':PROPERTIES:') {
+        while (i < lines.length && lines[i] !== ':END:') out.push(lines[i++]);
+        if (i < lines.length) out.push(lines[i++]);
+      }
+      const entry = entryOfHeading(line);
+      if (entry) out.push(`#+CINDEX: ${entry}`);
+    } else if (line.startsWith('|') && !(out[out.length - 2] ?? '').startsWith('|')) {
+      const names = [];
+      let rowAt = i - 1;
+      while (rowAt < lines.length && lines[rowAt].startsWith('|')) {
+        const m = /^\| *~([^~|]+)~ *\|/.exec(lines[rowAt]);
+        if (m) names.push(m[1].trim());
+        if (rowAt >= i) out.push(lines[rowAt]);
+        rowAt++;
+      }
+      i = rowAt;
+      for (const name of names) out.push(`#+VINDEX: ${name.replace(/[@{}]/g, '@$&')}`);
+    }
+  }
+  out.push('', '* Concept Index', ':PROPERTIES:', ':INDEX: cp', ':END:', '', '* Variable Index', ':PROPERTIES:', ':INDEX: vr', ':END:', '');
+  return out;
 }
 
 /** The headings the app's own Help lookup counts (src/help-lookup.js): `*` lines outside blocks. @param {string} text */
@@ -92,6 +142,7 @@ function main() {
     const info = path.join(dir, 'org-pwa.info');
     execFileSync('makeinfo', ['--no-split', '-o', info, texi], { stdio: 'inherit' });
     const raw = JSON.parse(fs.readFileSync(map, 'utf8'));
+    const expected = headingCount(readme);
     const names = infoNames(fs.readFileSync(texi, 'utf8'), fs.readFileSync(info, 'utf8'));
     /** @param {string} name */
     const infoName = (name) => {
@@ -99,11 +150,10 @@ function main() {
       if (expanded === undefined) throw new Error(`Texinfo node or anchor "${name}" is not in the Info file`);
       return expanded;
     };
-    const nodes = raw.nodes.map(infoName);
+    const nodes = raw.nodes.slice(0, expected).map(infoName);
+    if (raw.nodes.length !== expected + 2) throw new Error(`Emacs exported ${raw.nodes.length} headings, not the ${expected} of README.org and the two indexes`);
     /** @type {Record<string, string>} */
     const ids = Object.fromEntries(Object.entries(raw.ids).map(([id, name]) => [id, infoName(/** @type {string} */ (name))]));
-    const expected = headingCount(readme);
-    if (nodes.length !== expected) throw new Error(`Emacs exported ${nodes.length} headings but Help counts ${expected}; the position map would be wrong`);
     fs.copyFileSync(info, path.join(ROOT, 'org-pwa.info'));
     const hash = crypto.createHash('sha256').update(readme).digest('hex');
     fs.writeFileSync(

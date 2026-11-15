@@ -18,6 +18,7 @@ export const SETTING_LABELS = Object.freeze({
   fontSize: 'Font size',
   tablesFontSize: 'Table font size',
   menuSize: 'Menu size',
+  infoReflow: 'Info paragraphs',
   paragraphSpacing: 'Paragraph spacing',
   tablesSpacing: 'Table spacing',
   readingWidth: 'Reading width',

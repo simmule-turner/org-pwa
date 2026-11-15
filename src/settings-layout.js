@@ -7,7 +7,7 @@
 
 /** The default layout. A card id is either a section of the Settings screen or `quick:<group>` for a group of Quick Settings fields. */
 export const DEFAULT_SETTINGS_CATEGORIES = /** @type {SettingsCategory[]} */ ([
-  { id: 'appearance', title: 'Appearance', blurb: 'Theme, font, spacing, reading width, menu size', cards: ['appearance-theme', 'appearance-font', 'appearance-size', 'appearance-spacing', 'appearance-width', 'appearance-menu'] },
+  { id: 'appearance', title: 'Appearance', blurb: 'Theme, font, spacing, reading width, menu size, Info paragraphs', cards: ['appearance-theme', 'appearance-font', 'appearance-size', 'appearance-spacing', 'appearance-width', 'appearance-menu', 'appearance-info'] },
   { id: 'editing', title: 'Editing and startup', blurb: 'Startup view, keyboard, modeline, search, logging', cards: ['quick:Startup', 'quick:Editing', 'quick:Modeline', 'quick:Keyboard', 'quick:Progress logging', 'quick:Search & tags'] },
   { id: 'agenda', title: 'Agenda, diary and weather', blurb: 'Agenda, diary, reminders, weather, location', cards: ['quick:Agenda', 'quick:Diary', 'appt', 'quick:Weather'] },
   { id: 'sync', title: 'Sync and storage', blurb: 'GitHub, WebDAV, calendar, attachments, backup', cards: ['github', 'webdav', 'calendar', 'protect', 'attach', 'pending', 'backup'] },

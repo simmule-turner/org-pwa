@@ -66,8 +66,8 @@ test('gpg reads what the cipher writes, and the cipher reads what gpg writes', {
   fs.chmodSync(home, 0o700);
   const env = { ...process.env, GNUPGHOME: home };
   const gpg = (args, input) => {
-    const run = spawnSync('gpg', ['--batch', '--pinentry-mode', 'loopback', ...args], { env, input, encoding: 'utf8' });
-    if (run.status !== 0) throw new Error(`gpg ${args.join(' ')} exited ${run.status}: ${run.stderr}`);
+    const run = spawnSync('gpg', ['--batch', '--pinentry-mode', 'loopback', '--faked-system-time', String(Math.floor(Date.now() / 1000)), ...args], { env, input, encoding: 'utf8' }); // the clock of the code under test (npm test freezes it), so no key is made in the other's future
+    if (run.status !== 0) throw new Error(`gpg ${args.join(' ')} exited ${run.status} (${spawnSync('gpg', ['--version']).stdout.toString().split('\n')[0]}): ${run.stderr}`);
     return run.stdout;
   };
   t.after(() => {
@@ -81,13 +81,11 @@ test('gpg reads what the cipher writes, and the cipher reads what gpg writes', {
   assert.equal(gpg(['--passphrase', 'secret', '-d', sym]), PLAIN);
   const fromGpg = gpg(['--passphrase', 'secret', '--armor', '--textmode', '-c', '-o', '-'], PLAIN);
   assert.equal(await cipher.decrypt(fromGpg), PLAIN);
-  // keys, both ways
-  const armored = await newKey('kp');
+  // keys, both ways: gpg makes the key and protects it with a passphrase, as a person's own key is, and the cipher reads it
+  gpg(['--passphrase', 'kp', '--quick-gen-key', 'alice@example.com', 'default', 'default', 'never']);
+  const armored = gpg(['--passphrase', 'kp', '--armor', '--export-secret-keys', 'alice@example.com']);
   const ring = await readKeyBlock(armored);
   const keyed = makePgpCipher({ keyring: () => ring, askPassphrase: async () => 'kp' });
-  const keyFile = path.join(home, 'key.asc');
-  fs.writeFileSync(keyFile, armored);
-  gpg(['--passphrase', 'kp', '--import', keyFile]);
   const pk = path.join(home, 'pk.asc');
   fs.writeFileSync(pk, await keyed.encrypt(PLAIN, keyed.listKeys('alice@example.com')));
   assert.equal(gpg(['--passphrase', 'kp', '-d', pk]), PLAIN);

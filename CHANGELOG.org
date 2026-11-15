@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v706 — Info paragraphs, a steady Find sheet, and an index
+Info pages reflow their paragraphs to the screen on narrow displays, so the manual no longer wraps twice; the new Info Paragraphs setting chooses Narrow screens, Always or Never. The Find sheet no longer jumps as results change or as you switch between Find and Go to. Index now works in the built-in manual, with an entry for every heading and every setting, and it narrows as you type.
+Verified: smoke checks of the Index, the Find sheet's stability and the Info Paragraphs setting.
+
 * v705 — Help is the Info manual
 Help opens this guide as the manual org-pwa in the Info reader, built into the app and listed in the directory, so it reads like any Info manual: menus, cross references, index and search. The ? beside a Settings entry and the Capture help link open the manual at that section, and ~[[help:NAME]]~ links open it where NAME is documented. Two Settings hints that went nowhere now open their sections.
 Verified: a check that every Settings and Capture hint reaches a node of the generated manual, and that the manual is made from the current README.org.

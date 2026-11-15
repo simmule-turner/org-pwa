@@ -10,6 +10,9 @@ import { buildSheet, cancelButton, openActionSheet } from './bottom-sheet.js';
 import { confirmDialog } from './dialogs.js';
 import { openAddManuals } from './info-add.js';
 import { loadRecords } from './info-storage.js';
+import { getInfoReflow } from './settings.js';
+import { kv } from './singletons.js';
+import { reflowInfoText } from '../src/info-reflow.js';
 
 /** @typedef {import('../src/info-store.js').ManualRecord} ManualRecord */
 /** @typedef {import('../src/info-manual.js').Manual} Manual */
@@ -70,6 +73,7 @@ class Library {
  * @property {string} topic what the index screen is looking for
  * @property {string} message the echo line: what the last command said
  * @property {boolean} toEnd whether the next node shows from its end (DEL)
+ * @property {string} reflow the setting for joining the lines of paragraphs: 'narrow', 'always' or 'never'
  */
 
 /** The line number of a menu entry in an index: where point goes (Info-point-loc). @param {string} text @param {number} line */
@@ -114,12 +118,15 @@ export async function openInfo(target = {}) {
     root.setAttribute('role', 'region');
     root.setAttribute('aria-label', 'Info');
     const library = new Library(await loadRecords());
-    S.infoView = { root, session: new InfoSession(library), library, mode: 'node', topic: '', message: '', toEnd: false };
+    S.infoView = { root, session: new InfoSession(library), library, mode: 'node', topic: '', message: '', toEnd: false, reflow: await getInfoReflow(kv) };
     document.body.appendChild(root);
     document.addEventListener('keydown', onKey, true);
     S.infoOpen = true;
     run(() => /** @type {View} */ (S.infoView).session.directory());
-  } else await refreshLibrary();
+  } else {
+    await refreshLibrary();
+    /** @type {View} */ (S.infoView).reflow = await getInfoReflow(kv);
+  }
   if (target.manual) await goTo(target.manual, target.node || 'Top');
 }
 
@@ -292,6 +299,11 @@ function dirScreen() {
   return wrap;
 }
 
+/** Whether paragraphs are joined for this screen: always, never, or only on a narrow one (under 600 px, where the app's sheets are full width). @param {string} mode */
+function reflowWanted(mode) {
+  return mode === 'always' || (mode === 'narrow' && window.matchMedia('(max-width: 599px)').matches);
+}
+
 /** Splits the shown text into plain runs, links and the marker where point is. */
 function nodeScreen() {
   const v = /** @type {View} */ (S.infoView);
@@ -308,11 +320,17 @@ function nodeScreen() {
   body.tabIndex = 0;
   body.append(headerLine(header));
   const pre = el('div', 'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--text-secondary);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:var(--space-3);');
-  const point = shown.shown[Math.min(s.point, shown.shown.length - 1)] - offset;
+  // the lines of paragraphs joined, when the setting asks for it; positions in the text go through the map
+  const flow = reflowWanted(v.reflow) ? reflowInfoText(rest) : { text: rest, map: null };
+  const shownRest = flow.text;
+  /** @param {number} p */
+  const moved = (p) => (flow.map ? flow.map[Math.min(p, rest.length)] : p);
+  const raw = shown.shown[Math.min(s.point, shown.shown.length - 1)] - offset;
+  const point = raw < 0 ? raw : moved(raw);
   let at = 0;
   /** @param {number} to */
   const plain = (to) => {
-    if (to > at) pre.append(document.createTextNode(rest.slice(at, to)));
+    if (to > at) pre.append(document.createTextNode(shownRest.slice(at, to)));
     at = Math.max(at, to);
   };
   /** @type {HTMLElement | null} */
@@ -325,16 +343,16 @@ function nodeScreen() {
     }
   };
   for (const link of shown.links) {
-    const a = link.start - offset;
-    const b = link.end - offset;
-    if (a < 0) continue;
+    if (link.start - offset < 0) continue;
+    const a = moved(link.start - offset);
+    const b = moved(link.end - offset);
     if (point >= at && point <= a) mark();
     plain(a);
-    pre.append(linkElement(rest.slice(a, b), link));
+    pre.append(linkElement(shownRest.slice(a, b), link));
     at = b;
   }
   if (point >= at) mark();
-  plain(rest.length);
+  plain(shownRest.length);
   body.append(pre);
   wrap.append(body, echo());
   queueMicrotask(() => {
@@ -439,7 +457,7 @@ function indexScreen() {
     v.topic = input.value;
     list.replaceChildren();
     const matches = manual.indexNodes().length ? manual.indexMatches(input.value) : [];
-    status.textContent = manual.indexNodes().length === 0 ? 'This manual has no index.' : `${matches.length} ${matches.length === 1 ? 'entry matches' : 'entries match'}. Tap one to go to its node. The next match is , (comma).`;
+    status.textContent = manual.indexNodes().length === 0 ? 'This manual has no index.' : `${matches.length} ${matches.length === 1 ? 'entry matches' : 'entries match'}. Tap one to go to its node. The next match is , (comma).${matches.length > 300 ? ' Showing the first 300; type to narrow them.' : ''}`;
     matches.slice(0, 300).forEach((m, k) => {
       const row = el('button', 'display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:var(--target);padding:var(--space-2) 0;border:0;border-bottom:1px solid var(--border);border-radius:0;background:none;color:var(--fg);font:inherit;text-align:left;');
       row.append(el('span', 'font-size:var(--text-body);overflow-wrap:anywhere;', m.entry), el('span', 'font-size:var(--text-secondary);color:var(--muted);', `${m.node}, in ${m.indexNode}`));
@@ -565,7 +583,8 @@ function openGoto(tab, fold = true) {
   matchCase.checked = !fold;
   const caseRow = el('label', 'display:flex;align-items:center;gap:8px;min-height:var(--target);');
   caseRow.append(matchCase, document.createTextNode('Match case (S)'));
-  const list = el('div', '');
+  // a fixed height, so the sheet (anchored to the bottom) keeps its size and the input stays put however many matches there are
+  const list = el('div', 'height:clamp(6rem, 35vh, 18rem);overflow-y:auto;overscroll-behavior:contain;');
   const tabButtons = /** @type {Record<string, HTMLButtonElement>} */ ({});
   for (const [id, name, key] of [['goto', 'Go to node', 'g'], ['search', 'Search text', 's']]) {
     const b = /** @type {HTMLButtonElement} */ (el('button', BUTTON + 'flex:1 1 0;'));
@@ -580,7 +599,7 @@ function openGoto(tab, fold = true) {
   }
   const draw = () => {
     for (const id of Object.keys(tabButtons)) tabButtons[id].style.borderColor = id === current ? 'var(--accent)' : 'var(--border)';
-    caseRow.style.display = current === 'search' ? 'flex' : 'none';
+    caseRow.style.visibility = current === 'search' ? 'visible' : 'hidden'; // its space stays, so the sheet is the same size on both tabs
     input.placeholder = current === 'goto' ? 'Node name, or (manual)node' : 'Regexp';
     input.setAttribute('aria-label', current === 'goto' ? 'Go to node' : 'Search text');
     label.textContent = current === 'goto' ? 'Go to node: type a name, or (manual)node for another manual. Matches complete as you type.' : 'Search runs through the whole manual from this node and lists each match with its node.';

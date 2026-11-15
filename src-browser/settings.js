@@ -34,6 +34,7 @@ const KEYS = {
   fontSize: 'settings:fontSize',
   tablesFontSize: 'settings:otherFontSize', // storage key deliberately left as "otherFontSize" -- renaming the key itself would silently reset every existing user's saved table font size back to default
   menuSize: 'settings:menuSize',
+  infoReflow: 'settings:infoReflow',
   paragraphSpacing: 'settings:paragraphSpacing',
   tablesSpacing: 'settings:tablesSpacing',
   floatingKeyboardPos: 'settings:floatingKeyboardPos',
@@ -54,6 +55,7 @@ const DEFAULT_WEBDAV_CONFIG = { baseUrl: '', username: '', password: '' };
 const DEFAULT_THEME = 'system'; // 'system' | 'light' | 'dark'
 const DEFAULT_FONT_FAMILY = 'system'; // 'system' | 'serif' | 'monospace'
 const DEFAULT_MENU_SIZE = 'regular'; // 'regular' | 'small'
+const DEFAULT_INFO_REFLOW = 'narrow'; // 'narrow' (screens under 600 px) | 'always' | 'never'
 const DEFAULT_PARAGRAPH_SPACING = 10; // px between paragraphs
 const DEFAULT_TABLES_SPACING = 10; // px around tables and the other secondary blocks (source/quote blocks, rules), independent of the paragraph value
 const MIN_SPACING = 0; // px -- 0 packs things solid, for anyone who likes dense text
@@ -337,6 +339,22 @@ export async function getMenuSize(kvAdapter) {
  */
 export async function setMenuSize(kvAdapter, menuSize) {
   await setJson(kvAdapter, KEYS.menuSize, menuSize);
+}
+
+// ---- info reflow ----------------------------------------------------------
+
+/** Whether the Info reader joins the lines of a paragraph so the screen wraps them: on narrow screens (the default), always, or never (as Emacs shows them).
+ * @param {KvAdapter} kvAdapter */
+export async function getInfoReflow(kvAdapter) {
+  return getJson(kvAdapter, KEYS.infoReflow, DEFAULT_INFO_REFLOW);
+}
+
+/**
+ * @param {KvAdapter} kvAdapter
+ * @param {string} infoReflow
+ */
+export async function setInfoReflow(kvAdapter, infoReflow) {
+  await setJson(kvAdapter, KEYS.infoReflow, infoReflow);
 }
 
 /** Forces a spacing value into the allowed whole-pixel range. Anything that is
@@ -736,6 +754,7 @@ export {
   DEFAULT_THEME,
   DEFAULT_FONT_FAMILY,
   DEFAULT_MENU_SIZE,
+  DEFAULT_INFO_REFLOW,
   DEFAULT_PARAGRAPH_SPACING,
   DEFAULT_TABLES_SPACING,
   MIN_SPACING,

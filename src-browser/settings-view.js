@@ -27,7 +27,7 @@ import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnabl
 import { forState, vault } from './connection-vault.js';
 import { buildEncryptionCard } from './crypt-flow.js';
 import { buildHistoryCard, reapplySettings } from './settings-history.js';
-import { DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getFontFamily, getFontSize, getGithubConfig, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
+import { DEFAULT_GLOBAL_VARIABLES, MAX_SPACING, MIN_SPACING, exportAllSettings, getFontFamily, getFontSize, getGithubConfig, getInfoReflow, getMenuSize, getParagraphSpacing, getReadingWidth, getTablesFontSize, getTablesSpacing, getTheme, getWebdavConfig, importAllSettings, setInfoReflow, setFontFamily, setFontSize, setGithubConfig, setGlobalVariables, setMenuSize, setParagraphSpacing, setReadingWidth, setTablesFontSize, setTablesSpacing, setTheme, setWebdavConfig, getCaldavConfig, setCaldavConfig, getAttachLinkMode, setAttachLinkMode, getSettingsOrder } from './settings.js';
 import { APPT_LIMITS, normalizeApptSettings } from '../src/appt.js';
 import { notificationPermissionLabel, requestNotificationPermission, saveApptSettings, scanAppointments } from './appt-flow.js';
 import { kv } from './singletons.js';
@@ -83,6 +83,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   const fontFamily = await getFontFamily(kv);
   const fontSize = await getFontSize(kv);
   const menuSize = await getMenuSize(kv);
+  const infoReflow = await getInfoReflow(kv);
   const paragraphSpacing = await getParagraphSpacing(kv);
   const tablesSpacing = await getTablesSpacing(kv);
   const readingWidth = await getReadingWidth(kv);
@@ -377,6 +378,32 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
   menuSizeHint.style.opacity = '0.6';
   menuSizeHint.style.margin = '4px 0 8px';
   appearanceSection.appendChild(menuSizeHint);
+
+  appearanceSection = newCard('appearance-info');
+  const infoReflowTitle = document.createElement('div');
+  infoReflowTitle.className = 'panel-section-title';
+  infoReflowTitle.textContent = 'Info Paragraphs';
+  appearanceSection.appendChild(infoReflowTitle);
+
+  const infoReflowRow = document.createElement('div');
+  infoReflowRow.className = 'panel-row';
+  for (const [opt, label] of /** @type {[string, string][]} */ ([['narrow', 'Narrow screens'], ['always', 'Always'], ['never', 'Never']])) {
+    const btn = menuButton(label, async () => {
+      await setInfoReflow(kv, opt);
+      renderSettingsView();
+    });
+    btn.style.flex = '1';
+    if (opt === infoReflow) btn.style.fontWeight = '700';
+    infoReflowRow.appendChild(btn);
+  }
+  appearanceSection.appendChild(infoReflowRow);
+
+  const infoReflowHint = document.createElement('div');
+  infoReflowHint.textContent = 'The Info reader joins the lines of a paragraph so they wrap to the screen. Examples, tables and menus keep their lines. Never shows the lines as the file has them, as Emacs does.';
+  infoReflowHint.style.fontSize = '11px';
+  infoReflowHint.style.opacity = '0.6';
+  infoReflowHint.style.margin = '4px 0 8px';
+  appearanceSection.appendChild(infoReflowHint);
 
   for (const group of renderQuickSettingsGroups()) cards.set('quick:' + group.name, group.element);
   const exportCards = buildExportCards(() => renderSettingsView());
