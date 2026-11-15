@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v704';
+const CACHE_NAME = 'org-pwa-shell-v705';
 
 const SHELL_FILES = [
   './',
@@ -7,6 +7,7 @@ const SHELL_FILES = [
   './manifest.json',
   './sandbox-frame.html',
   './README.org',
+  './org-pwa.info',
   './src/archive-model.js',
   './src/archive-settings.js',
   './src/archive-text.js',
@@ -216,6 +217,7 @@ const SHELL_FILES = [
   './src/tags-column.js',
   './src/recent-files.js',
   './src/help-lookup.js',
+  './src/help-nodes.js',
   './src/agenda-stuck.js',
   './src/agenda-skip.js',
   './src/agenda-log.js',

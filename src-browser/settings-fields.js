@@ -42,7 +42,7 @@ export const SETTINGS_FIELDS = [
     options: VISIBILITY_KEYWORDS.map((v) => ({ value: v, label: v })),
     helpAnchor: '#folding-and-startup',
   },
-  { key: 'recentf-max-saved-items', label: 'Recently opened files kept', section: 'Startup', type: 'number', default: 20, step: 1, helpAnchor: '#files-and-storage' },
+  { key: 'recentf-max-saved-items', label: 'Recently opened files kept', section: 'Startup', type: 'number', default: 20, step: 1, helpAnchor: '#file-management' },
   {
     key: 'org-startup-indented',
     label: 'Indent text and lists under headings',
@@ -261,7 +261,7 @@ export const SETTINGS_FIELDS = [
     section: 'Editing',
     type: 'text',
     default: 'A',
-    helpAnchor: '#priorities',
+    helpAnchor: '#agenda',
   },
   {
     key: 'org-priority-lowest',
@@ -269,7 +269,7 @@ export const SETTINGS_FIELDS = [
     section: 'Editing',
     type: 'text',
     default: 'C',
-    helpAnchor: '#priorities',
+    helpAnchor: '#agenda',
   },
   { key: 'org-use-sub-superscripts', label: 'Interpret _ / ^ as sub/superscript', section: 'Editing', type: 'subsuper', helpAnchor: '#inline-text-markup' },
   {

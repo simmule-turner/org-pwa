@@ -74,7 +74,7 @@ import { recalculateAllTables } from './table-recalc.js';
 import { chooseTodoWorkflowState, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { isWideLayout, keepOverlayInVisibleViewport } from './ui-widgets.js';
 import { infoCommand, openInfo } from './info-view.js';
-import { openOrSwitchToHelp, switchToView } from './views.js';
+import { openHelp, switchToView } from './views.js';
 import { openAgendaCommands, openQueryView } from './agenda-query-view.js';
 import { lockAgenda, unlockAgenda } from './agenda-scope-note.js';
 
@@ -411,7 +411,7 @@ export const GOD_MODE_ACTIONS = {
   'C-h m': () => {
     S.moreOpen = false;
     renderMoreMenu();
-    openOrSwitchToHelp();
+    openHelp();
   },
   // C-h a is Emacs's apropos-command, "find the commands that match": this app's command palette does just that. On the
   // keys it is `h SPC a`, like `h SPC m`, since a bare `a` after `h` would mean C-a.

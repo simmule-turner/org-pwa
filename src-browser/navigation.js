@@ -8,7 +8,7 @@ import { findHeadingByOutlinePath } from '../src/refile.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
 import { S } from './app-state.js';
 import { scrollContainer } from './chrome.js';
-import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
+import { NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
 import { openRemotePath } from './documents-io.js';
 import { navBackBtn, outlineEl, sidePanelEl } from './dom.js';
 import { setStatus } from './editing.js';
@@ -17,7 +17,7 @@ import { renderSettingsView } from './settings-view.js';
 import { agendaFilesCache, searchExtraFilesCache } from './singletons.js';
 import { ensureRowRendered, windowingActive } from './windowing.js';
 import { isWideLayout } from './ui-widgets.js';
-import { openOrSwitchToHelp, switchToView } from './views.js';
+import { switchToView } from './views.js';
 
 /** @param {object | null} node */
 export function toggleActionMenu(node) {
@@ -217,27 +217,23 @@ export async function navigateBack() {
   if (!target) return;
 
   if (target.documentId && target.documentId !== S.state.documentId) {
-    if (target.documentId === HELP_DOCUMENT_ID) {
-      await openOrSwitchToHelp();
+    let adapter, label;
+    if (target.storageKind === 'github') {
+      adapter = githubAdapter;
+      label = 'GitHub';
+    } else if (target.storageKind === 'webdav') {
+      adapter = webdavAdapter;
+      label = 'WebDAV';
     } else {
-      let adapter, label;
-      if (target.storageKind === 'github') {
-        adapter = githubAdapter;
-        label = 'GitHub';
-      } else if (target.storageKind === 'webdav') {
-        adapter = webdavAdapter;
-        label = 'WebDAV';
-      } else {
-        setStatus(
-          `Can't automatically return to "${target.documentId}" — local files need a file picker per file (browser security), which can't happen from the back button.`
-        );
-        syncNavBackButtonVisibility();
-        return;
-      }
-      await openRemotePath(target.documentId, target.storageKind, adapter, label);
+      setStatus(
+        `Can't automatically return to "${target.documentId}" — local files need a file picker per file (browser security), which can't happen from the back button.`
+      );
+      syncNavBackButtonVisibility();
+      return;
     }
-    // openRemotePath/openOrSwitchToHelp each catch and report their own
-    // errors via setStatus rather than throwing -- confirm one of them
+    await openRemotePath(target.documentId, target.storageKind, adapter, label);
+    // openRemotePath catches and reports its own errors via
+    // setStatus rather than throwing -- confirm it
     // actually landed on the origin document before restoring any of
     // its own view/scroll state below, the same "did this actually
     // succeed" check openFileLink's own forward-navigation already uses.

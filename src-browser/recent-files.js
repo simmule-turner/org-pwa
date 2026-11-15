@@ -55,7 +55,6 @@ export async function dropSavedCopies(dropped) {
  * @param {boolean} [freshText] true when the saved text matches the file now (opened from it, saved to it); false for viewing its saved copy
  */
 export async function trackRecent(documentId, storageKind, freshText = true) {
-  if (storageKind === 'help') return; // Help is not a file
   const max = recentLimit();
   if (max === undefined) return;
   await dropSavedCopies(await recordRecentFile(kv, documentId, storageKind, max, freshText));

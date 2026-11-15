@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { keyMatches, makePgpCipher, mergeKeys, openPgp, readKeyBlock } from '../src/pgp.js';
 
 const PLAIN = 'Account: 12345  \nPIN: 0000\n\n** Child\n  indented ünï\n';
@@ -61,11 +61,19 @@ test('a message for a key is read back with the secret key and its passphrase', 
   await assert.rejects(noSecret.decrypt(message), /No secret key/);
 });
 
-test('gpg reads what the cipher writes, and the cipher reads what gpg writes', { skip: !hasGpg }, async () => {
+test('gpg reads what the cipher writes, and the cipher reads what gpg writes', { skip: !hasGpg }, async (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'gnupg-'));
   fs.chmodSync(home, 0o700);
   const env = { ...process.env, GNUPGHOME: home };
-  const gpg = (args, input) => execFileSync('gpg', ['--batch', '--pinentry-mode', 'loopback', ...args], { env, input, stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+  const gpg = (args, input) => {
+    const run = spawnSync('gpg', ['--batch', '--pinentry-mode', 'loopback', ...args], { env, input, encoding: 'utf8' });
+    if (run.status !== 0) throw new Error(`gpg ${args.join(' ')} exited ${run.status}: ${run.stderr}`);
+    return run.stdout;
+  };
+  t.after(() => {
+    spawnSync('gpgconf', ['--kill', 'gpg-agent'], { env }); // the agent that gpg started for this home
+    fs.rmSync(home, { recursive: true, force: true });
+  });
   // a passphrase, both ways
   const cipher = makePgpCipher({ keyring: () => [], askPassphrase: async () => 'secret' });
   const sym = path.join(home, 'sym.asc');

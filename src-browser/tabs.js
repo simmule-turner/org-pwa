@@ -5,7 +5,6 @@
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels, scrollContainer } from './chrome.js';
-import { HELP_DOCUMENT_ID } from './constants.js';
 import { confirmDialog } from './dialogs.js';
 import { createNewUnsavedDocument } from './documents-io.js';
 import { outlineEl, tabBarEl } from './dom.js';
@@ -15,7 +14,6 @@ import { render } from './render.js';
 import { setLastActiveDocument, setOpenTabs } from './settings.js';
 import { kv } from './singletons.js';
 import { documentDisplayLabel } from './sync-helpers.js';
-import { openOrSwitchToHelp } from './views.js';
 
 /** Reads the CURRENT live value of every per-document global into a
  *  plain object -- this, and its counterpart below, are the only two
@@ -263,23 +261,13 @@ export function renderTabBar() {
   tabBarEl.style.borderBottom = '1px solid var(--border)';
   tabBarEl.style.background = 'var(--surface)';
 
-  // Help always renders last, regardless of when it was opened -- a
-  // render-time-only sort, so documentSessions' own order (used
-  // elsewhere for tab-cycling) is unaffected.
-  const sessionsInOrder = [...S.documentSessions].sort((a, b) => {
-    const aIsHelp = a.state.documentId === HELP_DOCUMENT_ID;
-    const bIsHelp = b.state.documentId === HELP_DOCUMENT_ID;
-    return aIsHelp === bIsHelp ? 0 : aIsHelp ? 1 : -1;
-  });
-
   /** @type {HTMLDivElement | null} */
   let activeTabEl = null;
-  for (const session of sessionsInOrder) {
+  for (const session of S.documentSessions) {
     const isActive = session.tabId === S.activeTabId;
     const docId = isActive ? S.state.documentId : session.state.documentId;
     const doc = isActive ? S.state.doc : session.state.doc;
     const dirty = isActive ? S.isDirty : session.isDirty;
-    const isHelp = docId === HELP_DOCUMENT_ID;
     const label = documentDisplayLabel(docId, doc);
 
     const tab = document.createElement('div');
@@ -294,14 +282,14 @@ export function renderTabBar() {
     // own "go back to" highlight flash uses (rgba(255,214,0,0.45)), not
     // this app's usual blue (--accent) -- distinguishes it from every
     // other, unrelated active-tab border.
-    tab.style.borderBottom = isActive ? (isHelp ? '2px solid rgb(255,214,0)' : '2px solid var(--accent)') : '2px solid transparent';
+    tab.style.borderBottom = isActive ? '2px solid var(--accent)' : '2px solid transparent';
     // Help's own background is this app's existing green convention
     // (DONE-state badges) -- always shown, whether or not it's the
     // currently-active tab, so it reads as "Help exists" at a glance,
     // the same way the dirty indicator is a constant marker rather
     // than only an active-state one.
-    tab.style.background = isHelp ? 'var(--done-bg)' : isActive ? 'var(--bg)' : 'transparent';
-    tab.onclick = () => (isHelp ? openOrSwitchToHelp() : switchToTab(session.tabId));
+    tab.style.background = isActive ? 'var(--bg)' : 'transparent';
+    tab.onclick = () => switchToTab(session.tabId);
 
     const labelEl = document.createElement('span');
     labelEl.textContent = (dirty ? '\u25cf ' : '') + label;
@@ -310,7 +298,7 @@ export function renderTabBar() {
     labelEl.style.textOverflow = 'ellipsis';
     labelEl.style.whiteSpace = 'nowrap';
     labelEl.style.fontSize = '13px';
-    labelEl.style.color = isHelp ? 'var(--done-fg)' : dirty ? '#c0392b' : 'var(--fg)';
+    labelEl.style.color = dirty ? '#c0392b' : 'var(--fg)';
     tab.appendChild(labelEl);
 
     const closeBtn = document.createElement('button');
@@ -318,8 +306,8 @@ export function renderTabBar() {
     closeBtn.setAttribute('aria-label', 'Close tab: ' + label);
     closeBtn.style.border = 'none';
     closeBtn.style.background = 'transparent';
-    closeBtn.style.color = isHelp ? 'var(--done-fg)' : 'var(--muted)';
-    closeBtn.style.opacity = isHelp ? '0.7' : '1';
+    closeBtn.style.color = 'var(--muted)';
+    closeBtn.style.opacity = '1';
     closeBtn.style.fontSize = '12px';
     closeBtn.style.padding = '6px';
     closeBtn.style.minWidth = '28px';

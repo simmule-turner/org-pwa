@@ -6,7 +6,7 @@
 import { UNSAVED_DOCUMENT_ID } from '../src/agenda.js';
 import { clearPendingChange, getPendingChange } from '../src/outbox.js';
 import { pushRecentRefileTarget } from '../src/refile.js';
-import { HELP_DOCUMENT_ID, PALETTE_RECENT_KEY, REFILE_RECENT_KEY } from './constants.js';
+import { PALETTE_RECENT_KEY, REFILE_RECENT_KEY } from './constants.js';
 import { kv } from './singletons.js';
 import { confirmDialog } from './dialogs.js';
 
@@ -57,7 +57,6 @@ export const bufferNames = /** @type {Map<string, string>} */ (new Map());
  * @param {Doc} doc
  *  Emacs's own convention for a fresh, as-yet-unnamed buffer. */
 export function documentDisplayLabel(docId, doc) {
-  if (docId === HELP_DOCUMENT_ID) return 'Help';
   const chosen = bufferNames.get(docId);
   if (chosen) return chosen; // a name the person gave it with rename-buffer
   const isUnsaved = !docId || docId.startsWith(UNSAVED_DOCUMENT_ID);
@@ -83,7 +82,6 @@ export function storageKindLabel(kind) {
   if (kind === 'github') return 'GitHub';
   if (kind === 'webdav') return 'WebDAV';
   if (kind === 'input') return 'Imported';
-  if (kind === 'help') return 'Help';
   return 'Local';
 }
 

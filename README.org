@@ -1999,7 +1999,7 @@ A file open with unsaved changes is never deleted, moved or replaced. One that i
 
 *Several documents can be open at once.* Opening a file (New, Open, Recently opened, a ~file:~, ~github:~ or ~webdav:~ link, or an Agenda or Search result) adds a tab; opening one already open switches to it. Each tab keeps its own content, cursor, scroll position, view mode and undo history (see [[#undoredo-and-history][Undo/redo and History]]).
 
-Each tab shows the filename (or the first heading's title for an unsaved document) and a red dot when it has unsaved changes. The × closes a tab, asking first if it is modified, as ~kill-buffer~ does. Open tabs persist across restarts. *Help* has its own tab (see [[#docs][Help]]), always last, and does not survive a restart.
+Each tab shows the filename (or the first heading's title for an unsaved document) and a red dot when it has unsaved changes. The × closes a tab, asking first if it is modified, as ~kill-buffer~ does. Open tabs persist across restarts.
 
 -----
 
@@ -2258,7 +2258,7 @@ Property drawers and ~ARCHIVE_*~ properties (see [[#archiving][Archiving]]) are 
 :CUSTOM_ID: docs
 :END:
 
-Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It is this file, ~README.org~, opened read-only in its own last tab, with ~#+STARTUP: show2levels~. The =examples/= folder has a file for each feature, with the results Emacs gives.
+Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It opens this guide as the manual *org-pwa* in the Info reader (see [[#info-reader][Info reader]]), at its top node; the manual is part of the app and stays in the directory. In Settings, the *?* beside a setting opens the manual at that setting's section, and a ~[[help:NAME]]~ link opens it where NAME is documented. The =examples/= folder has a file for each feature, with the results Emacs gives.
 
 -----
 
@@ -2267,7 +2267,7 @@ Open Help from the palette's *Help* (or god-mode's ~h SPC m~). It is this file, 
 :CUSTOM_ID: info-reader
 :END:
 
-Read GNU Info manuals on this device, with Emacs's own rules for nodes, menus, cross references and indexes. Open it from the palette's *Info* (~C-h i~); *Info: go to node*, *Info: index*, *Info: search text*, *Info: directory* and *Info: table of contents* (~Info-goto-node~, ~Info-index~, ~Info-search~, ~Info-directory~, ~Info-toc~) open it on that command. It starts at the directory, which lists the manuals you added by the sections their files name.
+Read GNU Info manuals on this device, with Emacs's own rules for nodes, menus, cross references and indexes. Open it from the palette's *Info* (~C-h i~); *Info: go to node*, *Info: index*, *Info: search text*, *Info: directory* and *Info: table of contents* (~Info-goto-node~, ~Info-index~, ~Info-search~, ~Info-directory~, ~Info-toc~) open it on that command. It starts at the directory, which lists *org-pwa* (this guide) and the manuals you added by the sections their files name.
 
 - *Keys*: ~n~ ~p~ ~u~ next, previous and up; ~l~ and ~r~ back and forward in the history; ~t~ Top; ~d~ directory; ~m~ a menu entry; ~f~ a cross reference; ~g~ go to a node (~(manual)node~ reaches another manual); ~i~ index, ~,~ the next index match; ~s~ search, ~S~ search matching case; ~T~ contents; ~SPC~ and ~DEL~ page through a node and on to the next or previous one; ~q~ quit. The buttons under a node are Prev, Up, Next, Back and Index, and the three dots list the rest.
 - *Adding manuals*: *Info: add manuals* (or Add in the directory) chooses files. Pick all the files of a manual together, ~org.info~ and ~org.info-1~, ~org.info-2~ and so on; compressed ~.info.gz~ files work as they are. Each manual shows as ready or as incomplete, naming the missing parts. Added manuals stay on this device and can be removed in the same sheet.
@@ -2528,7 +2528,7 @@ A valid sequence with no equivalent here (~c c~, ~c |~, ~c l~, ~c o~) says so in
 
 *Pickers*: ~c SPC c~, and ~c t~ on a heading with no state and several workflows, exit god-mode and show a picker whose options are buttons, each with a one-character hotkey when no other option shares it. ~Escape~ cancels.
 
-*Help*: ~h SPC m~ doesn't exit god-mode; while Help is the only thing open, ~Escape~ cancels a sequence and then exits god-mode instead of closing Help.
+*Help*: ~h SPC m~ doesn't exit god-mode.
 
 *Redo*: Emacs undoes the undo after something breaks the chain (conventionally ~C-f~ in god-mode). Here ~f~ arms the next ~/~ to redo; ~/~ keeps redoing while armed, any other key disarms it, and with nothing to redo ~/~ undoes.
 

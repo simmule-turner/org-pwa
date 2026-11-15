@@ -4,7 +4,7 @@
 import { groupFiles, readInfoBytes, recordOf } from '../src/info-store.js';
 import { buildSheet, cancelButton } from './bottom-sheet.js';
 import { confirmDialog, pickBinaryFiles } from './dialogs.js';
-import { loadRecords, removeRecord, saveRecord } from './info-storage.js';
+import { BUILTIN_MANUAL, loadRecords, removeRecord, saveRecord } from './info-storage.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 
 /** @typedef {import('../src/info-store.js').PickedFile} PickedFile */
@@ -75,12 +75,12 @@ export async function openAddManuals(onChange) {
       body.append(row);
     }
     body.append(heading('On this device'));
-    if (stored.length === 0) body.append(div('font-size:var(--text-secondary);color:var(--muted);padding:var(--space-2) 0;', 'No manuals added yet.'));
     for (const r of stored) {
       const row = div('display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:var(--target);border-bottom:1px solid var(--border);');
       const text = div('min-width:0;');
       const files = Object.keys(r.files).length;
-      text.append(div('font-size:var(--text-body);', r.name), div('font-size:var(--text-secondary);color:var(--muted);', `${files} ${files === 1 ? 'file' : 'files'}, ${sizeText(r.size)}, added ${new Date(r.added).toLocaleDateString()}`));
+      const builtIn = r.name === BUILTIN_MANUAL;
+      text.append(div('font-size:var(--text-body);', r.name), div('font-size:var(--text-secondary);color:var(--muted);', `${files} ${files === 1 ? 'file' : 'files'}, ${sizeText(r.size)}${builtIn ? '' : `, added ${new Date(r.added).toLocaleDateString()}`}`));
       const remove = document.createElement('button');
       remove.textContent = 'Remove';
       remove.setAttribute('aria-label', `Remove ${r.name}`);
@@ -92,7 +92,7 @@ export async function openAddManuals(onChange) {
         draw();
         await onChange();
       };
-      row.append(text, remove);
+      row.append(text, builtIn ? div('flex:none;font-size:var(--text-meta);font-weight:700;color:var(--muted);', 'built in') : remove);
       body.append(row);
     }
     const buttons = div('display:flex;gap:8px;margin-top:var(--space-3);');

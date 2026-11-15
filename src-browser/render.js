@@ -483,6 +483,6 @@ function displayLineNumbering(rows) {
  *  state.documentId/storageKind/isDirty to separately remember to update
  *  it) rather than being set ad hoc in half a dozen different places. */
 export function updateSaveButtonState() {
-  /** @type {any} */ (saveBtnEl).disabled = !S.state.doc || !S.state.storageKind || S.state.storageKind === 'help';
+  /** @type {any} */ (saveBtnEl).disabled = !S.state.doc || !S.state.storageKind;
   (saveBtnEl).style.color = !/** @type {any} */ (saveBtnEl).disabled && S.isDirty ? '#c0392b' : '';
 }

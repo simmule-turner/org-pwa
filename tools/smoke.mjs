@@ -252,7 +252,14 @@ async function openHelp(page) {
   await openPalette(page);
   await page.keyboard.type('help');
   await page.keyboard.press('Enter');
-  await waitForModeline(page, 'Help');
+  await waitForHelpManual(page);
+}
+/** Help is the app's own manual in the Info reader, at its Top node (or the named one). */
+async function waitForHelpManual(page, node = 'Top') {
+  await page.locator('#info-view').waitFor({ timeout: 8000 });
+  await page.waitForFunction((n) => document.getElementById('info-view').innerText.includes(`File: org-pwa.info, Node: ${n},`), node, { timeout: 8000 }).catch(async (err) => {
+    throw new Error(`the manual did not open at ${node}: ${(await page.locator("#info-view").innerText()).replace(/\s+/g, " ").slice(0, 300)} / ${err.message}`);
+  });
 }
 const status = (page) => page.locator('#status').innerText();
 
@@ -452,8 +459,9 @@ check('iOS: the bar drops its home-indicator margin while the keyboard is up, an
 
 check('read-only toggle: a read-only buffer becomes editable in Text view and stays writable back in Org', async () => {
   const { context, page } = await freshPage();
-  await openHelp(page); // the Help buffer is read-only by its own file header
-  expect((await modeline(page)).startsWith('%%'), 'Help should start read-only');
+  await newDocument(page, Array.from({ length: 60 }, (_, i) => `* Heading ${i + 1}\nSome text under heading ${i + 1}.`).join('\n'));
+  await runCommand(page, 'Toggle read-only');
+  await page.waitForFunction(() => document.getElementById('modeline').innerText.startsWith('%'), null, { timeout: 5000 });
   await viewMenu(page, 'Text');
   expect(await page.locator('#document-text-edit-input').evaluate((t) => t.readOnly), 'textarea should start read-only');
   // Select all and Copy all live in the Line… sheet, not in a row above the text
@@ -496,7 +504,7 @@ check('read-only toggle: a read-only buffer becomes editable in Text view and st
   await page.keyboard.type('ZZZ');
   expect((await page.locator('#document-text-edit-input').inputValue()).startsWith('ZZZ'), 'typing was not accepted');
   await viewMenu(page, 'Org');
-  expect(!(await modeline(page)).startsWith('%%'), `read-only came back after leaving Text view: ${await modeline(page)}`);
+  expect(!(await modeline(page)).startsWith('%'), `read-only came back after leaving Text view: ${await modeline(page)}`);
   await context.close();
 });
 
@@ -534,8 +542,8 @@ check('offline: a cold start with the server gone still loads (every module is p
   await dead.stop();
   await reloadSettled();
   await page.waitForTimeout(1500);
-  await openHelp(page).catch(() => {});
-  expect((await modeline(page)).includes('Help'), 'the app did not work with the server stopped');
+  await openHelp(page);
+  expect((await page.locator('#info-view').innerText()).includes('File: org-pwa.info, Node: Top,'), 'Help did not open the manual with the server stopped');
   await context.close();
 });
 
@@ -2957,8 +2965,7 @@ check('god-mode: C-h m opens Help, and C-s opens search', async () => {
   await page.keyboard.press('h');
   await page.keyboard.press(' ');
   await page.keyboard.press('m');
-  await waitForModeline(page, 'Help');
-  expect((await modeline(page)).includes('Help'), `expected Help to open: ${await modeline(page)}`);
+  await waitForHelpManual(page);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 
@@ -8245,34 +8252,67 @@ check('buffers: Save Some Buffers asks per buffer in the minibuffer (y/Space, n/
   await context.close();
 });
 
-check('help: links: [[help:org-todo]] opens Help at the entry that documents it, and a name nothing documents says so in the status line', async () => {
+check('help: links: [[help:org-todo]] opens the manual at the node that documents it, and a name nothing documents says so in the status line', async () => {
   const { context, page, errors } = await freshPage(main);
   await newDocument(page, '* Notes\n[[help:org-todo][todo help]]\n');
   await page.locator('#outline a', { hasText: 'todo help' }).first().click();
-  await waitForModeline(page, 'Help');
   const expected = await page.evaluate(async () => {
-    const { S } = await import('/src-browser/app-state.js');
     const { lookupHelp } = await import('/src/help-lookup.js');
+    const { HELP_NODE_BY_HEADING } = await import('/src/help-nodes.js');
     const hit = lookupHelp(await (await fetch('./README.org')).text(), 'org-todo');
-    if (!hit || hit.headingIndex < 0) return null;
-    let n = -1;
-    const walk = (list) => {
-      for (const h of list) {
-        if (++n === hit.headingIndex) return h.title;
-        const found = walk(h.children);
-        if (found) return found;
-      }
-      return null;
-    };
-    return walk(S.state.doc.children);
+    return hit && hit.headingIndex >= 0 ? HELP_NODE_BY_HEADING[hit.headingIndex] : null;
   });
   expect(expected, 'README has an entry for org-todo');
-  expect((await page.locator('#outline').innerText()).includes(expected), `the Help outline shows the entry "${expected}"`);
+  await waitForHelpManual(page, expected);
+  await page.keyboard.press('q');
   await page.evaluate(async () => {
     const { openHelpLink } = await import('/src-browser/views.js');
     await openHelpLink('no-such-thing-xyz');
   });
   await waitForStatus(page, 'No help for no-such-thing-xyz');
+  await waitForHelpManual(page, 'Top');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('help: the manual ships with the app: Help and every Settings hint open it at their section, the Add manuals sheet lists it as built in, and it cannot be removed', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await page.setViewportSize({ width: 412, height: 900 });
+  await newDocument(page, '* Notes\n');
+  await openHelp(page);
+  expect((await page.locator('#info-view').innerText()).includes('org-pwa'), 'Help opens the manual');
+  await page.keyboard.press('q');
+  // every anchor that a Settings field names opens the node that README.org's heading with that CUSTOM_ID became
+  const wrong = await page.evaluate(async () => {
+    const { SETTINGS_FIELDS } = await import('/src-browser/settings-fields.js');
+    const { HELP_NODE_BY_ID } = await import('/src/help-nodes.js');
+    const { openDocsAtHeading } = await import('/src-browser/views.js');
+    const { closeInfo } = await import('/src-browser/info-view.js');
+    const bad = [];
+    for (const anchor of new Set(SETTINGS_FIELDS.map((f) => f.helpAnchor).filter(Boolean))) {
+      await openDocsAtHeading(anchor);
+      const shown = document.getElementById('info-view').innerText;
+      if (!shown.includes(`File: org-pwa.info, Node: ${HELP_NODE_BY_ID[anchor.slice(1)]},`)) bad.push(anchor);
+      closeInfo();
+    }
+    return bad;
+  });
+  expect(wrong.length === 0, `Settings hints that do not open their section: ${wrong.join(', ')}`);
+  // the same from the Settings screen itself
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  await page.locator('[data-settings-category]').first().waitFor({ state: 'visible', timeout: 8000 });
+  await settingsCategory(page, 'editing');
+  await page.locator('span[title="Open the help doc for this setting"]').first().click();
+  await page.locator('#info-view').waitFor({ timeout: 5000 });
+  expect(!(await page.locator('#info-view').innerText()).includes('(dir)'), 'a Settings hint opens a section of the manual, not the directory');
+  await page.keyboard.press('q');
+  await runCommand(page, 'Info: add manuals');
+  const sheet = page.locator('[data-bottom-sheet]');
+  await sheet.getByText('built in', { exact: true }).waitFor({ timeout: 5000 });
+  const text = await sheet.innerText();
+  expect(text.includes('org-pwa') && text.includes('built in'), `the sheet lists the manual as built in: ${text}`);
+  expect((await sheet.getByRole('button', { name: /Remove/ }).count()) === 0, 'the built-in manual has no Remove button');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

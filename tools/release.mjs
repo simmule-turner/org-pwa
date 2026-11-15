@@ -54,6 +54,13 @@ function run(cmd, cmdArgs) {
   }
 }
 
+// the app's own manual (org-pwa.info) and the node maps (src/help-nodes.js) come from README.org, so they are made again first
+console.log('[prep] node tools/gen-info.mjs');
+if (spawnSync('node', ['tools/gen-info.mjs'], { stdio: 'inherit' }).status !== 0) {
+  console.error('FAILED: node tools/gen-info.mjs');
+  process.exit(1);
+}
+
 const hash = sourceHash();
 const last = fs.existsSync('.green-hash') ? fs.readFileSync('.green-hash', 'utf8').trim() : '';
 if (hash === last && !smoke) {

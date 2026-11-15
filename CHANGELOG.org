@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v705 — Help is the Info manual
+Help opens this guide as the manual org-pwa in the Info reader, built into the app and listed in the directory, so it reads like any Info manual: menus, cross references, index and search. The ? beside a Settings entry and the Capture help link open the manual at that section, and ~[[help:NAME]]~ links open it where NAME is documented. Two Settings hints that went nowhere now open their sections.
+Verified: a check that every Settings and Capture hint reaches a node of the generated manual, and that the manual is made from the current README.org.
+
 * v704 — One layout for every text editor
 All five text editors (heading text, paragraph, new paragraph, list item, heading title) share one layout: Footnote, Timer and Date as icon buttons above the text, then Cancel and OK at their usual size. Cancel already reverts, so Reset is gone from these editors and from the effort editor. A footnote can now be added from a new paragraph and from a heading title.
 Verified: smoke check of the layout (icons above the text, 36 px or larger, on screen, no Reset) and of footnotes in a new paragraph and a heading title.

@@ -44,9 +44,6 @@ Left from the security reviews. Each is small, none lets a document run code wit
 - Effort: S. Impact: S.
 
 * Info and manuals
-** [#A] Our own manual as Info (=org-pwa.info=), Help opens it
-Phases 1 to 3 (reader, storage, Add manuals, =info:= links) are built. Next: generate =org-pwa.info= from README.org at release time (Emacs's Texinfo export, then =makeinfo=; untagged source blocks need a language first), ship it with the app, make Help (=C-h m=) open its top node, and answer =[[help:NAME]]= links from its index. README.org stays the source in the repository.
-- Effort: M. Impact: M.
 ** [#C] Texinfo exporter
 Export to =.texi= (nodes, menus, =@multitable=, =@footnote=) as the LaTeX exporter does, checked against Emacs's ox-texinfo. The hard part is node and menu generation. Worth doing if you write GNU-style manuals.
 - Effort: L. Impact: S.
@@ -157,10 +154,9 @@ The parser does not model inline tasks, radio links, timestamps, entities, LaTeX
 - Effort: S. Impact: S.
 
 * Order for the next release
-1. Our own manual as Info (phase 4 of the Info reader): the largest gain for the effort now that the reader exists.
-2. Date prompts everywhere, and Settings controls for the export variables: small, and they finish what the latest release started.
-3. Drawers and dynamic blocks as containers, then inline-task commands.
-4. Detangle and jump for Babel.
+1. Date prompts everywhere, and Settings controls for the export variables: small, and they finish what the latest release started.
+2. Drawers and dynamic blocks as containers, then inline-task commands.
+3. Detangle and jump for Babel.
 Refile and Replace into =local:= files from the web and other backends are [#C].
 
 * Appendix: a Lisp interpreter

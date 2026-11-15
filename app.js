@@ -1003,8 +1003,6 @@ viewMenuBtn.addEventListener('click', () => {
 // completely unchanged from before this feature existed.
 S.customThemeColors = {};
 
-// ---- Help (README.org, opened as a real document) -------------------
-
 settingsBtn.addEventListener('click', async () => {
   const opening = !S.settingsOpen;
   closeAllOverlayPanels();

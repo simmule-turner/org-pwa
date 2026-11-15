@@ -1,19 +1,17 @@
 // @ts-check
 // Extracted from app.js: views.
-import { resolveLinkTarget } from '../src/link-resolve.js';
 import { getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
-import { parseOrg } from '../src/org-parser.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { S, isAgendaFamilyView } from './app-state.js';
 import { agendaRestriction } from './agenda-files.js';
-import { closeAllOverlayPanels, scrollContainer } from './chrome.js';
-import { HELP_DOCUMENT_ID, NAVIGATION_BACK_STACK_LIMIT } from './constants.js';
-import { afterDocumentLoaded } from './documents-io.js';
+import { closeAllOverlayPanels } from './chrome.js';
 import { viewMenuBtn, viewMenuPanel } from './dom.js';
 import { commitTextModeIfActive, setStatus } from './editing.js';
-import { navigateToHeading, syncNavBackButtonVisibility } from './navigation.js';
 import { lookupHelp } from '../src/help-lookup.js';
+import { HELP_NODE_BY_HEADING, HELP_NODE_BY_ID } from '../src/help-nodes.js';
+import { BUILTIN_MANUAL } from './info-storage.js';
+import { openInfo } from './info-view.js';
 import { render } from './render.js';
 import { renderSearchPanel } from './search-ui.js';
 import { aliasedMenuDivItem, appendMenuButtonsInOrder, positionPopupNearButton } from './ui-widgets.js';
@@ -130,96 +128,29 @@ export function renderViewMenuContent() {
   // god-mode's own C-x C-q -- see toggleBufferReadOnly's own docs.
 }
 
-/** Opens Help by fetching and opening README.org through the exact
- *  same pipeline any other document uses (afterDocumentLoaded) --
- *  read-only (its own first-line cookie), first-visit-collapsed (its
- *  own #+STARTUP: line), and "switch to it if it's already open as a
- *  tab" (afterDocumentLoaded's own existing, general logic) all come
- *  from that pipeline directly, not from anything Help-specific here.
- *  storageKind 'help' -- see storageKindLabel's own one-line case for
- *  it, and updateSaveButtonState's own explicit exclusion of it (a
- *  real, truthy string, so the usual falsy-storageKind check alone
- *  wouldn't have disabled Save on its own). */
-export async function openOrSwitchToHelp() {
+/** Opens Help: the app's own manual (org-pwa.info, made from README.org) at its Top node. */
+export async function openHelp() {
   closeAllOverlayPanels();
-  try {
-    const response = await fetch('./README.org');
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    const text = await response.text();
-    await afterDocumentLoaded(HELP_DOCUMENT_ID, parseOrg(text), 'help');
-  } catch (err) {
-    setStatus("Couldn't load Help (" + err.message + '). Try again once you\u2019re back online.');
-    render();
-  }
+  await openInfo({ manual: BUILTIN_MANUAL });
 }
 
-/** Opens Help and scrolls directly to a specific section, identified
- *  by its CUSTOM_ID anchor (e.g. "#capture-templates") -- the same
- *  resolution resolveLinkTarget already uses for [[#id][...]]-style
- *  links, and the same navigateToHeading every other internal-link
- *  jump in this app already uses. Used by Settings' own hotlinks to
- *  the corresponding help section, so a streamlined settings hint can
- * @param {string} anchorId
- *  point at the full documentation instead of duplicating it inline. */
+/** Opens the manual at the section that a CUSTOM_ID of README.org names (e.g. "#capture-templates"); Settings' hints and Capture's help link use it. The Info reader opens over the screen that asked, so closing it returns there.
+ * @param {string} anchorId */
 export async function openDocsAtHeading(anchorId) {
-  S.navigationBackStack.push({
-    view: S.currentView,
-    settingsOpen: S.settingsOpen,
-    documentId: S.state.documentId,
-    storageKind: S.state.storageKind,
-    scrollTop: scrollContainer().scrollTop,
-  });
-  if (S.navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) S.navigationBackStack.shift();
-  syncNavBackButtonVisibility();
-
-  await openOrSwitchToHelp();
-  if (!S.state.doc || S.state.documentId !== HELP_DOCUMENT_ID) return; // load failed -- openOrSwitchToHelp already showed its own error message
-
-  const resolution = resolveLinkTarget(S.state.doc, anchorId);
-  if (resolution.type !== 'heading') return; // an unresolvable anchor is a documentation bug, not something to surface as a runtime error
-
-  navigateToHeading(resolution.heading, { pushToBackStack: false, revealOwnBody: true });
+  const node = HELP_NODE_BY_ID[anchorId.replace(/^#/, '')];
+  if (!node) throw new Error('Help has no section with the CUSTOM_ID ' + anchorId);
+  await openInfo({ manual: BUILTIN_MANUAL, node });
 }
 
-/** Opens Help at the first place that documents NAME (a `[[help:NAME]]` link); Help opens at the top, with a status line, when nothing does.
+/** Opens the manual at the first place that documents NAME (a `[[help:NAME]]` link), or at its top, with a status line, when nothing does.
  * @param {string} name */
 export async function openHelpLink(name) {
-  S.navigationBackStack.push({
-    view: S.currentView,
-    settingsOpen: S.settingsOpen,
-    documentId: S.state.documentId,
-    storageKind: S.state.storageKind,
-    scrollTop: scrollContainer().scrollTop,
-  });
-  if (S.navigationBackStack.length > NAVIGATION_BACK_STACK_LIMIT) S.navigationBackStack.shift();
-  syncNavBackButtonVisibility();
-  await openOrSwitchToHelp();
-  if (!S.state.doc || S.state.documentId !== HELP_DOCUMENT_ID) return;
-  let hit = null;
-  try {
-    const response = await fetch('./README.org');
-    if (response.ok) hit = lookupHelp(await response.text(), name);
-  } catch {
-    // offline: Help is already open from the cache
-  }
-  /** @type {import('../src/types.js').Heading | null} */
-  let target = null;
-  if (hit && hit.headingIndex >= 0) {
-    let n = -1;
-    /** @param {import('../src/types.js').Heading[]} list
-     *  @returns {import('../src/types.js').Heading | null} */
-    const walk = (list) => {
-      for (const h of list) {
-        if (++n === hit.headingIndex) return h;
-        const found = walk(h.children);
-        if (found) return found;
-      }
-      return null;
-    };
-    target = walk(S.state.doc.children);
-  }
-  if (target) navigateToHeading(target, { pushToBackStack: false, revealOwnBody: true });
-  else {
+  const response = await fetch('./README.org');
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  const hit = lookupHelp(await response.text(), name);
+  const node = hit && hit.headingIndex >= 0 ? HELP_NODE_BY_HEADING[hit.headingIndex] : undefined;
+  await openInfo({ manual: BUILTIN_MANUAL, node });
+  if (!node) {
     setStatus('No help for ' + name);
     render();
   }
