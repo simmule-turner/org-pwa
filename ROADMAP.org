@@ -69,9 +69,6 @@ The =pom= argument (the Lisp environment has no buffer positions to name an entr
 ** [#C] Settings control for =org-blank-before-new-entry=
 The variable is read from Global Variables (all three values work for headings and list items); a control needs a Settings pattern for alist values (two choices, one for headings and one for list items).
 - Effort: S. Impact: S.
-** [#C] Cursor-text commands
-=org-return=, =org-meta-return=, =org-open-line= and =org-drag-element-*=. They act at a text cursor; the touch editor has no equivalent, so build them only for the Text view.
-- Effort: M. Impact: S.
 ** [#C] Archive extras and blocking
 BLOCKER and TRIGGER properties (org-edna and org-depend territory, not Org core), =org-toggle-ordered-property= (=C-c C-x o=), =org-toggle-archive-tag= (=C-c C-x a=) and direct archive on =C-c C-x C-s=.
 - Effort: S. Impact: S.
@@ -140,6 +137,20 @@ KaTeX stands in for MathJax by decision; ox-publish needs a project model.
 The parser does not model inline tasks, radio links, timestamps, entities, LaTeX fragments, sub and superscripts or statistics cookies, so the checkers that use them are not covered. =wrong-header-value= skips Lisp-evaluated values; cite processors are fixed; loaded Babel languages default to emacs-lisp.
 - Effort: M. Impact: S.
 
+* Emacs mode
+A separate mode, kept until the Text view is no longer needed, that looks and feels like Emacs: the Text view's textarea stays (so phones, IME and the device keyboard keep working) with Emacs's keys, kill ring, mark and look on top. Each stage is compared with Emacs 29.3 where it can be.
+** [#B] Emacs mode: more keys
+=M-y= (kill ring cycling), =C-x h= (mark the buffer), =C-x C-o=, =M-SPC=, =C-v= and =M-v=, =M-<= and =M-> with a prefix, a prefix for =C-t=, =M-t=, =C-x C-x=, =M-\\= and =M-m=, =C-?= (redo), undo within the region, =C-s= and =C-r= search, and the =C-c= prefix. Undoing a re-leveled =C-y= takes one step where Emacs takes several. Each is compared with Emacs 29.3 as the rest are.
+- Effort: M. Impact: M.
+** [#B] Emacs mode: minibuffer and buffers
+Messages carry Emacs's words and go to a =*Messages*= buffer, =M-x= completes in the minibuffer (the panel gets =M-x= and =C-c= then), and =C-x b=, =C-x k=, =C-x C-b= switch, kill and list the open files (the tabs).
+- Effort: M. Impact: M.
+** [#B] Emacs mode: Org commands at the caret
+=Tab= and =S-Tab= cycle visibility in the text, then the commands that act at point (=org-return=, =org-open-line=, =org-drag-element-*=, =S-up= and =S-down= on a timestamp, =C-c C-c= in context, =M-left= and =M-right= on the element at point). Supersedes "Cursor-text commands".
+- Effort: M. Impact: M.
+** [#C] Emacs mode: faces and window
+Emacs's Org faces (=org-level-1= to =8=, =org-todo=, =org-done=, =org-table=, =org-link=), =org-ellipsis=, and optionally split windows (=C-x 2=, =C-x 3=, =C-x 0=, =C-x 1=).
+- Effort: M. Impact: S.
 * Probably not worth doing
 ** [#D] Unlikely extras from the Org manual
 Four features from the compact Org guide that this app can do without; each is listed so you can decide whether any is worth a release.

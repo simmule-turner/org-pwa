@@ -1,0 +1,86 @@
+// @ts-check
+/**
+ * TAB in a table of the Text view (`org-cycle` calling `org-table-next-field`): the table is aligned and the caret goes to the next
+ * field; from the last field it goes to the first field of the next row, over rules, and at the end of the table a new row is added.
+ * A line that starts with `|-` is a rule and is written in full. Positions are 0-based offsets into the text.
+ */
+import { layoutTable } from './org-table-layout.js';
+import { inBlockAt } from './list-edit.js';
+
+const TABLE_LINE = /^[ \t]*\|/;
+
+/** The cells of a table line, trimmed, or null for a rule. @param {string} line @returns {string[] | null} */
+function cellsOf(line) {
+  if (/^[ \t]*\|-/.test(line)) return null;
+  const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return body.split('|').map((c) => c.trim());
+}
+
+/**
+ * @param {string} text @param {number} pos
+ * @returns {{ text: string, pos: number } | null} null when the caret is not in a table
+ */
+export function tableTab(text, pos) {
+  const lines = text.split('\n');
+  let line = 0;
+  let start = 0;
+  while (line < lines.length - 1 && start + lines[line].length < pos) {
+    start += lines[line].length + 1;
+    line += 1;
+  }
+  if (!TABLE_LINE.test(lines[line]) || inBlockAt(lines, line)) return null;
+  let first = line;
+  while (first > 0 && TABLE_LINE.test(lines[first - 1])) first -= 1;
+  let last = line;
+  while (last + 1 < lines.length && TABLE_LINE.test(lines[last + 1])) last += 1;
+  const indent = /^[ \t]*/.exec(lines[first])?.[0] ?? '';
+  const rowsOf = (/** @type {number} */ extra) => [...lines.slice(first, last + 1).map(cellsOf), ...Array(extra).fill(0).map(() => /** @type {string[]} */ ([]))];
+  const aligned = layoutTable(rowsOf(0)).map((l) => indent + l);
+  const row = line - first;
+  // where the caret is in the aligned line: after the pipe that starts its field, before the first pipe, or at the end of the line
+  const col = pos - start;
+  const original = lines[line];
+  const pipesBefore = (original.slice(0, col).match(/\|/g) ?? []).length;
+  const ruleRow = cellsOf(original) === null;
+  const fields = (aligned[row].match(/\|/g) ?? []).length;
+  const offsets = aligned.map((_, i) => aligned.slice(0, i).reduce((n, l) => n + l.length + 1, 0));
+  const joined = aligned.join('\n');
+  let at = offsets[row];
+  if (ruleRow) at += aligned[row].length;
+  else if (pipesBefore > fields) at += aligned[row].length;
+  else if (pipesBefore > 0) at += aligned[row].split('|').slice(0, pipesBefore).join('|').length + 1;
+  const rowAt = (/** @type {number} */ p) => offsets.reduce((r, o, i) => (o <= p ? i : r), 0);
+
+  /** The table with an empty row after row `after`, the caret in its first field. @param {number} after */
+  const withNewRow = (after) => {
+    const rows = lines.slice(first, last + 1).map(cellsOf);
+    rows.splice(after + 1, 0, rows.some((r) => r) ? [] : ['']);
+    const out = layoutTable(rows).map((l) => indent + l);
+    const caret = out.slice(0, after + 1).reduce((n, l) => n + l.length + 1, 0) + indent.length + 2;
+    return finish(out, caret);
+  };
+  /** @param {string[]} table @param {number} caret offset within the table */
+  const finish = (table, caret) => {
+    const before = lines.slice(0, first).reduce((n, l) => n + l.length + 1, 0);
+    // a row added at the very end of a buffer that has no final newline brings one
+    const tail = table.length > last - first + 1 && last === lines.length - 1 && caret >= table.slice(0, -1).reduce((n, l) => n + l.length + 1, 0) ? [''] : [];
+    return { text: [...lines.slice(0, first), ...table, ...tail, ...lines.slice(last + 1)].join('\n'), pos: before + caret };
+  };
+
+  const pipe = joined.indexOf('|', at);
+  if (pipe === -1) return withNewRow(rowAt(at));
+  let point = pipe + 1;
+  if (/^[ \t]*(?:\n|$)/.test(joined.slice(point))) {
+    const next = joined.indexOf('|', point);
+    if (next === -1) return withNewRow(rowAt(point));
+    point = next + 1;
+  }
+  if (joined[point] === '-') {
+    // on a rule: over it to the next row that is not one, or a new row above it when it ends the table
+    const data = /\n[ \t]*\|[^-]/.exec(joined.slice(point));
+    if (!data) return withNewRow(rowAt(point) - 1);
+    point += data.index + data[0].length - 1;
+  }
+  if (joined[point] === ' ') point += 1;
+  return finish(aligned, point);
+}

@@ -87,6 +87,11 @@ export const VARIABLE_CATALOG = [
     "default": "512000"
   },
   {
+    "name": "org-M-RET-may-split-line",
+    "doc": "Non-nil means M-RET will split the line at the cursor position.",
+    "default": "((default . t))"
+  },
+  {
     "name": "org-agenda-category-filter-preset",
     "doc": "A preset of the category filter used for secondary agenda filtering.",
     "default": "nil"

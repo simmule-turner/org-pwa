@@ -100,6 +100,8 @@ const CONTROLLED = [
   ['org-weather-temperature-unit', '°C or °F.', { own: '"°F"' }],
   ['org-xx-diary-merge-rows', "Whether a diary line without a time joins the row before it, as Org's agenda does.", { own: 't' }],
   ['org-xx-drag-handle', 'Where the drag grip sits on a heading: right, left or off.', { own: "'right" }],
+  ['org-xx-emacs-key-panel', "Where Emacs mode's key panel sits: docked or floating.", { own: "'docked" }],
+  ['org-xx-emacs-mode', 'Whether the Text view works like Emacs.', { own: 'nil' }],
   ['org-xx-extensions', 'on lets the approved init script run.', { own: "'off" }],
   ['org-xx-god-mode-button', 'Whether the floating [g] god-mode button is shown.', { own: 't' }],
   ['org-xx-indent-tables', 'With org-startup-indented on, whether tables are indented too.', { own: 't' }],
@@ -108,7 +110,10 @@ const CONTROLLED = [
   ['org-xx-startup-with-show-photos', "Whether a contact's photo shows as a thumbnail when a file opens.", { own: 'nil' }],
   ['org-xx-text-font-size', "The Text view's text size in pixels, 9 to 28.", { own: '13' }],
   ['org-xx-windowing-threshold', 'Above this many rows only the rows near the screen are drawn; 0 draws all.', { own: '400' }],
+  ['org-yank-adjusted-subtrees', 'Whether C-y changes a pasted subtree to the level where it lands (Emacs mode).'],
+  ['org-yank-folded-subtrees', 'Whether C-y folds a long subtree it pastes at a heading (Emacs mode).'],
   ['recentf-max-saved-items', 'How many files Recently opened keeps.'],
+  ['select-enable-clipboard', 'Whether kills go to the device clipboard and C-y takes what was copied elsewhere (Emacs mode).'],
 ];
 
 /** @param {string} lisp a value as Emacs prints it, @returns {string} as it is written after a quote in a setq */

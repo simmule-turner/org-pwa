@@ -7,8 +7,16 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v714 — Emacs mode in the Text view
+A setting (org-xx-emacs-mode) makes the Text view work as Emacs does: movement, word, line and kill keys, C-SPC and C-x C-x for the mark and region, the kill ring (shared with the device clipboard), C-y with Org's subtree handling, C-u and M-digit arguments, and C-/ undo with Emacs's grouping and redo. A block caret, a modeline and an echo line show the state, and a key panel (docked or floating) gives a phone Esc, Ctrl, Alt, Tab, the arrows, C-g, C-SPC, C-x and C-u.
+Verified: Emacs 29.3 comparisons for 28023 command, 3584 yank, 3828 undo and region, and 105 key cases; a browser check.
+
+* v713 — M-RET splits at the caret; Tab in tables
+In the Text view, M-RET starts a new heading or list item at the caret, moving the text after it along (a heading's tags stay on the first), as org-M-RET-may-split-line says; with nil the new one goes after the whole line. Tab in a table aligns it and moves to the next field, adds a row after the last, and turns a line of just |- into a rule, so tables can be typed without leaving the keyboard.
+Verified: Emacs 29.3 comparisons for 2190 M-RET and 381 table-Tab cases.
+
 * v712 — Inline tasks, sparse trees, jumps, odd levels, agenda-file commands
-Inline-task commands (insert, promote, demote, move). Sparse trees on C-c / (regexp, TODO, match, property, deadlines, dates) with highlights; C-c C-j goto and C-c C-r reveal; the mark ring, mark subtree, toggle heading and next link; structure templates and drawers; archive default and refile copy; agenda-file commands and the agenda keys j, J, $, C-k and v l; capture abort and refile; odd levels and hidestars; todo tag triggers and special C-a/C-e.
+Inline-task commands (insert, promote, demote, move). Sparse trees on C-c / (regexp, TODO, match, property, deadlines, dates) with highlights; C-c C-j goto and C-c C-r reveal; the mark ring, mark subtree, toggle heading and next link; structure templates and drawers; archive default and refile copy; agenda-file commands and the agenda keys j, J, $, C-k and v l; capture abort and refile; odd levels and hidestars; tag triggers, special C-a/C-e.
 Verified: Emacs 29.3 comparisons for 56 sparse-tree, 75 odd-level, 1354 text-command, 1002 template, 300 trigger and the inline-task cases.
 
 * v711 — Info history, bookmarks and images; preamble options; agenda tags in completion

@@ -131,6 +131,8 @@ test('every before/after pair in editing.org is what the app writes', async () =
   const { updateCheckboxCookie } = await import('../src/checkbox-cookie.js');
   const { insertDrawer, insertStructureTemplate, DEFAULT_STRUCTURE_TEMPLATES } = await import('../src/structure-template.js');
   const { toggleHeading } = await import('../src/text-commands.js');
+  const { metaReturn } = await import('../src/meta-return.js');
+  const { tableTab } = await import('../src/table-tab.js');
   const cases = JSON.parse(read('../test/fixtures/editing-cases.json'));
   const unescape = (s) => s.replace(/^,(\*|#\+)/gm, '$1');
   const afters = [...read('editing.org').matchAll(/\nAfter:\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC/g)].map((m) => unescape(m[1]));
@@ -149,6 +151,12 @@ test('every before/after pair in editing.org is what the app writes', async () =
       const at = c.org.split('\n').slice(0, c.line - 1).filter((l) => /^\*+ /.test(l)).length;
       ({ promote: promoteHeading, demote: demoteHeading, up: moveHeadingUp })[c.op](doc, headings[at]);
       result = serializeOrg(doc);
+    } else if (c.op === 'tab') {
+      const before = c.org.split('\n').slice(0, c.line - 1).reduce((n, l) => n + l.length + 1, 0);
+      result = tableTab(c.org, before + c.col).text;
+    } else if (c.op === 'split') {
+      const before = c.org.split('\n').slice(0, c.line - 1).reduce((n, l) => n + l.length + 1, 0);
+      result = metaReturn(c.org, before + c.col, c.value).text;
     } else if (c.op === 'toggle-heading') {
       result = toggleHeading(c.org, c.line - 1, c.line - 1) ?? c.org;
     } else if (c.op === 'template' || c.op === 'drawer') {

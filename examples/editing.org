@@ -273,7 +273,96 @@ second point
 :END:
 #+END_SRC
 
+* Split a heading
+=M-RET= with the caret inside a heading's title starts a new heading with the text after the caret; tags stay on the first.
+
+Before (split at line 1, column 6):
+#+BEGIN_SRC org
+,* Buy milk and eggs :errand:
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Buy                                                                :errand:
+,* milk and eggs
+#+END_SRC
+
+* Split a list item
+In a list item the text after the caret, with any sub-items, moves to the new item.
+
+Before (split at line 2, column 6):
+#+BEGIN_SRC org
+,* Shopping
+- milk and eggs
+  - oat
+- bread
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Shopping
+- milk
+- and eggs
+  - oat
+- bread
+#+END_SRC
+
+* Keep the line whole
+With =org-M-RET-may-split-line= set to =nil= the new item goes after the whole item.
+
+Before (split at line 2, column 6, value "nil"):
+#+BEGIN_SRC org
+,* Shopping
+- milk and eggs
+  - oat
+- bread
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Shopping
+- milk and eggs
+  - oat
+- 
+- bread
+#+END_SRC
+
+* A rule from |-
+In the Text view, =Tab= on a line that is just =|-= writes the rule, aligns the table and starts a row under it.
+
+Before (tab at line 3, column 2):
+#+BEGIN_SRC org
+| Item | Cost |
+| Flights | 420 |
+|-
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+| Item    | Cost |
+| Flights |  420 |
+|---------+------|
+|         |      |
+#+END_SRC
+
+* Tab to the next field
+In the Text view, =Tab= aligns the table and moves to the next field; from the last field of the last row it adds a row.
+
+Before (tab at line 2, column 13):
+#+BEGIN_SRC org
+| Item | Cost |
+| Flights | 420 |
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+| Item    | Cost |
+| Flights |  420 |
+|         |      |
+#+END_SRC
+
 * Where the app differs from Emacs
 - Emacs re-aligns a heading's tags to =org-tags-column= when its level changes; the app leaves their spacing as it is.
 - Deleting a table column leaves an extra column in Emacs when a row has an empty cell and the rule is a bare =|-=; the app deletes the column asked for.
+- =M-RET= splits at the caret in the Text view. On the outline there is no caret, so it adds after the focused heading or item; in a table (wrap region) it is not available.
 - A new item below an item with a checkbox has none, as in Emacs; the item menu has *Add checkbox below* for one with a box.

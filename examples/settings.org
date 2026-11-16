@@ -87,6 +87,9 @@ Setting every line below to the value shown changes nothing.
 ;; * large-file-warning-threshold: Size in bytes above which an Org file asks before it opens (this app: 500KB; Emacs: 10000000).
 ;; (setq large-file-warning-threshold 512000)
 
+;; * org-M-RET-may-split-line: Non-nil means M-RET will split the line at the cursor position.
+;; (setq org-M-RET-may-split-line '((default . t)))
+
 ;;   org-adapt-indentation: Whether lines under a heading are indented to its level: t, nil or headline-data.
 ;; (setq org-adapt-indentation nil)
 
@@ -732,6 +735,12 @@ Setting every line below to the value shown changes nothing.
 ;;   org-xx-drag-handle: Where the drag grip sits on a heading: right, left or off.
 ;; (setq org-xx-drag-handle 'right)
 
+;;   org-xx-emacs-key-panel: Where Emacs mode's key panel sits: docked or floating.
+;; (setq org-xx-emacs-key-panel 'docked)
+
+;;   org-xx-emacs-mode: Whether the Text view works like Emacs.
+;; (setq org-xx-emacs-mode nil)
+
 ;;   org-xx-extensions: on lets the approved init script run.
 ;; (setq org-xx-extensions 'off)
 
@@ -786,6 +795,15 @@ Setting every line below to the value shown changes nothing.
 ;;   org-xx-windowing-threshold: Above this many rows only the rows near the screen are drawn; 0 draws all.
 ;; (setq org-xx-windowing-threshold 400)
 
+;;   org-yank-adjusted-subtrees: Whether C-y changes a pasted subtree to the level where it lands (Emacs mode).
+;; (setq org-yank-adjusted-subtrees nil)
+
+;;   org-yank-folded-subtrees: Whether C-y folds a long subtree it pastes at a heading (Emacs mode).
+;; (setq org-yank-folded-subtrees t)
+
 ;;   recentf-max-saved-items: How many files Recently opened keeps.
 ;; (setq recentf-max-saved-items 20)
+
+;;   select-enable-clipboard: Whether kills go to the device clipboard and C-y takes what was copied elsewhere (Emacs mode).
+;; (setq select-enable-clipboard t)
 #+END_SRC

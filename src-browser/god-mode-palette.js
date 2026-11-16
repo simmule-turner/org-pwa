@@ -65,7 +65,7 @@ import { gotoCommand, revealCommand } from './jump-flow.js';
 import { cycleAgendaFiles, fileToFront, removeFile } from './agenda-file-commands.js';
 import { clearOccurHighlights } from './occur-highlights.js';
 import { sparseTreeCommand } from './sparse-flow.js';
-import { beginningOfLineCommand, endOfLineCommand, markRingGoto, markRingPush, markSubtreeCommand, nextLinkCommand, toggleHeadingInText } from './text-commands-flow.js';
+import { beginningOfLineCommand, endOfLineCommand, markRingGoto, markRingPush, markSubtreeCommand, metaReturnInText, nextLinkCommand, toggleHeadingInText } from './text-commands-flow.js';
 import { archiveHeadingToLocation, archiveHeadingToSibling } from './archive-flow.js';
 import { readArchiveSettings } from '../src/archive-settings.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
@@ -300,7 +300,9 @@ export const GOD_MODE_ACTIONS = {
   },
 
   // Section 2: Item & Headline Creation
-  'M-RET': () => insertHeadingSmart({}),
+  'M-RET': () => {
+    if (!metaReturnInText()) insertHeadingSmart({});
+  },
   'M-S-RET': () => insertHeadingSmart({ todo: 'TODO' }),
   'C-c C-c': () => {
     if (clearOccurHighlights()) return render();

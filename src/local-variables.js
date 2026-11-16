@@ -1052,6 +1052,37 @@ export function getTextFontSize(vars) {
   return Math.max(9, Math.min(28, n));
 }
 
+/** org-xx-emacs-mode: this app's own variable. When on, the Text view works like Emacs: its keys, mark and kill ring, with the key panel. Default nil.
+ * @param {LocalVars} vars */
+export function getEmacsMode(vars) {
+  return parseLispBoolean((vars || {})['org-xx-emacs-mode'], false);
+}
+
+/** org-xx-emacs-key-panel: this app's own variable. Where the key panel of Emacs mode sits -- "docked" (the default) under the text, or "floating" over it.
+ * @param {LocalVars} vars */
+export function getEmacsKeyPanel(vars) {
+  const raw = (vars || {})['org-xx-emacs-key-panel'];
+  return /** @type {'docked' | 'floating'} */ (oneOf(raw === undefined ? raw : String(raw).trim().replace(/^'/, '').toLowerCase(), 'org-xx-emacs-key-panel', new Set(['docked', 'floating']), 'docked'));
+}
+
+/** org-yank-adjusted-subtrees: Emacs's own variable (default nil). When on, `C-y` of a copied subtree changes its levels to fit where it lands. In Emacs mode.
+ * @param {LocalVars} vars */
+export function getYankAdjustedSubtrees(vars) {
+  return parseLispBoolean((vars || {})['org-yank-adjusted-subtrees'], false);
+}
+
+/** org-yank-folded-subtrees: Emacs's own variable (default t). A subtree that `C-y` pastes at a heading is folded when it is long. In Emacs mode.
+ * @param {LocalVars} vars */
+export function getYankFoldedSubtrees(vars) {
+  return parseLispBoolean((vars || {})['org-yank-folded-subtrees'], true);
+}
+
+/** select-enable-clipboard: Emacs's own variable (default t). Kills go to the device clipboard and `C-y` takes what was copied elsewhere. In Emacs mode.
+ * @param {LocalVars} vars */
+export function getSelectEnableClipboard(vars) {
+  return parseLispBoolean((vars || {})['select-enable-clipboard'], true);
+}
+
 /** Every variable among `vars` whose value cannot be used, each as its error message (a variable that is not set is not one).
  * @param {LocalVars} vars
  * @returns {string[]} */
@@ -1060,7 +1091,7 @@ export function variableProblems(vars) {
   if (vars && typeof vars[BLOCK_PROBLEM] === 'string') messages.push(vars[BLOCK_PROBLEM]);
   const readers = [
     getAgendaStartOnWeekday, getDeadlineWarningDays, getScheduledDelayDays, getHabitOptions, getAsciiTextWidth, getCalendarLatitude, getCalendarLongitude,
-    getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getPriorityRange, sizeLimitsOf,
+    getDiaryHebrewSabbathCandlesMinutes, getWindowingThreshold, getTextFontSize, getEmacsKeyPanel, getPriorityRange, sizeLimitsOf,
     (/** @type {LocalVars} */ v) => v['org-duration-units'] && parseDurationUnits(v['org-duration-units']),
     (/** @type {LocalVars} */ v) => v['org-duration-format'] && parseDurationFormat(v['org-duration-format']),
     extensionsOn, (/** @type {LocalVars} */ v) => tagsColumnOf(v), recentMaxOf, getDragHandle, getOrgWeatherSpeedUnit, getOrgWeatherTemperatureUnit, getWeatherRefreshInterval,

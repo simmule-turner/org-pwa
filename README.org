@@ -46,6 +46,7 @@ This guide covers how to use it and, for anyone coming from Emacs, where it diff
 - [[#line-numbers][Line numbers]]
 - [[#narrowing][Narrowing]]
 - [[#the-plain-text-editor][The plain-text editor]]
+- [[#emacs-mode][Emacs mode]]
 - [[#agenda][Agenda]]
 - [[#the-todo-view][The TODO view]]
 - [[#capture-templates][Capture Templates]]
@@ -636,6 +637,7 @@ Settings you change on the Settings screen are saved here as Lisp (a symbol as ~
 
 - ~C-c C-j~ (*Go to a heading by its outline path*, ~org-goto~) asks for a path in the minibuffer (completion on the headings down to ~org-goto-max-level~), saves the position on the mark ring and goes there; cancelling says ~Quit~. Unlike Emacs it does not open an outline buffer.
 - ~C-c C-r~ (*Reveal the context of this heading*, ~org-reveal~) opens the outline around the focused heading; ~C-u~ also shows the entries on the way, ~C-u C-u~ goes to the parent and shows its whole tree. How much opens when you arrive from the Agenda, a search or ~C-c C-j~ is ~org-fold-show-context-detail~; the Outline cannot show a heading without its siblings, so ~minimal~ and ~local~ open a little more than Emacs.
+- ~M-RET~ (*Insert heading or item*, ~org-meta-return~) in the Text view starts a new heading or list item at the caret: the text after the caret moves to the new one (a heading's tags stay on the first), or, with ~org-M-RET-may-split-line~ set to ~nil~, the new one goes after the whole line. On the Outline it adds after the focused heading or item, and in a table it is not available.
 - ~C-c %~ pushes the position on the mark ring (of four) and ~C-c &~ goes back; the ring stores headings. ~C-c @~ marks the subtree, ~C-c *~ turns the line or region into headings and back, and ~C-c C-x C-n~ goes to the next link; these three, and ~C-a~ and ~C-e~ (see ~org-special-ctrl-a/e~), act in the Text view and say so elsewhere (~C-c *~ on a focused heading works anywhere).
 - ~C-c C-,~ (*Insert structure template*) takes a key of ~org-structure-template-alist~ or a block type, and wraps the selected lines or the focused element; ~src~ and ~export~ also ask for the language or backend. ~C-c C-x d~ (*Insert drawer*) asks for the name and wraps the same way.
 - ~org-todo-state-tags-triggers~ adds and removes tags when a heading changes state, as Emacs does.
@@ -643,7 +645,7 @@ Settings you change on the Settings screen are saved here as Lisp (a symbol as ~
 
 Example: in ~home.org~, ~C-c [~ makes it the first agenda file; ~C-'~ then steps to the next one.
 
-Examples: ~C-c C-j~ then ~Projects/Website/Launch~ goes to that heading. Select three lines and press ~C-c C-,~ then ~s~ and ~python~ to wrap them in a Python source block. ~C-c C-x d~ and the name ~NOTES~ wraps the focused element in a ~:NOTES:~ drawer.
+Examples: ~C-c C-j~ then ~Projects/Website/Launch~ goes to that heading. In the Text view, ~M-RET~ in ~- milk| and eggs~ makes ~- milk~ and ~- and eggs~. Select three lines and press ~C-c C-,~ then ~s~ and ~python~ to wrap them in a Python source block. ~C-c C-x d~ and the name ~NOTES~ wraps the focused element in a ~:NOTES:~ drawer.
 
 #+BEGIN_SRC text
 (setq org-todo-state-tags-triggers
@@ -736,6 +738,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~display-line-numbers-widen~ | ~nil~ | ~t~ keeps the file's own line numbers in a narrowed outline; ~nil~ counts from 1 at the narrowed heading |
 | ~display-time-24hr-format~ | ~nil~ | Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23; set in Global Variables or the Lisp init |
 | ~large-file-warning-threshold~ | ~512000~ | Ask before opening an Org file above this many bytes (500KB here; Emacs asks at 10000000); ~nil~ never asks; set in Global Variables or the Lisp init |
+| ~org-M-RET-may-split-line~ | ~((default . t))~ | Whether ~M-RET~ in the Text view splits the line at the caret: ~t~ or ~nil~ for every kind of line, or an alist with ~headline~, ~item~ and ~default~ (~((item) (default . t))~ never splits an item) |
 | ~org-adapt-indentation~ | ~nil~ | ~t~ indents the lines under a heading to its level (promoting and demoting shift them), ~headline-data~ only the planning line and the drawers; new planning lines, drawers, log notes, state-change lines and CLOCK lines are indented the same way (under ~headline-data~, Emacs indents a log note by one more column than this app does); also Settings → Editing |
 | ~org-agenda-category-filter-preset~ | unset | Agenda and TODO category chip to start with: a list like ~("+Work" "-Home")~. A ~-~ hides that category; several ~+~ keep any of them |
 | ~org-agenda-clock-consistency-checks~ | Emacs's own list | Limits for the clock consistency checks, shown as a line above each Clocked row with an issue (white on dark red) in the Agenda's *ClkCk* log mode: ~:max-duration~, ~:min-duration~, ~:max-gap~ and ~:gap-ok-around~ of a property list; its face keys are not read. Set in Global Variables or the Lisp init |
@@ -926,6 +929,8 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-weather-temperature-unit~ | ~°F~ | (own) ~°C~ or ~°F~ |
 | ~org-xx-diary-merge-rows~ | ~t~ | (own) ~t~ shows the day as Org's agenda does: each indented line that starts with a time is its own row, and a line without a time joins the row before it. ~nil~ gives each entry (a date and its indented lines) one row |
 | ~org-xx-drag-handle~ | ~right~ | (own) Where the drag grip sits on a heading row: ~right~, ~left~ or ~off~; also Settings → Editing and startup → *Keyboard* |
+| ~org-xx-emacs-key-panel~ | ~docked~ | (own) Where Emacs mode's key panel sits: ~docked~ under the text or ~floating~ over it |
+| ~org-xx-emacs-mode~ | ~nil~ | (own) Whether the Text view works like Emacs (see [[#emacs-mode][Emacs mode]]) |
 | ~org-xx-extensions~ | ~off~ | (own) ~on~ (or ~t~) lets the approved init script run, ~off~ (or ~nil~) does not; any other value is reported by name (see [[#extensions][Extensions]]); read from Global Variables only, never from a file; also Settings → Editing and startup → *Editing* |
 | ~org-xx-extra-menu~ | unset (button hidden) | (own) The floating extras (☰) button's menu (see [[#extras-menu][Extras menu]]) |
 | ~org-xx-fetch-timeout~ | ~30~ | (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ~nil~ waits as long as the browser does; set in Global Variables or the Lisp init |
@@ -944,7 +949,10 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-xx-startup-with-show-photos~ | ~nil~ | (own) ~t~ shows a contact's photo as a thumbnail beside its field when a file opens: next to ~:PHOTO:~ in Flat style, in the "Photo" sub-heading's drawer in Tree style. It follows that field's visibility, so a collapsed contact or folded drawer shows no photo. It has no ~#+STARTUP:~ keyword (see [[#export][Contacts (.vcf) export]]) |
 | ~org-xx-text-font-size~ | ~13~ | (own) The Text view's text size in pixels, 9 to 28 |
 | ~org-xx-windowing-threshold~ | ~400~ | (own) Above this many rows an outline or agenda draws only the rows near the screen; ~0~ always draws every row |
+| ~org-yank-adjusted-subtrees~ | ~nil~ | In Emacs mode, ~t~ changes the levels of a subtree that ~C-y~ pastes to fit where it lands |
+| ~org-yank-folded-subtrees~ | ~t~ | In Emacs mode, ~C-y~ of a subtree at a heading leaves it folded when it is long, and point after it |
 | ~recentf-max-saved-items~ | ~20~ | How many files *Recently opened* keeps, as in Emacs (~nil~, 0 or a negative number keeps them all); also Settings → Editing and startup → *Startup* |
+| ~select-enable-clipboard~ | ~t~ | In Emacs mode, a kill is also put on the device clipboard, and ~C-y~ takes what was copied elsewhere |
 
 A variable the app does not read is kept with the file's variables and has no effect here, as in Emacs.
 
@@ -1465,9 +1473,26 @@ Switching in lands near your last navigation (a search result, link or agenda it
 
 The text is colored (headings, TODO words, tags, timestamps, ~#+~ lines, drawers, links, emphasis, and JavaScript or Lisp in source blocks). A row of tools sits above it: *Undo* and *Redo*, line numbers, wrap, *A−* and *A+* for the text size, *Line…* and *Find*. *Line…* goes to a line number, duplicates, deletes, moves, indents or outdents the selected lines, and has *Select all* and *Copy all*. Enter keeps the line's indentation, and a row of keys above the keyboard types ~Tab * / % ( ) & - : < >~. Line numbers follow ~display-line-numbers-mode~ (see [[#line-numbers][Line numbers]]), wrapping follows ~org-startup-truncated~, and ~org-xx-text-font-size~ is the size; all three are at the end of Editing in [[#settings][Settings]].
 
+In a table, ~Tab~ (*Next field*, ~org-cycle~) aligns the table and moves to the next field; from the last field it goes to the first field of the next row, over rules, and after the last row it adds one. A line that is just ~|-~ becomes a rule. Elsewhere ~Tab~ indents. Example: ~| a | b |~ then ~Enter~, ~|-~ and ~Tab~ writes ~|---+---|~ and starts a row under it.
+
 *Other files*: *File → Open* lists every file; filter by extension to narrow it. One that is not Org (a ~notes.txt~, a ~README.md~, a ~diary~) opens in Text view only; ~.md~, ~.js~, ~.json~ and ~.el~ are colored.
 
 *Search* works on the live raw text, so it finds and replaces inside property drawers and blocks. *Regex* and *Replace* work as in Org view; replacements stay in the textarea until you leave or Save.
+
+-----
+
+** Emacs mode
+:PROPERTIES:
+:CUSTOM_ID: emacs-mode
+:END:
+
+Settings → Editing → *Text view: work like Emacs* (~org-xx-emacs-mode~) gives the Text view Emacs's keys. The text, the device keyboard and touch selection work as before; the caret is a block, a modeline shows ~-U:**-  file.org   All   (line,column)   (Org)~, and a line under it shows what a key sequence has so far (~C-x-~) and Emacs's messages (~End of buffer~).
+
+The keys: ~C-f C-b C-n C-p C-a C-e M-f M-b M-< M->~ move; ~C-d DEL M-d M-DEL C-k~ delete and kill; ~C-SPC~ sets the mark and ~C-x C-x~ swaps it with point; ~C-w M-w C-y~ kill, copy and yank; ~C-o C-t M-t M-u M-l M-c M-\ M-m~ open a line, transpose, change case and tidy spaces; ~C-/~, ~C-_~ and ~C-x u~ undo, and undoing after another command redoes; ~C-g~ quits. ~C-u~, ~C-u C-u~, ~M-3~ and ~C-u -~ give a count to the commands that take one. ~Esc~ then a key is that key with Meta. Typing, ~Backspace~ and the arrow keys work as usual and go through the same undo list, grouped as Emacs groups them. ~Ctrl-C~ and ~Ctrl-V~ keep their meaning in the browser.
+
+The kill ring is shared with the device clipboard (~select-enable-clipboard~): what you kill can be pasted elsewhere, and ~C-y~ takes what you copied elsewhere. ~C-y~ pastes a copied subtree at a heading as Org does (~org-yank~); ~org-yank-adjusted-subtrees~ set to ~t~ changes its levels to fit where it lands, and ~org-yank-folded-subtrees~ leaves a long one folded.
+
+The key panel has *Esc*, *Ctrl* and *Alt* (tap, then the next key), *Tab*, the arrows, *C-g*, *C-SPC*, *C-x*, *C-u*, *C-/*, a button that shows or hides the device keyboard, and *Float* or *Dock*, which place the panel over the text or under it (~org-xx-emacs-key-panel~). The floating *[g]* button gives way to the panel while the mode is on.
 
 -----
 

@@ -390,6 +390,22 @@ export const SETTINGS_FIELDS = [
   },
   { key: 'org-startup-truncated', label: 'Text view: scroll long lines sideways (off wraps them)', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#the-plain-text-editor' },
   { key: 'org-xx-text-font-size', label: 'Text view: text size (px)', section: 'Editing', type: 'number', default: 13, min: 9, max: 28, step: 1, helpAnchor: '#the-plain-text-editor' },
+  { key: 'org-xx-emacs-mode', label: 'Text view: work like Emacs (its keys, mark and kill ring, with a key panel)', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#emacs-mode' },
+  {
+    key: 'org-xx-emacs-key-panel',
+    label: 'Emacs mode: the key panel',
+    section: 'Editing',
+    type: 'select',
+    default: 'docked',
+    options: [
+      { value: 'docked', label: 'Docked under the text' },
+      { value: 'floating', label: 'Floating over the text' },
+    ],
+    helpAnchor: '#emacs-mode',
+  },
+  { key: 'org-yank-adjusted-subtrees', label: 'Emacs mode: C-y changes a pasted subtree to the level where it lands', section: 'Editing', type: 'boolean', default: false, helpAnchor: '#emacs-mode' },
+  { key: 'org-yank-folded-subtrees', label: 'Emacs mode: C-y folds a long subtree it pastes at a heading', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#emacs-mode' },
+  { key: 'select-enable-clipboard', label: 'Emacs mode: the kill ring uses the device clipboard', section: 'Editing', type: 'boolean', default: true, helpAnchor: '#emacs-mode' },
   { key: 'org-xx-windowing-threshold', label: 'Long lists: draw only the rows on screen above this many rows (0 = always draw every row)', section: 'Editing', type: 'number', default: 400, min: 0, max: 100000, step: 50, helpAnchor: '#long-lists' },
   {
     key: 'org-table-formula-create-columns',

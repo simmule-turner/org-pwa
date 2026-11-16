@@ -46,6 +46,7 @@ org-pwa
 * Line numbers::
 * Narrowing::
 * The plain-text editor::
+* Emacs mode::
 * Agenda::
 * The TODO view::
 * Capture Templates::
@@ -225,6 +226,7 @@ org-mode::).
 * Line numbers::
 * Narrowing::
 * The plain-text editor::
+* Emacs mode::
 * Agenda::
 * The TODO view::
 * Capture Templates::
@@ -278,6 +280,7 @@ Contents
    • *note Line numbers::
    • *note Narrowing::
    • *note The plain-text editor::
+   • *note Emacs mode::
    • *note Agenda::
    • *note The TODO view::
    • *note Capture Templates::
@@ -1582,6 +1585,12 @@ Jumps, marks and templates
      search or ‘C-c C-j’ is ‘org-fold-show-context-detail’; the Outline
      cannot show a heading without its siblings, so ‘minimal’ and
      ‘local’ open a little more than Emacs.
+   • ‘M-RET’ (*Insert heading or item*, ‘org-meta-return’) in the Text
+     view starts a new heading or list item at the caret: the text after
+     the caret moves to the new one (a heading's tags stay on the
+     first), or, with ‘org-M-RET-may-split-line’ set to ‘nil’, the new
+     one goes after the whole line.  On the Outline it adds after the
+     focused heading or item, and in a table it is not available.
    • ‘C-c %’ pushes the position on the mark ring (of four) and ‘C-c &’
      goes back; the ring stores headings.  ‘C-c @’ marks the subtree,
      ‘C-c *’ turns the line or region into headings and back, and ‘C-c
@@ -1605,9 +1614,10 @@ Jumps, marks and templates
 then steps to the next one.
 
    Examples: ‘C-c C-j’ then ‘Projects/Website/Launch’ goes to that
-heading.  Select three lines and press ‘C-c C-,’ then ‘s’ and ‘python’
-to wrap them in a Python source block.  ‘C-c C-x d’ and the name ‘NOTES’
-wraps the focused element in a ‘:NOTES:’ drawer.
+heading.  In the Text view, ‘M-RET’ in ‘- milk| and eggs’ makes ‘- milk’
+and ‘- and eggs’.  Select three lines and press ‘C-c C-,’ then ‘s’ and
+‘python’ to wrap them in a Python source block.  ‘C-c C-x d’ and the
+name ‘NOTES’ wraps the focused element in a ‘:NOTES:’ drawer.
 
      (setq org-todo-state-tags-triggers
            '(("WAIT" ("waiting" . t))
@@ -1730,6 +1740,7 @@ Variable                                             Default                    
 ‘display-line-numbers-widen’                         ‘nil’                                                                             ‘t’ keeps the file's own line numbers in a narrowed outline; ‘nil’ counts from 1 at the narrowed heading
 ‘display-time-24hr-format’                           ‘nil’                                                                             Non-nil indicates time should be displayed as hh:mm, 0 <= hh <= 23; set in Global Variables or the Lisp init
 ‘large-file-warning-threshold’                       ‘512000’                                                                          Ask before opening an Org file above this many bytes (500KB here; Emacs asks at 10000000); ‘nil’ never asks; set in Global Variables or the Lisp init
+‘org-M-RET-may-split-line’                           ‘((default . t))’                                                                 Whether ‘M-RET’ in the Text view splits the line at the caret: ‘t’ or ‘nil’ for every kind of line, or an alist with ‘headline’, ‘item’ and ‘default’ (‘((item) (default . t))’ never splits an item)
 ‘org-adapt-indentation’                              ‘nil’                                                                             ‘t’ indents the lines under a heading to its level (promoting and demoting shift them), ‘headline-data’ only the planning line and the drawers; new planning lines, drawers, log notes, state-change lines and CLOCK lines are indented the same way (under ‘headline-data’, Emacs indents a log note by one more column than this app does); also Settings → Editing
 ‘org-agenda-category-filter-preset’                  unset                                                                             Agenda and TODO category chip to start with: a list like ‘("+Work" "-Home")’.  A ‘-’ hides that category; several ‘+’ keep any of them
 ‘org-agenda-clock-consistency-checks’                Emacs's own list                                                                  Limits for the clock consistency checks, shown as a line above each Clocked row with an issue (white on dark red) in the Agenda's *ClkCk* log mode: ‘:max-duration’, ‘:min-duration’, ‘:max-gap’ and ‘:gap-ok-around’ of a property list; its face keys are not read.  Set in Global Variables or the Lisp init
@@ -1920,6 +1931,8 @@ Variable                                             Default                    
 ‘org-weather-temperature-unit’                       ‘°F’                                                                              (own) ‘°C’ or ‘°F’
 ‘org-xx-diary-merge-rows’                            ‘t’                                                                               (own) ‘t’ shows the day as Org's agenda does: each indented line that starts with a time is its own row, and a line without a time joins the row before it.  ‘nil’ gives each entry (a date and its indented lines) one row
 ‘org-xx-drag-handle’                                 ‘right’                                                                           (own) Where the drag grip sits on a heading row: ‘right’, ‘left’ or ‘off’; also Settings → Editing and startup → *Keyboard*
+‘org-xx-emacs-key-panel’                             ‘docked’                                                                          (own) Where Emacs mode's key panel sits: ‘docked’ under the text or ‘floating’ over it
+‘org-xx-emacs-mode’                                  ‘nil’                                                                             (own) Whether the Text view works like Emacs (see *note Emacs mode::)
 ‘org-xx-extensions’                                  ‘off’                                                                             (own) ‘on’ (or ‘t’) lets the approved init script run, ‘off’ (or ‘nil’) does not; any other value is reported by name (see *note Extensions::); read from Global Variables only, never from a file; also Settings → Editing and startup → *Editing*
 ‘org-xx-extra-menu’                                  unset (button hidden)                                                             (own) The floating extras (☰) button's menu (see *note Extras menu::)
 ‘org-xx-fetch-timeout’                               ‘30’                                                                              (own) Seconds to wait for a server to start answering a download (a file, an image, a bibliography); ‘nil’ waits as long as the browser does; set in Global Variables or the Lisp init
@@ -1938,7 +1951,10 @@ Variable                                             Default                    
 ‘org-xx-startup-with-show-photos’                    ‘nil’                                                                             (own) ‘t’ shows a contact's photo as a thumbnail beside its field when a file opens: next to ‘:PHOTO:’ in Flat style, in the "Photo" sub-heading's drawer in Tree style.  It follows that field's visibility, so a collapsed contact or folded drawer shows no photo.  It has no ‘#+STARTUP:’ keyword (see *note Contacts (.vcf) export: Export.)
 ‘org-xx-text-font-size’                              ‘13’                                                                              (own) The Text view's text size in pixels, 9 to 28
 ‘org-xx-windowing-threshold’                         ‘400’                                                                             (own) Above this many rows an outline or agenda draws only the rows near the screen; ‘0’ always draws every row
+‘org-yank-adjusted-subtrees’                         ‘nil’                                                                             In Emacs mode, ‘t’ changes the levels of a subtree that ‘C-y’ pastes to fit where it lands
+‘org-yank-folded-subtrees’                           ‘t’                                                                               In Emacs mode, ‘C-y’ of a subtree at a heading leaves it folded when it is long, and point after it
 ‘recentf-max-saved-items’                            ‘20’                                                                              How many files *Recently opened* keeps, as in Emacs (‘nil’, 0 or a negative number keeps them all); also Settings → Editing and startup → *Startup*
+‘select-enable-clipboard’                            ‘t’                                                                               In Emacs mode, a kill is also put on the device clipboard, and ‘C-y’ takes what was copied elsewhere
 
    A variable the app does not read is kept with the file's variables
 and has no effect here, as in Emacs.
@@ -3143,7 +3159,7 @@ Text view shows only the narrowed subtree (see *note The plain-text
 editor::).
 
 
-File: org-pwa.info,  Node: The plain-text editor,  Next: Agenda,  Prev: Narrowing,  Up: org-pwa
+File: org-pwa.info,  Node: The plain-text editor,  Next: Emacs mode,  Prev: Narrowing,  Up: org-pwa
 
 The plain-text editor
 =====================
@@ -3170,6 +3186,13 @@ line's indentation, and a row of keys above the keyboard types ‘Tab * /
 ‘org-xx-text-font-size’ is the size; all three are at the end of Editing
 in *note Settings::.
 
+   In a table, ‘Tab’ (*Next field*, ‘org-cycle’) aligns the table and
+moves to the next field; from the last field it goes to the first field
+of the next row, over rules, and after the last row it adds one.  A line
+that is just ‘|-’ becomes a rule.  Elsewhere ‘Tab’ indents.  Example: ‘|
+a | b |’ then ‘Enter’, ‘|-’ and ‘Tab’ writes ‘|---+---|’ and starts a
+row under it.
+
    *Other files*: *File → Open* lists every file; filter by extension to
 narrow it.  One that is not Org (a ‘notes.txt’, a ‘README.md’, a
 ‘diary’) opens in Text view only; ‘.md’, ‘.js’, ‘.json’ and ‘.el’ are
@@ -3180,7 +3203,44 @@ property drawers and blocks.  *Regex* and *Replace* work as in Org view;
 replacements stay in the textarea until you leave or Save.
 
 
-File: org-pwa.info,  Node: Agenda,  Next: The TODO view,  Prev: The plain-text editor,  Up: org-pwa
+File: org-pwa.info,  Node: Emacs mode,  Next: Agenda,  Prev: The plain-text editor,  Up: org-pwa
+
+Emacs mode
+==========
+
+Settings → Editing → *Text view: work like Emacs* (‘org-xx-emacs-mode’)
+gives the Text view Emacs's keys.  The text, the device keyboard and
+touch selection work as before; the caret is a block, a modeline shows
+‘-U:**- file.org All (line,column) (Org)’, and a line under it shows
+what a key sequence has so far (‘C-x-’) and Emacs's messages (‘End of
+buffer’).
+
+   The keys: ‘C-f C-b C-n C-p C-a C-e M-f M-b M-< M->’ move; ‘C-d DEL
+M-d M-DEL C-k’ delete and kill; ‘C-SPC’ sets the mark and ‘C-x C-x’
+swaps it with point; ‘C-w M-w C-y’ kill, copy and yank; ‘C-o C-t M-t M-u
+M-l M-c M-\ M-m’ open a line, transpose, change case and tidy spaces;
+‘C-/’, ‘C-_’ and ‘C-x u’ undo, and undoing after another command redoes;
+‘C-g’ quits.  ‘C-u’, ‘C-u C-u’, ‘M-3’ and ‘C-u -’ give a count to the
+commands that take one.  ‘Esc’ then a key is that key with Meta.
+Typing, ‘Backspace’ and the arrow keys work as usual and go through the
+same undo list, grouped as Emacs groups them.  ‘Ctrl-C’ and ‘Ctrl-V’
+keep their meaning in the browser.
+
+   The kill ring is shared with the device clipboard
+(‘select-enable-clipboard’): what you kill can be pasted elsewhere, and
+‘C-y’ takes what you copied elsewhere.  ‘C-y’ pastes a copied subtree at
+a heading as Org does (‘org-yank’); ‘org-yank-adjusted-subtrees’ set to
+‘t’ changes its levels to fit where it lands, and
+‘org-yank-folded-subtrees’ leaves a long one folded.
+
+   The key panel has *Esc*, *Ctrl* and *Alt* (tap, then the next key),
+*Tab*, the arrows, *C-g*, *C-SPC*, *C-x*, *C-u*, *C-/*, a button that
+shows or hides the device keyboard, and *Float* or *Dock*, which place
+the panel over the text or under it (‘org-xx-emacs-key-panel’).  The
+floating *[g]* button gives way to the panel while the mode is on.
+
+
+File: org-pwa.info,  Node: Agenda,  Next: The TODO view,  Prev: Emacs mode,  Up: org-pwa
 
 Agenda
 ======
@@ -6163,6 +6223,7 @@ Concept Index
 * Editing your outline:                  Editing your outline.  (line 6)
 * Effort_ALL: allowed effort values:     Effort_ALL allowed effort values.
                                                                 (line 6)
+* Emacs mode:                            Emacs mode.            (line 6)
 * Export:                                Export.                (line 6)
 * Extensions:                            Extensions.            (line 6)
 * Extras menu:                           Extras menu.           (line 6)
@@ -6343,10 +6404,10 @@ Variable Index
 * a:                                     god-mode.            (line 105)
 * address:                               Contacts (vcf).      (line  78)
 * anniversary:                           Contacts (vcf).      (line  78)
-* before-save-hook:                      Local Variables.     (line 269)
+* before-save-hook:                      Local Variables.     (line 275)
 * birthday:                              Contacts (vcf).      (line  78)
 * broken-links::                         Document settings.   (line  24)
-* buffer-read-only:                      Local Variables.     (line 269)
+* buffer-read-only:                      Local Variables.     (line 275)
 * c ,:                                   god-mode.            (line 105)
 * c ;:                                   god-mode.            (line 105)
 * c a:                                   god-mode.            (line 105)
@@ -6372,34 +6433,34 @@ Variable Index
 * C-c ^:                                 Table pad.           (line  24)
 * C-c RET:                               Table pad.           (line  24)
 * c::                                    Document settings.   (line  39)
-* calendar-bahai-all-holidays-flag:      Local Variables.     (line 269)
-* calendar-christian-all-holidays-flag:  Local Variables.     (line 269)
-* calendar-date-style:                   Local Variables.     (line 269)
-* calendar-hebrew-all-holidays-flag:     Local Variables.     (line 269)
-* calendar-islamic-all-holidays-flag:    Local Variables.     (line 269)
-* calendar-latitude:                     Local Variables.     (line 269)
-* calendar-longitude:                    Local Variables.     (line 269)
-* calendar-time-display-form:            Local Variables.     (line 269)
+* calendar-bahai-all-holidays-flag:      Local Variables.     (line 275)
+* calendar-christian-all-holidays-flag:  Local Variables.     (line 275)
+* calendar-date-style:                   Local Variables.     (line 275)
+* calendar-hebrew-all-holidays-flag:     Local Variables.     (line 275)
+* calendar-islamic-all-holidays-flag:    Local Variables.     (line 275)
+* calendar-latitude:                     Local Variables.     (line 275)
+* calendar-longitude:                    Local Variables.     (line 275)
+* calendar-time-display-form:            Local Variables.     (line 275)
 * cell:                                  Contacts (vcf).      (line  78)
 * creator::                              Document settings.   (line  24)
 * d::                                    Document settings.   (line  39)
 * deps:                                  Plots.               (line  29)
-* diary-abbreviated-year-flag:           Local Variables.     (line 269)
-* diary-date-forms:                      Local Variables.     (line 269)
-* diary-file:                            Local Variables.     (line 269)
-* diary-hebrew-sabbath-candles-minutes:  Local Variables.     (line 269)
-* diary-include-string:                  Local Variables.     (line 269)
-* diary-list-entries-hook:               Local Variables.     (line 269)
-* diary-nongregorian-listing-hook:       Local Variables.     (line 269)
-* diary-nonmarking-symbol:               Local Variables.     (line 269)
-* diary-sexp-entry-symbol:               Local Variables.     (line 269)
-* diary-show-holidays-flag:              Local Variables.     (line 269)
-* display-line-numbers-mode:             Local Variables.     (line 269)
-* display-line-numbers-type:             Local Variables.     (line 269)
-* display-line-numbers-widen:            Local Variables.     (line 269)
+* diary-abbreviated-year-flag:           Local Variables.     (line 275)
+* diary-date-forms:                      Local Variables.     (line 275)
+* diary-file:                            Local Variables.     (line 275)
+* diary-hebrew-sabbath-candles-minutes:  Local Variables.     (line 275)
+* diary-include-string:                  Local Variables.     (line 275)
+* diary-list-entries-hook:               Local Variables.     (line 275)
+* diary-nongregorian-listing-hook:       Local Variables.     (line 275)
+* diary-nonmarking-symbol:               Local Variables.     (line 275)
+* diary-sexp-entry-symbol:               Local Variables.     (line 275)
+* diary-show-holidays-flag:              Local Variables.     (line 275)
+* display-line-numbers-mode:             Local Variables.     (line 275)
+* display-line-numbers-type:             Local Variables.     (line 275)
+* display-line-numbers-widen:            Local Variables.     (line 275)
 * display-time-24hr-format:              Modeline and minibuffer.
                                                               (line  42)
-* display-time-24hr-format <1>:          Local Variables.     (line 269)
+* display-time-24hr-format <1>:          Local Variables.     (line 275)
 * display-time-format:                   Modeline and minibuffer.
                                                               (line  41)
 * display-time-mode:                     Modeline and minibuffer.
@@ -6425,7 +6486,7 @@ Variable Index
 * ind:                                   Plots.               (line  29)
 * job-title:                             Contacts (vcf).      (line  78)
 * labels:                                Plots.               (line  29)
-* large-file-warning-threshold:          Local Variables.     (line 269)
+* large-file-warning-threshold:          Local Variables.     (line 275)
 * menu:                                  Menu customization.  (line  59)
 * more:                                  Menu customization.  (line  59)
 * n:                                     Contacts (vcf).      (line  78)
@@ -6436,234 +6497,240 @@ Variable Index
 * num::                                  Document settings.   (line  24)
 * num:N:                                 Document settings.   (line  39)
 * org:                                   Contacts (vcf).      (line  78)
-* org-adapt-indentation:                 Local Variables.     (line 269)
-* org-agenda-category-filter-preset:     Local Variables.     (line 269)
-* org-agenda-clock-consistency-checks:   Local Variables.     (line 269)
-* org-agenda-cmp-user-defined:           Local Variables.     (line 269)
-* org-agenda-custom-commands:            Local Variables.     (line 269)
-* org-agenda-effort-filter-preset:       Local Variables.     (line 269)
-* org-agenda-files:                      Local Variables.     (line 269)
-* org-agenda-include-diary:              Local Variables.     (line 269)
-* org-agenda-include-inactive-timestamps: Local Variables.    (line 269)
-* org-agenda-log-mode-add-notes:         Local Variables.     (line 269)
-* org-agenda-log-mode-items:             Local Variables.     (line 269)
-* org-agenda-max-effort:                 Local Variables.     (line 269)
-* org-agenda-prefer-last-repeat:         Local Variables.     (line 269)
-* org-agenda-prefix-format:              Local Variables.     (line 269)
-* org-agenda-regexp-filter-preset:       Local Variables.     (line 269)
-* org-agenda-remove-times-when-in-prefix: Local Variables.    (line 269)
-* org-agenda-search-view-always-boolean: Local Variables.     (line 269)
-* org-agenda-search-view-force-full-words: Local Variables.   (line 269)
-* org-agenda-search-view-max-outline-level: Local Variables.  (line 269)
-* org-agenda-show-all-dates:             Local Variables.     (line 269)
-* org-agenda-show-future-repeats:        Local Variables.     (line 269)
-* org-agenda-show-inherited-tags:        Local Variables.     (line 269)
+* org-adapt-indentation:                 Local Variables.     (line 275)
+* org-agenda-category-filter-preset:     Local Variables.     (line 275)
+* org-agenda-clock-consistency-checks:   Local Variables.     (line 275)
+* org-agenda-cmp-user-defined:           Local Variables.     (line 275)
+* org-agenda-custom-commands:            Local Variables.     (line 275)
+* org-agenda-effort-filter-preset:       Local Variables.     (line 275)
+* org-agenda-files:                      Local Variables.     (line 275)
+* org-agenda-include-diary:              Local Variables.     (line 275)
+* org-agenda-include-inactive-timestamps: Local Variables.    (line 275)
+* org-agenda-log-mode-add-notes:         Local Variables.     (line 275)
+* org-agenda-log-mode-items:             Local Variables.     (line 275)
+* org-agenda-max-effort:                 Local Variables.     (line 275)
+* org-agenda-prefer-last-repeat:         Local Variables.     (line 275)
+* org-agenda-prefix-format:              Local Variables.     (line 275)
+* org-agenda-regexp-filter-preset:       Local Variables.     (line 275)
+* org-agenda-remove-times-when-in-prefix: Local Variables.    (line 275)
+* org-agenda-search-view-always-boolean: Local Variables.     (line 275)
+* org-agenda-search-view-force-full-words: Local Variables.   (line 275)
+* org-agenda-search-view-max-outline-level: Local Variables.  (line 275)
+* org-agenda-show-all-dates:             Local Variables.     (line 275)
+* org-agenda-show-future-repeats:        Local Variables.     (line 275)
+* org-agenda-show-inherited-tags:        Local Variables.     (line 275)
 * org-agenda-skip-additional-timestamps-same-entry: Local Variables.
-                                                              (line 269)
-* org-agenda-skip-archived-trees:        Local Variables.     (line 269)
-* org-agenda-skip-comment-trees:         Local Variables.     (line 269)
+                                                              (line 275)
+* org-agenda-skip-archived-trees:        Local Variables.     (line 275)
+* org-agenda-skip-comment-trees:         Local Variables.     (line 275)
 * org-agenda-skip-deadline-prewarning-if-scheduled: Local Variables.
-                                                              (line 269)
-* org-agenda-skip-function:              Local Variables.     (line 269)
-* org-agenda-skip-function-global:       Local Variables.     (line 269)
+                                                              (line 275)
+* org-agenda-skip-function:              Local Variables.     (line 275)
+* org-agenda-skip-function-global:       Local Variables.     (line 275)
 * org-agenda-skip-scheduled-delay-if-deadline: Local Variables.
-                                                              (line 269)
+                                                              (line 275)
 * org-agenda-skip-scheduled-if-deadline-is-shown: Local Variables.
-                                                              (line 269)
+                                                              (line 275)
 * org-agenda-skip-timestamp-if-deadline-is-shown: Local Variables.
-                                                              (line 269)
-* org-agenda-skip-timestamp-if-done:     Local Variables.     (line 269)
-* org-agenda-sorting-strategy:           Local Variables.     (line 269)
-* org-agenda-span:                       Local Variables.     (line 269)
-* org-agenda-start-day:                  Local Variables.     (line 269)
-* org-agenda-start-on-weekday:           Local Variables.     (line 269)
-* org-agenda-start-with-log-mode:        Local Variables.     (line 269)
-* org-agenda-tag-filter-preset:          Local Variables.     (line 269)
-* org-agenda-text-search-extra-files:    Local Variables.     (line 269)
-* org-agenda-todo-ignore-deadlines:      Local Variables.     (line 269)
-* org-agenda-todo-ignore-scheduled:      Local Variables.     (line 269)
-* org-agenda-todo-ignore-timestamp:      Local Variables.     (line 269)
-* org-agenda-todo-ignore-with-date:      Local Variables.     (line 269)
-* org-agenda-todo-list-sublevels:        Local Variables.     (line 269)
-* org-agenda-use-tag-inheritance:        Local Variables.     (line 269)
-* org-archive-default-command:           Local Variables.     (line 269)
-* org-ascii-charset:                     Local Variables.     (line 269)
-* org-ascii-text-width:                  Local Variables.     (line 269)
-* org-attach-method:                     Local Variables.     (line 269)
-* org-auto-align-tags:                   Local Variables.     (line 269)
-* org-babel-load-languages:              Local Variables.     (line 269)
-* org-blank-before-new-entry:            Local Variables.     (line 269)
-* org-cite-basic-author-year-separator:  Local Variables.     (line 269)
-* org-cite-basic-sorting-field:          Local Variables.     (line 269)
-* org-cite-global-bibliography:          Local Variables.     (line 269)
-* org-clock-idle-time:                   Local Variables.     (line 269)
-* org-clock-into-drawer:                 Local Variables.     (line 269)
-* org-clock-out-remove-zero-time-clocks: Local Variables.     (line 269)
-* org-clock-out-switch-to-state:         Local Variables.     (line 269)
-* org-clock-sound:                       Local Variables.     (line 269)
-* org-closed-keep-when-no-todo:          Local Variables.     (line 269)
-* org-columns-default-format:            Local Variables.     (line 269)
-* org-columns-ellipses:                  Local Variables.     (line 269)
+                                                              (line 275)
+* org-agenda-skip-timestamp-if-done:     Local Variables.     (line 275)
+* org-agenda-sorting-strategy:           Local Variables.     (line 275)
+* org-agenda-span:                       Local Variables.     (line 275)
+* org-agenda-start-day:                  Local Variables.     (line 275)
+* org-agenda-start-on-weekday:           Local Variables.     (line 275)
+* org-agenda-start-with-log-mode:        Local Variables.     (line 275)
+* org-agenda-tag-filter-preset:          Local Variables.     (line 275)
+* org-agenda-text-search-extra-files:    Local Variables.     (line 275)
+* org-agenda-todo-ignore-deadlines:      Local Variables.     (line 275)
+* org-agenda-todo-ignore-scheduled:      Local Variables.     (line 275)
+* org-agenda-todo-ignore-timestamp:      Local Variables.     (line 275)
+* org-agenda-todo-ignore-with-date:      Local Variables.     (line 275)
+* org-agenda-todo-list-sublevels:        Local Variables.     (line 275)
+* org-agenda-use-tag-inheritance:        Local Variables.     (line 275)
+* org-archive-default-command:           Local Variables.     (line 275)
+* org-ascii-charset:                     Local Variables.     (line 275)
+* org-ascii-text-width:                  Local Variables.     (line 275)
+* org-attach-method:                     Local Variables.     (line 275)
+* org-auto-align-tags:                   Local Variables.     (line 275)
+* org-babel-load-languages:              Local Variables.     (line 275)
+* org-blank-before-new-entry:            Local Variables.     (line 275)
+* org-cite-basic-author-year-separator:  Local Variables.     (line 275)
+* org-cite-basic-sorting-field:          Local Variables.     (line 275)
+* org-cite-global-bibliography:          Local Variables.     (line 275)
+* org-clock-idle-time:                   Local Variables.     (line 275)
+* org-clock-into-drawer:                 Local Variables.     (line 275)
+* org-clock-out-remove-zero-time-clocks: Local Variables.     (line 275)
+* org-clock-out-switch-to-state:         Local Variables.     (line 275)
+* org-clock-sound:                       Local Variables.     (line 275)
+* org-closed-keep-when-no-todo:          Local Variables.     (line 275)
+* org-columns-default-format:            Local Variables.     (line 275)
+* org-columns-ellipses:                  Local Variables.     (line 275)
 * org-columns-modify-value-for-display-function: Local Variables.
-                                                              (line 269)
-* org-columns-summary-types:             Local Variables.     (line 269)
+                                                              (line 275)
+* org-columns-summary-types:             Local Variables.     (line 275)
 * org-complete-tags-always-offer-all-agenda-tags: Local Variables.
-                                                              (line 269)
-* org-contacts-birthday-property:        Local Variables.     (line 269)
-* org-contacts-files:                    Local Variables.     (line 269)
-* org-crypt-disable-auto-save:           Local Variables.     (line 269)
-* org-crypt-key:                         Local Variables.     (line 269)
-* org-crypt-tag-matcher:                 Local Variables.     (line 269)
-* org-cycle-open-archived-trees:         Local Variables.     (line 269)
-* org-deadline-past-days:                Local Variables.     (line 269)
-* org-deadline-warning-days:             Local Variables.     (line 269)
-* org-duration-format:                   Local Variables.     (line 269)
-* org-duration-units:                    Local Variables.     (line 269)
-* org-export-headline-levels:            Local Variables.     (line 269)
-* org-export-preserve-breaks:            Local Variables.     (line 269)
-* org-export-time-stamp-file:            Local Variables.     (line 269)
-* org-export-with-archived-trees:        Local Variables.     (line 269)
-* org-export-with-author:                Local Variables.     (line 269)
-* org-export-with-broken-links:          Local Variables.     (line 269)
-* org-export-with-clocks:                Local Variables.     (line 269)
-* org-export-with-creator:               Local Variables.     (line 269)
-* org-export-with-date:                  Local Variables.     (line 269)
-* org-export-with-email:                 Local Variables.     (line 269)
-* org-export-with-emphasize:             Local Variables.     (line 269)
-* org-export-with-entities:              Local Variables.     (line 269)
-* org-export-with-fixed-width:           Local Variables.     (line 269)
-* org-export-with-footnotes:             Local Variables.     (line 269)
-* org-export-with-latex:                 Local Variables.     (line 269)
-* org-export-with-planning:              Local Variables.     (line 269)
-* org-export-with-priority:              Local Variables.     (line 269)
-* org-export-with-section-numbers:       Local Variables.     (line 269)
-* org-export-with-smart-quotes:          Local Variables.     (line 269)
-* org-export-with-special-strings:       Local Variables.     (line 269)
-* org-export-with-statistics-cookies:    Local Variables.     (line 269)
-* org-export-with-sub-superscripts:      Local Variables.     (line 269)
-* org-export-with-tables:                Local Variables.     (line 269)
-* org-export-with-tags:                  Local Variables.     (line 269)
-* org-export-with-tasks:                 Local Variables.     (line 269)
-* org-export-with-timestamps:            Local Variables.     (line 269)
-* org-export-with-title:                 Local Variables.     (line 269)
-* org-export-with-toc:                   Local Variables.     (line 269)
-* org-export-with-todo-keywords:         Local Variables.     (line 269)
-* org-extend-today-until:                Local Variables.     (line 269)
-* org-fold-show-context-detail:          Local Variables.     (line 269)
-* org-footnote-auto-adjust:              Local Variables.     (line 269)
-* org-footnote-auto-label:               Local Variables.     (line 269)
-* org-footnote-define-inline:            Local Variables.     (line 269)
-* org-footnote-section:                  Local Variables.     (line 269)
-* org-global-properties:                 Local Variables.     (line 269)
-* org-goto-max-level:                    Local Variables.     (line 269)
-* org-habit-following-days:              Local Variables.     (line 269)
-* org-habit-preceding-days:              Local Variables.     (line 269)
-* org-habit-show-all-today:              Local Variables.     (line 269)
-* org-habit-show-habits-only-for-today:  Local Variables.     (line 269)
-* org-hide-leading-stars:                Local Variables.     (line 269)
-* org-html-checkbox-type:                Local Variables.     (line 269)
-* org-html-doctype:                      Local Variables.     (line 269)
-* org-html-head:                         Local Variables.     (line 269)
-* org-html-postamble:                    Local Variables.     (line 269)
-* org-html-postamble-format:             Local Variables.     (line 269)
-* org-html-preamble:                     Local Variables.     (line 269)
-* org-html-preamble-format:              Local Variables.     (line 269)
-* org-html-validation-link:              Local Variables.     (line 269)
-* org-icalendar-alarm-time:              Local Variables.     (line 269)
-* org-icalendar-categories:              Local Variables.     (line 269)
-* org-icalendar-combined-description:    Local Variables.     (line 269)
-* org-icalendar-combined-name:           Local Variables.     (line 269)
-* org-icalendar-date-time-format:        Local Variables.     (line 269)
-* org-icalendar-deadline-summary-prefix: Local Variables.     (line 269)
-* org-icalendar-exclude-tags:            Local Variables.     (line 269)
-* org-icalendar-force-alarm:             Local Variables.     (line 269)
-* org-icalendar-include-todo:            Local Variables.     (line 269)
-* org-icalendar-scheduled-summary-prefix: Local Variables.    (line 269)
-* org-icalendar-timezone:                Local Variables.     (line 269)
-* org-icalendar-use-deadline:            Local Variables.     (line 269)
-* org-icalendar-use-scheduled:           Local Variables.     (line 269)
-* org-icalendar-with-timestamps:         Local Variables.     (line 269)
-* org-inlinetask-default-state:          Local Variables.     (line 269)
-* org-inlinetask-min-level:              Local Variables.     (line 269)
-* org-inlinetask-show-first-star:        Local Variables.     (line 269)
-* org-latex-compiler:                    Local Variables.     (line 269)
-* org-latex-default-class:               Local Variables.     (line 269)
+                                                              (line 275)
+* org-contacts-birthday-property:        Local Variables.     (line 275)
+* org-contacts-files:                    Local Variables.     (line 275)
+* org-crypt-disable-auto-save:           Local Variables.     (line 275)
+* org-crypt-key:                         Local Variables.     (line 275)
+* org-crypt-tag-matcher:                 Local Variables.     (line 275)
+* org-cycle-open-archived-trees:         Local Variables.     (line 275)
+* org-deadline-past-days:                Local Variables.     (line 275)
+* org-deadline-warning-days:             Local Variables.     (line 275)
+* org-duration-format:                   Local Variables.     (line 275)
+* org-duration-units:                    Local Variables.     (line 275)
+* org-export-headline-levels:            Local Variables.     (line 275)
+* org-export-preserve-breaks:            Local Variables.     (line 275)
+* org-export-time-stamp-file:            Local Variables.     (line 275)
+* org-export-with-archived-trees:        Local Variables.     (line 275)
+* org-export-with-author:                Local Variables.     (line 275)
+* org-export-with-broken-links:          Local Variables.     (line 275)
+* org-export-with-clocks:                Local Variables.     (line 275)
+* org-export-with-creator:               Local Variables.     (line 275)
+* org-export-with-date:                  Local Variables.     (line 275)
+* org-export-with-email:                 Local Variables.     (line 275)
+* org-export-with-emphasize:             Local Variables.     (line 275)
+* org-export-with-entities:              Local Variables.     (line 275)
+* org-export-with-fixed-width:           Local Variables.     (line 275)
+* org-export-with-footnotes:             Local Variables.     (line 275)
+* org-export-with-latex:                 Local Variables.     (line 275)
+* org-export-with-planning:              Local Variables.     (line 275)
+* org-export-with-priority:              Local Variables.     (line 275)
+* org-export-with-section-numbers:       Local Variables.     (line 275)
+* org-export-with-smart-quotes:          Local Variables.     (line 275)
+* org-export-with-special-strings:       Local Variables.     (line 275)
+* org-export-with-statistics-cookies:    Local Variables.     (line 275)
+* org-export-with-sub-superscripts:      Local Variables.     (line 275)
+* org-export-with-tables:                Local Variables.     (line 275)
+* org-export-with-tags:                  Local Variables.     (line 275)
+* org-export-with-tasks:                 Local Variables.     (line 275)
+* org-export-with-timestamps:            Local Variables.     (line 275)
+* org-export-with-title:                 Local Variables.     (line 275)
+* org-export-with-toc:                   Local Variables.     (line 275)
+* org-export-with-todo-keywords:         Local Variables.     (line 275)
+* org-extend-today-until:                Local Variables.     (line 275)
+* org-fold-show-context-detail:          Local Variables.     (line 275)
+* org-footnote-auto-adjust:              Local Variables.     (line 275)
+* org-footnote-auto-label:               Local Variables.     (line 275)
+* org-footnote-define-inline:            Local Variables.     (line 275)
+* org-footnote-section:                  Local Variables.     (line 275)
+* org-global-properties:                 Local Variables.     (line 275)
+* org-goto-max-level:                    Local Variables.     (line 275)
+* org-habit-following-days:              Local Variables.     (line 275)
+* org-habit-preceding-days:              Local Variables.     (line 275)
+* org-habit-show-all-today:              Local Variables.     (line 275)
+* org-habit-show-habits-only-for-today:  Local Variables.     (line 275)
+* org-hide-leading-stars:                Local Variables.     (line 275)
+* org-html-checkbox-type:                Local Variables.     (line 275)
+* org-html-doctype:                      Local Variables.     (line 275)
+* org-html-head:                         Local Variables.     (line 275)
+* org-html-postamble:                    Local Variables.     (line 275)
+* org-html-postamble-format:             Local Variables.     (line 275)
+* org-html-preamble:                     Local Variables.     (line 275)
+* org-html-preamble-format:              Local Variables.     (line 275)
+* org-html-validation-link:              Local Variables.     (line 275)
+* org-icalendar-alarm-time:              Local Variables.     (line 275)
+* org-icalendar-categories:              Local Variables.     (line 275)
+* org-icalendar-combined-description:    Local Variables.     (line 275)
+* org-icalendar-combined-name:           Local Variables.     (line 275)
+* org-icalendar-date-time-format:        Local Variables.     (line 275)
+* org-icalendar-deadline-summary-prefix: Local Variables.     (line 275)
+* org-icalendar-exclude-tags:            Local Variables.     (line 275)
+* org-icalendar-force-alarm:             Local Variables.     (line 275)
+* org-icalendar-include-todo:            Local Variables.     (line 275)
+* org-icalendar-scheduled-summary-prefix: Local Variables.    (line 275)
+* org-icalendar-timezone:                Local Variables.     (line 275)
+* org-icalendar-use-deadline:            Local Variables.     (line 275)
+* org-icalendar-use-scheduled:           Local Variables.     (line 275)
+* org-icalendar-with-timestamps:         Local Variables.     (line 275)
+* org-inlinetask-default-state:          Local Variables.     (line 275)
+* org-inlinetask-min-level:              Local Variables.     (line 275)
+* org-inlinetask-show-first-star:        Local Variables.     (line 275)
+* org-latex-compiler:                    Local Variables.     (line 275)
+* org-latex-default-class:               Local Variables.     (line 275)
 * org-log-done:                          Configuration.       (line  24)
-* org-log-done <1>:                      Local Variables.     (line 269)
+* org-log-done <1>:                      Local Variables.     (line 275)
 * org-log-into-drawer:                   Configuration.       (line  24)
-* org-log-into-drawer <1>:               Local Variables.     (line 269)
+* org-log-into-drawer <1>:               Local Variables.     (line 275)
 * org-log-repeat:                        Configuration.       (line  24)
-* org-log-repeat <1>:                    Local Variables.     (line 269)
-* org-modules:                           Local Variables.     (line 269)
-* org-occur-case-fold-search:            Local Variables.     (line 269)
-* org-odd-levels-only:                   Local Variables.     (line 269)
-* org-priority-default:                  Local Variables.     (line 269)
-* org-priority-faces:                    Local Variables.     (line 269)
-* org-priority-get-priority-function:    Local Variables.     (line 269)
-* org-priority-highest:                  Local Variables.     (line 269)
-* org-priority-lowest:                   Local Variables.     (line 269)
-* org-priority-start-cycle-with-default: Local Variables.     (line 269)
-* org-read-date-prefer-future:           Local Variables.     (line 269)
-* org-refile-allow-creating-parent-nodes: Local Variables.    (line 269)
-* org-refile-targets:                    Local Variables.     (line 269)
-* org-scheduled-delay-days:              Local Variables.     (line 269)
-* org-scheduled-past-days:               Local Variables.     (line 269)
-* org-sparse-tree-default-date-type:     Local Variables.     (line 269)
-* org-special-ctrl-a/e:                  Local Variables.     (line 269)
-* org-src-preserve-indentation:          Local Variables.     (line 269)
+* org-log-repeat <1>:                    Local Variables.     (line 275)
+* org-M-RET-may-split-line:              Local Variables.     (line 275)
+* org-modules:                           Local Variables.     (line 275)
+* org-occur-case-fold-search:            Local Variables.     (line 275)
+* org-odd-levels-only:                   Local Variables.     (line 275)
+* org-priority-default:                  Local Variables.     (line 275)
+* org-priority-faces:                    Local Variables.     (line 275)
+* org-priority-get-priority-function:    Local Variables.     (line 275)
+* org-priority-highest:                  Local Variables.     (line 275)
+* org-priority-lowest:                   Local Variables.     (line 275)
+* org-priority-start-cycle-with-default: Local Variables.     (line 275)
+* org-read-date-prefer-future:           Local Variables.     (line 275)
+* org-refile-allow-creating-parent-nodes: Local Variables.    (line 275)
+* org-refile-targets:                    Local Variables.     (line 275)
+* org-scheduled-delay-days:              Local Variables.     (line 275)
+* org-scheduled-past-days:               Local Variables.     (line 275)
+* org-sparse-tree-default-date-type:     Local Variables.     (line 275)
+* org-special-ctrl-a/e:                  Local Variables.     (line 275)
+* org-src-preserve-indentation:          Local Variables.     (line 275)
 * org-startup-folded:                    Configuration.       (line  24)
-* org-startup-folded <1>:                Local Variables.     (line 269)
+* org-startup-folded <1>:                Local Variables.     (line 275)
 * org-startup-indented:                  Configuration.       (line  24)
-* org-startup-indented <1>:              Local Variables.     (line 269)
-* org-startup-truncated:                 Local Variables.     (line 269)
+* org-startup-indented <1>:              Local Variables.     (line 275)
+* org-startup-truncated:                 Local Variables.     (line 275)
 * org-startup-with-inline-images:        Configuration.       (line  24)
-* org-startup-with-inline-images <1>:    Local Variables.     (line 269)
-* org-structure-template-alist:          Local Variables.     (line 269)
-* org-stuck-projects:                    Local Variables.     (line 269)
-* org-table-duration-hour-zero-padding:  Local Variables.     (line 269)
-* org-table-formula-create-columns:      Local Variables.     (line 269)
-* org-tag-alist:                         Local Variables.     (line 269)
-* org-tag-persistent-alist:              Local Variables.     (line 269)
-* org-tags-column:                       Local Variables.     (line 269)
-* org-tags-exclude-from-inheritance:     Local Variables.     (line 269)
-* org-timer-default-timer:               Local Variables.     (line 269)
-* org-timer-display:                     Local Variables.     (line 269)
-* org-timer-format:                      Local Variables.     (line 269)
-* org-todo-state-tags-triggers:          Local Variables.     (line 269)
-* org-use-property-inheritance:          Local Variables.     (line 269)
-* org-use-sub-superscripts:              Local Variables.     (line 269)
-* org-use-tag-inheritance:               Local Variables.     (line 269)
-* org-weather-format:                    Local Variables.     (line 269)
-* org-weather-refresh-interval:          Local Variables.     (line 269)
-* org-weather-speed-unit:                Local Variables.     (line 269)
-* org-weather-temperature-unit:          Local Variables.     (line 269)
-* org-xx-diary-merge-rows:               Local Variables.     (line 269)
-* org-xx-drag-handle:                    Local Variables.     (line 269)
-* org-xx-extensions:                     Local Variables.     (line 269)
-* org-xx-extra-menu:                     Local Variables.     (line 269)
-* org-xx-fetch-timeout:                  Local Variables.     (line 269)
-* org-xx-god-mode-button:                Local Variables.     (line 269)
-* org-xx-indent-tables:                  Local Variables.     (line 269)
-* org-xx-lisp-init:                      Local Variables.     (line 269)
-* org-xx-menu-aliases:                   Local Variables.     (line 269)
-* org-xx-show-inherited-tags:            Local Variables.     (line 269)
-* org-xx-size-limit-attachment:          Local Variables.     (line 269)
-* org-xx-size-limit-attachment-warn:     Local Variables.     (line 269)
-* org-xx-size-limit-bibliography:        Local Variables.     (line 269)
-* org-xx-size-limit-image:               Local Variables.     (line 269)
-* org-xx-size-limit-include:             Local Variables.     (line 269)
-* org-xx-size-limit-org-file:            Local Variables.     (line 269)
-* org-xx-size-limit-setupfile:           Local Variables.     (line 269)
-* org-xx-startup-with-show-photos:       Local Variables.     (line 269)
-* org-xx-text-font-size:                 Local Variables.     (line 269)
-* org-xx-windowing-threshold:            Local Variables.     (line 269)
+* org-startup-with-inline-images <1>:    Local Variables.     (line 275)
+* org-structure-template-alist:          Local Variables.     (line 275)
+* org-stuck-projects:                    Local Variables.     (line 275)
+* org-table-duration-hour-zero-padding:  Local Variables.     (line 275)
+* org-table-formula-create-columns:      Local Variables.     (line 275)
+* org-tag-alist:                         Local Variables.     (line 275)
+* org-tag-persistent-alist:              Local Variables.     (line 275)
+* org-tags-column:                       Local Variables.     (line 275)
+* org-tags-exclude-from-inheritance:     Local Variables.     (line 275)
+* org-timer-default-timer:               Local Variables.     (line 275)
+* org-timer-display:                     Local Variables.     (line 275)
+* org-timer-format:                      Local Variables.     (line 275)
+* org-todo-state-tags-triggers:          Local Variables.     (line 275)
+* org-use-property-inheritance:          Local Variables.     (line 275)
+* org-use-sub-superscripts:              Local Variables.     (line 275)
+* org-use-tag-inheritance:               Local Variables.     (line 275)
+* org-weather-format:                    Local Variables.     (line 275)
+* org-weather-refresh-interval:          Local Variables.     (line 275)
+* org-weather-speed-unit:                Local Variables.     (line 275)
+* org-weather-temperature-unit:          Local Variables.     (line 275)
+* org-xx-diary-merge-rows:               Local Variables.     (line 275)
+* org-xx-drag-handle:                    Local Variables.     (line 275)
+* org-xx-emacs-key-panel:                Local Variables.     (line 275)
+* org-xx-emacs-mode:                     Local Variables.     (line 275)
+* org-xx-extensions:                     Local Variables.     (line 275)
+* org-xx-extra-menu:                     Local Variables.     (line 275)
+* org-xx-fetch-timeout:                  Local Variables.     (line 275)
+* org-xx-god-mode-button:                Local Variables.     (line 275)
+* org-xx-indent-tables:                  Local Variables.     (line 275)
+* org-xx-lisp-init:                      Local Variables.     (line 275)
+* org-xx-menu-aliases:                   Local Variables.     (line 275)
+* org-xx-show-inherited-tags:            Local Variables.     (line 275)
+* org-xx-size-limit-attachment:          Local Variables.     (line 275)
+* org-xx-size-limit-attachment-warn:     Local Variables.     (line 275)
+* org-xx-size-limit-bibliography:        Local Variables.     (line 275)
+* org-xx-size-limit-image:               Local Variables.     (line 275)
+* org-xx-size-limit-include:             Local Variables.     (line 275)
+* org-xx-size-limit-org-file:            Local Variables.     (line 275)
+* org-xx-size-limit-setupfile:           Local Variables.     (line 275)
+* org-xx-startup-with-show-photos:       Local Variables.     (line 275)
+* org-xx-text-font-size:                 Local Variables.     (line 275)
+* org-xx-windowing-threshold:            Local Variables.     (line 275)
+* org-yank-adjusted-subtrees:            Local Variables.     (line 275)
+* org-yank-folded-subtrees:              Local Variables.     (line 275)
 * p::                                    Document settings.   (line  39)
 * photo:                                 Contacts (vcf).      (line  78)
 * pN:                                    Table formulas.      (line 127)
 * r:                                     god-mode.            (line 105)
-* recentf-max-saved-items:               Local Variables.     (line 269)
+* recentf-max-saved-items:               Local Variables.     (line 275)
 * s:                                     god-mode.            (line 105)
 * S-Tab:                                 god-mode.            (line 105)
+* select-enable-clipboard:               Local Variables.     (line 275)
 * spouse:                                Contacts (vcf).      (line  78)
 * sqrt(x):                               Table formulas.      (line  42)
 * Tab:                                   Keybindings.         (line  27)
@@ -6690,122 +6757,123 @@ Variable Index
 
 Tag Table:
 Node: Top201
-Node: org-pwa3283
-Node: Contents4607
-Node: What org-pwa is (and isn't)6122
-Node: Getting started6899
-Node: Editing your outline9278
-Node: A heading's "text"18941
-Node: Undo/redo and History19856
-Node: Lists tables and body text22126
-Node: Table pad26138
-Node: Table formulas28317
-Node: Converting tables and lists40006
-Node: Plots41443
-Node: Inline text markup43281
-Node: Footnote commands46413
-Node: LaTeX math fragments49193
-Node: Searching51189
-Node: Filter tokens54184
-Node: Regex mode56200
-Node: Match mode57208
-Node: Search extra files58925
-Node: Search and replace59820
-Node: Narrow61569
-Node: Sparse trees61979
-Node: The Search button63721
-Node: Match and Keyword search views64226
-Node: Modeline and minibuffer66393
-Node: Links and images69302
-Node: Configuration73779
-Node: Global Variables75709
-Node: Jumps marks and templates77262
-Node: Folding and #+STARTUP80120
-Node: Local Variables84237
-Node: Lisp init154552
-Node: Lisp functions156878
-Node: Progress logging172921
-Node: org-log-done173402
-Node: Where log items go174100
-Node: Blocking tasks174578
-Node: Repeating tasks and org-log-repeat175143
-Node: The per-keyword logging spec175942
-Node: The LOGBOOK drawer177320
-Node: Agenda Log177819
-Node: Archiving178695
-Node: Restoring (unarchive)181628
-Node: Refile182186
-Node: Extensions184517
-Node: Table functions link types and exports188081
-Node: Agenda sources and header lines189131
-Node: Network position and cache190162
-Node: Source blocks191579
-Node: Literate programming header arguments Noweb and Tangle195012
-Node: Attachments199108
-Node: Clocking202438
-Node: Effort_ALL allowed effort values205893
-Node: Typed dates and durations206813
-Node: Column View208184
-Node: Org Crypt212154
-Node: Org Timer214495
-Node: Line numbers216124
-Node: Narrowing217050
-Node: The plain-text editor217778
-Node: Agenda219648
-Node: Dated entry sources225643
-Node: Diary-sexp forms229033
-Node: Sun times232863
-Node: Hebrew diary functions234769
-Node: Diary file235869
-Node: Holidays238464
-Node: General <%%(sexp)> timestamps243535
-Node: Other agenda behavior248199
-Node: Habits249508
-Node: Agenda Files250914
-Node: Contacts Files252988
-Node: Calendar and contacts sync (CalDAV CardDAV)253552
-Node: Agenda notifications256703
-Node: The TODO view258776
-Node: Capture Templates260246
-Node: Capturing from other apps280964
-Node: Extras menu282590
-Node: Menu customization287084
-Node: File management290091
-Node: Files view294103
-Node: Tabs296955
-Node: Citations297642
-Node: Export298831
-Node: Document settings300052
-Node: ASCII308540
-Node: HTML310385
-Node: ODT311939
-Node: Line numbers and references in source blocks312973
-Node: LaTeX314258
-Node: Beamer317914
-Node: Slides (HTML)320302
-Node: As-org321477
-Node: Calendar (ics)323132
-Node: Contacts (vcf)326320
-Node: What is dropped334127
-Node: Import334517
-Node: Help339096
-Node: Info reader339662
-Node: Settings342758
-Node: Offline behavior and sync346635
-Node: Long lists351138
-Node: Size limits351871
-Node: Platform support353010
-Node: Android app353777
-Node: Command palette357810
-Node: Security and privacy362570
-Node: Keybindings363977
-Node: god-mode369798
-Node: God-mode without a hardware keyboard386344
-Node: Differences from Emacs org-mode388865
-Node: Known limitations393928
-Node: Development394483
-Node: Concept Index398684
-Node: Variable Index408812
+Node: org-pwa3298
+Node: Contents4637
+Node: What org-pwa is (and isn't)6178
+Node: Getting started6955
+Node: Editing your outline9334
+Node: A heading's "text"18997
+Node: Undo/redo and History19912
+Node: Lists tables and body text22182
+Node: Table pad26194
+Node: Table formulas28373
+Node: Converting tables and lists40062
+Node: Plots41499
+Node: Inline text markup43337
+Node: Footnote commands46469
+Node: LaTeX math fragments49249
+Node: Searching51245
+Node: Filter tokens54240
+Node: Regex mode56256
+Node: Match mode57264
+Node: Search extra files58981
+Node: Search and replace59876
+Node: Narrow61625
+Node: Sparse trees62035
+Node: The Search button63777
+Node: Match and Keyword search views64282
+Node: Modeline and minibuffer66449
+Node: Links and images69358
+Node: Configuration73835
+Node: Global Variables75765
+Node: Jumps marks and templates77318
+Node: Folding and #+STARTUP80709
+Node: Local Variables84826
+Node: Lisp init156698
+Node: Lisp functions159024
+Node: Progress logging175067
+Node: org-log-done175548
+Node: Where log items go176246
+Node: Blocking tasks176724
+Node: Repeating tasks and org-log-repeat177289
+Node: The per-keyword logging spec178088
+Node: The LOGBOOK drawer179466
+Node: Agenda Log179965
+Node: Archiving180841
+Node: Restoring (unarchive)183774
+Node: Refile184332
+Node: Extensions186663
+Node: Table functions link types and exports190227
+Node: Agenda sources and header lines191277
+Node: Network position and cache192308
+Node: Source blocks193725
+Node: Literate programming header arguments Noweb and Tangle197158
+Node: Attachments201254
+Node: Clocking204584
+Node: Effort_ALL allowed effort values208039
+Node: Typed dates and durations208959
+Node: Column View210330
+Node: Org Crypt214300
+Node: Org Timer216641
+Node: Line numbers218270
+Node: Narrowing219196
+Node: The plain-text editor219924
+Node: Emacs mode222207
+Node: Agenda224205
+Node: Dated entry sources230189
+Node: Diary-sexp forms233579
+Node: Sun times237409
+Node: Hebrew diary functions239315
+Node: Diary file240415
+Node: Holidays243010
+Node: General <%%(sexp)> timestamps248081
+Node: Other agenda behavior252745
+Node: Habits254054
+Node: Agenda Files255460
+Node: Contacts Files257534
+Node: Calendar and contacts sync (CalDAV CardDAV)258098
+Node: Agenda notifications261249
+Node: The TODO view263322
+Node: Capture Templates264792
+Node: Capturing from other apps285510
+Node: Extras menu287136
+Node: Menu customization291630
+Node: File management294637
+Node: Files view298649
+Node: Tabs301501
+Node: Citations302188
+Node: Export303377
+Node: Document settings304598
+Node: ASCII313086
+Node: HTML314931
+Node: ODT316485
+Node: Line numbers and references in source blocks317519
+Node: LaTeX318804
+Node: Beamer322460
+Node: Slides (HTML)324848
+Node: As-org326023
+Node: Calendar (ics)327678
+Node: Contacts (vcf)330866
+Node: What is dropped338673
+Node: Import339063
+Node: Help343642
+Node: Info reader344208
+Node: Settings347304
+Node: Offline behavior and sync351181
+Node: Long lists355684
+Node: Size limits356417
+Node: Platform support357556
+Node: Android app358323
+Node: Command palette362356
+Node: Security and privacy367116
+Node: Keybindings368523
+Node: god-mode374344
+Node: God-mode without a hardware keyboard390890
+Node: Differences from Emacs org-mode393411
+Node: Known limitations398474
+Node: Development399029
+Node: Concept Index403230
+Node: Variable Index413431
 
 End Tag Table
 

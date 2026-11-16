@@ -20,7 +20,7 @@ function lineAt(text, pos) {
  * @param {string} line @param {string[]} keywords
  * @returns {{ stars: number, keyword: number | null, priority: number | null, tags: number | null } | null}
  */
-function headingParts(line, keywords) {
+export function headingParts(line, keywords) {
   const kw = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const m = new RegExp(`^(\\*+)(?:[ \\t]+(${kw || '(?!)'})(?=[ \\t]|$))?(?:[ \\t]+(\\[#[A-Z0-9]\\])(?=[ \\t]|$))?(?:[ \\t]+(.*?))??(?:[ \\t]+(:[\\w@#%:]+:))?[ \\t]*$`).exec(line);
   if (!m) return null;

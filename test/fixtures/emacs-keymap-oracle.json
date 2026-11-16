@@ -1,0 +1,501 @@
+{
+ "emacs": "29.3",
+ "bindings": [
+  [
+   "C-f",
+   "forward-char"
+  ],
+  [
+   "C-b",
+   "backward-char"
+  ],
+  [
+   "C-n",
+   "next-line"
+  ],
+  [
+   "C-p",
+   "previous-line"
+  ],
+  [
+   "C-a",
+   "org-beginning-of-line"
+  ],
+  [
+   "C-e",
+   "org-end-of-line"
+  ],
+  [
+   "M-f",
+   "forward-word"
+  ],
+  [
+   "M-b",
+   "backward-word"
+  ],
+  [
+   "M-<",
+   "beginning-of-buffer"
+  ],
+  [
+   "M->",
+   "end-of-buffer"
+  ],
+  [
+   "C-d",
+   "org-delete-char"
+  ],
+  [
+   "DEL",
+   "org-delete-backward-char"
+  ],
+  [
+   "M-d",
+   "kill-word"
+  ],
+  [
+   "M-DEL",
+   "backward-kill-word"
+  ],
+  [
+   "C-k",
+   "org-kill-line"
+  ],
+  [
+   "C-w",
+   "kill-region"
+  ],
+  [
+   "M-w",
+   "kill-ring-save"
+  ],
+  [
+   "C-y",
+   "org-yank"
+  ],
+  [
+   "C-o",
+   "org-open-line"
+  ],
+  [
+   "C-t",
+   "transpose-chars"
+  ],
+  [
+   "M-t",
+   "org-transpose-words"
+  ],
+  [
+   "M-u",
+   "upcase-word"
+  ],
+  [
+   "M-l",
+   "downcase-word"
+  ],
+  [
+   "M-c",
+   "capitalize-word"
+  ],
+  [
+   "M-\\",
+   "delete-horizontal-space"
+  ],
+  [
+   "M-m",
+   "back-to-indentation"
+  ],
+  [
+   "C-SPC",
+   "set-mark-command"
+  ],
+  [
+   "C-x C-x",
+   "exchange-point-and-mark"
+  ],
+  [
+   "C-/",
+   "undo"
+  ],
+  [
+   "C-_",
+   "undo"
+  ],
+  [
+   "C-x u",
+   "undo"
+  ],
+  [
+   "C-g",
+   "keyboard-quit"
+  ],
+  [
+   "C-u",
+   "universal-argument"
+  ],
+  [
+   "M-x",
+   "execute-extended-command"
+  ],
+  [
+   "M-0",
+   "digit-argument"
+  ],
+  [
+   "M-1",
+   "digit-argument"
+  ],
+  [
+   "M-2",
+   "digit-argument"
+  ],
+  [
+   "M-3",
+   "digit-argument"
+  ],
+  [
+   "M-4",
+   "digit-argument"
+  ],
+  [
+   "M-5",
+   "digit-argument"
+  ],
+  [
+   "M-6",
+   "digit-argument"
+  ],
+  [
+   "M-7",
+   "digit-argument"
+  ],
+  [
+   "M-8",
+   "digit-argument"
+  ],
+  [
+   "M-9",
+   "digit-argument"
+  ],
+  [
+   "M--",
+   "negative-argument"
+  ],
+  [
+   "C-x",
+   "keymap"
+  ],
+  [
+   "ESC",
+   "keymap"
+  ],
+  [
+   "C-c",
+   "keymap"
+  ],
+  [
+   "M-SPC",
+   "cycle-spacing"
+  ],
+  [
+   "C-?",
+   "undo-redo"
+  ],
+  [
+   "C-M-_",
+   "undo-redo"
+  ],
+  [
+   "C-x C-s",
+   "save-buffer"
+  ],
+  [
+   "M-%",
+   "query-replace"
+  ],
+  [
+   "C-s",
+   "isearch-forward"
+  ],
+  [
+   "C-r",
+   "isearch-backward"
+  ],
+  [
+   "C-l",
+   "recenter-top-bottom"
+  ],
+  [
+   "C-v",
+   "scroll-up-command"
+  ],
+  [
+   "M-v",
+   "scroll-down-command"
+  ],
+  [
+   "M-q",
+   "org-fill-paragraph"
+  ],
+  [
+   "C-q",
+   "quoted-insert"
+  ],
+  [
+   "M-^",
+   "org-delete-indentation"
+  ],
+  [
+   "C-x h",
+   "mark-whole-buffer"
+  ],
+  [
+   "C-x C-o",
+   "delete-blank-lines"
+  ],
+  [
+   "M-y",
+   "yank-pop"
+  ],
+  [
+   "C-M-w",
+   "append-next-kill"
+  ],
+  [
+   "M-z",
+   "zap-to-char"
+  ],
+  [
+   "M-@",
+   "mark-word"
+  ],
+  [
+   "M-h",
+   "org-mark-element"
+  ]
+ ],
+ "runs": [
+  [
+   "C-u C-f",
+   54,
+   100,
+   ""
+  ],
+  [
+   "C-u C-u C-f",
+   66,
+   100,
+   ""
+  ],
+  [
+   "C-u C-u C-u C-f",
+   100,
+   100,
+   "End of buffer"
+  ],
+  [
+   "C-u 5 C-f",
+   55,
+   100,
+   ""
+  ],
+  [
+   "C-u 1 2 C-f",
+   62,
+   100,
+   ""
+  ],
+  [
+   "C-u - C-f",
+   49,
+   100,
+   ""
+  ],
+  [
+   "C-u - 3 C-f",
+   47,
+   100,
+   ""
+  ],
+  [
+   "C-u - 1 2 C-f",
+   38,
+   100,
+   ""
+  ],
+  [
+   "M-5 C-f",
+   55,
+   100,
+   ""
+  ],
+  [
+   "M-- C-f",
+   49,
+   100,
+   ""
+  ],
+  [
+   "M-- 3 C-f",
+   47,
+   100,
+   ""
+  ],
+  [
+   "M-1 2 C-f",
+   62,
+   100,
+   ""
+  ],
+  [
+   "ESC 5 C-f",
+   55,
+   100,
+   ""
+  ],
+  [
+   "ESC - 4 C-f",
+   46,
+   100,
+   ""
+  ],
+  [
+   "C-u 4 C-u C-f",
+   54,
+   100,
+   ""
+  ],
+  [
+   "C-u C-u 3 C-f",
+   53,
+   100,
+   ""
+  ],
+  [
+   "C-u 3 C-u C-f",
+   53,
+   100,
+   ""
+  ],
+  [
+   "C-u 0 C-f",
+   50,
+   100,
+   ""
+  ],
+  [
+   "C-u 2 0 C-f",
+   70,
+   100,
+   ""
+  ],
+  [
+   "C-u - - C-f",
+   51,
+   100,
+   ""
+  ],
+  [
+   "C-u 5 - C-f",
+   56,
+   105,
+   ""
+  ],
+  [
+   "C-u M-3 C-f",
+   53,
+   100,
+   ""
+  ],
+  [
+   "C-u C-u - C-f",
+   49,
+   100,
+   ""
+  ],
+  [
+   "M-3 M-4 C-f",
+   84,
+   100,
+   ""
+  ],
+  [
+   "C-u 3 M-4 C-f",
+   84,
+   100,
+   ""
+  ],
+  [
+   "C-u 3 C-b",
+   47,
+   100,
+   ""
+  ],
+  [
+   "C-u 3 M-f",
+   100,
+   100,
+   ""
+  ],
+  [
+   "C-u 3 C-d",
+   50,
+   97,
+   ""
+  ],
+  [
+   "C-u 3 q",
+   53,
+   103,
+   ""
+  ],
+  [
+   "C-u q",
+   54,
+   104,
+   ""
+  ],
+  [
+   "C-u - 2 q",
+   50,
+   100,
+   "Negative repetition argument -2"
+  ],
+  [
+   "C-u 7 C-x C-x C-f",
+   50,
+   100,
+   "No mark set in this buffer"
+  ],
+  [
+   "ESC f",
+   100,
+   100,
+   ""
+  ],
+  [
+   "ESC d",
+   50,
+   50,
+   ""
+  ],
+  [
+   "ESC DEL",
+   0,
+   50,
+   ""
+  ],
+  [
+   "ESC ESC f",
+   50,
+   100,
+   ""
+  ],
+  [
+   "C-x C-x C-f",
+   50,
+   100,
+   "No mark set in this buffer"
+  ]
+ ]
+}

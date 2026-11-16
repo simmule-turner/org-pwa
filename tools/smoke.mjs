@@ -10707,6 +10707,54 @@ check('info reader: add a split compressed manual from the palette, then follow 
   await context.close();
 });
 
+check('Emacs mode in the Text view: keys, prefix argument, mark, kill ring, undo and the key panel work as in Emacs', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'one two three\nfour five\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    await commitGlobalVariableChange('select-enable-clipboard', 'nil');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const text = () => box.inputValue();
+  const caret = () => box.evaluate((t) => [t.selectionStart, t.selectionEnd]);
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  expect(await page.locator('.te-keypanel').isVisible(), 'the key panel shows in Emacs mode');
+  expect((await page.locator('#godModeBtn').evaluate((b) => getComputedStyle(b).display)) === 'none', 'the [g] button gives way to the panel');
+  expect((await page.locator('.te-modeline').innerText()).includes('(1,0)'), `the modeline: ${await page.locator('.te-modeline').innerText()}`);
+  await page.keyboard.press('Control+e');
+  expect((await caret())[0] === 13, `C-e goes to the end of the line: ${await caret()}`);
+  await page.keyboard.type('Z');
+  expect((await text()).startsWith('one two threeZ\n'), `typing inserts: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Control+/');
+  expect((await text()).startsWith('one two three\n') && (await caret())[0] === 13, `C-/ undoes the typing: ${JSON.stringify(await text())} ${await caret()}`);
+  await page.keyboard.press('Control+Space');
+  await page.keyboard.press('Alt+b');
+  expect((await caret())[0] === 8 && (await caret())[1] === 13, `the region runs from the mark to point: ${await caret()}`);
+  await page.keyboard.press('Control+w');
+  expect((await text()).startsWith('one two \n'), `C-w kills the region: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Control+y');
+  expect((await text()).startsWith('one two three\n'), `C-y yanks it back: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+u');
+  await page.keyboard.type('3');
+  await page.keyboard.press('Control+f');
+  expect((await caret())[0] === 3, `C-u 3 C-f moves three characters: ${await caret()}`);
+  await page.keyboard.press('Alt+d');
+  expect((await text()).startsWith('one three\n'), `M-d kills a word: ${JSON.stringify(await text())}`);
+  await page.getByRole('button', { name: 'Control for the next key' }).click();
+  await page.keyboard.type('e');
+  expect((await caret())[0] === 9, `the panel's Ctrl and then e is C-e: ${await caret()}`);
+  await page.keyboard.press('Backspace');
+  expect((await text()).startsWith('one thre\n'), `DEL deletes backward: ${JSON.stringify(await text())}`);
+  expect((await page.locator('.te-caret .te-block').count()) === 1, 'the block caret is drawn');
+  await page.getByRole('button', { name: 'Float the key panel over the text, or dock it' }).click();
+  await page.waitForSelector('.te-keypanel.te-floating', { timeout: 4000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 const filter = process.argv[2];
 const matching = filter ? checks.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase())) : checks;
 // SMOKE_SLICE=0:20 runs only the first twenty of the selected checks (start inclusive, end exclusive), so a long

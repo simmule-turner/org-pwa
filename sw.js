@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v712';
+const CACHE_NAME = 'org-pwa-shell-v714';
 
 const SHELL_FILES = [
   './',
@@ -39,6 +39,10 @@ const SHELL_FILES = [
   './src/diary-entry.js',
   './src/plain-file.js',
   './src/text-edit.js',
+  './src/emacs-edit.js',
+  './src/emacs-keymap.js',
+  './src/emacs-undo.js',
+  './src/org-yank.js',
   './src/text-syntax.js',
   './src/diary-sexp.js',
   './src/diary-hebrew.js',
@@ -348,6 +352,8 @@ const SHELL_FILES = [
   './src-browser/agenda-files.js',
   './src-browser/agenda-actions.js',
   './src/levels.js',
+  './src/meta-return.js',
+  './src/table-tab.js',
   './src/structure-template.js',
   './src/todo-triggers.js',
   './src-browser/agenda-extra-keys.js',
@@ -380,6 +386,7 @@ const SHELL_FILES = [
   './src-browser/diary-flow.js',
   './src-browser/diary-sheets.js',
   './src-browser/text-view.js',
+  './src-browser/emacs-mode.js',
   './src-browser/archive-flow.js',
   './src-browser/attachments-flow.js',
   './src-browser/attach-preview.js',

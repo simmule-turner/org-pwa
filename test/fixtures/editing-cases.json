@@ -103,5 +103,46 @@
   "to": 3,
   "value": "NOTES",
   "org": "* Meeting\nfirst point\nsecond point\n"
+ },
+ {
+  "title": "Split a heading",
+  "text": "=M-RET= with the caret inside a heading's title starts a new heading with the text after the caret; tags stay on the first.",
+  "op": "split",
+  "line": 1,
+  "col": 6,
+  "org": "* Buy milk and eggs :errand:\n"
+ },
+ {
+  "title": "Split a list item",
+  "text": "In a list item the text after the caret, with any sub-items, moves to the new item.",
+  "op": "split",
+  "line": 2,
+  "col": 6,
+  "org": "* Shopping\n- milk and eggs\n  - oat\n- bread\n"
+ },
+ {
+  "title": "Keep the line whole",
+  "text": "With =org-M-RET-may-split-line= set to =nil= the new item goes after the whole item.",
+  "op": "split",
+  "line": 2,
+  "col": 6,
+  "value": "nil",
+  "org": "* Shopping\n- milk and eggs\n  - oat\n- bread\n"
+ },
+ {
+  "title": "A rule from |-",
+  "text": "In the Text view, =Tab= on a line that is just =|-= writes the rule, aligns the table and starts a row under it.",
+  "op": "tab",
+  "line": 3,
+  "col": 2,
+  "org": "| Item | Cost |\n| Flights | 420 |\n|-\n"
+ },
+ {
+  "title": "Tab to the next field",
+  "text": "In the Text view, =Tab= aligns the table and moves to the next field; from the last field of the last row it adds a row.",
+  "op": "tab",
+  "line": 2,
+  "col": 13,
+  "org": "| Item | Cost |\n| Flights | 420 |\n"
  }
 ]

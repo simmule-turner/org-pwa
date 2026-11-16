@@ -25,6 +25,11 @@ const cases = [
   { title: 'Turn a line into a heading', text: '=C-c *= makes the line a heading one level below the entry it is in; on a heading it makes the line plain text again.', op: 'toggle-heading', line: 2, org: '* Notes\nbuy milk\n' },
   { title: 'Wrap lines in a source block', text: '=C-c C-,= then =s= wraps the selected lines (here lines 2 and 3) in a source block, ready for a language.', op: 'template', line: 2, to: 3, value: 's', org: '* Code\nprint(1)\nprint(2)\n' },
   { title: 'Wrap lines in a drawer', text: '=C-c C-x d= and a name wraps the selected lines in that drawer, as the first lines of the entry.', op: 'drawer', line: 2, to: 3, value: 'NOTES', org: '* Meeting\nfirst point\nsecond point\n' },
+  { title: 'Split a heading', text: '=M-RET= with the caret inside a heading\'s title starts a new heading with the text after the caret; tags stay on the first.', op: 'split', line: 1, col: 6, org: '* Buy milk and eggs :errand:\n' },
+  { title: 'Split a list item', text: 'In a list item the text after the caret, with any sub-items, moves to the new item.', op: 'split', line: 2, col: 6, org: '* Shopping\n- milk and eggs\n  - oat\n- bread\n' },
+  { title: 'Keep the line whole', text: 'With =org-M-RET-may-split-line= set to =nil= the new item goes after the whole item.', op: 'split', line: 2, col: 6, value: 'nil', org: '* Shopping\n- milk and eggs\n  - oat\n- bread\n' },
+  { title: 'A rule from |-', text: 'In the Text view, =Tab= on a line that is just =|-= writes the rule, aligns the table and starts a row under it.', op: 'tab', line: 3, col: 2, org: '| Item | Cost |\n| Flights | 420 |\n|-\n' },
+  { title: 'Tab to the next field', text: 'In the Text view, =Tab= aligns the table and moves to the next field; from the last field of the last row it adds a row.', op: 'tab', line: 2, col: 13, org: '| Item | Cost |\n| Flights | 420 |\n' },
 ];
 const el = `
 (require 'org) (require 'json) (require 'cl-lib)
@@ -41,6 +46,8 @@ const el = `
             ((string= op "demote") (org-demote-subtree))
             ((string= op "up") (org-move-subtree-up))
             ((string= op "item-below") (end-of-line) (org-meta-return))
+            ((string= op "tab") (move-to-column col) (org-cycle))
+            ((string= op "split") (move-to-column col) (let ((org-M-RET-may-split-line (if value (car (read-from-string value)) '((default . t))))) (org-meta-return)))
             ((string= op "toggle") (end-of-line) (org-toggle-checkbox))
             ((string= op "insert-col") (move-to-column 2) (org-table-goto-column col) (org-table-insert-column))
             ((string= op "delete-row") (move-to-column 2) (org-table-kill-row))
@@ -72,6 +79,7 @@ out += `
 * Where the app differs from Emacs
 - Emacs re-aligns a heading's tags to =org-tags-column= when its level changes; the app leaves their spacing as it is.
 - Deleting a table column leaves an extra column in Emacs when a row has an empty cell and the rule is a bare =|-=; the app deletes the column asked for.
+- =M-RET= splits at the caret in the Text view. On the outline there is no caret, so it adds after the focused heading or item; in a table (wrap region) it is not available.
 - A new item below an item with a checkbox has none, as in Emacs; the item menu has *Add checkbox below* for one with a box.
 `;
 fs.writeFileSync('examples/editing.org', out);

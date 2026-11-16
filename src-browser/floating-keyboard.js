@@ -24,7 +24,7 @@
 // own keyboard key shows or hides it again.
 import { S } from './app-state.js';
 import { extraMenuBtn, floatingKeyboard, godModeBtn, godModeKeyboardInput, modelineBarEl } from './dom.js';
-import { getGodModeButton } from '../src/local-variables.js';
+import { getEmacsMode, getGodModeButton } from '../src/local-variables.js';
 import { dispatchGodModeKeystroke } from './god-mode-palette.js';
 import { setFloatingKeyboardPos } from './settings.js';
 import { noteKeyLog } from './key-log.js';
@@ -386,7 +386,7 @@ function godModeButtonEnabled() {
 /** Builds/shows/hides the panel and keeps the [g] button's look in step with
  *  it; called from render(). */
 export function renderFloatingKeyboard() {
-  const enabled = godModeButtonEnabled();
+  const enabled = godModeButtonEnabled() && !(S.currentView === 'text' && getEmacsMode(S.state.localVariables || S.globalVariables)); // Emacs mode has its own key panel
   godModeBtn.style.display = enabled ? 'flex' : 'none';
   // turned off while the panel is up (its only way to close is that button):
   // end god-mode, and the line below takes the panel down with it

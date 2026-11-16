@@ -154,6 +154,7 @@ function renderNow() {
       kind: plainText ? syntaxKindFor(documentName(S.state.documentId), diary) : 'org',
       extraRow: diary ? diaryToolsRow(textarea) : lintToolsRow(textarea),
       compact: !!S.narrowedHeading,
+      name: documentName(S.state.documentId),
       height: VH_UNIT === 'dvh' ? 'calc(100dvh - 155px)' : 'calc(100vh - 155px)',
     });
     outlineEl.appendChild(editor.root);

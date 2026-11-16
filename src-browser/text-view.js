@@ -4,7 +4,7 @@
 //
 // The textarea stays the real editor (its caret, selection, undo and input methods are the browser's own); its text is made
 // transparent and the colored copy of the same text is drawn underneath, so what is typed is never rewritten by this code.
-import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getTextFontSize, getTextWrap } from '../src/local-variables.js';
+import { getDisplayLineNumbersMode, getDisplayLineNumbersType, getEmacsKeyPanel, getEmacsMode, getSelectEnableClipboard, getTextFontSize, getTextWrap, getYankAdjustedSubtrees, getYankFoldedSubtrees } from '../src/local-variables.js';
 import { displayedLineNumber } from '../src/line-numbers.js';
 import { deleteLines, duplicateLines, indentLines, lineCount, lineNumberAt, lineRange, moveLines, newlineWithIndent } from '../src/text-edit.js';
 import { locateDiaryEntry } from '../src/diary-entry.js';
@@ -19,6 +19,8 @@ import { setStatus } from './editing.js';
 import { platform } from './platform.js';
 import { caretGeometry, describeEditor, noteExpectedCaret, noteKeyLog } from './key-log.js';
 import { commitGlobalVariableChange } from './settings-quick.js';
+import { tableTab } from '../src/table-tab.js';
+import { attachEmacsMode } from './emacs-mode.js';
 
 const SVG = {
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -81,11 +83,29 @@ export function applyTextEdit(textarea, edit, quiet = false) {
   textarea.setSelectionRange(edit.selStart, edit.selEnd);
 }
 
-/** What the Tab key does here: indent the selected lines, or put two spaces at the cursor.
+/** TAB in a table: aligns it and moves to the next field, adding a row after the last. @param {HTMLTextAreaElement} textarea @param {boolean} [quiet] @returns {boolean} whether the caret was in a table */
+function tableTabInText(textarea, quiet = false) {
+  const { value, selectionStart } = textarea;
+  const result = tableTab(value, selectionStart);
+  if (!result) return false;
+  if (result.text === value) {
+    textarea.setSelectionRange(result.pos, result.pos); // already aligned: only the caret moves
+    return true;
+  }
+  let head = 0;
+  while (head < value.length && head < result.text.length && value[head] === result.text[head]) head++;
+  let tail = 0;
+  while (tail < value.length - head && tail < result.text.length - head && value[value.length - 1 - tail] === result.text[result.text.length - 1 - tail]) tail++;
+  applyTextEdit(textarea, { from: head, to: value.length - tail, insert: result.text.slice(head, result.text.length - tail), selStart: result.pos, selEnd: result.pos }, quiet);
+  return true;
+}
+
+/** What the Tab key does here: in a table the next field (as Org's TAB does), else indent the selected lines, or put two spaces at the cursor.
  * @param {HTMLTextAreaElement} textarea
  * @param {boolean} [quiet] leave a hidden device keyboard hidden */
 function textViewTab(textarea, quiet = false) {
   const { selectionStart: a, selectionEnd: b, value } = textarea;
+  if (a === b && tableTabInText(textarea, quiet)) return;
   if (value.slice(a, b).includes('\n')) {
     const edit = indentLines(value, a, b, 1);
     if (edit) applyTextEdit(textarea, edit, quiet);
@@ -227,9 +247,10 @@ function sameSegs(a, b) {
  * @param {HTMLElement | null} [o.extraRow]  a row of tools for this kind of file (the diary's)
  * @param {boolean} o.compact  a narrowed subtree: no line numbers
  * @param {string} o.height  the CSS height of the whole editor
+ * @param {string} [o.name]  the buffer's name, for Emacs mode's modeline
  * @returns {{ root: HTMLElement, status: (text: string) => void }}
  */
-export function buildTextEditor({ textarea, kind, extraRow = null, compact, height }) {
+export function buildTextEditor({ textarea, kind, extraRow = null, compact, height, name = '' }) {
   const root = document.createElement('div');
   root.className = 'te-root';
   root.style.height = height;
@@ -394,6 +415,8 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
       if (insert === '\n') return; // nothing to keep: the browser's own Enter
       e.preventDefault();
       applyTextEdit(textarea, { from: a, to: b, insert, selStart: a + insert.length, selEnd: a + insert.length });
+    } else if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && a === b && tableTabInText(textarea)) {
+      e.preventDefault();
     } else if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && value.slice(a, b).includes('\n')) {
       e.preventDefault();
       const edit = indentLines(value, a, b, e.shiftKey ? -1 : 1);
@@ -545,6 +568,22 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     }
     sync();
   });
+  if (getEmacsMode(vars())) {
+    const emacs = attachEmacsMode({
+      textarea,
+      root,
+      wrap,
+      find,
+      keys,
+      name,
+      options: { panel: getEmacsKeyPanel(vars()), adjusted: getYankAdjustedSubtrees(vars()), folded: getYankFoldedSubtrees(vars()), clipboard: getSelectEnableClipboard(vars()) },
+      applyEdit: (edit, quiet) => applyTextEdit(textarea, edit, quiet),
+      tab: () => textViewTab(textarea),
+      setPanel: (panel) => void commitGlobalVariableChange('org-xx-emacs-key-panel', panel).then(() => emacs.placePanel(panel)),
+      clipboard: platform.clipboard,
+    });
+    queueMicrotask(() => emacs.refresh());
+  }
   return { root, status: say };
 }
 

@@ -3,6 +3,7 @@
 // subtree, toggle heading, next link, and the mark ring (C-c % and C-c &), which also works from the outline.
 import { headingLineIndex } from '../src/org-parser.js';
 import { lineNumberAt } from '../src/text-edit.js';
+import { metaReturn } from '../src/meta-return.js';
 import { markSubtree, nextLink, orgBeginningOfLine, orgEndOfLine, readSpecialCtrlAE, toggleHeading } from '../src/text-commands.js';
 import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -154,4 +155,23 @@ export async function markRingGoto() {
   const doc = S.state.doc;
   const heading = doc && entry.documentId === S.state.documentId ? headingAtLine(doc, entry.line) : null;
   if (heading) navigateToHeading(heading);
+}
+
+/** M-RET in the Text view: a new heading or list item, splitting the line at the caret as org-M-RET-may-split-line says. @returns {boolean} whether the Text view took it */
+export function metaReturnInText() {
+  const ta = textEditor();
+  if (!ta) return false;
+  repeated('meta-return');
+  const result = metaReturn(ta.value, ta.selectionStart, S.state.localVariables['org-M-RET-may-split-line'], keywords());
+  if ('error' in result) {
+    setStatus(result.error);
+    return true;
+  }
+  const { value } = ta;
+  let head = 0;
+  while (head < value.length && head < result.text.length && value[head] === result.text[head]) head++;
+  let tail = 0;
+  while (tail < value.length - head && tail < result.text.length - head && value[value.length - 1 - tail] === result.text[result.text.length - 1 - tail]) tail++;
+  applyTextEdit(ta, { from: head, to: value.length - tail, insert: result.text.slice(head, result.text.length - tail), selStart: result.pos, selEnd: result.pos });
+  return true;
 }

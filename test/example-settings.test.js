@@ -27,7 +27,7 @@ test('every variable with a control in Settings is listed', async () => {
 });
 
 test('a * marks exactly the variables with no control in Settings', () => {
-  const starred = [...body.matchAll(/^;; \* ([a-z][a-z0-9/-]+):/gm)].map((m) => m[1]);
+  const starred = [...body.matchAll(/^;; \* ([a-z][A-Za-z0-9/-]+):/gm)].map((m) => m[1]);
   assert.deepEqual(starred, VARIABLE_CATALOG.map((c) => c.name).sort());
 });
 
