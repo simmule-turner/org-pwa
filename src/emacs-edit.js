@@ -18,6 +18,7 @@ import { boundary, newUndo, recordDelete, recordInsert, undo } from './emacs-und
  * @property {{ adjusted: boolean, folded: boolean }} [yank] `org-yank-adjusted-subtrees` and `org-yank-folded-subtrees` (nil and t in Emacs)
  * @property {import('./emacs-undo.js').UndoState} [undo] the undo list, shared by the states that follow one another
  * @property {Edit[]} [edits] what the command just did to the text, for the undo list
+ * @property {Edit[]} [applied] what the last command did to the text, one edit after the other, for whatever follows the text (folds)
  * @property {string} [error] set when the command signaled an error: the state is then what Emacs leaves
  */
 
@@ -115,6 +116,7 @@ const COMMANDS = {
     return kill(s, s.pos, blank && end < s.text.length ? end + 1 : end, true);
   },
   'set-mark-command': (s) => next(s, { mark: s.pos }),
+  'mark-whole-buffer': (s) => next(s, { pos: 0, mark: s.text.length }),
   'exchange-point-and-mark': (s) => (s.mark === null ? fail(s, 'No mark set in this buffer') : next(s, { pos: s.mark, mark: s.pos })),
   'kill-region': (s) => (s.mark === null ? fail(s, 'The mark is not active now') : kill(s, Math.min(s.pos, s.mark), Math.max(s.pos, s.mark), s.mark > s.pos)),
   'kill-ring-save': (s) => {
@@ -367,6 +369,7 @@ function diffEdit(a, b) {
 function regionActive(before, after, name, changed) {
   if (name === 'set-mark-command') return before.last !== 'set-mark-command'; // two in a row leave the mark set and the region off
   if (name === 'exchange-point-and-mark') return after.error ? before.active : true;
+  if (name === 'mark-whole-buffer') return true;
   if (name === 'kill-region' || name === 'kill-ring-save' || changed) return false;
   return before.active;
 }
@@ -404,7 +407,7 @@ export function execute(state, name, arg, prefix) {
     const { error } = undo(u, buf, state.last);
     boundary(u, buf.pos);
     u.amalgamated = null;
-    return { ...state, ...buf, active: buf.text === state.text ? state.active : false, edits: undefined, goal: null, undo: u, last: error ? 'undo-start' : 'undo', error };
+    return { ...state, ...buf, active: buf.text === state.text ? state.active : false, edits: undefined, applied: buf.text === state.text ? [] : diffEdit(state.text, buf.text), goal: null, undo: u, last: error ? 'undo-start' : 'undo', error };
   }
   const counted = prefix ? COUNTED[name] : undefined;
   if (prefix && !counted) return { ...state, goal: null, error: `${name} does not take a prefix argument yet`, last: name };
@@ -423,5 +426,5 @@ export function execute(state, name, arg, prefix) {
   boundary(u, done.pos);
   u.amalgamated = AMALGAMATING.has(name) ? (u.amalgamated === null ? 0 : u.amalgamated + 1) : null;
   const verticalMove = name === 'next-line' || name === 'previous-line';
-  return { ...done, active: regionActive(state, done, name, edits.length > 0), edits: undefined, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name };
+  return { ...done, active: regionActive(state, done, name, edits.length > 0), edits: undefined, applied: edits, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name };
 }

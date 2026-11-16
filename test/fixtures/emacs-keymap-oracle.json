@@ -114,6 +114,22 @@
    "exchange-point-and-mark"
   ],
   [
+   "C-x h",
+   "mark-whole-buffer"
+  ],
+  [
+   "TAB",
+   "org-cycle"
+  ],
+  [
+   "<backtab>",
+   "org-shifttab"
+  ],
+  [
+   "C-c C-r",
+   "org-fold-reveal"
+  ],
+  [
    "C-/",
    "undo"
   ],
@@ -244,10 +260,6 @@
   [
    "M-^",
    "org-delete-indentation"
-  ],
-  [
-   "C-x h",
-   "mark-whole-buffer"
   ],
   [
    "C-x C-o",

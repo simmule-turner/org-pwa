@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import vm from 'node:vm';
+import { swSource } from './sw-source.js';
 
 // Runs the real sw.js in a sandbox with a fake `self` and `caches`, and drives its fetch handler.
 function loadWorker({ cacheHit } = {}) {
@@ -16,7 +16,7 @@ function loadWorker({ cacheHit } = {}) {
     delete: async () => true,
   };
   const fetchFn = async (request) => { fetchCalls.push(request); return 'from-network'; };
-  vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: fetchFn, console, URL, Promise });
+  vm.runInNewContext(swSource(), { self, caches, fetch: fetchFn, console, URL, Promise });
   const dispatch = async (request) => {
     let responded;
     handlers.fetch({ request, respondWith: (p) => { responded = p; } });
@@ -53,7 +53,7 @@ test('a request to another server, or one that is not a GET, is left to the netw
   const handlers = {};
   const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, clients: { claim() {} }, location: { origin: 'https://example.test' } };
   const caches = { open: async () => ({ match: async () => 'cached', addAll: async () => {} }), keys: async () => [], delete: async () => true };
-  vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: async () => 'net', console, URL, Promise });
+  vm.runInNewContext(swSource(), { self, caches, fetch: async () => 'net', console, URL, Promise });
   const answered = (request) => {
     let used = false;
     handlers.fetch({ request, respondWith: () => { used = true; } });
@@ -75,7 +75,7 @@ test('files come only from this version\'s own cache, never from a leftover cach
     keys: async () => [],
     delete: async () => true,
   };
-  vm.runInNewContext(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, fetch: async () => 'net', console, URL, Promise });
+  vm.runInNewContext(swSource(), { self, caches, fetch: async () => 'net', console, URL, Promise });
   let responded;
   handlers.fetch({ request: { mode: 'cors', url: 'https://example.test/app/src-browser/version.js' }, respondWith: (p) => { responded = p; } });
   assert.equal(await responded, 'file-from-this-version');

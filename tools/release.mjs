@@ -79,13 +79,6 @@ if (hash === last && !smoke) {
 }
 if (checkOnly) process.exit(0);
 
-const sw = fs.readFileSync('sw.js', 'utf8');
-const bumped = sw.replace(/const CACHE_NAME = 'org-pwa-shell-v\d+';/, `const CACHE_NAME = 'org-pwa-shell-v${version}';`);
-if (bumped === sw && !sw.includes(`org-pwa-shell-v${version}'`)) {
-  console.error('sw.js has no CACHE_NAME line to bump');
-  process.exit(1);
-}
-if (bumped !== sw) fs.writeFileSync('sw.js', bumped);
 fs.writeFileSync('src-browser/version.js', fs.readFileSync('src-browser/version.js', 'utf8').replace(/org-pwa-shell-v\d+/, `org-pwa-shell-v${version}`));
 
 const zip = path.resolve('..', `org-pwa-v${version}.zip`);

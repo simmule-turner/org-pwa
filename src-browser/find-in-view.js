@@ -7,14 +7,17 @@ import { focusRowOfMark } from './agenda-row-focus.js';
 import { outlineEl } from './dom.js';
 
 const ROW_VIEWS = ['agenda', 'tasklist', 'match', 'searchview', 'command'];
-// controls and headings of the screen itself are not rows
-const SKIP = 'button, input, textarea, select, label, h2, [data-view-filter], [data-query-count], [data-find-skip]';
+// controls of the screen are not text to search; its headings are, as the lines of an agenda buffer are
+const SKIP = 'button, input, textarea, select, label, [data-view-filter], [data-query-count], [data-find-skip]';
 const HIT = 'find-hit';
 
 const find = {
   /** @type {HTMLElement[]} */ marks: [],
   current: 0,
   problem: '',
+  /** past the last match (or before the first) the search fails, and the next step wraps round, as in Emacs */
+  failing: false,
+  wrapped: false,
   /** @type {MutationObserver | null} */ observer: null,
   applying: false,
   scheduled: false,
@@ -59,8 +62,9 @@ function updateCount() {
   const query = S.searchQuery;
   el.style.color = find.problem ? '#c0392b' : '';
   if (find.problem) el.textContent = find.problem;
-  else if (!query) el.textContent = 'Type to mark matches on this screen. Enter or the arrows step; Regex is in ⋯.';
-  else el.textContent = find.marks.length === 0 ? 'No matches on this screen.' : `${find.current + 1} of ${find.marks.length} match${find.marks.length === 1 ? '' : 'es'} on this screen`;
+  else if (!query) el.textContent = 'Type to mark matches on this screen. C-s and the arrows step, Enter stays on the match; Regex is in ⋯.';
+  else if (find.marks.length === 0) el.textContent = 'Failing: no matches on this screen.';
+  else el.textContent = `${find.failing ? 'Failing: ' : find.wrapped ? 'Wrapped: ' : ''}${find.current + 1} of ${find.marks.length} match${find.marks.length === 1 ? '' : 'es'} on this screen`;
 }
 
 function apply() {
@@ -127,7 +131,11 @@ function watch() {
 
 /** @param {{ reset?: boolean }} [options] reset: the query changed, so start at the first match and show it */
 export function refreshRowFind({ reset = false } = {}) {
-  if (reset) find.current = 0;
+  if (reset) {
+    find.current = 0;
+    find.failing = false;
+    find.wrapped = false;
+  }
   apply();
   if (reset) find.marks[find.current]?.scrollIntoView({ block: 'center' });
 }
@@ -139,14 +147,27 @@ export function stopRowFind() {
   clearMarks();
   find.applying = false;
   find.current = 0;
+  find.failing = false;
+  find.wrapped = false;
   find.problem = '';
 }
 
-/** C-s (delta 1) and C-r (delta -1): the next or previous match, wrapping round at the ends. */
-/** @param {number} delta */
+/** C-s (delta 1) and C-r (delta -1): the next or previous match. Past the last one (or before the first) the search fails; one more press wraps round.
+ * @param {number} delta */
 export function stepRowFind(delta) {
-  if (find.marks.length === 0) return;
-  find.current = (find.current + delta + find.marks.length) % find.marks.length;
+  const n = find.marks.length;
+  if (n === 0) return;
+  const atEnd = delta > 0 ? find.current === n - 1 : find.current === 0;
+  if (atEnd && !find.failing) {
+    find.failing = true;
+  } else if (atEnd) {
+    find.failing = false;
+    find.wrapped = true;
+    find.current = delta > 0 ? 0 : n - 1;
+  } else {
+    find.failing = false;
+    find.current += delta;
+  }
   paintCurrent();
   updateCount();
   find.marks[find.current].scrollIntoView({ block: 'center' });

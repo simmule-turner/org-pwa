@@ -10,7 +10,8 @@ import { computeNonCollidingKeys } from '../src/capture-template.js';
 import { findHeadingWithRunningClock } from '../src/clock.js';
 import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-palette.js';
 import { parseExtraMenu } from '../src/extra-menu.js';
-import { applyStartupVisibility, collapseFully, cycleFoldLevel, expandOneLevel } from '../src/fold-state.js';
+import { collapseFully, cycleFoldLevel, expandOneLevel } from '../src/fold-state.js';
+import { cycleGlobalFolds } from './fold-commands.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from '../src/god-mode.js';
 import { insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp, moveInlineTask } from '../src/heading-edit.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../src/local-variables.js';
@@ -104,9 +105,7 @@ function archiveDefault(heading) {
 
 export function globalCycleFold() {
   if (!S.state.doc) return;
-  const archiveVisibility = getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived';
-  S.lastGlobalFoldState = S.lastGlobalFoldState === 'overview' ? 'showeverything' : 'overview';
-  applyStartupVisibility(S.state.doc, { visibility: S.lastGlobalFoldState }, archiveVisibility);
+  cycleGlobalFolds(S.state.doc);
   render();
 }
 

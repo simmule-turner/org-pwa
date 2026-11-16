@@ -186,5 +186,5 @@ export {};
  *   weatherData: Record<string, any> | null, weatherLastRefreshed: string | null,
  *   expandedThemeColorSection: string | null, customThemeColors: Record<string, Record<string, string>>,
  *   radioTargetsCache: { doc: Doc, re: RegExp | null } | null, ancestorIndexCache: WeakMap<Heading, Heading[]> | null, fileTagsIndexCache?: WeakMap<Heading, string[]> | null,
- *   swRegistration: ServiceWorkerRegistration | null, updateCheckStatus: string | null, currentAppVersion: string | null, appVersionCheckState: string
+ *   swRegistration: ServiceWorkerRegistration | null, updateCheckStatus: string | null, foundAppVersion: string | null, currentAppVersion: string | null, appVersionCheckState: string
  * }} AppState */

@@ -140,14 +140,20 @@ The parser does not model inline tasks, radio links, timestamps, entities, LaTeX
 * Emacs mode
 A separate mode, kept until the Text view is no longer needed, that looks and feels like Emacs: the Text view's textarea stays (so phones, IME and the device keyboard keep working) with Emacs's keys, kill ring, mark and look on top. Each stage is compared with Emacs 29.3 where it can be.
 ** [#B] Emacs mode: more keys
-=M-y= (kill ring cycling), =C-x h= (mark the buffer), =C-x C-o=, =M-SPC=, =C-v= and =M-v=, =M-<= and =M-> with a prefix, a prefix for =C-t=, =M-t=, =C-x C-x=, =M-\\= and =M-m=, =C-?= (redo), undo within the region, =C-s= and =C-r= search, and the =C-c= prefix. Undoing a re-leveled =C-y= takes one step where Emacs takes several. Each is compared with Emacs 29.3 as the rest are.
+=M-y= (kill ring cycling), =C-x C-o=, =M-SPC=, =C-v= and =M-v=, =M-<= and =M-> with a prefix, a prefix for =C-t=, =M-t=, =C-x C-x=, =M-\\= and =M-m=, =C-?= (redo), undo within the region, =C-s= and =C-r= search, and the =C-c= prefix. Undoing a re-leveled =C-y= takes one step where Emacs takes several. Each is compared with Emacs 29.3 as the rest are.
 - Effort: M. Impact: M.
 ** [#B] Emacs mode: minibuffer and buffers
 Messages carry Emacs's words and go to a =*Messages*= buffer, =M-x= completes in the minibuffer (the panel gets =M-x= and =C-c= then), and =C-x b=, =C-x k=, =C-x C-b= switch, kill and list the open files (the tabs).
 - Effort: M. Impact: M.
 ** [#B] Emacs mode: Org commands at the caret
-=Tab= and =S-Tab= cycle visibility in the text, then the commands that act at point (=org-return=, =org-open-line=, =org-drag-element-*=, =S-up= and =S-down= on a timestamp, =C-c C-c= in context, =M-left= and =M-right= on the element at point). Supersedes "Cursor-text commands".
+The commands that act at point (=org-return=, =org-open-line=, =org-drag-element-*=, =S-up= and =S-down= on a timestamp, =C-c C-c= in context, =M-left= and =M-right= on the element at point). Supersedes "Cursor-text commands".
 - Effort: M. Impact: M.
+** [#C] Emacs mode: folding as Emacs does it
+=TAB= and =S-TAB= use the outline's folds, which differ from Emacs in a few places: =S-TAB= toggles the overview and everything where Emacs goes through contents as well; =C-u C-u TAB= and =C-u C-u C-u TAB= (startup visibility, drawers); =C-u N S-TAB= with N above 5 shows all headings; =TAB= on a list item, a property line, a source block or =#+begin= folds or aligns it in Emacs and here is the Text view's Tab; =C-d= and =DEL= beside a fold stop where Emacs stops and asks to repeat with the text visible; after =C-w= takes a heading between two folded stretches Emacs merges the stretches and moves point; the line numbers and search highlights follow the text, not the folded picture.
+- Effort: M. Impact: S.
+** [#C] Find: the rest of incremental search
+The Text view's Find follows Emacs's =isearch= for typing, =C-s=, =C-r=, =DEL=, =RET=, =C-g=, =C-w=, =M-c=, =M-r= and the Emacs regexp, checked against Emacs 29.3. Still to do: the history keys (=M-p=, =M-n=) and =M-e=, which Emacs's batch mode does not run reliably enough to check; buttons for the case and word-search switches (=M-c=, =M-s w= work from a keyboard only, and =M-s w= is not wired); searching backward with a string that holds a run of spaces, where Emacs starts the match at the first of the spaces and this at the last; and the same search on the Org view's cross-file results, which step through a list rather than the text.
+- Effort: M. Impact: S.
 ** [#C] Emacs mode: faces and window
 Emacs's Org faces (=org-level-1= to =8=, =org-todo=, =org-done=, =org-table=, =org-link=), =org-ellipsis=, and optionally split windows (=C-x 2=, =C-x 3=, =C-x 0=, =C-x 1=).
 - Effort: M. Impact: S.

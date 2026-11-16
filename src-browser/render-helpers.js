@@ -114,17 +114,16 @@ export function getOrRenderPlotSvg(table) {
 }
 
 /** Asks the currently-active (controlling) service worker for its own
- *  version via a GET_VERSION message/MessageChannel round-trip --
- *  sw.js is a classic, non-module script (registered without {type:
- *  'module'}), so it can't share an imported constant with app.js
- *  directly the way two ES modules could. Returns null if there's no
- *  service worker support, no controller yet (e.g. the very first
+ *  version via a GET_VERSION message/MessageChannel round-trip.
+ *  Returns null if there's no
+ *  service worker support, no worker to ask (e.g. the very first
  *  load before the SW has taken control), or the round-trip doesn't
  *  resolve within a couple seconds for any reason -- callers should
  *  treat null as "unknown" and show nothing rather than a stale or
  *  fabricated value. */
-export function getServiceWorkerVersion() {
-  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return Promise.resolve(null);
+export function getServiceWorkerVersion(/** @type {ServiceWorker | null} */ worker = null) {
+  const asked = worker || ('serviceWorker' in navigator ? navigator.serviceWorker.controller : null);
+  if (!asked) return Promise.resolve(null);
   return new Promise((resolve) => {
     let settled = false;
     /** @param {any} [value] */
@@ -135,8 +134,22 @@ export function getServiceWorkerVersion() {
     };
     const channel = new MessageChannel();
     channel.port1.onmessage = (event) => settle((event.data && event.data.version) || null);
-    navigator.serviceWorker.controller?.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+    asked.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
     setTimeout(() => settle(null), 2000);
+  });
+}
+
+/** Waits until a worker that is installing has finished: 'installed' (a new version is ready) or 'redundant' (its install failed or was refused).
+ *  @param {ServiceWorker} worker @returns {Promise<string>} the state it ended in */
+export function workerInstalled(worker) {
+  return new Promise((resolve) => {
+    const done = () => worker.state !== 'installing' && worker.state !== 'parsed';
+    if (done()) return resolve(worker.state);
+    worker.addEventListener('statechange', function onChange() {
+      if (!done()) return;
+      worker.removeEventListener('statechange', onChange);
+      resolve(worker.state);
+    });
   });
 }
 

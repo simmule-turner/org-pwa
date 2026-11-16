@@ -13,7 +13,8 @@ import { buildQueryReplacePattern } from './doc-helpers.js';
 import { openRemotePath } from './documents-io.js';
 import { minibufferSearchEl, modelineBarEl, searchPanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
-import { paintTextMatches } from './text-view.js';
+import { isearchKey, isearchMatches, isearchStart, compile as compileSearch } from '../src/isearch.js';
+import { paintTextMatches, textFindHooks } from './text-view.js';
 import { isRowFindView, refreshRowFind, stepRowFind, stopRowFind, updateRowFindCount } from './find-in-view.js';
 import { narrowToSparseMatches } from './gestures-structure.js';
 import { navigateToHeadingByPath, outlinePathForHeadingInDocument } from './navigation.js';
@@ -74,22 +75,38 @@ export function renderMinibufferSearch() {
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.preventDefault(); // a search query is one line; results already update live
-    if (S.currentView === 'text' && (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'r')))) {
-      e.preventDefault();
-      stepTextFind(e.key === 'r' || e.shiftKey ? -1 : 1);
-      return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (S.currentView === 'text') {
+      // Emacs's incremental search keys: C-s and C-r step, RET ends at the match, C-g goes back, C-w adds the word, M-c changes case
+      if (ctrl && (e.key === 's' || e.key === 'r')) { e.preventDefault(); stepTextFind(e.key === 'r' ? -1 : 1); return; }
+      if (ctrl && e.key === 'g') { e.preventDefault(); abortTextFind(); return; }
+      if (ctrl && e.key === 'w') { e.preventDefault(); yankIntoTextFind(); return; }
+      if (e.altKey && e.key === 'c') { e.preventDefault(); toggleTextFindCase(); return; }
+      if (e.altKey && e.key === 'r') { e.preventDefault(); S.searchUseRegex = !S.searchUseRegex; renderSearchOptionsMenu(); refreshTextFind(false); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); stepTextFind(e.key === 'ArrowUp' ? -1 : 1); return; }
+      if (e.key === 'Enter') { e.preventDefault(); exitTextFind(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); abortTextFind(); return; }
     }
     if (isRowFindView()) {
-      // Emacs's incremental search keys: Enter or C-s next, Shift+Enter or C-r previous
-      if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'r'))) {
+      // Emacs's incremental search keys: C-s next, C-r previous, RET stays on the match's row
+      if (ctrl && (e.key === 's' || e.key === 'r')) {
         e.preventDefault();
-        stepRowFind(e.key === 'r' || e.shiftKey ? -1 : 1);
+        stepRowFind(e.key === 'r' ? -1 : 1);
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        stepRowFind(e.key === 'ArrowUp' ? -1 : 1);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        closeSearch();
         return;
       }
     }
     if (S.currentView !== 'text' && !isRowFindView()) {
       // the same keys over the results list: Enter, Down or C-s next; Shift+Enter, Up or C-r previous
-      const ctrl = e.ctrlKey || e.metaKey;
       if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || (ctrl && (e.key === 's' || e.key === 'r'))) {
         e.preventDefault();
         stepOrgResult(e.key === 'r' || e.key === 'ArrowUp' || e.shiftKey ? -1 : 1);
@@ -173,7 +190,7 @@ export function renderMinibufferSearch() {
   closeBtn.textContent = '\u2715';
   closeBtn.setAttribute('aria-label', 'Close search');
   closeBtn.style.cssText = 'flex-shrink:0;width:38px;height:38px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--fg);line-height:1;';
-  closeBtn.onclick = closeSearch;
+  closeBtn.onclick = () => (S.currentView === 'text' ? exitTextFind() : closeSearch()); // Close is RET: the Text view's cursor stays at the match
   optionsArea.appendChild(optionsRow);
   optionsArea.appendChild(closeBtn);
   minibufferSearchEl.appendChild(optionsArea);
@@ -480,10 +497,13 @@ export function renderSearchPanel() {
   renderMinibuffer();
   searchPanel.innerHTML = '';
   if (!S.searchOpen) {
+    document.getElementById('text-find-info')?.remove();
     stopRowFind();
     const textBox = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
     if (textBox) paintTextMatches(textBox, [], -1); // the Text view's shading goes; the last match stays selected
-    textFind.anchor = null;
+    textFind.st = null; // the next search begins from the cursor, forward
+    textFind.origin = -1;
+    textFind.forward = true;
     searchPanel.style.display = 'none';
     if (S.activeQueryReplace) finishQueryReplace();
     if (S.searchOptionsMenuOpen) {
@@ -613,104 +633,185 @@ export function renderQueryReplacePrompt() {
   searchPanel.appendChild(wrap);
 }
 
-/** The matches of the search box's query in the Text view's text, as [start, end] offsets (an empty match is not one).
- * @param {string} text @returns {Array<[number, number]>} */
-function textMatchRanges(text) {
-  const pattern = buildQueryReplacePattern(S.searchQuery, S.searchUseRegex);
-  const globalPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
-  /** @type {Array<[number, number]>} */ const ranges = [];
-  for (const m of text.matchAll(globalPattern)) if (m[0].length > 0) ranges.push([m.index, m.index + m[0].length]);
-  return ranges;
-}
-
-/** The find in the Text view: the matches, which one is current, and the line that says so. */
+/** The find in the Text view is Emacs's incremental search (src/isearch.js): the box holds the search string, C-s and C-r and the arrows
+ *  step, RET leaves point at the match, C-g goes back to where the search began. */
 const textFind = {
-  ranges: /** @type {Array<[number, number]>} */ ([]),
-  index: -1,
-  /** where the search began, as in Emacs's isearch: every change of the query searches from here, so deleting a letter goes back to the
-   *  earlier match; Enter or C-s moves it to the match reached. null until the first query. */
-  anchor: /** @type {number | null} */ (null),
+  /** @type {import('../src/isearch.js').ISearch | null} */ st: null,
+  /** the text the search state was made for; a different text starts the search again from the cursor */
+  text: '',
+  /** where the search began: the cursor when it opened, or where it was put since */
+  origin: -1,
+  forward: true,
+  /** earlier search strings, newest first, for C-s on an empty box */
+  /** @type {string[]} */ ring: [],
+  /** @type {Array<[number, number]>} */ ranges: [],
 };
 
-/** Shows "N of M matches" in the results panel, shades the matches in the text and, when `select`, makes the first match from the
- *  cursor the current one (selected, scrolled into view). The text box keeps its own cursor and selection: closing the search leaves
- *  the last match selected, as Emacs leaves point on it.
+/** @returns {HTMLTextAreaElement | null} */
+const textBox = () => /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+
+/** Brings the search state in line with the box: characters typed are typed into the search, characters deleted are DEL, anything else
+ *  (a paste over the middle) is the search typed again from where it began. */
+function syncTextFind() {
+  const ta = textBox();
+  if (!ta) return;
+  const text = ta.value;
+  const query = S.searchQuery;
+  let st = textFind.st;
+  if (!st || textFind.text !== text || textFind.origin < 0) {
+    if (textFind.origin < 0 || textFind.text !== text) textFind.origin = Math.min(ta.selectionStart, text.length);
+    st = isearchStart(text, textFind.origin, textFind.forward, textFind.ring, S.searchUseRegex);
+    for (const ch of query) st = isearchKey(st, ch);
+  } else {
+    if (st.frame.regexp !== S.searchUseRegex) st = isearchKey(st, 'M-r');
+    const had = st.frame.string;
+    if (query !== had) {
+      if (query.startsWith(had)) for (const ch of query.slice(had.length)) st = isearchKey(st, ch);
+      else if (had.startsWith(query)) {
+        while (st.frame.string !== query && st.stack.length) st = isearchKey(st, 'DEL');
+        if (st.frame.string !== query) st = retype(st, query);
+      } else st = retype(st, query);
+    }
+  }
+  textFind.st = st;
+  textFind.text = text;
+}
+
+/** The search typed again from where it began. @param {import('../src/isearch.js').ISearch} st @param {string} query */
+function retype(st, query) {
+  let next = isearchStart(st.text, st.origin, textFind.forward, textFind.ring, S.searchUseRegex);
+  for (const ch of query) next = isearchKey(next, ch);
+  return next;
+}
+
+/** Shows the search's state: the match selected and shaded among the others, and the count on the mode line.
+ *  @param {boolean} select moves the cursor and selection to the match */
+function showTextFind(select) {
+  const ta = textBox();
+  const st = textFind.st;
+  if (!ta || !st) return;
+  const f = st.frame;
+  textFind.forward = f.forward;
+  textFind.ranges = isearchMatches(st.text, f);
+  const here = f.other !== null ? Math.min(f.pos, f.other) : -1; // a failing search stays on the last match
+  const index = textFind.ranges.findIndex(([a]) => a === here);
+  if (select) {
+    if (f.success && f.other !== null) {
+      textFindHooks.reveal?.(here);
+      ta.setSelectionRange(Math.min(f.pos, f.other), Math.max(f.pos, f.other), f.forward ? 'forward' : 'backward');
+    } else if (f.success) ta.setSelectionRange(st.origin, st.origin);
+  }
+  paintTextMatches(ta, textFind.ranges, index);
+  const info = textFindInfo();
+  const { problem } = compileSearch(f);
+  if (problem) {
+    info.classList.add('problem');
+    info.textContent = 'Invalid regex: ' + problem;
+  } else {
+    const failing = !f.success;
+    if (failing) info.classList.add('problem');
+    info.textContent = `${f.wrapped ? 'Wrapped ' : ''}${failing ? 'Failing ' : ''}[${index + 1}/${textFind.ranges.length}]`;
+  }
+  if (f.string !== S.searchQuery) {
+    S.searchQuery = f.string; // C-s on an empty box takes the last search string
+    const input = document.querySelector('#minibufferSearch textarea');
+    if (input instanceof HTMLTextAreaElement) input.value = f.string;
+  }
+}
+
+/** Shows the count, shades the matches and, when `select`, moves to the match the search has reached.
  *  @param {boolean} select */
 function refreshTextFind(select) {
   const resultsEl = document.getElementById('search-results');
-  const textarea = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+  const ta = textBox();
   if (!resultsEl) return;
   resultsEl.innerHTML = '';
-  textFind.ranges = [];
-  textFind.index = -1;
-  if (!S.searchQuery.trim()) {
-    textFind.anchor = null; // an emptied query is back at the start, with the cursor where the search began
-    searchPanel.style.display = 'none';
-    if (textarea) paintTextMatches(textarea, [], -1);
+  searchPanel.style.display = 'none'; // the count is on the mode line
+  textFindInfo();
+  if (!ta) return;
+  if (!S.searchQuery && !textFind.st) {
+    textFind.ranges = [];
+    paintTextMatches(ta, [], -1);
     return;
   }
-  searchPanel.style.display = 'block';
+  syncTextFind();
+  showTextFind(select);
+  if (!ta.dataset.findWatch) {
+    ta.dataset.findWatch = '1';
+    ta.addEventListener('input', () => {
+      textFind.origin = -1; // the text changed: the search begins again from the cursor
+      if (S.searchOpen && S.currentView === 'text' && S.searchQuery) refreshTextFind(false);
+    });
+    ta.addEventListener('pointerdown', () => {
+      textFind.origin = -1; // the cursor was put somewhere else
+    });
+  }
+}
+
+/** The match count, as Emacs's mode line shows it: `[n/m]` at the right end of the mode line, over it, so nothing else moves.
+ *  @returns {HTMLElement} */
+function textFindInfo() {
+  document.getElementById('text-find-info')?.remove();
   const info = document.createElement('div');
   info.id = 'text-find-info';
-  info.style.fontSize = '13px';
-  info.style.padding = '6px 2px';
-  info.style.opacity = '0.7';
-  resultsEl.appendChild(info);
-  if (!textarea) return;
-  try {
-    textFind.ranges = textMatchRanges(textarea.value);
-  } catch (err) {
-    const message = err instanceof EmacsRegexError ? err.message : String(err.message || err);
-    info.style.color = '#c0392b';
-    info.style.opacity = '1';
-    info.textContent = 'Invalid regex: ' + message;
-    paintTextMatches(textarea, [], -1);
-    return;
-  }
-  const { ranges } = textFind;
-  if (ranges.length > 0) {
-    if (textFind.anchor === null) textFind.anchor = textarea.selectionStart;
-    const from = textFind.anchor;
-    const next = ranges.findIndex(([a]) => a >= from);
-    textFind.index = next === -1 ? 0 : next; // past the last match it wraps to the first
-    if (select) {
-      const [a, b] = ranges[textFind.index];
-      textarea.setSelectionRange(a, b);
-    }
-  }
-  paintTextMatches(textarea, ranges, textFind.index);
-  showTextFindCount();
-  if (!textarea.dataset.findWatch) {
-    textarea.dataset.findWatch = '1';
-    textarea.addEventListener('input', () => {
-      textFind.anchor = null; // the text changed: the search begins again from the cursor
-      if (S.searchOpen && S.currentView === 'text' && S.searchQuery.trim()) refreshTextFind(false);
-    });
-    textarea.addEventListener('pointerdown', () => {
-      textFind.anchor = null; // the cursor was put somewhere else
-    });
-  }
+  document.getElementById('modelineBar')?.appendChild(info);
+  return info;
 }
 
-function showTextFindCount() {
-  const info = document.getElementById('text-find-info');
-  if (!info || info.style.color) return;
-  const n = textFind.ranges.length;
-  info.textContent = n === 0 ? 'No matches.' : `${textFind.index + 1} of ${n} match${n === 1 ? '' : 'es'}`;
-}
-
-/** Enter or C-s: the next match; Shift+Enter or C-r: the previous one; both wrap round, as in Emacs.
+/** C-s (delta 1) and C-r (delta -1) from the box: the next or previous match. Past the last one the search fails, and one more press wraps round, as in Emacs.
  * @param {number} delta 1 or -1 */
 export function stepTextFind(delta) {
-  const textarea = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
-  const n = textFind.ranges.length;
-  if (!textarea || n === 0) return;
-  textFind.index = (textFind.index + delta + n) % n;
-  const [a, b] = textFind.ranges[textFind.index];
-  textarea.setSelectionRange(a, b);
-  textFind.anchor = a;
-  paintTextMatches(textarea, textFind.ranges, textFind.index);
-  showTextFindCount();
+  syncTextFind();
+  if (!textFind.st) return;
+  textFind.st = isearchKey(textFind.st, delta > 0 ? 'C-s' : 'C-r');
+  showTextFind(true);
+}
+
+/** C-w: the rest of the word at the match is added to the search string. */
+function yankIntoTextFind() {
+  syncTextFind();
+  if (!textFind.st) return;
+  const next = isearchKey(textFind.st, 'C-w');
+  if (next.error) return setStatus(next.error);
+  textFind.st = next;
+  showTextFind(true);
+}
+
+/** M-c: whether the search ignores case is reversed. */
+function toggleTextFindCase() {
+  syncTextFind();
+  if (!textFind.st) return;
+  textFind.st = isearchKey(textFind.st, 'M-c');
+  showTextFind(false);
+}
+
+/** RET: the search ends with the cursor at the match, and the mark where the search began if the cursor moved. */
+function exitTextFind() {
+  syncTextFind();
+  const st = textFind.st;
+  const ta = textBox();
+  if (st && ta) {
+    const done = isearchKey(st, 'RET');
+    textFind.ring = done.ring;
+    ta.setSelectionRange(done.frame.pos, done.frame.pos);
+    if (done.mark !== null) textFindHooks.setMark?.(done.mark);
+  }
+  closeSearch();
+}
+
+/** C-g: while the search is failing it goes back to the last match; otherwise it ends and the cursor returns to where the search began. */
+function abortTextFind() {
+  syncTextFind();
+  const st = textFind.st;
+  const ta = textBox();
+  if (!st || !ta) return closeSearch();
+  if (!st.frame.success) {
+    textFind.st = isearchKey(st, 'C-g');
+    showTextFind(false);
+    return;
+  }
+  ta.setSelectionRange(st.origin, st.origin);
+  closeSearch();
 }
 
 /** The Text-mode counterpart to renderSearchResults' own structured results list: the matches counted, shaded and stepped through
@@ -788,6 +889,7 @@ export function stepOrgResult(/** @type {number} */ delta) {
 }
 
 export function renderSearchResults() {
+  if (S.currentView !== 'text') document.getElementById('text-find-info')?.remove();
   if (S.currentView === 'text') {
     renderTextModeSearchResults();
     return;

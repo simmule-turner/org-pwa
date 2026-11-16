@@ -13,7 +13,7 @@ import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
 import { checkPaste, utf8Length } from '../src/size-limits.js';
 import { confirmDialog, promptText } from './dialogs.js';
-import { scrollContainer } from './chrome.js';
+import { renderModeline, scrollContainer } from './chrome.js';
 import { extraMenuBtn, godModeBtn, navBackBtn, searchBtn } from './dom.js';
 import { setStatus } from './editing.js';
 import { platform } from './platform.js';
@@ -21,6 +21,8 @@ import { caretGeometry, describeEditor, noteExpectedCaret, noteKeyLog } from './
 import { commitGlobalVariableChange } from './settings-quick.js';
 import { tableTab } from '../src/table-tab.js';
 import { attachEmacsMode } from './emacs-mode.js';
+import { foldTextarea } from './fold-textarea.js';
+import { textFolds } from './text-folds.js';
 
 const SVG = {
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -36,6 +38,12 @@ const refreshers = new WeakMap();
 const statusLines = new WeakMap();
 /** @type {WeakMap<HTMLTextAreaElement, (ranges: Array<[number, number]>, current: number) => void>} */
 const matchPainters = new WeakMap();
+
+/** What Find needs of the Emacs mode, set while one is attached: show the entry a match is in, and save the mark where a search began. */
+export const textFindHooks = {
+  /** @type {((pos: number) => void) | null} */ reveal: null,
+  /** @type {((pos: number) => void) | null} */ setMark: null,
+};
 
 /** Shades the matches of a find in the Text view's text: every match softly, the current one strongly, and scrolls the current one into view.
  * @param {HTMLTextAreaElement} textarea @param {Array<[number, number]>} ranges @param {number} current index into `ranges`, or -1 */
@@ -247,10 +255,9 @@ function sameSegs(a, b) {
  * @param {HTMLElement | null} [o.extraRow]  a row of tools for this kind of file (the diary's)
  * @param {boolean} o.compact  a narrowed subtree: no line numbers
  * @param {string} o.height  the CSS height of the whole editor
- * @param {string} [o.name]  the buffer's name, for Emacs mode's modeline
  * @returns {{ root: HTMLElement, status: (text: string) => void }}
  */
-export function buildTextEditor({ textarea, kind, extraRow = null, compact, height, name = '' }) {
+export function buildTextEditor({ textarea, kind, extraRow = null, compact, height }) {
   const root = document.createElement('div');
   root.className = 'te-root';
   root.style.height = height;
@@ -569,20 +576,28 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     sync();
   });
   if (getEmacsMode(vars())) {
+    const facade = foldTextarea(textarea);
+    const folds = textFolds(textarea, facade);
     const emacs = attachEmacsMode({
+      fold: { view: facade.view, hidden: facade.hidden, apply: facade.apply, run: folds.run },
       textarea,
-      root,
       wrap,
       find,
       keys,
-      name,
+      say: (text) => setStatus(text),
+      onMove: () => renderModeline(),
       options: { panel: getEmacsKeyPanel(vars()), adjusted: getYankAdjustedSubtrees(vars()), folded: getYankFoldedSubtrees(vars()), clipboard: getSelectEnableClipboard(vars()) },
       applyEdit: (edit, quiet) => applyTextEdit(textarea, edit, quiet),
       tab: () => textViewTab(textarea),
       setPanel: (panel) => void commitGlobalVariableChange('org-xx-emacs-key-panel', panel).then(() => emacs.placePanel(panel)),
       clipboard: platform.clipboard,
     });
-    queueMicrotask(() => emacs.refresh());
+    textFindHooks.reveal = (pos) => void folds.run('org-fold-reveal', pos, undefined);
+    textFindHooks.setMark = (pos) => emacs.setMark(pos);
+    queueMicrotask(() => {
+      folds.start();
+      emacs.refresh();
+    });
   }
   return { root, status: say };
 }

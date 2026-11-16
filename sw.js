@@ -1,4 +1,5 @@
-const CACHE_NAME = 'org-pwa-shell-v714';
+// The version is written in one place, src-browser/version.js (tools/release.mjs sets it); the worker's cache is named by it.
+import { APP_VERSION as CACHE_NAME } from './src-browser/version.js';
 
 const SHELL_FILES = [
   './',
@@ -24,6 +25,7 @@ const SHELL_FILES = [
   './src/attach.js',
   './src/calendar-grid.js',
   './src/checkbox-cookie.js',
+  './src/isearch.js',
   './src/search.js',
   './src/tags-match.js',
   './src/document-store.js',
@@ -40,6 +42,8 @@ const SHELL_FILES = [
   './src/plain-file.js',
   './src/text-edit.js',
   './src/emacs-edit.js',
+  './src/emacs-fold.js',
+  './src/org-fold.js',
   './src/emacs-keymap.js',
   './src/emacs-undo.js',
   './src/org-yank.js',
@@ -387,6 +391,9 @@ const SHELL_FILES = [
   './src-browser/diary-sheets.js',
   './src-browser/text-view.js',
   './src-browser/emacs-mode.js',
+  './src-browser/fold-commands.js',
+  './src-browser/fold-textarea.js',
+  './src-browser/text-folds.js',
   './src-browser/archive-flow.js',
   './src-browser/attachments-flow.js',
   './src-browser/attach-preview.js',

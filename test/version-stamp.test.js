@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { swSource } from './sw-source.js';
 
 const read = (f) => fs.readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 
-test('the version the code carries is the version the service worker caches under', () => {
-  const sw = /const CACHE_NAME = '([^']+)'/.exec(read('sw.js'))[1];
-  const code = /APP_VERSION = '([^']+)'/.exec(read('src-browser/version.js'))[1];
-  assert.equal(code, sw);
+test('the worker takes its cache name from the version the code carries, and names no version of its own', () => {
+  const sw = read('sw.js');
+  assert.match(sw, /^import \{ APP_VERSION as CACHE_NAME \} from '\.\/src-browser\/version\.js';$/m);
+  assert.doesNotMatch(sw, /org-pwa-shell-v\d+/);
+  assert.match(read('src-browser/version.js'), /APP_VERSION = 'org-pwa-shell-v\d+'/);
 });
 
 /** Runs sw.js's install handler with files that carry `fileVersion`, and says whether the install went through and what was cached. */
@@ -29,7 +31,7 @@ async function install(fileVersion) {
   const caches = { open: async () => cache, delete: async () => { deleted = true; }, keys: async () => [] };
   const self = { addEventListener: (type, fn) => { listeners[type] = fn; }, clients: { claim() {} }, location: { href: 'https://x.test/' } };
   class Request { constructor(url, init) { this.url = url; this.cache = init && init.cache; } }
-  vm.runInNewContext(read('sw.js'), { self, caches, Request, console: { warn() {}, log() {} }, URL, Promise });
+  vm.runInNewContext(swSource(), { self, caches, Request, console: { warn() {}, log() {} }, URL, Promise });
   let pending;
   try {
     listeners.install({ waitUntil: (p) => { pending = p; } });
@@ -41,7 +43,7 @@ async function install(fileVersion) {
 }
 
 test('installing bypasses the browser HTTP cache for every file', async () => {
-  const name = /const CACHE_NAME = '([^']+)'/.exec(read('sw.js'))[1];
+  const name = /APP_VERSION = '([^']+)'/.exec(read('src-browser/version.js'))[1];
   const r = await install(name);
   assert.ok(r.ok);
   assert.ok(r.requests.length > 50 && r.requests.every((q) => q.cache === 'reload'));

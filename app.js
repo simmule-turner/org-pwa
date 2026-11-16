@@ -866,6 +866,7 @@ S.expandedThemeColorSection = null;
 // registration.update() on demand, not only the automatic checks.
 S.swRegistration = null;
 S.updateCheckStatus = null; // null | 'checking' | 'up-to-date' | 'found' | 'error'
+S.foundAppVersion = null; // the version the last check found installed and waiting
 S.currentAppVersion = null; // the active service worker's own CACHE_NAME (e.g. "org-pwa-shell-v225"), once resolved
 S.appVersionCheckState = 'pending'; // 'pending' (never started) | 'checking' (in flight) | 'done' (resolved, currentAppVersion may still be null e.g. no controller was available)
 S.historyDiffExpandedIndex = null;
@@ -1125,7 +1126,7 @@ if ('serviceWorker' in navigator && platform.usesServiceWorker) {
   }
 
   navigator.serviceWorker
-    .register('sw.js')
+    .register('sw.js', { type: 'module', updateViaCache: 'none' }) // none: the version file it imports is looked for on the server too, not in the browser's saved copy
     .then((registration) => {
       S.swRegistration = registration;
       S.appVersionCheckState = 'checking';

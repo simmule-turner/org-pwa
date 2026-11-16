@@ -20,7 +20,7 @@ import { syncCaptureShortcuts } from './capture-shortcuts.js';
 import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialogs.js';
 import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionFile, saveExtensionScript } from './extension-flow.js';
 import { setStatus } from './editing.js';
-import { getServiceWorkerVersion } from './render-helpers.js';
+import { getServiceWorkerVersion, workerInstalled } from './render-helpers.js';
 import { APP_VERSION } from './version.js';
 import { render } from './render.js';
 import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnableProtectionDialog, prepareImport } from './connection-protection.js';
@@ -1190,19 +1190,18 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         renderSettingsView();
         try {
           await S.swRegistration.update();
-          // A successful update() that actually found something newer
-          // fires 'updatefound' asynchronously, which showUpdateBanner
-          // (see the registration setup above) already handles on its
-          // own -- including flipping updateCheckStatus to 'found' and
-          // re-rendering Settings again once that lands. Give that a
-          // brief moment to actually happen before concluding nothing
-          // was found -- 'updatefound' isn't guaranteed to have already
-          // fired by the time update()'s own promise resolves.
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          if (S.updateCheckStatus === 'checking') {
+          // update() answers when the browser has seen a different sw.js, not when that version has finished installing (about 170
+          // files): wait for the install, then say what it found and which version.
+          const incoming = S.swRegistration.installing || S.swRegistration.waiting;
+          if (!incoming) {
             S.updateCheckStatus = 'up-to-date';
-            renderSettingsView();
+          } else if ((await workerInstalled(incoming)) === 'redundant') {
+            S.updateCheckStatus = 'error';
+          } else {
+            S.foundAppVersion = await getServiceWorkerVersion(incoming);
+            S.updateCheckStatus = 'found';
           }
+          renderSettingsView();
         } catch {
           S.updateCheckStatus = 'error';
           renderSettingsView();
@@ -1246,7 +1245,7 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
         : S.updateCheckStatus === 'up-to-date'
           ? 'Up to date'
           : S.updateCheckStatus === 'found'
-            ? 'Update found'
+            ? 'Update found' + (S.foundAppVersion ? ': ' + S.foundAppVersion.replace('org-pwa-shell-', '') : '')
             : S.updateCheckStatus === 'error'
               ? 'Check failed'
               : '';

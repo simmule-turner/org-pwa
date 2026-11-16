@@ -823,7 +823,7 @@ check('TODO view: org-agenda-sorting-strategy priority-down orders the list, ove
   expect(errors.length === 0, `page errors: ${errors}`);
 });
 
-check('Find on the TODO list and the Agenda marks the rows in place, steps with Enter and C-s / C-r, and clears when closed', async () => {
+check('Find on the TODO list and the Agenda marks the rows in place, steps with C-s / C-r (failing at the last match, wrapping on the next press), Enter stays on the match, and the screen\u2019s own headings are searched', async () => {
   const { context, page, errors } = await freshPage();
   await page.setViewportSize({ width: 390, height: 844 });
   const body = ['#+TODO: TODO NEXT | DONE', '* TODO Draft budget for Q4', '* NEXT Send Budget to finance', '* TODO Renew passport', '* TODO Final budget sign-off', ''].join('\n');
@@ -837,13 +837,18 @@ check('Find on the TODO list and the Agenda marks the rows in place, steps with 
   expect((await page.locator('mark.find-hit').count()) === 3, 'a lower-case query is not case sensitive: three marks');
   expect((await page.locator('#find-row-count').innerText()).startsWith('1 of 3'), 'the counter starts at 1 of 3');
   expect((await page.locator('#search-results').count()) === 0 || !(await page.locator('#searchPanel').isVisible()), 'no list of headings: the rows are marked in place');
-  await page.press('#search-query-input', 'Enter');
-  expect((await page.locator('#find-row-count').innerText()).startsWith('2 of 3'), 'Enter is the next match');
-  await page.press('#search-query-input', 'Shift+Enter');
-  await page.press('#search-query-input', 'Shift+Enter');
-  expect((await page.locator('#find-row-count').innerText()).startsWith('3 of 3'), 'Shift+Enter goes back, wrapping round');
   await page.press('#search-query-input', 'Control+s');
-  expect((await page.locator('#find-row-count').innerText()).startsWith('1 of 3'), 'C-s steps forward and wraps');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('2 of 3'), 'C-s is the next match');
+  await page.press('#search-query-input', 'Control+s');
+  await page.press('#search-query-input', 'Control+s');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('Failing: 3 of 3'), 'past the last match the search fails');
+  await page.press('#search-query-input', 'Control+s');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('Wrapped: 1 of 3'), 'and the next C-s wraps round');
+  await page.press('#search-query-input', 'ArrowDown');
+  expect((await page.locator('#find-row-count').innerText()).startsWith('Wrapped: 2 of 3'), 'the arrow steps too');
+  await page.fill('#search-query-input', 'TODO list');
+  await page.waitForTimeout(300);
+  expect((await page.locator('#outline h2 mark.find-hit').count()) === 1, 'the screen\u2019s own title is searched, as the first line of an agenda buffer is');
   await page.fill('#search-query-input', 'Budget');
   await page.waitForTimeout(300);
   expect((await page.locator('mark.find-hit').count()) === 1, 'a capital letter makes it case sensitive: one mark');
@@ -851,9 +856,10 @@ check('Find on the TODO list and the Agenda marks the rows in place, steps with 
   const options = await page.locator('#search-options-row').innerText();
   expect(options.includes('Regex') && !options.includes('Replace') && !options.includes('Match'), `options on a row screen: ${options}`);
   await page.locator('[aria-label="Next match"]').click();
-  await page.evaluate(() => document.getElementById('searchBtn').click()); // closes the search
+  await page.press('#search-query-input', 'Enter'); // RET: the search ends on the match
   await page.waitForTimeout(250);
-  expect((await page.locator('mark.find-hit').count()) === 0, 'closing the search clears the marks');
+  expect((await page.locator('mark.find-hit').count()) === 0, 'Enter ends the search and clears the marks');
+  expect(!(await page.locator('#find-row-count').isVisible()), 'and the counter goes');
   await viewMenu(page, 'Agenda');
   await page.evaluate(() => document.getElementById('searchBtn').click());
   await page.waitForSelector('#find-row-count');
@@ -879,7 +885,7 @@ check('Find row actions: the match\u2019s row is the focused row, n and p move i
   await page.waitForTimeout(300);
   let now = await focused();
   expect(now.length === 1 && now[0].includes('Draft budget'), `the first match\u2019s row is focused: ${now}`);
-  await page.press('#search-query-input', 'Enter');
+  await page.press('#search-query-input', 'Control+s');
   now = await focused();
   expect(now.length === 1 && now[0].includes('Send Budget'), `stepping moves the focused row: ${now}`);
   await page.evaluate(() => document.getElementById('searchBtn').click()); // closes the search
@@ -966,8 +972,8 @@ check('list-holidays asks for two years and lists the holidays between them in *
   await page.waitForSelector('#search-query-input');
   await page.fill('#search-query-input', 'columbus');
   await page.waitForTimeout(400);
-  const found = await page.evaluate(() => document.getElementById('searchPanel')?.innerText || document.body.innerText.slice(0, 400));
-  expect(/1 of 1 match/.test(found), `Find finds Columbus Day in the list: ${found.slice(0, 300)}`);
+  const found = await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return { count: document.getElementById('text-find-info')?.innerText, sel: t.value.slice(t.selectionStart, t.selectionEnd) }; });
+  expect(found.count === '[1/1]' && found.sel.toLowerCase() === 'columbus', `Find finds Columbus Day in the list: ${JSON.stringify(found)}`);
   expect(errors.length === 0, `page errors: ${errors}`);
   await context.close();
 });
@@ -6408,6 +6414,30 @@ check('settings: with a service worker the update block shows the worker’s ver
   await context.close();
 });
 
+check('settings: Check for updates stays on Checking while the new version installs, then names the version it found', async () => {
+  const { context, page, errors } = await freshPage(main, { serviceWorkers: 'allow' });
+  await page.waitForTimeout(2500);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    // a worker that is still installing when update() answers, and is installed 1.5 s later, as a real install of ~170 files is
+    const worker = Object.assign(new EventTarget(), { state: 'installing', postMessage(_m, ports) { ports[0].postMessage({ version: 'org-pwa-shell-v999' }); } });
+    S.swRegistration = { installing: null, waiting: null, update: async () => { S.swRegistration.installing = worker; } };
+    setTimeout(() => { worker.state = 'installed'; worker.dispatchEvent(new Event('statechange')); }, 1500);
+  });
+  await page.click('#moreBtn');
+  await pick(page, '#morePanel', 'Settings');
+  const section = page.locator('[data-settings-updates]');
+  await section.waitFor({ state: 'visible', timeout: 8000 });
+  await section.getByRole('button', { name: 'Check for updates' }).click();
+  await page.waitForTimeout(900);
+  expect((await section.locator('[data-about-status]').innerText()) === 'Checking\u2026', 'while the install runs the status stays on Checking');
+  await page.waitForFunction(() => document.querySelector('[data-about-status]')?.textContent === 'Update found: v999', null, { timeout: 6000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('attachments on a LOCAL document: refused with a pointer before a folder is chosen, the folder is asked for once, backing out is silent, and attach, open and delete then go through that folder', async () => {
   const { context, page, errors } = await freshPage();
   await page.evaluate(async () => {
@@ -8859,7 +8889,7 @@ check('footnotes: outline: the Footnote button in the paragraph editor inserts a
   }
 });
 
-check('text find: Find in the Text view selects the match from the cursor, steps with Enter, Shift+Enter and the Next and Previous buttons, wraps, counts "N of M", shades every match, and leaves the match selected when closed', async () => {
+check('text find: Find in the Text view selects the match from the cursor, is Emacs\u2019s incremental search: C-s and C-r and the buttons step, a failing search wraps on the next press, Enter leaves the cursor at the match and Escape (C-g) goes back to where it began', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -8869,10 +8899,19 @@ check('text find: Find in the Text view selects the match from the cursor, steps
   await viewMenu(page, 'Text');
   await page.waitForSelector('#document-text-edit-input');
   await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.focus(); t.setSelectionRange(0, 0); });
+  const textTop = () => page.evaluate(() => Math.round(document.getElementById('document-text-edit-input').getBoundingClientRect().top));
+  const topBefore = await textTop();
   await page.evaluate(() => document.getElementById('searchBtn').click());
   await page.waitForSelector('#search-query-input');
   await page.fill('#search-query-input', 'quokka');
   await page.waitForTimeout(300);
+  expect((await textTop()) === topBefore, `the match count moves nothing: the text starts at ${topBefore}, then ${await textTop()}`);
+  const place = await page.evaluate(() => {
+    const info = document.getElementById('text-find-info').getBoundingClientRect();
+    const bar = document.getElementById('modeline').getBoundingClientRect();
+    return { right: Math.round(info.right) === Math.round(bar.right), over: info.top >= bar.top - 1 && info.bottom <= bar.bottom + 1, text: document.getElementById('text-find-info').innerText };
+  });
+  expect(place.right && place.over && /^\[\d+\/\d+\]$/.test(place.text), `the count is over the right end of the mode line: ${JSON.stringify(place)}`);
   const state = () => page.evaluate(() => {
     const t = document.getElementById('document-text-edit-input');
     return {
@@ -8885,28 +8924,44 @@ check('text find: Find in the Text view selects the match from the cursor, steps
     };
   });
   let st = await state();
-  expect(st.sel === 'Quokka' && st.info === '1 of 3 matches' && st.marks === 3 && st.cur === 1, `first match: ${JSON.stringify(st)}`);
-  await page.press('#search-query-input', 'Enter');
+  expect(st.sel === 'Quokka' && st.info === '[1/3]' && st.marks === 3 && st.cur === 1, `first match: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Control+s');
   st = await state();
-  expect(st.info === '2 of 3 matches' && st.sel === 'Quokka', `Enter: ${JSON.stringify(st)}`);
-  await page.press('#search-query-input', 'Enter');
-  await page.press('#search-query-input', 'Enter');
+  expect(st.info === '[2/3]' && st.sel === 'Quokka', `C-s: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Control+s');
+  await page.press('#search-query-input', 'Control+s');
   st = await state();
-  expect(st.info === '1 of 3 matches', `wraps to the first: ${JSON.stringify(st)}`);
-  await page.press('#search-query-input', 'Shift+Enter');
+  expect(st.info === 'Failing [3/3]' && st.sel === 'Quokka' && st.line === 47, `past the last match the search fails and stays: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Control+s');
   st = await state();
-  expect(st.info === '3 of 3 matches' && st.line === 47, `previous wraps to the last: ${JSON.stringify(st)}`);
-  expect(st.scroll > 0, `scrolled the match into view: ${JSON.stringify(st)}`);
+  expect(st.info === 'Wrapped [1/3]' && st.line === 7, `the next C-s wraps to the first: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Control+r');
+  st = await state();
+  expect(/\[1\/3\]$/.test(st.info) && st.line === 7, `C-r right after C-s turns round on the same match, as in Emacs: ${JSON.stringify(st)}`);
+  await page.press('#search-query-input', 'Control+r');
+  await page.press('#search-query-input', 'Control+r');
+  st = await state();
+  expect(/\[3\/3\]$/.test(st.info) && st.line === 47, `C-r fails before the first match, then wraps the other way: ${JSON.stringify(st)}`);
   await page.click('[aria-label="Next match"]');
-  st = await state();
-  expect(st.info === '1 of 3 matches', `the Next button steps and wraps: ${JSON.stringify(st)}`);
   await page.click('[aria-label="Previous match"]');
   st = await state();
-  expect(st.info === '3 of 3 matches', `the Previous button steps back and wraps: ${JSON.stringify(st)}`);
+  expect(st.sel === 'Quokka', `the Next and Previous buttons are C-s and C-r: ${JSON.stringify(st)}`);
+  expect(st.scroll > 0, `the match is scrolled into view: ${JSON.stringify(st)}`);
+  // Enter: the cursor stays after the match (a forward search ends there), with nothing selected
+  await page.press('#search-query-input', 'Control+s');
+  await page.press('#search-query-input', 'Enter');
+  await page.waitForTimeout(200);
+  let end = await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return { collapsed: t.selectionStart === t.selectionEnd, before: t.value.slice(Math.max(0, t.selectionStart - 6), t.selectionStart), shaded: document.querySelectorAll('.te-find mark').length }; });
+  expect(end.collapsed && end.before === 'Quokka' && end.shaded === 0, `Enter ends the search with the cursor after the match: ${JSON.stringify(end)}`);
+  // Escape (C-g): back to where the search began
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.focus(); t.setSelectionRange(3, 3); document.getElementById('searchBtn').click(); });
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'quokka');
+  await page.press('#search-query-input', 'Control+s');
   await page.press('#search-query-input', 'Escape');
   await page.waitForTimeout(200);
-  st = await state();
-  expect(st.sel === 'Quokka' && st.marks === 0, `closing keeps the selection and removes the shading: ${JSON.stringify(st)}`);
+  end = await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); return { a: t.selectionStart, b: t.selectionEnd }; });
+  expect(end.a === 3 && end.b === 3, `Escape goes back to where the search began: ${JSON.stringify(end)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -8940,7 +8995,7 @@ check('front matter: editing a list item and a table cell above the first headin
   await context.close();
 });
 
-check('text find: typing and deleting letters follows the search from where it began, and Enter moves that start to the match reached', async () => {
+check('text find: typing and deleting letters follows the search from where it began (DEL goes back a step), and C-s moves that start to the match reached', async () => {
   const { context, page, errors } = await freshPage();
   page.setDefaultTimeout(4000);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -8959,10 +9014,12 @@ check('text find: typing and deleting letters follows the search from where it b
   expect((await at()) === 'line 45@47', `longer query: ${await at()}`);
   await page.fill('#search-query-input', 'line 4');
   expect((await at()) === 'line 4@6', `deleting a letter goes back to where the search began: ${await at()}`);
-  await page.press('#search-query-input', 'Enter');
-  expect((await at()) === 'line 4@42', `Enter: ${await at()}`);
+  await page.press('#search-query-input', 'Control+s');
+  expect((await at()) === 'line 4@42', `C-s: ${await at()}`);
   await page.fill('#search-query-input', 'line 4');
-  expect((await at()) === 'line 4@42', `the start moved to the match reached: ${await at()}`);
+  expect((await at()) === 'line 4@42', `the same query stays where it is: ${await at()}`);
+  await page.fill('#search-query-input', 'line 47');
+  expect((await at()) === 'line 47@49', `typing on goes forward from the match reached: ${await at()}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });
@@ -10064,11 +10121,11 @@ check('custom commands: a composite command (an agenda block with a span, a TODO
   expect(live === 2, `the TODO block's rows are live Agenda rows (${live})`);
   const state = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return { type: S.agendaViewType, view: S.currentView }; });
   expect(state.view === 'command' && state.type === 'day', `the block's span is day: ${JSON.stringify(state)}`);
-  // keys work on the live rows: j focuses the first row, t asks for a state
+  // keys work on the live rows: n focuses the first row (j is org-agenda-goto-date), t asks for a state
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
-  await page.keyboard.press('j');
+  await page.keyboard.press('n');
   await page.locator('.agenda-row-focused').first().waitFor({ timeout: 3000 }).catch(() => {});
-  expect(await page.locator('.agenda-row-focused').count() >= 1, `j focuses a row of the command screen (${await page.locator('[data-agenda-row]').count()} rows, ${await page.evaluate(() => document.activeElement && document.activeElement.tagName)})`);
+  expect(await page.locator('.agenda-row-focused').count() >= 1, `n focuses a row of the command screen (${await page.locator('[data-agenda-row]').count()} rows, ${await page.evaluate(() => document.activeElement && document.activeElement.tagName)})`);
   await page.evaluate(async () => { const { switchToView } = await import('/src-browser/views.js'); switchToView('agenda'); });
   const after = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.agendaViewType; });
   expect(after === 'week', `the Agenda is back to its own span: ${after}`);
@@ -10720,9 +10777,10 @@ check('Emacs mode in the Text view: keys, prefix argument, mark, kill ring, undo
   const text = () => box.inputValue();
   const caret = () => box.evaluate((t) => [t.selectionStart, t.selectionEnd]);
   await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
-  expect(await page.locator('.te-keypanel').isVisible(), 'the key panel shows in Emacs mode');
+  expect(await page.getByRole('button', { name: 'Control for the next key' }).isVisible(), 'the key panel shows in Emacs mode');
   expect((await page.locator('#godModeBtn').evaluate((b) => getComputedStyle(b).display)) === 'none', 'the [g] button gives way to the panel');
-  expect((await page.locator('.te-modeline').innerText()).includes('(1,0)'), `the modeline: ${await page.locator('.te-modeline').innerText()}`);
+  expect(/C0\b/.test(await page.locator('#modeline').innerText()), `the app's own mode line shows the column: ${await page.locator('#modeline').innerText()}`);
+  expect((await page.locator('.te-modeline, .te-echo').count()) === 0, 'there is no second mode line or echo line of its own');
   await page.keyboard.press('Control+e');
   expect((await caret())[0] === 13, `C-e goes to the end of the line: ${await caret()}`);
   await page.keyboard.type('Z');
@@ -10751,6 +10809,108 @@ check('Emacs mode in the Text view: keys, prefix argument, mark, kill ring, undo
   expect((await page.locator('.te-caret .te-block').count()) === 1, 'the block caret is drawn');
   await page.getByRole('button', { name: 'Float the key panel over the text, or dock it' }).click();
   await page.waitForSelector('.te-keypanel.te-floating', { timeout: 4000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('View menu: the Text row carries an Emacs mode checkbox that turns the mode on and off without leaving the view, and tapping Text still opens the Text view', async () => {
+  const { context, page, errors } = await freshPage();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* One\nbody\n');
+  await page.click('#viewMenuBtn');
+  const items = () => page.locator('#viewMenuPanel .menu-list-item');
+  expect((await items().count()) === 4, 'the menu still has four rows');
+  const box = page.locator('#viewMenuPanel [role=checkbox]');
+  const row = page.locator('#viewMenuPanel .menu-list-item', { hasText: 'Text' });
+  const same = await page.evaluate(() => { const b = document.querySelector('#viewMenuPanel [role=checkbox]').getBoundingClientRect(); const r = [...document.querySelectorAll('#viewMenuPanel .menu-list-item')].find((i) => i.textContent.includes('Text')).getBoundingClientRect(); return b.top >= r.top && b.bottom <= r.bottom && b.right <= r.right; });
+  expect(same, 'the checkbox is inside the Text row');
+  expect((await box.getAttribute('aria-checked')) === 'false', 'off to begin with');
+  await box.click();
+  await page.waitForTimeout(300);
+  expect((await box.getAttribute('aria-checked')) === 'true', 'a tap turns it on');
+  expect((await page.locator('#viewMenuPanel').isVisible()) && !(await page.locator('#document-text-edit-input').count()), 'the menu stays open and the view does not change');
+  const on = await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); return S.globalVariables['org-xx-emacs-mode']; });
+  expect(on === 't', `the setting is saved: ${on}`);
+  await row.click({ position: { x: 20, y: 10 } });
+  await page.waitForSelector('#document-text-edit-input');
+  expect((await page.locator('.te-emacs').count()) === 1, 'the Text view opens in Emacs mode');
+  await page.evaluate(() => { const t = document.getElementById('document-text-edit-input'); t.setRangeText('ZZ', 0, 0, 'end'); t.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.click('#viewMenuBtn');
+  await page.locator('#viewMenuPanel [role=checkbox]').click();
+  await page.waitForTimeout(400);
+  expect((await page.locator('.te-emacs').count()) === 0, 'turning it off in the Text view takes the mode away at once');
+  expect((await page.evaluate(() => document.getElementById('document-text-edit-input').value.startsWith('ZZ'))), 'and what was typed is kept');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode in the Text view: Find reaches text inside a fold and shows the entry it is in, and Enter leaves the cursor after the match with the mark where the search began', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+STARTUP: overview\n* A\nbody a\n** A1\nx\n* B\nbody b\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    await commitGlobalVariableChange('select-enable-clipboard', 'nil');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const shown = () => box.evaluate((t) => Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').get.call(t));
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  expect((await shown()) === '#+STARTUP: overview\n* A...\n* B...', 'it opens folded');
+  await page.evaluate(() => document.getElementById('searchBtn').click());
+  await page.waitForSelector('#search-query-input');
+  await page.fill('#search-query-input', 'body b');
+  await page.waitForTimeout(300);
+  expect((await shown()).includes('body b'), `the match inside the fold is shown: ${JSON.stringify(await shown())}`);
+  expect((await box.evaluate((t) => t.value.slice(t.selectionStart, t.selectionEnd))) === 'body b', 'and selected');
+  await page.press('#search-query-input', 'Enter');
+  await page.waitForTimeout(200);
+  const after = await box.evaluate((t) => ({ pos: t.selectionStart, end: t.selectionEnd, text: t.value }));
+  expect(after.pos === after.end && after.text.slice(after.pos - 6, after.pos) === 'body b', `the cursor is after the match: ${JSON.stringify(after.pos)}`);
+  await box.evaluate((t) => t.focus());
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+x');
+  const swapped = await box.evaluate((t) => ({ a: t.selectionStart, b: t.selectionEnd }));
+  expect(swapped.a === 0, `C-x C-x goes to the mark, where the search began: ${JSON.stringify(swapped)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode in the Text view: the text opens folded by #+STARTUP, TAB and S-TAB cycle it as in the outline, and editing goes through folded text', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+STARTUP: overview\n* A\nbody a\n** A1\nx\n* B\nbody b\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    await commitGlobalVariableChange('select-enable-clipboard', 'nil');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const shown = () => box.evaluate((t) => Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').get.call(t));
+  const whole = () => box.evaluate((t) => t.value);
+  await box.evaluate((t) => t.focus());
+  expect((await shown()) === '#+STARTUP: overview\n* A...\n* B...', `it opens as an overview: ${JSON.stringify(await shown())}`);
+  expect((await whole()).includes('body a') && (await whole()).includes('body b'), `the text itself is whole: ${JSON.stringify(await whole())} ${JSON.stringify(await box.evaluate((t) => t.value))}`);
+  const at = (/** @type {string} */ needle) => box.evaluate((t, n) => { const i = t.value.indexOf(n); t.setSelectionRange(i, i); }, needle);
+  await at('* A');
+  await page.keyboard.press('Tab');
+  expect((await shown()) === '#+STARTUP: overview\n* A\nbody a\n** A1...\n* B...', `TAB on a heading shows its children: ${JSON.stringify(await shown())}`);
+  await page.keyboard.press('Control+n');
+  await page.keyboard.press('Control+n');
+  await page.keyboard.press('Control+n');
+  expect((await box.evaluate((t) => t.value.slice(0, t.selectionStart).split('\n').length)) === 6, 'C-n skips the folded text of ** A1 and lands on * B');
+  await page.keyboard.press('Shift+Tab');
+  expect((await shown()) === '#+STARTUP: overview\n* A...\n* B...', `S-TAB gives the overview: ${JSON.stringify(await shown())}`);
+  await page.keyboard.press('Shift+Tab');
+  expect((await shown()) === (await whole()), `S-TAB again shows all: ${JSON.stringify(await shown())}`);
+  await page.keyboard.press('Control+u');
+  await page.keyboard.type('2');
+  await page.keyboard.press('Shift+Tab');
+  expect((await shown()) === '#+STARTUP: overview\n* A...\n** A1...\n* B...', `C-u 2 S-TAB shows two levels: ${JSON.stringify(await shown())}`);
+  await at('* A');
+  await page.keyboard.press('Control+e');
+  await page.keyboard.press('Control+k');
+  expect((await whole()) === '#+STARTUP: overview\n* A\n** A1\nx\n* B\nbody b\n', `C-k at a folded heading kills the text it hides: ${JSON.stringify(await whole())}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

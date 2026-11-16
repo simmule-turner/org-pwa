@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v717 — Find works like Emacs's search
+Find in the Text view is now Emacs's incremental search: C-s and C-r step, a search past the last match says Failing and wraps on the next press, Backspace goes back a step, Enter ends at the match with the mark where the search began, Esc returns there, and a match in folded text opens its entry. The Agenda, TODO, Match and Keyword search screens search their own titles and fail and wrap the same way. Check for updates now waits for the new version to finish installing and names it, instead of saying "Up to date" a moment before the banner appears; the service worker takes its version from the one file the app carries. The View menu's Text row has an Emacs mode checkbox.
+Verified: the search against Emacs 29.3's own, key by key.
+
+* v716 — Find count on the mode line
+In the Text view, Find's match count is now a bold, yellow [n/m] over the right end of the mode line, where Emacs shows such things. It used to sit in a line above the button row and push that row down each time a search opened; now nothing moves, and it stays put when the ⋯ options row is open.
+Verified: the Text view find browser checks, with the count's place and the text's position asserted.
+
+* v715 — Folding in Emacs mode
+The Text view's Emacs mode now opens folded by #+STARTUP and folds as the outline does: TAB on a heading, S-TAB, C-u 2 S-TAB and C-c C-r, with a folded stretch drawn as ... and moved over as one step by C-f, C-n and C-k. Its keys sit in one row that scrolls past the Extras button, with a Shift key for S-TAB, and the app's own mode line shows the column and echo area. C-x h marks the buffer.
+Verified: Emacs 29.3 comparisons for startup folds, 2934 folded-motion cases and 4028 undo and region cases; two browser checks.
+
 * v714 — Emacs mode in the Text view
 A setting (org-xx-emacs-mode) makes the Text view work as Emacs does: movement, word, line and kill keys, C-SPC and C-x C-x for the mark and region, the kill ring (shared with the device clipboard), C-y with Org's subtree handling, C-u and M-digit arguments, and C-/ undo with Emacs's grouping and redo. A block caret, a modeline and an echo line show the state, and a key panel (docked or floating) gives a phone Esc, Ctrl, Alt, Tab, the arrows, C-g, C-SPC, C-x and C-u.
 Verified: Emacs 29.3 comparisons for 28023 command, 3584 yank, 3828 undo and region, and 105 key cases; a browser check.

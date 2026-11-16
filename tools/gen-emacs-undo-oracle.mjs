@@ -16,7 +16,7 @@ const KEYS = {
   'backward-word': 'M-b', 'org-delete-char': 'C-d', 'org-delete-backward-char': 'DEL', 'kill-word': 'M-d', 'backward-kill-word': 'M-DEL',
   'org-kill-line': 'C-k', 'kill-region': 'C-w', 'org-yank': 'C-y', 'org-open-line': 'C-o', 'transpose-chars': 'C-t', 'org-transpose-words': 'M-t',
   'upcase-word': 'M-u', 'downcase-word': 'M-l', 'capitalize-word': 'M-c', 'delete-horizontal-space': 'M-\\', 'undo': 'C-/',
-  'set-mark-command': 'C-@', 'exchange-point-and-mark': 'C-x C-x', 'kill-ring-save': 'M-w', 'next-line': 'C-n', 'previous-line': 'C-p',
+  'set-mark-command': 'C-@', 'exchange-point-and-mark': 'C-x C-x', 'mark-whole-buffer': 'C-x h', 'kill-ring-save': 'M-w', 'next-line': 'C-n', 'previous-line': 'C-p',
 };
 const texts = ['foo bar baz', 'one\ntwo\nthree', 'aa ab  cd'];
 const scripts = [
@@ -46,7 +46,7 @@ const regionScripts = [
   ['set-mark-command', 'forward-char', 'kill-region', 'undo'], ['set-mark-command', 'forward-char', 'self:x', 'undo'],
   ['set-mark-command', 'forward-char', 'forward-char', 'org-kill-line'], ['set-mark-command', 'forward-char', 'org-yank'], ['set-mark-command', 'org-open-line'],
   ['set-mark-command', 'forward-char', 'transpose-chars'], ['set-mark-command', 'forward-word', 'org-transpose-words'],
-  ['exchange-point-and-mark'], ['exchange-point-and-mark', 'exchange-point-and-mark'], ['kill-region'], ['kill-ring-save'],
+  ['mark-whole-buffer'], ['mark-whole-buffer', 'kill-region'], ['mark-whole-buffer', 'kill-ring-save'], ['forward-word', 'mark-whole-buffer', 'exchange-point-and-mark'], ['mark-whole-buffer', 'set-mark-command'], ['exchange-point-and-mark'], ['exchange-point-and-mark', 'exchange-point-and-mark'], ['kill-region'], ['kill-ring-save'],
 ];
 const cases = [];
 for (const text of ['foo bar baz', 'one\ntwo']) for (let pos = 0; pos <= text.length; pos++) for (const cmds of regionScripts) {

@@ -34,6 +34,10 @@ export const BINDINGS = {
   'M-m': 'back-to-indentation',
   'C-SPC': 'set-mark-command',
   'C-x C-x': 'exchange-point-and-mark',
+  'C-x h': 'mark-whole-buffer',
+  TAB: 'org-cycle',
+  '<backtab>': 'org-shifttab',
+  'C-c C-r': 'org-fold-reveal',
   'C-/': 'undo',
   'C-_': 'undo',
   'C-x u': 'undo',
@@ -47,7 +51,7 @@ export const BINDINGS = {
 /** Every key sequence of the table. */
 export const KEY_SEQUENCES = Object.keys(BINDINGS);
 
-const PREFIXES = new Set(['C-x', 'ESC', 'M-ESC']);
+const PREFIXES = new Set(['C-x', 'C-c', 'ESC', 'M-ESC']);
 
 /** @typedef {{ n: number, universal: boolean }} Prefix */
 /**

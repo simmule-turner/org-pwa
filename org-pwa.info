@@ -1098,23 +1098,30 @@ in ‘org-agenda-files’.
 opens the Org view there.  Tag, TODO, priority and property filters and
 Match queries describe headings, so they leave it out.
 
-   In View → Text, Find marks every match in the text and selects the
-first one from the cursor; Enter, ▼ or ‘C-s’ goes to the next,
-Shift+Enter, ▲ or ‘C-r’ to the previous, wrapping round, with "N of M
-matches" shown.  Find searches from where you began, so deleting a
-letter of the query goes back to the earlier match.  Closing Find leaves
-the last match selected.  The Regex option works as elsewhere.
+   In View → Text, Find is Emacs's incremental search.  Type to search
+from the cursor: every match is shaded, the one you are on is selected,
+and ‘[N/M]’ at the right end of the mode line counts them.  ‘C-s’ (or ▼)
+goes to the next match and ‘C-r’ (▲) to the previous; past the last one
+the search shows *Failing* and the next press wraps round (*Wrapped*).
+Deleting a letter goes back a step.  Enter ends the search with the
+cursor at the match and, in Emacs mode, the mark where the search began
+(‘C-x C-x’ goes back there); Esc (‘C-g’) returns to where it began, or,
+while failing, to the last match.  A lower-case query ignores case and a
+capital letter makes it exact (‘Alt-C’ switches); a space matches any
+run of spaces and tabs; ‘C-w’ adds the rest of the word at the match;
+the Regex option (‘Alt-R’) reads the query as an Emacs regexp.  A match
+inside folded text opens the entry it is in.
 
    On the Agenda, TODO, Match and Keyword search screens Find works in
-place, as ‘C-s’ does in an agenda buffer: every match in the rows on
-screen is highlighted and the current one is marked more strongly.
-Enter or ▼ (‘C-s’) goes to the next, Shift+Enter or ▲ (‘C-r’) to the
-previous, wrapping round.  A lower-case query ignores case and a capital
-letter makes it exact; ⋯ has Regex.  Closing the search clears the marks
-and leaves the row of the current match focused.  On these screens ‘n’
-and ‘p’ (or ‘j’, ‘k’ and the arrow keys) move the focus, ‘t’ changes the
-row's state, a comma sets its priority, Enter goes to its heading and
-Space opens its actions.
+place, as ‘C-s’ does in an agenda buffer: every match on the screen, its
+title included, is highlighted and the current one is marked more
+strongly.  ‘C-s’ (or ▼) goes to the next and ‘C-r’ (▲) to the previous;
+past the last one the search fails and the next press wraps round.  A
+lower-case query ignores case and a capital letter makes it exact; ⋯ has
+Regex.  Enter ends the search and leaves the row of the current match
+focused.  On these screens ‘n’ and ‘p’ (or ‘j’, ‘k’ and the arrow keys)
+move the focus, ‘t’ changes the row's state, a comma sets its priority,
+Enter goes to its heading and Space opens its actions.
 
    In the Org view, ▼ or Enter (‘C-s’, Down) marks the next result and ▲
 or Shift+Enter (‘C-r’, Up) the previous, wrapping round, with "N of M
@@ -3208,23 +3215,23 @@ File: org-pwa.info,  Node: Emacs mode,  Next: Agenda,  Prev: The plain-text edit
 Emacs mode
 ==========
 
-Settings → Editing → *Text view: work like Emacs* (‘org-xx-emacs-mode’)
-gives the Text view Emacs's keys.  The text, the device keyboard and
-touch selection work as before; the caret is a block, a modeline shows
-‘-U:**- file.org All (line,column) (Org)’, and a line under it shows
-what a key sequence has so far (‘C-x-’) and Emacs's messages (‘End of
-buffer’).
+The *Emacs mode* checkbox on the Text row of the View menu, or Settings
+→ Editing → *Text view: work like Emacs* (‘org-xx-emacs-mode’), gives
+the Text view Emacs's keys.  The text, the device keyboard and touch
+selection work as before; the caret is a block, the mode line shows the
+caret's column as usual, and the status line under it shows what a key
+sequence has so far (‘C-x-’) and Emacs's messages (‘End of buffer’).
 
    The keys: ‘C-f C-b C-n C-p C-a C-e M-f M-b M-< M->’ move; ‘C-d DEL
-M-d M-DEL C-k’ delete and kill; ‘C-SPC’ sets the mark and ‘C-x C-x’
-swaps it with point; ‘C-w M-w C-y’ kill, copy and yank; ‘C-o C-t M-t M-u
-M-l M-c M-\ M-m’ open a line, transpose, change case and tidy spaces;
-‘C-/’, ‘C-_’ and ‘C-x u’ undo, and undoing after another command redoes;
-‘C-g’ quits.  ‘C-u’, ‘C-u C-u’, ‘M-3’ and ‘C-u -’ give a count to the
-commands that take one.  ‘Esc’ then a key is that key with Meta.
-Typing, ‘Backspace’ and the arrow keys work as usual and go through the
-same undo list, grouped as Emacs groups them.  ‘Ctrl-C’ and ‘Ctrl-V’
-keep their meaning in the browser.
+M-d M-DEL C-k’ delete and kill; ‘C-SPC’ sets the mark, ‘C-x C-x’ swaps
+it with point and ‘C-x h’ marks the buffer; ‘C-w M-w C-y’ kill, copy and
+yank; ‘C-o C-t M-t M-u M-l M-c M-\ M-m’ open a line, transpose, change
+case and tidy spaces; ‘C-/’, ‘C-_’ and ‘C-x u’ undo, and undoing after
+another command redoes; ‘C-g’ quits.  ‘C-u’, ‘C-u C-u’, ‘M-3’ and ‘C-u
+-’ give a count to the commands that take one.  ‘Esc’ then a key is that
+key with Meta.  Typing, ‘Backspace’ and the arrow keys work as usual and
+go through the same undo list, grouped as Emacs groups them.  ‘Ctrl-C’
+and ‘Ctrl-V’ keep their meaning in the browser.
 
    The kill ring is shared with the device clipboard
 (‘select-enable-clipboard’): what you kill can be pasted elsewhere, and
@@ -3233,11 +3240,25 @@ a heading as Org does (‘org-yank’); ‘org-yank-adjusted-subtrees’ set to
 ‘t’ changes its levels to fit where it lands, and
 ‘org-yank-folded-subtrees’ leaves a long one folded.
 
-   The key panel has *Esc*, *Ctrl* and *Alt* (tap, then the next key),
-*Tab*, the arrows, *C-g*, *C-SPC*, *C-x*, *C-u*, *C-/*, a button that
-shows or hides the device keyboard, and *Float* or *Dock*, which place
-the panel over the text or under it (‘org-xx-emacs-key-panel’).  The
-floating *[g]* button gives way to the panel while the mode is on.
+   *Folding.*  The text opens as the outline does, folded by
+‘#+STARTUP:’ (‘overview’, ‘content’, ‘show2levels’ and the rest), with
+each folded stretch drawn as ‘...’.  ‘TAB’ on a heading cycles its
+subtree (folded, children, everything), ‘S-TAB’ toggles the overview and
+everything, ‘C-u 2 S-TAB’ shows two levels, and ‘C-c C-r’ opens the
+outline around point (‘C-u C-c C-r’ also shows the entries on the way).
+These change the same folds the outline shows.  A folded stretch is one
+step for the caret: ‘C-f’ and ‘C-b’ go over it, ‘C-n’ and ‘C-p’ skip it,
+and ‘C-k’ at the end of the heading kills it with the heading's line.
+‘C-d’ and ‘DEL’ beside it say ‘Edit in invisible region aborted’ and
+change nothing.  ‘TAB’ elsewhere is the Text view's Tab.
+
+   One row of keys sits under the text and scrolls sideways past the
+Extras button: *Esc*, *Ctrl*, *Alt* and *Shift* (tap, then the next key;
+*Shift* with *Tab* is ‘S-TAB’), *Tab*, the arrows, *C-g*, *C-SPC*,
+*C-x*, *C-u*, *C-/*, a button that shows or hides the device keyboard,
+and *Float* or *Dock*, then the ‘*’ ‘/’ ‘%’ ‘(’ ‘)’ ‘&’ ‘-’ ‘:’ ‘<’ ‘>’
+keys.  *Float* puts the keys over the text (‘org-xx-emacs-key-panel’).
+The floating *[g]* button gives way to the panel while the mode is on.
 
 
 File: org-pwa.info,  Node: Agenda,  Next: The TODO view,  Prev: Emacs mode,  Up: org-pwa
@@ -6773,107 +6794,107 @@ Node: Inline text markup43337
 Node: Footnote commands46469
 Node: LaTeX math fragments49249
 Node: Searching51245
-Node: Filter tokens54240
-Node: Regex mode56256
-Node: Match mode57264
-Node: Search extra files58981
-Node: Search and replace59876
-Node: Narrow61625
-Node: Sparse trees62035
-Node: The Search button63777
-Node: Match and Keyword search views64282
-Node: Modeline and minibuffer66449
-Node: Links and images69358
-Node: Configuration73835
-Node: Global Variables75765
-Node: Jumps marks and templates77318
-Node: Folding and #+STARTUP80709
-Node: Local Variables84826
-Node: Lisp init156698
-Node: Lisp functions159024
-Node: Progress logging175067
-Node: org-log-done175548
-Node: Where log items go176246
-Node: Blocking tasks176724
-Node: Repeating tasks and org-log-repeat177289
-Node: The per-keyword logging spec178088
-Node: The LOGBOOK drawer179466
-Node: Agenda Log179965
-Node: Archiving180841
-Node: Restoring (unarchive)183774
-Node: Refile184332
-Node: Extensions186663
-Node: Table functions link types and exports190227
-Node: Agenda sources and header lines191277
-Node: Network position and cache192308
-Node: Source blocks193725
-Node: Literate programming header arguments Noweb and Tangle197158
-Node: Attachments201254
-Node: Clocking204584
-Node: Effort_ALL allowed effort values208039
-Node: Typed dates and durations208959
-Node: Column View210330
-Node: Org Crypt214300
-Node: Org Timer216641
-Node: Line numbers218270
-Node: Narrowing219196
-Node: The plain-text editor219924
-Node: Emacs mode222207
-Node: Agenda224205
-Node: Dated entry sources230189
-Node: Diary-sexp forms233579
-Node: Sun times237409
-Node: Hebrew diary functions239315
-Node: Diary file240415
-Node: Holidays243010
-Node: General <%%(sexp)> timestamps248081
-Node: Other agenda behavior252745
-Node: Habits254054
-Node: Agenda Files255460
-Node: Contacts Files257534
-Node: Calendar and contacts sync (CalDAV CardDAV)258098
-Node: Agenda notifications261249
-Node: The TODO view263322
-Node: Capture Templates264792
-Node: Capturing from other apps285510
-Node: Extras menu287136
-Node: Menu customization291630
-Node: File management294637
-Node: Files view298649
-Node: Tabs301501
-Node: Citations302188
-Node: Export303377
-Node: Document settings304598
-Node: ASCII313086
-Node: HTML314931
-Node: ODT316485
-Node: Line numbers and references in source blocks317519
-Node: LaTeX318804
-Node: Beamer322460
-Node: Slides (HTML)324848
-Node: As-org326023
-Node: Calendar (ics)327678
-Node: Contacts (vcf)330866
-Node: What is dropped338673
-Node: Import339063
-Node: Help343642
-Node: Info reader344208
-Node: Settings347304
-Node: Offline behavior and sync351181
-Node: Long lists355684
-Node: Size limits356417
-Node: Platform support357556
-Node: Android app358323
-Node: Command palette362356
-Node: Security and privacy367116
-Node: Keybindings368523
-Node: god-mode374344
-Node: God-mode without a hardware keyboard390890
-Node: Differences from Emacs org-mode393411
-Node: Known limitations398474
-Node: Development399029
-Node: Concept Index403230
-Node: Variable Index413431
+Node: Filter tokens54792
+Node: Regex mode56808
+Node: Match mode57816
+Node: Search extra files59533
+Node: Search and replace60428
+Node: Narrow62177
+Node: Sparse trees62587
+Node: The Search button64329
+Node: Match and Keyword search views64834
+Node: Modeline and minibuffer67001
+Node: Links and images69910
+Node: Configuration74387
+Node: Global Variables76317
+Node: Jumps marks and templates77870
+Node: Folding and #+STARTUP81261
+Node: Local Variables85378
+Node: Lisp init157250
+Node: Lisp functions159576
+Node: Progress logging175619
+Node: org-log-done176100
+Node: Where log items go176798
+Node: Blocking tasks177276
+Node: Repeating tasks and org-log-repeat177841
+Node: The per-keyword logging spec178640
+Node: The LOGBOOK drawer180018
+Node: Agenda Log180517
+Node: Archiving181393
+Node: Restoring (unarchive)184326
+Node: Refile184884
+Node: Extensions187215
+Node: Table functions link types and exports190779
+Node: Agenda sources and header lines191829
+Node: Network position and cache192860
+Node: Source blocks194277
+Node: Literate programming header arguments Noweb and Tangle197710
+Node: Attachments201806
+Node: Clocking205136
+Node: Effort_ALL allowed effort values208591
+Node: Typed dates and durations209511
+Node: Column View210882
+Node: Org Crypt214852
+Node: Org Timer217193
+Node: Line numbers218822
+Node: Narrowing219748
+Node: The plain-text editor220476
+Node: Emacs mode222759
+Node: Agenda225866
+Node: Dated entry sources231850
+Node: Diary-sexp forms235240
+Node: Sun times239070
+Node: Hebrew diary functions240976
+Node: Diary file242076
+Node: Holidays244671
+Node: General <%%(sexp)> timestamps249742
+Node: Other agenda behavior254406
+Node: Habits255715
+Node: Agenda Files257121
+Node: Contacts Files259195
+Node: Calendar and contacts sync (CalDAV CardDAV)259759
+Node: Agenda notifications262910
+Node: The TODO view264983
+Node: Capture Templates266453
+Node: Capturing from other apps287171
+Node: Extras menu288797
+Node: Menu customization293291
+Node: File management296298
+Node: Files view300310
+Node: Tabs303162
+Node: Citations303849
+Node: Export305038
+Node: Document settings306259
+Node: ASCII314747
+Node: HTML316592
+Node: ODT318146
+Node: Line numbers and references in source blocks319180
+Node: LaTeX320465
+Node: Beamer324121
+Node: Slides (HTML)326509
+Node: As-org327684
+Node: Calendar (ics)329339
+Node: Contacts (vcf)332527
+Node: What is dropped340334
+Node: Import340724
+Node: Help345303
+Node: Info reader345869
+Node: Settings348965
+Node: Offline behavior and sync352842
+Node: Long lists357345
+Node: Size limits358078
+Node: Platform support359217
+Node: Android app359984
+Node: Command palette364017
+Node: Security and privacy368777
+Node: Keybindings370184
+Node: god-mode376005
+Node: God-mode without a hardware keyboard392551
+Node: Differences from Emacs org-mode395072
+Node: Known limitations400135
+Node: Development400690
+Node: Concept Index404891
+Node: Variable Index415092
 
 End Tag Table
 

@@ -1,6 +1,6 @@
 // @ts-check
 // Extracted from app.js: views.
-import { getMenuAliases } from '../src/local-variables.js';
+import { getEmacsMode, getMenuAliases } from '../src/local-variables.js';
 import { parseMenuAliases } from '../src/menu-alias.js';
 import { isPlainTextFile } from '../src/plain-file.js';
 import { S, isAgendaFamilyView } from './app-state.js';
@@ -114,6 +114,7 @@ export function renderViewMenuContent() {
   ]) {
     const btn = aliasedMenuDivItem(viewMenuAliases, label, () => switchToView(key));
     if (btn && key === S.currentView) btn.style.fontWeight = '700';
+    if (btn && key === 'text') addEmacsModeCheckbox(btn);
     viewSwitchButtons[label] = btn;
   }
 
@@ -126,6 +127,49 @@ export function renderViewMenuContent() {
   // The read-only toggle ("%%RO" / "**RW") used to be a separate item here.
   // It's reached through the command palette now (Toggle read-only) or
   // god-mode's own C-x C-q -- see toggleBufferReadOnly's own docs.
+}
+
+/** The Text row's own checkbox: Emacs mode on or off, without leaving the view you are in. @param {HTMLElement} row */
+function addEmacsModeCheckbox(row) {
+  const on = getEmacsMode(S.state.localVariables || S.globalVariables);
+  row.style.display = 'flex';
+  row.style.alignItems = 'center';
+  row.style.justifyContent = 'space-between';
+  const name = document.createElement('span');
+  name.textContent = row.textContent;
+  row.textContent = '';
+  row.appendChild(name);
+  const box = document.createElement('span');
+  box.setAttribute('role', 'checkbox');
+  box.setAttribute('aria-checked', String(on));
+  box.setAttribute('aria-label', 'Emacs mode');
+  box.tabIndex = 0;
+  box.style.cssText = 'display:flex;align-items:center;gap:8px;font-weight:400;font-size:14px;';
+  const mark = document.createElement('span');
+  mark.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;box-sizing:border-box;border:2px solid var(--fg);border-radius:5px;font-weight:700;line-height:1;';
+  mark.textContent = on ? '\u2713' : '';
+  box.append(mark, 'Emacs mode');
+  const toggle = async () => {
+    const { commitGlobalVariableChange } = await import('./settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', on ? 'nil' : 't');
+    renderViewMenu();
+    if (S.currentView === 'text') {
+      commitTextModeIfActive(); // what was typed goes to the document, and the text opens again the way the box now says
+      document.getElementById('document-text-edit-input')?.remove();
+      render();
+    }
+  };
+  box.addEventListener('click', (e) => {
+    e.stopPropagation(); // not a tap on Text itself
+    void toggle();
+  });
+  box.addEventListener('keydown', (e) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    e.stopPropagation();
+    void toggle();
+  });
+  row.appendChild(box);
 }
 
 /** Opens Help: the app's own manual (org-pwa.info, made from README.org) at its Top node. */

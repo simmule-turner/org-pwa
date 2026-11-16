@@ -4,7 +4,8 @@
  * the keymap (src/emacs-keymap.js) to the commands (src/emacs-edit.js) with Emacs's undo list, mark and kill ring; the result is
  * written back to the textarea, drawn with a block caret, a modeline and an echo line, and a panel gives a phone the keys it lacks.
  */
-import { execute, syncExternal } from '../src/emacs-edit.js';
+import { syncExternal } from '../src/emacs-edit.js';
+import { foldedExecute } from '../src/emacs-fold.js';
 import { eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js';
 import { newUndo } from '../src/emacs-undo.js';
 
@@ -25,38 +26,36 @@ function baseKey(e) {
   return pair ? pair[e.shiftKey ? 1 : 0] : e.key;
 }
 
+/** The visibility commands, which the fold model runs. */
+const FOLD_COMMANDS = new Set(['org-cycle', 'org-shifttab', 'org-fold-reveal']);
+
 /** What a read-only buffer still allows: moving, the mark and copying. */
 const READ_ONLY_OK = new Set(['forward-char', 'backward-char', 'org-beginning-of-line', 'org-end-of-line', 'forward-word', 'backward-word', 'beginning-of-buffer', 'end-of-buffer', 'next-line', 'previous-line', 'set-mark-command', 'exchange-point-and-mark', 'kill-ring-save']);
-
-/** @param {string} text @param {number} pos */
-const lineAndColumn = (text, pos) => {
-  const before = text.slice(0, pos);
-  return { line: before.split('\n').length, column: pos - (before.lastIndexOf('\n') + 1) };
-};
 
 /**
  * @param {object} o
  * @param {HTMLTextAreaElement} o.textarea
- * @param {HTMLElement} o.root  the editor, where the modeline, the echo line and a docked panel go
  * @param {HTMLElement} o.wrap  the text and its layers, where a floating panel goes
  * @param {HTMLElement} o.find  a layer laid out as the text is
- * @param {HTMLElement} o.keys  the row of keys the panel sits above
- * @param {string} o.name  the buffer's name for the modeline
+ * @param {HTMLElement} o.keys  the row of keys that scrolls sideways; a docked panel's keys go at its start
+ * @param {(text: string) => void} o.say  the echo area (the status line under the mode line)
+ * @param {() => void} o.onMove  the caret moved: the mode line shows its place
  * @param {{ panel: 'docked' | 'floating', adjusted: boolean, folded: boolean, clipboard: boolean }} o.options
  * @param {(edit: { from: number, to: number, insert: string, selStart: number, selEnd: number }, quiet: boolean) => void} o.applyEdit
  * @param {() => void} o.tab  the Tab key of the Text view
  * @param {(panel: 'docked' | 'floating') => void} o.setPanel  keeps the panel's place in the settings
  * @param {{ readText: () => Promise<string>, writeText: (text: string) => Promise<void> }} o.clipboard
- * @returns {{ press: (key: string) => void, refresh: () => void, panel: HTMLElement, placePanel: (where: 'docked' | 'floating') => void }}
+ * @param {{ view: () => ReturnType<typeof import('../src/org-fold.js').foldView>, hidden: () => Array<[number, number]>, apply: (text: string, edits: Array<{ from: number, removed: string, inserted: number }>) => void, run: (command: string, pos: number, prefix: { n: number, universal: boolean } | undefined) => { handled: boolean, msg: string } }} o.fold  the folded text: how it is shown, and TAB, S-TAB and C-c C-r
+ * @returns {{ press: (key: string) => void, refresh: () => void, placePanel: (where: 'docked' | 'floating') => void, setMark: (pos: number) => void }}
  */
 export function attachEmacsMode(o) {
-  const { textarea, root, wrap, find, keys } = o;
+  const { textarea, wrap, find, keys, say } = o;
   const initial = textarea.value;
   const ctx = {
     /** @type {import('../src/emacs-edit.js').EditState} */
     st: { text: initial, pos: textarea.selectionStart, mark: null, kill: [], active: false, undo: newUndo(), yank: { adjusted: o.options.adjusted, folded: o.options.folded } },
     input: newKeyInput(),
-    sticky: { ctrl: false, alt: false },
+    sticky: { ctrl: false, alt: false, shift: false },
     applying: false,
     /** @type {[number, number, string]} */
     shown: [-1, -1, 'none'],
@@ -69,19 +68,6 @@ export function attachEmacsMode(o) {
   layer.className = 'te-caret';
   layer.setAttribute('aria-hidden', 'true');
   wrap.insertBefore(layer, textarea);
-
-  const modeline = document.createElement('div');
-  modeline.className = 'te-modeline';
-  const echo = document.createElement('div');
-  echo.className = 'te-echo';
-  echo.setAttribute('role', 'status');
-  root.insertBefore(modeline, keys);
-  root.insertBefore(echo, keys);
-
-  /** @param {string} text */
-  const say = (text) => {
-    echo.textContent = text;
-  };
 
   // ---- the kill ring and the device clipboard
   const refreshClipboard = () => {
@@ -119,7 +105,10 @@ export function attachEmacsMode(o) {
     const { st } = ctx;
     ctx.applying = true;
     try {
-      if (textarea.value !== st.text) {
+      if (textarea.value !== st.text && o.fold.hidden().length) {
+        o.fold.apply(st.text, st.applied ?? []);
+        textarea.dispatchEvent(new Event('input', { bubbles: true })); // whatever follows the text hears of it
+      } else if (textarea.value !== st.text) {
         const old = textarea.value;
         let head = 0;
         while (head < old.length && head < st.text.length && old[head] === st.text[head]) head++;
@@ -140,21 +129,19 @@ export function attachEmacsMode(o) {
     keepCaretInView();
   }
 
-  /** The block caret, laid out as the text is, and the modeline. */
+  /** The block caret, laid out as the text is. */
   function draw() {
     const { st } = ctx;
     layer.style.cssText = find.style.cssText;
     layer.style.transform = find.style.transform;
-    const at = st.text[st.pos];
+    const { display, toDisplay } = o.fold.view();
+    const d = toDisplay(st.pos);
+    const at = display[d];
     const block = document.createElement('span');
     block.className = 'te-block';
     block.textContent = at === undefined || at === '\n' ? ' ' : at;
-    layer.replaceChildren(st.text.slice(0, st.pos), block);
-    const { line, column } = lineAndColumn(st.text, st.pos);
-    const room = textarea.scrollHeight - textarea.clientHeight;
-    const where = room <= 1 ? 'All' : textarea.scrollTop <= 0 ? 'Top' : textarea.scrollTop >= room - 1 ? 'Bot' : `${Math.round((textarea.scrollTop / room) * 100)}%`;
-    const changed = st.text !== initial ? '**' : '--';
-    modeline.textContent = `-U:${changed}-  ${o.name}   ${where}   (${line},${column})   (Org)${st.active ? '   Mark set' : ''}`;
+    layer.replaceChildren(display.slice(0, d), block);
+    o.onMove();
   }
 
   /** The caret stays on screen after a command moved it (the textarea scrolls to its own caret only when it is typed at). */
@@ -203,10 +190,22 @@ export function attachEmacsMode(o) {
       say('Buffer is read-only');
       return true;
     }
+    if (FOLD_COMMANDS.has(result.command)) {
+      const ran = o.fold.run(result.command, ctx.st.pos, result.prefix);
+      if (ran.handled) {
+        ctx.st = { ...ctx.st, active: false, last: result.command };
+        say(ran.msg);
+        show();
+        return true;
+      }
+      ctx.input = newKeyInput();
+      o.tab(); // not on a heading: the Text view's own Tab
+      return true;
+    }
     refreshClipboard();
     let before = ctx.st;
     if (result.command === 'org-yank' && o.options.clipboard && ctx.clip && ctx.clip !== before.kill[0]) before = { ...before, kill: [ctx.clip, ...before.kill], yankAt: 0 };
-    const after = execute(before, result.command, result.char, result.prefix);
+    const after = foldedExecute(before, o.fold.hidden(), result.command, result.char, result.prefix);
     ctx.st = after;
     syncKillRing(before, after);
     say(after.error ?? '');
@@ -219,6 +218,11 @@ export function attachEmacsMode(o) {
     if (e.isComposing || e.keyCode === 229 || e.metaKey) return;
     const control = e.ctrlKey || ctx.sticky.ctrl;
     const meta = e.altKey || ctx.sticky.alt;
+    if (e.key === 'Tab' && !control && !meta) {
+      if (press(e.shiftKey || ctx.sticky.shift ? '<backtab>' : 'TAB')) e.preventDefault();
+      setSticky(false, false);
+      return;
+    }
     const plainMove = !control && !meta && (e.key in MOVES || e.key === 'Escape');
     if (!control && !meta && !plainMove) {
       if (e.key === 'Enter' || e.key === 'Tab') ctx.input = newKeyInput(); // keys that are not Emacs's here end a prefix
@@ -260,10 +264,11 @@ export function attachEmacsMode(o) {
   }
 
   // ---- the panel
-  const panel = document.createElement('div');
+  const panel = document.createElement('div'); // the floating panel; docked, its keys sit at the start of the key row
   panel.className = 'te-keypanel';
   panel.setAttribute('role', 'toolbar');
   panel.setAttribute('aria-label', 'Emacs keys');
+  const keyButtons = /** @type {HTMLButtonElement[]} */ ([]);
   /** @type {Record<string, HTMLButtonElement>} */
   const buttons = {};
   /** @param {string} label @param {string} title @param {() => void} act */
@@ -279,24 +284,27 @@ export function attachEmacsMode(o) {
       act();
       if (document.activeElement !== textarea && textarea.inputMode !== 'none') textarea.focus({ preventScroll: true });
     });
-    panel.append(b);
+    keyButtons.push(b);
     buttons[label] = b;
     return b;
   };
-  /** @param {boolean} ctrl @param {boolean} alt */
-  function setSticky(ctrl, alt) {
+  /** @param {boolean} ctrl @param {boolean} alt @param {boolean} [shift] */
+  function setSticky(ctrl, alt, shift = false) {
     ctx.sticky.ctrl = ctrl;
     ctx.sticky.alt = alt;
+    ctx.sticky.shift = shift;
     buttons.Ctrl?.setAttribute('aria-pressed', String(ctrl));
     buttons.Alt?.setAttribute('aria-pressed', String(alt));
+    buttons.Shift?.setAttribute('aria-pressed', String(shift));
   }
   button('Esc', 'Escape (Meta for the next key)', () => void press('ESC'));
-  button('Ctrl', 'Control for the next key', () => setSticky(!ctx.sticky.ctrl, ctx.sticky.alt));
-  button('Alt', 'Alt (Meta) for the next key', () => setSticky(ctx.sticky.ctrl, !ctx.sticky.alt));
-  button('Tab', 'Tab', () => {
-    ctx.input = newKeyInput();
-    adopt();
-    o.tab();
+  button('Ctrl', 'Control for the next key', () => setSticky(!ctx.sticky.ctrl, ctx.sticky.alt, ctx.sticky.shift));
+  button('Alt', 'Alt (Meta) for the next key', () => setSticky(ctx.sticky.ctrl, !ctx.sticky.alt, ctx.sticky.shift));
+  button('Shift', 'Shift for the next key', () => setSticky(ctx.sticky.ctrl, ctx.sticky.alt, !ctx.sticky.shift));
+  button('Tab', 'Tab (with Shift: S-TAB)', () => {
+    const name = ctx.sticky.shift ? '<backtab>' : 'TAB';
+    setSticky(false, false);
+    if (!press(name)) o.tab();
   });
   button('←', 'Left', () => void press('C-b'));
   button('↑', 'Up', () => void press('C-p'));
@@ -318,7 +326,13 @@ export function attachEmacsMode(o) {
     const floating = where === 'floating';
     panel.classList.toggle('te-floating', floating);
     placeBtn.textContent = floating ? 'Dock' : 'Float';
-    (floating ? wrap : root).insertBefore(panel, floating ? null : keys);
+    if (floating) {
+      panel.replaceChildren(...keyButtons);
+      wrap.append(panel);
+    } else {
+      panel.remove();
+      keys.prepend(...keyButtons);
+    }
   }
   placePanel(o.options.panel);
 
@@ -343,5 +357,10 @@ export function attachEmacsMode(o) {
     adopt();
     draw();
   };
-  return { press, refresh, panel, placePanel };
+  /** The mark goes to `pos` without a region (a search left it where it began). @param {number} pos */
+  const setMark = (pos) => {
+    adopt();
+    ctx.st = { ...ctx.st, mark: pos, active: false };
+  };
+  return { press, refresh, placePanel, setMark };
 }
