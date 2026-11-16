@@ -222,6 +222,9 @@ Setting every line below to the value shown changes nothing.
 ;; * org-agenda-use-tag-inheritance: List of agenda view types where to use tag inheritance.
 ;; (setq org-agenda-use-tag-inheritance '(todo search agenda))
 
+;;   org-archive-default-command: What the archive command does: org-archive-subtree or org-archive-to-archive-sibling.
+;; (setq org-archive-default-command 'org-archive-subtree)
+
 ;; * org-archive-file-header-format: The header format string for newly created archive files.
 ;; (setq org-archive-file-header-format " Archived entries from file %s ")
 
@@ -468,6 +471,9 @@ Setting every line below to the value shown changes nothing.
 ;;   org-extend-today-until: Hour at which the day ends; before it, typed dates still mean the previous day.
 ;; (setq org-extend-today-until 0)
 
+;; * org-fold-show-context-detail: Alist between context and visibility span when revealing a location.
+;; (setq org-fold-show-context-detail '((agenda . local) (bookmark-jump . lineage) (isearch . lineage) (default . ancestors)))
+
 ;; * org-footnote-auto-adjust: Non-nil means automatically adjust footnotes after insert/delete.
 ;; (setq org-footnote-auto-adjust nil)
 
@@ -483,6 +489,9 @@ Setting every line below to the value shown changes nothing.
 ;; * org-global-properties: List of property/value pairs that can be inherited by any entry.
 ;; (setq org-global-properties nil)
 
+;; * org-goto-max-level: Maximum target level when running `org-goto' with refile interface.
+;; (setq org-goto-max-level 5)
+
 ;;   org-habit-following-days: Days shown after today in a habit's strip.
 ;; (setq org-habit-following-days 7)
 
@@ -494,6 +503,9 @@ Setting every line below to the value shown changes nothing.
 
 ;;   org-habit-show-habits-only-for-today: Whether habits appear only in today's Agenda.
 ;; (setq org-habit-show-habits-only-for-today t)
+
+;; * org-hide-leading-stars: Non-nil means hide the first N-1 stars in a headline.
+;; (setq org-hide-leading-stars nil)
 
 ;; * org-html-checkbox-type: The type of checkboxes to use for HTML export.
 ;; (setq org-html-checkbox-type 'ascii)
@@ -564,8 +576,14 @@ Setting every line below to the value shown changes nothing.
 ;; * org-icalendar-with-timestamps: Non-nil means make an event from plain time stamps.
 ;; (setq org-icalendar-with-timestamps 'active)
 
+;;   org-inlinetask-default-state: The keyword a new inline task starts with: a string, or nil for none.
+;; (setq org-inlinetask-default-state nil)
+
 ;; * org-inlinetask-min-level: Minimum level a headline must have before it is treated as an inline task.
 ;; (setq org-inlinetask-min-level 15)
+
+;;   org-inlinetask-show-first-star: Whether an inline task shows its first star: t or nil.
+;; (setq org-inlinetask-show-first-star nil)
 
 ;;   org-latex-compiler: pdflatex, xelatex or lualatex.
 ;; (setq org-latex-compiler "pdflatex")
@@ -584,6 +602,12 @@ Setting every line below to the value shown changes nothing.
 
 ;; * org-modules: Modules to load with org (this app reads only org-inlinetask; Emacs loads ten by default).
 ;; (setq org-modules nil)
+
+;; * org-occur-case-fold-search: Non-nil means `org-occur' should be case-insensitive.
+;; (setq org-occur-case-fold-search t)
+
+;; * org-odd-levels-only: Non-nil means skip even levels and only use odd levels for the outline.
+;; (setq org-odd-levels-only nil)
 
 ;; * org-priority-default: The default priority of TODO items.
 ;; (setq org-priority-default 66)
@@ -618,6 +642,12 @@ Setting every line below to the value shown changes nothing.
 ;; * org-scheduled-past-days: Number of days to continue listing scheduled items not marked DONE.
 ;; (setq org-scheduled-past-days 10000)
 
+;; * org-sparse-tree-default-date-type: The default date type when building a sparse tree.
+;; (setq org-sparse-tree-default-date-type nil)
+
+;;   org-special-ctrl-a/e: Whether C-a and C-e in the Text view stop at the text of a heading or item: nil, t or reversed.
+;; (setq org-special-ctrl-a/e nil)
+
 ;;   org-src-preserve-indentation: Whether source and example blocks keep their indentation when lines are shifted.
 ;; (setq org-src-preserve-indentation nil)
 
@@ -632,6 +662,9 @@ Setting every line below to the value shown changes nothing.
 
 ;;   org-startup-with-inline-images: Whether images render inline when a file opens.
 ;; (setq org-startup-with-inline-images nil)
+
+;; * org-structure-template-alist: An alist of keys and block types.
+;; (setq org-structure-template-alist '(("a" . "export ascii") ("c" . "center") ("C" . "comment") ("e" . "example") ("E" . "export") ("h" . "export html") ("l" . "export latex") ("q" . "quote") ("s" . "src") ("v" . "verse")))
 
 ;; * org-stuck-projects: How to identify stuck projects.
 ;; (setq org-stuck-projects '("+LEVEL=2/-DONE" ("TODO" "NEXT" "NEXTACTION") nil ""))
@@ -668,6 +701,9 @@ Setting every line below to the value shown changes nothing.
 
 ;; * org-todo-repeat-to-state: The TODO state to which a repeater should return the repeating task.
 ;; (setq org-todo-repeat-to-state nil)
+
+;; * org-todo-state-tags-triggers: Tag changes that should be triggered by TODO state changes.
+;; (setq org-todo-state-tags-triggers nil)
 
 ;; * org-use-property-inheritance: Non-nil means properties apply also for sublevels.
 ;; (setq org-use-property-inheritance nil)

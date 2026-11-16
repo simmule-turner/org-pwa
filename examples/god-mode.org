@@ -38,6 +38,10 @@ Each exercise starts with god-mode on and the cursor on the heading named. Use t
 | =c u= | =C-c C-u= | the parent heading |
 | =c s= or =c d= | =C-c C-s=, =C-c C-d= | open the details editor to set SCHEDULED or DEADLINE |
 | =c w= | =C-c C-w= | refile the heading |
+| =c j= | =C-c C-j= | jump to a heading by its outline path |
+| =c r= | =C-c C-r= | reveal the context of the heading |
+| =c /= | =C-c /= | sparse tree: pick a kind of match |
+| =c [= and =c ]= | =C-c [=, =C-c ]= | add this file to the agenda files, or remove it |
 | =c x i= and =c x o= | =C-c C-x C-i=, =C-c C-x C-o= | clock in and out |
 | =c x j= | =C-c C-x C-j= | jump to the clocked-in heading |
 | =c SPC a a=, =c SPC a t=, =c SPC a m=, =c SPC a s= | =C-c a a=, =C-c a t=, =C-c a m=, =C-c a s= | Agenda, TODO list, tag match, keyword search |

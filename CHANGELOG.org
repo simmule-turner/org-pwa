@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v712 — Inline tasks, sparse trees, jumps, odd levels, agenda-file commands
+Inline-task commands (insert, promote, demote, move). Sparse trees on C-c / (regexp, TODO, match, property, deadlines, dates) with highlights; C-c C-j goto and C-c C-r reveal; the mark ring, mark subtree, toggle heading and next link; structure templates and drawers; archive default and refile copy; agenda-file commands and the agenda keys j, J, $, C-k and v l; capture abort and refile; odd levels and hidestars; todo tag triggers and special C-a/C-e.
+Verified: Emacs 29.3 comparisons for 56 sparse-tree, 75 odd-level, 1354 text-command, 1002 template, 300 trigger and the inline-task cases.
+
 * v711 — Info history, bookmarks and images; preamble options; agenda tags in completion
 The Info reader lists the nodes you visited (L), bookmarks nodes (B), shows the images a manual names when you add their files with it, and completes Go to node by prefix as Emacs does. A function given as org-html-preamble or org-html-postamble gets Emacs's whole option list (:with-toc, :headline-levels, :select-tags and the rest). org-complete-tags-always-offer-all-agenda-tags is a Settings row. The README is simpler, and the CI smokes for Babel's cache and confirmation pass.
 Verified: Emacs 29.3 comparisons for 98 preamble cases, the history node, go-to completion, three hand-made edge manuals and the composed directory (also fixed: a failed Up to the directory and a search that only hits hidden text now behave as Emacs does).

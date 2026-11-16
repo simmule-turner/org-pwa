@@ -508,6 +508,15 @@ Replace works on heading titles, paragraphs, list items and table cells. Tags, T
 
 When the open document has a match, the results show *Narrow* with the count. It works in any search mode and restricts the outline to the matching headings plus their ancestors, with a banner and a *Widen* button. It composes with [[#narrowing][subtree narrowing]] and survives a reload.
 
+*** Sparse trees
+:PROPERTIES:
+:CUSTOM_ID: sparse-trees
+:END:
+
+~C-c /~ (*Sparse tree* in the palette) asks which tree to make, in the minibuffer: ~r~ a regexp, ~t~ every TODO entry, ~T~ a keyword (~KWD1|KWD2~), ~m~ a tags, property and TODO match, ~p~ a property and its value, ~d~ the deadlines due within ~org-deadline-warning-days~, ~b~, ~a~ and ~D~ the entries before, after or between dates, and ~c~ to cycle the kind of date those look at (~org-sparse-tree-default-date-type~). ~C-u~ asks for the keyword with ~t~, keeps only TODO entries with ~m~, and takes every deadline with ~d~. The matching headings are shown with their ancestors, as under *Narrow* (Widen leaves the tree), the matched text is highlighted, and the status line counts the matches as Emacs's message does. The highlights stay until the next edit or sparse tree, or ~C-c C-c~ (*Remove the highlights of a sparse tree* in the palette). Case is folded as ~org-occur-case-fold-search~ says. Matches before the first heading are counted but not shown. The date checks for ~all~, ~active~ and ~inactive~ timestamps look at timestamps in text, not in a planning line, and do not skip those inside blocks that Org ignores.
+
+Example: ~C-c / m~ and the match ~+work-boss/TODO|NEXT~ shows the entries tagged ~work~, not ~boss~, that are TODO or NEXT; ~C-c / d~ shows the deadlines due in the next two weeks.
+
 Org's search is several tools: the Search box finds as you type, *Narrow* is its sparse tree, Match mode takes the tag grammar, and the Agenda views below list results as rows.
 
 *** The Search button
@@ -620,6 +629,30 @@ Settings you change on the Settings screen are saved here as Lisp (a symbol as ~
 
 -----
 
+*** Jumps, marks and templates
+:PROPERTIES:
+:CUSTOM_ID: jumps-marks-templates
+:END:
+
+- ~C-c C-j~ (*Go to a heading by its outline path*, ~org-goto~) asks for a path in the minibuffer (completion on the headings down to ~org-goto-max-level~), saves the position on the mark ring and goes there; cancelling says ~Quit~. Unlike Emacs it does not open an outline buffer.
+- ~C-c C-r~ (*Reveal the context of this heading*, ~org-reveal~) opens the outline around the focused heading; ~C-u~ also shows the entries on the way, ~C-u C-u~ goes to the parent and shows its whole tree. How much opens when you arrive from the Agenda, a search or ~C-c C-j~ is ~org-fold-show-context-detail~; the Outline cannot show a heading without its siblings, so ~minimal~ and ~local~ open a little more than Emacs.
+- ~C-c %~ pushes the position on the mark ring (of four) and ~C-c &~ goes back; the ring stores headings. ~C-c @~ marks the subtree, ~C-c *~ turns the line or region into headings and back, and ~C-c C-x C-n~ goes to the next link; these three, and ~C-a~ and ~C-e~ (see ~org-special-ctrl-a/e~), act in the Text view and say so elsewhere (~C-c *~ on a focused heading works anywhere).
+- ~C-c C-,~ (*Insert structure template*) takes a key of ~org-structure-template-alist~ or a block type, and wraps the selected lines or the focused element; ~src~ and ~export~ also ask for the language or backend. ~C-c C-x d~ (*Insert drawer*) asks for the name and wraps the same way.
+- ~org-todo-state-tags-triggers~ adds and removes tags when a heading changes state, as Emacs does.
+- ~C-c [~ puts the open file first in ~org-agenda-files~ (~C-u~: last), ~C-c ]~ takes it out, and ~C-'~ or ~C-,~ opens the next agenda file. They change the Agenda files setting, which must be a list: any other value is refused (~`org-agenda-files' cannot be a single directory~).
+
+Example: in ~home.org~, ~C-c [~ makes it the first agenda file; ~C-'~ then steps to the next one.
+
+Examples: ~C-c C-j~ then ~Projects/Website/Launch~ goes to that heading. Select three lines and press ~C-c C-,~ then ~s~ and ~python~ to wrap them in a Python source block. ~C-c C-x d~ and the name ~NOTES~ wraps the focused element in a ~:NOTES:~ drawer.
+
+#+BEGIN_SRC text
+(setq org-todo-state-tags-triggers
+      '(("WAIT" ("waiting" . t))
+        (done ("waiting"))))
+(setq org-structure-template-alist
+      '(("s" . "src") ("e" . "example") ("q" . "quote")))
+#+END_SRC
+
 *** Folding and ~#+STARTUP~
 :PROPERTIES:
 :CUSTOM_ID: folding-and-startup
@@ -632,10 +665,16 @@ org-pwa applies ~#+STARTUP:~ directives, typically on the first line. They can s
 | Heading visibility | ~overview~, ~content~, ~showall~, ~showeverything~, ~show2levels~, ~show3levels~, ~show4levels~, ~show5levels~ | ~showeverything~ |
 | Indentation | ~indent~, ~noindent~ | ~noindent~ |
 | Inline images | ~inlineimages~, ~noinlineimages~ | ~noinlineimages~ |
+| Levels | ~odd~, ~oddeven~ | ~oddeven~ |
+| Leading stars | ~hidestars~, ~showstars~ | ~showstars~ |
 | Progress logging on DONE | ~logdone~, ~lognotedone~, ~nologdone~ | none |
 | Log into the drawer | ~logdrawer~, ~nologdrawer~ | ~nologdrawer~ |
 | Log a repeat | ~logrepeat~, ~lognoterepeat~, ~nologrepeat~ | ~logrepeat~ |
 
+- ~odd~: with ~org-odd-levels-only~, levels are one, three, five stars: promote and demote change a heading by two stars (Emacs's ~org-get-valid-level~), a new sub-heading, a refiled or archived one takes the next odd level, and a heading's stars are shown as they are in the file. A file with other levels opens as it is. Dragging a heading to move it still uses one star.
+- ~hidestars~: the leading stars of a heading are drawn blank, so only the last shows.
+
+Example: ~#+STARTUP: odd hidestars~ on the first line gives ~*~, ~***~ and ~*****~ headings, drawn as ~*~, blank-blank-~*~ and so on.
 - ~overview~: only top-level headings, everything else folded.
 - ~show2levels~ to ~show5levels~: like ~overview~ with that cutoff depth. Headings are shown through that level with no body text at any visible level, and deeper levels are folded.
 - ~content~: every heading line shown, but body text (paragraphs, lists, tables) and properties hidden until you open a heading.
@@ -742,6 +781,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-agenda-todo-ignore-with-date~ | ~nil~ | Non-nil means don't show entries with a date in the global todo list; set in Global Variables or the Lisp init |
 | ~org-agenda-todo-list-sublevels~ | ~t~ | Non-nil means check also the sublevels of a TODO entry for TODO entries; set in Global Variables or the Lisp init |
 | ~org-agenda-use-tag-inheritance~ | ~(todo search agenda)~ | The views that use tag inheritance: ~t~, ~nil~, or a list of ~agenda~, ~todo~ and ~search~ |
+| ~org-archive-default-command~ | ~org-archive-subtree~ | What *Archive* (~C-c C-x C-a~) does: ~org-archive-subtree~, or ~org-archive-to-archive-sibling~ to move the subtree under an archive sibling heading |
 | ~org-ascii-charset~ | ~ascii~ | Characters used by ASCII export: ~ascii~, ~latin1~ or ~utf-8~ |
 | ~org-ascii-text-width~ | ~72~ | Wrap width, in characters, for ASCII export |
 | ~org-attach-method~ | ~cp~ | What Attach does with a file you pick: ~cp~ copies it, ~mv~ asks to delete the original after copying, ~ln~ (or ~lns~) keeps a link to it; ~mv~ and ~ln~ copy where the app cannot do them (see [[#attachments][Attachments]]); also Settings → Attachments |
@@ -802,15 +842,18 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-export-with-toc~ | ~t~ | A table of contents: ~t~, ~nil~ or a number of levels (~toc:~); also Settings → Export |
 | ~org-export-with-todo-keywords~ | ~t~ | TODO keywords: ~t~, ~nil~, ~todo~ or ~done~ (~todo:~); also Settings → Export |
 | ~org-extend-today-until~ | ~0~ | The hour the day ends: before it, "today" is still yesterday; also Settings → Agenda |
+| ~org-fold-show-context-detail~ | Emacs's own list | How much of the outline opens around a heading reached from the Agenda, a search, *Go to a heading* or another jump: ~((agenda . local) (bookmark-jump . lineage) (isearch . lineage) (default . ancestors))~, or one symbol for every jump. The Outline cannot show a heading without its siblings, so ~minimal~ and ~local~ open a little more than Emacs |
 | ~org-footnote-auto-adjust~ | ~nil~ | After adding or deleting a footnote: ~renumber~ fn:N, ~sort~ the definitions, both (~t~) or neither |
 | ~org-footnote-auto-label~ | ~t~ | Label for a new footnote: ~t~ next number, ~confirm~ next number you can edit, ~nil~ ask, ~random~ |
 | ~org-footnote-define-inline~ | ~nil~ | Write new footnotes as ~[fn:label:text]~ at the reference |
 | ~org-footnote-section~ | ~"Footnotes"~ | Heading that holds footnote definitions; ~nil~ puts each at the end of its own section (see [[#footnotes][Footnote commands]]) |
 | ~org-global-properties~ | unset | Properties that apply everywhere, as the alist Emacs takes. Only ~Effort_ALL~ is used, as in ~(("Effort_ALL" . "0:15 0:30 1:00 2:00"))~ (see [[#effort-all][Effort_ALL]]) |
+| ~org-goto-max-level~ | ~5~ | The deepest level *Go to a heading* (~C-c C-j~) offers |
 | ~org-habit-following-days~ | ~7~ | Days shown after today in a habit's strip, today included (see [[#habits][Habits]]); also Settings → Agenda, diary and weather → *Agenda* |
 | ~org-habit-preceding-days~ | ~21~ | Days before today in a habit's strip; also Settings → Agenda, diary and weather → *Agenda* |
 | ~org-habit-show-all-today~ | ~nil~ | ~t~ shows every habit today, even one not yet due; also Settings → Agenda, diary and weather → *Agenda* |
 | ~org-habit-show-habits-only-for-today~ | ~t~ | Habits appear only in today's Agenda; also Settings → Agenda, diary and weather → *Agenda* |
+| ~org-hide-leading-stars~ | ~nil~ | ~t~ draws the leading stars of a heading blank, as ~#+STARTUP: hidestars~ does |
 | ~org-html-checkbox-type~ | ~ascii~ | How HTML export writes checklist boxes: ~ascii~ (~[X]~, ~[ ]~, ~[-]~ as text), ~unicode~ (☑ and ☐) or ~html~ (checkbox inputs) |
 | ~org-html-doctype~ | ~xhtml-strict~ | The document type of HTML export: ~xhtml-strict~, ~xhtml-transitional~, ~xhtml-frameset~, ~xhtml-11~, ~xhtml5~, ~html5~, ~html4-strict~, ~html4-transitional~ or ~html4-frameset~; a file's ~#+HTML_DOCTYPE:~ wins |
 | ~org-html-head~ | unset | A quoted string added to the ~<head>~ of every HTML export; a file's own ~#+HTML_HEAD:~ is added after it. Settings → Export sets it |
@@ -833,13 +876,17 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-icalendar-use-deadline~ | ~(event-if-not-todo todo-due)~ | Which DEADLINEs become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's deadline is its due date (~todo-due~) |
 | ~org-icalendar-use-scheduled~ | ~(todo-start)~ | Which SCHEDULED dates become events (~event-if-todo~, ~event-if-todo-not-done~, ~event-if-not-todo~) and whether a task's scheduled date is its start (~todo-start~) |
 | ~org-icalendar-with-timestamps~ | ~'active~ | Which timestamps in a heading's title and text become events: ~'active~, ~'inactive~, ~t~ or ~nil~ |
+| ~org-inlinetask-default-state~ | ~nil~ | The keyword *Insert inline task* gives a new task (for example ~"TODO"~) |
 | ~org-inlinetask-min-level~ | ~15~ | With ~org-inlinetask~ in ~org-modules~: the number of stars from which a headline is an inline task (see Inline tasks under Export) |
+| ~org-inlinetask-show-first-star~ | ~nil~ | ~t~ shows the first star of an inline task; ~nil~ hides it, as org-inlinetask does |
 | ~org-latex-compiler~ | ~pdflatex~ | ~pdflatex~, ~xelatex~ or ~lualatex~, for files with no ~#+LATEX_COMPILER:~ |
 | ~org-latex-default-class~ | ~article~ | ~article~, ~report~, ~book~ or a class the Lisp init adds to ~org-latex-classes~: the class of every LaTeX export whose file has no ~#+LATEX_CLASS:~. Settings → Export sets it |
 | ~org-log-done~ | ~nil~ (no logging) | ~'time~ inserts a ~CLOSED:~ timestamp when a heading becomes DONE; ~'note~ also asks for a closing note. Its ~#+STARTUP:~ shorthands are ~logdone~ and ~lognotedone~ (see [[#progress-logging][Progress logging]] for the per-keyword ~!~ and ~@~ forms) |
 | ~org-log-into-drawer~ | ~nil~ | ~t~ or a drawer name writes log items into ~:LOGBOOK:~ (any name is written as ~LOGBOOK~). ~#+STARTUP: logdrawer~ |
 | ~org-log-repeat~ | ~'time~ | ~'time~ logs a repeating task's completion and sets ~LAST_REPEAT~; ~'note~ asks for a note; ~nil~ does neither. ~#+STARTUP: logrepeat~, ~lognoterepeat~, ~nologrepeat~ |
 | ~org-modules~ | unset | Add ~org-inlinetask~ to read long headlines as inline tasks in exports. A Lisp init does the same with ~(add-to-list 'org-modules 'org-inlinetask)~ or ~(require 'org-inlinetask)~ |
+| ~org-occur-case-fold-search~ | ~t~ | Whether *Sparse tree* ~r~ ignores case: ~t~, ~nil~ or ~smart~ (ignores it unless the regexp has a capital) |
+| ~org-odd-levels-only~ | ~nil~ | ~t~ makes the levels one, three, five stars, as ~#+STARTUP: odd~ does |
 | ~org-priority-default~ | ~?B~ | The priority of a heading without a cookie when rows are ordered by priority |
 | ~org-priority-faces~ | unset | Colors for the priority badges: ~((?A . error) (?B . "orange"))~ |
 | ~org-priority-get-priority-function~ | unset | A function of the headline text (~"TODO [#A] Title :tag:"~) that returns the heading's priority number for ~priority-up~ and ~-down~, with the heading as the place ~org-entry-get~ reads; anything but a number keeps the cookie's rank |
@@ -851,11 +898,14 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-refile-targets~ | current file, level 1 | Which headings Refile offers, such as ~((nil :maxlevel . 3) ("notes.org" :tag . "work") (org-agenda-files :todo . "NEXT"))~ (see [[#refile][Refile]]) |
 | ~org-scheduled-delay-days~ | ~0~ | Days past its date that a scheduled item with no delay of its own (such as ~-2d~) waits before it shows; also Settings → Agenda, diary and weather → *Agenda* |
 | ~org-scheduled-past-days~ | ~10000~ | Number of days to continue listing scheduled items not marked DONE; set in Global Variables or the Lisp init |
+| ~org-sparse-tree-default-date-type~ | ~nil~ | The timestamps the date checks of *Sparse tree* look at: ~nil~ (deadlines and scheduled), ~all~, ~scheduled~, ~deadline~, ~active~, ~inactive~ or ~closed~ |
+| ~org-special-ctrl-a/e~ | ~nil~ | ~C-a~ and ~C-e~ in the Text view stop at the text of a heading or item (~t~), or only on the second press (~reversed~) |
 | ~org-src-preserve-indentation~ | ~nil~ | ~t~ keeps the indentation inside source and example blocks when ~org-adapt-indentation~ shifts lines; also Settings → Editing |
 | ~org-startup-folded~ | ~showeverything~ | The initial visibility: ~'overview~, ~'content~, ~'showall~, ~'showeverything~ or ~'show2levels~ to ~'show5levels~ (the quote is optional); see [[#folding-and-startup][Folding]] |
 | ~org-startup-indented~ | ~nil~ | ~nil~ draws every line at the left edge, each heading with its stars, so tables and text have the most room; ~t~ (org-indent-mode) indents text, lists and tables under their heading's level; also ~#+STARTUP: indent~ and ~noindent~, and Settings → Editing and startup → *Startup* |
 | ~org-startup-truncated~ | ~t~ | ~t~ scrolls long lines of the Text view sideways; ~nil~ wraps them; also Settings → Editing and startup → *Editing* |
 | ~org-startup-with-inline-images~ | ~nil~ | Whether images render inline when a file opens |
+| ~org-structure-template-alist~ | Emacs's own list | The templates *Insert structure template* (~C-c C-,~) offers, as ~(("s" . "src") ("e" . "example"))~ |
 | ~org-stuck-projects~ | Emacs's own list | How to identify stuck projects; set in Global Variables or the Lisp init |
 | ~org-table-duration-hour-zero-padding~ | ~t~ | Whether the ~T~ and ~U~ duration flags zero-pad the hours (see [[#table-formulas][Table formulas]]) |
 | ~org-table-formula-create-columns~ | ~nil~ | ~nil~ refuses a formula for a field past the last column; ~t~ adds the columns, ~warn~ adds them and warns, ~prompt~ asks first (see [[#table-formulas][Table formulas]]); in Settings under Editing, also in Capture templates (see [[#capture-templates][Capture Templates]]) |
@@ -866,6 +916,7 @@ The recognized variables, alphabetically. Those marked "(own)" are this app's ex
 | ~org-timer-default-timer~ | ~"0"~ | The countdown asked for by *Set countdown timer*, in minutes or ~h:mm:ss~; ~"0"~ asks with nothing filled in |
 | ~org-timer-display~ | ~mode-line~ | Where a running timer shows: ~mode-line~, ~frame-title~ (the title of the page), ~both~ or ~nil~ |
 | ~org-timer-format~ | ~"%s "~ | What ~org-timer~ and ~org-timer-item~ insert; ~%s~ is the time |
+| ~org-todo-state-tags-triggers~ | unset | Tags a TODO change adds or removes, as ~(("WAIT" ("waiting" . t)) (done ("waiting")))~: a state, ~todo~, ~done~ or ~""~ (no state) with its ~(tag . t)~ and ~(tag)~ entries; the first entry for the state is used |
 | ~org-use-property-inheritance~ | ~nil~ | ~t~ lets a ~key:value~ search filter and an attachment folder use a value inherited from an ancestor (a heading's own value wins). A list of property names, or a regexp in quotes, limits inheritance to those properties |
 | ~org-use-sub-superscripts~ | ~t~ | ~t~, ~{}~ or ~nil~ (three values, as in org; any other value counts as ~t~); see [[#inline-text-markup][Inline text markup]] |
 | ~org-use-tag-inheritance~ | ~t~ | ~t~ lets a ~tag:~ search filter match a tag inherited from an ancestor; ~nil~ limits it to the heading's own tags; a list such as ~("work" "home")~ or a quoted regexp such as ~"^proj_"~ inherits only those tags. Applies to search, the Agenda tag filters and the tags shown on a heading |
@@ -1052,6 +1103,10 @@ The Agenda's date-range line has a *Log* choice (~org-agenda-log-mode~; it start
 :CUSTOM_ID: archiving
 :END:
 
+~C-c C-x C-a~ (*Archive with the default command*) runs ~org-archive-default-command~ (Settings → Editing): ~org-archive-subtree~ or ~org-archive-to-archive-sibling~. In the Agenda, ~$~ archives the entry of the row, ~C-k~ deletes it (asking first when it has more than one line), ~j~ goes to a date, ~J~ to the running clock and ~v l~ toggles the log, as in Emacs. ~j~ no longer steps down a row; ~n~ and the arrows do.
+
+Example: ~(setq org-archive-default-command 'org-archive-to-archive-sibling)~, then ~C-c C-x C-a~ moves the subtree under an ~Archive~ heading beside it.
+
 Tap a heading's title, then *Archive*, to move its subtree to the archive location (~org-archive-subtree~, ~C-c C-x C-s~). A panel shows the destination and what will be added, and places to refile to instead (see [[#refile][Refile]]); *Cancel* has focus, so a stray tap does nothing. The moved heading gets ~ARCHIVE_TIME~, ~ARCHIVE_FILE~, ~ARCHIVE_OLPATH~, ~ARCHIVE_CATEGORY~, ~ARCHIVE_TODO~ and ~ARCHIVE_ITAGS~ properties. The original is removed only after the copy is written. Examples with Emacs's results: =examples/archive-refile.org=.
 
 The location is ~org-archive-location~: the heading's ~ARCHIVE~ property, else the file's ~#+ARCHIVE:~, else ~%s_archive::~. It is a file (~%s~ is the current file's name; empty means the current file) and an optional heading, joined by ~::~:
@@ -1078,6 +1133,10 @@ Open the archive file (*File → Open* lists ~_archive~ files), tap the archived
 :PROPERTIES:
 :CUSTOM_ID: refile
 :END:
+
+~C-c M-w~ (*Copy to*) opens the same panel with a *Copy* button: the subtree stays where it is and a copy goes to the target. ~C-u C-u C-c C-w~ (*Go to the last refile*) jumps to the heading last refiled or copied this session.
+
+Example: ~C-c M-w~, pick ~Reference~ in ~notes.org~, tap *Copy*; the original stays.
 
 *Archive*, then pick a target in the lower part of the panel and tap *Refile* (~org-refile~, also in the palette) to move the subtree elsewhere in the outline or into another file. Targets show their outline path, with a search box (every word must match), your last five under *RECENT* and the rest under *ALL TARGETS*. The subtree becomes the target's last child with its levels adjusted.
 
@@ -1748,6 +1807,10 @@ It is a flat list in document order showing each item's keyword, title, category
 
 The palette's *Capture* command (or ~C-c c~) opens the templates of ~org-capture-templates~: file a note, task or table row at a set place without navigating there. Tap a template; if it has ~%^{Prompt}~ or ~%?~ fields, a form asks for each, with a live preview of the result. A template with no prompts captures at once.
 
+While the form has the keyboard, ~C-c C-k~ drops the capture (Cancel; the status line says what Emacs says) and ~C-c C-w~ files the entry and opens the refile panel for it. It needs an ~entry~ template that files into the open file. A plain ~C-c~ still copies.
+
+Example: with the form open, ~C-c C-w~ files the entry and asks where to refile it; ~C-c C-k~ drops it.
+
 Templates are set in the Lisp init (~org-xx-lisp-init~), exactly as in Emacs: ~(setq org-capture-templates '(…))~ and ~(add-to-list 'org-capture-templates '(…))~, also when they are in a file the init loads with ~(load …)~. With none, the Capture list says so. Examples with Emacs's results: =examples/capture-templates.org=, =examples/capture-datetree.org=.
 
 #+BEGIN_SRC emacs-lisp
@@ -2107,6 +2170,8 @@ Each key has an Org variable that sets it for every file (Global Variables; ~#+O
 *Document type*: ~#+HTML_DOCTYPE: html5~ (or ~org-html-doctype~, Settings → Export) picks the declaration; the default is ~xhtml-strict~.
 
 *Inline tasks*: with ~org-inlinetask~ in ~org-modules~, a headline of 15 or more stars is an inline task, closed by an ~END~ headline of the same depth, and every export prints it in place (HTML ~<div class="inlinetask">~, ASCII a box, LaTeX a framed minipage, ODT a bordered paragraph).
+
+With ~org-inlinetask~ loaded, *Insert inline task* (the palette, or ~C-c C-x t~; ~C-u~ leaves out the keyword) adds a task and its ~END~ line after the focused heading's text, with the keyword from ~org-inlinetask-default-state~, and refuses inside a task (~Cannot nest inline tasks~). ~M-left~ and ~M-right~ on a task or its ~END~ line promote and demote the pair together, indenting its drawers as Emacs does, and refuse below the minimum level. ~M-up~ and ~M-down~ move a task past the task block beside it; unlike Emacs they do not move it past plain paragraphs. A task shows only its last two stars, plus the first with ~org-inlinetask-show-first-star~. Tab does not fold a task yet; see the ROADMAP.
 
 In Lisp, ~org-inlinetask-goto-beginning~, ~org-inlinetask-goto-end~ (point after the task's ~END~ line), ~org-inlinetask-in-task-p~, ~org-inlinetask-at-task-p~, ~org-inlinetask-end-p~, ~org-inlinetask-get-task-level~ and ~org-inlinetask-outline-regexp~ work in a text buffer as in Emacs, with ~org-inlinetask-min-level~ and ~org-odd-levels-only~.
 

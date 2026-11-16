@@ -2,6 +2,7 @@
 // The focused row of the Agenda, TODO, Match and Keyword search screens, as point is on a line of an Emacs agenda buffer. Find moves it
 // to the row of the current match; n, p, j, k and the arrow keys move it; then t changes its state, RET goes to its heading, a comma
 // sets its priority and Space opens the row's action sheet. It lasts until the screen is left.
+import { agendaArchive, agendaClockGoto, agendaGotoDate, agendaKill } from './agenda-extra-keys.js';
 import { S, isAgendaFamilyView } from './app-state.js';
 import { canChangeItem, choosePriority, chooseState, openRowActions } from './agenda-actions.js';
 import { outlineEl } from './dom.js';
@@ -95,8 +96,20 @@ function moveFocus(delta) {
  * @param {KeyboardEvent} e
  */
 export function handleAgendaRowKey(e) {
-  if (!isAgendaFamilyView(S.currentView) || e.altKey || e.metaKey || e.ctrlKey) return false;
-  const step = { j: 1, n: 1, ArrowDown: 1, k: -1, p: -1, ArrowUp: -1 }[/** @type {'j'} */ (e.key)];
+  if (!isAgendaFamilyView(S.currentView) || e.altKey || e.metaKey) return false;
+  if (e.ctrlKey) {
+    if (e.key !== 'k' || e.shiftKey) return false;
+    e.preventDefault();
+    agendaKill();
+    return true;
+  }
+  const keyed = { j: agendaGotoDate, J: agendaClockGoto, $: agendaArchive }[/** @type {'j'} */ (e.key)];
+  if (keyed) {
+    e.preventDefault();
+    keyed();
+    return true;
+  }
+  const step = { n: 1, ArrowDown: 1, k: -1, p: -1, ArrowUp: -1 }[/** @type {'n'} */ (e.key)];
   if (step && !e.shiftKey) {
     if (rows().length === 0 && !windowItemKeys()) return false;
     e.preventDefault();
@@ -136,3 +149,9 @@ new MutationObserver(() => {
     paintAgendaRowFocus();
   });
 }).observe(outlineEl, { childList: true, subtree: true });
+
+/** The item of the focused row, or null. @returns {AgendaItem | null} */
+export function focusedAgendaItem() {
+  const row = focusedRow();
+  return (row && rowItems.get(row)) || null;
+}

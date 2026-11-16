@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseOrg, serializeOrg } from '../src/org-parser.js';
-import { archiveSubtree } from '../src/archive-text.js';
+import { archiveSubtree, archiveToSibling } from '../src/archive-text.js';
 import { buildRestoredClone, getArchiveLocation, parseArchiveLocation, resolveArchiveFileId, archiveInPlace, appendRefiled, shiftLevels } from '../src/archive-model.js';
 import { removeHeading } from '../src/heading-edit.js';
 import { setTagsColumn } from '../src/tags-column.js';
@@ -19,13 +19,13 @@ const nowNY = () => new Date(2026, 9, 11, 16, 30);
 /** @typedef {{ title: string, op: string, find: string, to: string | null, toFile: string | null, before: Record<string, string>, after: Record<string, string> }} Section */
 /** @returns {Section[]} */
 function sections() {
-  return text.split(/^\* /m).slice(1).filter((s) => /^(Archive|Toggle|Refile)/m.test(s)).map((sec) => {
-    const op = /^(Archive|Toggle the archive tag on|Refile) the heading =(.*?)=(?: to the heading =(.*?)=(?: in =(.*?)=)?)?\./m.exec(sec);
+  return text.split(/^\* /m).slice(1).filter((s) => /^(Archive|Toggle|Refile|Copy)/m.test(s)).map((sec) => {
+    const op = /^(Archive|Toggle the archive tag on|Refile|Copy) the heading =(.*?)=( under its archive sibling)?(?: to the heading =(.*?)=(?: in =(.*?)=)?)?\./m.exec(sec);
     assert.ok(op, sec.split('\n')[0]);
     /** @type {Record<string, string>} */ const before = {};
     /** @type {Record<string, string>} */ const after = {};
     for (const m of sec.matchAll(/^(Before|After), (\S+):\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC/gm)) (m[1] === 'Before' ? before : after)[m[2]] = unescape(m[3]) + '\n';
-    return { title: sec.split('\n')[0], op: op[1], find: op[2], to: op[3] || null, toFile: op[4] || null, before, after };
+    return { title: sec.split('\n')[0], op: op[3] ? 'Archive to sibling' : op[1], find: op[2], to: op[4] || null, toFile: op[5] || null, before, after };
   });
 }
 
@@ -50,7 +50,11 @@ function appResult(s) {
     const src = docs['notes.org'];
     const heading = /** @type {import('../src/types.js').Heading} */ (find(src.children, s.find));
     if (s.op === 'Toggle the archive tag on') archiveInPlace(heading, { now: nowNY() });
-    else if (s.op === 'Refile') {
+    else if (s.op === 'Archive to sibling') {
+      docs['notes.org'] = parseOrg(archiveToSibling(src, heading, { now: nowNY(), doneKeywords: ['DONE'] }));
+    } else if (s.op === 'Copy') {
+      appendRefiled(docs['notes.org'], /** @type {import('../src/types.js').Heading} */ (find(src.children, /** @type {string} */ (s.to))), structuredClone(heading));
+    } else if (s.op === 'Refile') {
       const doc = docs[s.toFile || 'notes.org'];
       removeHeading(src, heading);
       const target = /** @type {import('../src/types.js').Heading} */ (find(doc.children, /** @type {string} */ (s.to)));

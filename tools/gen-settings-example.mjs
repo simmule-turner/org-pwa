@@ -25,6 +25,10 @@ const CONTROLLED = [
   ['org-src-preserve-indentation', 'Whether source and example blocks keep their indentation when lines are shifted.'],
   ['org-export-headline-levels', 'How many levels of headings an export keeps as headings.'],
   ['org-export-with-toc', 'Whether an export has a table of contents: t, nil or a number of levels.'],
+  ['org-archive-default-command', 'What the archive command does: org-archive-subtree or org-archive-to-archive-sibling.', { emacs: 'org-archive-subtree' }],
+  ['org-special-ctrl-a/e', 'Whether C-a and C-e in the Text view stop at the text of a heading or item: nil, t or reversed.'],
+  ['org-inlinetask-default-state', 'The keyword a new inline task starts with: a string, or nil for none.'],
+  ['org-inlinetask-show-first-star', 'Whether an inline task shows its first star: t or nil.'],
   ['org-export-with-section-numbers', 'Whether an export numbers its headings: t, nil or a number of levels.'],
   ['org-export-preserve-breaks', 'Whether an export keeps line breaks as written.'],
   ['org-export-time-stamp-file', 'Whether an export writes the time it was made.'],
@@ -117,7 +121,7 @@ const cut = VARIABLE_CATALOG.filter((c) => c.default.endsWith('...')).map((c) =>
 const emacsNames = [...CONTROLLED.filter(([, , o]) => !o || !o.own).map(([n]) => n), ...cut];
 const askEmacs = () => {
   const forms = emacsNames.map((n) => `(princ (format "%s\\t%s\\n" '${n} (if (boundp '${n}) (let ((print-length nil) (print-level nil)) (prin1-to-string (default-value '${n}))) "UNBOUND")))`).join('');
-  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-habit org-attach ox ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob recentf)) (require f)) ${forms})`], { encoding: 'utf8' });
+  const out = execFileSync('emacs', ['--batch', '-Q', '--eval', `(progn (dolist (f '(org org-agenda org-inlinetask org-habit org-attach ox ox-html ox-latex ox-ascii org-clock diary-lib calendar solar display-line-numbers ob recentf)) (require f)) ${forms})`], { encoding: 'utf8' });
   const defaults = {};
   for (const line of out.split('\n')) {
     const m = /^(\S+)\t([\s\S]*)$/.exec(line);

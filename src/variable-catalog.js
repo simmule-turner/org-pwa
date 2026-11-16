@@ -497,6 +497,11 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-fold-show-context-detail",
+    "doc": "Alist between context and visibility span when revealing a location.",
+    "default": "((agenda . local) (bookmark-jump . lineage) (isearch . lineage) (default . ancestors))"
+  },
+  {
     "name": "org-footnote-auto-adjust",
     "doc": "Non-nil means automatically adjust footnotes after insert/delete.",
     "default": "nil"
@@ -519,6 +524,16 @@ export const VARIABLE_CATALOG = [
   {
     "name": "org-global-properties",
     "doc": "List of property/value pairs that can be inherited by any entry.",
+    "default": "nil"
+  },
+  {
+    "name": "org-goto-max-level",
+    "doc": "Maximum target level when running `org-goto' with refile interface.",
+    "default": "5"
+  },
+  {
+    "name": "org-hide-leading-stars",
+    "doc": "Non-nil means hide the first N-1 stars in a headline.",
     "default": "nil"
   },
   {
@@ -642,6 +657,16 @@ export const VARIABLE_CATALOG = [
     "default": "nil"
   },
   {
+    "name": "org-occur-case-fold-search",
+    "doc": "Non-nil means `org-occur' should be case-insensitive.",
+    "default": "t"
+  },
+  {
+    "name": "org-odd-levels-only",
+    "doc": "Non-nil means skip even levels and only use odd levels for the outline.",
+    "default": "nil"
+  },
+  {
     "name": "org-priority-default",
     "doc": "The default priority of TODO items.",
     "default": "66"
@@ -670,6 +695,16 @@ export const VARIABLE_CATALOG = [
     "name": "org-scheduled-past-days",
     "doc": "Number of days to continue listing scheduled items not marked DONE.",
     "default": "10000"
+  },
+  {
+    "name": "org-sparse-tree-default-date-type",
+    "doc": "The default date type when building a sparse tree.",
+    "default": "nil"
+  },
+  {
+    "name": "org-structure-template-alist",
+    "doc": "An alist of keys and block types.",
+    "default": "((\"a\" . \"export ascii\") (\"c\" . \"center\") (\"C\" . \"comment\") (\"e\" . \"example\") (\"E\" . \"ex..."
   },
   {
     "name": "org-stuck-projects",
@@ -709,6 +744,11 @@ export const VARIABLE_CATALOG = [
   {
     "name": "org-todo-repeat-to-state",
     "doc": "The TODO state to which a repeater should return the repeating task.",
+    "default": "nil"
+  },
+  {
+    "name": "org-todo-state-tags-triggers",
+    "doc": "Tag changes that should be triggered by TODO state changes.",
     "default": "nil"
   },
   {

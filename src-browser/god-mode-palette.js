@@ -12,7 +12,7 @@ import { dynamicCommandSpecs, pushRecent, searchCommands } from '../src/command-
 import { parseExtraMenu } from '../src/extra-menu.js';
 import { applyStartupVisibility, collapseFully, cycleFoldLevel, expandOneLevel } from '../src/fold-state.js';
 import { initialState as godModeInitialState, processKey as godModeProcessKey } from '../src/god-mode.js';
-import { insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp } from '../src/heading-edit.js';
+import { insertHeadingAfter, insertTopLevelHeading, moveHeadingDown, moveHeadingUp, moveInlineTask } from '../src/heading-edit.js';
 import { getBufferReadOnly, getCycleOpenArchivedTrees, getExtraMenu } from '../src/local-variables.js';
 import { resolveTodoSequences } from '../src/todo-cycle.js';
 import { canRedo, canUndo } from '../src/undo-history.js';
@@ -53,15 +53,24 @@ import { performExport, performOrgOrgExport } from './export-import.js';
 import { openGeneralEditor } from './general-editor.js';
 import { cutSubtree, extraMenuTargetHeading, narrowToHeading, pasteSubtree, widen } from './gestures-structure.js';
 import { cyclePriorityFor, openEffortEditor } from './heading-commands.js';
-import { askSortEntries, insertPropertyDrawerCommand, shiftHeadingOnly, shiftSubtree, toggleCommentCommand } from './outline-edit-flow.js';
+import { inlineTaskLevel } from '../src/inline-tasks.js';
+import { askSortEntries, insertDrawerCommand, insertInlineTaskCommand, insertStructureTemplateCommand, insertPropertyDrawerCommand, shiftHeadingOnly, shiftSubtree, toggleCommentCommand, toggleHeadingCommand } from './outline-edit-flow.js';
 import { tableChord, focusedTable, askSort, sendFocusedTable, exportFocusedTable } from './table-edit.js';
 import { askListSort, listChord } from './list-edit-flow.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
-import { archiveHeadingToSibling } from './archive-flow.js';
+import { gotoLastRefiled } from './refile-flow.js';
+import { gotoCommand, revealCommand } from './jump-flow.js';
+import { cycleAgendaFiles, fileToFront, removeFile } from './agenda-file-commands.js';
+import { clearOccurHighlights } from './occur-highlights.js';
+import { sparseTreeCommand } from './sparse-flow.js';
+import { beginningOfLineCommand, endOfLineCommand, markRingGoto, markRingPush, markSubtreeCommand, nextLinkCommand, toggleHeadingInText } from './text-commands-flow.js';
+import { archiveHeadingToLocation, archiveHeadingToSibling } from './archive-flow.js';
+import { readArchiveSettings } from '../src/archive-settings.js';
 import { scrollFocusedHeadingIntoView } from './render-helpers.js';
 import { render } from './render.js';
+import { agendaArchive, agendaClockGoto, agendaGotoDate, agendaKill } from './agenda-extra-keys.js';
 import { agendaClockcheckKey, agendaLogKey, agendaShowing } from './agenda-log-keys.js';
 import { getAllCaptureTemplates as getCaptureTemplates } from './capture-templates.js';
 import { kv } from './singletons.js';
@@ -77,6 +86,21 @@ import { infoCommand, openInfo } from './info-view.js';
 import { openHelp, switchToView } from './views.js';
 import { openAgendaCommands, openQueryView } from './agenda-query-view.js';
 import { lockAgenda, unlockAgenda } from './agenda-scope-note.js';
+
+/** org-toggle-heading (C-c *): on the lines of the Text view, or on the focused row of the outline. */
+function toggleHeadingEverywhere() {
+  if (S.currentView === 'text') toggleHeadingInText();
+  else toggleHeadingCommand(S.keyboardFocusedHeading);
+}
+
+/** org-archive-subtree-default (C-c C-x C-a): runs org-archive-default-command on a heading.
+ * @param {Heading} heading */
+function archiveDefault(heading) {
+  const command = readArchiveSettings(S.state.localVariables).defaultCommand;
+  if (command === 'org-archive-to-archive-sibling') archiveHeadingToSibling(heading);
+  else if (command === 'org-archive-subtree') archiveHeadingToLocation(heading);
+  else setStatus(`org-archive-default-command: ${command} is not a command this app has`);
+}
 
 export function globalCycleFold() {
   if (!S.state.doc) return;
@@ -200,6 +224,7 @@ export const GOD_MODE_ACTIONS = {
   'M-<up>': () => {
     if (listChord('move-item-up')) return;
     if (tableChord('row-up')) return;
+    if (dragTask('up')) return;
     if (S.keyboardFocusedHeading && moveHeadingUp(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading up');
       scrollFocusedHeadingIntoView();
@@ -208,6 +233,7 @@ export const GOD_MODE_ACTIONS = {
   'M-<down>': () => {
     if (listChord('move-item-down')) return;
     if (tableChord('row-down')) return;
+    if (dragTask('down')) return;
     if (S.keyboardFocusedHeading && moveHeadingDown(S.state.doc, S.keyboardFocusedHeading)) {
       commitAndRender('Moved heading down');
       scrollFocusedHeadingIntoView();
@@ -261,6 +287,8 @@ export const GOD_MODE_ACTIONS = {
     else askSortEntries(S.keyboardFocusedHeading); // org-sort: on a heading, its children; before the first heading, the top-level entries
   },
   'C-c ;': () => toggleCommentCommand(S.keyboardFocusedHeading),
+  'C-c C-x t': () => insertInlineTaskCommand(S.keyboardFocusedHeading),
+  'C-u C-c C-x t': () => insertInlineTaskCommand(S.keyboardFocusedHeading, true),
   'C-c C-f': () => moveToSameLevelHeading(1),
   'C-c C-b': () => moveToSameLevelHeading(-1),
   'C-c C-u': () => moveToParentHeading(),
@@ -275,6 +303,7 @@ export const GOD_MODE_ACTIONS = {
   'M-RET': () => insertHeadingSmart({}),
   'M-S-RET': () => insertHeadingSmart({ todo: 'TODO' }),
   'C-c C-c': () => {
+    if (clearOccurHighlights()) return render();
     if (S.keyboardFocusedBodyRow && S.keyboardFocusedBodyRow.rowType === 'table') return sendFocusedTable();
     if (S.keyboardFocusedBodyRow && (S.keyboardFocusedBodyRow.rowType === 'block' || focusedHasExecutable())) return executeFocusedBlock();
     return godModeNotSupported('checkbox toggling needs a finer keyboard focus than headings -- tap the checkbox directly; C-c C-c runs a source block when the cursor is on one');
@@ -295,6 +324,8 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-x -': () => timerItem(),
   'C-c C-x C-u': () => updateDynamicBlocksAtFocus(),
   'C-c C-w': () => S.keyboardFocusedHeading && openArchiveRefilePanel(S.keyboardFocusedHeading),
+  'C-c M-w': () => S.keyboardFocusedHeading && openArchiveRefilePanel(S.keyboardFocusedHeading, true),
+  'C-u C-u C-c C-w': () => gotoLastRefiled(),
   'C-c C-a': () => S.keyboardFocusedHeading && openAttachChoicePrompt(S.keyboardFocusedHeading, { viaKeys: true }),
   'C-c C-x C-i': () => S.keyboardFocusedHeading && clockInHeading(S.keyboardFocusedHeading),
   'C-c C-x C-o': () => {
@@ -364,6 +395,11 @@ export const GOD_MODE_ACTIONS = {
   'l': () => void (agendaLogKey(0) || setStatus('l works in the Agenda.')),
   'C-u l': () => void (agendaLogKey(1) || setStatus('C-u l works in the Agenda.')),
   'C-u C-u l': () => void (agendaLogKey(2) || setStatus('C-u C-u l works in the Agenda.')),
+  'v l': () => void (agendaLogKey(0) || setStatus('v l works in the Agenda.')),
+  'j': () => void (agendaShowing() ? agendaGotoDate() : setStatus('j works in the Agenda.')),
+  'J': () => void (agendaShowing() ? agendaClockGoto() : setStatus('J works in the Agenda.')),
+  '$': () => void (agendaShowing() ? agendaArchive() : setStatus('$ works in the Agenda.')),
+  'C-k': () => void (agendaShowing() ? agendaKill() : setStatus('C-k works in the Agenda.')),
   'v c': () => void (agendaClockcheckKey() || setStatus('v c works in the Agenda.')),
   // the *Org Lint* buffer's keys (org-lint--report-mode); they act on the report the Text view's cursor is on
   'RET': () => void lintKey('jump'),
@@ -447,6 +483,49 @@ export const GOD_MODE_ACTIONS = {
   'C-c C-x A': () => {
     if (S.keyboardFocusedHeading) archiveHeadingToSibling(S.keyboardFocusedHeading);
   },
+  'C-c C-,': () => {
+    S.godModeActive = false; // the minibuffer is about to ask a question
+    insertStructureTemplateCommand(S.keyboardFocusedHeading);
+  },
+  'C-c C-x d': () => {
+    S.godModeActive = false;
+    insertDrawerCommand(S.keyboardFocusedHeading);
+  },
+  'C-c [': () => {
+    fileToFront(false);
+  },
+  'C-u C-c [': () => {
+    fileToFront(true);
+  },
+  'C-c ]': () => {
+    removeFile();
+  },
+  "C-'": () => {
+    cycleAgendaFiles();
+  },
+  'C-,': () => {
+    cycleAgendaFiles();
+  },
+  'C-c /': () => {
+    sparseTreeCommand();
+  },
+  'C-u C-c /': () => {
+    sparseTreeCommand(4);
+  },
+  'C-c C-j': () => {
+    gotoCommand();
+  },
+  'C-c C-r': () => revealCommand(S.keyboardFocusedHeading),
+  'C-u C-c C-r': () => revealCommand(S.keyboardFocusedHeading, 4),
+  'C-u C-u C-c C-r': () => revealCommand(S.keyboardFocusedHeading, 16),
+  'C-c @': () => markSubtreeCommand(),
+  'C-c *': () => toggleHeadingEverywhere(),
+  'C-c C-x C-n': () => nextLinkCommand(),
+  'C-c %': () => markRingPush(),
+  'C-c &': () => markRingGoto(),
+  'C-c C-x C-a': () => {
+    if (S.keyboardFocusedHeading) archiveDefault(S.keyboardFocusedHeading);
+  },
   // M-x: this app's command palette (real M-x's touch-friendly counterpart).
   'M-x': () => {
     S.godModeActive = false;
@@ -520,6 +599,7 @@ export function toggleBufferReadOnly() {
 export const PALETTE_NEEDS = {
   doc: () => (S.state.doc ? null : 'open a document first'),
   agenda: () => (agendaShowing() ? null : 'open the Agenda first'),
+  inlineTasks: () => (inlineTaskLevel() !== null ? null : 'add org-inlinetask to org-modules first'),
   lintBuffer: () => (lintBufferActive() ? null : 'open the *Org Lint* buffer first (Check for syntax mistakes)'),
   heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
   nonUtf8: () => (isNonUtf8(S.state.documentId) ? null : 'this file is already UTF-8, or was not read as text'),
@@ -707,7 +787,24 @@ export function paletteCommandList() {
     { id: 'demote', label: 'Demote subtree', orgName: 'org-demote-subtree', keys: 'M-S-<right>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftSubtree('demote', t)) },
     { id: 'promote-heading', label: 'Promote heading (children keep their level)', orgName: 'org-promote', keys: 'M-<left>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftHeadingOnly('promote', t)) },
     { id: 'demote-heading', label: 'Demote heading (children keep their level)', orgName: 'org-demote', keys: 'M-<right>', group: 'Heading', needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => shiftHeadingOnly('demote', t)) },
+    { id: 'insert-inline-task', label: 'Insert an inline task', orgName: 'org-inlinetask-insert-task', keys: 'C-c C-x t', group: 'Heading', keywords: ['inline', 'task', 'inlinetask', 'END'], needs: [...HEAD, 'inlineTasks'], run: onHeading((/** @type {Heading | null | undefined} */ t) => insertInlineTaskCommand(t)) },
     { id: 'toggle-comment', label: 'Toggle COMMENT', orgName: 'org-toggle-comment', keys: 'C-c ;', group: 'Heading', keywords: ['comment', 'commented', 'export'], needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => toggleCommentCommand(t)) },
+    { id: 'agenda-file-to-front', label: 'Put this file first in the agenda files', orgName: 'org-agenda-file-to-front', keys: 'C-c [', group: 'App', keywords: ['agenda files', 'add file', 'org-agenda-files'], needs: ['doc'], run: () => fileToFront(false) },
+    { id: 'remove-agenda-file', label: 'Remove this file from the agenda files', orgName: 'org-remove-file', keys: 'C-c ]', group: 'App', keywords: ['agenda files', 'remove file', 'org-agenda-files'], needs: ['doc'], run: () => removeFile() },
+    { id: 'cycle-agenda-files', label: 'Go to the next agenda file', orgName: 'org-cycle-agenda-files', keys: "C-'", group: 'Navigate', keywords: ['agenda files', 'next file', 'cycle'], needs: [], run: () => cycleAgendaFiles() },
+    { id: 'sparse-tree', label: 'Sparse tree (regexp, TODO, match, property, dates)', orgName: 'org-sparse-tree', keys: 'C-c /', group: 'View', keywords: ['occur', 'filter', 'search', 'deadlines', 'show matches', 'sparse'], needs: ['doc'], run: () => sparseTreeCommand() },
+    { id: 'remove-occur-highlights', label: 'Remove the highlights of a sparse tree', orgName: 'org-remove-occur-highlights', keys: '', group: 'View', keywords: ['clear', 'highlight', 'occur'], needs: ['doc'], run: () => { clearOccurHighlights(); render(); } },
+    { id: 'goto', label: 'Go to a heading by its outline path', orgName: 'org-goto', keys: 'C-c C-j', group: 'Navigate', keywords: ['jump', 'goto', 'outline', 'path', 'find heading'], needs: ['doc'], run: () => gotoCommand() },
+    { id: 'reveal', label: 'Reveal the context of this heading', orgName: 'org-reveal', keys: 'C-c C-r', group: 'View', keywords: ['show', 'unfold', 'context', 'open'], needs: HEAD, run: onHeading((/** @type {Heading} */ t) => revealCommand(t)) },
+    { id: 'mark-subtree', label: 'Mark subtree (select it in the Text view)', orgName: 'org-mark-subtree', keys: 'C-c @', group: 'Heading', keywords: ['select', 'region', 'subtree'], needs: ['doc'], run: () => markSubtreeCommand() },
+    { id: 'toggle-heading', label: 'Toggle heading (heading, plain text or list item)', orgName: 'org-toggle-heading', keys: 'C-c *', group: 'Heading', keywords: ['heading', 'stars', 'convert', 'list item'], needs: HEAD, run: () => toggleHeadingEverywhere() },
+    { id: 'next-link', label: 'Go to the next link', orgName: 'org-next-link', keys: 'C-c C-x C-n', group: 'Navigate', keywords: ['link', 'next'], needs: ['doc'], run: () => nextLinkCommand() },
+    { id: 'mark-ring-push', label: 'Save the position to the mark ring', orgName: 'org-mark-ring-push', keys: 'C-c %', group: 'Navigate', keywords: ['mark', 'ring', 'position', 'bookmark'], needs: ['doc'], run: () => markRingPush() },
+    { id: 'mark-ring-goto', label: 'Go back to the last position in the mark ring', orgName: 'org-mark-ring-goto', keys: 'C-c &', group: 'Navigate', keywords: ['mark', 'ring', 'position', 'back'], needs: ['doc'], run: () => markRingGoto() },
+    { id: 'beginning-of-line', label: 'Beginning of line (Text view)', orgName: 'org-beginning-of-line', group: 'Navigate', keywords: ['start', 'line', 'home'], needs: ['doc'], run: () => beginningOfLineCommand() },
+    { id: 'end-of-line', label: 'End of line (Text view)', orgName: 'org-end-of-line', group: 'Navigate', keywords: ['end', 'line'], needs: ['doc'], run: () => endOfLineCommand() },
+    { id: 'insert-structure-template', label: 'Insert a block (structure template)', orgName: 'org-insert-structure-template', keys: 'C-c C-,', group: 'Heading', keywords: ['block', 'quote', 'src', 'example', 'template', 'wrap'], needs: HEAD, run: onHeading(insertStructureTemplateCommand) },
+    { id: 'insert-drawer', label: 'Insert a drawer', orgName: 'org-insert-drawer', keys: 'C-c C-x d', group: 'Heading', keywords: ['drawer', 'logbook', 'wrap'], needs: HEAD, run: onHeading(insertDrawerCommand) },
     { id: 'insert-property-drawer', label: 'Insert property drawer', orgName: 'org-insert-property-drawer', group: 'Heading', keywords: ['properties', 'drawer'], needs: HEAD, run: onHeading((/** @type {Heading | null | undefined} */ t) => insertPropertyDrawerCommand(t)) },
     { id: 'sort', label: 'Sort children (table: sort lines)', orgName: 'org-sort', keys: 'C-c ^', group: 'Heading', keywords: ['sort', 'order', 'children', 'entries'], needs: ['doc', 'writable'], run: onHeading((/** @type {Heading | null | undefined} */ t) => { const table = focusedTable(); if (table) askSort(table.heading, table.table); else askSortEntries(t); }) },
     { id: 'org-indent-item', label: 'List: indent item', orgName: 'org-indent-item', keys: 'M-<right>', group: 'List', keywords: ['list', 'item', 'indent', 'demote'], needs: ['doc', 'writable'], run: () => { if (!listChord('indent-item')) godModeNotSupported('this needs the cursor in a list item'); } },
@@ -736,8 +833,11 @@ export function paletteCommandList() {
     { id: 'cut', label: 'Cut subtree', orgName: 'org-cut-subtree', keys: 'C-c C-x C-w', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-w') },
     { id: 'paste', label: 'Paste subtree', orgName: 'org-paste-subtree', keys: 'C-c C-x C-y', group: 'Heading', needs: HEAD, run: chord('C-c C-x C-y') },
     { id: 'archive', label: 'Archive subtree', orgName: 'org-archive-subtree', group: 'Heading', needs: [...HEAD, 'notArchived'], run: onHeading(openArchiveRefilePanel) },
+    { id: 'archive-default', label: 'Archive with the default command', orgName: 'org-archive-subtree-default', keys: 'C-c C-x C-a', group: 'Heading', keywords: ['archive', 'default'], needs: HEAD, run: onHeading(archiveDefault) },
     { id: 'archive-sibling', label: 'Archive to sibling', orgName: 'org-archive-to-archive-sibling', keys: 'C-c C-x A', group: 'Heading', keywords: ['archive', 'sibling', 'archive tag'], needs: HEAD, run: onHeading(archiveHeadingToSibling) },
     { id: 'unarchive', label: 'Unarchive (restore)', orgName: 'org-unarchive-subtree', group: 'Heading', needs: [...HEAD, 'archived'], run: onHeading(openArchiveRefilePanel) },
+    { id: 'refile-copy', label: 'Refile as a copy', orgName: 'org-copy', keys: 'C-c M-w', group: 'Heading', keywords: ['copy', 'refile', 'duplicate'], needs: HEAD, run: onHeading((/** @type {Heading} */ t) => openArchiveRefilePanel(t, true)) },
+    { id: 'refile-goto-last', label: 'Go to the last refiled heading', orgName: 'org-refile-goto-last-stored', keys: 'C-u C-u C-c C-w', group: 'Heading', keywords: ['refile', 'last', 'jump'], needs: ['doc'], run: () => gotoLastRefiled() },
     { id: 'refile', label: 'Refile', orgName: 'org-refile', keys: 'C-c C-w', group: 'Heading', needs: HEAD, run: onHeading(openArchiveRefilePanel) },
     { id: 'attach', label: 'Attachments', orgName: 'org-attach', keys: 'C-c C-a', group: 'Heading', keywords: ['attach', 'file', 'audio', 'record'], needs: HEAD, run: onHeading(openAttachChoicePrompt) },
     { id: 'narrow', label: 'Narrow to subtree', orgName: 'org-narrow-to-subtree', keys: 'C-x n s', group: 'Heading', needs: ['doc', 'heading'], run: chord('C-x n s') },
@@ -792,6 +892,10 @@ export function paletteCommandList() {
     { id: 'agenda-log', label: 'Agenda: toggle the log', orgName: 'org-agenda-log-mode', keys: 'l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('l') },
     { id: 'agenda-log-all', label: 'Agenda: show all log entries (LogAll)', keys: 'C-u l', group: 'View', keywords: ['log', 'closed', 'clock', 'state'], needs: ['agenda'], run: chord('C-u l') },
     { id: 'agenda-log-only', label: 'Agenda: show only log entries', keys: 'C-u C-u l', group: 'View', keywords: ['log', 'only'], needs: ['agenda'], run: chord('C-u C-u l') },
+    { id: 'agenda-goto-date', label: 'Agenda: go to a date', orgName: 'org-agenda-goto-date', keys: 'j', group: 'View', keywords: ['jump', 'date', 'day'], needs: ['agenda'], run: chord('j') },
+    { id: 'agenda-clock-goto', label: 'Agenda: go to the running clock', orgName: 'org-agenda-clock-goto', keys: 'J', group: 'Clocking', keywords: ['jump', 'running', 'clock'], needs: ['agenda'], run: chord('J') },
+    { id: 'agenda-archive', label: 'Agenda: archive this entry', orgName: 'org-agenda-archive', keys: '$', group: 'Heading', keywords: ['archive', 'move'], needs: ['agenda'], run: chord('$') },
+    { id: 'agenda-kill', label: 'Agenda: delete this entry', orgName: 'org-agenda-kill', keys: 'C-k', group: 'Heading', keywords: ['delete', 'kill', 'remove'], needs: ['agenda'], run: chord('C-k') },
     { id: 'agenda-clockcheck', label: 'Agenda: check clock issues (ClkCk)', keys: 'v c', group: 'View', keywords: ['clock', 'check', 'gap', 'overlap', 'issues'], needs: ['agenda'], run: chord('v c') },
     { id: 'agenda-restrict', label: 'Agenda commands, restricted to this file', orgName: 'org-agenda-get-restriction-and-command', keys: 'C-c a <', group: 'View', keywords: ['restrict', 'restriction', 'agenda', 'current file'], needs: ['doc'], run: () => openAgendaCommands({ restrictToFile: true }) },
     { id: 'agenda-lock', label: 'Lock the agenda to this subtree or file', orgName: 'org-agenda-set-restriction-lock', keys: 'C-c C-x <', group: 'View', keywords: ['restrict', 'restriction', 'agenda', 'narrow'], needs: ['doc'], run: () => lockAgenda() },
@@ -1281,3 +1385,18 @@ export function tryDispatchPanelHotkey(key) {
   }
   return false;
 }
+
+/** M-up and M-down on an inline task: the task, its text and its END line move together. Returns whether focus was on a task. @param {'up' | 'down'} way */
+function dragTask(way) {
+  const heading = S.keyboardFocusedHeading;
+  const min = inlineTaskLevel();
+  if (!heading || min === null || heading.level < min || !S.state.doc) return false;
+  const { error } = /** @type {{ error: string | null }} */ (moveInlineTask(S.state.doc, heading, way));
+  if (error) setStatus(error);
+  else {
+    commitAndRender(way === 'up' ? 'Moved inline task up' : 'Moved inline task down');
+    scrollFocusedHeadingIntoView();
+  }
+  return true;
+}
+

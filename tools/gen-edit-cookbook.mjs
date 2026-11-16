@@ -21,15 +21,23 @@ const cases = [
   { title: 'Insert a table column', text: 'The table is aligned again and the =#+TBLFM:= references move with the columns.', op: 'insert-col', line: 3, col: 2, org: '| a | b |\n|---+---|\n| 1 | 2 |\n#+TBLFM: $2=$1*2\n' },
   { title: 'Delete a table row', text: 'The other rows keep their layout, and row references in =#+TBLFM:= follow.', op: 'delete-row', line: 3, org: '| n | sq |\n|---+----|\n| 1 |  1 |\n| 2 |  4 |\n| 3 |  9 |\n#+TBLFM: @4$2=@3$1*@3$1\n' },
   { title: 'Change a table cell', text: 'The columns are widened to the longest cell.', op: 'set-cell', line: 3, col: 1, value: 'a much longer name', org: '| Name | Qty |\n|------+-----|\n| ab   |   3 |\n' },
+  { title: 'Demote a heading with odd levels', text: '=#+STARTUP: odd= (or =org-odd-levels-only=) makes levels one, three, five stars, so a heading changes by two stars. The demoted heading goes under its sibling.', op: 'demote', line: 4, org: '#+STARTUP: odd\n* A\n*** B\n*** C\n' },
+  { title: 'Turn a line into a heading', text: '=C-c *= makes the line a heading one level below the entry it is in; on a heading it makes the line plain text again.', op: 'toggle-heading', line: 2, org: '* Notes\nbuy milk\n' },
+  { title: 'Wrap lines in a source block', text: '=C-c C-,= then =s= wraps the selected lines (here lines 2 and 3) in a source block, ready for a language.', op: 'template', line: 2, to: 3, value: 's', org: '* Code\nprint(1)\nprint(2)\n' },
+  { title: 'Wrap lines in a drawer', text: '=C-c C-x d= and a name wraps the selected lines in that drawer, as the first lines of the entry.', op: 'drawer', line: 2, to: 3, value: 'NOTES', org: '* Meeting\nfirst point\nsecond point\n' },
 ];
 const el = `
 (require 'org) (require 'json) (require 'cl-lib)
-(defun run-case (org op line col value)
+(defun run-case (org op line col value to)
   (with-temp-buffer
     (insert org) (org-mode) (goto-char (point-min))
-    (let ((inhibit-message t) (org-adapt-indentation nil))
+    (let ((inhibit-message t) (org-adapt-indentation nil) (transient-mark-mode t))
       (forward-line (1- line))
-      (cond ((string= op "promote") (org-promote-subtree))
+      (when (member op '("template" "drawer")) (set-mark (point)) (forward-line (- (1+ to) line)) (activate-mark))
+      (cond ((string= op "toggle-heading") (org-toggle-heading))
+            ((string= op "template") (org-insert-structure-template (cdr (assoc value org-structure-template-alist))))
+            ((string= op "drawer") (org-insert-drawer nil value))
+            ((string= op "promote") (org-promote-subtree))
             ((string= op "demote") (org-demote-subtree))
             ((string= op "up") (org-move-subtree-up))
             ((string= op "item-below") (end-of-line) (org-meta-return))
@@ -41,7 +49,7 @@ const el = `
 (with-temp-buffer
   (insert-file-contents (getenv "ORACLE_IN"))
   (let* ((json-object-type 'alist) (json-array-type 'list) (cs (json-read-from-string (buffer-string))) (out '()))
-    (dolist (c cs) (push (run-case (cdr (assq 'org c)) (cdr (assq 'op c)) (cdr (assq 'line c)) (cdr (assq 'col c)) (cdr (assq 'value c))) out))
+    (dolist (c cs) (push (run-case (cdr (assq 'org c)) (cdr (assq 'op c)) (cdr (assq 'line c)) (cdr (assq 'col c)) (cdr (assq 'value c)) (cdr (assq 'to c))) out))
     (with-temp-file (getenv "ORACLE_OUT") (insert (json-encode (nreverse out))))))
 `;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'edit-book-'));
@@ -51,11 +59,11 @@ const r = spawnSync('emacs', ['--batch', '-Q', '-l', path.join(dir, 'run.el')], 
 if (r.status !== 0) { console.error(r.stderr); process.exit(1); }
 const results = JSON.parse(fs.readFileSync(path.join(dir, 'out.json'), 'utf8'));
 const esc = (t) => t.trimEnd().split('\n').map((l) => (/^\s*(\*|#\+)/.test(l) ? ',' + l : l)).join('\n');
-const how = (c) => `${c.op}${c.line ? ' at line ' + c.line : ''}${c.col ? ', column ' + c.col : ''}${c.value ? ', value "' + c.value + '"' : ''}`;
+const how = (c) => `${c.op}${c.line ? ' at line ' + c.line : ''}${c.to ? ' to ' + c.to : ''}${c.col ? ', column ' + c.col : ''}${c.value ? ', value "' + c.value + '"' : ''}`;
 let out = `#+TITLE: Editing headings, lists and tables
 #+STARTUP: showall
 
-A cookbook for structure edits. Each section shows text before an edit and after it. The "after" texts are what Emacs 29.3 (Org 9.6.15) left (promote and demote with =M-left= and =M-right= on a subtree, =M-up=, =M-RET=, =C-c C-x C-b=, the table commands), and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+A cookbook for structure edits. Each section shows text before an edit and after it. The "after" texts are what Emacs 29.3 (Org 9.6.15) left (promote and demote with =M-left= and =M-right= on a subtree, =M-up=, =M-RET=, =C-c C-x C-b=, =C-c *=, =C-c C-,=, =C-c C-x d=, the table commands), and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
 `;
 cases.forEach((c, i) => {
   out += `\n* ${c.title}\n${c.text}\n\nBefore (${how(c)}):\n#+BEGIN_SRC org\n${esc(c.org)}\n#+END_SRC\n\nAfter:\n#+BEGIN_SRC org\n${esc(results[i])}\n#+END_SRC\n`;

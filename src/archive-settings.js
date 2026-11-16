@@ -2,7 +2,7 @@
 /**
  * The variables that decide how a subtree is archived, as Emacs has them (Org 9.6): `org-archive-reversed-order`, `org-archive-mark-done`,
  * `org-archive-save-context-info`, `org-archive-subtree-add-inherited-tags`, `org-archive-file-header-format`, `org-archive-sibling-heading`,
- * `org-archive-tag` and `org-datetree-add-timestamp`. Each is read from the variables as Lisp text; the defaults are Emacs's.
+ * `org-archive-tag`, `org-archive-default-command` and `org-datetree-add-timestamp`. Each is read from the variables as Lisp text; the defaults are Emacs's.
  */
 import { parseLispTagList } from './tag-inheritance.js';
 
@@ -16,6 +16,7 @@ import { parseLispTagList } from './tag-inheritance.js';
  *   siblingHeading: string,
  *   archiveTag: string,
  *   datetreeTimestamp: 'active' | 'inactive' | null,
+ *   defaultCommand: string,
  * }} ArchiveSettings
  */
 
@@ -49,6 +50,7 @@ export function readArchiveSettings(vars = {}) {
     fileHeaderFormat: header === undefined ? '\nArchived entries from file %s\n\n' : header,
     siblingHeading: typeof sibling === 'string' ? sibling : 'Archive',
     archiveTag: typeof tag === 'string' ? tag : 'ARCHIVE',
+    defaultCommand: symbol('org-archive-default-command') ?? 'org-archive-subtree',
     datetreeTimestamp: stamp === 'inactive' ? 'inactive' : stamp === undefined || stamp === 'nil' ? null : 'active',
   };
 }

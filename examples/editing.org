@@ -1,7 +1,7 @@
 #+TITLE: Editing headings, lists and tables
 #+STARTUP: showall
 
-A cookbook for structure edits. Each section shows text before an edit and after it. The "after" texts are what Emacs 29.3 (Org 9.6.15) left (promote and demote with =M-left= and =M-right= on a subtree, =M-up=, =M-RET=, =C-c C-x C-b=, the table commands), and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
+A cookbook for structure edits. Each section shows text before an edit and after it. The "after" texts are what Emacs 29.3 (Org 9.6.15) left (promote and demote with =M-left= and =M-right= on a subtree, =M-up=, =M-RET=, =C-c C-x C-b=, =C-c *=, =C-c C-,=, =C-c C-x d=, the table commands), and the app gives the same. Lines that start with =*= or =#+= carry a comma, as org requires inside a block.
 
 * Promote a heading
 The stars drop by one and the heading stays where it is in the text, so the siblings after it become its children.
@@ -199,6 +199,78 @@ After:
 | Name               | Qty |
 |--------------------+-----|
 | a much longer name |   3 |
+#+END_SRC
+
+* Demote a heading with odd levels
+=#+STARTUP: odd= (or =org-odd-levels-only=) makes levels one, three, five stars, so a heading changes by two stars. The demoted heading goes under its sibling.
+
+Before (demote at line 4):
+#+BEGIN_SRC org
+,#+STARTUP: odd
+,* A
+,*** B
+,*** C
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,#+STARTUP: odd
+,* A
+,*** B
+,***** C
+#+END_SRC
+
+* Turn a line into a heading
+=C-c *= makes the line a heading one level below the entry it is in; on a heading it makes the line plain text again.
+
+Before (toggle-heading at line 2):
+#+BEGIN_SRC org
+,* Notes
+buy milk
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Notes
+,** buy milk
+#+END_SRC
+
+* Wrap lines in a source block
+=C-c C-,= then =s= wraps the selected lines (here lines 2 and 3) in a source block, ready for a language.
+
+Before (template at line 2 to 3, value "s"):
+#+BEGIN_SRC org
+,* Code
+print(1)
+print(2)
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Code
+,#+begin_src 
+print(1)
+print(2)
+,#+end_src
+#+END_SRC
+
+* Wrap lines in a drawer
+=C-c C-x d= and a name wraps the selected lines in that drawer, as the first lines of the entry.
+
+Before (drawer at line 2 to 3, value "NOTES"):
+#+BEGIN_SRC org
+,* Meeting
+first point
+second point
+#+END_SRC
+
+After:
+#+BEGIN_SRC org
+,* Meeting
+:NOTES:
+first point
+second point
+:END:
 #+END_SRC
 
 * Where the app differs from Emacs

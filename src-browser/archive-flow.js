@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: archive flow.
+import { oddLevelsOnly, validLevel } from '../src/levels.js';
 import { buildRestoredClone, getArchiveLocation, getProperty, parseArchiveLocation, resolveArchiveFileId, shiftLevels } from '../src/archive-model.js';
 import { applyArchiveToSource, archiveSubtree, archiveToSibling, replaceDocText } from '../src/archive-text.js';
 import { displayName } from '../src/archive-refile-details.js';
@@ -113,7 +114,7 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
     removeHeading(S.state.doc, heading);
     if (olpSegments.length > 0) {
       const target = resolveOlpTarget(S.state.doc, olpSegments);
-      shiftLevels(clone, target.level + 1);
+      shiftLevels(clone, validLevel(target.level, 1, oddLevelsOnly(S.state.doc)));
       target.children.push(clone);
       target.collapsed = false; // otherwise the just-restored item vanishes from view immediately
     } else {
@@ -134,7 +135,7 @@ export async function unarchiveHeadingToOriginalLocation(heading) {
     mutate: (doc) => {
       if (olpSegments.length > 0) {
         const target = resolveOlpTarget(doc, olpSegments);
-        shiftLevels(clone, target.level + 1);
+        shiftLevels(clone, validLevel(target.level, 1, oddLevelsOnly(S.state.doc)));
         target.children.push(clone);
         target.collapsed = false;
       } else {

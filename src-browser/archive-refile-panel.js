@@ -43,10 +43,10 @@ function detailGrid(rows) {
 
 /** Opens the panel for `heading`: Archive for a live heading, Restore for one already archived. The refile targets load behind it.
  * @param {Heading} heading */
-export async function openArchiveRefilePanel(heading) {
+export async function openArchiveRefilePanel(heading, copy = false) {
   const { entries: targetsSpec, errors } = parseRefileTargetsWithErrors(getRefileTargets(S.state.localVariables));
   const mode = isRestorable(heading) ? 'restore' : 'archive';
-  S.pendingRefile = { heading, mode, loading: true, candidates: [], errors, recent: [], selected: null, query: '' };
+  S.pendingRefile = { heading, mode, loading: true, candidates: [], errors, recent: [], selected: null, query: '', copy };
   renderArchiveRefilePanel();
   if (targetsSpec.some((entry) => entry.fileSpec === 'agenda-files')) await ensureAgendaFilesLoadedAndWait();
   const docsById = await loadRefileTargetDocs(targetsSpec);
@@ -54,7 +54,7 @@ export async function openArchiveRefilePanel(heading) {
   const candidates = getRefileCandidates(targetsSpec, docsById, S.state.documentId, S.agendaFilesConfig, heading);
   const recent = recentRefileCandidates(candidates, await loadRefileRecent());
   if (!S.pendingRefile || S.pendingRefile.heading !== heading) return;
-  S.pendingRefile = { heading, mode, loading: false, candidates, errors, recent, selected: null, query: '' };
+  S.pendingRefile = { heading, mode, loading: false, candidates, errors, recent, selected: null, query: '', copy };
   renderArchiveRefilePanel();
 }
 
@@ -118,7 +118,7 @@ export function renderArchiveRefilePanel() {
   const heading = p.heading;
   const restore = p.mode === 'restore';
   archiveRefilePanelBox.setAttribute('role', 'dialog');
-  archiveRefilePanelBox.setAttribute('aria-label', restore ? 'Restore or refile' : 'Archive or refile');
+  archiveRefilePanelBox.setAttribute('aria-label', p.copy ? 'Copy to another heading' : restore ? 'Restore or refile' : 'Archive or refile');
 
   // header: what is being moved
   const head = div('padding:0 14px 8px;border-bottom:1px solid var(--border-strong);flex:0 0 auto;');
@@ -174,15 +174,16 @@ export function renderArchiveRefilePanel() {
   newHeading.setAttribute('aria-label', 'New heading under the chosen target');
   newHeading.setAttribute('data-new-heading', '');
   newHeading.style.cssText = 'width:100%;min-height:40px;box-sizing:border-box;margin-top:8px;';
-  const refileBtn = button('Refile', async () => {
+  const refileBtn = button(p.copy ? 'Copy' : 'Refile', async () => {
     const chosen = p.selected;
     if (!chosen) return;
     const title = allowNew === 'nil' ? '' : newHeading.value.replace(/\s+/g, ' ').trim();
     if (title && allowNew === 'confirm' && !(await confirmDialog(`Create the heading "${title}" under "${chosen.outlinePath[chosen.outlinePath.length - 1]}" and refile into it?`, { confirmLabel: 'Create', danger: false }))) return;
     closeArchiveRefilePanel();
-    performRefile(heading, chosen.documentId, chosen.outlinePath, title);
+    performRefile(heading, chosen.documentId, chosen.outlinePath, title, p.copy);
   });
   const cancelBtn = button('Cancel', closeArchiveRefilePanel);
+  archiveBtn.disabled = p.copy; // a copy only files the subtree elsewhere; the original stays where it is
   archiveBtn.setAttribute('data-act', 'archive');
   refileBtn.setAttribute('data-act', 'refile');
   cancelBtn.setAttribute('data-act', 'cancel');

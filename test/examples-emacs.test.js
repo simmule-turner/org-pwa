@@ -53,7 +53,7 @@ test('icalendar.ics is what the app exports from icalendar.org', async () => {
 
 test('every query in match-queries.org finds the headings Emacs found', async () => {
   const { searchDocumentsByMatchQuery } = await import('../src/search.js');
-  const text = read('match-queries.org');
+  const text = read('match-queries.org').split('\n* Other sparse trees')[0]; // the file as it was when Emacs found them
   const doc = parseOrg(text);
   let checked = 0;
   for (const m of text.matchAll(/^- =(.+?)= :: (.*)$/gm)) {
@@ -62,6 +62,38 @@ test('every query in match-queries.org finds the headings Emacs found', async ()
     checked++;
   }
   assert.ok(checked >= 25);
+});
+
+test('every sparse tree of match-queries.org shows the headings Emacs showed', async () => {
+  const { dateQuery, deadlineQuery, occur, regexpQuery, stampTime, todoQuery } = await import('../src/sparse-tree.js');
+  const { headingLineIndex } = await import('../src/org-parser.js');
+  const whole = read('match-queries.org');
+  const text = whole.split('\n* Other sparse trees')[0]; // the file the trees were made from
+  const doc = parseOrg(text);
+  const lines = serializeOrg(doc).split('\n');
+  const index = [...headingLineIndex(doc).lines].sort((a, b) => a[1].line - b[1].line);
+  const headingAt = (line) => index.filter(([, at]) => at.line <= line).pop()?.[0] ?? null;
+  const now = new Date(2026, 9, 22);
+  let checked = 0;
+  for (const m of whole.matchAll(/^- =C-c \/ (\w)(?: (.*?))?= :: (.*)$/gm)) {
+    const [, key, arg = '', shown] = m;
+    const query = {
+      r: () => regexpQuery(arg, 't'),
+      t: () => todoQuery(['TODO', 'NEXT', 'WAITING'], null),
+      T: () => todoQuery(['TODO', 'NEXT', 'WAITING'], arg),
+      d: () => deadlineQuery(14, now, (line) => headingAt(line)?.todo === 'DONE'),
+      b: () => dateQuery('before', '', stampTime(arg), stampTime(arg)),
+      a: () => dateQuery('after', '', stampTime(arg), stampTime(arg)),
+    }[key]();
+    const titles = [];
+    for (const f of occur(lines, query.regexp, query)) {
+      const title = headingAt(f.line)?.title;
+      if (title && !titles.includes(title)) titles.push(title);
+    }
+    assert.equal(titles.join('; ') || '(none)', shown, m[0]);
+    checked++;
+  }
+  assert.equal(checked, 8);
 });
 
 test('every before/after pair in todo-states.org is what the app writes', async () => {
@@ -97,6 +129,8 @@ test('every before/after pair in editing.org is what the app writes', async () =
   const { deleteTableRow, insertListItem, insertTableColumn, setTableCell } = await import('../src/body-edit.js');
   const { cycleItemCheckbox } = await import('../src/outline-view-model.js');
   const { updateCheckboxCookie } = await import('../src/checkbox-cookie.js');
+  const { insertDrawer, insertStructureTemplate, DEFAULT_STRUCTURE_TEMPLATES } = await import('../src/structure-template.js');
+  const { toggleHeading } = await import('../src/text-commands.js');
   const cases = JSON.parse(read('../test/fixtures/editing-cases.json'));
   const unescape = (s) => s.replace(/^,(\*|#\+)/gm, '$1');
   const afters = [...read('editing.org').matchAll(/\nAfter:\n#\+BEGIN_SRC org\n([\s\S]*?)\n#\+END_SRC/g)].map((m) => unescape(m[1]));
@@ -115,6 +149,15 @@ test('every before/after pair in editing.org is what the app writes', async () =
       const at = c.org.split('\n').slice(0, c.line - 1).filter((l) => /^\*+ /.test(l)).length;
       ({ promote: promoteHeading, demote: demoteHeading, up: moveHeadingUp })[c.op](doc, headings[at]);
       result = serializeOrg(doc);
+    } else if (c.op === 'toggle-heading') {
+      result = toggleHeading(c.org, c.line - 1, c.line - 1) ?? c.org;
+    } else if (c.op === 'template' || c.op === 'drawer') {
+      const all = c.org.replace(/\n$/, '').split('\n');
+      let h = all.length - 1;
+      while (h >= 0 && !/^\*+ /.test(all[h])) h--;
+      const range = { from: c.line - 1 - (h + 1), to: c.to - 1 - (h + 1) };
+      const body = c.op === 'template' ? insertStructureTemplate(all.slice(h + 1), DEFAULT_STRUCTURE_TEMPLATES.find(([k]) => k === c.value)[1], range) : insertDrawer(all.slice(h + 1), c.value, range, { level: 1, adapt: false });
+      result = [...all.slice(0, h + 1), ...body].join('\n') + '\n';
     } else if (c.op === 'item-below' || c.op === 'toggle') {
       const doc = parseOrg(c.org);
       const heading = doc.children[0];

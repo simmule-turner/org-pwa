@@ -83,6 +83,20 @@ export const CASES = [
     op: { type: 'refile', find: 'File taxes', to: 'Inbox', toFile: 'inbox.org' },
     show: ['notes.org', 'inbox.org'],
   },
+  {
+    title: 'Archive under an archive sibling',
+    about: '=C-c C-x A= (=org-archive-to-archive-sibling=) moves the subtree under a sibling heading called =Archive=, which is made after the other siblings, with the =ARCHIVE= tag, when there is none. The subtree gets an =ARCHIVE_TIME= property; its TODO state stays.',
+    files: { 'notes.org': tree },
+    op: { type: 'sibling', find: 'File taxes' },
+    show: ['notes.org'],
+  },
+  {
+    title: 'Copy a subtree',
+    about: 'Refile with a copy, =C-c M-w=: the subtree stays where it is and a copy becomes the last child of the target.',
+    files: { 'notes.org': tree },
+    op: { type: 'copy', find: 'File taxes', to: 'Home' },
+    show: ['notes.org'],
+  },
 ];
 
 const el = `
@@ -95,12 +109,13 @@ const el = `
       (goto-char (point-min))
       (re-search-forward (regexp-quote find))
       (cond ((equal type "archive") (org-archive-subtree))
+            ((equal type "sibling") (require 'org-archive) (org-archive-to-archive-sibling))
             ((equal type "tag") (org-toggle-archive-tag))
-            (t (let* ((tbuf (if (alist-get 'toFile op) (find-file-noselect (alist-get 'toFile op)) buf))
+            ((member type '("refile" "copy")) (let* ((tbuf (if (alist-get 'toFile op) (find-file-noselect (alist-get 'toFile op)) buf))
                       (pos (with-current-buffer tbuf (save-excursion (goto-char (point-min))
                                                       (re-search-forward (concat "^\\\\*+ " (regexp-quote (alist-get 'to op))))
                                                       (line-beginning-position)))))
-                 (org-refile nil nil (list (alist-get 'to op) (buffer-file-name tbuf) nil pos)))))))
+                 (org-refile (if (equal type "copy") 3 nil) nil (list (alist-get 'to op) (buffer-file-name tbuf) nil pos)))))))
   (save-some-buffers t))
 `;
 
@@ -119,7 +134,7 @@ export function runCase(c) {
 
 const escapeText = (/** @type {string} */ s) => s.replace(/^(\*|#\+)/gm, ',$1').replace(/\n+$/, '');
 const block = (/** @type {string} */ label, /** @type {string} */ text) => `${label}:\n#+BEGIN_SRC org\n${escapeText(text)}\n#+END_SRC\n`;
-const verb = { archive: 'Archive', tag: 'Toggle the archive tag on', refile: 'Refile' };
+const verb = { archive: 'Archive', sibling: 'Archive', tag: 'Toggle the archive tag on', refile: 'Refile', copy: 'Copy' };
 
 if (process.argv[1] && new URL(import.meta.url).pathname === path.resolve(process.argv[1])) {
   let out = `#+TITLE: Archiving and refiling
@@ -130,7 +145,7 @@ A cookbook for moving subtrees. Each section shows the files before, and after t
 `;
   for (const c of CASES) {
     const op = c.op;
-    out += `* ${c.title}\n${c.about}\n\n${verb[op.type]} the heading =${op.find}=${op.type === 'refile' ? ` to the heading =${op.to}=${op.toFile ? ` in =${op.toFile}=` : ''}` : ''}.\n\n`;
+    out += `* ${c.title}\n${c.about}\n\n${verb[op.type]} the heading =${op.find}=${op.type === 'sibling' ? ' under its archive sibling' : ''}${op.type === 'refile' || op.type === 'copy' ? ` to the heading =${op.to}=${op.toFile ? ` in =${op.toFile}=` : ''}` : ''}.\n\n`;
     for (const [name, text] of Object.entries(c.files)) out += block(`Before, ${name}`, text) + '\n';
     const result = runCase(c);
     for (const name of c.show) out += block(`After, ${name}`, result[name]) + '\n';

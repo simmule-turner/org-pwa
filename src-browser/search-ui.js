@@ -772,6 +772,7 @@ function openResult(/** @type {{ documentId: string, type: string, heading: unkn
   if (outlinePath) {
     navigateToHeadingByPath(result.documentId, outlinePath, {
       revealOwnBody: result.type !== 'heading',
+      context: 'isearch',
       targetNode: /** @type {object | undefined} */ (result.node),
     });
   }

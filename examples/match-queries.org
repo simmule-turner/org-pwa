@@ -76,3 +76,16 @@ CLOSED: [2026-10-01 Thu 09:00]
 - After the last =/= come TODO keywords: =work/TODO=, =/NEXT|WAITING=, and =/!= for every task that is not done.
 - Tags are inherited, so =@train= finds the headings under *Reading*.
 - A query Org cannot read is not an error: it matches what is left over, as in Emacs.
+
+* Other sparse trees
+
+=C-c /= asks for a kind of sparse tree; these are the headings each of them shows in this file, with the clock at 2026-10-22. After the key come its answer: a regexp for =r=, the keywords for =T=, a date for =b= and =a=; =t= and =d= ask nothing.
+
+- =C-c / r spec= :: Write the spec; Queries and their matches; Reading the table
+- =C-c / r \<review\>= :: Review the draft; Queries and their matches
+- =C-c / r Emacs\|Org= :: Org manual; Emacs Lisp book; Queries and their matches; Reading the table
+- =C-c / t= :: Write the spec; Review the draft; Buy milk; Parcel; Org manual; Emacs Lisp book
+- =C-c / T NEXT|WAITING= :: Review the draft; Parcel
+- =C-c / d= :: Write the spec
+- =C-c / b 2026-11-01= :: Write the spec
+- =C-c / a 2026-11-01= :: Review the draft

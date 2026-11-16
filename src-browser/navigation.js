@@ -3,6 +3,7 @@
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: navigation.
 import { findAncestorPath } from '../src/archive-model.js';
+import { contextDetail, showContext } from '../src/context-reveal.js';
 import { flattenVisibleRows } from '../src/outline-view-model.js';
 import { findHeadingByOutlinePath } from '../src/refile.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -43,8 +44,8 @@ export function syncNavBackButtonVisibility() {
   navBackBtn.style.display = S.navigationBackStack.length > 0 ? 'flex' : 'none';
 }
 
-/** @param {Heading} heading @param {{ revealOwnBody?: boolean, targetNode?: object, pushToBackStack?: boolean, within?: ((rowEl: HTMLElement) => HTMLElement | null) | null }} [options] `within`: the part of the row to scroll to */
-export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true, within = null } = {}) {
+/** @param {Heading} heading @param {{ revealOwnBody?: boolean, targetNode?: object, pushToBackStack?: boolean, within?: ((rowEl: HTMLElement) => HTMLElement | null) | null, context?: string }} [options] `within`: the part of the row to scroll to; `context`: what org-fold-show-context-detail is asked about */
+export function navigateToHeading(heading, { revealOwnBody = false, targetNode = heading, pushToBackStack = true, within = null, context = 'default' } = {}) {
   if (pushToBackStack) {
     S.navigationBackStack.push({
       view: S.currentView,
@@ -63,9 +64,7 @@ export function navigateToHeading(heading, { revealOwnBody = false, targetNode =
   // to reflect the collapsed-state changes just made.
   if (S.currentView !== 'org') switchToView('org');
 
-  for (const ancestor of findAncestorPath(S.state.doc, heading) || []) {
-    ancestor.collapsed = false;
-  }
+  showContext(S.state.doc, heading, contextDetail(S.state.localVariables['org-fold-show-context-detail'], context), !revealOwnBody);
   if (revealOwnBody) {
     heading.collapsed = false;
     heading.bodyHidden = false;

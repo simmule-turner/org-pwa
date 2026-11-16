@@ -19,6 +19,7 @@
  * mangling legitimate titles that contain colons.
  */
 
+import { oddLevelsOnly, validLevel } from './levels.js';
 import { findContainer, findAncestorPath, shiftLevels } from './archive-model.js';
 import { parseOrgTimestamp, findTimestamps } from './org-timestamp.js';
 import { parseOrg, serializeOrg, serializeHeadingSubtree, serializeHeadingLine, headingPreambleLines, headingLineIndex } from './org-parser.js';
@@ -26,6 +27,8 @@ import { parseBody } from './body-parser.js';
 import { fixupIndentation } from './indent-fixup.js';
 import { getAdaptIndentation, getAutoAlignTags, getSrcPreserveIndentation } from './indent-settings.js';
 import { blankBeforeNew } from './blank-before-entry.js';
+import { inlineTaskLevel, isEnd } from './inline-tasks.js';
+import { insertDrawer, insertStructureTemplate } from './structure-template.js';
 
 /** Builds a heading object with every field the AST shape requires — the
  *  single source of truth for "what does an empty heading look like",
@@ -466,7 +469,7 @@ function moveHeadingToRaw(doc, heading, target, position, climb = 0) {
     if (position === 'firstChild') anchor.children.unshift(heading);
     else anchor.children.push(heading);
     anchor.collapsed = false; // otherwise the moved heading vanishes from view the instant it lands
-    shiftLevels(heading, anchor.level + 1);
+    shiftLevels(heading, validLevel(anchor.level, 1, oddLevelsOnly(doc)));
   } else {
     place.container.splice(position === 'after' ? place.index + 1 : place.index, 0, heading);
     shiftLevels(heading, anchor.level);
@@ -489,7 +492,8 @@ function promoteHeadingRaw(doc, heading) {
   const i = list.indexOf(heading);
   if (i < 0 || heading.level <= 1) return false;
   const end = subtreeEnd(list, i);
-  for (let j = i; j < end; j++) list[j].level -= 1;
+  const odd = oddLevelsOnly(doc);
+  for (let j = i; j < end; j++) list[j].level = validLevel(list[j].level, -1, odd);
   rebuildTree(doc, list);
   return true;
 }
@@ -506,7 +510,8 @@ function demoteHeadingRaw(doc, heading) {
   const i = list.indexOf(heading);
   if (i < 0) return false;
   const end = subtreeEnd(list, i);
-  for (let j = i; j < end; j++) list[j].level += 1;
+  const odd = oddLevelsOnly(doc);
+  for (let j = i; j < end; j++) list[j].level = validLevel(list[j].level, 1, odd);
   rebuildTree(doc, list);
   const parent = list.slice(0, i).reverse().find((h) => h.level < heading.level);
   if (parent) parent.collapsed = false; // otherwise the demoted heading vanishes from view the instant it moves
@@ -557,6 +562,72 @@ function insertPropertyDrawerRaw(doc, heading) {
 export const insertPropertyDrawer = keepFinalNewline(insertPropertyDrawerRaw, false);
 
 /**
+ * The lines of a heading's text as one list (below the heading line), and where its body starts in it.
+ * @param {Heading} heading
+ */
+function sectionLines(heading) {
+  const preamble = headingPreambleLines(heading);
+  return { header: preamble[0], rest: [...preamble.slice(1), ...heading.bodyLines], bodyStart: preamble.length - 1 };
+}
+
+/**
+ * The lines of the focused element, for a block or drawer to wrap, as a range of the section lines.
+ * @param {Heading} heading  @param {import('./types.js').BodyNode | import('./types.js').ListItem} element
+ * @returns {{ from: number, to: number } | null}
+ */
+export function elementRange(heading, element) {
+  const { rest, bodyStart } = sectionLines(heading);
+  const first = element.type === 'list' ? element.items[0]?.lineIndex : element.lineIndex;
+  if (first === undefined) return null;
+  const from = bodyStart + first;
+  if (element.type === 'list-item') {
+    let to = from;
+    for (let i = from + 1; i < rest.length; i++) {
+      if (/^[ \t]*$/.test(rest[i])) continue;
+      if ((/^[ \t]*/.exec(rest[i])?.[0].length ?? 0) <= element.indent) break;
+      to = i;
+    }
+    return { from, to };
+  }
+  const count = 'lineCount' in element && element.lineCount !== undefined ? element.lineCount : element.type === 'list' ? 0 : 1;
+  return { from, to: from + Math.max(count, 1) - 1 };
+}
+
+/**
+ * org-insert-structure-template: wraps `range` of the heading's text (see elementRange) in a block of `type`, or adds an empty block after its text.
+ * @param {Doc} doc @param {Heading} heading @param {string} type @param {{ from: number, to: number } | null} range @param {string} [argument]
+ */
+function insertStructureTemplateRaw(doc, heading, type, range, argument) {
+  const { header, rest } = sectionLines(heading);
+  adoptSectionLines(heading, beforeTrailingBlank(rest, range, (lines) => insertStructureTemplate(lines, type, range, argument)), header);
+  heading.collapsed = false;
+  return true;
+}
+
+/**
+ * org-insert-drawer: wraps `range` of the heading's text in `:NAME:` and `:END:`, or adds an empty drawer after its text.
+ * @param {Doc} doc @param {Heading} heading @param {string} name @param {{ from: number, to: number } | null} range
+ */
+function insertDrawerRaw(doc, heading, name, range) {
+  const { header, rest } = sectionLines(heading);
+  adoptSectionLines(heading, beforeTrailingBlank(rest, range, (lines) => insertDrawer(lines, name, range, { level: heading.level, adapt: getAdaptIndentation() === 't' })), header);
+  heading.collapsed = false;
+  return true;
+}
+
+/** With no range, a block or drawer goes after the last line with text, ahead of the blank lines that separate the text from what follows.
+ * @param {string[]} lines @param {{ from: number, to: number } | null} range @param {(lines: string[]) => string[]} edit */
+function beforeTrailingBlank(lines, range, edit) {
+  if (range) return edit(lines);
+  let n = lines.length;
+  while (n > 0 && /^[ \t]*$/.test(lines[n - 1])) n--;
+  return [...edit(lines.slice(0, n)), ...lines.slice(n)];
+}
+
+export const insertStructureTemplateIn = keepFinalNewline(insertStructureTemplateRaw, false);
+export const insertDrawerIn = keepFinalNewline(insertDrawerRaw, false);
+
+/**
  * org-toggle-comment: puts COMMENT first in the title, or takes it off. Returns whether the heading is commented now.
  * @param {Heading} heading
  */
@@ -592,19 +663,27 @@ export function toggleComment(heading) {
  * again when `org-auto-align-tags` is set. Refuses (false) to promote at level 1.
  * @param {Doc} doc
  * @param {Heading} heading
- * @param {1 | -1} delta
+ * @param {number} delta stars to add (an inline task's END goes where its task goes, so more than one step can be asked)
+ * @param {number | null} [indentDelta] columns the lines under it follow by, when they are not the ones the level change gives; null leaves them
+ * @param {number | null} [fixupLevel] the level the planning line and drawers follow, when it is not the heading's own
  */
-function shiftOneHeading(doc, heading, delta) {
+function shiftOneHeading(doc, heading, delta, indentDelta = delta, fixupLevel = null) {
   const list = flatHeadings(doc);
   const i = list.indexOf(heading);
-  if (i < 0 || (delta < 0 && heading.level <= 1)) return false;
+  if (i < 0 || heading.level + delta < 1) return false;
+  if (oddLevelsOnly(doc) && Math.abs(delta) === 1) {
+    const stepped = validLevel(heading.level, delta, true) - heading.level;
+    if (stepped === 0) return false;
+    delta = stepped;
+    indentDelta = indentDelta === null ? null : stepped;
+  }
   const preamble = headingPreambleLines(heading);
   const old = preamble[0];
   const rest = [...preamble.slice(1), ...heading.bodyLines];
   const was = heading.level;
   heading.level += delta;
   const adapt = getAdaptIndentation();
-  const lines = adapt === 'nil' ? rest : fixupIndentation(rest, delta, heading.level, adapt, getSrcPreserveIndentation());
+  const lines = adapt === 'nil' || indentDelta === null ? rest : fixupIndentation(rest, indentDelta, fixupLevel ?? heading.level, adapt, getSrcPreserveIndentation());
   if (lines.some((l, k) => l !== rest[k])) adoptSectionLines(heading, lines, old);
   else if (!heading.raw) adoptSectionLines(heading, rest, old);
   const raw = /** @type {NonNullable<Heading['raw']>} */ (heading.raw);
@@ -621,6 +700,102 @@ function shiftOneHeading(doc, heading, delta) {
   }
   return true;
 }
+
+/**
+ * org-inlinetask-promote and org-inlinetask-demote: the task and its END line go to the level one step from the one of the line the
+ * command is on, and the lines under the task follow as `org-adapt-indentation` says. Promoting below `org-inlinetask-min-level` is refused.
+ * @param {Doc} doc
+ * @param {Heading} heading the task, or its END line
+ * @param {1 | -1} way
+ * @returns {{ error: string | null }}
+ */
+function shiftInlineTask(doc, heading, way) {
+  const min = inlineTaskLevel();
+  const list = flatHeadings(doc);
+  const at = list.indexOf(heading);
+  if (min === null || at < 0 || heading.level < min) return { error: 'Not in an inline task' };
+  const isEndLine = (/** @type {number} */ i) => i >= 0 && i < list.length && list[i].level >= min && isEnd(list[i]);
+  const next = Math.max(1, heading.level + way);
+  if (way < 0 && next < min) return { error: 'Cannot promote an inline task at minimum level' };
+  let first = at;
+  if (isEndLine(at)) {
+    let p = at - 1;
+    while (p >= 0 && list[p].level < min) p--;
+    if (p >= 0) first = p;
+  }
+  const last = !isEndLine(first) && isEndLine(first + 1) ? first + 1 : -1;
+  const end = last >= 0 ? list[last] : null;
+  const task = list[first];
+  // the lines under a task are indented from the level of the heading it sits in: Emacs reads the level with limited levels, where a task is no heading
+  let parentLevel = 0;
+  for (let p = first - 1; p >= 0; p--) if (list[p].level < min) { parentLevel = list[p].level; break; }
+  if (next !== task.level || next !== heading.level) shiftOneHeading(doc, task, next - task.level, end ? next - heading.level : null, parentLevel); // Emacs re-indents only a task that has an END
+  if (end && next !== end.level) shiftOneHeading(doc, end, next - end.level, null);
+  return { error: null };
+}
+
+/**
+ * org-inlinetask-insert-task for a heading: an inline task and its END line, at the end of the heading's own text (before its first
+ * child), starting with `state` (org-inlinetask-default-state) when there is one. Refuses to nest a task in a task that has an END.
+ * @param {Doc} doc
+ * @param {Heading} heading
+ * @param {string | null} state
+ * @returns {{ error: string | null, task?: Heading }}
+ */
+function insertInlineTaskAfter(doc, heading, state) {
+  const min = inlineTaskLevel();
+  if (min === null) return { error: 'org-inlinetask is not loaded' };
+  const list = flatHeadings(doc);
+  const i = list.indexOf(heading);
+  if (i < 0) return { error: 'No heading here' };
+  const nextHeading = list[i + 1];
+  if (nextHeading && nextHeading.level >= min && isEnd(nextHeading)) return { error: 'Cannot nest inline tasks' };
+  const task = createHeading({ level: min, todo: state || null });
+  const end = createHeading({ level: min, title: 'END' });
+  rebuildTree(doc, [...list.slice(0, i + 1), task, end, ...list.slice(i + 1)]);
+  heading.collapsed = false;
+  return { error: null, task };
+}
+
+/**
+ * org-metaup and org-metadown on an inline task: the task, its text and its END line swap with the task block beside them.
+ * @param {Doc} doc
+ * @param {Heading} heading the task, or its END line
+ * @param {'up' | 'down'} way
+ * @returns {{ error: string | null }}
+ */
+function dragInlineTask(doc, heading, way) {
+  const min = inlineTaskLevel();
+  const list = flatHeadings(doc);
+  const at = list.indexOf(heading);
+  if (min === null || at < 0 || heading.level < min) return { error: 'Not in an inline task' };
+  const endAt = (/** @type {number} */ i) => i >= 0 && i < list.length && list[i].level >= min && isEnd(list[i]);
+  /** The block that holds line `i`: [first, last] */
+  const blockOf = (/** @type {number} */ i) => {
+    let first = i;
+    if (endAt(i) && i > 0 && list[i - 1].level >= min && !endAt(i - 1)) first = i - 1;
+    const last = !endAt(first) && endAt(first + 1) ? first + 1 : first;
+    return [first, last];
+  };
+  const [first, last] = blockOf(at);
+  const fail = { error: `Cannot drag element ${way === 'up' ? 'backward' : 'forward'}` };
+  if (way === 'up') {
+    if (first === 0 || list[first - 1].level < min) return fail;
+    const [pf] = blockOf(first - 1);
+    rebuildTree(doc, [...list.slice(0, pf), ...list.slice(first, last + 1), ...list.slice(pf, first), ...list.slice(last + 1)]);
+  } else {
+    const n = last + 1;
+    if (n >= list.length || list[n].level < min) return fail;
+    const [, nl] = blockOf(n);
+    rebuildTree(doc, [...list.slice(0, first), ...list.slice(n, nl + 1), ...list.slice(first, n), ...list.slice(nl + 1)]);
+  }
+  return { error: null };
+}
+
+export const moveInlineTask = keepFinalNewline(dragInlineTask);
+export const insertInlineTask = keepFinalNewline(insertInlineTaskAfter);
+export const promoteInlineTask = keepFinalNewline((/** @type {Doc} */ doc, /** @type {Heading} */ heading) => shiftInlineTask(doc, heading, -1));
+export const demoteInlineTask = keepFinalNewline((/** @type {Doc} */ doc, /** @type {Heading} */ heading) => shiftInlineTask(doc, heading, 1));
 
 /** org-promote: promotes only `heading` (see shiftOneHeading). @param {Doc} doc @param {Heading} heading */
 export const promoteHeadingOnly = keepFinalNewline((/** @type {Doc} */ doc, /** @type {Heading} */ heading) => shiftOneHeading(doc, heading, -1));

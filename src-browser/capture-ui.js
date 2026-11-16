@@ -1,5 +1,6 @@
 // @ts-check
 // Extracted from app.js: capture ui.
+import { openArchiveRefilePanel } from './archive-refile-panel.js';
 import { readArchiveSettings } from '../src/archive-settings.js';
 import { CAPTURE_FILE_SCHEMES, computeNonCollidingKeys, expandTemplate, getCaptureFileScheme, parseTimePrompt, resolveCaptureFileId, scanPrompts, storageKindForScheme } from '../src/capture-template.js';
 import { captureInto, captureRecalculator } from '../src/capture-run.js';
@@ -366,17 +367,7 @@ export function renderCapturePromptForm() {
 
   const row = document.createElement('div');
   row.className = 'panel-row';
-  row.appendChild(
-    menuButton('Cancel', () => {
-      S.capturePromptTemplate = null;
-      if (S.captureOpenedFromExtraMenu) {
-        S.captureOpenedFromExtraMenu = false;
-        S.captureOpen = false;
-      }
-      setStatus('Capture cancelled.');
-      renderCapturePanel();
-    })
-  );
+  row.appendChild(menuButton('Cancel', abortCapture));
   row.appendChild(
     menuButton('Reset', () => {
       S.capturePromptValues = prompts.map((p) => p.default || '');
@@ -391,23 +382,56 @@ export function renderCapturePromptForm() {
   );
   row.appendChild(
     menuButton('OK', () => {
-      const answers = S.capturePromptValues.slice();
-      let at;
-      if (template.timePrompt) {
-        at = parseTimePrompt(S.captureTimeValue, new Date(), S.state.localVariables || S.globalVariables);
-      }
-      runCaptureWithAnswers(template, answers, at);
+      finishCapture(template, false);
     })
   );
   capturePanelBox.appendChild(row);
+  capturePanelBox.onkeydown = (e) => captureChordKey(e, template);
+}
+
+/** `org-capture-kill` (C-c C-k): drops the capture; nothing was filed, so there is nothing to clean up. */
+function abortCapture() {
+  S.capturePromptTemplate = null;
+  if (S.captureOpenedFromExtraMenu) {
+    S.captureOpenedFromExtraMenu = false;
+    S.captureOpen = false;
+  }
+  setStatus('Capture process aborted and target buffer cleaned up');
+  renderCapturePanel();
+}
+
+/** OK (`org-capture-finalize`), or with `refile` `org-capture-refile` (C-c C-w): files the entry, then refiles it. @param {import('../src/types.js').CaptureTemplate} template @param {boolean} refile */
+function finishCapture(template, refile) {
+  if (refile && template.type !== 'entry') return setStatus("Refiling from a capture buffer makes only sense for `entry'-type templates");
+  const answers = S.capturePromptValues.slice();
+  const at = template.timePrompt ? parseTimePrompt(S.captureTimeValue, new Date(), S.state.localVariables || S.globalVariables) : undefined;
+  runCaptureWithAnswers(template, answers, at, refile);
+}
+
+/** The pending `C-c` of the capture sheet, which `C-k` aborts and `C-w` refiles; `C-c` itself still copies a selection. */
+const chordState = { cPressed: false };
+
+/** @param {KeyboardEvent} e @param {import('../src/types.js').CaptureTemplate} template */
+function captureChordKey(e, template) {
+  const after = chordState.cPressed;
+  chordState.cPressed = e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'c';
+  if (!after || !e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === 'k') {
+    e.preventDefault();
+    abortCapture();
+  } else if (e.key === 'w') {
+    e.preventDefault();
+    finishCapture(template, true);
+  }
 }
 
 /**
  * @param {import('../src/types.js').CaptureTemplate} template
  * @param {string[]} [answers]
  * @param {Date} [at] the date and time asked for by :time-prompt
+ * @param {boolean} [refile] C-c C-w: refile the new entry once it is filed
  */
-export async function runCaptureWithAnswers(template, answers, at) {
+export async function runCaptureWithAnswers(template, answers, at, refile = false) {
   /** @type {{ line: number, column: number } | null} the cursor of the text view, when the capture is to go in there */
   let here = null;
   if (S.captureInsertHere && S.currentView === 'text' && !S.narrowedHeading) {
@@ -465,6 +489,11 @@ export async function runCaptureWithAnswers(template, answers, at) {
     targetFileId = found;
   }
 
+  if (refile && targetFileId !== S.state.documentId) {
+    setStatus('Refiling from a capture works for a template that files into the open file.');
+    renderCapturePanel();
+    return;
+  }
   if (targetFileId !== S.state.documentId) {
     // Cross-file capture: read/insert/write the OTHER file directly via
     // whichever backend the current document itself came from, without
@@ -529,6 +558,11 @@ export async function runCaptureWithAnswers(template, answers, at) {
   const { target } = result;
   const clocked = clockCapturedEntry(template, result, S.state.doc);
   commitAndRender(`Captured: ${template.description}`);
+  if (refile && result.reveal && result.reveal.heading) {
+    afterSuccessfulCapture();
+    openArchiveRefilePanel(result.reveal.heading);
+    return;
+  }
 
   const hasTarget = (template.olp || []).length || template.datetree || template.targetFunction || template.targetId !== undefined || template.targetClock;
   // Emacs returns to the buffer it came from after a capture; only :jump-to-captured t goes to the new entry

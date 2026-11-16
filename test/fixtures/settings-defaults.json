@@ -15,6 +15,10 @@
  "org-src-preserve-indentation": "nil",
  "org-export-headline-levels": "3",
  "org-export-with-toc": "t",
+ "org-archive-default-command": "UNBOUND",
+ "org-special-ctrl-a/e": "nil",
+ "org-inlinetask-default-state": "nil",
+ "org-inlinetask-show-first-star": "nil",
  "org-export-with-section-numbers": "t",
  "org-export-preserve-breaks": "nil",
  "org-export-time-stamp-file": "t",
@@ -85,5 +89,6 @@
  "org-agenda-clock-consistency-checks": "(:max-duration \"10:00\" :min-duration 0 :max-gap \"0:05\" :gap-ok-around (\"4:00\") :default-face ((:background \"DarkRed\") (:foreground \"white\")) :overlap-face nil :gap-face nil :no-end-time-face nil :long-face nil :short-face nil)",
  "org-agenda-prefix-format": "((agenda . \" %i %-12:c%?-12t% s\") (todo . \" %i %-12:c\") (tags . \" %i %-12:c\") (search . \" %i %-12:c\"))",
  "org-agenda-sorting-strategy": "((agenda habit-down time-up priority-down category-keep) (todo priority-down category-keep) (tags priority-down category-keep) (search category-keep))",
- "org-html-postamble-format": "((\"en\" \"<p class=\\\"author\\\">Author: %a (%e)</p>"
+ "org-html-postamble-format": "((\"en\" \"<p class=\\\"author\\\">Author: %a (%e)</p>",
+ "org-structure-template-alist": "((\"a\" . \"export ascii\") (\"c\" . \"center\") (\"C\" . \"comment\") (\"e\" . \"example\") (\"E\" . \"export\") (\"h\" . \"export html\") (\"l\" . \"export latex\") (\"q\" . \"quote\") (\"s\" . \"src\") (\"v\" . \"verse\"))"
 }

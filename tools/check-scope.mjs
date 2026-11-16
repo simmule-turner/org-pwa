@@ -53,7 +53,7 @@ const GLOBALS = new Set(
     'String Number Boolean Math JSON Date RegExp Error TypeError RangeError SyntaxError Function parseInt parseFloat isNaN isFinite ' +
     'encodeURIComponent decodeURIComponent encodeURI decodeURI escape unescape undefined NaN Infinity globalThis Uint8Array Uint16Array ' +
     'Uint32Array Int8Array Int16Array Int32Array Float32Array Float64Array ArrayBuffer DataView BigInt Reflect Proxy WeakRef katex ' +
-    'customElements CSS Worker self caches createImageBitmap DOMException Selection getSelection ClipboardItem DataTransfer FileList ' +
+    'customElements CSS NodeFilter Range Highlight Worker self caches createImageBitmap DOMException Selection getSelection ClipboardItem DataTransfer FileList ' +
     'showOpenFilePicker showSaveFilePicker showDirectoryPicker parent addEventListener removeEventListener innerHeight innerWidth').split(' ')
 );
 

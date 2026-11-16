@@ -14,6 +14,7 @@ import { applyTransitionEffects, writePendingNote } from '../src/todo-transition
 import { resolveTodoSequence, resolveTodoSequences, findSequenceForHeading, setTodoState } from '../src/todo-cycle.js';
 import { RepeatError } from '../src/repeater-shift.js';
 import { emitExtensionEvent } from './extension-events.js';
+import { applyTagTriggers } from '../src/todo-triggers.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
@@ -86,6 +87,11 @@ export function applyTodoTransition(heading, performChange, options = {}) {
     if (!(err instanceof RepeatError)) throw err;
     if (err.pendingNote) S.pendingLogNote = err.pendingNote;
     setStatus(err.message);
+  }
+
+  if (fromTodo !== heading.todo) {
+    const tags = applyTagTriggers(heading.tags, heading.todo, S.state.localVariables['org-todo-state-tags-triggers'], sequence.doneKeywords, sequence.todoKeywords);
+    if (tags) heading.tags = tags;
   }
 
   // A heading's own TODO state is exactly what a :COOKIE_DATA: "todo"

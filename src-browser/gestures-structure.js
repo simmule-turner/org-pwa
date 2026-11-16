@@ -28,6 +28,7 @@ import { kv } from './singletons.js';
 import { applyTodoTransition } from './todo-workflow.js';
 import { SWIPE_THRESHOLD_PX } from './ui-widgets.js';
 import { platform } from './platform.js';
+import { clearOccurHighlights } from './occur-highlights.js';
 
 /**
  * @param {HTMLDivElement} el
@@ -265,6 +266,7 @@ export function narrowToSparseMatches(matchedHeadings) {
  *  clears it when nothing matches any more, as well as for widenSparseSearch. Forgetting only the in-memory
  *  scope would let a stale saved copy bring a dismissed narrow back on the next reload. */
 export function forgetSparseNarrow() {
+  clearOccurHighlights();
   S.sparseNarrowScope = null;
   if (S.state.documentId) saveSparseNarrowState(kv, S.state.documentId, null).catch(() => {});
 }

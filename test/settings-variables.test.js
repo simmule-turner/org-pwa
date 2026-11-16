@@ -51,9 +51,10 @@ test('the variables with no control are the ones decided on, and the ones a pers
 
 test('the Lisp init sets every variable of the catalog, as the Lisp text its reader takes', () => {
   for (const c of VARIABLE_CATALOG) {
-    const { values, errors } = settingsFromInit(`(setq ${c.name} nil)`, {});
+    const bound = c.name === 'org-odd-levels-only'; // the Lisp prelude binds it to nil, so only another value is a change
+    const { values, errors } = settingsFromInit(`(setq ${c.name} ${bound ? 't' : 'nil'})`, {});
     assert.deepEqual(errors, [], c.name);
-    assert.equal(values[c.name], ['org-xx-extra-menu', 'org-xx-menu-aliases'].includes(c.name) ? '' : 'nil', `${c.name} from the init`);
+    assert.equal(values[c.name], ['org-xx-extra-menu', 'org-xx-menu-aliases'].includes(c.name) ? '' : bound ? 't' : 'nil', `${c.name} from the init`);
   }
   const { values } = settingsFromInit(`(setq org-footnote-section "Notes")\n(setq org-priority-default ?C)\n(setq org-use-property-inheritance t)`, {});
   assert.equal(values['org-footnote-section'], '"Notes"');

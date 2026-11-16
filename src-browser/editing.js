@@ -19,6 +19,7 @@ import { resolveEffectiveStartupConfig } from '../src/startup-config.js';
 import { canRedo, canUndo, currentEntry, jumpTo, parentOf, pushSnapshot, redo, redoBranches, treeRows, undo } from '../src/undo-history.js';
 import { syncAgendaFilesConfig, syncContactsFilesConfig } from './agenda-files.js';
 import { S } from './app-state.js';
+import { clearOccurHighlights } from './occur-highlights.js';
 import { openTextFieldPopup } from './dialogs.js';
 import { statusEl } from './dom.js';
 import { reconcileReadOnlyAfterReparse } from './god-mode-palette.js';
@@ -244,6 +245,7 @@ export function persistHistoryInBackground() {
 }
 
 export function commitAndRender(label = 'Edited') {
+  clearOccurHighlights(); // an edit removes a sparse tree's highlights, as in Emacs
   if (S.isBufferReadOnly) {
     // Reverts the caller's own already-applied in-memory mutation by
     // re-parsing the last COMMITTED snapshot, rather than leaving an

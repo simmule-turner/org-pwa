@@ -5,7 +5,14 @@ import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { openGridChoiceModal, promptText } from './dialogs.js';
 import { render } from './render.js';
-import { demoteHeading, demoteHeadingOnly, insertPropertyDrawer, promoteHeading, promoteHeadingOnly, toggleComment } from '../src/heading-edit.js';
+import { demoteHeading, demoteHeadingOnly, demoteInlineTask, elementRange, insertDrawerIn, insertInlineTask, insertPropertyDrawer, insertStructureTemplateIn, promoteHeading, promoteHeadingOnly, promoteInlineTask, toggleComment } from '../src/heading-edit.js';
+import { inlineTaskDefaultState, inlineTaskLevel } from '../src/inline-tasks.js';
+import { readStructureTemplates } from '../src/structure-template.js';
+import { toggleHeading } from '../src/text-commands.js';
+import { headingLineIndex, serializeOrg } from '../src/org-parser.js';
+import { replaceDocText } from '../src/archive-text.js';
+import { headingAtLine } from './text-commands-flow.js';
+import { readFromMinibuffer } from './minibuffer-prompt.js';
 import { sortEntries } from '../src/outline-sort.js';
 import { readFunction } from '../src/table-sort-lisp.js';
 import { readPriorityRange } from '../src/priorities.js';
@@ -20,6 +27,14 @@ const headingOf = (target) => target || S.keyboardFocusedHeading || null;
 export function shiftHeadingOnly(way, target) {
   const heading = headingOf(target);
   if (!heading || !S.state.doc) return;
+  const min = inlineTaskLevel();
+  if (min !== null && heading.level >= min) {
+    // org-metaleft and org-metaright on an inline task: the task and its END line move together
+    const { error } = /** @type {{ error: string | null }} */ ((way === 'promote' ? promoteInlineTask : demoteInlineTask)(S.state.doc, heading));
+    if (error) setStatus(error);
+    else commitAndRender(way === 'promote' ? 'Promoted inline task' : 'Demoted inline task');
+    return;
+  }
   const ok = (way === 'promote' ? promoteHeadingOnly : demoteHeadingOnly)(S.state.doc, heading);
   if (ok) commitAndRender(way === 'promote' ? 'Promoted heading' : 'Demoted heading');
   else setStatus('Cannot promote to level 0.  UNDO to recover if necessary');
@@ -32,6 +47,15 @@ export function shiftSubtree(way, target) {
   if (!heading || !S.state.doc) return;
   if ((way === 'promote' ? promoteHeading : demoteHeading)(S.state.doc, heading)) commitAndRender(way === 'promote' ? 'Promoted subtree' : 'Demoted subtree');
   else setStatus(way === 'promote' ? "Already top-level — can't promote further." : 'No preceding sibling to demote under.');
+}
+
+/** org-inlinetask-insert-task (C-c C-x t): an inline task under the focused heading's text. @param {Heading | null} [target] @param {boolean} [noState] */
+export function insertInlineTaskCommand(target, noState = false) {
+  const heading = headingOf(target);
+  if (!heading || !S.state.doc) return;
+  const { error } = /** @type {{ error: string | null }} */ (insertInlineTask(S.state.doc, heading, noState ? null : inlineTaskDefaultState()));
+  if (error) setStatus(error);
+  else commitAndRender('Inserted inline task');
 }
 
 /** org-toggle-comment. @param {Heading | null} [target] */
@@ -106,4 +130,76 @@ export function askSortEntries(target, withCase = false) {
       return { key: type, text: reversed ? `${text.replace('…', '')}, reversed${text.endsWith('…') ? '…' : ''}` : text, onClick };
     })),
   });
+}
+
+/** The lines of the focused paragraph, list item, table or block, for a block or drawer to wrap; null when no such row is focused.
+ * @param {Heading} heading */
+function focusedElementRange(heading) {
+  const row = S.keyboardFocusedBodyRow;
+  if (!row || row.heading !== heading) return null;
+  return elementRange(heading, row.rowType === 'list-item' ? row.item : row.node);
+}
+
+/**
+ * org-insert-structure-template (C-c C-,): asks for a key of org-structure-template-alist (or any block type), then wraps the focused
+ * element in that block, or adds an empty block after the heading's text.
+ * @param {Heading | null} [target]
+ */
+export async function insertStructureTemplateCommand(target) {
+  const heading = headingOf(target);
+  if (!heading || !S.state.doc) return;
+  const templates = readStructureTemplates(S.state.localVariables['org-structure-template-alist']);
+  const answer = await readFromMinibuffer('Select a key (or type a block type): ', '', templates.map(([key, type]) => `${key} ${type}`));
+  if (answer === null || answer.trim() === '') return;
+  const typed = answer.trim();
+  const type = templates.find(([key]) => key === typed)?.[1] ?? templates.find(([key, name]) => `${key} ${name}` === typed)?.[1] ?? typed;
+  let language = '';
+  if (/^(src|export)$/.test(type)) {
+    const asked = await readFromMinibuffer(type === 'src' ? 'Language: ' : 'Export backend: ');
+    if (asked === null) return;
+    language = asked.trim();
+  }
+  insertStructureTemplateIn(S.state.doc, heading, type, focusedElementRange(heading), language);
+  commitAndRender(`Inserted ${type} block`);
+}
+
+/**
+ * org-insert-drawer (C-c C-x d): asks for the drawer's name, then wraps the focused element in it, or adds an empty drawer after the heading's text.
+ * @param {Heading | null} [target]
+ */
+export async function insertDrawerCommand(target) {
+  const heading = headingOf(target);
+  if (!heading || !S.state.doc) return;
+  const name = await readFromMinibuffer('Drawer: ');
+  if (name === null) return;
+  if (!/^[\w-]+$/.test(name)) {
+    setStatus('Invalid drawer name');
+    return;
+  }
+  insertDrawerIn(S.state.doc, heading, name, focusedElementRange(heading));
+  commitAndRender(`Inserted ${name} drawer`);
+}
+
+/**
+ * org-toggle-heading (C-c *) in the outline: the focused heading becomes plain text, or the focused paragraph or list item becomes a heading
+ * one level below the entry it is in.
+ * @param {Heading | null} [target]
+ */
+export function toggleHeadingCommand(target) {
+  const heading = headingOf(target);
+  const doc = S.state.doc;
+  if (!heading || !doc) return;
+  const range = focusedElementRange(heading);
+  const at = headingLineIndex(doc).lines.get(heading);
+  if (!at) return;
+  const line = range ? at.line + 1 + range.from : at.line;
+  const next = toggleHeading(serializeOrg(doc), line, line);
+  if (next === null) {
+    setStatus('Cannot toggle heading from here');
+    return;
+  }
+  replaceDocText(doc, next);
+  S.keyboardFocusedBodyRow = null;
+  S.keyboardFocusedHeading = headingAtLine(doc, line);
+  commitAndRender('Toggled heading');
 }

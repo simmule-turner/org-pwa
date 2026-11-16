@@ -102,6 +102,8 @@ S.pendingLogNote = null;
 // action menu -- renderRefilePanel shows the candidate-target list for
 // it. Only ever one at a time, matching pendingLogNote's own pattern.
 S.pendingRefile = null;
+S.lastRefiled = null;
+S.occurHighlights = null;
 // Set to { heading, filenames, action } when Open or Delete is tapped
 // on a heading with MORE than one attachment -- org-attach's own
 // actual behavior ("if there's more than one, prompt for a file name

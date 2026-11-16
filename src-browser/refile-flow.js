@@ -2,6 +2,7 @@
 /** @typedef {import('../src/types.js').Heading} Heading */
 /** @typedef {import('../src/types.js').Doc} Doc */
 // Extracted from app.js: refile flow.
+import { oddLevelsOnly, validLevel } from '../src/levels.js';
 import { appendRefiled } from '../src/archive-model.js';
 import { createHeading, removeHeading } from '../src/heading-edit.js';
 import { parseOrg } from '../src/org-parser.js';
@@ -11,6 +12,7 @@ import { S } from './app-state.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { UNSAVED_NOTE, writeToOtherFile } from './buffers.js';
 import { activeDiskAdapter } from './external-sync.js';
+import { navigateToHeadingByPath } from './navigation.js';
 import { rememberRefileTarget } from './sync-helpers.js';
 
 /**
@@ -83,18 +85,20 @@ export async function loadRefileTargetDocs(targetsSpec) {
  * @param {Heading} heading
  * @param {string} targetDocumentId
  * @param {any} [targetOutlinePath]
+ * @param {string} [newTitle]
+ * @param {boolean} [copy] org-copy (C-c M-w): the subtree is filed as a copy and the original stays
  */
-export async function performRefile(heading, targetDocumentId, targetOutlinePath, newTitle = '') {
+export async function performRefile(heading, targetDocumentId, targetOutlinePath, newTitle = '', copy = false) {
   // With a new heading named, the subtree goes under a child of the chosen target with that title: an existing child of that name if
   // there is one, else a new last child (Emacs's org-refile-allow-creating-parent-nodes).
   const refileUnder = (/** @type {Doc} */ doc, /** @type {Heading} */ target) => {
     let destination = target;
     if (newTitle) {
-      destination = target.children.find((child) => child.title === newTitle) || createHeading({ level: target.level + 1, title: newTitle });
+      destination = target.children.find((child) => child.title === newTitle) || createHeading({ level: validLevel(target.level, 1, oddLevelsOnly(S.state.doc)), title: newTitle });
       if (!target.children.includes(destination)) target.children.push(destination);
       target.collapsed = false;
     }
-    appendRefiled(doc, destination, heading);
+    appendRefiled(doc, destination, copy ? structuredClone(heading) : heading);
     destination.collapsed = false;
     return destination.title;
   };
@@ -105,18 +109,19 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
       setStatus('Could not refile: that target heading no longer exists (the outline may have changed).');
       return;
     }
-    removeHeading(S.state.doc, heading);
+    if (!copy) removeHeading(S.state.doc, heading);
     const destinationTitle = refileUnder(S.state.doc, target);
-    commitAndRender('Refiled heading');
-    setStatus(`Refiled to "${destinationTitle}".`);
+    commitAndRender(copy ? 'Copied heading' : 'Refiled heading');
+    setStatus(`${copy ? 'Copied' : 'Refiled'} to "${destinationTitle}".`);
     rememberRefileTarget(targetDocumentId, rememberedPath);
+    S.lastRefiled = { documentId: targetDocumentId, outlinePath: [...(rememberedPath || []), heading.title] };
     return;
   }
 
   setStatus(`Refiling to ${targetDocumentId}\u2026`);
   const { ok, result: targetTitle } = await writeToOtherFile(targetDocumentId, {
     label: 'refile',
-    historyLabel: 'Refiled heading (from another file)',
+    historyLabel: copy ? 'Copied heading (to another file)' : 'Refiled heading (from another file)',
     allowMissing: false,
     mutate: (doc) => {
       const target = findHeadingByOutlinePath(doc, targetOutlinePath);
@@ -132,8 +137,20 @@ export async function performRefile(heading, targetDocumentId, targetOutlinePath
   if (!ok) return;
 
   // The write succeeded -- now, and only now, remove the original.
-  removeHeading(S.state.doc, heading);
-  commitAndRender('Refiled heading');
-  setStatus(`Refiled to "${targetTitle}" in "${targetDocumentId}"${UNSAVED_NOTE}.`);
+  if (!copy) removeHeading(S.state.doc, heading);
+  commitAndRender(copy ? 'Copied heading' : 'Refiled heading');
+  setStatus(`${copy ? 'Copied' : 'Refiled'} to "${targetTitle}" in "${targetDocumentId}"${UNSAVED_NOTE}.`);
   rememberRefileTarget(targetDocumentId, rememberedPath);
+  S.lastRefiled = { documentId: targetDocumentId, outlinePath: [...(rememberedPath || []), heading.title] };
+}
+
+/** `C-u C-u C-c C-w` (org-refile-goto-last-stored): the heading the last refile or copy filed. */
+export async function gotoLastRefiled() {
+  const last = S.lastRefiled;
+  if (!last) {
+    setStatus('Invalid bookmark org-refile-last-stored');
+    return;
+  }
+  await navigateToHeadingByPath(last.documentId, last.outlinePath);
+  setStatus('This is the location of the last refile');
 }

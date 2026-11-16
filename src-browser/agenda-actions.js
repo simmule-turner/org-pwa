@@ -168,7 +168,7 @@ export function choosePriority(/** @type {any} */ item) {
 
 function openItemHeading(/** @type {any} */ item) {
   const outlinePath = outlinePathForHeadingInDocument(item.documentId, item.heading);
-  if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
+  if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath, { context: 'agenda' });
 }
 
 /** The action sheet for one row. */

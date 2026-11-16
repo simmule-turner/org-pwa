@@ -9,7 +9,7 @@ import { SETTINGS_FIELDS } from './settings-fields.js';
 
 const FIELDS = new Map(SETTINGS_FIELDS.map((f) => [f.key, f]));
 /** Settings whose value is a string in Emacs (`nil` for none). */
-const STRINGS = /^diary-file$/;
+const STRINGS = /^(diary-file|org-inlinetask-default-state)$/;
 /** Settings whose value is a character (`?A`). */
 const CHARS = /^org-priority-(highest|lowest)$/;
 const SYMBOL_LIKE = /^[A-Za-z][A-Za-z0-9_+*/<>=!?-]*$/;

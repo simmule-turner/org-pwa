@@ -29,6 +29,32 @@ export function setInlineTaskLevel(level) {
   intern('org-inlinetask-min-level').value = level ?? DEFAULT_MIN_LEVEL; // what the Lisp functions of org-inlinetask see
 }
 
+/** org-inlinetask-default-state and org-inlinetask-show-first-star. */
+const options = { defaultState: /** @type {string | null} */ (null), showFirstStar: false };
+
+/** The keyword a new inline task starts with (org-inlinetask-default-state), or null. */
+export const inlineTaskDefaultState = () => options.defaultState;
+/** Whether the first star of a task shows (org-inlinetask-show-first-star). */
+export const inlineTaskShowsFirstStar = () => options.showFirstStar;
+
+/**
+ * Reads org-inlinetask-default-state and -show-first-star from the global variables or the Lisp init.
+ * @param {Record<string, string> | null | undefined} vars
+ */
+export function readInlineTaskOptions(vars) {
+  const v = vars || {};
+  const raw = v['org-xx-lisp-init'];
+  const init = runInit(lispStringValue(raw) || raw || '');
+  const state = init.get('org-inlinetask-default-state');
+  const fromInit = state ? datum(state) : null;
+  const box = v['org-inlinetask-default-state'];
+  const text = fromInit ? (fromInit.k === 'str' ? fromInit.v : null) : box === undefined || box === '' || box === 'nil' ? null : box;
+  options.defaultState = text === '' ? null : text;
+  const star = init.get('org-inlinetask-show-first-star');
+  const starFromInit = star ? datum(star) : null;
+  options.showFirstStar = starFromInit ? !(starFromInit.k === 'sym' && starFromInit.v === 'nil') : /^(t|true|yes|on|1)$/i.test(v['org-inlinetask-show-first-star'] || '');
+}
+
 /** The level from which headings are inline tasks, or null while org-inlinetask is not loaded. */
 export function inlineTaskLevel() {
   return config.level;

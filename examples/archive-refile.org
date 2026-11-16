@@ -383,6 +383,72 @@ See the form.
 ,* Later
 #+END_SRC
 
+* Archive under an archive sibling
+=C-c C-x A= (=org-archive-to-archive-sibling=) moves the subtree under a sibling heading called =Archive=, which is made after the other siblings, with the =ARCHIVE= tag, when there is none. The subtree gets an =ARCHIVE_TIME= property; its TODO state stays.
+
+Archive the heading =File taxes= under its archive sibling.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** Plan the year
+,** Archive                                                          :ARCHIVE:
+,*** TODO [#A] File taxes                                                :tax:
+SCHEDULED: <2026-10-20 Tue>
+:PROPERTIES:
+:ARCHIVE_TIME: 2026-10-11 Sun 16:30
+:END:
+See the form.
+,**** Gather receipts
+,* Home
+,** Chores
+#+END_SRC
+
+* Copy a subtree
+Refile with a copy, =C-c M-w=: the subtree stays where it is and a copy becomes the last child of the target.
+
+Copy the heading =File taxes= to the heading =Home=.
+
+Before, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+#+END_SRC
+
+After, notes.org:
+#+BEGIN_SRC org
+,* Projects :work:
+,** TODO [#A] File taxes :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+,** Plan the year
+,* Home
+,** Chores
+,** TODO [#A] File taxes                                                 :tax:
+SCHEDULED: <2026-10-20 Tue>
+See the form.
+,*** Gather receipts
+#+END_SRC
+
 * Restore an archived subtree (the app only)
 Org has no command that undoes an archive. *Unarchive* reads the stamps back: the subtree returns to the file and heading named by =ARCHIVE_FILE= and =ARCHIVE_OLPATH=, with its TODO state from =ARCHIVE_TODO= and the stamps removed.
 

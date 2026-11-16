@@ -118,7 +118,7 @@
 export {};
 
 /** @typedef {{ heading: Heading, fromTodo: string | null, toTodo: string | null, timestamp: string, kind: 'state' | 'done' }} PendingLogNote */
-/** @typedef {{ heading: Heading, mode: string, loading: boolean, candidates: any[], errors: any[], recent: any[], selected: any, query: string }} PendingRefile */
+/** @typedef {{ heading: Heading, mode: string, loading: boolean, candidates: any[], errors: any[], recent: any[], selected: any, query: string, copy: boolean }} PendingRefile */
 /** @typedef {{ heading: Heading, table: Table, rowIndex: number, colIndex: number }} EditingCell */
 /** @typedef {{ heading: Heading, paragraph: Paragraph }} EditingParagraph */
 /** @typedef {{ heading: Heading, item: ListItem }} EditingListItem */
@@ -140,13 +140,13 @@ export {};
  *   editingHeadingText: Heading | null, editingGeneral: Heading | null, actionMenuFor: object | null,
  *   keyboardFocusedHeading: Heading | null, keyboardFocusedBodyRow: BodyRow | null, keyboardFocusedCellPos: { rowIndex: number, colIndex: number } | null,
  *   pendingCursorPosition: string | number | null, currentContextHeading: Heading | null,
- *   narrowedHeading: Heading | null, narrowedTextModeRange: NarrowedTextRange | null, sparseNarrowScope: SparseNarrowScope | null,
+ *   narrowedHeading: Heading | null, narrowedTextModeRange: NarrowedTextRange | null, sparseNarrowScope: SparseNarrowScope | null, occurHighlights: string[] | null,
  *   narrowStateRestoreAttemptedFor: string | null, sparseNarrowRestoreAttemptedFor: string | null,
  *   godModeActive: boolean, godModeState: GodState, godModeRedoArmed: boolean, godModeLastCommand: GodLastCommand | null,
  *   godModeHintsEl: HTMLElement | null, godModeChordIndex: { complete: Set<string>, under: Map<string, number> } | null, godModeInputFedLength: number, godModeRecentKeydown: { key: string, at: number } | null,
  *   floatingKeyboardOpen: boolean, floatingKeyboardShiftArmed: boolean, floatingKeyboardMinimized: boolean, textKeyboardHidden: boolean, textGMode: string,
  *   floatingKeyboardPos: { left: number | null, bottom: number } | null, floatingKeyboardSettleTimer: number | null,
- *   pendingLogNote: PendingLogNote | null, pendingRefile: PendingRefile | null,
+ *   pendingLogNote: PendingLogNote | null, pendingRefile: PendingRefile | null, lastRefiled: { documentId: string, outlinePath: string[] } | null,
  *   pendingAttachFileList: { heading: Heading, filenames: string[], action: string } | null,
  *   pendingTodoWorkflowChoice: { heading: Heading, viaGodMode: boolean } | null,
  *   pendingAudioRecording: { heading: Heading } | null, mediaRecorder: MediaRecorder | null, recordedChunks: Blob[],

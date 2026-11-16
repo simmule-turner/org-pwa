@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./types.js').Heading} Heading */
 /** @typedef {import('./types.js').Doc} Doc */
+import { oddLevelsOnly, validLevel } from './levels.js';
 import { DEFAULT_CONTEXT_INFO } from './archive-settings.js';
 import { fileCategory } from './file-category.js';
 
@@ -548,7 +549,7 @@ function appendRefiled(doc, destination, heading) {
     const tail = lastOwner(heading);
     if (tail.bodyLines[tail.bodyLines.length - 1] !== '') tail.bodyLines.push('');
   }
-  shiftLevels(heading, destination.level + 1);
+  shiftLevels(heading, validLevel(destination.level, 1, oddLevelsOnly(doc)));
   destination.children.push(heading);
 }
 

@@ -8,6 +8,7 @@
 /** @typedef {import('../src/types.js').BlockRow} BlockRow */
 /** @typedef {import('../src/types.js').HrRow} HrRow */
 // Extracted from app.js: row render.
+import { hideLeadingStars, oddLevelsOnly, starsText, validLevel } from '../src/levels.js';
 import { readPriorityFaces } from '../src/priorities.js';
 import { captionText, imageOptions, splitAffiliated } from '../src/affiliated.js';
 import { getPropertiesText, getProperty, isRestorable } from '../src/archive-model.js';
@@ -48,6 +49,7 @@ import { recalculateOneTable } from './table-recalc.js';
 import { applyTodoTransition, openTodoOrPickWorkflow } from './todo-workflow.js';
 import { autoGrowTextarea, isWideLayout, smallButton, withActionMenu } from './ui-widgets.js';
 import { renderTablePad, tablePadOpen } from './table-pad.js';
+import { inlineTaskLevel, inlineTaskShowsFirstStar } from '../src/inline-tasks.js';
 import { onPress } from './table-edit.js';
 
 /** The vertical margin around a paragraph, and around everything else in the
@@ -227,7 +229,9 @@ export function renderRow(row, todoSequence) {
       // org-indent-mode off: every heading starts at the edge with all its stars, so the level shows as it does in Emacs
       const stars = document.createElement('span');
       stars.className = 'heading-stars';
-      stars.textContent = '*'.repeat(row.depth + 1);
+      const task = inlineTaskLevel() !== null && row.node.level >= /** @type {number} */ (inlineTaskLevel());
+      // an inline task shows its last two stars, and its first as well when org-inlinetask-show-first-star says so
+      stars.textContent = task ? '*'.repeat(inlineTaskShowsFirstStar() ? 3 : 2) : starsText(oddLevelsOnly(S.state.doc) ? row.node.level : row.depth + 1, hideLeadingStars(S.state.doc));
       el.appendChild(stars);
     }
 
@@ -327,7 +331,7 @@ export function renderRow(row, todoSequence) {
               label: 'Add sub-heading',
               onClick: () => {
                 S.actionMenuFor = null;
-                const child = insertChildHeading(row.node, {});
+                const child = insertChildHeading(row.node, { level: validLevel(row.node.level, 1, oddLevelsOnly(S.state.doc)) });
                 startEditingTitle(child, true);
               },
             },

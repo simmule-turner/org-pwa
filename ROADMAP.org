@@ -54,11 +54,11 @@ Differences from Emacs that remain: search does not look through the tag table's
 - Effort: S. Impact: S.
 
 * Outline and editing commands
-** [#B] Inline-task commands
-=org-inlinetask-promote=, =-demote=, =-insert-task= (=C-c C-x t=) and the settings =org-inlinetask-show-first-star= and =org-inlinetask-default-state=. They need the heading-edit model to treat an inline task as its own kind of heading, which promote and demote also need at inline-task boundaries.
-- Effort: M. Impact: S.
-** [#C] Odd levels and top-level promotion
-=org-odd-levels-only= and =org-allow-promoting-top-level-subtree= (promoting a level-1 heading currently refuses).
+** [#C] Inline-task Tab folding
+=org-inlinetask-toggle-visibility= (Tab on a task): a task folds to its first line, hiding its text and END line. It needs a fold state for a heading that has no children in the outline model. M-up and M-down also stop at plain paragraphs here, where Emacs drags past them.
+- Effort: S. Impact: S.
+** [#C] Top-level promotion
+=org-allow-promoting-top-level-subtree= (promoting a level-1 heading currently refuses). Dragging a heading to move it still changes its level by one star under =org-odd-levels-only=.
 - Effort: M. Impact: S.
 ** [#C] Sort locale, and indentation details
 Locale collation for the alphabetic sort (it compares by character code, as the C locale does). Under =org-adapt-indentation= =headline-data= Emacs indents a log note one column further than this app does. =zsh=, =ksh=, =csh=, =htm=, =xhtml= and =svg= source is not colored.
@@ -102,7 +102,7 @@ The editor shows one verbatim paragraph and the exporters write it as written. R
 
 * Agenda
 ** [#C] Agenda commands
-=org-agenda-bulk-*=, the agenda priority key, =org-agenda-goto-date=, =org-agenda-redo= and text scale have no counterpart in the agenda view.
+=org-agenda-bulk-*=, the agenda priority key, =org-agenda-redo= and text scale have no counterpart in the agenda view.
 - Effort: M. Impact: M.
 
 * Capture
@@ -140,8 +140,16 @@ KaTeX stands in for MathJax by decision; ox-publish needs a project model.
 The parser does not model inline tasks, radio links, timestamps, entities, LaTeX fragments, sub and superscripts or statistics cookies, so the checkers that use them are not covered. =wrong-header-value= skips Lisp-evaluated values; cite processors are fixed; loaded Babel languages default to emacs-lisp.
 - Effort: M. Impact: S.
 
+* Probably not worth doing
+** [#D] Unlikely extras from the Org manual
+Four features from the compact Org guide that this app can do without; each is listed so you can decide whether any is worth a release.
+- *Publishing* (=org-publish-project-alist=, =C-c C-e P=): builds a whole site from several files, with a project list, base directory, extensions, a publishing function and a timestamp cache that skips unchanged files. It makes sense when Emacs is the site generator and the files sit on a disk. Here the files are on GitHub or WebDAV and the browser cannot write a directory tree, so it would mean a zip of the result or a push to a branch. Worth it only if you publish a site from this app.
+- *Agenda to appointments* (=org-agenda-to-appt=): the app already has appt.js for reminders of today's timed items while the app is open. What Emacs adds is the same list pushed into the =appt= daemon for a notification at warning times even when no agenda is open. A web page cannot run in the background, so what remains is a push or calendar-export route, which iCalendar export covers.
+- *Pretty entities and LaTeX preview* (=C-c C-x \=, =org-latex-preview=): shows =\alpha= as the Greek letter and renders formulas as images. Entities and inline math already render in the outline through the page's own math layout; what is left is the toggle, the =org-pretty-entities= setting and a dvipng-style image for every fragment, which a browser does not need.
+- *Time-stamp overlays* (=org-toggle-time-stamp-overlays=): swaps the stamp text for a short form in the outline. The app already shows stamps in their own style and format; a second look adds a setting and little else.
+
 * Order for the next release
-1. Inline-task commands, then drawers and dynamic blocks as containers (only if the editor needs them).
+1. Drawers and dynamic blocks as containers (only if the editor needs them).
 2. Detangle and jump for Babel.
 Refile and Replace into =local:= files from the web and other backends are [#C].
 

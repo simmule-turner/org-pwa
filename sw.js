@@ -1,4 +1,4 @@
-const CACHE_NAME = 'org-pwa-shell-v711';
+const CACHE_NAME = 'org-pwa-shell-v712';
 
 const SHELL_FILES = [
   './',
@@ -347,6 +347,18 @@ const SHELL_FILES = [
   './src-browser/adapters.js',
   './src-browser/agenda-files.js',
   './src-browser/agenda-actions.js',
+  './src/levels.js',
+  './src/structure-template.js',
+  './src/todo-triggers.js',
+  './src-browser/agenda-extra-keys.js',
+  './src-browser/occur-highlights.js',
+  './src-browser/text-commands-flow.js',
+  './src/text-commands.js',
+  './src-browser/sparse-flow.js',
+  './src/sparse-tree.js',
+  './src-browser/agenda-file-commands.js',
+  './src-browser/jump-flow.js',
+  './src/context-reveal.js',
   './src-browser/agenda-log-keys.js',
   './src-browser/command-view.js',
   './src-browser/query-options.js',

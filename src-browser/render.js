@@ -30,6 +30,7 @@ import { renderTabBar } from './tabs.js';
 import { VH_UNIT, isWideLayout, menuButton } from './ui-widgets.js';
 import { isPlainTextFile, documentName } from '../src/plain-file.js';
 import { syntaxKindFor } from '../src/text-syntax.js';
+import { paintOccurHighlights } from './occur-highlights.js';
 import { isDiaryDocument } from './diary-file-load.js';
 import { diaryToolsRow } from './diary-flow.js';
 import { lintToolsRow } from './org-lint-flow.js';
@@ -50,6 +51,11 @@ function reportVariableError(err) {
 
 /** Redraws the screen. A variable that cannot be read stops the redraw and its error is shown (Emacs: the command signals an error). */
 export function render() {
+  if (S.state && S.state.doc) {
+    // the variables the levels read, for the structure commands that follow
+    S.state.doc.oddLevelsVariable = /^'?t$/.test((S.state.localVariables['org-odd-levels-only'] ?? 'nil').trim());
+    S.state.doc.hideStarsVariable = /^'?t$/.test((S.state.localVariables['org-hide-leading-stars'] ?? 'nil').trim());
+  }
   const vars = S.state && S.state.localVariables;
   if (vars && !checkedVariables.has(vars)) {
     checkedVariables.add(vars);
@@ -370,6 +376,7 @@ function renderNow() {
     outlineEl.insertBefore(banner, outlineEl.firstChild);
   }
 
+  queueMicrotask(paintOccurHighlights);
   if (S.sparseNarrowScope) {
     const banner = document.createElement('div');
     banner.className = 'panel-row';

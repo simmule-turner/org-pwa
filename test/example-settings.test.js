@@ -12,8 +12,8 @@ const readme = fs.readFileSync(new URL('../README.org', import.meta.url), 'utf8'
 /** The variable names in the README's table of recognized variables. */
 const tableStart = readme.indexOf('The recognized variables, alphabetically');
 const tableEnd = readme.indexOf('*** Lisp init', tableStart);
-const documented = [...readme.slice(tableStart, tableEnd).matchAll(/^\| ~([a-z][a-z0-9*-]+)~ \|/gm)].map((m) => m[1]);
-const listed = [...body.matchAll(/^;; [* ] ([a-z][a-z0-9-]+):/gm)].map((m) => m[1]);
+const documented = [...readme.slice(tableStart, tableEnd).matchAll(/^\| ~([a-z][a-z0-9*/-]+)~ \|/gm)].map((m) => m[1]);
+const listed = [...body.matchAll(/^;; [* ] ([a-z][a-z0-9/-]+):/gm)].map((m) => m[1]);
 
 test('the file lists every recognized variable once, in alphabetical order', () => {
   assert.deepEqual(listed, [...listed].sort());
@@ -27,7 +27,7 @@ test('every variable with a control in Settings is listed', async () => {
 });
 
 test('a * marks exactly the variables with no control in Settings', () => {
-  const starred = [...body.matchAll(/^;; \* ([a-z][a-z0-9-]+):/gm)].map((m) => m[1]);
+  const starred = [...body.matchAll(/^;; \* ([a-z][a-z0-9/-]+):/gm)].map((m) => m[1]);
   assert.deepEqual(starred, VARIABLE_CATALOG.map((c) => c.name).sort());
 });
 

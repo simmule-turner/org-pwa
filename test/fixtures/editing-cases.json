@@ -71,5 +71,37 @@
   "col": 1,
   "value": "a much longer name",
   "org": "| Name | Qty |\n|------+-----|\n| ab   |   3 |\n"
+ },
+ {
+  "title": "Demote a heading with odd levels",
+  "text": "=#+STARTUP: odd= (or =org-odd-levels-only=) makes levels one, three, five stars, so a heading changes by two stars. The demoted heading goes under its sibling.",
+  "op": "demote",
+  "line": 4,
+  "org": "#+STARTUP: odd\n* A\n*** B\n*** C\n"
+ },
+ {
+  "title": "Turn a line into a heading",
+  "text": "=C-c *= makes the line a heading one level below the entry it is in; on a heading it makes the line plain text again.",
+  "op": "toggle-heading",
+  "line": 2,
+  "org": "* Notes\nbuy milk\n"
+ },
+ {
+  "title": "Wrap lines in a source block",
+  "text": "=C-c C-,= then =s= wraps the selected lines (here lines 2 and 3) in a source block, ready for a language.",
+  "op": "template",
+  "line": 2,
+  "to": 3,
+  "value": "s",
+  "org": "* Code\nprint(1)\nprint(2)\n"
+ },
+ {
+  "title": "Wrap lines in a drawer",
+  "text": "=C-c C-x d= and a name wraps the selected lines in that drawer, as the first lines of the entry.",
+  "op": "drawer",
+  "line": 2,
+  "to": 3,
+  "value": "NOTES",
+  "org": "* Meeting\nfirst point\nsecond point\n"
  }
 ]

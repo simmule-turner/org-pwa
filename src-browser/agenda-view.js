@@ -761,7 +761,7 @@ export function renderAgendaView(host = outlineEl) {
         return;
       }
       const outlinePath = outlinePathForHeadingInDocument(item.documentId, /** @type {Heading} */ (item.heading));
-      if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
+      if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath, { context: 'agenda' });
     };
     return withRowActions(row, item);
   }
@@ -1236,7 +1236,7 @@ export function buildHeadingRow(item, today, view, extras = {}) {
       return;
     }
     const outlinePath = outlinePathForHeadingInDocument(item.documentId, heading);
-    if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath);
+    if (outlinePath) navigateToHeadingByPath(item.documentId, outlinePath, { context: 'agenda' });
   };
   return withRowActions(row, item);
 }

@@ -27,7 +27,7 @@ org-footnote-define-inline org-tags-exclude-from-inheritance org-agenda-show-inh
 org-use-property-inheritance org-refile-allow-creating-parent-nodes org-priority-start-cycle-with-default org-priority-faces
 org-priority-default org-blank-before-new-entry org-table-duration-hour-zero-padding org-export-with-broken-links org-export-with-drawers org-export-with-inlinetasks org-export-with-properties org-export-global-macros org-export-snippet-translation-alist org-html-with-latex org-table-export-default-format org-html-doctype org-html-checkbox-type org-html-preamble-format org-html-postamble-format org-html-validation-link
 org-icalendar-include-todo org-icalendar-use-scheduled org-icalendar-use-deadline org-icalendar-with-timestamps org-icalendar-alarm-time
-org-agenda-sorting-strategy org-agenda-custom-commands org-modules org-inlinetask-min-level org-global-properties
+org-agenda-sorting-strategy org-agenda-custom-commands org-modules org-inlinetask-min-level org-structure-template-alist org-odd-levels-only org-hide-leading-stars org-occur-case-fold-search org-sparse-tree-default-date-type org-goto-max-level org-fold-show-context-detail org-todo-state-tags-triggers org-global-properties
 org-columns-default-format org-columns-ellipses org-columns-summary-types org-columns-modify-value-for-display-function org-timer-format org-timer-default-timer org-timer-display org-crypt-key org-crypt-tag-matcher org-crypt-disable-auto-save before-save-hook diary-list-entries-hook diary-nongregorian-listing-hook diary-date-forms display-time-format large-file-warning-threshold org-babel-min-lines-for-block-output org-babel-inline-result-wrap org-babel-results-keyword org-babel-uppercase-example-markers org-coderef-label-format org-confirm-babel-evaluate`.split(/\s+/);
 
 // Where this app's default is not Emacs's: the default as the app has it, and what the description says about it.
@@ -59,7 +59,7 @@ const DOC_OVERRIDES = {
   'org-icalendar-timezone': 'The time zone string for iCalendar export (the system zone by default).',
 };
 
-const el = `(progn (require 'org) (require 'org-inlinetask) (require 'org-crypt) (require 'org-timer) (require 'org-colview) (require 'org-footnote) (require 'oc) (require 'oc-basic) (require 'ox-html) (require 'org-table) (require 'org-agenda) (require 'org-clock) (require 'org-archive) (require 'org-datetree) (require 'org-duration) (require 'ox-icalendar) (require 'diary-lib) (require 'holidays) (require 'cal-hebrew) (require 'cal-islam) (require 'cal-bahai) (require 'time)
+const el = `(progn (require 'org) (require 'org-inlinetask) (require 'org-goto) (require 'org-crypt) (require 'org-timer) (require 'org-colview) (require 'org-footnote) (require 'oc) (require 'oc-basic) (require 'ox-html) (require 'org-table) (require 'org-agenda) (require 'org-clock) (require 'org-archive) (require 'org-datetree) (require 'org-duration) (require 'ox-icalendar) (require 'diary-lib) (require 'holidays) (require 'cal-hebrew) (require 'cal-islam) (require 'cal-bahai) (require 'time)
 (let ((print-length 40) (print-level 6))
  (dolist (v '(${NAMES.join(' ')}))
   (princ (format "%s\\t%s\\t%s\\n" v (if (boundp v) (replace-regexp-in-string "[\\n\\t]+" " " (prin1-to-string (default-value v))) "?")

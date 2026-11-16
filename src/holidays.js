@@ -5,7 +5,7 @@
  * replace or set to nil (see calendar-holidays.js).
  */
 
-import { setInlineTaskLevel, readInlineTaskLevel } from './inline-tasks.js';
+import { setInlineTaskLevel, readInlineTaskLevel, readInlineTaskOptions } from './inline-tasks.js';
 import { DEFAULT_LISTS, HOLIDAY_GROUPS } from './calendar-holidays.js';
 import { evalHolidayList } from './calendar-lisp.js';
 import { withContext } from './diary-lisp.js';
@@ -73,6 +73,7 @@ export function applyHolidayVariables(vars) {
   timeDisplayForm = getTimeDisplayForm(vars || {});
   setHolidayConfig(lispStringValue(raw) || raw || '');
   setInlineTaskLevel(readInlineTaskLevel(vars));
+  readInlineTaskOptions(vars);
 }
 
 /** The days in the window around a month hold these names; computed once per month. @param {number} year @param {number} month */
