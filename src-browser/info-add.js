@@ -1,10 +1,10 @@
 // @ts-check
 // The Add manuals sheet: choose Info files (the parts of a split manual together, compressed ones as they are), see which manuals are
 // whole, add them to this device, and remove the ones already there. Grouping and checking are in src/info-store.js.
-import { groupFiles, readInfoBytes, recordOf } from '../src/info-store.js';
+import { groupFiles, imageType, readInfoBytes, recordOf } from '../src/info-store.js';
 import { buildSheet, cancelButton } from './bottom-sheet.js';
 import { confirmDialog, pickBinaryFiles } from './dialogs.js';
-import { BUILTIN_MANUAL, loadRecords, removeRecord, saveRecord } from './info-storage.js';
+import { BUILTIN_MANUAL, loadRecords, removeRecord, saveImage, saveRecord } from './info-storage.js';
 import { base64ToArrayBuffer } from './webdav-adapter.js';
 
 /** @typedef {import('../src/info-store.js').PickedFile} PickedFile */
@@ -33,12 +33,14 @@ export async function openAddManuals(onChange) {
   let picked = [];
   let stored = await loadRecords();
   let busy = '';
+  /** @type {string[]} */
+  const images = [];
 
   const draw = () => {
     panel.querySelectorAll('[data-add-body]').forEach((n) => n.remove());
     const body = div('');
     body.setAttribute('data-add-body', '');
-    body.append(div('font-size:var(--text-secondary);color:var(--muted);margin:var(--space-1) 0 var(--space-3);', 'Pick the files for one manual together. For a manual split into parts, pick all of them: org.info, org.info-1, org.info-2, and so on. Compressed .info.gz files work as they are.'));
+    body.append(div('font-size:var(--text-secondary);color:var(--muted);margin:var(--space-1) 0 var(--space-3);', 'Pick the files for one manual together. For a manual split into parts, pick all of them: org.info, org.info-1, org.info-2, and so on. Compressed .info.gz files work as they are. Pick the images a manual shows (.png, .jpg, .gif, .svg) with it, and they show in its nodes.'));
     const choose = document.createElement('button');
     choose.textContent = busy || 'Choose files…';
     choose.disabled = !!busy;
@@ -55,6 +57,12 @@ export async function openAddManuals(onChange) {
         busy = `Reading ${i + 1} of ${chosen.length}…`;
         draw();
         const bytes = new Uint8Array(base64ToArrayBuffer(f.base64));
+        const type = imageType(f.name);
+        if (type) {
+          await saveImage(f.name, `data:${type};base64,${f.base64}`);
+          images.push(f.name);
+          continue;
+        }
         const { text, encoding } = await readInfoBytes(bytes);
         picked = [...picked.filter((p) => p.name !== f.name), { name: f.name, text, encoding, size: bytes.length }];
       }
@@ -62,6 +70,7 @@ export async function openAddManuals(onChange) {
       draw();
     };
     body.append(choose);
+    if (images.length) body.append(div('font-size:var(--text-secondary);color:var(--done-fg);margin:var(--space-2) 0;', `${images.length} ${images.length === 1 ? 'image' : 'images'} kept on this device: ${images.join(', ')}`));
     const groups = groupFiles(picked);
     const ready = groups.filter((g) => g.status === 'ready');
     if (groups.length) body.append(heading('Ready to add'));

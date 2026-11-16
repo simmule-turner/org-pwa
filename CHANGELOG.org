@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v711 — Info history, bookmarks and images; preamble options; agenda tags in completion
+The Info reader lists the nodes you visited (L), bookmarks nodes (B), shows the images a manual names when you add their files with it, and completes Go to node by prefix as Emacs does. A function given as org-html-preamble or org-html-postamble gets Emacs's whole option list (:with-toc, :headline-levels, :select-tags and the rest). org-complete-tags-always-offer-all-agenda-tags is a Settings row. The README is simpler, and the CI smokes for Babel's cache and confirmation pass.
+Verified: Emacs 29.3 comparisons for 98 preamble cases, the history node, go-to completion, three hand-made edge manuals and the composed directory (also fixed: a failed Up to the directory and a search that only hits hidden text now behave as Emacs does).
+
 * v710 — Export settings, blank lines before new entries, date boxes
 Settings has an Export section: headline levels, table of contents, numbering, author, date, tags, TODO keywords, timestamps, smart quotes and the other common export variables. org-blank-before-new-entry (t, nil or auto, for headings and list items) is read from Global Variables. The clock report range and the diary date sheet take typed dates (+1w, fri). A capture whose table formula needs a missing column stops with Emacs's message and leaves the row. The palette can update all statistics cookies.
 Verified: Emacs 29.3 comparisons for the blank-line settings and the capture stop.

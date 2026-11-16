@@ -2,7 +2,7 @@
 // One Info manual: its files (a split manual has a main file with a tag table and the parts it names) and what info.el does with
 // them: finding a node by name (Info-find-node-2), the names to complete (Info-build-node-completions), the index nodes and an index
 // search (Info-index-nodes, Info-index), and the table of contents (Info-toc-build).
-import { InfoError, SEP, canonicalizeWhitespace, extractMenuNodeName, extractPointer, hasIndexCookie, headerNodeName, menuStart, quoteRegExp, replaceImages, segmentsOf } from './info-parse.js';
+import { InfoError, SEP, canonicalizeWhitespace, extractMenuNodeName, extractPointer, hasIndexCookie, headerNodeName, imagesOf, menuStart, quoteRegExp, replaceImages, segmentsOf } from './info-parse.js';
 
 /** The suffixes Info-find-file tries on a file name, in order (Info-suffix-list on a Unix system). */
 export const INFO_SUFFIXES = ['.info.Z', '.info.Y', '.info.gz', '.info.z', '.info.bz2', '.info.xz', '.info.zst', '.info', '-info.Z', '-info.Y', '-info.gz', '-info.bz2', '-info.z', '-info.xz', '-info.zst', '-info', '/index.Z', '/index.Y', '/index.gz', '/index.z', '/index.bz2', '/index.xz', '/index.zst', '/index', '.Z', '.Y', '.gz', '.z', '.bz2', '.xz', '.zst', ''];
@@ -26,7 +26,7 @@ export function findFileName(names, filename) {
 }
 
 /** @typedef {{ name: string, text: string, utf8: boolean, segs: import('./info-parse.js').Segment[], start: number }} Buffer one file of a manual, with its nodes and, for a part of a split manual, where its text starts in the whole */
-/** @typedef {{ name: string, text: string, buffer: Buffer, seg: import('./info-parse.js').Segment, point: number | null }} NodeRef a node found in a manual: its name as the file spells it, its text (header line first), and where an anchor put point in it */
+/** @typedef {{ name: string, text: string, buffer: Buffer, seg: import('./info-parse.js').Segment, point: number | null, images?: { src: string, alt: string | null, text: string | null }[] }} NodeRef a node found in a manual: its name as the file spells it, its text (header line first), and where an anchor put point in it */
 
 const utf8Length = (/** @type {string} */ text, /** @type {number} */ to) => new TextEncoder().encode(text.slice(0, to)).length;
 
@@ -190,7 +190,8 @@ export class Manual {
 
   /** @param {Buffer} buffer @param {import('./info-parse.js').Segment} seg @param {number | null} [point] @returns {NodeRef} */
   nodeRef(buffer, seg, point = null) {
-    return { name: /** @type {string} */ (headerNodeName(seg.header)), text: replaceImages(buffer.text.slice(seg.start, seg.end)), buffer, seg, point };
+    const raw = buffer.text.slice(seg.start, seg.end);
+    return { name: /** @type {string} */ (headerNodeName(seg.header)), text: replaceImages(raw), buffer, seg, point, images: imagesOf(raw) };
   }
 
   /**
@@ -474,3 +475,18 @@ export class Manual {
 export const nodeKey = (s) => canonicalizeWhitespace(s);
 /** Whether a node text begins its own index (carries the cookie). @param {string} text */
 export const isCookieNode = (text) => hasIndexCookie(text);
+
+/**
+ * What Go to node offers for `typed`: Emacs completes node names (case ignored) with the basic and partial-completion styles, so the
+ * typed text is a prefix of the name, or pieces of it that a blank, "-", "_", ".", "/", ":" or "|" separates are the starts of the
+ * name's words ("L f" reaches "Lisp functions"). The names keep the manual's order.
+ * @param {string[]} names the completions of the manual
+ * @param {string} typed
+ * @returns {string[]}
+ */
+export function completeNodeNames(names, typed) {
+  const parts = typed.split(/([-_./:| ])/);
+  const source = parts.map((p, i) => (i % 2 === 1 ? '.*' + p.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') : p.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'))).join('');
+  const re = new RegExp('^' + source, 'i');
+  return names.filter((n) => re.test(n));
+}

@@ -318,6 +318,9 @@ Setting every line below to the value shown changes nothing.
 ;; * org-columns-summary-types: Alist between operators and summarize functions.
 ;; (setq org-columns-summary-types nil)
 
+;;   org-complete-tags-always-offer-all-agenda-tags: Whether tagging a heading also offers the tags of every agenda file.
+;; (setq org-complete-tags-always-offer-all-agenda-tags nil)
+
 ;; * org-confirm-babel-evaluate: Confirm before evaluation.
 ;; (setq org-confirm-babel-evaluate t)
 

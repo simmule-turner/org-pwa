@@ -2,14 +2,14 @@
 // The Info reader: a full-screen view over the app (directory, node, contents, index) with the Info keys, on the manuals kept on this
 // device. What Info does is in src/info-nav.js (InfoSession); this is the screen, the keys and the sheets.
 import { dirSections, dirManual, manualOf } from '../src/info-store.js';
-import { findFileName } from '../src/info-manual.js';
+import { completeNodeNames, findFileName } from '../src/info-manual.js';
 import { InfoError } from '../src/info-parse.js';
-import { InfoSession, breadcrumbs } from '../src/info-nav.js';
+import { InfoSession, breadcrumbs, historyNodeText } from '../src/info-nav.js';
 import { S } from './app-state.js';
 import { buildSheet, cancelButton, openActionSheet } from './bottom-sheet.js';
 import { confirmDialog } from './dialogs.js';
 import { openAddManuals } from './info-add.js';
-import { loadRecords } from './info-storage.js';
+import { loadBookmarks, loadImage, loadRecords, saveBookmarks } from './info-storage.js';
 import { getInfoReflow } from './settings.js';
 import { kv } from './singletons.js';
 import { reflowInfoText } from '../src/info-reflow.js';
@@ -69,7 +69,7 @@ class Library {
  * @property {HTMLElement} root
  * @property {InfoSession} session
  * @property {Library} library
- * @property {'node' | 'toc' | 'index'} mode
+ * @property {'node' | 'toc' | 'index' | 'history'} mode
  * @property {string} topic what the index screen is looking for
  * @property {string} message the echo line: what the last command said
  * @property {boolean} toEnd whether the next node shows from its end (DEL)
@@ -213,6 +213,8 @@ function command(key) {
     case 's': openGoto('search', true); return true;
     case 'S': openGoto('search', false); return true;
     case 'T': openToc(); return true;
+    case 'L': v.mode = 'history'; show(); return true;
+    case 'B': openBookmarks(); return true;
     case 'SPC': page(1); return true;
     case 'DEL': page(-1); return true;
     case 'q': closeInfo(); return true;
@@ -246,7 +248,7 @@ function show() {
   const head = el('div', 'flex:none;min-height:56px;box-sizing:border-box;padding:0 var(--space-2);display:flex;align-items:center;gap:4px;border-bottom:1px solid var(--border);');
   const back = headButton('←', 'Close Info', closeInfo);
   const heading = el('div', 'flex:1 1 auto;min-width:0;display:flex;flex-direction:column;');
-  heading.append(el('span', 'font-size:var(--text-title);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', v.mode === 'toc' ? 'Contents' : v.mode === 'index' ? 'Index' : title), el('span', 'font-size:var(--text-meta);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', v.mode === 'toc' ? `${title}, all nodes` : v.mode === 'index' ? `${title}, all index entries` : crumbs));
+  heading.append(el('span', 'font-size:var(--text-title);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', v.mode === 'toc' ? 'Contents' : v.mode === 'index' ? 'Index' : v.mode === 'history' ? 'History' : title), el('span', 'font-size:var(--text-meta);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;', v.mode === 'toc' ? `${title}, all nodes` : v.mode === 'history' ? 'the nodes you visited, the latest first' : v.mode === 'index' ? `${title}, all index entries` : crumbs));
   head.append(back, heading);
   if (v.mode === 'node' && isDir) head.append(headButton('Add', 'Add manuals', () => openAddManuals(() => refreshLibrary().then(show))));
   else if (v.mode === 'node') {
@@ -254,6 +256,7 @@ function show() {
   }
   v.root.appendChild(head);
   if (v.mode === 'toc') v.root.appendChild(tocScreen());
+  else if (v.mode === 'history') v.root.appendChild(historyScreen());
   else if (v.mode === 'index') v.root.appendChild(indexScreen());
   else if (isDir) v.root.appendChild(dirScreen());
   else v.root.appendChild(nodeScreen());
@@ -354,12 +357,37 @@ function nodeScreen() {
   if (point >= at) mark();
   plain(shownRest.length);
   body.append(pre);
+  const images = s.node && s.node.images ? s.node.images : [];
+  if (images.length) body.append(imageFigures(images));
   wrap.append(body, echo());
   queueMicrotask(() => {
     if (v.toEnd) body.scrollTop = body.scrollHeight;
     else if (marker) marker.scrollIntoView({ block: 'center' });
   });
   return wrap;
+}
+
+/** The images the node names, shown below its text: the ones added on this device, a note for the others. @param {{ src: string, alt: string | null, text: string | null }[]} images */
+function imageFigures(images) {
+  const box = el('div', 'display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-3);');
+  for (const image of images) {
+    const figure = el('figure', 'margin:0;');
+    const caption = image.alt || image.text || image.src;
+    figure.append(el('figcaption', 'font-size:var(--text-meta);color:var(--muted);', caption));
+    box.append(figure);
+    loadImage(image.src).then((url) => {
+      if (!url) {
+        figure.prepend(el('div', 'font-size:var(--text-secondary);color:var(--muted);', `The image ${image.src} is not on this device. Add it with the manual.`));
+        return;
+      }
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = image.alt || image.text || image.src;
+      img.style.cssText = 'max-width:100%;height:auto;display:block;';
+      figure.prepend(img);
+    });
+  }
+  return box;
 }
 
 /** @param {string} label @param {{ node: string | null, url: string | null }} link */
@@ -425,6 +453,41 @@ function tocScreen() {
     b.append(el('span', node === s.name ? 'font-weight:700;' : '', node));
     if (node === s.name) b.append(el('span', 'font-size:var(--text-meta);color:var(--accent);', 'you are here'));
     b.onclick = () => run(() => s.goto(node));
+    body.append(b);
+  }
+  return body;
+}
+
+/** B: bookmark the node you are at (once), or go to a bookmarked node; a bookmark keeps the manual, the node and where point was. */
+async function openBookmarks() {
+  const v = /** @type {View} */ (S.infoView);
+  const s = v.session;
+  const list = await loadBookmarks();
+  const here = s.file !== null && s.name !== null ? { file: s.file, node: s.name, point: s.point } : null;
+  const kept = here ? list.find((b) => b.file === here.file && b.node === here.node) : undefined;
+  /** @type {{ label: string, hint?: string, onClick: () => void }[]} */
+  const actions = [];
+  if (here && !kept) actions.push({ label: `Bookmark ${here.node}`, onClick: () => { void saveBookmarks([...list, here]).then(() => { v.message = `Bookmarked (${here.file})${here.node}`; show(); }); } });
+  if (kept) actions.push({ label: `Remove the bookmark on ${kept.node}`, onClick: () => { void saveBookmarks(list.filter((b) => b !== kept)).then(() => { v.message = 'Bookmark removed'; show(); }); } });
+  for (const b of list) {
+    actions.push({ label: b.node, hint: b.file, onClick: () => run(() => { s.goto(`(${b.file})${b.node}`); if (b.point > 0 && b.point <= s.text.length) s.point = b.point; }) });
+  }
+  if (!list.length && !here) actions.push({ label: 'No bookmarks yet', onClick: () => {} });
+  openActionSheet({ title: 'Bookmarks', actions });
+}
+
+/** Info-history (L): the nodes visited, the latest first, as Emacs's *History* node lists them. */
+function historyScreen() {
+  const v = /** @type {View} */ (S.infoView);
+  const s = v.session;
+  const body = el('div', 'flex:1 1 auto;overflow-y:auto;padding:var(--space-3) var(--space-4);');
+  body.setAttribute('data-info-body', '');
+  const { entries } = historyNodeText(s.visited);
+  if (entries.length === 0) body.append(el('div', 'color:var(--muted);', 'No node has been visited yet.'));
+  for (const e of entries) {
+    const b = el('button', 'display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:var(--target);padding:var(--space-1) 0;border:0;border-bottom:1px solid var(--border);border-radius:0;background:none;color:var(--fg);font:inherit;text-align:left;');
+    b.append(el('span', e.node === s.name && e.file === s.file ? 'font-weight:700;' : '', e.node), el('span', 'font-size:var(--text-meta);color:var(--muted);', e.file));
+    b.onclick = () => { v.mode = 'node'; run(() => s.goto(`(${e.file})${e.node}`)); };
     body.append(b);
   }
   return body;
@@ -537,11 +600,7 @@ function completionsFor(typed) {
   const v = /** @type {View} */ (S.infoView);
   const manual = v.session.manual;
   if (!manual || typed.startsWith('(')) return [];
-  const lower = typed.toLowerCase();
-  const names = manual.completions().filter((n) => n !== '*');
-  const starts = names.filter((n) => n.toLowerCase().startsWith(lower));
-  const contains = names.filter((n) => !n.toLowerCase().startsWith(lower) && n.toLowerCase().includes(lower));
-  return [...starts, ...contains].slice(0, 40);
+  return completeNodeNames(manual.completions().filter((n) => n !== '*'), typed).slice(0, 40);
 }
 
 /** The matches of a search from here on, one per hit, up to a limit. @param {string} pattern @param {boolean} fold */
@@ -652,6 +711,8 @@ function openMore() {
     ['Top', 't'],
     ['Directory', 'd'],
     ['Contents', 'T'],
+    ['History', 'L'],
+    ['Bookmarks', 'B'],
     ['Menu', 'm'],
     ['Follow reference', 'f'],
     ['Go to node', 'g'],

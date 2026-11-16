@@ -89,6 +89,26 @@ export function replaceImages(text) {
   });
 }
 
+/**
+ * The images a node names (Info-fontify-images): the file (src), the text to show in its place, and the alt text, for each marker
+ * that has a src.
+ * @param {string} text the node as the file has it, markers in place
+ * @returns {{ src: string, alt: string | null, text: string | null }[]}
+ */
+export function imagesOf(text) {
+  if (!text.includes('\0\x08[image')) return [];
+  /** @type {{ src: string, alt: string | null, text: string | null }[]} */
+  const found = [];
+  IMAGE_RE.lastIndex = 0;
+  let m;
+  while ((m = IMAGE_RE.exec(text))) {
+    const p = imageParameters(m[2]);
+    const src = p.get('src');
+    if (src !== undefined) found.push({ src, alt: p.get('alt') ?? null, text: p.get('text') ?? null });
+  }
+  return found;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Pointers, menus and cross references of one node (text = the node as Info-select-node narrows to it, header line first)
 

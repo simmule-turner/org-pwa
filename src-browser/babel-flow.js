@@ -129,7 +129,8 @@ export async function executeSourceBlock(heading, block) {
     setStatus(`Evaluation of this block is disabled (:eval ${args.eval}).`);
     return true; // (Emacs only says so, and goes on)
   }
-  if (!(await confirmEvaluation(lisp, args, block.resultsName || ''))) return false;
+  // Emacs compares the hash of a :cache yes block before it asks, so a block that has not changed asks nothing
+  if (args.cache !== 'yes' && !(await confirmEvaluation(lisp, args, block.resultsName || ''))) return false;
 
   const beginLine = heading.bodyLines[block.lineIndex];
   let vars;
@@ -171,6 +172,7 @@ export async function executeSourceBlock(heading, block) {
       setStatus('Cached: nothing has changed since the last run, so the block was not run. Delete its #+RESULTS: to run it again.');
       return true;
     }
+    if (!(await confirmEvaluation(lisp, args, block.resultsName || ''))) return false;
   }
 
   /** @type {{ ok: boolean, message?: string, line?: number | null, value?: unknown, hasValue?: boolean, output?: string }} */

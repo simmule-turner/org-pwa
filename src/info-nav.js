@@ -109,6 +109,23 @@ export function tocNodeText(manual, filePath) {
   return out;
 }
 
+/**
+ * The text of the "*History*" node Emacs builds for `L` (Info-history-find-node): a menu of the nodes visited, the latest first, and where point
+ * is once Info-history has moved it past two cross references (the second entry, or the first when there is only one).
+ * @param {{ file: string, node: string }[]} visited Info-history-list, the *History* node itself left out
+ * @returns {{ text: string, point: number, entries: { file: string, node: string }[] }}
+ */
+export function historyNodeText(visited) {
+  const entries = visited.filter((v) => !(v.file === '*History*' && v.node === 'Top'));
+  let text = 'File: *History*,  Node: Top,  Up: (dir)\n\nHistory of Visited Nodes\n************************\n\n* Menu:\n\n';
+  const starts = [];
+  for (const e of entries) {
+    starts.push(text.length + 2);
+    text += `* ${e.node}: (${e.file})${e.node}.\n`;
+  }
+  return { text, point: starts.length === 0 ? text.length : starts[Math.min(1, starts.length - 1)], entries };
+}
+
 /** What Info-index-next and Info-index report, for the status line. @typedef {{ message: string }} Note */
 
 export class InfoSession {
@@ -184,7 +201,15 @@ export class InfoSession {
     let manual = this.manual;
     if (filename !== null) {
       manual = this.library.resolve(filename);
-      if (!manual && filename.toLowerCase() === 'dir') throw new InfoError("Can't find the Info directory node");
+      if (!manual && filename.toLowerCase() === 'dir') {
+        // Emacs has emptied the buffer and reset its local variables by the time it finds there is no directory
+        this.forward = [];
+        if (this.manual && this.node) {
+          this.bufferId = null;
+          this.fontify(this.manual, this.node);
+        }
+        throw new InfoError("Can't find the Info directory node");
+      }
       if (!manual) {
         if (!this.manual) this.find('dir', 'top', { noGoingBack: true });
         throw new InfoError(`Info file \`${filename}' does not exist; consider installing it`);
@@ -593,6 +618,17 @@ export class InfoSession {
         }
         this.point = m.index + m[0].length;
         return;
+      }
+    }
+    // Without subfiles Emacs repeats the search without its filter for hidden text, in the node; a hit there (in the hidden markup
+    // or the header) gets it past the "Search failed" check and into a failed read of the subfile list.
+    if (manual.buffers.length <= 1) {
+      const again = searchRegExp(regexp, fold);
+      again.lastIndex = this.point;
+      if (again.exec(here.text)) {
+        this.forward = []; // the cleanup selects the node again
+        this.remember(manual.name, here.name);
+        throw new InfoError('Wrong type argument: stringp, nil');
       }
     }
     // A failed search of a split manual has read the other subfiles over the buffer, and reads the first one back.

@@ -14,19 +14,12 @@ The Android app writes into =local:= agenda files while a local file is open. In
 - Tests: refile into each of the three backends with fake adapters; denied permission leaves both files unchanged; source removed only after target write; Android assertion in smoke stays.
 - Questions: should a denied permission fall back to copying the subtree to the clipboard? Is a single "Allow writing" button in Settings (per file) better than asking at the tap?
 - Effort: L (adapter routing is M; permission flow and session keys are the rest). Impact: M, mostly for people with a browser-only setup.
-** [#C] Tag completion from all agenda files (=org-complete-tags-always-offer-all-agenda-tags=)
-Off by default, as in Emacs. On, tagging from an outline also offers every tag used in the agenda files, as an agenda view already does. One Settings row and one change to the documents completion reads (S). Bundle into the next release that has other changes.
-
 ** [#C] More calendars in the diary
 =diary-coptic-date=, =diary-ethiopic-date= and =diary-mayan-date= are plain arithmetic (S). =diary-persian-date= and =diary-french-date= need the equinox calculation, which the Chinese calendar's solar-term code now supplies (M). Hebrew, Islamic, Bahá'í, Chinese, Julian, ISO and astronomical day numbers are done.
 
 ** [#C] Clock issue faces and the *Org Agenda* text
 =org-agenda-clock-consistency-checks= takes a face per kind of issue (=:default-face=, =:long-face=, =:short-face=, =:overlap-face=, =:gap-face=, =:no-end-time-face=); the Agenda view draws every issue white on dark red. Emacs's issue lines are overlays, so the =*Org Agenda*= text has none.
 - Effort: S. Impact: S.
-
-** [#C] HTML preamble and postamble functions: the rest of the export options
-A function given as =org-html-preamble= or =org-html-postamble= gets =:title=, =:subtitle=, =:author=, =:date=, =:email=, =:language= and =:creator=; Emacs's property list has every export option, and a title with markup is a list of objects rather than the text already turned into HTML.
-- Effort: M. Impact: S.
 
 ** [#C] MathJax markup and =#+HTML_MATHJAX= in HTML export
 Emacs writes MathJax configuration and typesets math with MathJax; the app typesets with KaTeX, so the =#+HTML_MATHJAX:= options (path, scale, font, align, autonumber, linebreaks) have no effect. Org's =test-ox-html.el= is 43 tests of exactly these options.
@@ -57,7 +50,7 @@ Left from the security reviews. Each is small, none lets a document run code wit
 Export to =.texi= (nodes, menus, =@multitable=, =@footnote=) as the LaTeX exporter does, checked against Emacs's ox-texinfo. The hard part is node and menu generation. Worth doing if you write GNU-style manuals.
 - Effort: L. Impact: S.
 ** [#C] Info reader leftovers
-Differences from Emacs that remain: =Info-history= as a node (=L=), prefix completion in go-to (it ranks substrings, as the mockup shows), search through the tag table and pseudo-nodes, and the point after back, forward and up in split manuals. Add the =edge*.info= fixtures and an Emacs check of the directory (=dirSections= against =Info-directory=), show images in Info files, and bookmarks on nodes. Info-mode keys are not shown as palette hints because the palette test requires every hint to be a god-mode chord.
+Differences from Emacs that remain: search does not look through the tag table's list of subfiles or the pseudo-nodes (=*TOC*=, =*History*= and the directory are screens here, not nodes), and Info-mode keys are not shown as palette hints because the palette test requires every hint to be a god-mode chord.
 - Effort: S. Impact: S.
 
 * Outline and editing commands

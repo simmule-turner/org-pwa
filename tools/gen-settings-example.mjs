@@ -51,6 +51,7 @@ const CONTROLLED = [
   ['org-export-with-statistics-cookies', 'Whether an export keeps statistics cookies.'],
   ['org-export-with-fixed-width', 'Whether an export keeps fixed-width lines.'],
   ['org-export-with-tables', 'Whether an export has tables.'],
+  ['org-complete-tags-always-offer-all-agenda-tags', 'Whether tagging a heading also offers the tags of every agenda file.'],
   ['org-agenda-files', 'More files for the Agenda and TODO views.', { app: 'nil', note: 'nil: the open file only' }],
   ['org-agenda-include-diary', 'Whether the entries of diary-file are in the Agenda.'],
   ['org-agenda-show-all-dates', 'Whether days with nothing on them show in the Agenda.'],

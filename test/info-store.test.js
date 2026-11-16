@@ -105,3 +105,13 @@ test('parseInfoLink and resolveLinkTarget: info:manual#node, info:manual:node, i
   assert.deepEqual(parseInfoLink(''), { manual: 'dir', node: 'Top' });
   assert.deepEqual(resolveLinkTarget(null, 'info:org#Tables'), { type: 'info', manual: 'org', node: 'Tables' });
 });
+
+test('imagesOf and imageType: the images a node names and the files a page can show', async () => {
+  const { imagesOf } = await import('../src/info-parse.js');
+  const { imageType } = await import('../src/info-store.js');
+  const text = 'x \0\b[image src="a/b.png" alt="A"\0\b] y \0\b[image src="c.svg" text="[c]"\0\b] z \0\b[image alt="none"\0\b]';
+  assert.deepEqual(imagesOf(text), [{ src: 'a/b.png', alt: 'A', text: null }, { src: 'c.svg', alt: null, text: '[c]' }]);
+  assert.deepEqual(imagesOf('no images'), []);
+  assert.equal(imageType('dot.PNG'), 'image/png');
+  assert.equal(imageType('notes.info'), null);
+});

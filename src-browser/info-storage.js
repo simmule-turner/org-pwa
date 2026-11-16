@@ -53,3 +53,37 @@ export async function saveRecord(record) {
 export async function removeRecord(name) {
   await kv.delete(PREFIX + name);
 }
+
+const IMAGE_PREFIX = 'info:image:';
+
+/** Keeps an image a manual names, as a data URL, under its file name (the name a manual gives it is looked up without a directory). @param {string} name @param {string} dataUrl */
+export async function saveImage(name, dataUrl) {
+  await kv.set(IMAGE_PREFIX + name.replace(/^.*\//, ''), dataUrl);
+}
+
+/** The data URL of an image kept on this device, or null. @param {string} src */
+export async function loadImage(src) {
+  const entry = await kv.get(IMAGE_PREFIX + src.replace(/^.*\//, ''));
+  return entry ? String(entry.value) : null;
+}
+
+const BOOKMARKS = 'info:bookmarks';
+
+/** @typedef {{ file: string, node: string, point: number }} InfoBookmark a node kept to return to (Info-bookmark-make-record: the manual, the node and where point was) */
+
+/** The bookmarks on nodes, in the order they were made. @returns {Promise<InfoBookmark[]>} */
+export async function loadBookmarks() {
+  const entry = await kv.get(BOOKMARKS);
+  if (!entry) return [];
+  try {
+    const list = JSON.parse(String(entry.value));
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/** @param {InfoBookmark[]} list */
+export async function saveBookmarks(list) {
+  await kv.set(BOOKMARKS, JSON.stringify(list));
+}

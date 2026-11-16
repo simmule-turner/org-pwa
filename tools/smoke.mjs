@@ -6822,7 +6822,7 @@ async function enableJavaScript(page) {
 }
 async function runBlock(page, n = 0) {
   await page.getByRole('button', { name: 'Run source block' }).nth(n).click();
-  await page.getByRole('button', { name: 'Run', exact: true }).click(); // asked every time in an unsaved document
+  await page.getByRole('button', { name: 'Evaluate', exact: true }).click(); // asked on every run (org-confirm-babel-evaluate is t by default)
 }
 
 check('Content-Security-Policy: starting the app breaks no rule, and an injected inline script is refused', async () => {
@@ -7130,7 +7130,7 @@ check('floating keyboard: Shift stays on for the arrows and they jump by heading
   expect((await focused()).includes('return 1'), `Down leaves the table for the block: ${await focused()}`);
   await page.keyboard.press('c');
   await page.keyboard.press('c'); // C-c C-c
-  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('button', { name: 'Evaluate', exact: true }).click();
   await waitForStatus(page, 'Ran in');
   expect((await focused()).includes('return 1'), `after the result is written the cursor is still on the block: ${await focused()}`);
   await fk.locator('[data-fk-key=ArrowDown]').click();
@@ -7148,7 +7148,7 @@ check(':cache yes: an unchanged block is not run again', async () => {
   const first = await documentText(page);
   expect(/#\+RESULTS\[[0-9a-f]{40}\]:/.test(first), `hash in the results line: ${first}`);
   await new Promise((r) => setTimeout(r, 20));
-  await runBlock(page, 0);
+  await page.getByRole('button', { name: 'Run source block' }).nth(0).click(); // Emacs compares the hash before it asks, so a cached run asks nothing
   await waitForStatus(page, 'Cached');
   expect((await documentText(page)) === first, 'the cached run left the result alone');
   expect(sandboxErrors(errors).length === 0, `page errors: ${errors.join(' | ')}`);
@@ -8343,6 +8343,60 @@ check('info reader: Info Paragraphs joins the lines of a paragraph on a narrow s
   expect((await lineOf()).length < 100, 'Never keeps the file\'s lines on a narrow screen');
   const stored = await page.evaluate(async () => (await (await import('/src-browser/settings.js')).getInfoReflow((await import('/src-browser/singletons.js')).kv)));
   expect(stored === 'never', `the choice is stored: ${stored}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('info reader: L lists the nodes visited, latest first, and goes to one; B bookmarks a node and returns to it; Go to node completes by prefix; an image added with a manual shows in its node', async () => {
+  const { context, page, errors } = await freshPage(main);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await newDocument(page, '* Notes\n');
+  await openHelp(page);
+  await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    S.infoView.session.goto('Local Variables');
+    S.infoView.session.goto('Top');
+    const { openInfo } = await import('/src-browser/info-view.js');
+    await openInfo({ manual: 'org-pwa', node: 'Local Variables' });
+  });
+  await page.keyboard.press('L');
+  const rows = page.locator('#info-view [data-info-body] button');
+  await rows.first().waitFor({ timeout: 5000 });
+  const texts = await rows.allInnerTexts();
+  expect(texts[0].startsWith('Local Variables'), `the latest node comes first: ${texts.slice(0, 3).join(' | ')}`);
+  expect(texts.some((t) => t.startsWith('Top')), 'the history lists the Top node too');
+  await rows.filter({ hasText: /^Top/ }).first().click();
+  await waitForHelpManual(page, 'Top');
+  // a bookmark on the node, kept across opening the reader again
+  await page.keyboard.press('B');
+  await page.getByRole('button', { name: /^Bookmark Top/ }).click();
+  await page.waitForTimeout(300);
+  await page.evaluate(async () => { const { S } = await import('/src-browser/app-state.js'); S.infoView.session.goto('Local Variables'); });
+  await page.keyboard.press('B');
+  await page.getByRole('button', { name: /Top/ }).filter({ hasText: 'org-pwa' }).first().click();
+  await waitForHelpManual(page, 'Top');
+  // Go to node completes by prefix, as Emacs does: a word inside a name is not a match
+  const offered = await page.evaluate(async () => {
+    const { S } = await import('/src-browser/app-state.js');
+    const { completeNodeNames } = await import('/src/info-manual.js');
+    return completeNodeNames(S.infoView.session.manual.completions(), 'local v');
+  });
+  expect(offered.includes('Local Variables') && offered.every((n) => /^local/i.test(n)), `prefix completion: ${offered.join(', ')}`);
+  // an image that a manual names shows when its file was added
+  const shown = await page.evaluate(async () => {
+    const { groupFiles, recordOf } = await import('/src/info-store.js');
+    const { saveRecord, saveImage } = await import('/src-browser/info-storage.js');
+    const { openInfo } = await import('/src-browser/info-view.js');
+    const text = 'This is pics.info.\n\n\x1f\nFile: pics.info,  Node: Top,  Up: (dir)\n\nPictures\n********\n\n\0\b[image src="dot.png" alt="a dot"\0\b]\n\x1f\nTag Table:\nNode: Top\x7f64\n\x1f\nEnd Tag Table\n';
+    const [group] = groupFiles([{ name: 'pics.info', text, encoding: 'utf-8', size: text.length }]);
+    await saveRecord(recordOf(group, 1));
+    await saveImage('dot.png', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    await openInfo({ manual: 'pics', node: 'Top' });
+    await new Promise((r) => setTimeout(r, 600));
+    const img = document.querySelector('#info-view img');
+    return img ? img.alt : null;
+  });
+  expect(shown === 'a dot', `the image shows in its node: ${shown}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

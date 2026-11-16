@@ -239,6 +239,7 @@ export const SETTINGS_FIELDS = [
     default: true,
     helpAnchor: '#searching',
   },
+  { key: 'org-complete-tags-always-offer-all-agenda-tags', label: 'Tagging also offers the tags of every agenda file', section: 'Search & tags', type: 'boolean', default: false, helpAnchor: '#searching' },
   { key: 'org-tags-column', label: 'Tags column (0 = one space after the title, negative = right-aligned)', section: 'Editing', type: 'number', default: -77, min: -300, max: 300, step: 1, helpAnchor: '#configuration' },
   {
     key: 'org-adapt-indentation',

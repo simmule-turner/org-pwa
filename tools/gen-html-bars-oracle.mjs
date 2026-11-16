@@ -57,8 +57,13 @@ const setups = [
   { setup: `(setq org-html-postamble (lambda (info) (format "<p>%s|%s</p>" (plist-get info :language) (org-export-data (plist-get info :author) info))))`, defaults: { postamble: { fn: `(lambda (info) (format "<p>%s|%s</p>" (plist-get info :language) (org-export-data (plist-get info :author) info)))` } }, options: ['title:t'] },
   { setup: `(setq org-html-postamble (lambda (info) nil))`, defaults: { postamble: { fn: '(lambda (info) nil)' } }, options: ['title:t'] },
 ];
+
+// the export options a preamble function reads (:with-toc, :headline-levels ...): the function prints their values, as %S
+const infoFn = String.raw`(lambda (info) (format "%S" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))`;
+const infoOptions = ['title:t', 'toc:nil num:2 H:2 tags:not-in-toc todo:nil pri:t', "\\n:t ':t ^:{} -:nil *:nil e:nil f:nil |:nil stat:nil inline:nil", 'tex:verbatim p:t author:nil date:nil email:t creator:t', 'timestamp:nil <:active arch:t c:t prop:t d:t tasks:todo', 'd:nil prop:("X") tasks:("TODO") broken-links:mark', 'd:("A" "B") toc:3 num:nil ^:nil <:inactive', 'd:(not "A" "B") tex:nil tags:nil arch:nil <:nil', 'title:t toc:t num:t H:1 todo:nil tasks:nil'];
+for (const opt of infoOptions) setups.push({ setup: `(setq org-html-preamble ${infoFn})`, fn: infoFn, options: [opt], extra: opt === 'title:t' ? '' : '#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n' });
 const setupCases = [];
-for (const s of setups) for (const opt of s.options) setupCases.push({ ...s, opt, src: `#+TITLE: Ttl\n${s.noAuthor ? '' : '#+AUTHOR: Estes\n#+EMAIL: e@x.org\n'}${s.language ? `#+LANGUAGE: ${s.language}\n` : ''}#+OPTIONS: ${opt}\n* H\nbody\n` });
+for (const s of setups) for (const opt of s.options) setupCases.push({ ...s, opt, src: `#+TITLE: Ttl\n${s.noAuthor ? '' : '#+AUTHOR: Estes\n#+EMAIL: e@x.org\n'}${s.language ? `#+LANGUAGE: ${s.language}\n` : ''}${s.extra || ''}#+OPTIONS: ${opt}\n* H\nbody\n` });
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bars-'));
 const results = [];

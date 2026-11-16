@@ -41,6 +41,7 @@
  "org-export-with-statistics-cookies": "t",
  "org-export-with-fixed-width": "t",
  "org-export-with-tables": "t",
+ "org-complete-tags-always-offer-all-agenda-tags": "nil",
  "org-agenda-files": "nil",
  "org-agenda-include-diary": "nil",
  "org-agenda-show-all-dates": "t",

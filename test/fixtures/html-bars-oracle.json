@@ -648,5 +648,59 @@
     "fn": "(lambda (info) nil)"
    }
   }
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+OPTIONS: title:t\n* H\nbody\n",
+  "preamble": "(nil nil (\"export\") (\"noexport\") 3 nil t t headline t nil nil nil t (not \"LOGBOOK\") nil t t t t t t nil nil nil nil t t nil t t t t t t t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: toc:nil num:2 H:2 tags:not-in-toc todo:nil pri:t\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 2 nil 2 t headline t nil nil nil t (not \"LOGBOOK\") nil t t t t t t nil t nil nil t t nil t not-in-toc t t t nil nil)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: \\n:t ':t ^:{} -:nil *:nil e:nil f:nil |:nil stat:nil inline:nil\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 t t t headline t nil nil nil t (not \"LOGBOOK\") nil nil nil t nil nil t nil nil nil t nil nil nil nil t t t t t t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: tex:verbatim p:t author:nil date:nil email:t creator:t\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 nil t t headline nil nil nil t nil (not \"LOGBOOK\") t t t t t t verbatim t nil nil nil t t nil t t t t t t t)",
+  "postamble": "<p class=\"email\">Email: <a href=\"mailto:e@x.org\">e@x.org</a></p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"creator\"><a href=\"https://www.gnu.org/software/emacs/\">Emacs</a> 29.3 (<a href=\"https://orgmode.org\">Org</a> mode 9.6.15)</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: timestamp:nil <:active arch:t c:t prop:t d:t tasks:todo\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 nil t nil t t nil t nil t t nil t t t t t t nil nil t nil t t nil t t todo active t t t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: d:nil prop:(\"X\") tasks:(\"TODO\") broken-links:mark\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 nil t t headline t mark nil nil t nil nil t t t t t t nil nil (\"X\") nil t t nil t t (\"TODO\") t t t t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: d:(\"A\" \"B\") toc:3 num:nil ^:nil <:inactive\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 nil nil t headline t nil nil nil t (\"A\" \"B\") nil t t t t t t nil nil nil nil t t nil t t t inactive t 3 t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: d:(not \"A\" \"B\") tex:nil tags:nil arch:nil <:nil\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 3 nil t t nil t nil nil nil t (not \"A\" \"B\") nil t t t t t nil nil nil nil nil t t nil t nil t nil t t t)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
+ },
+ {
+  "src": "#+TITLE: Ttl\n#+AUTHOR: Estes\n#+EMAIL: e@x.org\n#+SELECT_TAGS: a b\n#+EXCLUDE_TAGS: x\n#+DESCRIPTION: About it\n#+KEYWORDS: k1, k2\n#+OPTIONS: title:t toc:t num:t H:1 todo:nil tasks:nil\n* H\nbody\n",
+  "preamble": "(\"About it\" \"k1, k2\" (\"a\" \"b\") (\"x\") 1 nil t t headline t nil nil nil t (not \"LOGBOOK\") nil t t t t t t nil nil nil nil t t nil t t nil t t t nil)",
+  "postamble": "<p class=\"author\">Author: Estes</p>\n<p class=\"date\">Created: 2026-03-04 Wed 05:06</p>\n<p class=\"validation\"><a href=\"https://validator.w3.org/check?uri=referer\">Validate</a></p>",
+  "fn": "(lambda (info) (format \"%S\" (mapcar (lambda (k) (plist-get info k)) (quote (:description :keywords :select-tags :exclude-tags :headline-levels :preserve-breaks :section-numbers :time-stamp-file :with-archived-trees :with-author :with-broken-links :with-clocks :with-creator :with-date :with-drawers :with-email :with-emphasize :with-entities :with-fixed-width :with-footnotes :with-inlinetasks :with-latex :with-planning :with-priority :with-properties :with-smart-quotes :with-special-strings :with-statistics-cookies :with-sub-superscripts :with-tables :with-tags :with-tasks :with-timestamps :with-title :with-toc :with-todo-keywords)))))"
  }
 ]

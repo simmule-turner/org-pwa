@@ -23,7 +23,6 @@ const emacs = spawnSync('emacs', ['--version']).status === 0;
 /** Compares what the app makes of a manual with what Emacs answered (`oracle`). */
 async function compare(dir, file, spec, oracle) {
   const manual = await loadManual(dir, file);
-  const split = !!manual.parts;
   const known = INFO_KNOWN[file] || {};
   assert.equal(oracle.error, undefined, oracle.error);
   const nodes = manual.allNodes();
@@ -120,8 +119,7 @@ async function compare(dir, file, spec, oracle) {
         assert.equal(s.name, step.node, `${where}: node`);
         assert.equal(s.history.length, step.history, `${where}: history`);
         assert.equal(s.forward.length, step.forward, `${where}: forward`);
-        const skipPoint = split && ['back', 'forward', 'up'].includes(ops[i][0]);
-        if (!skipPoint && !(known.pointSkip || []).includes(ops[i][0])) assert.equal(s.point, step.point, `${where}: point`);
+        if (!(known.pointSkip || []).includes(ops[i][0])) assert.equal(s.point, step.point, `${where}: point`);
       });
     });
   });

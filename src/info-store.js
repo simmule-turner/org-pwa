@@ -51,6 +51,15 @@ export function classifyName(fileName) {
   return { base: main ? main[1] : plain, part: null, compressed };
 }
 
+/** Image files an Info manual can name, with the type a page shows them as. */
+const IMAGE_TYPES = /** @type {Record<string, string>} */ ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif' });
+
+/** The media type of an image file name, or null when it is not one a page can show. @param {string} fileName @returns {string | null} */
+export function imageType(fileName) {
+  const m = /\.([a-z0-9]+)$/i.exec(fileName);
+  return m ? IMAGE_TYPES[m[1].toLowerCase()] || null : null;
+}
+
 /** Whether the text looks like an Info file or a part of one: a node separator, a header line or a tag table. @param {string} text */
 export function looksLikeInfo(text) {
   return segmentsOf(text).some((s) => /^File:/i.test(s.header)) || /\x1f\nIndirect:/.test(text) || /\x1f\nTag Table:/i.test(text);
