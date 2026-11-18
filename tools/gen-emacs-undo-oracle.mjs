@@ -16,9 +16,11 @@ const KEYS = {
   'backward-word': 'M-b', 'org-delete-char': 'C-d', 'org-delete-backward-char': 'DEL', 'kill-word': 'M-d', 'backward-kill-word': 'M-DEL',
   'org-kill-line': 'C-k', 'kill-region': 'C-w', 'org-yank': 'C-y', 'org-open-line': 'C-o', 'transpose-chars': 'C-t', 'org-transpose-words': 'M-t',
   'upcase-word': 'M-u', 'downcase-word': 'M-l', 'capitalize-word': 'M-c', 'delete-horizontal-space': 'M-\\', 'undo': 'C-/',
+  'undo-redo': 'C-?', 'yank-pop': 'M-y', 'delete-blank-lines': 'C-x C-o', 'cycle-spacing': 'M-SPC', 'org-forward-sentence': 'M-e', 'org-backward-sentence': 'M-a',
+  'beginning-of-buffer': 'M-<', 'end-of-buffer': 'M->',
   'set-mark-command': 'C-@', 'exchange-point-and-mark': 'C-x C-x', 'mark-whole-buffer': 'C-x h', 'kill-ring-save': 'M-w', 'next-line': 'C-n', 'previous-line': 'C-p',
 };
-const texts = ['foo bar baz', 'one\ntwo\nthree', 'aa ab  cd'];
+const texts = ['foo bar baz', 'one\ntwo\nthree', 'aa ab  cd', 'a. b  c\n\n\nd.  e \t x\n'];
 const scripts = [
   ['org-delete-char', 'undo'], ['org-delete-char', 'org-delete-char', 'undo'], ['org-delete-char', 'org-delete-char', 'undo', 'undo'],
   ['org-delete-backward-char', 'undo'], ['org-delete-backward-char', 'org-delete-backward-char', 'org-delete-backward-char', 'undo'],
@@ -37,6 +39,19 @@ const scripts = [
   Array.from({ length: 25 }, (_, i) => `self:${String.fromCharCode(97 + (i % 26))}`).concat(['undo', 'undo']),
   Array.from({ length: 45 }, (_, i) => `self:${String.fromCharCode(97 + (i % 26))}`).concat(['undo', 'undo', 'undo']),
 ];
+const newScripts = [
+  ['org-kill-line', 'undo', 'undo-redo'], ['org-kill-line', 'undo', 'undo-redo', 'undo-redo'], ['kill-word', 'kill-word', 'undo', 'undo', 'undo-redo'],
+  ['kill-word', 'kill-word', 'undo', 'undo', 'undo-redo', 'undo-redo'], ['org-delete-char', 'undo', 'undo-redo', 'undo'], ['undo-redo'], ['org-kill-line', 'undo-redo'],
+  ['org-kill-line', 'undo', 'forward-char', 'undo-redo'], ['org-kill-line', 'undo', 'undo', 'undo-redo'], ['self:x', 'self:y', 'undo', 'undo-redo', 'undo-redo'],
+  ['kill-word', 'undo', 'undo-redo', 'undo', 'undo-redo'], ['kill-word', 'undo', 'undo-redo', 'undo-redo'], ['org-kill-line', 'undo', 'undo-redo', 'undo', 'undo', 'undo-redo'],
+  ['org-open-line', 'undo', 'undo-redo', 'forward-char', 'undo'], ['kill-word', 'forward-char', 'kill-word', 'undo', 'undo', 'undo-redo', 'undo-redo', 'undo'],
+  ['org-kill-line', 'org-yank', 'yank-pop', 'undo'], ['kill-word', 'org-kill-line', 'org-yank', 'yank-pop', 'undo', 'undo'], ['org-kill-line', 'org-yank', 'yank-pop', 'yank-pop', 'undo'],
+  ['kill-word', 'org-kill-line', 'org-yank', 'yank-pop', 'undo', 'undo-redo'], ['yank-pop'], ['org-yank', 'yank-pop', 'undo'],
+  ['cycle-spacing', 'undo'], ['cycle-spacing', 'cycle-spacing', 'undo'], ['cycle-spacing', 'cycle-spacing', 'cycle-spacing', 'undo', 'undo'], ['cycle-spacing', 'cycle-spacing', 'cycle-spacing', 'cycle-spacing'],
+  ['delete-blank-lines', 'undo'], ['delete-blank-lines', 'delete-blank-lines'], ['cycle-spacing', 'undo', 'undo-redo'],
+  ['org-forward-sentence', 'undo'], ['org-backward-sentence', 'org-forward-sentence'], ['end-of-buffer', 'exchange-point-and-mark'], ['beginning-of-buffer', 'undo'],
+  ['end-of-buffer', 'beginning-of-buffer', 'exchange-point-and-mark'], ['set-mark-command', 'end-of-buffer', 'beginning-of-buffer', 'exchange-point-and-mark'],
+];
 const regionScripts = [
   ['set-mark-command'], ['set-mark-command', 'forward-char'], ['set-mark-command', 'forward-char', 'exchange-point-and-mark'],
   ['set-mark-command', 'forward-char', 'exchange-point-and-mark', 'exchange-point-and-mark'], ['set-mark-command', 'forward-word', 'kill-region'],
@@ -53,7 +68,28 @@ for (const text of ['foo bar baz', 'one\ntwo']) for (let pos = 0; pos <= text.le
   cases.push({ text, pos, cmds, mark: null });
   cases.push({ text, pos, cmds, mark: (pos + 3) % (text.length + 1) });
 }
-for (const text of texts) for (let pos = 0; pos <= text.length; pos++) for (const cmds of scripts) cases.push({ text, pos, cmds, mark: null });
+for (const text of texts) for (let pos = 0; pos <= text.length; pos++) for (const cmds of scripts.concat(newScripts)) cases.push({ text, pos, cmds, mark: null });
+// undo in the region: some edits, then a region marked over other text, then undos (and a redo)
+const histories = [
+  ['kill-word', 'forward-char', 'kill-word'], ['self:x', 'forward-word', 'self:y', 'forward-word', 'self:z'], ['org-kill-line', 'forward-word', 'upcase-word', 'forward-word', 'kill-word'],
+  ['forward-word', 'org-delete-backward-char', 'forward-word', 'org-delete-backward-char'], ['transpose-chars', 'forward-word', 'org-open-line', 'forward-word', 'self:q'],
+  ['kill-word', 'org-yank', 'forward-word', 'capitalize-word'],
+];
+const regions = [
+  ['set-mark-command', 'forward-word', 'undo'], ['set-mark-command', 'forward-word', 'undo', 'undo'], ['set-mark-command', 'end-of-buffer', 'undo'],
+  ['beginning-of-buffer', 'set-mark-command', 'forward-word', 'forward-word', 'undo'], ['beginning-of-buffer', 'set-mark-command', 'forward-word', 'forward-word', 'undo', 'undo', 'undo'],
+  ['set-mark-command', 'backward-word', 'undo', 'undo-redo'], ['mark-whole-buffer', 'undo'], ['mark-whole-buffer', 'undo', 'undo'],
+  ['set-mark-command', 'forward-word', 'undo', 'forward-char', 'undo'], ['set-mark-command', 'backward-word', 'backward-word', 'undo', 'undo'],
+];
+for (const text of ['foo bar baz', 'one\ntwo\nthree', 'aa ab  cd']) for (let pos = 0; pos <= text.length; pos += 2) for (const h of histories) for (const r of regions) cases.push({ text, pos, cmds: h.concat(r), mark: null });
+// a pasted subtree, adjusted to the level where it lands or not, and what undo takes back
+for (const text of ['* A\nbody\n* C\n', '* A\n** A1\nx\n* B\n', 'plain\n* H\n']) for (let pos = 0; pos <= text.length; pos += 1) for (const kill of ['*** T\nt1\nt2\n', '** T\n', '* T\nbody\n', 'plain line\n']) for (const adjusted of [0, 1]) {
+  for (const cmds of [['org-yank', 'undo'], ['org-yank', 'undo', 'undo'], ['org-yank', 'undo', 'undo-redo'], ['org-yank', 'forward-char', 'undo']]) cases.push({ text, pos, cmds, mark: null, kill, adjusted });
+}
+// moving over table fields aligns the table, which undo takes back
+for (const text of ['| a | bb |\n| ccc | d |\n', '| a |\n|---|\n| xxxx |\n']) for (let pos = 0; pos <= text.length; pos++) {
+  for (const cmds of [['org-backward-sentence', 'undo'], ['org-forward-sentence', 'org-forward-sentence', 'undo'], ['org-forward-sentence', 'org-forward-sentence', 'undo', 'undo-redo'], ['org-backward-sentence', 'org-backward-sentence', 'undo', 'undo']]) cases.push({ text, pos, cmds, mark: null });
+}
 // with a mark: kill-region then undo then exchange point and mark
 for (const text of ['foo bar', 'ab\ncd']) for (let pos = 0; pos <= text.length; pos++) for (let mark = 0; mark <= text.length; mark++) {
   for (const cmds of [['kill-region', 'undo'], ['kill-region', 'undo', 'exchange-point-and-mark'], ['kill-region', 'undo', 'undo', 'exchange-point-and-mark']]) cases.push({ text, pos, cmds, mark });
@@ -66,7 +102,8 @@ const rnd = (n) => {
 };
 const pool = ['forward-char', 'backward-char', 'org-end-of-line', 'org-beginning-of-line', 'forward-word', 'backward-word', 'org-delete-char',
   'org-delete-backward-char', 'kill-word', 'backward-kill-word', 'org-kill-line', 'org-yank', 'org-open-line', 'transpose-chars', 'org-transpose-words',
-  'upcase-word', 'capitalize-word', 'delete-horizontal-space', 'next-line', 'previous-line', 'undo', 'undo', 'undo', 'self:q', 'self:r', 'self:s'];
+  'upcase-word', 'capitalize-word', 'delete-horizontal-space', 'next-line', 'previous-line', 'undo', 'undo', 'undo', 'self:q', 'self:r', 'self:s',
+  'undo-redo', 'undo-redo', 'yank-pop', 'cycle-spacing', 'delete-blank-lines', 'org-forward-sentence', 'org-backward-sentence', 'beginning-of-buffer', 'end-of-buffer'];
 for (let i = 0; i < 1200; i++) {
   const text = texts[rnd(texts.length)];
   const cmds = Array.from({ length: 3 + rnd(8) }, () => pool[rnd(pool.length)]);
@@ -79,6 +116,8 @@ const el = `;; -*- lexical-binding: t -*-
 (require 'org) (require 'json)
 (transient-mark-mode 1)
 (setq line-move-visual nil)
+(dolist (f '(sit-for sleep-for)) (advice-add f :override (lambda (&rest _) t)))
+(dolist (f '(read-from-minibuffer completing-read read-string read-key read-event)) (advice-add f :override (lambda (&rest _) (error "minibuffer"))))
 (defun run-case (c)
   (let ((text (cdr (assq 'text c))) (pos (cdr (assq 'pos c))) (mark (cdr (assq 'mark c))) (keys (cdr (assq 'keys c))) (err nil))
     (let ((buf (generate-new-buffer "undo-oracle")))
@@ -87,7 +126,8 @@ const el = `;; -*- lexical-binding: t -*-
       (org-mode)
       (buffer-enable-undo)
       (setq buffer-undo-list nil)
-      (setq kill-ring (list "KILL"))
+      (setq kill-ring (list (or (cdr (assq 'kill c)) "KILL")))
+      (setq org-yank-adjusted-subtrees (eq 1 (cdr (assq 'adjusted c))))
       (goto-char (1+ pos))
       (when (numberp mark) (set-mark (1+ mark)) (deactivate-mark))
       (setq last-command nil this-command nil real-last-command nil temporary-goal-column 0)

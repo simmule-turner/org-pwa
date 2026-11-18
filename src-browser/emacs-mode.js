@@ -6,6 +6,7 @@
  */
 import { syncExternal } from '../src/emacs-edit.js';
 import { foldedExecute } from '../src/emacs-fold.js';
+import { scrollWindow } from '../src/emacs-scroll.js';
 import { eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js';
 import { newUndo } from '../src/emacs-undo.js';
 
@@ -26,11 +27,22 @@ function baseKey(e) {
   return pair ? pair[e.shiftKey ? 1 : 0] : e.key;
 }
 
+/** What was typed into `before` to make `after`, when that is all that happened to it; otherwise null.
+ * @param {string} before @param {string} after @returns {string | null} */
+function insertedText(before, after) {
+  if (after.length <= before.length) return null;
+  let head = 0;
+  while (head < before.length && before[head] === after[head]) head++;
+  let tail = 0;
+  while (tail < before.length - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) tail++;
+  return head + tail === before.length ? after.slice(head, after.length - tail) : null;
+}
+
 /** The visibility commands, which the fold model runs. */
 const FOLD_COMMANDS = new Set(['org-cycle', 'org-shifttab', 'org-fold-reveal']);
 
 /** What a read-only buffer still allows: moving, the mark and copying. */
-const READ_ONLY_OK = new Set(['forward-char', 'backward-char', 'org-beginning-of-line', 'org-end-of-line', 'forward-word', 'backward-word', 'beginning-of-buffer', 'end-of-buffer', 'next-line', 'previous-line', 'set-mark-command', 'exchange-point-and-mark', 'kill-ring-save']);
+const READ_ONLY_OK = new Set(['forward-char', 'backward-char', 'org-beginning-of-line', 'org-end-of-line', 'forward-word', 'backward-word', 'beginning-of-buffer', 'end-of-buffer', 'next-line', 'previous-line', 'set-mark-command', 'exchange-point-and-mark', 'kill-ring-save', 'org-forward-sentence', 'org-backward-sentence', 'isearch-forward', 'isearch-backward', 'scroll-up-command', 'scroll-down-command']);
 
 /**
  * @param {object} o
@@ -42,6 +54,7 @@ const READ_ONLY_OK = new Set(['forward-char', 'backward-char', 'org-beginning-of
  * @param {() => void} o.onMove  the caret moved: the mode line shows its place
  * @param {{ panel: 'docked' | 'floating', adjusted: boolean, folded: boolean, clipboard: boolean }} o.options
  * @param {(edit: { from: number, to: number, insert: string, selStart: number, selEnd: number }, quiet: boolean) => void} o.applyEdit
+ * @param {(forward: boolean) => void} o.search  C-s and C-r: open Find, or go to the next match
  * @param {() => void} o.tab  the Tab key of the Text view
  * @param {(panel: 'docked' | 'floating') => void} o.setPanel  keeps the panel's place in the settings
  * @param {{ readText: () => Promise<string>, writeText: (text: string) => Promise<void> }} o.clipboard
@@ -160,6 +173,43 @@ export function attachEmacsMode(o) {
     layer.style.transform = find.style.transform;
   }
 
+  /** C-v and M-v: the text scrolls a screen less two lines, or the lines the prefix says, and the caret goes the same number of lines.
+   *  @param {boolean} forward @param {{ n: number, universal: boolean } | undefined} prefix */
+  function scrollPage(forward, prefix) {
+    const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 20;
+    const text = ctx.st.text;
+    const starts = [0];
+    for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) starts.push(i + 1);
+    const lineOf = (/** @type {number} */ pos) => {
+      let lo = 0;
+      let hi = starts.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (starts[mid] <= pos) lo = mid;
+        else hi = mid - 1;
+      }
+      return lo;
+    };
+    const r = scrollWindow({
+      lines: starts.length,
+      start: Math.round(textarea.scrollTop / lineHeight),
+      point: lineOf(ctx.st.pos),
+      height: Math.max(3, Math.floor(textarea.clientHeight / lineHeight)),
+      count: prefix && !prefix.universal ? prefix.n : null,
+      forward,
+    });
+    if (r.error) {
+      say(r.error);
+      return;
+    }
+    if (r.bol) ctx.st = { ...ctx.st, pos: starts[r.point] };
+    ctx.st = { ...ctx.st, last: forward ? 'scroll-up-command' : 'scroll-down-command' };
+    say('');
+    show();
+    textarea.scrollTop = r.start * lineHeight;
+    layer.style.transform = find.style.transform;
+  }
+
   // ---- keys
   /** Feeds one key, named as Emacs names it. @param {string} rawKey @returns {boolean} whether Emacs mode took it */
   function press(rawKey) {
@@ -167,7 +217,13 @@ export function attachEmacsMode(o) {
     const fed = feedKey(ctx.input, rawKey);
     ctx.input = fed.input;
     const { result } = fed;
-    if (result.type === 'unhandled') return false;
+    if (result.type === 'unhandled') {
+      if (rawKey.startsWith('C-') || rawKey.startsWith('M-')) {
+        say(`${rawKey} is undefined`);
+        return true; // the browser's own meaning of the key (reload, save, close) is not wanted in the editor
+      }
+      return false;
+    }
     if (result.type === 'pending') {
       say(result.echo);
       return true;
@@ -188,6 +244,15 @@ export function attachEmacsMode(o) {
     }
     if (textarea.readOnly && !READ_ONLY_OK.has(result.command)) {
       say('Buffer is read-only');
+      return true;
+    }
+    if (result.command === 'isearch-forward' || result.command === 'isearch-backward') {
+      ctx.st = { ...ctx.st, active: false, last: result.command };
+      o.search(result.command === 'isearch-forward');
+      return true;
+    }
+    if (result.command === 'scroll-up-command' || result.command === 'scroll-down-command') {
+      scrollPage(result.command === 'scroll-up-command', result.prefix);
       return true;
     }
     if (FOLD_COMMANDS.has(result.command)) {
@@ -237,6 +302,18 @@ export function attachEmacsMode(o) {
     } else if (!['Control', 'Alt'].includes(e.key)) setSticky(false, false);
   }
 
+  /** Whether the next thing typed belongs to a command: Ctrl or Alt held from the panel, or a prefix (ESC, C-x, C-u) already typed. */
+  const commandPending = () => ctx.sticky.ctrl || ctx.sticky.alt || ctx.input.pending.length > 0 || Boolean(ctx.input.arg);
+
+  /** Characters typed as keys: with Ctrl or Alt held from the panel the first one is that key with the modifier. @param {string} data */
+  function typeChars(data) {
+    for (const ch of data) {
+      const name = ctx.sticky.ctrl || ctx.sticky.alt ? eventKey({ key: ch, ctrlKey: ctx.sticky.ctrl, altKey: ctx.sticky.alt }) : ch;
+      if (name) press(name);
+      setSticky(false, false);
+    }
+  }
+
   /** @param {InputEvent} e */
   function onBeforeInput(e) {
     if (ctx.applying || e.isComposing) return;
@@ -246,7 +323,7 @@ export function attachEmacsMode(o) {
       press('C-/');
     } else if (type === 'historyRedo') {
       e.preventDefault();
-      say('Redo: C-/ after another command undoes the undo');
+      press('C-?');
     } else if (type === 'deleteContentBackward') {
       e.preventDefault();
       press('DEL');
@@ -255,11 +332,7 @@ export function attachEmacsMode(o) {
       press('C-d');
     } else if (type === 'insertText' && e.data && !e.data.includes('\n')) {
       e.preventDefault();
-      for (const ch of e.data) {
-        const name = ctx.sticky.ctrl || ctx.sticky.alt ? eventKey({ key: ch, ctrlKey: ctx.sticky.ctrl, altKey: ctx.sticky.alt }) : ch;
-        if (name) press(name);
-        setSticky(false, false);
-      }
+      typeChars(e.data);
     }
   }
 
@@ -296,10 +369,11 @@ export function attachEmacsMode(o) {
     buttons.Ctrl?.setAttribute('aria-pressed', String(ctrl));
     buttons.Alt?.setAttribute('aria-pressed', String(alt));
     buttons.Shift?.setAttribute('aria-pressed', String(shift));
+    if (ctrl || alt || shift) say(`${ctrl ? 'C-' : ''}${alt ? 'M-' : ''}${shift ? 'S-' : ''}`); // the echo area shows what is held, as Emacs shows a prefix
   }
   button('Esc', 'Escape (Meta for the next key)', () => void press('ESC'));
   button('Ctrl', 'Control for the next key', () => setSticky(!ctx.sticky.ctrl, ctx.sticky.alt, ctx.sticky.shift));
-  button('Alt', 'Alt (Meta) for the next key', () => setSticky(ctx.sticky.ctrl, !ctx.sticky.alt, ctx.sticky.shift));
+  button('Meta', 'Meta for the next key', () => setSticky(ctx.sticky.ctrl, !ctx.sticky.alt, ctx.sticky.shift));
   button('Shift', 'Shift for the next key', () => setSticky(ctx.sticky.ctrl, ctx.sticky.alt, !ctx.sticky.shift));
   button('Tab', 'Tab (with Shift: S-TAB)', () => {
     const name = ctx.sticky.shift ? '<backtab>' : 'TAB';
@@ -340,6 +414,16 @@ export function attachEmacsMode(o) {
   textarea.addEventListener('beforeinput', (e) => onBeforeInput(/** @type {InputEvent} */ (e)));
   textarea.addEventListener('input', () => {
     if (ctx.applying) return;
+    // A soft keyboard composes what is typed and cannot be stopped from putting it in the field. When it is a key of a command (Ctrl or Alt held
+    // from the panel, or after ESC or C-x), the field goes back to the buffer and the characters are the command's keys.
+    if (commandPending() && textarea.value !== ctx.st.text) {
+      const typed = insertedText(ctx.st.text, textarea.value);
+      if (typed !== null) {
+        show();
+        typeChars(typed);
+        return;
+      }
+    }
     adopt();
     draw();
   });

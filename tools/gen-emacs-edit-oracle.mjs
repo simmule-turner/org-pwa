@@ -70,6 +70,67 @@ for (const text of ['foo bar\nbaz', 'ab']) {
 }
 for (const text of ['foo bar', '']) for (let pos = 0; pos <= text.length; pos++) cases.push({ text, pos, cmds: ['set-mark-command', 'end-of-buffer', 'exchange-point-and-mark'], kill: [] });
 
+// the commands of the second round: buffer ends with a prefix, spacing, blank lines, yank-pop and sentences
+const more = [
+  'yank-pop', 'delete-blank-lines', 'cycle-spacing', 'org-forward-sentence', 'org-backward-sentence',
+];
+const moreTexts = texts.concat(['a. b.  c. d\n\n* Head one. Two\nBody here. More!  Yes?\n\n- item one. two\n  cont. x\n', 'x\n\n\n\ny\n  \nz\n', '  a  \n\t\n b']);
+for (const text of moreTexts) {
+  for (let pos = 0; pos <= text.length; pos++) {
+    if (/[\ud800-\udfff]/.test(text[pos] ?? '')) continue;
+    for (const cmd of more.filter((c) => c !== 'yank-pop')) cases.push({ text, pos, cmds: [cmd], kill: [] });
+    for (const cmds of [['cycle-spacing', 'cycle-spacing'], ['cycle-spacing', 'cycle-spacing', 'cycle-spacing'], ['cycle-spacing', 'cycle-spacing', 'cycle-spacing', 'cycle-spacing'], ['delete-blank-lines', 'delete-blank-lines'], ['delete-blank-lines', 'delete-blank-lines', 'delete-blank-lines'],
+      ['org-forward-sentence', 'org-forward-sentence'], ['org-backward-sentence', 'org-backward-sentence'], ['org-forward-sentence', 'org-backward-sentence'], ['org-backward-sentence', 'org-forward-sentence']]) cases.push({ text, pos, cmds, kill: [] });
+  }
+}
+const sentenceTexts = [
+  '* Head one. Two\nBody here. More!  Yes?  Ok\n\n- item one.  two.  three\n  cont. x\n** Sub\n  text.  more text.\n',
+  'Para one line.  Second\nline of it.  Third.\n\n\nPara two ends here.  \n#+begin_src js\nx.  y\n\nz\n#+end_src\n:PROPERTIES:\n:A: b\n:END:\ntail.  Two\n',
+  '1. first.  Second\n   more.  Third\n2) next\n\n+ plus item.  Yes\n',
+  '"Quoted."  (Paren.)  End?\tTab.\nNext',
+  '* A\n* B text. x\n  * not a heading\n',
+  'intro.  Two\n\n  | a | bb |  c\n  |---+----|\n| d |  | eee |\n#+TBLFM: $1=1\nafter.  x\n',
+  '| one | two |\n| three | four |\n',
+  '* H\n| a | b |\n|---+---|\n| 1 | 2 |\n\ntext.  more\n',
+  '| a |   |\n| x | y |\n\n\n',
+  '|a|\n|bb|\n',
+  '#+begin_src text\n| a | b |\n| c | d |\n#+end_src\n| e | f |',
+  '- item\n  | a | b |\n  | cccc | d |\n\n  more.  text\n',
+  '| x | y | z |\n|---+---+---|\n| 1 |\n| 22 | 3 | 4 | 5 |\n',
+];
+for (const text of sentenceTexts) for (let pos = 0; pos <= text.length; pos++) {
+  for (const cmd of ['org-forward-sentence', 'org-backward-sentence']) {
+    cases.push({ text, pos, cmds: [cmd], kill: [] });
+    for (const prefix of [-2, -1, 2, 3, 'u']) cases.push({ text, pos, cmds: [cmd], kill: [], prefix });
+  }
+  cases.push({ text, pos, cmds: ['org-forward-sentence', 'org-forward-sentence', 'org-backward-sentence'], kill: [] });
+}
+for (const text of texts.slice(0, 4).concat(texts[7])) {
+  for (let pos = 0; pos <= text.length; pos++) {
+    for (const cmds of [['org-yank', 'yank-pop'], ['org-yank', 'yank-pop', 'yank-pop'], ['org-yank', 'yank-pop', 'yank-pop', 'yank-pop']]) cases.push({ text, pos, cmds, kill: ['k1', 'k2 two', 'k3\n'] });
+    for (const cmds of [['org-yank', 'yank-pop']]) cases.push({ text, pos, cmds, kill: ['only'] });
+    cases.push({ text, pos, cmds: ['org-yank', 'yank-pop'], kill: ['k1', 'k2', 'k3'], prefix: 2 });
+    cases.push({ text, pos, cmds: ['org-yank', 'yank-pop'], kill: ['k1', 'k2', 'k3'], prefix: -1 });
+    cases.push({ text, pos, cmds: ['org-yank', 'yank-pop'], kill: ['k1', 'k2', 'k3'], prefix: 'u' });
+  }
+}
+for (const text of ['* H\nbody\n', 'foo bar', 'a\n* H\n']) for (let pos = 0; pos <= text.length; pos++) {
+  cases.push({ text, pos, cmds: ['org-yank', 'yank-pop'], kill: ['* T\n', 'x'] });
+  cases.push({ text, pos, cmds: ['org-yank', 'yank-pop'], kill: ['y', '* T\n'] });
+  cases.push({ text, pos, cmds: ['org-yank', 'yank-pop', 'yank-pop'], kill: ['y', '* T\n', 'z'] });
+}
+for (const text of texts.slice(0, 4).concat(texts[7], ['  a   b  \n\n\nc'])) {
+  for (let pos = 0; pos <= text.length; pos++) {
+    for (const cmd of ['beginning-of-buffer', 'end-of-buffer', 'transpose-chars', 'org-transpose-words', 'exchange-point-and-mark', 'delete-horizontal-space', 'just-one-space', 'back-to-indentation', 'delete-blank-lines', 'cycle-spacing']) {
+      for (const prefix of [-2, -1, 0, 1, 2, 3, 'u']) cases.push({ text, pos, cmds: [cmd], kill: [], prefix, ...(cmd === 'exchange-point-and-mark' ? { mark: Math.min(text.length, 2) } : {}) });
+    }
+  }
+}
+for (const text of ['foo bar baz\nqux', 'ab']) for (let pos = 0; pos <= text.length; pos++) for (let mark = 0; mark <= text.length; mark++) {
+  for (const cmd of ['beginning-of-buffer', 'end-of-buffer']) cases.push({ text, pos, mark, cmds: [cmd], kill: [] });
+  cases.push({ text, pos, mark, cmds: ['exchange-point-and-mark', 'exchange-point-and-mark'], kill: [], prefix: 'u' });
+}
+
 const el = `;; -*- lexical-binding: t -*-
 (require 'org) (require 'json)
 (transient-mark-mode 1)

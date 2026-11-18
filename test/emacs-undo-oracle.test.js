@@ -9,7 +9,7 @@ const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/emacs-undo-oracle.
 
 /** @param {any} c */
 export function run(c) {
-  /** @type {any} */ let s = { text: c.text, pos: c.pos, mark: c.mark, kill: ['KILL'] };
+  /** @type {any} */ let s = { text: c.text, pos: c.pos, mark: c.mark, kill: [c.kill ?? 'KILL'], yank: { adjusted: c.adjusted === 1, folded: true } };
   for (const cmd of c.cmds) {
     if (s.error) break;
     s = cmd.startsWith('self:') ? execute(s, 'self-insert-command', cmd.slice(5)) : execute(s, cmd);

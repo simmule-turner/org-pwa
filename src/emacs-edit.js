@@ -6,7 +6,8 @@
  */
 import { EMACS_ALNUM_RE } from './emacs-chars.js';
 import { orgYank } from './org-yank.js';
-import { boundary, newUndo, recordDelete, recordInsert, undo } from './emacs-undo.js';
+import { orgBackwardSentence, orgForwardSentence } from './emacs-sentence.js';
+import { boundary, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
 
 /**
  * @typedef {object} EditState
@@ -19,10 +20,11 @@ import { boundary, newUndo, recordDelete, recordInsert, undo } from './emacs-und
  * @property {import('./emacs-undo.js').UndoState} [undo] the undo list, shared by the states that follow one another
  * @property {Edit[]} [edits] what the command just did to the text, for the undo list
  * @property {Edit[]} [applied] what the last command did to the text, one edit after the other, for whatever follows the text (folds)
+ * @property {{ orig: number, ws: string, n: string | number | null, last: string | null }} [cycle] `cycle-spacing--context`, kept while the command repeats
  * @property {string} [error] set when the command signaled an error: the state is then what Emacs leaves
  */
 
-/** @typedef {{ from: number, removed: string, inserted: number, pt?: number, mark?: number | null, markers?: boolean }} Edit */
+/** @typedef {{ from: number, removed: string, inserted: number, pt?: number, mark?: number | null, markers?: boolean, wrap?: boolean, insertFirst?: boolean }} Edit `wrap`: part of a change Emacs records as one wrapped entry (an adjusted subtree paste) */
 
 /** @param {string} ch */
 const isWord = (ch) => ch !== undefined && (EMACS_ALNUM_RE.test(ch) || '$%\''.includes(ch));
@@ -100,8 +102,8 @@ const COMMANDS = {
   'org-end-of-line': (s) => next(s, { pos: lineEnd(s.text, s.pos) }),
   'forward-word': (s) => next(s, { pos: forwardWord(s.text, s.pos) }),
   'backward-word': (s) => next(s, { pos: backwardWord(s.text, s.pos) }),
-  'beginning-of-buffer': (s) => next(s, { pos: 0, mark: s.pos }),
-  'end-of-buffer': (s) => next(s, { pos: s.text.length, mark: s.pos }),
+  'beginning-of-buffer': (s) => bufferEnd(s, false, null, false),
+  'end-of-buffer': (s) => bufferEnd(s, true, null, false),
   'next-line': (s) => vertical(s, 1),
   'previous-line': (s) => vertical(s, -1),
   'org-delete-char': (s) => (s.pos >= s.text.length ? fail(s, 'End of buffer') : next(s, { text: s.text.slice(0, s.pos) + s.text.slice(s.pos + 1), mark: markerAfter(s.mark, s.pos, s.pos + 1, 0), edits: [{ from: s.pos, removed: s.text[s.pos], inserted: 0 }] })),
@@ -127,43 +129,254 @@ const COMMANDS = {
   },
   'org-yank': (s) => {
     if (s.kill.length === 0) return fail(s, 'Kill ring is empty');
-    const done = orgYank(s.text, s.pos, s.kill[s.yankAt ?? 0], s.yank ?? { adjusted: false, folded: true });
-    return next(s, { text: done.text, pos: done.pos, mark: done.mark });
+    const piece = s.kill[s.yankAt ?? 0];
+    const done = orgYank(s.text, s.pos, piece, s.yank ?? { adjusted: false, folded: true });
+    // a plain paste is an insertion at the caret; telling it from the text alone could put it a character off when the text repeats
+    const plain = done.text === s.text.slice(0, s.pos) + piece + s.text.slice(s.pos);
+    const edits = plain ? [{ from: s.pos, removed: '', inserted: piece.length }] : diffEdit(s.text, done.text);
+    return next(s, { text: done.text, pos: done.pos, mark: done.mark, edits: done.wrapped ? edits.map((e) => ({ ...e, wrap: true })) : edits });
   },
   'self-insert-command': (s) => {
     const ch = s.arg ?? '';
     return next(s, { text: s.text.slice(0, s.pos) + ch + s.text.slice(s.pos), pos: s.pos + ch.length, mark: markerAfter(s.mark, s.pos, s.pos, ch.length), edits: [{ from: s.pos, removed: '', inserted: ch.length }] });
   },
   'org-open-line': (s) => next(s, { text: s.text.slice(0, s.pos) + '\n' + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, 1), edits: [{ from: s.pos, removed: '', inserted: 1 }] }),
-  'transpose-chars': (s) => {
-    let at = s.pos;
-    if (at === s.text.length || s.text[at] === '\n') at = Math.max(0, at - 1);
-    if (at === 0) return fail(s, 'Beginning of buffer', { pos: at });
-    return { ...swap(s, at - 1, at, at, at + 1), pos: at + 1 };
-  },
+  'transpose-chars': (s) => transposeChars(s, null),
   'org-transpose-words': transposeWords,
   'upcase-word': (s) => casify(s, (x) => x.toUpperCase()),
   'downcase-word': (s) => casify(s, (x) => x.toLowerCase()),
   'capitalize-word': (s) => casify(s, capitalize),
-  'delete-horizontal-space': (s) => {
-    let from = s.pos;
-    let to = s.pos;
-    while (from > 0 && /[ \t]/.test(s.text[from - 1])) from -= 1;
-    while (to < s.text.length && /[ \t]/.test(s.text[to])) to += 1;
-    return next(s, { text: s.text.slice(0, from) + s.text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: [{ from, removed: s.text.slice(from, to), inserted: 0, pt: from }] });
-  },
-  'just-one-space': (s) => {
-    let from = s.pos;
-    let to = s.pos;
-    while (from > 0 && /[ \t]/.test(s.text[from - 1])) from -= 1;
-    while (to < s.text.length && /[ \t]/.test(s.text[to])) to += 1;
-    return next(s, { text: s.text.slice(0, from) + ' ' + s.text.slice(to), pos: from + 1, mark: markerAfter(s.mark, from, to, 1) });
-  },
+  'delete-horizontal-space': (s) => deleteSpace(s, false),
+  'just-one-space': (s) => justOneSpace(s, 1),
+  'delete-blank-lines': deleteBlankLines,
+  'cycle-spacing': (s) => cycleSpacing(s, undefined),
+  'yank-pop': (s) => yankPop(s, 1),
+  'org-forward-sentence': (s) => sentence(s, true, 1),
+  'org-backward-sentence': (s) => sentence(s, false, 1),
   'back-to-indentation': (s) => {
     const start = lineStart(s.text, s.pos);
     return next(s, { pos: start + (/^[ \t]*/.exec(s.text.slice(start, lineEnd(s.text, s.pos)))?.[0].length ?? 0) });
   },
 };
+
+/** `beginning-of-buffer` and `end-of-buffer`: the mark is left where the caret was unless the region is active or the prefix is `C-u`; a number goes N tenths of the way, to the start of a line.
+ * @param {EditState} s @param {boolean} end @param {number | null} n @param {boolean} universal */
+function bufferEnd(s, end, n, universal) {
+  const size = s.text.length;
+  const mark = universal || s.active ? s.mark : s.pos;
+  if (n === null || universal) return next(s, { pos: end ? size : 0, mark });
+  const part = Math.trunc((size * n) / 10);
+  const at = Math.max(0, Math.min(size, end ? size - part : 1 + part));
+  return next(s, { pos: forwardLine(s.text, at, 1), mark });
+}
+
+/** `transpose-chars`: with no argument at the end of a line the two characters before the caret change places; with one, the character before the caret is dragged `n` characters on (back when negative), and 0 trades the characters at the caret and the mark.
+ * @param {EditState} s @param {number | null} n */
+function transposeChars(s, n) {
+  const len = s.text.length;
+  let p = s.pos;
+  if (n === null && (p === len || s.text[p] === '\n') && p > 0) p -= 1;
+  const k = n ?? 1;
+  if (k > 0) {
+    if (p === 0) return fail(s, 'Beginning of buffer', { pos: 0 });
+    if (p + k > len) return fail(s, 'End of buffer', { pos: len });
+    return { ...swap(s, p - 1, p, p, p + k), pos: p + k };
+  }
+  if (k < 0) {
+    if (p === 0) return fail(s, 'Beginning of buffer', { pos: 0 });
+    if (p - 1 + k < 0) return fail(s, 'Beginning of buffer', { pos: 0 });
+    return { ...swap(s, p - 1 + k, p - 1, p - 1, p), pos: p + k };
+  }
+  if (p === len) return fail(s, 'End of buffer', { pos: len });
+  if (s.mark === null) return fail(s, 'No mark set in this buffer');
+  if (s.mark === len) return fail(s, 'End of buffer', { pos: p });
+  if (s.mark === p) return fail(s, "Don't have two things to transpose", { pos: p });
+  const [a, b] = p < s.mark ? [p, s.mark] : [s.mark, p];
+  if (a + 1 > b) return fail(s, "Don't have two things to transpose", { pos: p });
+  const done = swap(s, a, a + 1, b, b + 1);
+  return { ...done, pos: s.mark, mark: p };
+}
+
+/** `delete-horizontal-space`: the spaces and tabs around the caret, or only before it with `backward-only`. @param {EditState} s @param {boolean} backwardOnly */
+function deleteSpace(s, backwardOnly) {
+  let from = s.pos;
+  let to = s.pos;
+  while (from > 0 && /[ \t]/.test(s.text[from - 1])) from -= 1;
+  if (!backwardOnly) while (to < s.text.length && /[ \t]/.test(s.text[to])) to += 1;
+  return next(s, { text: s.text.slice(0, from) + s.text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: [{ from, removed: s.text.slice(from, to), inserted: 0, pt: from }] });
+}
+
+/** `just-one-space` with `n`: the spaces and tabs around the caret (and the newlines when `n` is negative) become `|n|` spaces, reusing the spaces right after the caret's run.
+ * @param {EditState} s @param {number} n */
+function justOneSpace(s, n) {
+  const skip = n < 0 ? /[ \t\n\r]/ : /[ \t]/;
+  const t = s.text;
+  let from = s.pos;
+  while (from > 0 && skip.test(t[from - 1])) from -= 1;
+  let kept = 0;
+  while (kept < Math.abs(n) && t[from + kept] === ' ') kept += 1;
+  const mid = from + kept;
+  let to = mid;
+  while (to < t.length && skip.test(t[to])) to += 1;
+  const added = Math.abs(n) - kept;
+  const text = t.slice(0, mid) + ' '.repeat(added) + t.slice(to);
+  return next(s, { text, pos: mid + added, mark: markerAfter(s.mark, mid, to, added), edits: mid === to && added === 0 ? [] : [{ from: mid, removed: t.slice(mid, to), inserted: added }] });
+}
+
+/** `delete-blank-lines`: on a blank line the blank lines around it go, leaving one (none when it is the only one); on other lines the blank lines after it go.
+ * @param {EditState} s */
+function deleteBlankLines(s) {
+  let t = s.text;
+  let pt = s.pos;
+  let mark = s.mark;
+  const blank = (/** @type {number} */ at) => /^[ \t]*$/.test(t.slice(at, lineEnd(t, at)));
+  /** @param {number} from @param {number} to */
+  const cut = (from, to) => {
+    if (to <= from) return;
+    t = t.slice(0, from) + t.slice(to);
+    mark = markerAfter(mark, from, to, 0);
+    pt = pt >= to ? pt - (to - from) : pt > from ? from : pt;
+  };
+  const here = lineStart(t, pt);
+  const thisBlank = blank(here);
+  const nextEnd = lineEnd(t, here);
+  const singleBlank = thisBlank && !(nextEnd < t.length && blank(nextEnd + 1)) && (here === 0 || !blank(lineStart(t, here - 1)));
+  const original = s.text;
+  /** @type {Edit[]} */ const edits = [];
+  /** @param {number} from @param {number} to */
+  const record = (from, to) => {
+    if (to > from) edits.push({ from, removed: t.slice(from, to), inserted: 0, pt });
+    cut(from, to);
+  };
+  if (thisBlank) {
+    const at = singleBlank ? forwardLine(t, here, 1) : here;
+    let i = at - 1;
+    while (i >= 0 && /[ \t\n]/.test(t[i])) i -= 1;
+    const from = i >= 0 ? forwardLine(t, i, 1) : 0;
+    pt = at;
+    record(from, at);
+  }
+  if (!(thisBlank && singleBlank)) {
+    const at = forwardLine(t, lineEnd(t, pt), 1);
+    const m = /[^ \t\n]/.exec(t.slice(at));
+    const to = m ? lineStart(t, at + m.index) : t.length;
+    record(at, to);
+  }
+  if (lineStart(t, pt) === pt && /^[ \t]*\n$/.test(t.slice(pt))) record(pt, t.length);
+  return next(s, { text: t, pos: pt, mark, edits: t === original ? [] : edits });
+}
+
+/** `cycle-spacing` (`M-SPC`): the actions of `cycle-spacing-actions` in turn on the whitespace around the caret, then the whitespace as it was. `raw` is the prefix argument.
+ * @param {EditState} s @param {{ n: number, universal: boolean } | undefined} raw */
+function cycleSpacing(s, raw) {
+  const key = raw ? (raw.universal ? 'u' : raw.n) : null;
+  const t = s.text;
+  let ctx = s.cycle;
+  if (s.last !== 'cycle-spacing' || !ctx || (key !== null && key !== ctx.n)) {
+    let a = s.pos;
+    let b = s.pos;
+    while (a > 0 && /[ \t\n\r]/.test(t[a - 1])) a -= 1;
+    while (b < t.length && /[ \t\n\r]/.test(t[b])) b += 1;
+    ctx = { orig: s.pos, ws: t.slice(a, b), n: key, last: null };
+  }
+  const actions = ['just-one-space', 'delete-all-space', 'restore'];
+  const action = ctx.last === null ? actions[0] : actions[(actions.indexOf(ctx.last) + 1) % actions.length];
+  // restore: the whitespace around the caret goes back to what it was
+  let a = s.pos;
+  let b = s.pos;
+  while (a > 0 && /[ \t\n\r]/.test(t[a - 1])) a -= 1;
+  while (b < t.length && /[ \t\n\r]/.test(t[b])) b += 1;
+  /** @type {EditState} */
+  let cur = { ...s, text: t.slice(0, a) + ctx.ws + t.slice(b), pos: ctx.orig, mark: ctx.ws === t.slice(a, b) ? s.mark : markerAfter(s.mark, a, b, ctx.ws.length), edits: undefined };
+  if (action !== 'restore') {
+    const numeric = ctx.n === null ? 1 : ctx.n === 'u' ? 4 : ctx.n;
+    const newlines = typeof numeric === 'number' && numeric < 0;
+    if (action === 'just-one-space') cur = justOneSpace(cur, numeric);
+    else if (newlines) {
+      let from = cur.pos;
+      let to = cur.pos;
+      while (from > 0 && /[ \t\n\r]/.test(cur.text[from - 1])) from -= 1;
+      while (to < cur.text.length && /[ \t\n\r]/.test(cur.text[to])) to += 1;
+      cur = { ...cur, text: cur.text.slice(0, from) + cur.text.slice(to), pos: from, mark: markerAfter(cur.mark, from, to, 0) };
+    } else cur = deleteSpace(cur, false);
+  }
+  // Emacs replaces the whitespace around the caret even when what goes back is the same, so the change is recorded for undo either way
+  const inserted = cur.text.length - (t.length - (b - a));
+  // the whitespace is deleted whole and the new one inserted, so a mark inside or at the end of it goes to its start
+  if (action === 'just-one-space' && s.mark !== null && s.mark !== undefined) cur = { ...cur, mark: s.mark >= a && s.mark <= b ? a : s.mark > b ? s.mark + inserted - (b - a) : s.mark };
+  const edits = ctx.last === null && cur.edits?.length && !(b === s.pos && /\n/.test(t.slice(a, b))) ? cur.edits : a === b && inserted === 0 ? [] : [{ from: a, removed: t.slice(a, b), inserted }];
+  return next(s, { text: cur.text, pos: cur.pos, mark: cur.mark, edits, cycle: { ...ctx, last: action } });
+}
+
+/**
+ * The edits that turn `a` into `b` when `b` has the same lines with some replaced, the way Org's table alignment makes them: for each row
+ * that differs, the new row is inserted and the old one deleted. A different number of lines is one edit from the first difference to the last.
+ * @param {string} a @param {string} b @param {number | null} mark @returns {{ edits: Edit[], mark: number | null }}
+ */
+function replacedRows(a, b, mark) {
+  const la = a.split('\n');
+  const lb = b.split('\n');
+  if (lb.length === la.length + 1) {
+    // a row added after the table was aligned (the next field past the last one): the aligned rows, then the new row
+    const squash = (/** @type {string} */ l) => l.replace(/\s+/g, '').replace(/-+/g, '-');
+    for (let k = lb.length - 1; k >= 0; k -= 1) {
+      const rest = lb.filter((_, i) => i !== k);
+      if (/^[ \t]*\|[ |+-]*$/.test(lb[k]) && rest.every((l, i) => squash(l) === squash(la[i]) || (la[i] === l))) {
+        const aligned = replacedRows(a, rest.join('\n'), mark);
+        const from = lb.slice(0, k).reduce((n, l) => n + l.length + 1, 0);
+        return { edits: [...aligned.edits, { from, removed: '', inserted: lb[k].length + 1 }], mark: aligned.mark === null ? null : markerAfter(aligned.mark, from, from, lb[k].length + 1) };
+      }
+    }
+  }
+  if (la.length !== lb.length) {
+    const edits = diffEdit(a, b);
+    return { edits, mark: mark === null ? null : markerAfter(mark, edits[0].from, edits[0].from + edits[0].removed.length, edits[0].inserted) };
+  }
+  /** @type {Edit[]} */ const edits = [];
+  let m = mark;
+  let start = 0;
+  for (let i = 0; i < la.length; i += 1) {
+    if (la[i] !== lb[i]) {
+      const oldLen = la[i].length + 1;
+      const newLen = lb[i].length + 1;
+      edits.push({ from: start, removed: la[i] + '\n', inserted: newLen, insertFirst: true });
+      if (m !== null && m > start) m = m >= start + oldLen ? m + newLen - oldLen : start + newLen;
+    }
+    start += lb[i].length + 1;
+  }
+  return { edits, mark: m };
+}
+
+/** `org-forward-sentence` and `org-backward-sentence` by `n` sentences: the caret moves, and an error leaves it where the command was. @param {EditState} s @param {boolean} forward @param {number} n */
+function sentence(s, forward, n) {
+  const done = forward ? orgForwardSentence(s.text, s.pos, n) : orgBackwardSentence(s.text, s.pos, n);
+  const changed = done.text !== undefined && done.text !== s.text;
+  if (changed) {
+    // a table is aligned on the way to another field: Org replaces each row that changed, inserting the new row and then deleting the old
+    const { edits, mark } = replacedRows(s.text, done.text ?? s.text, s.mark);
+    const at = { text: done.text, pos: done.pos, mark, edits };
+    return done.error ? fail(s, done.error, at) : next(s, at);
+  }
+  return done.error ? fail(s, done.error, { pos: done.pos }) : next(s, { pos: done.pos });
+}
+
+/** `yank-pop` (`M-y`) right after a yank: the yanked text becomes the `n`th next kill. @param {EditState} s @param {number} n */
+function yankPop(s, n) {
+  if (s.last !== 'yank') return fail(s, 'Previous command was not a yank');
+  if (s.mark === null) return fail(s, 'Wrong type argument: number-or-marker-p, nil');
+  const len = s.kill.length;
+  const at = (((s.yankAt ?? 0) + n) % len + len) % len;
+  const before = s.pos < s.mark;
+  const from = Math.min(s.pos, s.mark);
+  const to = Math.max(s.pos, s.mark);
+  const piece = s.kill[at];
+  const text = s.text.slice(0, from) + piece + s.text.slice(to);
+  /** @type {Edit[]} */
+  const edits = [];
+  if (to > from) edits.push({ from, removed: s.text.slice(from, to), inserted: 0, pt: s.pos });
+  if (piece) edits.push({ from, removed: '', inserted: piece.length });
+  return next(s, { text, pos: before ? from : from + piece.length, mark: before ? from + piece.length : from, yankAt: at, edits });
+}
 
 /** Moves over `n` words, forward or back, as far as there are words. @param {string} text @param {number} pos @param {number} n */
 function wordsFrom(text, pos, n) {
@@ -244,6 +457,19 @@ function casifyWords(s, fn, n) {
 
 /** The commands that take a prefix argument: what each does with it. @type {Record<string, (s: EditState, n: number, universal: boolean) => EditState>} */
 const COUNTED = {
+  'beginning-of-buffer': (s, n, u) => bufferEnd(s, false, n, u),
+  'end-of-buffer': (s, n, u) => bufferEnd(s, true, n, u),
+  'transpose-chars': (s, n) => transposeChars(s, n),
+  'org-transpose-words': (s, n) => transposeWords(s, n),
+  'exchange-point-and-mark': (s) => COMMANDS['exchange-point-and-mark'](s),
+  'delete-horizontal-space': (s) => deleteSpace(s, true),
+  'just-one-space': (s, n) => justOneSpace(s, n),
+  'back-to-indentation': (s) => COMMANDS['back-to-indentation'](s),
+  'delete-blank-lines': (s) => deleteBlankLines(s),
+  'cycle-spacing': (s, n, u) => cycleSpacing(s, { n, universal: u }),
+  'yank-pop': (s, n) => yankPop(s, n),
+  'org-forward-sentence': (s, n) => sentence(s, true, n),
+  'org-backward-sentence': (s, n) => sentence(s, false, n),
   'forward-char': (s, n) => moveChars(s, n),
   'backward-char': (s, n) => moveChars(s, -n),
   'forward-word': (s, n) => next(s, { pos: wordsFrom(s.text, s.pos, n) }),
@@ -309,15 +535,40 @@ function casify(s, fn) {
 /** Word constituents of `org-transpose-words`: the characters of `org-emphasis-alist` count too. @param {string} ch */
 const isTransposeWord = (ch) => isWord(ch) || '*/_=~+'.includes(ch);
 
-/** `org-transpose-words`: the word before the caret trades places with the word after it. @param {EditState} s */
-function transposeWords(s) {
+/** `org-transpose-words`: the word before the caret trades places with the word after it; `n` drags it over that many words (back when negative), and 0 trades the words at the caret and the mark.
+ * @param {EditState} s @param {number} [n] */
+function transposeWords(s, n = 1) {
   const t = s.text;
-  const s1 = backwardWord(t, s.pos, isTransposeWord);
-  const e1 = forwardWord(t, s1, isTransposeWord);
-  const e2 = forwardWord(t, e1, isTransposeWord);
-  const s2 = backwardWord(t, e2, isTransposeWord);
-  if (e1 > s2) return fail(s, "Don't have two things to transpose", { pos: s2 });
-  return { ...swap(s, s1, e1, s2, e2), pos: e2 };
+  const fwd = (/** @type {number} */ at, /** @type {number} */ k) => wordsFromWith(t, at, k);
+  const s1 = fwd(s.pos, -1);
+  const e1 = fwd(s1, 1);
+  if (n > 0) {
+    const e2 = fwd(e1, n);
+    const s2 = fwd(e2, -n);
+    if (e1 > s2) return fail(s, "Don't have two things to transpose", { pos: s2 });
+    return { ...swap(s, s1, e1, s2, e2), pos: e2 };
+  }
+  if (n < 0) {
+    const b = fwd(s1, n);
+    const e = fwd(b, -n);
+    if (e1 > b && b < e1 && e > s1) return fail(s, "Don't have two things to transpose", { pos: e });
+    return { ...swap(s, b, e, s1, e1), pos: b + (e1 - s1) };
+  }
+  if (s.mark === null) return fail(s, 'No mark set in this buffer');
+  const e1b = fwd(s.pos, 1);
+  const s1b = fwd(e1b, -1);
+  const e2 = fwd(s.mark, 1);
+  const s2 = fwd(e2, -1);
+  const [a, b, c, d] = s1b <= s2 ? [s1b, e1b, s2, e2] : [s2, e2, s1b, e1b];
+  if (b > c) return fail(s, "Don't have two things to transpose", { pos: s.pos });
+  return { ...swap(s, a, b, c, d), pos: s.mark, mark: s.pos };
+}
+
+/** Moves over `n` words by the syntax of `org-transpose-words`. @param {string} text @param {number} pos @param {number} n */
+function wordsFromWith(text, pos, n) {
+  let at = pos;
+  for (let i = 0; i < Math.abs(n); i += 1) at = n > 0 ? forwardWord(text, at, isTransposeWord) : backwardWord(text, at, isTransposeWord);
+  return at;
 }
 
 /**
@@ -402,12 +653,17 @@ export function syncExternal(state, text, pos) {
 export function execute(state, name, arg, prefix) {
   const u = state.undo ?? newUndo();
   u.ptBefore = state.pos;
-  if (name === 'undo') {
-    const buf = { text: state.text, pos: state.pos, mark: state.mark };
-    const { error } = undo(u, buf, state.last);
+  if (name === 'undo' || name === 'undo-redo') {
+    const buf = { text: state.text, pos: state.pos, mark: state.mark, changed: false };
+    const count = prefix && !prefix.universal ? Math.max(1, prefix.n) : 1;
+    // with the region active (or a C-u prefix and a mark), undo changes only what is inside it
+    const region = name === 'undo' && state.mark !== null && state.mark !== undefined && (state.active || prefix?.universal) ? { start: Math.min(state.pos, state.mark), end: Math.max(state.pos, state.mark) } : null;
+    const noMark = name === 'undo' && prefix?.universal && !(state.mark !== null && state.mark !== undefined);
+    if (noMark) return { ...state, goal: null, error: 'The mark is not set now, so there is no region', last: 'undo-start' };
+    const { error } = name === 'undo' ? undo(u, buf, state.last, count, region) : redo(u, buf, count);
     boundary(u, buf.pos);
     u.amalgamated = null;
-    return { ...state, ...buf, active: buf.text === state.text ? state.active : false, edits: undefined, applied: buf.text === state.text ? [] : diffEdit(state.text, buf.text), goal: null, undo: u, last: error ? 'undo-start' : 'undo', error };
+    return { ...state, text: buf.text, pos: buf.pos, mark: buf.mark, active: buf.changed ? false : state.active, edits: undefined, applied: buf.text === state.text ? [] : diffEdit(state.text, buf.text), goal: null, undo: u, last: error ? (name === 'undo' ? 'undo-start' : 'undo-redo') : 'undo', error };
   }
   const counted = prefix ? COUNTED[name] : undefined;
   if (prefix && !counted) return { ...state, goal: null, error: `${name} does not take a prefix argument yet`, last: name };
@@ -420,11 +676,17 @@ export function execute(state, name, arg, prefix) {
   const done = run({ ...state, arg, edits: undefined, error: undefined, undo: u });
   const edits = done.edits ?? diffEdit(state.text, done.text);
   for (const e of edits) {
-    if (e.removed) recordDelete(u, e.from, e.removed, e.pt ?? state.pos, e.mark === undefined ? state.mark : e.mark, e.markers !== false);
-    if (e.inserted) recordInsert(u, e.from, e.inserted);
+    if (e.insertFirst) {
+      recordInsert(u, e.from, e.inserted);
+      recordDelete(u, e.from + e.inserted, e.removed, e.from + e.inserted, state.mark, true);
+      continue;
+    }
+    if (e.removed) recordDelete(u, e.from, e.removed, e.pt ?? state.pos, e.mark === undefined ? state.mark : e.mark, e.markers !== false, e.wrap);
+    if (e.inserted) recordInsert(u, e.from, e.inserted, e.wrap);
   }
   boundary(u, done.pos);
   u.amalgamated = AMALGAMATING.has(name) ? (u.amalgamated === null ? 0 : u.amalgamated + 1) : null;
+  const active = name === 'exchange-point-and-mark' && prefix && !done.error ? false : regionActive(state, done, name, edits.length > 0);
   const verticalMove = name === 'next-line' || name === 'previous-line';
-  return { ...done, active: regionActive(state, done, name, edits.length > 0), edits: undefined, applied: edits, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name };
+  return { ...done, active, edits: undefined, applied: edits, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name === 'org-yank' || name === 'yank-pop' ? 'yank' : name };
 }

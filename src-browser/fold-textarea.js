@@ -17,6 +17,16 @@ function common(a, b) {
   return { head, tail };
 }
 
+/** The fold view of each textarea that has one, for what draws the text. @type {WeakMap<HTMLTextAreaElement, () => ReturnType<typeof foldView>>} */
+const views = new WeakMap();
+
+/** The text a field shows (folded text as `...`), and how its places map to the buffer's; the buffer's own text with an identity map when it is not folded.
+ * @param {HTMLTextAreaElement} ta */
+export function shownView(ta) {
+  const view = views.get(ta);
+  return view ? view() : null;
+}
+
 /**
  * @param {HTMLTextAreaElement} ta
  * @returns {{ setHidden: (hidden: Range[]) => void, hidden: () => Range[], view: () => ReturnType<typeof foldView>, apply: (next: string, edits: Array<{ from: number, removed: string, inserted: number }>) => void }}
@@ -30,12 +40,15 @@ export function foldTextarea(ta) {
   /** @type {Range[]} */
   let hidden = [];
   let view = foldView(text, hidden);
+  /** Tells what draws the field's text that the picture changed. */
+  const shownChanged = () => ta.dispatchEvent(new Event('te-fold'));
 
   /** Writes the fold's picture into the field, keeping the caret at the same buffer place. @param {number} anchor @param {number} focus @param {'forward' | 'backward' | 'none'} [dir] */
   function paint(anchor, focus, dir = 'none') {
     view = foldView(text, hidden);
     if (valueProp.get?.call(ta) !== view.display) valueProp.set?.call(ta, view.display);
     ta.setSelectionRange(Math.min(anchor, focus), Math.max(anchor, focus), dir);
+    shownChanged();
   }
 
   /** Takes in what the browser changed in the field (typing, IME, paste, execCommand): the difference becomes an edit of the buffer. */
@@ -55,6 +68,7 @@ export function foldTextarea(ta) {
     if (dom !== mapped.display) {
       valueProp.set?.call(ta, mapped.display);
       ta.setSelectionRange(mapped.toDisplay(spot), mapped.toDisplay(spot));
+      shownChanged();
     } else ta.setSelectionRange(caret, caret);
   }
 
@@ -116,8 +130,13 @@ export function foldTextarea(ta) {
     view = foldView(text, hidden);
     valueProp.set?.call(ta, view.display);
     realRange.call(ta, view.toDisplay(x), view.toDisplay(y));
+    shownChanged();
   });
 
+  views.set(ta, () => {
+    reconcile();
+    return view;
+  });
   return {
     /** Shows these stretches folded. @param {Range[]} next */
     setHidden(next) {
@@ -128,6 +147,7 @@ export function foldTextarea(ta) {
       view = foldView(text, hidden);
       valueProp.set?.call(ta, view.display);
       realRange.call(ta, view.toDisplay(a), view.toDisplay(b));
+      shownChanged();
     },
     /** The text after a command: the stretches follow each edit it made, and the field shows the result. @param {string} next @param {Array<{ from: number, removed: string, inserted: number }>} edits */
     apply(next, edits) {
@@ -137,6 +157,7 @@ export function foldTextarea(ta) {
       hidden = settleHidden(text, hidden);
       view = foldView(text, hidden);
       valueProp.set?.call(ta, view.display);
+      shownChanged();
     },
     hidden: () => hidden,
     view: () => {

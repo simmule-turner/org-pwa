@@ -93,16 +93,17 @@ function shiftHeadings(tree, n) {
  * `org-yank` of `kill` at `pos`.
  * @param {string} text @param {number} pos @param {string} kill
  * @param {{ adjusted: boolean, folded: boolean }} options `org-yank-adjusted-subtrees` and `org-yank-folded-subtrees`
- * @returns {{ text: string, pos: number, mark: number }}
+ * @returns {{ text: string, pos: number, mark: number, wrapped: boolean }} `wrapped`: the paste was adjusted as a subtree, which Emacs records as one change
  */
 export function orgYank(text, pos, kill, options) {
   const bol = lineStart(text, pos);
   const subtree = killIsSubtree(kill) && (pos === bol || (/^[ \t]*$/.test(text.slice(pos, lineEnd(text, pos))) && /^\*+$/.test(text.slice(bol, pos))));
   const plain = () => ({ text: text.slice(0, pos) + kill + text.slice(pos), pos: pos + kill.length });
-  if (!subtree) return { ...plain(), mark: pos };
+  if (!subtree) return { ...plain(), mark: pos, wrapped: false };
   const pasted = options.adjusted ? pasteSubtreeForYank(text, pos, kill) : plain();
-  if (!options.folded) return { ...pasted, mark: options.adjusted ? bol : pos };
+  const wrapped = options.adjusted;
+  if (!options.folded) return { ...pasted, mark: options.adjusted ? bol : pos, wrapped };
   let end = pasted.pos;
   while (end < pasted.text.length && /[ \t\n\r]/.test(pasted.text[end])) end += 1;
-  return { text: pasted.text, pos: lineStart(pasted.text, end), mark: pos };
+  return { text: pasted.text, pos: lineStart(pasted.text, end), mark: pos, wrapped };
 }

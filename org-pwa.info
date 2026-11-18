@@ -3231,7 +3231,16 @@ another command redoes; ‘C-g’ quits.  ‘C-u’, ‘C-u C-u’, ‘M-3’ an
 -’ give a count to the commands that take one.  ‘Esc’ then a key is that
 key with Meta.  Typing, ‘Backspace’ and the arrow keys work as usual and
 go through the same undo list, grouped as Emacs groups them.  ‘Ctrl-C’
-and ‘Ctrl-V’ keep their meaning in the browser.
+and ‘Ctrl-V’ keep their meaning in the browser.  Also ‘M-a M-e’
+(sentences, or fields inside a table, as Org's ‘org-backward-sentence’
+and ‘org-forward-sentence’), ‘M-y’ (after ‘C-y’, the previous kill),
+‘M-SPC’ (cycles spacing), ‘C-x C-o’ (deletes blank lines), ‘C-?’ (redo),
+‘C-v M-v’ (a screen at a time, moving the window start as Emacs does;
+text that wraps counts as one line), and ‘C-s C-r’ (Find; in the Find
+box ‘Alt+P’ and ‘Alt+N’ bring back earlier searches, as ‘M-p’ and ‘M-n’
+do in Emacs, and ‘Alt+E’ puts the caret at the end of the string to edit
+it).  ‘M-<’ and ‘M->’, ‘C-t’, ‘M-t’, ‘C-x C-x’, ‘M-\’ and ‘M-m’ take a
+prefix as in Emacs.
 
    The kill ring is shared with the device clipboard
 (‘select-enable-clipboard’): what you kill can be pasted elsewhere, and
@@ -3253,12 +3262,16 @@ and ‘C-k’ at the end of the heading kills it with the heading's line.
 change nothing.  ‘TAB’ elsewhere is the Text view's Tab.
 
    One row of keys sits under the text and scrolls sideways past the
-Extras button: *Esc*, *Ctrl*, *Alt* and *Shift* (tap, then the next key;
-*Shift* with *Tab* is ‘S-TAB’), *Tab*, the arrows, *C-g*, *C-SPC*,
-*C-x*, *C-u*, *C-/*, a button that shows or hides the device keyboard,
-and *Float* or *Dock*, then the ‘*’ ‘/’ ‘%’ ‘(’ ‘)’ ‘&’ ‘-’ ‘:’ ‘<’ ‘>’
-keys.  *Float* puts the keys over the text (‘org-xx-emacs-key-panel’).
-The floating *[g]* button gives way to the panel while the mode is on.
+Extras button: *Esc*, *Ctrl*, *Meta* and *Shift* (tap, then the next
+key; *Esc* is Emacs's ESC prefix, so *Esc* then ‘f’ is ‘M-f’; *Shift*
+with *Tab* is ‘S-TAB’), *Tab*, the arrows, *C-g*, *C-SPC*, *C-x*, *C-u*,
+*C-/*, a button that shows or hides the device keyboard, and *Float* or
+*Dock*, then the ‘*’ ‘/’ ‘%’ ‘(’ ‘)’ ‘&’ ‘-’ ‘:’ ‘<’ ‘>’ keys.  *Float*
+puts the keys over the text (‘org-xx-emacs-key-panel’).  The floating
+*[g]* button gives way to the panel while the mode is on.  Keys typed on
+the device keyboard after *Ctrl* or *Esc* run as commands, the echo line
+shows what is held (‘C-’, ‘M-’, ‘ESC’), *C-g* ends a held key or prefix,
+and a key Emacs has no command for says ‘<key> is undefined’.
 
 
 File: org-pwa.info,  Node: Agenda,  Next: The TODO view,  Prev: Emacs mode,  Up: org-pwa
@@ -6840,61 +6853,61 @@ Node: Line numbers218822
 Node: Narrowing219748
 Node: The plain-text editor220476
 Node: Emacs mode222759
-Node: Agenda225866
-Node: Dated entry sources231850
-Node: Diary-sexp forms235240
-Node: Sun times239070
-Node: Hebrew diary functions240976
-Node: Diary file242076
-Node: Holidays244671
-Node: General <%%(sexp)> timestamps249742
-Node: Other agenda behavior254406
-Node: Habits255715
-Node: Agenda Files257121
-Node: Contacts Files259195
-Node: Calendar and contacts sync (CalDAV CardDAV)259759
-Node: Agenda notifications262910
-Node: The TODO view264983
-Node: Capture Templates266453
-Node: Capturing from other apps287171
-Node: Extras menu288797
-Node: Menu customization293291
-Node: File management296298
-Node: Files view300310
-Node: Tabs303162
-Node: Citations303849
-Node: Export305038
-Node: Document settings306259
-Node: ASCII314747
-Node: HTML316592
-Node: ODT318146
-Node: Line numbers and references in source blocks319180
-Node: LaTeX320465
-Node: Beamer324121
-Node: Slides (HTML)326509
-Node: As-org327684
-Node: Calendar (ics)329339
-Node: Contacts (vcf)332527
-Node: What is dropped340334
-Node: Import340724
-Node: Help345303
-Node: Info reader345869
-Node: Settings348965
-Node: Offline behavior and sync352842
-Node: Long lists357345
-Node: Size limits358078
-Node: Platform support359217
-Node: Android app359984
-Node: Command palette364017
-Node: Security and privacy368777
-Node: Keybindings370184
-Node: god-mode376005
-Node: God-mode without a hardware keyboard392551
-Node: Differences from Emacs org-mode395072
-Node: Known limitations400135
-Node: Development400690
-Node: Concept Index404891
-Node: Variable Index415092
+Node: Agenda226865
+Node: Dated entry sources232849
+Node: Diary-sexp forms236239
+Node: Sun times240069
+Node: Hebrew diary functions241975
+Node: Diary file243075
+Node: Holidays245670
+Node: General <%%(sexp)> timestamps250741
+Node: Other agenda behavior255405
+Node: Habits256714
+Node: Agenda Files258120
+Node: Contacts Files260194
+Node: Calendar and contacts sync (CalDAV CardDAV)260758
+Node: Agenda notifications263909
+Node: The TODO view265982
+Node: Capture Templates267452
+Node: Capturing from other apps288170
+Node: Extras menu289796
+Node: Menu customization294290
+Node: File management297297
+Node: Files view301309
+Node: Tabs304161
+Node: Citations304848
+Node: Export306037
+Node: Document settings307258
+Node: ASCII315746
+Node: HTML317591
+Node: ODT319145
+Node: Line numbers and references in source blocks320179
+Node: LaTeX321464
+Node: Beamer325120
+Node: Slides (HTML)327508
+Node: As-org328683
+Node: Calendar (ics)330338
+Node: Contacts (vcf)333526
+Node: What is dropped341333
+Node: Import341723
+Node: Help346302
+Node: Info reader346868
+Node: Settings349964
+Node: Offline behavior and sync353841
+Node: Long lists358344
+Node: Size limits359077
+Node: Platform support360216
+Node: Android app360983
+Node: Command palette365016
+Node: Security and privacy369776
+Node: Keybindings371183
+Node: god-mode377004
+Node: God-mode without a hardware keyboard393550
+Node: Differences from Emacs org-mode396071
+Node: Known limitations401134
+Node: Development401689
+Node: Concept Index405890
+Node: Variable Index416091
 
 End Tag Table
 

@@ -39,7 +39,10 @@ html = html.replace(appScript, (tag) => `<script src="native-platform.js"></scri
 if ((html.match(/native-platform\.js/g) || []).length !== 1) throw new Error('native-platform.js was not added exactly once');
 fs.writeFileSync(indexPath, html);
 
-const version = (/CACHE_NAME\s*=\s*'([^']+)'/.exec(swText) || [])[1] || 'unknown';
+// The web version is written in src-browser/version.js (sw.js imports it; it no longer spells it out).
+const versionText = fs.readFileSync(path.join(root, 'src-browser', 'version.js'), 'utf8');
+const version = (/APP_VERSION\s*=\s*'([^']+)'/.exec(versionText) || [])[1];
+if (!version) throw new Error("couldn't find APP_VERSION in src-browser/version.js");
 const shell = JSON.parse(fs.readFileSync(path.join(nativeDir, 'package.json'), 'utf8')).version;
 fs.writeFileSync(path.join(www, 'native-shell.json'), JSON.stringify({ shell, web: version }, null, 2) + '\n');
 console.log(`bundled ${files.length} files (${(bytes / 1024).toFixed(0)} KB) from ${root} into ${www}\nweb ${version}, shell ${shell}`);

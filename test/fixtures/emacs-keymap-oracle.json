@@ -134,6 +134,50 @@
    "undo"
   ],
   [
+   "C-?",
+   "undo-redo"
+  ],
+  [
+   "C-M-_",
+   "undo-redo"
+  ],
+  [
+   "M-a",
+   "org-backward-sentence"
+  ],
+  [
+   "M-e",
+   "org-forward-sentence"
+  ],
+  [
+   "M-y",
+   "yank-pop"
+  ],
+  [
+   "M-SPC",
+   "cycle-spacing"
+  ],
+  [
+   "C-x C-o",
+   "delete-blank-lines"
+  ],
+  [
+   "C-s",
+   "isearch-forward"
+  ],
+  [
+   "C-r",
+   "isearch-backward"
+  ],
+  [
+   "C-v",
+   "scroll-up-command"
+  ],
+  [
+   "M-v",
+   "scroll-down-command"
+  ],
+  [
    "C-_",
    "undo"
   ],
@@ -210,18 +254,6 @@
    "keymap"
   ],
   [
-   "M-SPC",
-   "cycle-spacing"
-  ],
-  [
-   "C-?",
-   "undo-redo"
-  ],
-  [
-   "C-M-_",
-   "undo-redo"
-  ],
-  [
    "C-x C-s",
    "save-buffer"
   ],
@@ -230,24 +262,8 @@
    "query-replace"
   ],
   [
-   "C-s",
-   "isearch-forward"
-  ],
-  [
-   "C-r",
-   "isearch-backward"
-  ],
-  [
    "C-l",
    "recenter-top-bottom"
-  ],
-  [
-   "C-v",
-   "scroll-up-command"
-  ],
-  [
-   "M-v",
-   "scroll-down-command"
   ],
   [
    "M-q",
@@ -260,14 +276,6 @@
   [
    "M-^",
    "org-delete-indentation"
-  ],
-  [
-   "C-x C-o",
-   "delete-blank-lines"
-  ],
-  [
-   "M-y",
-   "yank-pop"
   ],
   [
    "C-M-w",

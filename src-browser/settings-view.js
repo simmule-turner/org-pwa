@@ -21,6 +21,7 @@ import { confirmDialog, openMultiFieldPopup, openTextFieldPopup } from './dialog
 import { approveExtensionScript, extensionInfo, loadExtensions, saveExtensionFile, saveExtensionScript } from './extension-flow.js';
 import { setStatus } from './editing.js';
 import { getServiceWorkerVersion, workerInstalled } from './render-helpers.js';
+import { noteUpdate } from './update-log.js';
 import { APP_VERSION } from './version.js';
 import { render } from './render.js';
 import { afterImport, askDisableProtection, ensureConnectionsUnlocked, openEnableProtectionDialog, prepareImport } from './connection-protection.js';
@@ -1181,7 +1182,10 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
       menuButton(
         'Check for updates',
       async () => {
+        // The registration is kept when the page starts; if that did not happen (the worker was still registering, or the page was opened before it was), ask the browser for it.
+        S.swRegistration = S.swRegistration || (await navigator.serviceWorker.getRegistration().catch(() => undefined)) || null;
         if (!S.swRegistration) {
+          noteUpdate('update check failed', { error: 'no registration' });
           S.updateCheckStatus = 'error';
           renderSettingsView();
           return;
@@ -1202,7 +1206,8 @@ export async function renderSettingsView(target = S.settingsRenderTarget) {
             S.updateCheckStatus = 'found';
           }
           renderSettingsView();
-        } catch {
+        } catch (error) {
+          noteUpdate('update check failed', { error: error instanceof Error ? error.name : 'error', message: error instanceof Error ? error.message.slice(0, 160) : '' }); // the trail says why, so "Check failed" can be told apart on a device
           S.updateCheckStatus = 'error';
           renderSettingsView();
         }

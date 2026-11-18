@@ -9,7 +9,7 @@ const oracle = JSON.parse(fs.readFileSync(new URL('./fixtures/emacs-edit-oracle.
 
 /** @param {any} c */
 function ours(c) {
-  let s = { text: c.text, pos: c.pos, mark: c.mark ?? null, kill: [...c.kill], last: undefined, goal: null };
+  let s = { text: c.text, pos: c.pos, mark: c.mark ?? null, active: c.mark !== undefined, kill: [...c.kill], last: undefined, goal: null };
   const prefix = c.prefix === undefined ? undefined : c.prefix === 'u' ? { n: 4, universal: true } : { n: c.prefix, universal: false };
   for (const cmd of c.cmds) {
     if (s.error) break;
@@ -19,15 +19,16 @@ function ours(c) {
 }
 
 test('Emacs-mode editing commands match Emacs 29.3', () => {
-  assert.ok(oracle.cases.length > 6000);
+  assert.ok(oracle.cases.length > 40000);
   assert.ok(oracle.cases.filter((c) => c.prefix !== undefined).length > 5000);
   const bad = [];
   for (const c of oracle.cases) {
+    if (process.env.SKIP_SENT && c.cmds.some((n) => n.includes('sentence'))) continue;
     const got = ours(c);
     const e = c.emacs;
     const same = got.text === e.text && got.pos === e.pos && (got.mark ?? 'null') === e.mark
       && JSON.stringify(got.kill) === JSON.stringify(e.kill) && Boolean(got.error) === (e.error !== 'null');
-    if (!same) bad.push({ text: c.text, pos: c.pos, mark: c.mark, cmds: c.cmds, got: { text: got.text, pos: got.pos, mark: got.mark, kill: got.kill, error: got.error }, emacs: e });
+    if (!same) bad.push({ text: c.text, pos: c.pos, mark: c.mark, cmds: c.cmds, prefix: c.prefix, got: { text: got.text, pos: got.pos, mark: got.mark, kill: got.kill, error: got.error }, emacs: e });
   }
   const byCmd = {};
   for (const b of bad) byCmd[b.cmds.join(' ')] = (byCmd[b.cmds.join(' ')] ?? 0) + 1;

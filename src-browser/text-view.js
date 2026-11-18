@@ -9,6 +9,7 @@ import { displayedLineNumber } from '../src/line-numbers.js';
 import { deleteLines, duplicateLines, indentLines, lineCount, lineNumberAt, lineRange, moveLines, newlineWithIndent } from '../src/text-edit.js';
 import { locateDiaryEntry } from '../src/diary-entry.js';
 import { highlight } from '../src/text-syntax.js';
+import { shownView } from './fold-textarea.js';
 import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
 import { checkPaste, utf8Length } from '../src/size-limits.js';
@@ -43,6 +44,8 @@ const matchPainters = new WeakMap();
 export const textFindHooks = {
   /** @type {((pos: number) => void) | null} */ reveal: null,
   /** @type {((pos: number) => void) | null} */ setMark: null,
+  /** C-s and C-r from the editor: open the Find box, or go to the next match; set by the search code */
+  /** @type {((forward: boolean) => void) | null} */ search: null,
 };
 
 /** Shades the matches of a find in the Text view's text: every match softly, the current one strongly, and scrolls the current one into view.
@@ -335,8 +338,11 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     find.style.transform = back.style.transform;
   }
 
+  /** The text as the field shows it: folded stretches are `...`. */
+  const shownText = () => shownView(textarea)?.display ?? textarea.value;
+
   function draw() {
-    const text = textarea.value;
+    const text = shownText();
     if (text === drawn.text) return;
     drawn.text = text;
     const lines = highlight(kind, text);
@@ -394,6 +400,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
     draw();
   });
   textarea.addEventListener('input', schedule);
+  textarea.addEventListener('te-fold', schedule); // text was folded or shown: the picture follows
   // A paste that would make the file larger than the app opens is refused, and one past the warn size asks first (typing is not limited)
   textarea.addEventListener('paste', (e) => {
     const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
@@ -544,12 +551,15 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   };
   statusLines.set(textarea, say);
   matchPainters.set(textarea, (ranges, current) => {
-    const text = textarea.value;
+    const view = shownView(textarea);
+    const text = view?.display ?? textarea.value;
     const frag = document.createDocumentFragment();
     let at = 0;
     /** @type {HTMLElement | null} */ let currentEl = null;
-    ranges.forEach(([a, b], i) => {
-      if (a < at || b > text.length) return;
+    ranges.forEach(([bufferFrom, bufferTo], i) => {
+      const a = view ? view.toDisplay(bufferFrom) : bufferFrom;
+      const b = view ? view.toDisplay(bufferTo) : bufferTo;
+      if (a < at || b > text.length || b <= a) return;
       frag.append(text.slice(at, a));
       const mark = document.createElement('mark');
       mark.textContent = text.slice(a, b);
@@ -591,6 +601,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
       tab: () => textViewTab(textarea),
       setPanel: (panel) => void commitGlobalVariableChange('org-xx-emacs-key-panel', panel).then(() => emacs.placePanel(panel)),
       clipboard: platform.clipboard,
+      search: (forward) => textFindHooks.search?.(forward),
     });
     textFindHooks.reveal = (pos) => void folds.run('org-fold-reveal', pos, undefined);
     textFindHooks.setMark = (pos) => emacs.setMark(pos);

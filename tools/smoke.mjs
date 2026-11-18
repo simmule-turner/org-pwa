@@ -9694,7 +9694,7 @@ check('every item in the top bar\'s menus runs without a page error and does som
     for (const label of labels) {
       const { context, page, errors } = await open(button);
       const before = await visible(page);
-      await page.locator(`${panel} [role=menuitem]:not([aria-disabled=true])`).filter({ hasText: label }).first().click({ timeout: 3000 }).catch(() => {});
+      await page.locator(`${panel} [role=menuitem]:not([aria-disabled=true])`).filter({ hasText: label.split('\n')[0] }).first().click({ timeout: 3000, position: { x: 20, y: 10 } }).catch(() => {}); // the left edge, since the View menu's Text row carries an Emacs mode checkbox at its right
       await page.waitForTimeout(400);
       if (errors.length) problems.push(`${button} / ${label}: ${errors[0]}`);
       else if ((await visible(page)) === before) problems.push(`${button} / ${label}: nothing happened`);
@@ -10911,6 +10911,133 @@ check('Emacs mode in the Text view: the text opens folded by #+STARTUP, TAB and 
   await page.keyboard.press('Control+e');
   await page.keyboard.press('Control+k');
   expect((await whole()) === '#+STARTUP: overview\n* A\n** A1\nx\n* B\nbody b\n', `C-k at a folded heading kills the text it hides: ${JSON.stringify(await whole())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: keys typed on a soft keyboard after Ctrl or Esc from the panel run as commands, and the echo area shows what is held', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'one two three\nfour five\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    await commitGlobalVariableChange('select-enable-clipboard', 'nil');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const caret = () => box.evaluate((t) => t.selectionStart);
+  /** A soft keyboard puts a composed character into the field without a key event the page can stop. */
+  const compose = (/** @type {string} */ ch) => box.evaluate((t, c) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+    const get = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').get;
+    const at = t.selectionStart;
+    const v = get.call(t);
+    set.call(t, v.slice(0, at) + c + v.slice(at));
+    t.setSelectionRange(at + c.length, at + c.length);
+    t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: c, isComposing: true, bubbles: true }));
+  }, ch);
+  const whole = () => box.evaluate((t) => t.value);
+  const click = (/** @type {string} */ name) => page.getByRole('button', { name, exact: true }).click();
+  await click('Control for the next key');
+  expect(((await page.locator('#status').textContent()) ?? '').includes('C-'), 'holding Ctrl shows C- in the echo area');
+  await compose('f');
+  expect((await caret()) === 1 && (await whole()) === 'one two three\nfour five\n', `Ctrl then a composed f is C-f: caret ${await caret()} text ${JSON.stringify(await whole())}`);
+  expect((await page.getByRole('button', { name: 'Control for the next key' }).getAttribute('aria-pressed')) === 'false', 'Ctrl is released after the key');
+  await click('Escape (Meta for the next key)');
+  await compose('f');
+  expect((await caret()) === 3 && (await whole()) === 'one two three\nfour five\n', `ESC then a composed f is M-f: caret ${await caret()}`);
+  await box.evaluate((t) => t.setSelectionRange(0, 0));
+  await click('Meta for the next key');
+  await compose('f');
+  expect((await caret()) === 3, `the Meta button then a composed f is M-f: caret ${await caret()}`);
+  await click('Escape (Meta for the next key)');
+  await click('Quit');
+  await compose('x');
+  expect((await whole()).includes('x'), 'C-g ends the ESC prefix, so the next key is typed');
+  await box.evaluate((t) => t.setSelectionRange(0, 0));
+  await click('Control for the next key');
+  await compose('e');
+  expect((await caret()) === (await whole()).indexOf('\n'), `Ctrl then e is C-e: ${await caret()}`);
+  await click('Control for the next key');
+  await compose('a');
+  expect((await caret()) === 0, 'Ctrl then a is C-a');
+  await click('Control for the next key');
+  await compose('s');
+  expect(await page.locator('#search-query-input').isVisible(), 'Ctrl then s opens Find (C-s)');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: the colored text of the Text view shows folded stretches as the field does', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+STARTUP: overview\n* A\nbody a\n** A1\nx\n* B\nbody b\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const picture = () => page.evaluate(() => Array.from(document.querySelectorAll('.te-emacs .te-ln')).map((l) => l.textContent).join('\n'));
+  expect((await picture()) === '#+STARTUP: overview\n* A...\n* B...', `the overview is what is drawn: ${JSON.stringify(await picture())}`);
+  await box.evaluate((t) => { const i = t.value.indexOf('* A'); t.setSelectionRange(i, i); });
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('.te-emacs .te-ln')).some((l) => l.textContent === 'body a'), null, { timeout: 3000 }).catch(() => {});
+  expect((await picture()) === '#+STARTUP: overview\n* A\nbody a\n** A1...\n* B...', `TAB shows the children in the picture: ${JSON.stringify(await picture())}`);
+  for (let i = 0; i < 3 && !(await picture()).includes('body b'); i++) {
+    await page.keyboard.press('Shift+Tab');
+    await page.waitForTimeout(300);
+  }
+  expect((await picture()).includes('body b'), `S-TAB cycles to show all: ${JSON.stringify(await picture())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-s opens Find from the editor, and Alt+P brings back the earlier search as M-p does in Emacs', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'one two three two\nfour two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+s');
+  await page.waitForSelector('#minibufferSearch textarea', { timeout: 3000 });
+  const find = page.locator('#minibufferSearch textarea');
+  await find.type('two');
+  await page.keyboard.press('Enter');
+  expect((await box.evaluate((t) => t.selectionStart)) === 7, 'RET leaves the cursor after the first match');
+  await box.evaluate((t) => t.focus());
+  await page.keyboard.press('Control+s');
+  await page.waitForSelector('#minibufferSearch textarea', { timeout: 3000 });
+  await page.locator('#minibufferSearch textarea').press('Alt+p');
+  expect((await page.locator('#minibufferSearch textarea').inputValue()) === 'two', 'Alt+P puts the last search string in the box');
+  await page.locator('#minibufferSearch textarea').evaluate((t) => t.setSelectionRange(0, 0));
+  await page.locator('#minibufferSearch textarea').press('Alt+e');
+  expect((await page.locator('#minibufferSearch textarea').evaluate((t) => t.selectionStart)) === 3, 'Alt+E puts the caret at the end of the search string');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-v scrolls a screen less two lines and moves the cursor only when it leaves the view', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, Array.from({ length: 200 }, (_, i) => `line ${i + 1}`).join('\n'));
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  const rows = await box.evaluate((t) => Math.floor(t.clientHeight / (parseFloat(getComputedStyle(t).lineHeight) || 20)));
+  await page.keyboard.press('Control+v');
+  const top = await box.evaluate((t) => Math.round(t.scrollTop / (parseFloat(getComputedStyle(t).lineHeight) || 20)));
+  expect(top === rows - 2, `C-v moves the top of the window ${rows - 2} lines, got ${top}`);
+  const caretLine = await box.evaluate((t) => t.value.slice(0, t.selectionStart).split('\n').length - 1);
+  expect(caretLine === top, `the cursor that left the view goes to the new top line, got ${caretLine}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

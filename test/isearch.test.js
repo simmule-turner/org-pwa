@@ -29,6 +29,7 @@ const shown = (st) => {
 function run(text, pos, macro) {
   let point = pos;
   let ring = [];
+  let rring = [];
   let mark = null;
   let st = null;
   let error = '';
@@ -36,7 +37,7 @@ function run(text, pos, macro) {
   for (const key of keysOf(macro)) {
     if (!st || st.done) {
       if (!/^C-(M-)?[sr]$/.test(key)) continue;
-      st = isearchStart(text, point, key.endsWith('s'), ring, key.startsWith('C-M-'));
+      st = isearchStart(text, point, key.endsWith('s'), ring, key.startsWith('C-M-'), rring);
       mark = st.mark ?? mark;
       trace.push(shown(st));
       continue;
@@ -44,7 +45,7 @@ function run(text, pos, macro) {
     st = isearchKey(st, key);
     if (st.quit) { error = 'quit'; point = st.frame.pos; break; }
     if (st.error) { error = st.error; point = st.frame.pos; mark = st.mark ?? mark; break; }
-    if (st.done) { point = st.frame.pos; ring = st.ring; mark = st.mark ?? mark; continue; }
+    if (st.done) { point = st.frame.pos; ring = st.ring; rring = st.regexpRing; mark = st.mark ?? mark; continue; }
     trace.push(shown(st));
   }
   if (st && !st.done && !error) {
@@ -82,4 +83,22 @@ test('Find follows Emacs\'s incremental search: point, mark and every step of th
   }
   assert.ok(skipped > 0 && skipped < 60, `${skipped} cases differ in the known way`);
   assert.equal(bad.length, 0, `${bad.length} cases differ (ISEARCH_SHOW=1 lists them)`);
+});
+
+test('M-p and M-n walk the search ring as Emacs does, the plain and regexp rings kept apart', () => {
+  const text = 'a b c a b c';
+  let ring = [];
+  for (const q of ['a', 'b', 'c']) {
+    let st = isearchStart(text, 0, true, ring, false, []);
+    for (const ch of q) st = isearchKey(st, ch);
+    st = isearchKey(st, 'RET');
+    ring = st.ring;
+  }
+  assert.deepEqual(ring, ['c', 'b', 'a']);
+  let st = isearchStart(text, 0, true, ring, false, []);
+  const seen = [];
+  for (let i = 0; i < 4; i++) { st = isearchKey(st, 'M-p'); seen.push(st.frame.string); }
+  assert.deepEqual(seen, ['c', 'b', 'a', 'c']);
+  st = isearchKey(st, 'M-n');
+  assert.equal(st.frame.string, 'a');
 });

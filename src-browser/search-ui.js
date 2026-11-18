@@ -11,7 +11,7 @@ import { renderMinibuffer } from './chrome.js';
 import { SEARCH_TYPE_ICON } from './constants.js';
 import { buildQueryReplacePattern } from './doc-helpers.js';
 import { openRemotePath } from './documents-io.js';
-import { minibufferSearchEl, modelineBarEl, searchPanel } from './dom.js';
+import { minibufferSearchEl, modelineBarEl, searchBtn, searchPanel } from './dom.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { isearchKey, isearchMatches, isearchStart, compile as compileSearch } from '../src/isearch.js';
 import { paintTextMatches, textFindHooks } from './text-view.js';
@@ -81,6 +81,8 @@ export function renderMinibufferSearch() {
       if (ctrl && (e.key === 's' || e.key === 'r')) { e.preventDefault(); stepTextFind(e.key === 'r' ? -1 : 1); return; }
       if (ctrl && e.key === 'g') { e.preventDefault(); abortTextFind(); return; }
       if (ctrl && e.key === 'w') { e.preventDefault(); yankIntoTextFind(); return; }
+      if (e.altKey && (e.key === 'p' || e.key === 'n')) { e.preventDefault(); historyTextFind(e.key === 'p'); return; }
+      if (e.altKey && e.key === 'e') { e.preventDefault(); const f = /** @type {HTMLInputElement} */ (e.target); f.setSelectionRange(f.value.length, f.value.length); return; } // M-e: edit the search string
       if (e.altKey && e.key === 'c') { e.preventDefault(); toggleTextFindCase(); return; }
       if (e.altKey && e.key === 'r') { e.preventDefault(); S.searchUseRegex = !S.searchUseRegex; renderSearchOptionsMenu(); refreshTextFind(false); return; }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); stepTextFind(e.key === 'ArrowUp' ? -1 : 1); return; }
@@ -644,6 +646,7 @@ const textFind = {
   forward: true,
   /** earlier search strings, newest first, for C-s on an empty box */
   /** @type {string[]} */ ring: [],
+  /** the same for regular-expression searches, which Emacs keeps apart @type {string[]} */ regexpRing: [],
   /** @type {Array<[number, number]>} */ ranges: [],
 };
 
@@ -660,7 +663,7 @@ function syncTextFind() {
   let st = textFind.st;
   if (!st || textFind.text !== text || textFind.origin < 0) {
     if (textFind.origin < 0 || textFind.text !== text) textFind.origin = Math.min(ta.selectionStart, text.length);
-    st = isearchStart(text, textFind.origin, textFind.forward, textFind.ring, S.searchUseRegex);
+    st = isearchStart(text, textFind.origin, textFind.forward, textFind.ring, S.searchUseRegex, textFind.regexpRing);
     for (const ch of query) st = isearchKey(st, ch);
   } else {
     if (st.frame.regexp !== S.searchUseRegex) st = isearchKey(st, 'M-r');
@@ -679,7 +682,7 @@ function syncTextFind() {
 
 /** The search typed again from where it began. @param {import('../src/isearch.js').ISearch} st @param {string} query */
 function retype(st, query) {
-  let next = isearchStart(st.text, st.origin, textFind.forward, textFind.ring, S.searchUseRegex);
+  let next = isearchStart(st.text, st.origin, textFind.forward, textFind.ring, S.searchUseRegex, textFind.regexpRing);
   for (const ch of query) next = isearchKey(next, ch);
   return next;
 }
@@ -758,6 +761,12 @@ function textFindInfo() {
   return info;
 }
 
+/** C-s and C-r typed in the editor (Emacs mode): the Find box opens, with C-r searching backward; with the box already open it is the next match. */
+textFindHooks.search = (forward) => {
+  if (!(S.searchOpen && S.currentView === 'text')) searchBtn.click();
+  if (!forward || S.searchQuery) stepTextFind(forward ? 1 : -1);
+};
+
 /** C-s (delta 1) and C-r (delta -1) from the box: the next or previous match. Past the last one the search fails, and one more press wraps round, as in Emacs.
  * @param {number} delta 1 or -1 */
 export function stepTextFind(delta) {
@@ -772,6 +781,17 @@ function yankIntoTextFind() {
   syncTextFind();
   if (!textFind.st) return;
   const next = isearchKey(textFind.st, 'C-w');
+  if (next.error) return setStatus(next.error);
+  textFind.st = next;
+  showTextFind(true);
+}
+
+/** M-p and M-n (Alt+P, Alt+N): the search string becomes the previous or next one from the ring of earlier searches, and the search runs on it.
+ *  @param {boolean} older */
+function historyTextFind(older) {
+  syncTextFind();
+  if (!textFind.st) return;
+  const next = isearchKey(textFind.st, older ? 'M-p' : 'M-n');
   if (next.error) return setStatus(next.error);
   textFind.st = next;
   showTextFind(true);
@@ -793,6 +813,7 @@ function exitTextFind() {
   if (st && ta) {
     const done = isearchKey(st, 'RET');
     textFind.ring = done.ring;
+    textFind.regexpRing = done.regexpRing;
     ta.setSelectionRange(done.frame.pos, done.frame.pos);
     if (done.mark !== null) textFindHooks.setMark?.(done.mark);
   }

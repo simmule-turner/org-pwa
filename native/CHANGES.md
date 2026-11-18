@@ -1,4 +1,6 @@
-# Native hardening (shell 0.7.11, for web v672 and later)
+# Native hardening (shell 0.7.12, for web v672 and later)
+
+- **0.7.12.** `scripts/sync.mjs` reads the web version from `src-browser/version.js`. Since web v717 `sw.js` imports the version instead of spelling it out, so the old search of `sw.js` found nothing and the APK was named `org-pwa-shell-0.7.11-unknown-release.apk`. A web folder without that version now stops the sync with an error. No native code changed.
 
 - **0.7.11.** `AttachmentsPlugin.list` lists the chosen folder itself (an empty path used to return nothing), returns folders as well as files, and gives each file's size and modified time. It still returns `names` (the files) for older web code, and adds `entries`: `{ name, dir, size, modified }`. `native-platform.js` turns them into `{ name, path, type, size, modified }`, which the web app's Files view shows and sorts by; a shell older than 0.7.11 still works, with names only. Not compiled here (no Android SDK).
 

@@ -7,6 +7,18 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v720 — C-v and M-v as Emacs does them
+In Emacs mode, C-v and M-v now move the top of the window the way Emacs does: a screen less two lines, the cursor moving only when it would leave the view, and "End of buffer" or "Beginning of buffer" at the same places. A number before the key scrolls that many lines. Alt+E in the Find box puts the caret at the end of the search to edit it. Still different: text that wraps counts as one line when scrolling, and a table field that starts with = is not calculated when M-a or M-e arrives.
+Verified: 972 C-v and M-v runs compared with Emacs 29.3 in a terminal.
+
+* v719 — Undo in the region, table fields, Meta
+In Emacs mode, undo with a region marked now changes only what is inside it, and undoing a pasted subtree adjusted to its new level takes one step, as in Emacs. M-a and M-e inside a table move by field, aligning the table on the way to another one. The key panel's Alt button is now Meta.
+Verified: Emacs 29.3 comparisons for the region undo, adjusted pastes, table fields and their undo.
+
+* v718 — Emacs mode on a phone keyboard, and more keys
+Keys typed on the device keyboard after Ctrl or Esc now run as commands (they were typed as letters), the echo line shows a held C- or M-, and C-g ends it. C-s and C-r open Find from the editor, with Alt+P and Alt+N for earlier searches. TAB and S-TAB now change the picture, not just the message. New keys: M-a M-e, M-y, M-SPC, C-x C-o, C-?, C-v, M-v and prefixes for several more. Check for updates records why it failed.
+Verified: Emacs 29.3 comparisons for the new commands, prefixes and undo; browser checks for the soft keyboard, folding and Find.
+
 * v717 — Find works like Emacs's search
 Find in the Text view is now Emacs's incremental search: C-s and C-r step, a search past the last match says Failing and wraps on the next press, Backspace goes back a step, Enter ends at the match with the mark where the search began, Esc returns there, and a match in folded text opens its entry. The Agenda, TODO, Match and Keyword search screens search their own titles and fail and wrap the same way. Check for updates now waits for the new version to finish installing and names it, instead of saying "Up to date" a moment before the banner appears; the service worker takes its version from the one file the app carries. The View menu's Text row has an Emacs mode checkbox.
 Verified: the search against Emacs 29.3's own, key by key.

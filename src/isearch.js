@@ -7,7 +7,10 @@
 import { emacsRegexToJs } from './elisp-regex.js';
 
 /** @typedef {{ string: string, pos: number, other: number | null, barrier: number, success: boolean, forward: boolean, wrapped: boolean, regexp: boolean, word: boolean, fold: boolean | null }} Frame */
-/** @typedef {{ text: string, origin: number, ring: string[], ringAt: number, frame: Frame, stack: Frame[], done: boolean, quit: boolean, mark: number | null, error?: string }} ISearch */
+/** @typedef {{ text: string, origin: number, ring: string[], ringAt: number, regexpRing: string[], regexpRingAt: number, frame: Frame, stack: Frame[], done: boolean, quit: boolean, mark: number | null, error?: string }} ISearch */
+
+/** `search-ring-max` and `regexp-search-ring-max` */
+const RING_MAX = 16;
 
 const WORD = '[\\p{L}\\p{N}]';
 
@@ -85,10 +88,11 @@ function searched(text, f, from) {
 
 /** Begins a search at `pos`.
  *  @param {string} text @param {number} pos @param {boolean} forward @param {string[]} [ring] earlier search strings, newest first @param {boolean} [regexp]
+ *  @param {string[]} [regexpRing] earlier regexp search strings, newest first
  *  @returns {ISearch} */
-export function isearchStart(text, pos, forward, ring = [], regexp = false) {
+export function isearchStart(text, pos, forward, ring = [], regexp = false, regexpRing = []) {
   const frame = { string: '', pos, other: null, barrier: pos, success: true, forward, wrapped: false, regexp, word: false, fold: null };
-  return { text, origin: pos, ring, ringAt: -1, frame, stack: [], done: false, quit: false, mark: null };
+  return { text, origin: pos, ring, ringAt: -1, regexpRing, regexpRingAt: -1, frame, stack: [], done: false, quit: false, mark: null };
 }
 
 /** The search's string changes (typed or yanked): the search begins again from where this one did.
@@ -112,7 +116,8 @@ function toggled(st, change) {
 /** C-s and C-r inside a search.
  *  @param {ISearch} st @param {boolean} forward @returns {ISearch} */
 function repeat(st, forward) {
-  let { frame, ring } = st;
+  let { frame } = st;
+  const ring = st.frame.regexp ? st.regexpRing : st.ring;
   const stack = [...st.stack, frame];
   if (frame.string === '') {
     if (!ring.length) return { ...st, frame: { ...frame, forward } };
@@ -146,8 +151,25 @@ function yankText(st) {
  *  @param {ISearch} st @returns {ISearch} */
 function finish(st) {
   const s = st.frame.string;
-  const ring = s && s !== st.ring[0] ? [s, ...st.ring] : st.ring;
-  return { ...st, ring, done: true, mark: st.frame.pos !== st.origin ? st.origin : null };
+  const regexp = st.frame.regexp;
+  const old = regexp ? st.regexpRing : st.ring;
+  // `isearch-update-ring`: the string goes first and an earlier copy of it goes
+  const ring = s ? [s, ...old.filter((x) => x !== s)].slice(0, RING_MAX) : old;
+  return { ...st, ...(regexp ? { regexpRing: ring } : { ring }), done: true, mark: st.frame.pos !== st.origin ? st.origin : null };
+}
+
+/** M-p (`isearch-ring-retreat`) and M-n (`isearch-ring-advance`): the search string becomes an earlier or later one of the ring, and is searched for again from where the search began.
+ *  @param {ISearch} st @param {boolean} advance @returns {ISearch} */
+function history(st, advance) {
+  const regexp = st.frame.regexp;
+  const ring = regexp ? st.regexpRing : st.ring;
+  if (!ring.length) return st;
+  const at = regexp ? st.regexpRingAt : st.ringAt;
+  const index = (((at < 0 ? (advance ? 0 : -1) : at) + (advance ? -1 : 1)) % ring.length + ring.length) % ring.length;
+  const next = { ...st.frame, string: ring[index] };
+  const moved = searched(st.text, next, Math.min(st.text.length, next.barrier));
+  const frame = moved.success || !next.regexp ? moved : { ...moved, pos: st.frame.pos };
+  return { ...st, ...(regexp ? { regexpRingAt: index } : { ringAt: index }), stack: [...st.stack, st.frame], frame };
 }
 
 /**
@@ -179,6 +201,8 @@ export function isearchKey(st, key) {
     case 'M-r': return toggled(st, { regexp: !f.regexp, word: false });
     case 'M-s w': return toggled(st, { word: !f.word, regexp: false });
     case 'M-c': return toggled(st, { fold: !folds(f) });
+    case 'M-p': return history(st, false);
+    case 'M-n': return history(st, true);
     case 'C-w': {
       const taken = yankText(st);
       if (taken === '') return { ...finish(st), error: 'End of buffer' };

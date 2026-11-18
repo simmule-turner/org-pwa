@@ -18,15 +18,21 @@ function cellsOf(line) {
 
 /**
  * @param {string} text @param {number} pos
+ * @param {boolean} [alignOnly] `org-table-align` alone: the table is aligned and the caret stays in its field
  * @returns {{ text: string, pos: number } | null} null when the caret is not in a table
  */
-export function tableTab(text, pos) {
+export function tableTab(text, pos, alignOnly = false) {
   const lines = text.split('\n');
   let line = 0;
   let start = 0;
   while (line < lines.length - 1 && start + lines[line].length < pos) {
     start += lines[line].length + 1;
     line += 1;
+  }
+  // `org-table-align` at the first position after a table (a #+TBLFM: line, a blank line, the end of the buffer) aligns that table and keeps the caret in place
+  if (alignOnly && pos === start && line > 0 && !TABLE_LINE.test(lines[line]) && TABLE_LINE.test(lines[line - 1]) && !inBlockAt(lines, line - 1)) {
+    const above = tableTab(text, start - 1, true);
+    return above && { text: above.text, pos: pos + above.text.length - text.length };
   }
   if (!TABLE_LINE.test(lines[line]) || inBlockAt(lines, line)) return null;
   let first = line;
@@ -67,6 +73,23 @@ export function tableTab(text, pos) {
     return { text: [...lines.slice(0, first), ...table, ...tail, ...lines.slice(last + 1)].join('\n'), pos: before + caret };
   };
 
+  if (alignOnly) {
+    // `org-table-save-field`: the caret goes back to the start of its line and then to the start of the field it was in
+    const bar = original.indexOf('|');
+    let column = 0;
+    if (bar !== -1 && bar < col) column = 1 + (original.slice(bar + 1, col).match(ruleRow ? /[+|]/g : /\|/g) ?? []).length;
+    const line = aligned[row];
+    let at2 = 0;
+    if (column > 0) {
+      for (let n = column; n > 0; n -= 1) {
+        const i = line.indexOf('|', at2);
+        if (i === -1) break;
+        at2 = i + 1;
+      }
+      if (line[at2] === ' ') at2 += 1;
+    }
+    return finish(aligned, offsets[row] + at2);
+  }
   const pipe = joined.indexOf('|', at);
   if (pipe === -1) return withNewRow(rowAt(at));
   let point = pipe + 1;
