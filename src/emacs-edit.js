@@ -289,7 +289,7 @@ function cycleSpacing(s, raw) {
   /** @type {EditState} */
   let cur = { ...s, text: t.slice(0, a) + ctx.ws + t.slice(b), pos: ctx.orig, mark: ctx.ws === t.slice(a, b) ? s.mark : markerAfter(s.mark, a, b, ctx.ws.length), edits: undefined };
   if (action !== 'restore') {
-    const numeric = ctx.n === null ? 1 : ctx.n === 'u' ? 4 : ctx.n;
+    const numeric = typeof ctx.n === 'number' ? ctx.n : ctx.n === 'u' ? 4 : 1;
     const newlines = typeof numeric === 'number' && numeric < 0;
     if (action === 'just-one-space') cur = justOneSpace(cur, numeric);
     else if (newlines) {

@@ -7,7 +7,7 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
-* v720 — C-v and M-v as Emacs does them
+* v721 — C-v and M-v as Emacs does them
 In Emacs mode, C-v and M-v now move the top of the window the way Emacs does: a screen less two lines, the cursor moving only when it would leave the view, and "End of buffer" or "Beginning of buffer" at the same places. A number before the key scrolls that many lines. Alt+E in the Find box puts the caret at the end of the search to edit it. Still different: text that wraps counts as one line when scrolling, and a table field that starts with = is not calculated when M-a or M-e arrives.
 Verified: 972 C-v and M-v runs compared with Emacs 29.3 in a terminal.
 
