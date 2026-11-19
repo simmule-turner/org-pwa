@@ -11222,6 +11222,39 @@ check('Emacs mode: C-SPC, a move, C-w and C-y yank the text just killed, even wh
   await context.close();
 });
 
+check('Emacs mode: the device clipboard is read only when a yank runs, and the panel\'s Tab does not bring a put-away keyboard back', async () => {
+  const { context, page, errors } = await freshPage();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() => {
+    window.__reads = 0;
+    const real = navigator.clipboard.readText.bind(navigator.clipboard);
+    navigator.clipboard.readText = async () => { window.__reads += 1; return real(); };
+  });
+  await newDocument(page, 'one two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await box.click();
+  await page.keyboard.press('Control+f');
+  await page.keyboard.press('Control+k');
+  await box.evaluate((t) => { t.blur(); t.focus(); });
+  expect((await page.evaluate(() => window.__reads)) === 0, `touching and moving read the clipboard ${await page.evaluate(() => window.__reads)} times`);
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(300);
+  expect((await page.evaluate(() => window.__reads)) === 1, 'a yank reads it once');
+  // the keyboard put away (the text field has lost the focus): the panel's Tab leaves it so
+  await box.evaluate((t) => t.blur());
+  await page.locator('.te-key', { hasText: /^Tab$/ }).click();
+  const focused = await page.evaluate(() => document.activeElement?.id === 'document-text-edit-input');
+  expect(!focused, 'Tab from the panel did not focus the text field');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Emacs mode: every bound key, typed in the browser, does what Emacs does (text, caret, region, kill ring, echo area)', async () => {
   const { context, page, errors } = await freshPage();
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);

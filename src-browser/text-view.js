@@ -598,7 +598,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
       onMove: () => renderModeline(),
       options: { panel: getEmacsKeyPanel(vars()), adjusted: getYankAdjustedSubtrees(vars()), folded: getYankFoldedSubtrees(vars()), clipboard: getSelectEnableClipboard(vars()) },
       applyEdit: (edit, quiet) => applyTextEdit(textarea, edit, quiet),
-      tab: () => textViewTab(textarea),
+      tab: () => textViewTab(textarea, true), // quiet: a device keyboard put away stays away
       setPanel: (panel) => void commitGlobalVariableChange('org-xx-emacs-key-panel', panel).then(() => emacs.placePanel(panel)),
       clipboard: platform.clipboard,
       search: (forward) => textFindHooks.search?.(forward),

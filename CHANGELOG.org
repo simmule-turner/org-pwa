@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v726 — Tab and touch no longer disturb the phone's keyboard and clipboard prompt
+In Emacs mode on Android, the key panel's Tab no longer brings the keyboard back after you put it away, and a panel key refocuses the text only when it had the focus. On iOS, touching a heading no longer shows the Paste prompt: the clipboard is read only when you yank with C-y.
+Verified: the Emacs-mode browser checks, including a new one that counts clipboard reads.
+
 * v725 — More of Emacs's keys in Emacs mode
 Yank after kill now gives the text just killed, and C-n and C-p forget their goal column after a tap. New or corrected keys: C-q, C-o on a table row, M-arrows in tables, M-up and M-down on a region's lines, C-c C-u, words that change script (日本語text), tabs and wide characters in vertical moves, prefix arguments on the Org motion keys and on undo, and | as its own undo step. Typed keys are now checked against Emacs on random sequences as well as fixed ones.
 Verified: 36,000 key sequences compared with Emacs 29.3, plus 3,000 random ones.

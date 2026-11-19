@@ -88,7 +88,9 @@ export function attachEmacsMode(o) {
     /** @type {string | null} */
     clip: null,
     /** Counts the page's own writes to the clipboard: a read that began before one is out of date when it ends. */
-    clipWrites: 0,
+    clipWritten: /** @type {Promise<void>} */ (Promise.resolve()),
+    held: /** @type {Promise<unknown> | null} */ (null),
+    yankWait: /** @type {Promise<unknown> | null} */ (null),
   };
 
   wrap.classList.add('te-emacs');
@@ -98,22 +100,21 @@ export function attachEmacsMode(o) {
   wrap.insertBefore(layer, textarea);
 
   // ---- the kill ring and the device clipboard
-  const refreshClipboard = () => {
-    if (!o.options.clipboard) return;
-    const writes = ctx.clipWrites;
-    o.clipboard.readText().then(
-      (text) => {
-        if (writes === ctx.clipWrites) ctx.clip = text; // a read begun before a kill ends with the clipboard as it was before it
-      },
-      () => {} // the device may not let the page read it; the kill ring then stays the app's own
-    );
-  };
+  // The device clipboard is read only when a yank asks for it: a read on every key or every touch makes iOS show its Paste prompt each time.
+  const readClipboard = () =>
+    ctx.clipWritten
+      .then(() => o.clipboard.readText()) // after our own write of a kill has ended, so the read is not of the text before it
+      .then(
+        (text) => {
+          ctx.clip = text;
+        },
+        () => {} // the device may not let the page read it; the kill ring then stays the app's own
+      );
   /** @param {import('../src/emacs-edit.js').EditState} before @param {import('../src/emacs-edit.js').EditState} after */
   const syncKillRing = (before, after) => {
     if (!o.options.clipboard || after.kill[0] === undefined || after.kill === before.kill) return; // a kill makes a new ring, even when its text equals the one before
     ctx.clip = after.kill[0];
-    ctx.clipWrites += 1;
-    o.clipboard.writeText(after.kill[0]).catch(() => {});
+    ctx.clipWritten = o.clipboard.writeText(after.kill[0]).catch(() => {});
   };
 
   // ---- the textarea and the state
@@ -230,8 +231,20 @@ export function attachEmacsMode(o) {
   }
 
   // ---- keys
-  /** Feeds one key, named as Emacs names it. @param {string} rawKey @returns {boolean} whether Emacs mode took it */
-  function press(rawKey) {
+  /** Feeds one key, named as Emacs names it. @param {string} rawKey @param {boolean} [replay] the key was held back and now runs @returns {boolean} whether Emacs mode took it */
+  function press(rawKey, replay = false) {
+    if (ctx.held && !replay) { // a yank is waiting for the clipboard: the keys after it wait their turn
+      const later = ctx.held.then(() => {
+        ctx.yankWait = null;
+        press(rawKey, true);
+        return ctx.yankWait ?? undefined; // a yank among the held keys holds the ones after it as well
+      });
+      ctx.held = later;
+      void later.then(() => {
+        if (ctx.held === later) ctx.held = null;
+      });
+      return true;
+    }
     adopt();
     const fed = feedKey(ctx.input, rawKey);
     ctx.input = fed.input;
@@ -297,14 +310,25 @@ export function attachEmacsMode(o) {
       o.tab(); // not on a heading: the Text view's own Tab
       return true;
     }
-    refreshClipboard();
-    let before = ctx.st;
-    if (result.command === 'org-yank' && o.options.clipboard && ctx.clip && ctx.clip !== before.kill[0]) before = { ...before, kill: [ctx.clip, ...before.kill], yankAt: 0 };
-    const after = foldedExecute(before, o.fold.hidden(), result.command, result.char, result.prefix);
-    ctx.st = { ...after, message: undefined };
-    syncKillRing(before, after);
-    say(after.error ?? after.message ?? ''); // the echo area: the error, or what the command prints ("Mark set", "Undo")
-    show();
+    const execute = () => {
+      let before = ctx.st;
+      if (result.command === 'org-yank' && o.options.clipboard && ctx.clip && ctx.clip !== before.kill[0]) before = { ...before, kill: [ctx.clip, ...before.kill], yankAt: 0 };
+      const after = foldedExecute(before, o.fold.hidden(), result.command, result.char, result.prefix);
+      ctx.st = { ...after, message: undefined };
+      syncKillRing(before, after);
+      say(after.error ?? after.message ?? ''); // the echo area: the error, or what the command prints ("Mark set", "Undo")
+      show();
+    };
+    if (result.command === 'org-yank' && o.options.clipboard) {
+      const done = readClipboard().then(execute);
+      ctx.yankWait = done;
+      if (!ctx.held) { // otherwise the keys held back already carry on after it
+        ctx.held = done;
+        void done.then(() => {
+          if (ctx.held === done) ctx.held = null;
+        });
+      }
+    } else execute();
     return true;
   }
 
@@ -486,8 +510,9 @@ export function attachEmacsMode(o) {
     b.setAttribute('aria-label', title);
     b.addEventListener('pointerdown', (e) => e.preventDefault()); // the text keeps the focus, and the device keyboard stays as it is
     b.addEventListener('click', () => {
+      const had = document.activeElement === textarea;
       act();
-      if (document.activeElement !== textarea && !promptField() && textarea.inputMode !== 'none') textarea.focus({ preventScroll: true }); // a prompt keeps the focus
+      if (had && document.activeElement !== textarea && !promptField() && textarea.inputMode !== 'none') textarea.focus({ preventScroll: true }); // the text keeps the focus it had (a prompt keeps its own); a keyboard put away stays away
     });
     keyButtons.push(b);
     buttons[label] = b;
@@ -613,7 +638,6 @@ export function attachEmacsMode(o) {
     adopt();
     draw();
   });
-  textarea.addEventListener('focus', refreshClipboard);
   show();
   const refresh = () => {
     adopt();
