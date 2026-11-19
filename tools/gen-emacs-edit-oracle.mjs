@@ -138,6 +138,20 @@ for (const text of ['foo bar baz', '']) for (let pos = 0; pos <= text.length; po
   }
 }
 
+// DEL and C-d: an emoji is one character, an active region goes whole with DEL, a table keeps its columns, a tagged heading its tags
+const deleteTexts = ['a😀b c', 'x\u0301y e\u0301', 'ab\tcd', '| a | b |\n| cc | d |\n', '| a | b |\n|---+---|\n| 1 | 2 |\n', '* TODO Head :tag:x:\nbody', '*** H  :t:\n', '  | a  |  b |\n'];
+for (const text of deleteTexts) for (let pos = 0; pos <= text.length; pos++) {
+  if (/[\udc00-\udfff]/.test(text[pos] ?? '')) continue;
+  for (const cmd of ['org-delete-backward-char', 'org-delete-char']) for (const prefix of [undefined, 2, -1, 'u']) cases.push({ text, pos, cmds: [cmd], kill: [], ...(prefix === undefined ? {} : { prefix }) });
+}
+for (const text of ['a😀b c', 'foo bar baz', '| a | b |\n| cc | d |\n', '* TODO Head :tag:x:\nbody']) for (let pos = 0; pos <= text.length; pos++) {
+  if (/[\udc00-\udfff]/.test(text[pos] ?? '')) continue;
+  for (let mark = 0; mark <= text.length; mark++) {
+    if (/[\udc00-\udfff]/.test(text[mark] ?? '')) continue;
+    for (const cmd of ['org-delete-backward-char', 'org-delete-char']) cases.push({ text, pos, mark, cmds: [cmd], kill: [] });
+  }
+}
+
 const el = `;; -*- lexical-binding: t -*-
 (require 'org) (require 'json)
 (transient-mark-mode 1)
@@ -175,13 +189,15 @@ const el = `;; -*- lexical-binding: t -*-
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'emacs-edit-oracle-'));
 const elFile = path.join(dir, 'run.el');
 fs.writeFileSync(elFile, el);
-fs.writeFileSync(path.join(dir, 'in.json'), JSON.stringify(cases));
+const chars = (/** @type {string} */ text, /** @type {number} */ at) => [...text.slice(0, at)].length;
+fs.writeFileSync(path.join(dir, 'in.json'), JSON.stringify(cases.map((c) => ({ ...c, pos: chars(c.text, c.pos), ...(c.mark === undefined ? {} : { mark: chars(c.text, c.mark) }) }))));
 const r = spawnSync('emacs', ['--batch', '-Q', '-l', elFile], { env: { ...process.env, ORACLE_IN: path.join(dir, 'in.json'), ORACLE_OUT: path.join(dir, 'out.json') }, encoding: 'utf8', maxBuffer: 1 << 28 });
 if (r.status !== 0) {
   console.error(r.stderr || r.error);
   process.exit(1);
 }
-const results = JSON.parse(fs.readFileSync(path.join(dir, 'out.json'), 'utf8'));
+const units = (/** @type {string} */ text, /** @type {number} */ at) => [...text].slice(0, at).join('').length;
+const results = JSON.parse(fs.readFileSync(path.join(dir, 'out.json'), 'utf8')).map((/** @type {any} */ r) => ({ ...r, pos: units(r.text, r.pos), mark: r.mark === 'null' ? r.mark : units(r.text, r.mark) }));
 const out = cases.map((c, i) => ({ ...c, emacs: results[i] }));
 fs.writeFileSync('test/fixtures/emacs-edit-oracle.json', JSON.stringify({ emacs: '29.3', cases: out }) + '\n');
 console.log(`${out.length} cases written`);

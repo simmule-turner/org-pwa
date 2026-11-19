@@ -11136,6 +11136,60 @@ check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, key
   await context.close();
 });
 
+check('Emacs mode: Backspace deletes an emoji whole, an active region whole, and keeps a table\'s columns', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'a😀b one two\n| a | b |\n| cc | d |\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const text = () => box.evaluate((t) => t.value);
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(3, 3); }); // after the emoji
+  await page.keyboard.press('Backspace');
+  expect((await text()).startsWith('ab one two\n'), `the emoji goes whole: ${JSON.stringify(await text())}`);
+  await box.evaluate((t) => { t.setSelectionRange(3, 3); });
+  await page.keyboard.press('Control+Space');
+  await page.keyboard.press('Alt+f');
+  await page.keyboard.press('Backspace');
+  expect((await text()).startsWith('ab  two\n'), `the active region goes whole with one Backspace: ${JSON.stringify(await text())}`);
+  await box.evaluate((t) => { const at = t.value.indexOf('| a | b |') + 3; t.setSelectionRange(at, at); }); // after the a
+  await page.keyboard.press('Backspace');
+  expect((await text()).includes('|   | b |\n'), `the table row keeps its width: ${JSON.stringify(await text())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: an edit the browser will not let the page cancel is left to the browser, so Backspace never deletes two characters', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '(setq calendar-time-display-form 1)\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); const at = t.value.indexOf('display-form') + 6; t.setSelectionRange(at, at); }); // before the y
+  const send = (/** @type {boolean} */ cancelable) => box.evaluate((t, c) => t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'deleteContentBackward', cancelable: c, bubbles: true })), cancelable);
+  await send(false);
+  expect((await box.inputValue()).includes('display-form'), 'an edit that cannot be canceled is not done a second time by the page');
+  await send(true);
+  expect((await box.inputValue()).includes('disply-form'), `an edit that can be canceled is the page's: ${await box.inputValue()}`);
+  // a browser that makes the edit as well, on the range it planned: the next character goes, and the page takes that back
+  await box.evaluate((t) => {
+    t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'deleteContentBackward', cancelable: true, bubbles: true })); // the page deletes the l
+    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+    const at = t.selectionStart;
+    set.call(t, t.value.slice(0, at) + t.value.slice(at + 1));
+    t.setSelectionRange(at, at);
+    t.dispatchEvent(new InputEvent('input', { inputType: 'deleteContentBackward', bubbles: true }));
+  });
+  expect((await box.inputValue()).includes('dispy-form'), `the browser's own deletion is taken back: ${await box.inputValue()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Emacs mode: the palette runs Cycle TODO state, Promote and Demote heading and Move subtree on the heading at the caret', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* TODO One\nbody\n* Two\ntext\n');

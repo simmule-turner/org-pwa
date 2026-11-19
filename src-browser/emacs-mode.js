@@ -11,6 +11,7 @@ import { BINDINGS, eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js
 import { newUndo } from '../src/emacs-undo.js';
 import { bufferListLines } from '../src/emacs-buffers.js';
 import { readMinibuffer, showList } from './emacs-minibuffer.js';
+import { describeEditor, noteKeyLog } from './key-log.js';
 
 /** The keys of a physical keyboard that move the caret, as the Emacs keys they stand for. */
 const MOVES = /** @type {Record<string, string>} */ ({ ArrowLeft: 'C-b', ArrowRight: 'C-f', ArrowUp: 'C-p', ArrowDown: 'C-n', Home: 'C-a', End: 'C-e', Delete: 'C-d' });
@@ -389,6 +390,7 @@ export function attachEmacsMode(o) {
 
   /** @param {KeyboardEvent} e */
   function onKeyDown(e) {
+    noteKeyLog('emacs keydown', { key: e.key, code: e.code, keyCode: e.keyCode, composing: e.isComposing, state: { pos: ctx.st.pos, sel: [textarea.selectionStart, textarea.selectionEnd] } });
     if (e.isComposing || e.keyCode === 229 || e.metaKey) return;
     const control = e.ctrlKey || ctx.sticky.ctrl;
     const meta = e.altKey || ctx.sticky.alt;
@@ -423,26 +425,35 @@ export function attachEmacsMode(o) {
     }
   }
 
+  /** The kind of edit the page just did itself, until the browser's own `input` event for it has been seen. @type {string | null} */
+  let handledEdit = null;
+  /** When the page last made an edit itself (`performance.now()`): a browser's own edit that follows closely, of any kind, is taken back. */
+  let handledAt = -Infinity;
   /** @param {InputEvent} e */
   function onBeforeInput(e) {
+    noteKeyLog('emacs beforeinput', { type: e.inputType, data: e.data, composing: e.isComposing, cancelable: e.cancelable, applying: ctx.applying, state: { pos: ctx.st.pos, sel: [textarea.selectionStart, textarea.selectionEnd] } });
     if (ctx.applying || e.isComposing) return;
     const type = e.inputType;
-    if (type === 'historyUndo') {
-      e.preventDefault();
-      press('C-/');
-    } else if (type === 'historyRedo') {
-      e.preventDefault();
-      press('C-?');
-    } else if (type === 'deleteContentBackward') {
-      e.preventDefault();
-      press('DEL');
-    } else if (type === 'deleteContentForward') {
-      e.preventDefault();
-      press('C-d');
-    } else if (type === 'insertText' && e.data && !e.data.includes('\n')) {
-      e.preventDefault();
-      typeChars(e.data);
+    if (!['historyUndo', 'historyRedo', 'deleteContentBackward', 'deleteContentForward', 'insertText'].includes(type)) return;
+    if (type === 'insertText' && (!e.data || e.data.includes('\n'))) return;
+    // A browser can refuse to let the page cancel an edit (a soft keyboard's, on some phones). It then makes the edit itself, on the range it
+    // planned before this event; doing the command as well would delete or type twice, so the edit is left to the browser and taken in as it is.
+    e.preventDefault();
+    if (!e.defaultPrevented) {
+      noteKeyLog('emacs beforeinput could not be canceled: left to the browser');
+      return;
     }
+    // some browsers make the edit anyway, after the command: the `input` event of the same kind that follows is that edit, and is taken back
+    handledEdit = type;
+    handledAt = performance.now();
+    setTimeout(() => {
+      handledEdit = null;
+    }, 0);
+    if (type === 'historyUndo') press('C-/');
+    else if (type === 'historyRedo') press('C-?');
+    else if (type === 'deleteContentBackward') press('DEL');
+    else if (type === 'deleteContentForward') press('C-d');
+    else typeChars(/** @type {string} */ (e.data));
   }
 
   // ---- the panel
@@ -554,8 +565,21 @@ export function attachEmacsMode(o) {
 
   textarea.addEventListener('keydown', onKeyDown);
   textarea.addEventListener('beforeinput', (e) => onBeforeInput(/** @type {InputEvent} */ (e)));
-  textarea.addEventListener('input', () => {
+  textarea.addEventListener('input', (e) => {
+    noteKeyLog('emacs input', { type: /** @type {InputEvent} */ (e).inputType, applying: ctx.applying, handled: handledEdit, editor: describeEditor(textarea), text: ctx.st.text === textarea.value ? 'same' : 'differs' });
     if (ctx.applying) return;
+    if (handledEdit !== null && /** @type {InputEvent} */ (e).inputType === handledEdit) {
+      handledEdit = null;
+      show(); // the browser made the edit too: the text goes back to what the command made it
+      return;
+    }
+    // Android keyboards can add a second edit of another kind right after the one the page made (a Backspace that also removes the character
+    // after the caret): within a moment of the page's own edit, whatever else changed the field is undone.
+    if (!(/** @type {InputEvent} */ (e).isComposing) && performance.now() - handledAt < 400 && textarea.value !== ctx.st.text) {
+      noteKeyLog('emacs input: extra edit after ours taken back');
+      show();
+      return;
+    }
     // A soft keyboard composes what is typed and cannot be stopped from putting it in the field. When it is a key of a command (Ctrl or Alt held
     // from the panel, or after ESC or C-x), the field goes back to the buffer and the characters are the command's keys.
     if (commandPending() && textarea.value !== ctx.st.text) {

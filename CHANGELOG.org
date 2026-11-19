@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v724 — Backspace deletes the right characters in Emacs mode
+Backspace and Delete in Emacs mode now do what Emacs does: an emoji goes whole, an active region goes whole, a table keeps its columns, and a heading's tags realign. On Android, a second deletion that the keyboard adds after ours (two characters gone from one Backspace) is taken back. Palette heading commands that the Text view cannot do yet say so instead of "tap a heading first". The keyboard debug log now records Emacs-mode keys and edits.
+Verified: 58,000 editing runs compared with Emacs 29.3, including Backspace and Delete.
+
 * v723 — A one-row key panel and the echo area in Emacs mode
 The Emacs-mode key panel is now one row: Meta, Ctrl, Shift, Tab, the arrows, the keyboard button and Float, with every other key typed on the device keyboard under Ctrl or Meta (Ctrl then g is C-g). The panel's keys reach Find and the M-x prompt, so Ctrl and g quits a search. The echo line says what Emacs says: Mark set, Mark activated, Mark deactivated, Undo and Redo. The palette's Cycle TODO state, Promote and Demote heading and Move subtree up and down work at the caret in the Text view.
 Verified: 55,000 editing runs and 9,000 undo runs compared with Emacs 29.3, messages included.

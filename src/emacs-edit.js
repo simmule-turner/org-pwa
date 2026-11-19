@@ -9,6 +9,7 @@ import { orgYank } from './org-yank.js';
 import { orgBackwardSentence, orgForwardSentence } from './emacs-sentence.js';
 import * as org from './emacs-org.js';
 import { boundary, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
+import { getTagsColumn, withTags } from './tags-column.js';
 
 /**
  * @typedef {object} EditState
@@ -114,8 +115,8 @@ const COMMANDS = {
   'org-metadown': (s) => orgMeta(s, 'down'),
   'org-metaleft': (s) => orgMeta(s, 'left'),
   'org-metaright': (s) => orgMeta(s, 'right'),
-  'forward-char': (s) => (s.pos >= s.text.length ? fail(s, 'End of buffer') : next(s, { pos: s.pos + 1 })),
-  'backward-char': (s) => (s.pos <= 0 ? fail(s, 'Beginning of buffer') : next(s, { pos: s.pos - 1 })),
+  'forward-char': (s) => moveChars(s, 1),
+  'backward-char': (s) => moveChars(s, -1),
   'org-beginning-of-line': (s) => next(s, { pos: lineStart(s.text, s.pos) }),
   'org-end-of-line': (s) => next(s, { pos: lineEnd(s.text, s.pos) }),
   'forward-word': (s) => next(s, { pos: forwardWord(s.text, s.pos) }),
@@ -124,9 +125,8 @@ const COMMANDS = {
   'end-of-buffer': (s) => bufferEnd(s, true, null, false),
   'next-line': (s) => vertical(s, 1),
   'previous-line': (s) => vertical(s, -1),
-  'org-delete-char': (s) => (s.pos >= s.text.length ? fail(s, 'End of buffer') : next(s, { text: s.text.slice(0, s.pos) + s.text.slice(s.pos + 1), mark: markerAfter(s.mark, s.pos, s.pos + 1, 0), edits: [{ from: s.pos, removed: s.text[s.pos], inserted: 0 }] })),
-  'org-delete-backward-char': (s) =>
-    s.pos <= 0 ? fail(s, 'Beginning of buffer') : next(s, { text: s.text.slice(0, s.pos - 1) + s.text.slice(s.pos), pos: s.pos - 1, mark: markerAfter(s.mark, s.pos - 1, s.pos, 0), edits: [{ from: s.pos - 1, removed: s.text[s.pos - 1], inserted: 0 }] }),
+  'org-delete-char': (s) => orgDeleteChar(s, 1),
+  'org-delete-backward-char': (s) => orgDeleteBackward(s, 1),
   'kill-word': (s) => kill(s, s.pos, forwardWord(s.text, s.pos), true),
   'backward-kill-word': (s) => kill(s, backwardWord(s.text, s.pos), s.pos, false),
   'org-kill-line': (s) => {
@@ -408,11 +408,27 @@ function wordsFrom(text, pos, n) {
   return at;
 }
 
+/** The place `n` characters on from `pos` (back when negative), or null when the text ends first. A character is a code point: an emoji is one.
+ * @param {string} text @param {number} pos @param {number} n @returns {number | null} */
+function charsFrom(text, pos, n) {
+  let at = pos;
+  for (let i = 0; i < Math.abs(n); i += 1) {
+    if (n > 0) {
+      if (at >= text.length) return null;
+      at += (text.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
+    } else {
+      if (at <= 0) return null;
+      const low = text.charCodeAt(at - 1);
+      at -= at >= 2 && low >= 0xdc00 && low <= 0xdfff && text.charCodeAt(at - 2) >= 0xd800 && text.charCodeAt(at - 2) <= 0xdbff ? 2 : 1;
+    }
+  }
+  return at;
+}
+
 /** `forward-char` by `n`: as far as the buffer goes, then the error. @param {EditState} s @param {number} n */
 function moveChars(s, n) {
-  const to = s.pos + n;
-  if (to > s.text.length) return fail(s, 'End of buffer', { pos: s.text.length });
-  if (to < 0) return fail(s, 'Beginning of buffer', { pos: 0 });
+  const to = charsFrom(s.text, s.pos, n);
+  if (to === null) return n > 0 ? fail(s, 'End of buffer', { pos: s.text.length }) : fail(s, 'Beginning of buffer', { pos: 0 });
   return next(s, { pos: to });
 }
 
@@ -429,11 +445,69 @@ function moveLines(s, n) {
 /** `delete-char` by `n`. @param {EditState} s @param {number} n */
 function deleteChars(s, n) {
   if (n === 0) return next(s, {});
-  const from = n > 0 ? s.pos : s.pos + n;
-  const to = n > 0 ? s.pos + n : s.pos;
-  if (to > s.text.length) return fail(s, 'End of buffer');
-  if (from < 0) return fail(s, 'Beginning of buffer');
+  const other = charsFrom(s.text, s.pos, n);
+  if (other === null) return fail(s, n > 0 ? 'End of buffer' : 'Beginning of buffer');
+  const from = Math.min(s.pos, other);
+  const to = Math.max(s.pos, other);
   return next(s, { text: s.text.slice(0, from) + s.text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: [{ from, removed: s.text.slice(from, to), inserted: 0 }] });
+}
+
+/** `org-fix-tags-on-the-fly`, after a deletion: on a tagged heading with the caret before the tags, the tags go back to the tags column.
+ * @param {EditState} s the state after the deletion @returns {EditState} */
+function fixTags(s) {
+  if (s.error) return s;
+  const a = lineStart(s.text, s.pos);
+  const line = s.text.slice(a, lineEnd(s.text, s.pos));
+  const m = /^(\*+ (?:.*[ \t])?)(:(?:[\p{L}\p{N}_@#%]+:)+)([ \t]*)$/u.exec(line);
+  if (!m || s.pos - a >= m[1].length) return s;
+  const wsStart = m[1].replace(/[ \t]+$/, '').length; // the blanks before the tags are replaced whole, as Emacs does, so a mark inside them goes to their start
+  const fixed = withTags(m[1].slice(0, wsStart), m[2], getTagsColumn());
+  if (fixed === line.slice(0, line.length - m[3].length) && !m[3]) return s;
+  const newBlanks = fixed.slice(wsStart, fixed.length - m[2].length);
+  const text = s.text.slice(0, a + wsStart) + newBlanks + m[2] + s.text.slice(a + line.length);
+  const tail = a + wsStart + newBlanks.length + m[2].length;
+  /** @type {Edit[]} */
+  const edits = [{ from: a + wsStart, removed: m[1].slice(wsStart), inserted: 0 }, { from: a + wsStart, removed: '', inserted: newBlanks.length }];
+  if (m[3]) edits.push({ from: tail, removed: m[3], inserted: 0 });
+  let mark = s.mark;
+  for (const e of edits) mark = markerAfter(mark, e.from, e.from + e.removed.length, e.inserted);
+  return { ...s, text, mark, edits: [...(s.edits ?? []), ...edits] };
+}
+
+/** `org-delete-char` (C-d): in a table the deleted character is made up with a space before the next `|`, so the columns stay put; elsewhere it
+ *  is `delete-char`, and a tagged heading gets its tags aligned. @param {EditState} s @param {number} n */
+function orgDeleteChar(s, n) {
+  const { text, pos } = s;
+  const a = lineStart(text, pos);
+  const b = lineEnd(text, pos);
+  const inTable = /^[ \t]*\|/.test(text.slice(a, b));
+  if (n !== 1 || text[pos] === '|' || /^[ \t]*$/.test(text.slice(a, pos)) || !inTable) return fixTags(deleteChars(s, n));
+  const bar = text.indexOf('|', pos + 1);
+  if (pos >= b || bar < 0 || bar >= b) return deleteChars(s, n);
+  const done = deleteChars(s, 1);
+  if (done.error) return done;
+  const width = text.length - done.text.length;
+  const at = bar - width;
+  return { ...done, text: done.text.slice(0, at) + ' ' + done.text.slice(at), mark: markerAfter(done.mark, at, at, 1), edits: [...(done.edits ?? []), { from: at, removed: '', inserted: 1 }] };
+}
+
+/** `org-delete-backward-char` (DEL): the active region goes whole; in a table it is C-d on the character before the caret; elsewhere the
+ *  character before the caret goes and a tagged heading gets its tags aligned. @param {EditState} s @param {number} n */
+function orgDeleteBackward(s, n) {
+  const { text, pos } = s;
+  const active = Boolean(s.active) && s.mark !== null && s.mark !== undefined && s.mark !== pos; // an empty region is not one (`use-empty-active-region` is nil)
+  const a = lineStart(text, pos);
+  const b = lineEnd(text, pos);
+  if (n === 1 && !active && pos > 0 && text[pos - 1] !== '|' && !/^[ \t]*$/.test(text.slice(a, pos)) && text.slice(pos, b).includes('|') && /^[ \t]*\|/.test(text.slice(a, b))) {
+    const back = charsFrom(text, pos, -1) ?? pos - 1;
+    return orgDeleteChar({ ...s, pos: back }, 1);
+  }
+  if (n === 1 && active) {
+    const from = Math.min(pos, /** @type {number} */ (s.mark));
+    const to = Math.max(pos, /** @type {number} */ (s.mark));
+    return fixTags(next(s, { text: text.slice(0, from) + text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: [{ from, removed: text.slice(from, to), inserted: 0, pt: pos }] }));
+  }
+  return fixTags(deleteChars(s, -n));
 }
 
 /** Where `forward-line n` from `pos` ends: the start of the line `n` lines on, or the end of the buffer. @param {string} text @param {number} pos @param {number} n */
@@ -539,8 +613,8 @@ const COUNTED = {
   'backward-word': (s, n) => next(s, { pos: wordsFrom(s.text, s.pos, -n) }),
   'next-line': (s, n) => moveLines(s, n),
   'previous-line': (s, n) => moveLines(s, -n),
-  'org-delete-char': (s, n) => deleteChars(s, n),
-  'org-delete-backward-char': (s, n) => deleteChars(s, -n),
+  'org-delete-char': (s, n) => orgDeleteChar(s, n),
+  'org-delete-backward-char': (s, n) => orgDeleteBackward(s, n),
   'kill-word': (s, n) => {
     const to = wordsFrom(s.text, s.pos, n);
     return to >= s.pos ? kill(s, s.pos, to, true) : kill(s, to, s.pos, false);
