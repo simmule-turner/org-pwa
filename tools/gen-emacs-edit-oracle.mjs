@@ -131,31 +131,41 @@ for (const text of ['foo bar baz\nqux', 'ab']) for (let pos = 0; pos <= text.len
   cases.push({ text, pos, mark, cmds: ['exchange-point-and-mark', 'exchange-point-and-mark'], kill: [], prefix: 'u' });
 }
 
+// C-SPC: with the mark absent, at the caret or elsewhere, the region on or off, and right after another C-SPC (it then toggles the region)
+for (const text of ['foo bar baz', '']) for (let pos = 0; pos <= text.length; pos++) {
+  for (const mark of [undefined, 0, 3, pos]) for (const inactive of mark === undefined ? [false] : [false, true]) for (const last of [null, 'set-mark-command', 'forward-char']) {
+    cases.push({ text, pos, ...(mark === undefined ? {} : { mark: Math.min(mark, text.length) }), ...(inactive ? { inactive } : {}), ...(last ? { last } : {}), cmds: ['set-mark-command'], kill: [] });
+  }
+}
+
 const el = `;; -*- lexical-binding: t -*-
 (require 'org) (require 'json)
 (transient-mark-mode 1)
 (setq line-move-visual nil)
 (defun run-case (c)
   (let ((text (cdr (assq 'text c))) (pos (cdr (assq 'pos c))) (mark (cdr (assq 'mark c)))
-        (cmds (cdr (assq 'cmds c))) (ring (cdr (assq 'kill c))) (prefix (cdr (assq 'prefix c))) (err nil))
+        (cmds (cdr (assq 'cmds c))) (ring (cdr (assq 'kill c))) (prefix (cdr (assq 'prefix c))) (err nil) (msg ""))
     (with-temp-buffer
       (insert text)
       (org-mode)
       (setq kill-ring (copy-sequence ring) kill-ring-yank-pointer kill-ring)
       (goto-char (1+ pos))
-      (when mark (set-mark (1+ mark)) (activate-mark))
-      (setq last-command nil)
+      (when mark (set-mark (1+ mark)) (if (cdr (assq 'inactive c)) (deactivate-mark) (activate-mark)))
+      (setq last-command (let ((l (cdr (assq 'last c)))) (and l (intern l))))
       (dolist (name cmds)
         (unless err
-          (let ((cmd (intern name)) (inhibit-message t) (message-log-max nil))
+          (let ((cmd (intern name)) (inhibit-message t) (message-log-max 1000)
+                (before (with-current-buffer (get-buffer-create "*Messages*") (let ((inhibit-read-only t)) (erase-buffer)) (point-max))))
             (setq this-command cmd)
             (condition-case e (let ((current-prefix-arg (cond ((null prefix) nil) ((equal prefix "u") (list 4)) (t prefix))) (last-command-event ?q))
                                 (call-interactively cmd))
               (error (setq err (error-message-string e))))
-            (setq last-command this-command))))
+            (setq msg (with-current-buffer "*Messages*" (let ((new (string-trim (buffer-substring before (point-max))))) (car (last (split-string new "\n" t)))))
+                  last-command this-command))))
       (list (cons 'text (buffer-string)) (cons 'pos (1- (point)))
             (cons 'mark (if (mark t) (1- (mark t)) :null))
-            (cons 'kill (vconcat kill-ring)) (cons 'error (or err :null))))))
+            (cons 'kill (vconcat kill-ring)) (cons 'error (or err :null))
+            (cons 'message (if err "" (or msg ""))) (cons 'active (if mark-active "t" "nil"))))))
 (with-temp-buffer
   (insert-file-contents (getenv "ORACLE_IN"))
   (let* ((json-object-type 'alist) (json-array-type 'list) (cs (json-read-from-string (buffer-string))) (out '()))

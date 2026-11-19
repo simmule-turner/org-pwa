@@ -10915,7 +10915,7 @@ check('Emacs mode in the Text view: the text opens folded by #+STARTUP, TAB and 
   await context.close();
 });
 
-check('Emacs mode: keys typed on a soft keyboard after Ctrl or Esc from the panel run as commands, and the echo area shows what is held', async () => {
+check('Emacs mode: keys typed on a soft keyboard after Ctrl or Meta from the panel run as commands, and the echo area shows what is held', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, 'one two three\nfour five\n');
   await page.evaluate(async () => {
@@ -10944,17 +10944,14 @@ check('Emacs mode: keys typed on a soft keyboard after Ctrl or Esc from the pane
   await compose('f');
   expect((await caret()) === 1 && (await whole()) === 'one two three\nfour five\n', `Ctrl then a composed f is C-f: caret ${await caret()} text ${JSON.stringify(await whole())}`);
   expect((await page.getByRole('button', { name: 'Control for the next key' }).getAttribute('aria-pressed')) === 'false', 'Ctrl is released after the key');
-  await click('Escape (Meta for the next key)');
-  await compose('f');
-  expect((await caret()) === 3 && (await whole()) === 'one two three\nfour five\n', `ESC then a composed f is M-f: caret ${await caret()}`);
-  await box.evaluate((t) => t.setSelectionRange(0, 0));
   await click('Meta for the next key');
   await compose('f');
   expect((await caret()) === 3, `the Meta button then a composed f is M-f: caret ${await caret()}`);
-  await click('Escape (Meta for the next key)');
-  await click('Quit');
+  await page.keyboard.press('Control+x');
+  await click('Control for the next key');
+  await compose('g');
   await compose('x');
-  expect((await whole()).includes('x'), 'C-g ends the ESC prefix, so the next key is typed');
+  expect((await whole()).includes('x'), 'Ctrl then g is C-g: it ends the C-x prefix, so the next key is typed');
   await box.evaluate((t) => t.setSelectionRange(0, 0));
   await click('Control for the next key');
   await compose('e');
@@ -11038,6 +11035,163 @@ check('Emacs mode: C-v scrolls a screen less two lines and moves the cursor only
   expect(top === rows - 2, `C-v moves the top of the window ${rows - 2} lines, got ${top}`);
   const caretLine = await box.evaluate((t) => t.value.slice(0, t.selectionStart).split('\n').length - 1);
   expect(caretLine === top, `the cursor that left the view goes to the new top line, got ${caretLine}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c C-x C-b toggles the checkbox at the caret, and the palette command does the same in the Text view', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* H\n- [ ] one\n- two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(6, 6); });
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+b');
+  expect((await box.inputValue()).includes('- [X] one'), 'C-c C-x C-b checks the box');
+  await box.evaluate((t) => t.focus());
+  await page.evaluate(async () => {
+    const m = await import('/src-browser/god-mode-palette.js');
+    const command = m.findPaletteCommandByOrgName('org-toggle-checkbox');
+    if (command) m.runPaletteCommand(command, null);
+  });
+  expect((await box.inputValue()).includes('- [ ] one'), 'the palette command unchecks it at the caret');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: M-x completes a command name with TAB and runs it', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* H\n- [ ] one\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(6, 6); });
+  await page.keyboard.press('Alt+x');
+  await page.waitForSelector('.te-minibuffer input', { timeout: 3000 });
+  const prompt = page.locator('.te-minibuffer input');
+  await prompt.type('org-toggle-ch');
+  await page.keyboard.press('Tab');
+  expect((await prompt.inputValue()) === 'org-toggle-checkbox', 'TAB completes the name');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !document.querySelector('.te-minibuffer'), null, { timeout: 3000 });
+  expect((await box.inputValue()).includes('- [X] one'), 'M-x org-toggle-checkbox checks the box');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-x C-b lists the open files and C-h e shows the messages', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* H\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+b');
+  await page.waitForSelector('.te-minibuffer', { timeout: 3000 });
+  expect((await page.locator('.te-minibuffer').innerText()).includes('CRM'), 'the buffer list has its heading line');
+  await page.keyboard.press('q');
+  await page.waitForFunction(() => !document.querySelector('.te-minibuffer'), null, { timeout: 3000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, keyboard, Float), and its keys reach the Find box: Ctrl and g quits the search, the arrows step', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'one two three two\nfour two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const row = await page.evaluate(() => [...document.querySelectorAll('.te-keys > button')].filter((b) => getComputedStyle(b).display !== 'none').map((b) => b.textContent));
+  expect(JSON.stringify(row) === JSON.stringify(['Meta', 'Ctrl', 'Shift', 'Tab', '←', '↑', '↓', '→', '⌨', 'Float']), `the docked row: ${JSON.stringify(row)}`);
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+s');
+  await page.waitForSelector('#minibufferSearch textarea', { timeout: 3000 });
+  const find = page.locator('#minibufferSearch textarea');
+  await find.type('two');
+  await page.getByRole('button', { name: 'Down', exact: true }).click();
+  expect(await find.evaluate((t) => document.activeElement === t), 'a panel key leaves the focus in the Find box');
+  expect((await box.evaluate((t) => t.selectionStart)) !== 0, 'the down arrow steps to the next match');
+  await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
+  await find.evaluate((t) => {
+    t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'g', bubbles: true, cancelable: true }));
+  });
+  await page.waitForSelector('#minibufferSearch textarea', { state: 'hidden', timeout: 3000 });
+  expect((await box.evaluate((t) => t.selectionStart)) === 0, 'Ctrl and g quit the search and the cursor returns to where it began');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: the palette runs Cycle TODO state, Promote and Demote heading and Move subtree on the heading at the caret', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO One\nbody\n* Two\ntext\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(14, 14); }); // in the body of One
+  const run = (/** @type {string} */ orgName) => page.evaluate(async (name) => {
+    const pal = await import('/src-browser/god-mode-palette.js');
+    const command = pal.findPaletteCommandByOrgName(name);
+    const reason = pal.paletteUnavailableReason(command, null);
+    pal.runPaletteCommand(command, null);
+    return reason;
+  }, orgName);
+  const text = () => box.evaluate((t) => t.value);
+  expect((await run('org-todo')) === null, 'Cycle TODO state is available without a focused heading');
+  expect((await text()) === '* DONE One\nbody\n* Two\ntext\n', `TODO cycles to DONE: ${JSON.stringify(await text())}`);
+  await run('org-demote');
+  expect((await text()) === '** DONE One\nbody\n* Two\ntext\n', `Demote heading: ${JSON.stringify(await text())}`);
+  await run('org-promote');
+  expect((await text()) === '* DONE One\nbody\n* Two\ntext\n', `Promote heading: ${JSON.stringify(await text())}`);
+  await run('org-move-subtree-down');
+  expect((await text()) === '* Two\ntext\n* DONE One\nbody\n', `Move subtree down: ${JSON.stringify(await text())}`);
+  await box.evaluate((t) => { t.setSelectionRange(0, 0); });
+  await run('org-move-subtree-up');
+  expect(((await page.locator('#status').textContent()) ?? '').includes('Cannot move past superior level'), 'the error is Emacs\'s when there is nothing to move past');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-SPC, M-< and C-y print Mark set in the echo area, a second C-SPC switches the region, and undo prints Undo', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'one two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    await commitGlobalVariableChange('select-enable-clipboard', 'nil');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(3, 3); });
+  const echo = async () => ((await page.locator('#status').textContent()) ?? '').trim();
+  await page.keyboard.press('Control+Space');
+  expect((await echo()) === 'Mark set', `C-SPC: ${await echo()}`);
+  await page.keyboard.press('Control+Space');
+  expect((await echo()) === 'Mark deactivated', `C-SPC again: ${await echo()}`);
+  await page.keyboard.press('Alt+Shift+,');
+  expect((await echo()) === 'Mark set', `M-<: ${await echo()}`);
+  await page.keyboard.press('Control+k');
+  await page.keyboard.press('Control+y');
+  expect((await echo()) === 'Mark set', `C-y: ${await echo()}`);
+  await page.keyboard.press('Control+/');
+  expect((await echo()) === 'Undo', `C-/: ${await echo()}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

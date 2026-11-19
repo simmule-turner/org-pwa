@@ -140,14 +140,14 @@ The parser does not model inline tasks, radio links, timestamps, entities, LaTeX
 * Emacs mode
 A separate mode, kept until the Text view is no longer needed, that looks and feels like Emacs: the Text view's textarea stays (so phones, IME and the device keyboard keep working) with Emacs's keys, kill ring, mark and look on top. Each stage is compared with Emacs 29.3 where it can be.
 ** [#C] Emacs mode: the keys that differ
-The rest of the key work, each a known difference from Emacs 29.3: =M-y= after something other than a yank (Emacs offers a kill-ring menu; here it says so); the =C-c= prefix, which belongs to "Org commands at the caret"; a table field that starts with === is not calculated when =M-a= or =M-e= moves to the next field.
+The rest of the key work, each a known difference from Emacs 29.3: =M-y= after something other than a yank (Emacs offers a kill-ring menu; here it says so); a table field that starts with === is not calculated when =M-a= or =M-e= moves to the next field.
 - Effort: M. Impact: S.
-** [#B] Emacs mode: minibuffer and buffers
-Messages carry Emacs's words and go to a =*Messages*= buffer, =M-x= completes in the minibuffer (the panel gets =M-x= and =C-c= then), and =C-x b=, =C-x k=, =C-x C-b= switch, kill and list the open files (the tabs).
-- Effort: M. Impact: M.
 ** [#B] Emacs mode: Org commands at the caret
-The commands that act at point (=org-return=, =org-open-line=, =org-drag-element-*=, =S-up= and =S-down= on a timestamp, =C-c C-c= in context, =M-left= and =M-right= on the element at point). Supersedes "Cursor-text commands".
-- Effort: M. Impact: M.
+=C-c C-n=, =C-p=, =C-f=, =C-b=, =C-u=, =C-c C-t=, =C-c C-c=, =C-c C-x C-b= and =M-up=, =M-down=, =M-left=, =M-right= on a heading or a list item are done and checked against Emacs 29.3, and the palette's list commands, Cycle TODO state, Promote and Demote heading and Move subtree up and down run at the caret in the Text view. Still to do: the other palette commands that need a heading (priority, effort, promote and demote subtree, tags, drawers, structure templates, archive, refile, narrow, clock in, cut and paste subtree, =org-reveal=, =org-toggle-comment=), which say they are not available in the Text view yet; the echo line's =Saved text until= after =M-w= when the start of the region is off screen, =C-u C-SPC= (=Mark popped=), and the text a sentence motion prints when it realigns a table with =#+TBLFM=; =RET= (=org-return=) and =C-o= in a table; =M-up= and the others in a table (rows and columns), in a drawer and on other elements (=org-drag-element-*=); =S-up= and =S-down= on a timestamp or priority; =C-c C-c= on a heading (tags) and on a property; a repeating timestamp in =C-c C-t= and =C-c C-c=; a prefix argument for these commands; and the other =C-c= keys (about 120 commands that act on the outline's focused heading), which a later release can run at the caret one family at a time, as the list commands now do.
+- Effort: L. Impact: M.
+** [#C] Emacs mode: minibuffer details
+=M-x= completes by prefix (Emacs's =basic= style; its =partial-completion= and =flex= styles, such as =o-t-c=, are not matched) and lists the matches as you type. =*Messages*= (=C-h e=, or =C-x b *Messages*=) and the buffer list (=C-x C-b=) are read-only pop-up lists, not buffers you can move in, and =C-x b= switches among the open files only.
+- Effort: S. Impact: S.
 ** [#C] Emacs mode: folding as Emacs does it
 =TAB= and =S-TAB= use the outline's folds, which differ from Emacs in a few places: =S-TAB= toggles the overview and everything where Emacs goes through contents as well; =C-u C-u TAB= and =C-u C-u C-u TAB= (startup visibility, drawers); =C-u N S-TAB= with N above 5 shows all headings; =TAB= on a list item, a property line, a source block or =#+begin= folds or aligns it in Emacs and here is the Text view's Tab; =C-d= and =DEL= beside a fold stop where Emacs stops and asks to repeat with the text visible; after =C-w= takes a heading between two folded stretches Emacs merges the stretches and moves point; the line numbers and search highlights follow the text, not the folded picture.
 - Effort: M. Impact: S.

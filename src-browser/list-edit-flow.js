@@ -7,6 +7,7 @@ import { S } from './app-state.js';
 import { openGridChoiceModal } from './dialogs.js';
 import { commitAndRender, setStatus } from './editing.js';
 import { render } from './render.js';
+import { listCommandInText } from './text-org-commands.js';
 
 /** The focused row when it is a list item, with the heading that holds it. */
 export function focusedListItem() {
@@ -63,7 +64,7 @@ const SAYS = {
 
 /** A list chord of god-mode: runs `id` on the focused list item.  Returns whether focus was on one. @param {keyof typeof COMMANDS} id */
 export function listChord(id) {
-  if (!focusedListItem()) return false;
+  if (!focusedListItem()) return listCommandInText(id);
   run(/** @type {Record<string, string>} */ (SAYS)[id], COMMANDS[id]);
   return true;
 }

@@ -38,6 +38,18 @@ export const BINDINGS = {
   TAB: 'org-cycle',
   '<backtab>': 'org-shifttab',
   'C-c C-r': 'org-fold-reveal',
+  'C-c C-n': 'org-next-visible-heading',
+  'C-c C-p': 'org-previous-visible-heading',
+  'C-c C-f': 'org-forward-heading-same-level',
+  'C-c C-b': 'org-backward-heading-same-level',
+  'C-c C-u': 'outline-up-heading',
+  'C-c C-t': 'org-todo',
+  'C-c C-c': 'org-ctrl-c-ctrl-c',
+  'C-c C-x C-b': 'org-toggle-checkbox',
+  'M-<up>': 'org-metaup',
+  'M-<down>': 'org-metadown',
+  'M-<left>': 'org-metaleft',
+  'M-<right>': 'org-metaright',
   'C-/': 'undo',
   'C-?': 'undo-redo',
   'C-M-_': 'undo-redo',
@@ -55,6 +67,10 @@ export const BINDINGS = {
   'C-g': 'keyboard-quit',
   'C-u': 'universal-argument',
   'M-x': 'execute-extended-command',
+  'C-x b': 'switch-to-buffer',
+  'C-x k': 'kill-buffer',
+  'C-x C-b': 'list-buffers',
+  'C-h e': 'view-echo-area-messages',
   ...Object.fromEntries(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => [`M-${d}`, 'digit-argument'])),
   'M--': 'negative-argument',
 };
@@ -62,7 +78,7 @@ export const BINDINGS = {
 /** Every key sequence of the table. */
 export const KEY_SEQUENCES = Object.keys(BINDINGS);
 
-const PREFIXES = new Set(['C-x', 'C-c', 'ESC', 'M-ESC']);
+const PREFIXES = new Set(['C-x', 'C-c', 'C-c C-x', 'C-h', 'ESC', 'M-ESC']);
 
 /** @typedef {{ n: number, universal: boolean }} Prefix */
 /**

@@ -7,6 +7,7 @@
 import { EMACS_ALNUM_RE } from './emacs-chars.js';
 import { orgYank } from './org-yank.js';
 import { orgBackwardSentence, orgForwardSentence } from './emacs-sentence.js';
+import * as org from './emacs-org.js';
 import { boundary, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
 
 /**
@@ -22,6 +23,8 @@ import { boundary, newUndo, recordDelete, recordInsert, redo, undo } from './ema
  * @property {Edit[]} [applied] what the last command did to the text, one edit after the other, for whatever follows the text (folds)
  * @property {{ orig: number, ws: string, n: string | number | null, last: string | null }} [cycle] `cycle-spacing--context`, kept while the command repeats
  * @property {string} [error] set when the command signaled an error: the state is then what Emacs leaves
+ * @property {string} [message] what the command printed in the echo area ("Mark set"); unset when it printed nothing or signaled an error
+ * @property {[number, number][]} [hidden] the folded stretches, which the heading motions skip
  */
 
 /** @typedef {{ from: number, removed: string, inserted: number, pt?: number, mark?: number | null, markers?: boolean, wrap?: boolean, insertFirst?: boolean }} Edit `wrap`: part of a change Emacs records as one wrapped entry (an adjusted subtree paste) */
@@ -96,6 +99,21 @@ const capitalize = (word) => {
 
 /** @type {Record<string, (s: EditState) => EditState>} */
 const COMMANDS = {
+  'org-next-visible-heading': (s) => next(s, { pos: org.nextHeading(s.text, s.pos, 1, visibleIn(s)).pos }),
+  'org-previous-visible-heading': (s) => next(s, { pos: org.previousHeading(s.text, s.pos, 1, visibleIn(s)).pos }),
+  'org-forward-heading-same-level': (s) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, 1, true).pos }),
+  'org-backward-heading-same-level': (s) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, 1, false).pos }),
+  'outline-up-heading': (s) => {
+    const r = org.upHeading(s.text, s.pos, 1);
+    return r.error ? fail(s, r.error, { pos: r.pos }) : next(s, { pos: r.pos });
+  },
+  'org-todo': (s) => orgChange(s, org.cycleTodo(s.text, s.pos), 'C-c C-t'),
+  'org-ctrl-c-ctrl-c': (s) => orgChange(s, org.ctrlCCtrlC(s.text, s.pos), 'C-c C-c'),
+  'org-toggle-checkbox': (s) => orgChange(s, org.toggleCheckboxAt(s.text, s.pos), 'C-c C-x C-b'),
+  'org-metaup': (s) => orgMeta(s, 'up'),
+  'org-metadown': (s) => orgMeta(s, 'down'),
+  'org-metaleft': (s) => orgMeta(s, 'left'),
+  'org-metaright': (s) => orgMeta(s, 'right'),
   'forward-char': (s) => (s.pos >= s.text.length ? fail(s, 'End of buffer') : next(s, { pos: s.pos + 1 })),
   'backward-char': (s) => (s.pos <= 0 ? fail(s, 'Beginning of buffer') : next(s, { pos: s.pos - 1 })),
   'org-beginning-of-line': (s) => next(s, { pos: lineStart(s.text, s.pos) }),
@@ -117,7 +135,12 @@ const COMMANDS = {
     const blank = /^[ \t]*$/.test(s.text.slice(s.pos, end));
     return kill(s, s.pos, blank && end < s.text.length ? end + 1 : end, true);
   },
-  'set-mark-command': (s) => next(s, { mark: s.pos }),
+  // C-SPC: right after another C-SPC it only switches the region; with the mark already at the caret it only activates it; otherwise it sets the mark
+  'set-mark-command': (s) => {
+    if (s.last === 'set-mark-command') return next(s, { message: s.mark !== null && s.active ? 'Mark deactivated' : 'Mark activated' });
+    if (s.mark === s.pos) return next(s, { message: 'Mark activated' });
+    return next(s, { mark: s.pos, message: 'Mark set' });
+  },
   'mark-whole-buffer': (s) => next(s, { pos: 0, mark: s.text.length }),
   'exchange-point-and-mark': (s) => (s.mark === null ? fail(s, 'No mark set in this buffer') : next(s, { pos: s.mark, mark: s.pos })),
   'kill-region': (s) => (s.mark === null ? fail(s, 'The mark is not active now') : kill(s, Math.min(s.pos, s.mark), Math.max(s.pos, s.mark), s.mark > s.pos)),
@@ -455,8 +478,48 @@ function casifyWords(s, fn, n) {
   return next(s, { text, pos: n > 0 ? other : s.pos, edits: from === to ? [] : [{ from, removed: s.text.slice(from, to), inserted: to - from + text.length - s.text.length, markers: false }] });
 }
 
+
+/** A change of src/emacs-org.js as a state: the edit it makes, the mark carried along, or its error with the caret where Emacs leaves it.
+ * @param {EditState} s @param {{ text: string, pos: number, error?: string, unsupported?: boolean }} change @param {string} what */
+function orgChange(s, change, what) {
+  if (change.unsupported) return fail(s, `${what} here is not available yet`);
+  if (change.error) return fail(s, change.error, { pos: change.pos });
+  const [edit] = diffEdit(s.text, change.text);
+  return next(s, { text: change.text, pos: change.pos, mark: edit ? markerAfter(s.mark, edit.from, edit.from + edit.removed.length, edit.inserted) : s.mark });
+}
+
+/** Whether a heading start is outside the folded stretches. @param {EditState} s @returns {(p: number) => boolean} */
+const visibleIn = (s) => (p) => !(s.hidden ?? []).some(([a, b]) => p > a && p < b);
+
+/** `M-up`, `M-down`, `M-left`, `M-right` (`org-metaup` and the others): the heading, list item or word at the caret.
+ * @param {EditState} s @param {'up' | 'down' | 'left' | 'right'} dir */
+function orgMeta(s, dir) {
+  const { text, pos } = s;
+  if (org.onHeadingLine(text, pos)) {
+    if (dir === 'left' || dir === 'right') return orgChange(s, org.shiftHeading(text, pos, dir === 'left'), `M-${dir}`);
+    return orgChange(s, org.moveSubtree(text, pos, dir === 'up'), `M-${dir}`);
+  }
+  if (org.onItemLine(text, pos)) {
+    const fn = { up: org.moveItemUpAt, down: org.moveItemDownAt, left: org.outdentItemAt, right: org.indentItemAt }[dir];
+    return orgChange(s, fn(text, pos), `M-${dir}`);
+  }
+  if (/^[ \t]*\|/.test(text.slice(lineStart(text, pos), lineEnd(text, pos)))) return fail(s, `M-${dir} in a table is not available yet`);
+  if (/^[ \t]*:[^\s:]+:/.test(text.slice(lineStart(text, pos), lineEnd(text, pos)))) return fail(s, `M-${dir} in a drawer is not available yet`);
+  if (dir === 'left') return COMMANDS['backward-word'](s);
+  if (dir === 'right') return COMMANDS['forward-word'](s);
+  return fail(s, `M-${dir} here is not available yet`);
+}
+
 /** The commands that take a prefix argument: what each does with it. @type {Record<string, (s: EditState, n: number, universal: boolean) => EditState>} */
 const COUNTED = {
+  'org-next-visible-heading': (s, n) => next(s, { pos: org.nextHeading(s.text, s.pos, Math.max(1, n), visibleIn(s)).pos }),
+  'org-previous-visible-heading': (s, n) => next(s, { pos: org.previousHeading(s.text, s.pos, Math.max(1, n), visibleIn(s)).pos }),
+  'org-forward-heading-same-level': (s, n) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, Math.max(1, n), true).pos }),
+  'org-backward-heading-same-level': (s, n) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, Math.max(1, n), false).pos }),
+  'outline-up-heading': (s, n) => {
+    const r = org.upHeading(s.text, s.pos, Math.max(1, n));
+    return r.error ? fail(s, r.error, { pos: r.pos }) : next(s, { pos: r.pos });
+  },
   'beginning-of-buffer': (s, n, u) => bufferEnd(s, false, n, u),
   'end-of-buffer': (s, n, u) => bufferEnd(s, true, n, u),
   'transpose-chars': (s, n) => transposeChars(s, n),
@@ -618,7 +681,7 @@ function diffEdit(a, b) {
 /** Whether the region is active after a command: `set-mark-command` activates it (two in a row deactivate it), `exchange-point-and-mark` activates it, and a change of the text, `kill-region` and `kill-ring-save` end it.
  * @param {EditState} before @param {EditState} after @param {string} name @param {boolean} changed */
 function regionActive(before, after, name, changed) {
-  if (name === 'set-mark-command') return before.last !== 'set-mark-command'; // two in a row leave the mark set and the region off
+  if (name === 'set-mark-command') return before.last === 'set-mark-command' ? before.mark !== null && !before.active : true; // two in a row switch the region
   if (name === 'exchange-point-and-mark') return after.error ? before.active : true;
   if (name === 'mark-whole-buffer') return true;
   if (name === 'kill-region' || name === 'kill-ring-save' || changed) return false;
@@ -651,6 +714,7 @@ export function syncExternal(state, text, pos) {
  * @returns {EditState}
  */
 export function execute(state, name, arg, prefix) {
+  if (state.message !== undefined) state = { ...state, message: undefined };
   const u = state.undo ?? newUndo();
   u.ptBefore = state.pos;
   if (name === 'undo' || name === 'undo-redo') {
@@ -660,10 +724,10 @@ export function execute(state, name, arg, prefix) {
     const region = name === 'undo' && state.mark !== null && state.mark !== undefined && (state.active || prefix?.universal) ? { start: Math.min(state.pos, state.mark), end: Math.max(state.pos, state.mark) } : null;
     const noMark = name === 'undo' && prefix?.universal && !(state.mark !== null && state.mark !== undefined);
     if (noMark) return { ...state, goal: null, error: 'The mark is not set now, so there is no region', last: 'undo-start' };
-    const { error } = name === 'undo' ? undo(u, buf, state.last, count, region) : redo(u, buf, count);
+    const { error, message } = name === 'undo' ? undo(u, buf, state.last, count, region) : redo(u, buf, count);
     boundary(u, buf.pos);
     u.amalgamated = null;
-    return { ...state, text: buf.text, pos: buf.pos, mark: buf.mark, active: buf.changed ? false : state.active, edits: undefined, applied: buf.text === state.text ? [] : diffEdit(state.text, buf.text), goal: null, undo: u, last: error ? (name === 'undo' ? 'undo-start' : 'undo-redo') : 'undo', error };
+    return { ...state, text: buf.text, pos: buf.pos, mark: buf.mark, active: buf.changed ? false : state.active, edits: undefined, applied: buf.text === state.text ? [] : diffEdit(state.text, buf.text), goal: null, undo: u, last: error ? (name === 'undo' ? 'undo-start' : 'undo-redo') : 'undo', error, message: error ? undefined : message };
   }
   const counted = prefix ? COUNTED[name] : undefined;
   if (prefix && !counted) return { ...state, goal: null, error: `${name} does not take a prefix argument yet`, last: name };
@@ -688,5 +752,8 @@ export function execute(state, name, arg, prefix) {
   u.amalgamated = AMALGAMATING.has(name) ? (u.amalgamated === null ? 0 : u.amalgamated + 1) : null;
   const active = name === 'exchange-point-and-mark' && prefix && !done.error ? false : regionActive(state, done, name, edits.length > 0);
   const verticalMove = name === 'next-line' || name === 'previous-line';
-  return { ...done, active, edits: undefined, applied: edits, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name === 'org-yank' || name === 'yank-pop' ? 'yank' : name };
+  // the commands that set the mark as a side effect say so, as push-mark does
+  const pushes = name === 'org-yank' || ((name === 'beginning-of-buffer' || name === 'end-of-buffer') && !(prefix?.universal || state.active));
+  const message = done.error ? undefined : done.message ?? (pushes ? 'Mark set' : undefined);
+  return { ...done, message, active, edits: undefined, applied: edits, arg: undefined, undo: u, goal: verticalMove ? done.goal : null, last: KILLS.has(name) ? 'kill-region' : name === 'org-yank' || name === 'yank-pop' ? 'yank' : name };
 }

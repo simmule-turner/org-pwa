@@ -175,7 +175,7 @@ function selectiveList(list, start, end) {
  * The `undo` command.
  * @param {UndoState} u @param {Buf} buf @param {string | undefined} last the previous command @param {number} [n] how many groups
  * @param {{ start: number, end: number } | null} [region] where to undo, for an undo in the region
- * @returns {{ error?: string }}
+ * @returns {{ error?: string, message?: string }} the echo area's "Undo", "Undo in region" or "Redo" (when what is undone is itself an undo)
  */
 export function undo(u, buf, last, n = 1, region = null) {
   const continuing = last === 'undo' && (u.pending === true || lastChangeWasUndo(u));
@@ -186,6 +186,7 @@ export function undo(u, buf, last, n = 1, region = null) {
     u.pending = rest === null ? true : rest;
   }
   if (u.pending === true || u.pending === 'region') return { error: 'No further undo information' + (u.inRegion ? ' for region' : '') };
+  const message = `${u.equiv.has(/** @type {Cons} */ (u.pending)) ? 'Redo' : 'Undo'}${u.inRegion ? ' in region' : ''}`;
   const rest = primitiveUndo(u, buf, n, /** @type {Cons} */ (u.pending));
   u.pending = rest === null ? true : rest;
   let head = u.list;
@@ -200,12 +201,12 @@ export function undo(u, buf, last, n = 1, region = null) {
     }
     prev = tail;
   }
-  return {};
+  return { message };
 }
 
 /**
  * `undo-redo` (`C-?`): takes back the last `n` undos by undoing them, and drops what the undoing recorded, so the list is as it was before them.
- * @param {UndoState} u @param {Buf} buf @param {number} [n] @returns {{ error?: string }}
+ * @param {UndoState} u @param {Buf} buf @param {number} [n] @returns {{ error?: string, message?: string }}
  */
 export function redo(u, buf, n = 1) {
   if (!lastChangeWasUndo(u)) return { error: 'No undone changes to redo' };
@@ -217,5 +218,5 @@ export function redo(u, buf, n = 1) {
   while (head && head.e === null) head = head.next;
   const found = u.equiv.get(head);
   u.pending = found === undefined ? undefined : found === 'empty' ? true : found;
-  return {};
+  return { message: `Redo${u.inRegion ? ' in region' : ''}` };
 }

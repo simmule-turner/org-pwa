@@ -7,6 +7,14 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v723 — A one-row key panel and the echo area in Emacs mode
+The Emacs-mode key panel is now one row: Meta, Ctrl, Shift, Tab, the arrows, the keyboard button and Float, with every other key typed on the device keyboard under Ctrl or Meta (Ctrl then g is C-g). The panel's keys reach Find and the M-x prompt, so Ctrl and g quits a search. The echo line says what Emacs says: Mark set, Mark activated, Mark deactivated, Undo and Redo. The palette's Cycle TODO state, Promote and Demote heading and Move subtree up and down work at the caret in the Text view.
+Verified: 55,000 editing runs and 9,000 undo runs compared with Emacs 29.3, messages included.
+
+* v722 — Org commands and M-x in Emacs mode
+In Emacs mode, C-c C-n, C-p, C-f, C-b and C-u move between headings, C-c C-t cycles TODO, C-c C-c aligns a table or puts a list's boxes right, C-c C-x C-b toggles a checkbox, and M-up, M-down, M-left and M-right move, promote or indent the heading or list item at the caret. M-x runs a command by name with TAB completion; C-x b, C-x k and C-x C-b switch, kill and list the open files; C-h e shows the messages. The palette's list commands now work at the caret in the Text view.
+Verified: 4,800 runs of the Org commands and 336 completions compared with Emacs 29.3.
+
 * v721 — C-v and M-v as Emacs does them
 In Emacs mode, C-v and M-v now move the top of the window the way Emacs does: a screen less two lines, the cursor moving only when it would leave the view, and "End of buffer" or "Beginning of buffer" at the same places. A number before the key scrolls that many lines. Alt+E in the Find box puts the caret at the end of the search to edit it. Still different: text that wraps counts as one line when scrolling, and a table field that starts with = is not calculated when M-a or M-e arrives.
 Verified: 972 C-v and M-v runs compared with Emacs 29.3 in a terminal.

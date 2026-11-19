@@ -118,6 +118,9 @@ const el = `;; -*- lexical-binding: t -*-
 (setq line-move-visual nil)
 (dolist (f '(sit-for sleep-for)) (advice-add f :override (lambda (&rest _) t)))
 (dolist (f '(read-from-minibuffer completing-read read-string read-key read-event)) (advice-add f :override (lambda (&rest _) (error "minibuffer"))))
+(defvar last-msg nil)
+(advice-add 'message :before (lambda (fmt &rest args) (when fmt (setq last-msg (apply #'format-message fmt args)))))
+(add-hook 'pre-command-hook (lambda () (setq last-msg nil)))
 (defun run-case (c)
   (let ((text (cdr (assq 'text c))) (pos (cdr (assq 'pos c))) (mark (cdr (assq 'mark c))) (keys (cdr (assq 'keys c))) (err nil))
     (let ((buf (generate-new-buffer "undo-oracle")))
@@ -134,7 +137,7 @@ const el = `;; -*- lexical-binding: t -*-
       (let ((inhibit-message t) (message-log-max nil) (undo-in-region nil))
         (condition-case e (execute-kbd-macro (kbd keys)) (error (setq err (error-message-string e)))))
       (prog1 (list (cons 'text (buffer-substring-no-properties (point-min) (point-max))) (cons 'pos (1- (point)))
-            (cons 'mark (if (mark t) (1- (mark t)) -1)) (cons 'active (if (region-active-p) 1 0)) (cons 'error (or err "")))
+            (cons 'mark (if (mark t) (1- (mark t)) -1)) (cons 'active (if (region-active-p) 1 0)) (cons 'error (or err "")) (cons 'message (if err "" (or last-msg ""))))
         (set-buffer-modified-p nil) (kill-buffer buf)))))
 (with-temp-buffer
   (insert-file-contents (getenv "ORACLE_IN"))

@@ -23,8 +23,11 @@ test('editing commands and undo match Emacs 29.3', () => {
   for (const c of oracle.cases) {
     const got = run(c);
     const e = c.emacs;
-    if (got.text !== e.text || got.pos !== e.pos || (got.mark ?? -1) !== e.mark || Boolean(got.active) !== Boolean(e.active) || Boolean(got.error) !== (e.error !== '')) {
-      bad.push({ text: c.text, pos: c.pos, mark: c.mark, cmds: c.cmds.join(' '), got: { text: got.text, pos: got.pos, mark: got.mark, active: got.active, error: got.error }, emacs: e });
+    // the echo area after an undo or redo (a keyboard macro leaves out what other commands print, so only these are held to Emacs)
+    const last = c.cmds[c.cmds.length - 1];
+    const wrongMessage = (last === 'undo' || last === 'undo-redo') && !e.error && !got.error && (got.message ?? '') !== e.message;
+    if (wrongMessage || got.text !== e.text || got.pos !== e.pos || (got.mark ?? -1) !== e.mark || Boolean(got.active) !== Boolean(e.active) || Boolean(got.error) !== (e.error !== '')) {
+      bad.push({ text: c.text, pos: c.pos, mark: c.mark, cmds: c.cmds.join(' '), got: { text: got.text, pos: got.pos, mark: got.mark, active: got.active, error: got.error }, emacs: e, message: got.message });
     }
   }
   /** @type {Record<string, number>} */ const by = {};

@@ -58,6 +58,7 @@ import { inlineTaskLevel } from '../src/inline-tasks.js';
 import { askSortEntries, insertDrawerCommand, insertInlineTaskCommand, insertStructureTemplateCommand, insertPropertyDrawerCommand, shiftHeadingOnly, shiftSubtree, toggleCommentCommand, toggleHeadingCommand } from './outline-edit-flow.js';
 import { tableChord, focusedTable, askSort, sendFocusedTable, exportFocusedTable } from './table-edit.js';
 import { askListSort, listChord } from './list-edit-flow.js';
+import { headingCommandInText, TEXT_VIEW_HEADING_COMMANDS } from './text-org-commands.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
@@ -602,7 +603,7 @@ export const PALETTE_NEEDS = {
   agenda: () => (agendaShowing() ? null : 'open the Agenda first'),
   inlineTasks: () => (inlineTaskLevel() !== null ? null : 'add org-inlinetask to org-modules first'),
   lintBuffer: () => (lintBufferActive() ? null : 'open the *Org Lint* buffer first (Check for syntax mistakes)'),
-  heading: (/** @type {object | null | undefined} */ target) => (target ? null : 'tap a heading first, or focus one with Escape'),
+  heading: (/** @type {object | null | undefined} */ target) => (target ? null : S.currentView === 'text' ? 'not available in the Text view yet: use the outline' : 'tap a heading first, or focus one with Escape'),
   nonUtf8: () => (isNonUtf8(S.state.documentId) ? null : 'this file is already UTF-8, or was not read as text'),
   writable: () => (S.isBufferReadOnly ? (isNonUtf8(S.state.documentId) ? 'the file is not valid UTF-8 \u2014 run Convert to UTF-8\u2026' : 'the buffer is read-only \u2014 run Toggle read-only (C-x C-q)') : null),
   storage: () => (S.state.storageKind ? null : 'this document has no file yet \u2014 use Save as'),
@@ -628,7 +629,9 @@ export const PALETTE_NEEDS = {
  * @param {object | null} [target]
  */
 export function paletteUnavailableReason(command, target) {
+  const atCaret = S.currentView === 'text' && TEXT_VIEW_HEADING_COMMANDS.has(command.id); // the Text view acts on the heading at the caret
   for (const need of command.needs || []) {
+    if (atCaret && need === 'heading') continue;
     const reason = /** @type {any} */ (PALETTE_NEEDS)[need](target);
     if (reason) return reason;
   }
@@ -655,6 +658,7 @@ export function runPaletteCommand(command, target) {
     render();
     return;
   }
+  if (headingCommandInText(command.id)) return;
   try {
     command.run(target);
   } catch (err) {

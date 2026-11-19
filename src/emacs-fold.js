@@ -44,7 +44,7 @@ export function foldedExecute(state, hidden, command, arg, prefix) {
     const stuck = hidden.find(([a, b]) => at.pos > a && at.pos < b);
     return at.error && stuck ? { ...at, pos: stuck[1] } : at; // the last line: point goes to the end of it, and Emacs says so
   }
-  const done = execute(state, command, arg, prefix);
+  const done = { ...execute({ ...state, hidden }, command, arg, prefix), hidden: undefined };
   if (done.text === state.text && inside(done.pos)) {
     const [a, b] = /** @type {Range} */ (hidden.find(([x, y]) => done.pos > x && done.pos < y));
     if (command === 'backward-word') return { ...done, pos: b < state.pos ? b : a }; // to the far side when the near side is where it was
