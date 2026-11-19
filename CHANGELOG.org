@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v727 — The key panel no longer raises a keyboard you put away
+On Android, after the back gesture put the keyboard away, a panel key such as Tab still brought it back, because the edit made the phone restart its input method. While the keyboard is away, the panel's keys now take no input method for a moment, so it stays away; tapping the text raises it as before. Each panel tap is also written to the keyboard debug log.
+Verified: the Emacs-mode browser checks.
+
 * v726 — Tab and touch no longer disturb the phone's keyboard and clipboard prompt
 In Emacs mode on Android, the key panel's Tab no longer brings the keyboard back after you put it away, and a panel key refocuses the text only when it had the focus. On iOS, touching a heading no longer shows the Paste prompt: the clipboard is read only when you yank with C-y.
 Verified: the Emacs-mode browser checks, including a new one that counts clipboard reads.

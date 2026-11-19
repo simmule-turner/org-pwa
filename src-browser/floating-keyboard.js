@@ -260,7 +260,7 @@ function wireHandle(handle) {
  *  app has lifted its mode line to clear a keyboard. Focus alone would not do:
  *  Android's back gesture can hide the keyboard and leave the field focused. On a
  *  desktop there is no on-screen keyboard, so this is never true there. */
-function deviceKeyboardShowing() {
+export function deviceKeyboardShowing() {
   const textarea = textViewInput();
   if (textarea) return document.activeElement === textarea && textarea.inputMode !== 'none' && keyboardLift() > KEYBOARD_INSET_PX;
   return document.activeElement === godModeKeyboardInput && keyboardLift() > KEYBOARD_INSET_PX;

@@ -12,6 +12,7 @@ import { newUndo } from '../src/emacs-undo.js';
 import { bufferListLines } from '../src/emacs-buffers.js';
 import { readMinibuffer, showList } from './emacs-minibuffer.js';
 import { describeEditor, noteKeyLog } from './key-log.js';
+import { deviceKeyboardShowing } from './floating-keyboard.js';
 
 /** The keys of a physical keyboard that move the caret, as the Emacs keys they stand for. */
 const MOVES = /** @type {Record<string, string>} */ ({ ArrowLeft: 'C-b', ArrowRight: 'C-f', ArrowUp: 'C-p', ArrowDown: 'C-n', Home: 'C-a', End: 'C-e', Delete: 'C-d' });
@@ -511,7 +512,13 @@ export function attachEmacsMode(o) {
     b.addEventListener('pointerdown', (e) => e.preventDefault()); // the text keeps the focus, and the device keyboard stays as it is
     b.addEventListener('click', () => {
       const had = document.activeElement === textarea;
+      // Android's back gesture puts the keyboard away and leaves the text focused; the edit a key makes would bring it back,
+      // so while the keyboard is away the text takes no input method for a moment
+      const away = had && textarea.inputMode !== 'none' && !deviceKeyboardShowing();
+      if (away) textarea.inputMode = 'none';
+      noteKeyLog('panel key', { key: label, ...describeEditor(textarea), keyboardAway: away });
       act();
+      if (away) setTimeout(() => { if (textarea.inputMode === 'none') textarea.inputMode = ''; }, 250);
       if (had && document.activeElement !== textarea && !promptField() && textarea.inputMode !== 'none') textarea.focus({ preventScroll: true }); // the text keeps the focus it had (a prompt keeps its own); a keyboard put away stays away
     });
     keyButtons.push(b);
