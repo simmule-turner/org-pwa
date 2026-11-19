@@ -8,7 +8,9 @@ import { EMACS_ALNUM_RE } from './emacs-chars.js';
 import { orgYank } from './org-yank.js';
 import { orgBackwardSentence, orgForwardSentence } from './emacs-sentence.js';
 import * as org from './emacs-org.js';
-import { boundary, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
+import { tableEdit } from './emacs-table.js';
+import { width } from './org-table-layout.js';
+import { boundary, lastChangeWasUndo, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
 import { getTagsColumn, withTags } from './tags-column.js';
 
 /**
@@ -33,11 +35,39 @@ import { getTagsColumn, withTags } from './tags-column.js';
 /** @param {string} ch */
 const isWord = (ch) => ch !== undefined && (EMACS_ALNUM_RE.test(ch) || '$%\''.includes(ch));
 
+/** The script of a character, as `char-script-table` names it for the scripts the words of a text are likely to mix. @param {string} ch */
+function scriptOf(ch) {
+  if (ch.charCodeAt(0) < 128) return 'latin';
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}\u30fc]/u.test(ch)) return 'kana';
+  for (const [name, re] of SCRIPTS) if (re.test(ch)) return name;
+  return 'other';
+}
+const SCRIPTS = ['Latin', 'Greek', 'Cyrillic', 'Han', 'Hangul', 'Arabic', 'Hebrew', 'Thai', 'Devanagari', 'Georgian', 'Armenian'].map((n) => /** @type {[string, RegExp]} */ ([n.toLowerCase(), new RegExp(`\\p{Script=${n}}`, 'u')]));
+
+/**
+ * `word_boundary_p`: whether a word ends between two word characters. A change of script ends it, except where `word-combining-categories`
+ * joins them (a combining mark, Han followed by hiragana or katakana); hiragana followed by katakana ends it though both are kana
+ * (`word-separating-categories`). @param {string} c1 @param {string} c2
+ */
+function wordBoundary(c1, c2) {
+  if (c1.charCodeAt(0) < 128 && c2.charCodeAt(0) < 128) return false;
+  const mark = (/** @type {string} */ c) => /\p{M}/u.test(c);
+  const han = (/** @type {string} */ c) => /\p{Script=Han}/u.test(c);
+  const hira = (/** @type {string} */ c) => /\p{Script=Hiragana}/u.test(c);
+  const kata = (/** @type {string} */ c) => /\p{Script=Katakana}/u.test(c);
+  if (scriptOf(c1) === scriptOf(c2)) return hira(c1) && kata(c2);
+  if (mark(c2) && !mark(c1)) return false;
+  if (mark(c1) && !mark(c2)) return false;
+  if (han(c1) && !han(c2) && (hira(c2) || kata(c2))) return false;
+  return true;
+}
+
 /** `forward-word`: to the end of the next word, or the end of the buffer. @param {string} text @param {number} pos @param {(ch: string) => boolean} [word] */
 export function forwardWord(text, pos, word = isWord) {
   let i = pos;
   while (i < text.length && !word(text[i])) i += 1;
-  while (i < text.length && word(text[i])) i += 1;
+  if (i < text.length) i += 1;
+  while (i < text.length && word(text[i]) && !wordBoundary(text[i - 1], text[i])) i += 1;
   return i;
 }
 
@@ -45,7 +75,8 @@ export function forwardWord(text, pos, word = isWord) {
 export function backwardWord(text, pos, word = isWord) {
   let i = pos;
   while (i > 0 && !word(text[i - 1])) i -= 1;
-  while (i > 0 && word(text[i - 1])) i -= 1;
+  if (i > 0) i -= 1;
+  while (i > 0 && word(text[i - 1]) && !wordBoundary(text[i - 1], text[i])) i -= 1;
   return i;
 }
 
@@ -106,7 +137,8 @@ const COMMANDS = {
   'org-backward-heading-same-level': (s) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, 1, false).pos }),
   'outline-up-heading': (s) => {
     const r = org.upHeading(s.text, s.pos, 1);
-    return r.error ? fail(s, r.error, { pos: r.pos }) : next(s, { pos: r.pos });
+    const mark = s.last === 'outline-up-heading' ? s.mark : s.pos; // outline-up-heading sets the mark, unless the last command was it too
+    return r.error ? fail(s, r.error, { pos: r.pos, mark }) : next(s, { pos: r.pos, mark });
   },
   'org-todo': (s) => orgChange(s, org.cycleTodo(s.text, s.pos), 'C-c C-t'),
   'org-ctrl-c-ctrl-c': (s) => orgChange(s, org.ctrlCCtrlC(s.text, s.pos), 'C-c C-c'),
@@ -151,7 +183,7 @@ const COMMANDS = {
     return next(s, { kill: appended ? [s.kill[0] + piece, ...s.kill.slice(1)] : [piece, ...s.kill], yankAt: 0, last: 'kill-region' });
   },
   'org-yank': (s) => {
-    if (s.kill.length === 0) return fail(s, 'Kill ring is empty');
+    if (s.kill.length === 0) return fail(s, 'Kill ring is empty', { mark: s.pos }); // the mark is set before the ring is read
     const piece = s.kill[s.yankAt ?? 0];
     const done = orgYank(s.text, s.pos, piece, s.yank ?? { adjusted: false, folded: true });
     // a plain paste is an insertion at the caret; telling it from the text alone could put it a character off when the text repeats
@@ -163,7 +195,7 @@ const COMMANDS = {
     const ch = s.arg ?? '';
     return next(s, { text: s.text.slice(0, s.pos) + ch + s.text.slice(s.pos), pos: s.pos + ch.length, mark: markerAfter(s.mark, s.pos, s.pos, ch.length), edits: [{ from: s.pos, removed: '', inserted: ch.length }] });
   },
-  'org-open-line': (s) => next(s, { text: s.text.slice(0, s.pos) + '\n' + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, 1), edits: [{ from: s.pos, removed: '', inserted: 1 }] }),
+  'org-open-line': (s) => openRow(s) ?? next(s, { text: s.text.slice(0, s.pos) + '\n' + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, 1), edits: [{ from: s.pos, removed: '', inserted: 1 }] }),
   'transpose-chars': (s) => transposeChars(s, null),
   'org-transpose-words': transposeWords,
   'upcase-word': (s) => casify(s, (x) => x.toUpperCase()),
@@ -226,7 +258,7 @@ function deleteSpace(s, backwardOnly) {
   let to = s.pos;
   while (from > 0 && /[ \t]/.test(s.text[from - 1])) from -= 1;
   if (!backwardOnly) while (to < s.text.length && /[ \t]/.test(s.text[to])) to += 1;
-  return next(s, { text: s.text.slice(0, from) + s.text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: [{ from, removed: s.text.slice(from, to), inserted: 0, pt: from }] });
+  return next(s, { text: s.text.slice(0, from) + s.text.slice(to), pos: from, mark: markerAfter(s.mark, from, to, 0), edits: from === to ? [] : [{ from, removed: s.text.slice(from, to), inserted: 0, pt: from }] });
 }
 
 /** `just-one-space` with `n`: the spaces and tabs around the caret (and the newlines when `n` is negative) become `|n|` spaces, reusing the spaces right after the caret's run.
@@ -565,11 +597,19 @@ function orgChange(s, change, what) {
 /** Whether a heading start is outside the folded stretches. @param {EditState} s @returns {(p: number) => boolean} */
 const visibleIn = (s) => (p) => !(s.hidden ?? []).some(([a, b]) => p > a && p < b);
 
+/** `org-open-line` on a table row inserts a row; null elsewhere. @param {EditState} s */
+function openRow(s) {
+  const change = tableEdit(s.text, s.pos, 'insert-row');
+  return change ? orgChange(s, change, 'C-o') : null;
+}
+
 /** `M-up`, `M-down`, `M-left`, `M-right` (`org-metaup` and the others): the heading, list item or word at the caret.
  * @param {EditState} s @param {'up' | 'down' | 'left' | 'right'} dir */
-function orgMeta(s, dir) {
+function orgMeta(s, dir, count = /** @type {number | null} */ (null)) {
   const { text, pos } = s;
+  if ((dir === 'up' || dir === 'down') && s.active && s.mark !== null && s.mark !== pos) return moveRegionLines(s, dir === 'up');
   if (org.onHeadingLine(text, pos)) {
+    if (count !== null && (dir === 'up' || dir === 'down')) return moveSubtreeBy(s, dir === 'up', count);
     if (dir === 'left' || dir === 'right') return orgChange(s, org.shiftHeading(text, pos, dir === 'left'), `M-${dir}`);
     return orgChange(s, org.moveSubtree(text, pos, dir === 'up'), `M-${dir}`);
   }
@@ -577,23 +617,104 @@ function orgMeta(s, dir) {
     const fn = { up: org.moveItemUpAt, down: org.moveItemDownAt, left: org.outdentItemAt, right: org.indentItemAt }[dir];
     return orgChange(s, fn(text, pos), `M-${dir}`);
   }
-  if (/^[ \t]*\|/.test(text.slice(lineStart(text, pos), lineEnd(text, pos)))) return fail(s, `M-${dir} in a table is not available yet`);
+  // in a table the commands that stand for "down" and "right" pass the prefix argument on as their direction flag: with any prefix they go up and left
+  const tableDir = count !== null && dir === 'down' ? 'up' : count !== null && dir === 'right' ? 'left' : dir;
+  const inTable = tableEdit(text, pos, /** @type {const} */ ({ up: 'row-up', down: 'row-down', left: 'column-left', right: 'column-right' })[tableDir], tableDir === dir);
+  if (inTable) return orgChange(s, inTable, `M-${dir}`); // a prefix does not repeat it
   if (/^[ \t]*:[^\s:]+:/.test(text.slice(lineStart(text, pos), lineEnd(text, pos)))) return fail(s, `M-${dir} in a drawer is not available yet`);
-  if (dir === 'left') return COMMANDS['backward-word'](s);
-  if (dir === 'right') return COMMANDS['forward-word'](s);
+  if (dir === 'left') return count === null ? COMMANDS['backward-word'](s) : COUNTED['backward-word'](s, count, false); // elsewhere M-left and M-right are the word motions
+  if (dir === 'right') return count === null ? COMMANDS['forward-word'](s) : COUNTED['forward-word'](s, count, false);
   return fail(s, `M-${dir} here is not available yet`);
+}
+
+/** `org-move-subtree-up` and `-down` by `n` (the other way when negative; 0 only goes to the start of the heading), each move one change to the text. @param {EditState} s @param {boolean} up @param {number} n */
+function moveSubtreeBy(s, up, n) {
+  const dirUp = n < 0 ? !up : up;
+  if (n === 0) return next(s, {});
+  const start = org.headingBefore(s.text, s.pos);
+  let cur = s;
+  /** @type {Edit[]} */ const edits = [];
+  for (let i = 0; i < Math.abs(n); i += 1) {
+    const step = orgChange(cur, org.moveSubtree(cur.text, cur.pos, dirUp), up ? 'M-up' : 'M-down');
+    if (step.error) return fail(s, step.error, { pos: start }); // Org looks for the place first: nothing moves when there are too few
+    edits.push(...diffEdit(cur.text, step.text));
+    cur = step;
+  }
+  return next(s, { text: cur.text, pos: cur.pos, mark: cur.mark, edits });
+}
+
+/**
+ * `org-metaup` and `org-metadown` with the region active: the lines of the region trade places with the line before (or after) them
+ * (`transpose-regions`), and the caret goes to the start of the line moved over (up) or the end of the buffer's text moved (down).
+ * @param {EditState} s @param {boolean} up
+ */
+function moveRegionLines(s, up) {
+  const { text, pos, mark } = s;
+  const m = /** @type {number} */ (mark);
+  const bol = (/** @type {number} */ p) => text.lastIndexOf('\n', p - 1) + 1;
+  const eol = (/** @type {number} */ p) => (text.indexOf('\n', p) < 0 ? text.length : text.indexOf('\n', p));
+  const a = bol(Math.min(pos, m));
+  const end = Math.max(pos, m);
+  const b = end === 0 || text[end - 1] === '\n' ? end - 1 : eol(end);
+  const atBol = (/** @type {number} */ p) => p === 0 || text[p - 1] === '\n';
+  let c;
+  let d;
+  if (up) {
+    c = a === 0 ? 0 : bol(a - 1);
+    d = a === 0 ? eol(0) : a - 1;
+  } else {
+    const line = (/** @type {number} */ from, /** @type {number} */ n) => { // move-beginning-of-line n and move-end-of-line n from `from`
+      let p = from;
+      for (let i = 1; i < n; i++) p = eol(p) < text.length ? eol(p) + 1 : text.length;
+      return [bol(p), eol(p)];
+    };
+    [c, d] = line(b, atBol(b) ? 1 : 2);
+  }
+  const [s1, e1, s2, e2] = up ? [c, d, a, b] : [a, b, c, d];
+  if (up && a === 0) return next(s, { pos: 0 }); // on the first line there is nothing to move over: Emacs leaves the text and the caret goes to the start
+  if (e1 > s2) return fail(s, 'Transposed regions overlap');
+  const moved = (/** @type {number} */ p) => (p < s1 || p >= e2 ? p : p < e1 ? p + (e2 - e1) : p < s2 ? p + (e2 - s2) - (e1 - s1) : p - (e1 - s1) - (s2 - e1)); // transpose-regions moves a marker with its text
+  const out = text.slice(0, s1) + text.slice(s2, e2) + text.slice(e1, s2) + text.slice(s1, e1) + text.slice(e2);
+  const to = up ? c : d;
+  if (out === text) return next(s, { pos: to });
+  // Emacs records the swap as one change over both regions, or as one change for each when they are as long as each other
+  const edits = e1 - s1 === e2 - s2 ? [{ from: s1, removed: text.slice(s1, e1), inserted: e1 - s1, pt: pos, markers: false }, { from: s2, removed: text.slice(s2, e2), inserted: e2 - s2, markers: false }] : [{ from: s1, removed: text.slice(s1, e2), inserted: e2 - s1, pt: pos, markers: false }];
+  return next(s, { text: out, pos: to, mark: moved(m), edits });
+}
+
+/** `org-next-visible-heading` by `arg` (the previous heading when negative; 0 only goes to the start of the line). @param {EditState} s @param {number} arg */
+function visibleHeading(s, arg) {
+  if (arg > 0) return next(s, { pos: org.nextHeading(s.text, s.pos, arg, visibleIn(s)).pos });
+  if (arg < 0) return next(s, { pos: org.previousHeading(s.text, s.pos, -arg, visibleIn(s)).pos });
+  return next(s, { pos: lineStart(s.text, s.pos) });
+}
+
+/** `org-forward-heading-same-level` by `arg` (backward when negative; the count 0 goes to the heading the caret is under). @param {EditState} s @param {number} arg */
+function sameLevel(s, arg) {
+  if (arg !== 0) return next(s, { pos: org.sameLevelHeading(s.text, s.pos, Math.abs(arg), arg > 0).pos });
+  const here = org.headingBefore(s.text, s.pos);
+  return next(s, { pos: here >= 0 ? here : org.nextHeading(s.text, s.pos, 1, visibleIn(s)).pos });
 }
 
 /** The commands that take a prefix argument: what each does with it. @type {Record<string, (s: EditState, n: number, universal: boolean) => EditState>} */
 const COUNTED = {
-  'org-next-visible-heading': (s, n) => next(s, { pos: org.nextHeading(s.text, s.pos, Math.max(1, n), visibleIn(s)).pos }),
-  'org-previous-visible-heading': (s, n) => next(s, { pos: org.previousHeading(s.text, s.pos, Math.max(1, n), visibleIn(s)).pos }),
-  'org-forward-heading-same-level': (s, n) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, Math.max(1, n), true).pos }),
-  'org-backward-heading-same-level': (s, n) => next(s, { pos: org.sameLevelHeading(s.text, s.pos, Math.max(1, n), false).pos }),
+  'org-next-visible-heading': (s, n) => visibleHeading(s, n),
+  'org-previous-visible-heading': (s, n) => visibleHeading(s, -n),
+  'org-forward-heading-same-level': (s, n) => sameLevel(s, n),
+  'org-backward-heading-same-level': (s, n) => sameLevel(s, -n),
   'outline-up-heading': (s, n) => {
     const r = org.upHeading(s.text, s.pos, Math.max(1, n));
-    return r.error ? fail(s, r.error, { pos: r.pos }) : next(s, { pos: r.pos });
+    const mark = s.last === 'outline-up-heading' ? s.mark : s.pos;
+    return r.error ? fail(s, r.error, { pos: r.pos, mark }) : next(s, { pos: r.pos, mark });
   },
+  // commands on the region take no argument: a prefix is read and ignored
+  'kill-ring-save': (s) => COMMANDS['kill-ring-save'](s),
+  'mark-whole-buffer': (s) => COMMANDS['mark-whole-buffer'](s),
+  'kill-region': (s) => COMMANDS['kill-region'](s),
+  'org-metaleft': (s, n) => orgMeta(s, 'left', n),
+  'org-metaright': (s, n) => orgMeta(s, 'right', n),
+  'org-metaup': (s, n) => orgMeta(s, 'up', n),
+  'org-metadown': (s, n) => orgMeta(s, 'down', n),
   'beginning-of-buffer': (s, n, u) => bufferEnd(s, false, n, u),
   'end-of-buffer': (s, n, u) => bufferEnd(s, true, n, u),
   'transpose-chars': (s, n) => transposeChars(s, n),
@@ -629,14 +750,14 @@ const COUNTED = {
   'upcase-word': (s, n) => casifyWords(s, (x) => x.toUpperCase(), n),
   'downcase-word': (s, n) => casifyWords(s, (x) => x.toLowerCase(), n),
   'capitalize-word': (s, n) => casifyWords(s, capitalize, n),
-  'org-open-line': (s, n) => (n < 0 ? fail(s, 'Repetition argument has to be non-negative') : n === 0 ? next(s, { pos: lineEnd(s.text, s.pos) }) : next(s, { text: s.text.slice(0, s.pos) + '\n'.repeat(n) + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, n), edits: [{ from: s.pos, removed: '', inserted: n }] })),
+  'org-open-line': (s, n) => openRow(s) ?? (n < 0 ? fail(s, 'Repetition argument has to be non-negative') : n === 0 ? next(s, { pos: lineEnd(s.text, s.pos) }) : next(s, { text: s.text.slice(0, s.pos) + '\n'.repeat(n) + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, n), edits: [{ from: s.pos, removed: '', inserted: n }] })),
   'self-insert-command': (s, n) => {
     if (n < 0) return fail(s, `Negative repetition argument ${n}`);
     const ch = (s.arg ?? '').repeat(n);
     return next(s, { text: s.text.slice(0, s.pos) + ch + s.text.slice(s.pos), pos: s.pos + ch.length, mark: markerAfter(s.mark, s.pos, s.pos, ch.length), edits: [{ from: s.pos, removed: '', inserted: ch.length }] });
   },
   'org-yank': (s, n, universal) => {
-    if (s.kill.length === 0) return fail(s, 'Kill ring is empty');
+    if (s.kill.length === 0) return fail(s, 'Kill ring is empty', { mark: s.pos }); // the mark is set before the ring is read
     const at = universal ? (s.yankAt ?? 0) : (((s.yankAt ?? 0) + n - 1) % s.kill.length + s.kill.length) % s.kill.length;
     const piece = s.kill[at];
     const text = s.text.slice(0, s.pos) + piece + s.text.slice(s.pos);
@@ -647,19 +768,41 @@ const COUNTED = {
   },
 };
 
+/** The columns a character takes on screen: a control character shows as two (^A). @param {string} ch */
+const charColumns = (ch) => (ch < ' ' || ch === '\x7f' ? 2 : width(ch));
+
+/** `current-column`: where `pos` is on its line, a tab going to the next multiple of 8 and a wide character taking two. @param {string} text @param {number} pos */
+export function displayColumn(text, pos) {
+  let col = 0;
+  for (const ch of text.slice(lineStart(text, pos), pos)) col = ch === '\t' ? col + 8 - (col % 8) : col + charColumns(ch);
+  return col;
+}
+
+/** `move-to-column`: the offset in `line` at the first place that is at or past column `goal` (after the character that crosses it), or its end. @param {string} line @param {number} goal */
+function offsetAtColumn(line, goal) {
+  let col = 0;
+  let i = 0;
+  for (const ch of line) {
+    if (col >= goal) break;
+    col = ch === '\t' ? col + 8 - (col % 8) : col + charColumns(ch);
+    i += ch.length;
+  }
+  return i;
+}
+
 /** `next-line` and `previous-line` on logical lines, keeping the goal column. @param {EditState} s @param {1 | -1} dir */
 function vertical(s, dir) {
-  const goal = s.goal ?? s.pos - lineStart(s.text, s.pos);
+  const goal = s.goal ?? displayColumn(s.text, s.pos);
   const here = lineStart(s.text, s.pos);
   if (dir === 1) {
     const end = lineEnd(s.text, s.pos);
     if (end >= s.text.length) return { ...fail(s, 'End of buffer', { pos: end }), goal };
     const start = end + 1;
-    return { ...s, goal, pos: Math.min(start + goal, lineEnd(s.text, start)) };
+    return { ...s, goal, pos: start + offsetAtColumn(s.text.slice(start, lineEnd(s.text, start)), goal) };
   }
   if (here === 0) return { ...fail(s, 'Beginning of buffer', { pos: 0 }), goal };
   const start = lineStart(s.text, here - 1);
-  return { ...s, goal, pos: Math.min(start + goal, here - 1) };
+  return { ...s, goal, pos: start + offsetAtColumn(s.text.slice(start, here - 1), goal) };
 }
 
 /** @param {EditState} s @param {(x: string) => string} fn */
@@ -740,7 +883,12 @@ function swap(s, s1, e1, s2, e2) {
 const KILLS = new Set(['kill-word', 'backward-kill-word', 'org-kill-line', 'kill-region']);
 
 /** The commands that join the group of the one before them (`undo-auto-amalgamate`). */
-const AMALGAMATING = new Set(['self-insert-command', 'org-delete-char', 'org-delete-backward-char', 'org-open-line']);
+COMMANDS['quoted-insert'] = COMMANDS['self-insert-command']; // C-q: the character is inserted as it is
+COUNTED['quoted-insert'] = COUNTED['self-insert-command'];
+COMMANDS['org-force-self-insert'] = COMMANDS['self-insert-command']; // | : Org's own command for it, so it does not amalgamate with the characters around it
+COUNTED['org-force-self-insert'] = COUNTED['self-insert-command'];
+
+const AMALGAMATING = new Set(['self-insert-command', 'org-force-self-insert', 'org-delete-char', 'org-delete-backward-char', 'org-open-line']);
 
 /** The one edit that turns `a` into `b`, from their common prefix and suffix. @param {string} a @param {string} b @returns {Edit[]} */
 function diffEdit(a, b) {
@@ -793,7 +941,11 @@ export function execute(state, name, arg, prefix) {
   u.ptBefore = state.pos;
   if (name === 'undo' || name === 'undo-redo') {
     const buf = { text: state.text, pos: state.pos, mark: state.mark, changed: false };
-    const count = prefix && !prefix.universal ? Math.max(1, prefix.n) : 1;
+    if (name === 'undo-redo' && prefix && !prefix.universal && prefix.n === 0) { // the count 0 takes nothing back (it still needs an undo to take back)
+      if (!lastChangeWasUndo(u)) return { ...state, goal: null, error: 'No undone changes to redo', last: 'undo-redo' };
+      return { ...state, goal: null, message: 'Redo', last: 'undo', error: undefined };
+    }
+    const count = prefix && !prefix.universal ? (prefix.n === 0 ? 0 : Math.max(1, prefix.n)) : 1;
     // with the region active (or a C-u prefix and a mark), undo changes only what is inside it
     const region = name === 'undo' && state.mark !== null && state.mark !== undefined && (state.active || prefix?.universal) ? { start: Math.min(state.pos, state.mark), end: Math.max(state.pos, state.mark) } : null;
     const noMark = name === 'undo' && prefix?.universal && !(state.mark !== null && state.mark !== undefined);
@@ -807,7 +959,8 @@ export function execute(state, name, arg, prefix) {
   if (prefix && !counted) return { ...state, goal: null, error: `${name} does not take a prefix argument yet`, last: name };
   const run = counted && prefix ? (/** @type {EditState} */ st) => counted(st, prefix.n, prefix.universal) : COMMANDS[name];
   if (!run) throw new Error(`unknown command ${name}`);
-  if (AMALGAMATING.has(name) && u.amalgamated !== null) {
+  const amalgamates = AMALGAMATING.has(name) && !((name === 'self-insert-command' || name === 'org-force-self-insert') && prefix && prefix.n >= 2); // self-insert-command amalgamates only when it inserts one character
+  if (amalgamates && u.amalgamated !== null) {
     if (u.amalgamated < 20 && name === state.last && u.list && u.list.e === null) u.list = u.list.next;
     else u.amalgamated = -1;
   }
@@ -823,7 +976,7 @@ export function execute(state, name, arg, prefix) {
     if (e.inserted) recordInsert(u, e.from, e.inserted, e.wrap);
   }
   boundary(u, done.pos);
-  u.amalgamated = AMALGAMATING.has(name) ? (u.amalgamated === null ? 0 : u.amalgamated + 1) : null;
+  u.amalgamated = amalgamates ? (u.amalgamated === null ? 0 : u.amalgamated + 1) : null;
   const active = name === 'exchange-point-and-mark' && prefix && !done.error ? false : regionActive(state, done, name, edits.length > 0);
   const verticalMove = name === 'next-line' || name === 'previous-line';
   // the commands that set the mark as a side effect say so, as push-mark does

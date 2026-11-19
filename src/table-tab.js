@@ -41,7 +41,8 @@ export function tableTab(text, pos, alignOnly = false) {
   while (last + 1 < lines.length && TABLE_LINE.test(lines[last + 1])) last += 1;
   const indent = /^[ \t]*/.exec(lines[first])?.[0] ?? '';
   const rowsOf = (/** @type {number} */ extra) => [...lines.slice(first, last + 1).map(cellsOf), ...Array(extra).fill(0).map(() => /** @type {string[]} */ ([]))];
-  const aligned = layoutTable(rowsOf(0)).map((l) => indent + l);
+  const ruleColumns = lines[first].split('+').length; // a table of rules only: Org counts the "+" of its first line
+  const aligned = layoutTable(rowsOf(0), undefined, ruleColumns).map((l) => indent + l);
   const row = line - first;
   // where the caret is in the aligned line: after the pipe that starts its field, before the first pipe, or at the end of the line
   const col = pos - start;
@@ -60,8 +61,8 @@ export function tableTab(text, pos, alignOnly = false) {
   /** The table with an empty row after row `after`, the caret in its first field. @param {number} after */
   const withNewRow = (after) => {
     const rows = lines.slice(first, last + 1).map(cellsOf);
-    rows.splice(after + 1, 0, rows.some((r) => r) ? [] : ['']);
-    const out = layoutTable(rows).map((l) => indent + l);
+    rows.splice(after + 1, 0, rows.some((r) => r) ? [] : Array(ruleColumns).fill(''));
+    const out = layoutTable(rows, undefined, ruleColumns).map((l) => indent + l);
     const caret = out.slice(0, after + 1).reduce((n, l) => n + l.length + 1, 0) + indent.length + 2;
     return finish(out, caret);
   };

@@ -63,13 +63,13 @@ export function moveColumn(heading, table, [row, col], left) {
   const to = col + (left ? -1 : 1);
   if (to < 0) throw new Error('Cannot move column further left');
   if (to >= n) throw new Error('Cannot move column further right');
-  pad(table);
   for (const row of table.rows) {
-    if (row.type !== 'row') continue;
+    if (row.type !== 'row' || Math.max(col, to) >= row.cells.length) continue; // a row too short for both fields is left as it is
     const x = row.cells[col];
     row.cells[col] = row.cells[to];
     row.cells[to] = x;
   }
+  pad(table);
   if (table.tblfm !== null) table.tblfm = fixTableFormulas(table.tblfm, '$', { [col + 1]: String(to + 1), [to + 1]: String(col + 1) }, undefined, 0);
   write(heading, table);
   return [row, to];

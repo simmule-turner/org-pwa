@@ -26,6 +26,7 @@ export const BINDINGS = {
   'C-y': 'org-yank',
   'C-o': 'org-open-line',
   'C-t': 'transpose-chars',
+  'C-q': 'quoted-insert',
   'M-t': 'org-transpose-words',
   'M-u': 'upcase-word',
   'M-l': 'downcase-word',
@@ -93,7 +94,8 @@ export const newKeyInput = () => ({ pending: [], arg: null });
 /**
  * What the keys so far amount to.
  * @typedef {{ type: 'pending', echo: string } | { type: 'quit' } | { type: 'unhandled' } | { type: 'error', message: string }
- *   | { type: 'run', command: string, key: string, prefix?: Prefix, char?: string }} KeyResult
+ *   | { type: 'run', command: string, key: string, prefix?: Prefix, char?: string, again?: string }} KeyResult
+ * `again` is a key that ended a quoted character code and is then typed as itself.
  */
 
 /** @param {string} key */
@@ -106,6 +108,7 @@ const isDigit = (key) => /^[0-9]$/.test(key);
  */
 export function feedKey(input, rawKey) {
   let key = rawKey;
+  if (input.pending[0] === 'C-q') return quotedChar(input, key); // before C-g: C-q C-g inserts the bell character
   if (key === 'C-g') return { input: newKeyInput(), result: { type: 'quit' } };
   // ESC followed by a key is that key with Meta
   if (input.pending.length === 1 && input.pending[0] === 'ESC') {
@@ -132,14 +135,57 @@ export function feedKey(input, rawKey) {
     if (key === 'M--') return { input: { pending: [], arg: { n: null, negative: true, universal: false, typed: '', echo: 'M--' } }, result: { type: 'pending', echo: 'M---' } };
   }
   const prefix = arg && !arg.cleared ? finishPrefix(arg) : undefined;
+  if (joined === 'C-q') return { input: { ...input, pending: sequence }, result: { type: 'pending', echo: `${arg ? `${arg.echo} ` : ''}C-q-` } };
   if (PREFIXES.has(joined)) return { input: { ...input, pending: sequence }, result: { type: 'pending', echo: `${arg ? `${arg.echo} ` : ''}${joined}-` } };
   const command = BINDINGS[joined];
   if (command) return { input: newKeyInput(), result: { type: 'run', command, key: joined, ...(prefix ? { prefix } : {}) } };
   if (sequence.length > 1) return { input: newKeyInput(), result: { type: 'error', message: `${joined} is not available` } };
   if ([...key].length === 1 && !key.startsWith('C-') && !key.startsWith('M-')) {
-    return { input: newKeyInput(), result: { type: 'run', command: 'self-insert-command', key, char: key, ...(prefix ? { prefix } : {}) } };
+    return { input: newKeyInput(), result: { type: 'run', command: key === '|' ? 'org-force-self-insert' : 'self-insert-command', key, char: key, ...(prefix ? { prefix } : {}) } }; // Org binds | to its own command, which is an undo step of its own
   }
   return { input: newKeyInput(), result: { type: 'unhandled' } };
+}
+
+/** The character code of a key typed after C-q, as Emacs's `read-quoted-char` takes it; null for a key that is not a character (an arrow).
+ * @param {string} key @returns {number | null | 'invalid'} */
+function quotedCode(key) {
+  /** @type {Record<string, number>} */
+  const named = { SPC: 32, TAB: 9, RET: 13, ESC: 27, DEL: 127 };
+  if (key in named) return named[key];
+  if ([...key].length === 1) return /** @type {number} */ (key.codePointAt(0));
+  const meta = /^M-(.)$/u.exec(key);
+  if (meta) return /** @type {number} */ (meta[1].codePointAt(0)) | 128;
+  const control = /^C-(.|SPC)$/u.exec(key);
+  if (control) {
+    const c = control[1];
+    if (c === 'SPC' || c === '@') return 0;
+    if (/^[a-z]$/.test(c)) return c.charCodeAt(0) - 96;
+    if (/^[A-Z]$/.test(c)) return c.charCodeAt(0) - 64;
+    if ('[\\]^_'.includes(c)) return c.charCodeAt(0) - 64;
+    return c === '?' ? 127 : 'invalid'; // another control key is not a character
+  }
+  return null;
+}
+
+/** The key after C-q: the character itself, or octal digits for its code that any other key ends (RET is then dropped, another key typed as itself).
+ * @param {KeyInput} input @param {string} key @returns {{ input: KeyInput, result: KeyResult }} */
+function quotedChar(input, key) {
+  const digits = input.pending.slice(1);
+  const prefix = input.arg && !input.arg.cleared ? finishPrefix(input.arg) : undefined;
+  /** @param {number} code @param {string} [again] @returns {{ input: KeyInput, result: KeyResult }} */
+  const done = (code, again) => code > 0x10ffff
+    ? { input: newKeyInput(), result: { type: 'error', message: `${code.toString(8)} is not a valid character` } }
+    : { input: newKeyInput(), result: { type: 'run', command: 'quoted-insert', key: 'C-q', char: String.fromCodePoint(code), ...(prefix ? { prefix } : {}), ...(again ? { again } : {}) } };
+  const octal = /^[0-7]$/.test(key);
+  if (octal) return { input: { ...input, pending: [...input.pending, key] }, result: { type: 'pending', echo: `${input.arg ? `${input.arg.echo} ` : ''}C-q ${[...digits, key].join('')}-` } };
+  if (digits.length) {
+    const code = parseInt(digits.join(''), 8);
+    return key === 'RET' ? done(code) : done(code, key);
+  }
+  const code = quotedCode(key);
+  if (code === 'invalid') return { input: newKeyInput(), result: { type: 'error', message: `${key} is not a valid character` } };
+  if (code === null) return { input: newKeyInput(), result: { type: 'error', message: `C-q ${key} is not available` } };
+  return done(code);
 }
 
 /** @param {{ n: number | null, negative: boolean, universal: boolean, typed: string }} arg @returns {Prefix} */

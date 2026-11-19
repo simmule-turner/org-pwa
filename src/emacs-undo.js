@@ -114,7 +114,7 @@ function primitiveUndo(u, buf, n, list) {
 }
 
 /** Whether the newest change is an undo (`undo--last-change-was-undo-p`). @param {UndoState} u */
-function lastChangeWasUndo(u) {
+export function lastChangeWasUndo(u) {
   let l = u.list;
   while (l && l.e === null) l = l.next;
   return u.equiv.has(l);

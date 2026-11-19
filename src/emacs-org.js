@@ -48,7 +48,7 @@ export function previousHeading(text, pos, n, visible = () => true) {
 }
 
 /** The start of the heading the caret is in or after, or -1 before the first heading. @param {string} text @param {number} pos */
-function headingBefore(text, pos) {
+export function headingBefore(text, pos) {
   const starts = headingStarts(text);
   let best = -1;
   for (const s of starts) if (s <= pos) best = s;
@@ -82,14 +82,19 @@ export function sameLevelHeading(text, pos, n, forward) {
 /** `outline-up-heading` (`C-c C-u`), `n` times: to the parent heading. @param {string} text @param {number} pos @param {number} n @returns {Motion} */
 export function upHeading(text, pos, n) {
   const starts = headingStarts(text);
-  let at = pos;
-  for (let i = 0; i < n; i++) {
-    const here = headingBefore(text, at);
-    if (here < 0) return { pos: lineStartAt(text, at), error: 'Before first heading' };
-    const level = levelAt(text, here);
-    const parent = [...starts].reverse().find((s) => s < here && levelAt(text, s) < level);
-    if (parent === undefined) return { pos: here, error: 'Already at top level of the outline' };
+  const here = headingBefore(text, pos);
+  if (here < 0) return { pos: lineStartAt(text, pos), error: 'Before first heading' };
+  let at = here;
+  let level = levelAt(text, here);
+  if (level <= 1) return { pos: here, error: 'Already at top level of the outline' };
+  for (let i = 0; i < n && level > 1 && at > 0; i++) {
+    const parent = [...starts].reverse().find((st) => st < at && levelAt(text, st) < level);
+    if (parent === undefined) {
+      at = 0; // no heading above is higher: the search stops at the start of the buffer
+      break;
+    }
     at = parent;
+    level = levelAt(text, parent);
   }
   return { pos: at };
 }
@@ -260,7 +265,7 @@ export function moveSubtree(text, pos, up) {
 }
 
 /** Whether the caret is on a heading line. @param {string} text @param {number} pos */
-export const onHeadingLine = (text, pos) => /^\*+ /.test(text.slice(lineStartAt(text, pos), lineStartAt(text, pos) + 40).split('\n')[0] + ' ') && /^\*+ /.test(text.slice(lineStartAt(text, pos)).split('\n')[0] + ' ');
+export const onHeadingLine = (text, pos) => /^\*+ /.test(text.slice(lineStartAt(text, pos)).split('\n')[0]); // outline-regexp: stars and a space
 
 /** The TODO keywords of a buffer: the `#+TODO:`, `#+SEQ_TODO:` and `#+TYP_TODO:` lines, or Emacs's TODO and DONE. A sequence is its
  * active words, then those after the `|`. @param {string} text @returns {string[][]} */
@@ -294,7 +299,8 @@ export function cycleTodo(text, pos) {
   const body = current === null ? line.slice(stars.length) : line.slice(stars.length + (m?.[0].length ?? 0) - stars.length);
   const rest = current === null ? body : line.slice(m?.[0].length ?? 0);
   const word = next === null ? '' : `${next} `;
-  let newLine = `${stars}${word}${rest.replace(/^[ \t]+/, '')}`;
+  const outStars = stars.replace(/ +$/, ' '); // the blanks after the stars become one space
+  let newLine = `${outStars}${word}${rest.replace(/^[ \t]+/, '')}`;
   const tagged = /^(.*?)[ \t]+(:(?:[\p{L}\p{N}_@#%]+:)+)[ \t]*$/u.exec(newLine);
   if (tagged) newLine = withTags(tagged[1], tagged[2], getTagsColumn());
   const col = pos - start;
@@ -302,8 +308,8 @@ export function cycleTodo(text, pos) {
   const matchEnd = stars.length + (current === null ? 0 : (m?.[0].length ?? 0) - stars.length);
   let c;
   if (col < starCount) c = col;
-  else if (col <= matchEnd) c = stars.length + word.length;
-  else c = col - matchEnd + stars.length + word.length;
+  else if (col <= matchEnd) c = outStars.length + word.length;
+  else c = col - matchEnd + outStars.length + word.length;
   if (tagged) {
     const oldAt = line.lastIndexOf(tagged[2]);
     const newAt = newLine.lastIndexOf(tagged[2]);

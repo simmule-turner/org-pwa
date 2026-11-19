@@ -87,6 +87,8 @@ export function attachEmacsMode(o) {
     shown: [-1, -1, 'none'],
     /** @type {string | null} */
     clip: null,
+    /** Counts the page's own writes to the clipboard: a read that began before one is out of date when it ends. */
+    clipWrites: 0,
   };
 
   wrap.classList.add('te-emacs');
@@ -98,17 +100,19 @@ export function attachEmacsMode(o) {
   // ---- the kill ring and the device clipboard
   const refreshClipboard = () => {
     if (!o.options.clipboard) return;
+    const writes = ctx.clipWrites;
     o.clipboard.readText().then(
       (text) => {
-        ctx.clip = text;
+        if (writes === ctx.clipWrites) ctx.clip = text; // a read begun before a kill ends with the clipboard as it was before it
       },
       () => {} // the device may not let the page read it; the kill ring then stays the app's own
     );
   };
   /** @param {import('../src/emacs-edit.js').EditState} before @param {import('../src/emacs-edit.js').EditState} after */
   const syncKillRing = (before, after) => {
-    if (!o.options.clipboard || after.kill[0] === undefined || after.kill[0] === before.kill[0]) return;
+    if (!o.options.clipboard || after.kill[0] === undefined || after.kill === before.kill) return; // a kill makes a new ring, even when its text equals the one before
     ctx.clip = after.kill[0];
+    ctx.clipWrites += 1;
     o.clipboard.writeText(after.kill[0]).catch(() => {});
   };
 
@@ -122,8 +126,10 @@ export function attachEmacsMode(o) {
       return;
     }
     if (a === ctx.shown[0] && b === ctx.shown[1] && dir === ctx.shown[2]) return;
-    if (a === b) ctx.st = { ...ctx.st, pos: a, active: false };
-    else ctx.st = dir === 'backward' ? { ...ctx.st, pos: a, mark: b, active: true } : { ...ctx.st, pos: b, mark: a, active: true };
+    // a tap or drag is a command of its own (`mouse-set-point`): the goal column of C-n and C-p and the appending of kills start over
+    const touched = { goal: null, last: 'mouse-set-point' };
+    if (a === b) ctx.st = { ...ctx.st, ...touched, pos: a, active: false };
+    else ctx.st = dir === 'backward' ? { ...ctx.st, ...touched, pos: a, mark: b, active: true } : { ...ctx.st, ...touched, pos: b, mark: a, active: true };
   }
 
   /** Writes the state into the textarea and the layers. */
@@ -251,7 +257,9 @@ export function attachEmacsMode(o) {
       say(result.message);
       return true;
     }
-    return runCommand(result);
+    const ran = runCommand(result);
+    if (result.again) press(result.again); // the key that ended a character code is typed as itself
+    return ran;
   }
 
   /** Runs a command by its Emacs name, from a key or from M-x. @param {{ command: string, char?: string, prefix?: { n: number, universal: boolean } }} result @returns {boolean} */
@@ -303,7 +311,7 @@ export function attachEmacsMode(o) {
   // ---- M-x and the buffer commands
   const BUFFER_COMMANDS = new Set(['switch-to-buffer', 'kill-buffer', 'list-buffers', 'view-echo-area-messages']);
   /** The Emacs mode commands M-x offers: those with a key, less the argument keys. */
-  const modeCommands = () => [...new Set(Object.values(BINDINGS))].filter((c) => !['digit-argument', 'negative-argument', 'universal-argument', 'self-insert-command', 'execute-extended-command'].includes(c));
+  const modeCommands = () => [...new Set(Object.values(BINDINGS))].filter((c) => !['digit-argument', 'negative-argument', 'universal-argument', 'self-insert-command', 'org-force-self-insert', 'quoted-insert', 'execute-extended-command'].includes(c));
 
   async function extendedCommand() {
     const { findPaletteCommandByOrgName, paletteCommandList, runPaletteCommand } = await import('./god-mode-palette.js');
@@ -401,6 +409,10 @@ export function attachEmacsMode(o) {
     }
     const plainMove = !control && !meta && (e.key in MOVES || e.key === 'Escape');
     if (!control && !meta && !plainMove) {
+      if (e.key === 'Enter' && ctx.input.pending[0] === 'C-q') { // C-q 1 0 1 RET: the Return ends the code and is dropped; C-q RET inserts it
+        if (press('RET')) e.preventDefault();
+        return;
+      }
       if (e.key === 'Enter' || e.key === 'Tab') ctx.input = newKeyInput(); // keys that are not Emacs's here end a prefix
       return;
     }

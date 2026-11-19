@@ -11190,6 +11190,192 @@ check('Emacs mode: an edit the browser will not let the page cancel is left to t
   await context.close();
 });
 
+check('Emacs mode: C-SPC, a move, C-w and C-y yank the text just killed, even when the clipboard read begun before the kill ends after it', async () => {
+  const { context, page, errors } = await freshPage();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() => {
+    // the device clipboard answers late, with what it held when asked
+    const real = navigator.clipboard.readText.bind(navigator.clipboard);
+    navigator.clipboard.readText = async () => { const text = await real(); await new Promise((r) => setTimeout(r, 300)); return text; };
+  });
+  await newDocument(page, 'one two three\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+k'); // kills "one two three": an older item, and the clipboard's text
+  await page.keyboard.press('Control+y');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+Space');
+  await page.keyboard.press('Alt+f');
+  await page.keyboard.press('Control+w'); // kills "one"
+  await page.waitForTimeout(500); // the late read ends
+  await page.keyboard.press('End');
+  await page.keyboard.press('Control+y');
+  await page.waitForTimeout(500);
+  const text = await box.inputValue();
+  expect(text === ' two threeone\n', `C-y yanks the text just killed: ${JSON.stringify(text)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: every bound key, typed in the browser, does what Emacs does (text, caret, region, kill ring, echo area)', async () => {
+  const { context, page, errors } = await freshPage();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await newDocument(page, 'x\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const { BINDINGS } = await import('../src/emacs-keymap.js');
+  const oracle = JSON.parse(fs.readFileSync(new URL('../test/fixtures/emacs-edit-oracle.json', import.meta.url), 'utf8'));
+  /** the first (shortest) key sequence of each command @type {Record<string, string>} */
+  const keyOf = {};
+  for (const [seq, cmd] of Object.entries(BINDINGS)) if (!(cmd in keyOf) || seq.length < keyOf[cmd].length) keyOf[cmd] = seq;
+  const NAMED = { DEL: 'Backspace', TAB: 'Tab', SPC: 'Space', ESC: 'Escape', '<up>': 'ArrowUp', '<down>': 'ArrowDown', '<left>': 'ArrowLeft', '<right>': 'ArrowRight', '<backtab>': 'Shift+Tab' };
+  /** @param {string} seq the keys of one sequence as Playwright presses them */
+  const presses = (seq) => seq.split(' ').map((k) => {
+    const mods = [];
+    let rest = k;
+    for (;;) {
+      if (/^C-./.test(rest) && rest.length > 2) { mods.push('Control'); rest = rest.slice(2); } else if (/^M-./.test(rest) && rest.length > 2) { mods.push('Alt'); rest = rest.slice(2); } else break;
+    }
+    const arrow = /^<(\w+)>$/.exec(rest);
+    const key = NAMED[rest] ?? (arrow ? `Arrow${arrow[1][0].toUpperCase()}${arrow[1].slice(1)}` : rest);
+    const SHIFTED = { '<': ',', '>': '.' }; // typed with Shift, as on a keyboard
+    return (rest in SHIFTED ? [...mods, 'Shift', SHIFTED[rest]] : [...mods, key]).join('+');
+  });
+  const prefixKeys = (/** @type {any} */ p) => (p === undefined ? [] : p === 'u' ? ['Control+u'] : [...(p < 0 ? ['Alt+-'] : []), ...String(Math.abs(p)).split('').map((d) => `Alt+${d}`)]);
+  const bad = [];
+  let ran = 0;
+  /** Puts the case in the editor, types its keys and compares what Emacs did. @param {any} c @param {string} label @param {string[]} keys the key presses @param {boolean} viaInput Backspace or C-d as a soft keyboard sends it */
+  async function drive(c, label, keys, viaInput) {
+    await box.evaluate((t, c) => {
+      const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      t.focus();
+      set.call(t, c.text);
+      t.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText', bubbles: true }));
+      if (c.mark !== undefined) t.setSelectionRange(Math.min(c.mark, c.pos), Math.max(c.mark, c.pos), c.pos < c.mark ? 'backward' : 'forward');
+      else t.setSelectionRange(c.pos, c.pos);
+    }, c);
+    await page.evaluate((k) => navigator.clipboard.writeText(k ?? ''), c.kill[0]);
+    await page.waitForTimeout(20);
+    await box.evaluate((t) => { const [a, b, d] = [t.selectionStart, t.selectionEnd, t.selectionDirection]; t.blur(); t.focus(); t.setSelectionRange(a, b, d); }); // coming back to the page reads the clipboard
+    await page.waitForTimeout(40);
+    await page.keyboard.press('Control+g'); // forgets the last command and the region
+    if (c.mark !== undefined) await box.evaluate((t, c) => { t.setSelectionRange(Math.min(c.mark, c.pos), Math.max(c.mark, c.pos), c.pos < c.mark ? 'backward' : 'forward'); }, c);
+    for (const k of prefixKeys(c.prefix)) await page.keyboard.press(k);
+    if (viaInput) await box.evaluate((t, type) => { t.dispatchEvent(new InputEvent('beforeinput', { inputType: type, cancelable: true, bubbles: true })); }, c.cmds[0] === 'org-delete-char' ? 'deleteContentForward' : 'deleteContentBackward');
+    else for (const k of keys) await page.keyboard.press(k);
+    await page.waitForTimeout(/delete/.test(c.cmds.join()) ? 450 : 15);
+    const got = await box.evaluate((t) => ({ text: t.value, a: t.selectionStart, b: t.selectionEnd, dir: t.selectionDirection, say: document.getElementById('status').innerText.trim() }));
+    const e = c.emacs;
+    const last = c.cmds[c.cmds.length - 1];
+    const pos = got.a === got.b ? got.a : got.dir === 'backward' ? got.a : got.b;
+    const checkSay = !c.cmds.some((n) => n === 'kill-ring-save' || n.includes('sentence'));
+    const killed = e.kill[0] !== undefined && e.kill[0] !== c.kill[0] && last !== 'org-yank';
+    const clip = killed ? await page.evaluate(() => navigator.clipboard.readText()) : null;
+    ran += 1;
+    const wrong = [];
+    if (got.text !== e.text) wrong.push('text');
+    if (pos !== e.pos) wrong.push('pos');
+    if (checkSay && e.error === 'null' && got.say !== e.message) wrong.push('message');
+    if (killed && clip !== e.kill[0]) wrong.push('kill');
+    if (wrong.length) bad.push({ cmd: label, seq: viaInput ? `${label} (soft keyboard)` : label, wrong, c: { text: c.text, pos: c.pos, mark: c.mark, prefix: c.prefix, kill: c.kill, cmds: c.cmds }, got: { text: got.text, pos, say: got.say, clip }, emacs: { text: e.text, pos: e.pos, kill: e.kill, message: e.message, error: e.error } });
+  }
+  const pick = (/** @type {any[]} */ l, /** @type {number} */ n) => l.filter((_, i) => i % Math.max(1, Math.floor(l.length / n)) === 0).slice(0, n);
+  // each command typed as keys, and Backspace and C-d again as a phone's soft keyboard sends them (a `beforeinput` event, no key)
+  const runs = [...Object.entries(keyOf).filter(([cmd]) => cmd !== 'set-mark-command').map(([cmd, seq]) => [cmd, seq, false]), ['org-delete-backward-char', 'DEL', true], ['org-delete-char', 'C-d', true]];
+  for (const [cmd, seq, viaInput] of runs) {
+    // not tried: a prefix argument on C-y (the harness's kill ring holds older kills) or 0 on C-t and M-t (they use a mark the earlier cases left)
+    const all = oracle.cases.filter((c) => c.cmds.length === 1 && c.cmds[0] === cmd && c.last === undefined && c.kill.length <= (cmd === 'org-yank' ? 1 : 0) && !(c.mark === c.pos) && !c.inactive && !(cmd === 'org-yank' && c.prefix !== undefined) && !(c.prefix === 0 && /transpose/.test(cmd)));
+    const cases = [...pick(all.filter((c) => c.mark === undefined && c.prefix === undefined), 10), ...pick(all.filter((c) => c.mark !== undefined), 5), ...pick(all.filter((c) => c.prefix !== undefined), 5)];
+    for (const c of cases) await drive(c, cmd, presses(seq), viaInput);
+  }
+  // runs of commands, as typed one after another (kill then yank, kills that append, the region then C-w): Emacs's own answer for each
+  const bound = (/** @type {string} */ n) => n in keyOf && n !== 'set-mark-command' && n !== 'yank-pop'; // M-y cycles the harness's older kills
+  const runsOf = oracle.cases.filter((c) => c.cmds.length > 1 && c.emacs.error === 'null' && c.cmds.every(bound) && c.last === undefined && c.kill.length <= 1 && c.mark === undefined && c.prefix === undefined);
+  for (const c of pick(runsOf, 160)) await drive(c, c.cmds.join(' '), c.cmds.flatMap((n) => presses(keyOf[n])), false);
+  const byCmd = {};
+  for (const b of bad) byCmd[`${b.cmd} (${b.seq}): ${b.wrong.join('+')}`] = (byCmd[`${b.cmd} (${b.seq}): ${b.wrong.join('+')}`] ?? 0) + 1;
+  fs.writeFileSync('/tmp/keys-audit.json', JSON.stringify(bad, null, 1));
+  expect(ran > 450, `ran ${ran} cases`);
+  expect(bad.length === 0, `${bad.length} of ${ran} differ from Emacs\n${JSON.stringify(byCmd, null, 1)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: a tap starts a new command: C-n and C-p forget their goal column and C-k does not append to the kill before it', async () => {
+  const { context, page, errors } = await freshPage();
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await newDocument(page, 'abcdefghij\nxy\nabcdefghij\nabcdefghij\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const at = (/** @type {number} */ n) => box.evaluate((t, n) => { t.focus(); t.setSelectionRange(n, n); document.dispatchEvent(new Event('selectionchange')); }, n);
+  await at(8);
+  await page.keyboard.press('Control+n'); // line 2, the goal column is 8
+  await at(14 + 3); // a tap in line 3, column 3
+  await page.keyboard.press('Control+n');
+  expect((await box.evaluate((t) => t.selectionStart)) === 25 + 3, `C-n after a tap goes to column 3, not the old goal column: ${await box.evaluate((t) => t.selectionStart)}`);
+  await at(0);
+  await page.keyboard.press('Control+k'); // kills "abcdefghij"
+  await at(1); // the line of "xy", now second
+  await page.keyboard.press('Control+k'); // after a tap: a kill of its own, "xy"
+  await page.waitForTimeout(100);
+  expect((await page.evaluate(() => navigator.clipboard.readText())) === 'xy', `the second C-k is not appended to the first: ${JSON.stringify(await page.evaluate(() => navigator.clipboard.readText()))}`);
+  // killing text equal to the newest kill still puts it on the clipboard
+  await page.evaluate(() => navigator.clipboard.writeText('something else'));
+  await box.evaluate((t) => { t.blur(); t.focus(); t.setSelectionRange(0, 0); });
+  await page.waitForTimeout(50);
+  await box.evaluate((t) => { const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'xy\nxy\n'); t.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText', bubbles: true })); t.setSelectionRange(3, 3); });
+  await page.keyboard.press('Control+k'); // "xy", the same as the newest kill
+  await page.waitForTimeout(100);
+  expect((await page.evaluate(() => navigator.clipboard.readText())) === 'xy', `a kill equal to the newest one reaches the clipboard: ${JSON.stringify(await page.evaluate(() => navigator.clipboard.readText()))}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-q inserts the next key as it is, C-o on a table row inserts a row, and M-arrows move a table row or column', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'ab\n| a | b |\n| cc | d |\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const caret = (/** @type {number} */ n) => box.evaluate((t, n) => { t.focus(); t.setSelectionRange(n, n); document.dispatchEvent(new Event('selectionchange')); }, n);
+  await caret(0);
+  await page.keyboard.press('Control+q');
+  await page.keyboard.type('1'); // an octal code: 101 is A
+  await page.keyboard.type('0');
+  await page.keyboard.type('1');
+  await page.keyboard.press('Enter');
+  expect((await box.inputValue()).startsWith('Aab\n'), `C-q 1 0 1 RET inserts A and nothing else: ${JSON.stringify(await box.inputValue())}`);
+  await page.keyboard.press('Control+q');
+  await page.keyboard.press('Control+a');
+  expect((await box.inputValue()).startsWith('A\u0001ab'), `C-q C-a inserts the control character: ${JSON.stringify(await box.inputValue())}`);
+  const row = (await box.inputValue()).indexOf('| a | b |');
+  await caret(row + 2);
+  await page.keyboard.press('Control+o');
+  expect((await box.inputValue()).includes('|    |   |\n| a  | b |\n| cc | d |'), `C-o on a table row opens an aligned row above: ${JSON.stringify(await box.inputValue())}`);
+  await page.keyboard.press('Alt+ArrowDown');
+  expect((await box.inputValue()).includes('| a  | b |\n|    |   |\n| cc | d |'), `M-down moves the row down: ${JSON.stringify(await box.inputValue())}`);
+  await page.keyboard.press('Alt+ArrowRight');
+  expect((await box.inputValue()).includes('| b |  a |') || (await box.inputValue()).includes('| b | a  |'), `M-right moves the column right: ${JSON.stringify(await box.inputValue())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Emacs mode: the palette runs Cycle TODO state, Promote and Demote heading and Move subtree on the heading at the caret', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* TODO One\nbody\n* Two\ntext\n');

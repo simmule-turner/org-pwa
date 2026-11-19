@@ -3,7 +3,7 @@
  * The editing commands in a buffer with folded text. A folded stretch is one step for the caret, as in Emacs: C-f and C-b go over it, C-n and
  * C-p skip the lines in it, C-k kills through it and C-d at the end of its heading does nothing. Held to Emacs by test/emacs-fold-motion.test.js.
  */
-import { execute } from './emacs-edit.js';
+import { displayColumn, execute } from './emacs-edit.js';
 
 /** @typedef {import('./org-fold.js').Range} Range */
 /** @typedef {import('./emacs-edit.js').EditState} EditState */
@@ -23,7 +23,7 @@ export function foldedExecute(state, hidden, command, arg, prefix) {
   const lineEnds = ([, b]) => b < len || state.text[b - 1] !== '\n';
   const after = hidden.find((r) => r[1] === state.pos && lineEnds(r)); // a caret after the dots is still on the heading's line
   if (after && LINE_COMMANDS.has(command)) {
-    const col = state.pos - (state.text.lastIndexOf('\n', state.pos - 1) + 1); // the column is the text line's, the line is the heading's
+    const col = displayColumn(state.text, state.pos); // the column is the text line's, the line is the heading's
     return foldedExecute({ ...state, pos: after[0], goal: command === 'org-beginning-of-line' || command === 'org-end-of-line' ? state.goal : col }, hidden, command, arg, prefix);
   }
   /** Whether a caret at `p` is on a hidden line: after the dots of a folded heading, where a line motion goes on. @param {number} p */

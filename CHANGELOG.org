@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v725 — More of Emacs's keys in Emacs mode
+Yank after kill now gives the text just killed, and C-n and C-p forget their goal column after a tap. New or corrected keys: C-q, C-o on a table row, M-arrows in tables, M-up and M-down on a region's lines, C-c C-u, words that change script (日本語text), tabs and wide characters in vertical moves, prefix arguments on the Org motion keys and on undo, and | as its own undo step. Typed keys are now checked against Emacs on random sequences as well as fixed ones.
+Verified: 36,000 key sequences compared with Emacs 29.3, plus 3,000 random ones.
+
 * v724 — Backspace deletes the right characters in Emacs mode
 Backspace and Delete in Emacs mode now do what Emacs does: an emoji goes whole, an active region goes whole, a table keeps its columns, and a heading's tags realign. On Android, a second deletion that the keyboard adds after ours (two characters gone from one Backspace) is taken back. Palette heading commands that the Text view cannot do yet say so instead of "tap a heading first". The keyboard debug log now records Emacs-mode keys and edits.
 Verified: 58,000 editing runs compared with Emacs 29.3, including Backspace and Delete.

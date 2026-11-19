@@ -51,6 +51,7 @@ const SHELL_FILES = [
   './src/emacs-scroll.js',
   './src/emacs-sentence.js',
   './src/emacs-undo.js',
+  './src/emacs-table.js',
   './src/org-yank.js',
   './src/text-syntax.js',
   './src/diary-sexp.js',
