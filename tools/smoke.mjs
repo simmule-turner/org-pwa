@@ -10936,6 +10936,7 @@ check('Emacs mode: keys typed on a soft keyboard after Ctrl or Meta from the pan
     set.call(t, v.slice(0, at) + c + v.slice(at));
     t.setSelectionRange(at + c.length, at + c.length);
     t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: c, isComposing: true, bubbles: true }));
+    t.dispatchEvent(new CompositionEvent('compositionend', { data: c, bubbles: true })); // this keyboard commits each key
   }, ch);
   const whole = () => box.evaluate((t) => t.value);
   const click = (/** @type {string} */ name) => page.getByRole('button', { name, exact: true }).click();
@@ -11107,7 +11108,7 @@ check('Emacs mode: C-x C-b lists the open files and C-h e shows the messages', a
   await context.close();
 });
 
-check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, keyboard, Float), and its keys reach the Find box: Ctrl and g quits the search, the arrows step', async () => {
+check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, keyboard, Float), and its keys reach the Find box: Ctrl and g quits the search, the next-match button steps', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, 'one two three two\nfour two\n');
   await page.evaluate(async () => {
@@ -11123,9 +11124,9 @@ check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, key
   await page.waitForSelector('#minibufferSearch textarea', { timeout: 3000 });
   const find = page.locator('#minibufferSearch textarea');
   await find.type('two');
-  await page.getByRole('button', { name: 'Down', exact: true }).click();
-  expect(await find.evaluate((t) => document.activeElement === t), 'a panel key leaves the focus in the Find box');
-  expect((await box.evaluate((t) => t.selectionStart)) !== 0, 'the down arrow steps to the next match');
+  await page.getByRole('button', { name: 'Next match', exact: true }).click();
+  expect(await find.evaluate((t) => document.activeElement === t), 'a button of the Find box leaves the focus in the Find box');
+  expect((await box.evaluate((t) => t.selectionStart)) !== 0, 'the next-match button steps to the next match');
   await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
   await find.evaluate((t) => {
     t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'g', bubbles: true, cancelable: true }));
@@ -11134,6 +11135,152 @@ check('Emacs mode: the key panel is one row (Meta, Ctrl, Shift, Tab, arrows, key
   expect((await box.evaluate((t) => t.selectionStart)) === 0, 'Ctrl and g quit the search and the cursor returns to where it began');
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
+});
+
+check('Emacs mode: an arrow in the Find box ends the search and then moves from the match, as Emacs does; C-s and the match buttons keep stepping', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, 'foo bar Foo\nbaz  foo\nlast line here\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  // what Emacs 29.3 leaves: point after C-s foo, then the arrow (point, mark) from position 0
+  const cases = [['ArrowLeft', 2, 0], ['ArrowRight', 4, 0], ['ArrowDown', 15, 0]];
+  for (const [arrow, point, mark] of cases) {
+    await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+    await page.keyboard.press('Control+s');
+    await page.waitForSelector('#minibufferSearch textarea', { timeout: 3000 });
+    await page.locator('#minibufferSearch textarea').type('foo');
+    await page.locator('#minibufferSearch textarea').press(arrow);
+    await page.waitForSelector('#minibufferSearch textarea', { state: 'hidden', timeout: 3000 });
+    const got = await box.evaluate((t) => [t.selectionStart, t.selectionEnd]);
+    expect(got[0] === point && got[1] === point, `${arrow} after C-s foo: the cursor is at ${point}, not ${got}`);
+    await page.keyboard.press('Control+x');
+    await page.keyboard.press('Control+x'); // C-x C-x: the mark was saved where the search began
+    expect(await box.evaluate((t) => document.activeElement === t), `${arrow}: the text has the focus`);
+    const region = await box.evaluate((t) => [t.selectionStart, t.selectionEnd]);
+    expect(region[0] === mark && region[1] === point, `${arrow}: the mark is where the search began, the region ${region}`);
+  }
+  // RET ends the search at the match and the text has the focus
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+s');
+  await page.locator('#minibufferSearch textarea').type('foo');
+  await page.locator('#minibufferSearch textarea').press('Enter');
+  await page.waitForSelector('#minibufferSearch textarea', { state: 'hidden', timeout: 3000 });
+  expect(await box.evaluate((t) => document.activeElement === t && t.selectionStart === 3), 'RET ends the search at the match with the focus in the text');
+  // the panel's arrow does the same, and the box's own buttons still step
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+s');
+  await page.locator('#minibufferSearch textarea').type('foo');
+  await page.getByRole('button', { name: 'Left', exact: true }).click();
+  await page.waitForSelector('#minibufferSearch textarea', { state: 'hidden', timeout: 3000 });
+  expect((await box.evaluate((t) => t.selectionStart)) === 2, 'the panel\'s left arrow ends the search and moves back one character');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(0, 0); });
+  await page.keyboard.press('Control+s');
+  await page.locator('#minibufferSearch textarea').type('foo');
+  await page.getByRole('button', { name: 'Next match', exact: true }).click();
+  expect(await page.locator('#minibufferSearch textarea').isVisible(), 'the next-match button keeps the search going');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: Ctrl held from the panel keeps the keys typed so far in the echo area (C-u 5 C-)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const echo = () => page.evaluate(() => document.querySelector('#modelineBar')?.innerText.split('\n').pop());
+  await page.keyboard.press('Control+u');
+  await page.keyboard.press('5');
+  expect((await echo()) === 'C-u 5-', `after C-u 5: ${await echo()}`);
+  await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
+  expect((await echo()) === 'C-u 5 C-', `Ctrl held after C-u 5: ${await echo()}`);
+  await page.keyboard.insertText('q');
+  expect((await echo()) === 'C-u 5 C-q-', `then q: ${await echo()}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: a soft keyboard that composes the word before the caret and sends it whole again with each key types C-u 5 once, not twice', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  await page.keyboard.insertText('aaaaa');
+  const echo = () => page.evaluate(() => document.querySelector('#modelineBar')?.innerText.split('\n').pop());
+  await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
+  // the keyboard's composition: the word and the key, then the word and the next key, each replacing the composed word
+  for (const typed of ['aaaaau', 'aaaaau5']) {
+    await box.evaluate((t, value) => {
+      t.value = value;
+      t.setSelectionRange(value.length, value.length);
+      t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', isComposing: true, bubbles: true }));
+    }, typed);
+  }
+  expect((await box.evaluate((t) => t.value)) === 'aaaaa', `the text stays aaaaa: ${await box.evaluate((t) => t.value)}`);
+  expect((await echo()) === 'C-u 5-', `the prefix is C-u 5: ${await echo()}`);
+  await page.keyboard.insertText('x');
+  expect((await box.evaluate((t) => t.value)) === 'aaaaaxxxxx', `C-u 5 x types five x: ${await box.evaluate((t) => t.value)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: letters a soft keyboard composes are typed by Emacs\'s own command: over a region they are inserted at point, and undo takes them back in groups as for typed keys', async () => {
+  /** What a soft keyboard does with a letter: the field changes at once, inside a composition, and nothing can stop it. */
+  const composed = async (/** @type {import('playwright').Locator} */ box, /** @type {string} */ str) => {
+    for (const ch of str) {
+      await box.evaluate((t, c) => {
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        const get = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').get;
+        const a = t.selectionStart, b = t.selectionEnd, v = get.call(t);
+        set.call(t, v.slice(0, a) + c + v.slice(b));
+        t.setSelectionRange(a + c.length, a + c.length);
+        t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: c, isComposing: true, bubbles: true }));
+        t.dispatchEvent(new CompositionEvent('compositionend', { data: c, bubbles: true }));
+      }, ch);
+    }
+  };
+  const scenarios = [
+    ['over an active region', 'one two three\n', 4, 'xy', ['Control+Space', 'Control+f', 'Control+f', 'Control+f'], [], 'one twoxy three\n'],
+    ['undo twice after eight letters', 'ab\n', 2, 'cdefghij', [], ['Control+/', 'Control+/'], 'ab\n'],
+    ['undo after twenty-five letters', '\n', 0, 'abcdefghijklmnopqrstuvwxy', [], ['Control+/'], 'abcdefghijklmnopqrstu\n'],
+  ];
+  for (const [name, text, caret, str, before, after, expected] of scenarios) {
+    const out = [];
+    for (const how of ['plain', 'composed']) {
+      const { context, page, errors } = await freshPage();
+      await newDocument(page, text);
+      await page.evaluate(async () => {
+        const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+        await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+      });
+      await viewMenu(page, 'Text');
+      const box = page.locator('#document-text-edit-input');
+      await box.evaluate((t, c) => { t.focus(); t.setSelectionRange(c, c); document.dispatchEvent(new Event('selectionchange')); }, caret);
+      await page.waitForTimeout(150);
+      for (const k of before) await page.keyboard.press(k);
+      if (how === 'plain') for (const ch of str) await page.keyboard.insertText(ch);
+      else await composed(box, str);
+      for (const k of after) await page.keyboard.press(k);
+      out.push(await box.evaluate((t) => JSON.stringify([t.value, t.selectionStart])));
+      expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+      await context.close();
+    }
+    expect(out[0] === out[1], `${name}: typed keys give ${out[0]}, a composing keyboard gives ${out[1]}`);
+    expect(JSON.parse(out[0])[0] === expected, `${name}: ${out[0]}`);
+  }
 });
 
 check('Emacs mode: Backspace deletes an emoji whole, an active region whole, and keeps a table\'s columns', async () => {

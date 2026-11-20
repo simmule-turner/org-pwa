@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v728 — Emacs mode on a phone keyboard: prefixes, search and typing behave as in Emacs
+On Android, a prefix such as C-u 5 followed by C-q and a letter no longer repeats keys, because the keyboard's composed word is read once. Letters a phone keyboard composes are typed by Emacs's own command, so typing over a selection inserts at point and undo takes letters back in Emacs's groups. The echo area keeps C-u 5 while Ctrl is held. In the Find box the arrow keys end the search and then move, as in Emacs, and RET leaves the focus in the text.
+Verified: the Emacs-mode and Find browser checks.
+
 * v727 — The key panel no longer raises a keyboard you put away
 On Android, after the back gesture put the keyboard away, a panel key such as Tab still brought it back, because the edit made the phone restart its input method. While the keyboard is away, the panel's keys now take no input method for a moment, so it stays away; tapping the text raises it as before. Each panel tap is also written to the keyboard debug log.
 Verified: the Emacs-mode browser checks.

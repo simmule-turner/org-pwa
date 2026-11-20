@@ -42,6 +42,19 @@ function insertedText(before, after) {
   return head + tail === before.length ? after.slice(head, after.length - tail) : null;
 }
 
+/** The characters a soft keyboard just put in the field, when that is what typing them at the caret (over the region, if there is one) would make:
+ *  Emacs's own `self-insert-command` then does the typing, so the undo groups, the kill ring and the region are Emacs's.
+ *  @param {{ text: string, pos: number, mark: number | null, active?: boolean }} st @param {string} value @returns {string | null} */
+function composedTyping(st, value) {
+  const region = st.active && st.mark !== null && st.mark !== st.pos;
+  const from = region ? Math.min(st.pos, /** @type {number} */ (st.mark)) : st.pos;
+  const to = region ? Math.max(st.pos, /** @type {number} */ (st.mark)) : st.pos;
+  const length = value.length - (st.text.length - (to - from));
+  if (length <= 0) return null;
+  const typed = value.slice(from, from + length);
+  return typed.includes('\n') || st.text.slice(0, from) + typed + st.text.slice(to) !== value ? null : typed;
+}
+
 /** The visibility commands, which the fold model runs. */
 const FOLD_COMMANDS = new Set(['org-cycle', 'org-shifttab', 'org-fold-reveal']);
 
@@ -82,6 +95,8 @@ export function attachEmacsMode(o) {
     /** @type {import('../src/emacs-edit.js').EditState} */
     st: { text: initial, pos: textarea.selectionStart, mark: null, kill: [], active: false, undo: newUndo(), yank: { adjusted: o.options.adjusted, folded: o.options.folded } },
     input: newKeyInput(),
+    /** The echo of the keys of an unfinished sequence or prefix argument (`C-u 5-`). */
+    pendingEcho: '',
     sticky: { ctrl: false, alt: false, shift: false },
     applying: false,
     /** @type {[number, number, string]} */
@@ -233,7 +248,7 @@ export function attachEmacsMode(o) {
 
   // ---- keys
   /** Feeds one key, named as Emacs names it. @param {string} rawKey @param {boolean} [replay] the key was held back and now runs @returns {boolean} whether Emacs mode took it */
-  function press(rawKey, replay = false) {
+  function press(rawKey, replay = false, kept = false) {
     if (ctx.held && !replay) { // a yank is waiting for the clipboard: the keys after it wait their turn
       const later = ctx.held.then(() => {
         ctx.yankWait = null;
@@ -246,7 +261,7 @@ export function attachEmacsMode(o) {
       });
       return true;
     }
-    adopt();
+    if (!kept) adopt(); // (kept: the field was already changed by the keyboard, and the state is what it was before)
     const fed = feedKey(ctx.input, rawKey);
     ctx.input = fed.input;
     const { result } = fed;
@@ -258,6 +273,7 @@ export function attachEmacsMode(o) {
       return false;
     }
     if (result.type === 'pending') {
+      ctx.pendingEcho = result.echo;
       say(result.echo);
       return true;
     }
@@ -453,11 +469,11 @@ export function attachEmacsMode(o) {
   /** Whether the next thing typed belongs to a command: Ctrl or Alt held from the panel, or a prefix (ESC, C-x, C-u) already typed. */
   const commandPending = () => ctx.sticky.ctrl || ctx.sticky.alt || ctx.input.pending.length > 0 || Boolean(ctx.input.arg);
 
-  /** Characters typed as keys: with Ctrl or Alt held from the panel the first one is that key with the modifier. @param {string} data */
-  function typeChars(data) {
+  /** Characters typed as keys: with Ctrl or Alt held from the panel the first one is that key with the modifier. @param {string} data @param {boolean} [kept] whether the keyboard has already put them in the field */
+  function typeChars(data, kept = false) {
     for (const ch of data) {
       const name = ctx.sticky.ctrl || ctx.sticky.alt ? eventKey({ key: ch, ctrlKey: ctx.sticky.ctrl, altKey: ctx.sticky.alt }) : ch;
-      if (name) press(name);
+      if (name) press(name, false, kept);
       setSticky(false, false);
     }
   }
@@ -533,7 +549,11 @@ export function attachEmacsMode(o) {
     buttons.Ctrl?.setAttribute('aria-pressed', String(ctrl));
     buttons.Meta?.setAttribute('aria-pressed', String(alt));
     buttons.Shift?.setAttribute('aria-pressed', String(shift));
-    if (ctrl || alt || shift) say(`${ctrl ? 'C-' : ''}${alt ? 'M-' : ''}${shift ? 'S-' : ''}`); // the echo area shows what is held, as Emacs shows a prefix
+    // the echo area shows what is held after the keys typed so far (C-u 5 C-), as Emacs shows a prefix
+    const typed = ctx.input.pending.length > 0 || ctx.input.arg ? ctx.pendingEcho.replace(/-$/, '') : '';
+    const held = `${ctrl ? 'C-' : ''}${alt ? 'M-' : ''}${shift ? 'S-' : ''}`;
+    if (ctrl || alt || shift) say(typed ? `${typed} ${held}` : held);
+    else if (typed) say(`${typed}-`);
   }
   /** The text field of a prompt (Find, the minibuffer) that has the focus: the panel's keys go there rather than to the text. */
   const promptField = () => ((document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) && document.activeElement !== textarea ? document.activeElement : null);
@@ -607,6 +627,14 @@ export function attachEmacsMode(o) {
   }
   placePanel(o.options.panel);
 
+  /** What of the composition now going on has already been taken as the keys of a command. */
+  let composeFed = '';
+  /** The caret and the text when that was last taken, to tell a composition that goes on from a new one. */
+  let composeAt = -1;
+  let composeText = '';
+  textarea.addEventListener('compositionend', () => {
+    composeFed = '';
+  });
   textarea.addEventListener('keydown', onKeyDown);
   textarea.addEventListener('beforeinput', (e) => onBeforeInput(/** @type {InputEvent} */ (e)));
   textarea.addEventListener('input', (e) => {
@@ -626,11 +654,28 @@ export function attachEmacsMode(o) {
     }
     // A soft keyboard composes what is typed and cannot be stopped from putting it in the field. When it is a key of a command (Ctrl or Alt held
     // from the panel, or after ESC or C-x), the field goes back to the buffer and the characters are the command's keys.
+    const composing = Boolean(/** @type {InputEvent} */ (e).isComposing);
+    if (!composing) composeFed = '';
     if (commandPending() && textarea.value !== ctx.st.text) {
       const typed = insertedText(ctx.st.text, textarea.value);
       if (typed !== null) {
+        // the keyboard puts the word before the caret in its composition and sends it whole again with each key: only what follows what was already taken as keys is new
+        // (a keyboard that never ends a composition is told apart by the buffer: once a key has moved the caret or changed the text, it is a new one)
+        const goingOn = composing && composeFed !== '' && typed.startsWith(composeFed) && ctx.st.pos === composeAt && ctx.st.text === composeText;
+        const fresh = goingOn ? typed.slice(composeFed.length) : typed;
+        composeFed = composing ? typed : '';
+        composeAt = ctx.st.pos;
+        composeText = ctx.st.text;
         show();
-        typeChars(typed);
+        typeChars(fresh);
+        return;
+      }
+    }
+    // letters a soft keyboard composes: typed by Emacs's own command rather than taken in as the browser's edit
+    if (composing && !commandPending() && !ctx.held && !textarea.readOnly) {
+      const typed = composedTyping(ctx.st, textarea.value);
+      if (typed) {
+        typeChars(typed, true);
         return;
       }
     }

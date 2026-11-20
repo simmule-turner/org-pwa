@@ -1,7 +1,7 @@
 // @ts-check
 // Extracted from app.js: search ui.
 import { EmacsRegexError } from '../src/elisp-regex.js';
-import { getPropertyInheritance, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
+import { getEmacsMode, getPropertyInheritance, getUsePropertyInheritance, getUseTagInheritance } from '../src/local-variables.js';
 import { countBlockOnlyMatches, createQueryReplace, createTextQueryReplace } from '../src/query-replace.js';
 import { searchDocuments, searchDocumentsByMatchQuery } from '../src/search.js';
 import { filesystemAdapter, githubAdapter, webdavAdapter } from './adapters.js';
@@ -85,6 +85,13 @@ export function renderMinibufferSearch() {
       if (e.altKey && e.key === 'e') { e.preventDefault(); const f = /** @type {HTMLInputElement} */ (e.target); f.setSelectionRange(f.value.length, f.value.length); return; } // M-e: edit the search string
       if (e.altKey && e.key === 'c') { e.preventDefault(); toggleTextFindCase(); return; }
       if (e.altKey && e.key === 'r') { e.preventDefault(); S.searchUseRegex = !S.searchUseRegex; renderSearchOptionsMenu(); refreshTextFind(false); return; }
+      if (getEmacsMode(S.state.localVariables || S.globalVariables || {}) && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && !ctrl && !e.altKey) {
+        // Emacs has no binding for an arrow in the search: the search ends as RET ends it, and the arrow then moves from the match
+        e.preventDefault();
+        exitTextFind();
+        textBox()?.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, shiftKey: e.shiftKey, bubbles: true, cancelable: true }));
+        return;
+      }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); stepTextFind(e.key === 'ArrowUp' ? -1 : 1); return; }
       if (e.key === 'Enter') { e.preventDefault(); exitTextFind(); return; }
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); abortTextFind(); return; }
@@ -818,6 +825,7 @@ function exitTextFind() {
     if (done.mark !== null) textFindHooks.setMark?.(done.mark);
   }
   closeSearch();
+  if (getEmacsMode(S.state.localVariables || S.globalVariables || {})) textBox()?.focus({ preventScroll: true }); // the keys that follow go to the text, as in Emacs
 }
 
 /** C-g: while the search is failing it goes back to the last match; otherwise it ends and the cursor returns to where the search began. */
