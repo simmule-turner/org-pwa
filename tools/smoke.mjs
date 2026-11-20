@@ -11231,6 +11231,22 @@ check('Emacs mode: a soft keyboard that composes the word before the caret and s
   }
   expect((await box.evaluate((t) => t.value)) === 'aaaaa', `the text stays aaaaa: ${await box.evaluate((t) => t.value)}`);
   expect((await echo()) === 'C-u 5-', `the prefix is C-u 5: ${await echo()}`);
+  // Backspace on such a keyboard: the composition gets shorter, which is C-u 5 DEL: the five characters before the caret go
+  await box.evaluate((t) => {
+    t.value = 'aaaaau';
+    t.setSelectionRange(6, 6);
+    t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', isComposing: true, bubbles: true }));
+  });
+  expect((await box.evaluate((t) => t.value)) === '', `Backspace after C-u 5 deletes five characters: ${await box.evaluate((t) => t.value)}`);
+  await page.keyboard.insertText('aaaaa');
+  await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
+  for (const typed of ['aaaaau', 'aaaaau5']) {
+    await box.evaluate((t, value) => {
+      t.value = value;
+      t.setSelectionRange(value.length, value.length);
+      t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', isComposing: true, bubbles: true }));
+    }, typed);
+  }
   await page.keyboard.insertText('x');
   expect((await box.evaluate((t) => t.value)) === 'aaaaaxxxxx', `C-u 5 x types five x: ${await box.evaluate((t) => t.value)}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
@@ -11281,6 +11297,31 @@ check('Emacs mode: letters a soft keyboard composes are typed by Emacs\'s own co
     expect(out[0] === out[1], `${name}: typed keys give ${out[0]}, a composing keyboard gives ${out[1]}`);
     expect(JSON.parse(out[0])[0] === expected, `${name}: ${out[0]}`);
   }
+});
+
+check('Emacs mode: C-u 5 9 and then Backspace on a composing keyboard is C-u 59 DEL: with five characters before the caret it fails and changes nothing', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  await page.keyboard.insertText('aaaaa');
+  await page.getByRole('button', { name: 'Control for the next key', exact: true }).click();
+  for (const typed of ['aaaaau', 'aaaaau5', 'aaaaau59', 'aaaaau5']) {
+    await box.evaluate((t, value) => {
+      t.value = value;
+      t.setSelectionRange(value.length, value.length);
+      t.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', isComposing: true, bubbles: true }));
+    }, typed);
+  }
+  expect((await box.evaluate((t) => t.value)) === 'aaaaa', `five characters stay: ${await box.evaluate((t) => t.value)}`);
+  expect(((await page.locator('#status').textContent()) ?? '').includes('Beginning of buffer'), 'the echo area says Beginning of buffer');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
 });
 
 check('Emacs mode: Backspace deletes an emoji whole, an active region whole, and keeps a table\'s columns', async () => {

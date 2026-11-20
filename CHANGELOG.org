@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v729 — Backspace after a prefix on a phone keyboard
+On Android, Backspace after a prefix such as C-u 5 arrived as a shorter composition and was typed as new letters, so C-u 5 Backspace filled the line with the letters instead of deleting. It is now read as the Backspace key: C-u 5 Backspace deletes five characters, and C-u 5 9 Backspace fails with "Beginning of buffer" when fewer than 59 are there, as in Emacs.
+Verified: the Emacs-mode browser checks.
+
 * v728 — Emacs mode on a phone keyboard: prefixes, search and typing behave as in Emacs
 On Android, a prefix such as C-u 5 followed by C-q and a letter no longer repeats keys, because the keyboard's composed word is read once. Letters a phone keyboard composes are typed by Emacs's own command, so typing over a selection inserts at point and undo takes letters back in Emacs's groups. The echo area keeps C-u 5 while Ctrl is held. In the Find box the arrow keys end the search and then move, as in Emacs, and RET leaves the focus in the text.
 Verified: the Emacs-mode and Find browser checks.

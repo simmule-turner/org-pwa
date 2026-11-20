@@ -656,6 +656,18 @@ export function attachEmacsMode(o) {
     // from the panel, or after ESC or C-x), the field goes back to the buffer and the characters are the command's keys.
     const composing = Boolean(/** @type {InputEvent} */ (e).isComposing);
     if (!composing) composeFed = '';
+    // the composition got shorter: a Backspace on a keyboard that deletes inside what it is composing (the keys it was sent are `u5`, now it holds `u`)
+    if (composing && composeFed !== '' && commandPending() && ctx.st.pos === composeAt && ctx.st.text === composeText) {
+      const left = textarea.value === ctx.st.text ? '' : insertedText(ctx.st.text, textarea.value);
+      if (left !== null && left.length < composeFed.length && composeFed.startsWith(left)) {
+        const removed = composeFed.length - left.length;
+        composeFed = '';
+        show();
+        for (let i = 0; i < removed; i++) press('DEL');
+        setSticky(false, false);
+        return;
+      }
+    }
     if (commandPending() && textarea.value !== ctx.st.text) {
       const typed = insertedText(ctx.st.text, textarea.value);
       if (typed !== null) {
