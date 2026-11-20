@@ -48,6 +48,8 @@ const SHELL_FILES = [
   './src/emacs-complete.js',
   './src/emacs-buffers.js',
   './src/emacs-org.js',
+  './src/emacs-return.js',
+  './src/emacs-fill.js',
   './src/emacs-scroll.js',
   './src/emacs-sentence.js',
   './src/emacs-undo.js',

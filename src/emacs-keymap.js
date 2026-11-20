@@ -25,6 +25,7 @@ export const BINDINGS = {
   'M-w': 'kill-ring-save',
   'C-y': 'org-yank',
   'C-o': 'org-open-line',
+  RET: 'org-return',
   'C-t': 'transpose-chars',
   'C-q': 'quoted-insert',
   'M-t': 'org-transpose-words',
@@ -56,6 +57,13 @@ export const BINDINGS = {
   'C-M-_': 'undo-redo',
   'M-a': 'org-backward-sentence',
   'M-e': 'org-forward-sentence',
+  'M-k': 'kill-sentence',
+  'M-@': 'mark-word',
+  'M-^': 'org-delete-indentation',
+  'C-M-o': 'split-line',
+  'C-x C-t': 'transpose-lines',
+  'C-<backspace>': 'backward-kill-word',
+  'C-<delete>': 'kill-word',
   'M-y': 'yank-pop',
   'M-SPC': 'cycle-spacing',
   'C-x C-o': 'delete-blank-lines',
@@ -68,6 +76,13 @@ export const BINDINGS = {
   'C-g': 'keyboard-quit',
   'C-u': 'universal-argument',
   'M-x': 'execute-extended-command',
+  'C-x d': 'dired',
+  'C-x C-j': 'dired-jump',
+  'C-x C-f': 'find-file',
+  'M-z': 'zap-to-char',
+  'M-q': 'org-fill-paragraph',
+  'C-x C-u': 'upcase-region',
+  'C-x C-l': 'downcase-region',
   'C-x b': 'switch-to-buffer',
   'C-x k': 'kill-buffer',
   'C-x C-b': 'list-buffers',
@@ -110,6 +125,13 @@ export function feedKey(input, rawKey) {
   let key = rawKey;
   if (input.pending[0] === 'C-q') return quotedChar(input, key); // before C-g: C-q C-g inserts the bell character
   if (key === 'C-g') return { input: newKeyInput(), result: { type: 'quit' } };
+  if (input.pending[0] === 'M-z') { // zap-to-char reads the character to kill up to; a key that is not a character is left unread
+    const ch = key === 'SPC' ? ' ' : key === 'TAB' ? '\t' : [...key].length === 1 ? key : null;
+    const echo = `${input.arg ? `${input.arg.echo} ` : ''}M-z-`;
+    if (ch === null) return { input, result: { type: 'pending', echo } };
+    const prefix = input.arg && !input.arg.cleared ? finishPrefix(input.arg) : undefined;
+    return { input: newKeyInput(), result: { type: 'run', command: 'zap-to-char', key: 'M-z', char: ch, ...(prefix ? { prefix } : {}) } };
+  }
   // ESC followed by a key is that key with Meta
   if (input.pending.length === 1 && input.pending[0] === 'ESC') {
     key = key.startsWith('M-') ? key : `M-${key}`;
@@ -136,6 +158,7 @@ export function feedKey(input, rawKey) {
   }
   const prefix = arg && !arg.cleared ? finishPrefix(arg) : undefined;
   if (joined === 'C-q') return { input: { ...input, pending: sequence }, result: { type: 'pending', echo: `${arg ? `${arg.echo} ` : ''}C-q-` } };
+  if (joined === 'M-z') return { input: { ...input, pending: sequence }, result: { type: 'pending', echo: `${arg ? `${arg.echo} ` : ''}M-z-` } };
   if (PREFIXES.has(joined)) return { input: { ...input, pending: sequence }, result: { type: 'pending', echo: `${arg ? `${arg.echo} ` : ''}${joined}-` } };
   const command = BINDINGS[joined];
   if (command) return { input: newKeyInput(), result: { type: 'run', command, key: joined, ...(prefix ? { prefix } : {}) } };
@@ -222,6 +245,7 @@ export function eventKey({ key, ctrlKey, altKey }) {
   const named = { Backspace: 'DEL', Enter: 'RET', Tab: 'TAB', Escape: 'ESC', Delete: '<deletechar>', ArrowLeft: '<left>', ArrowRight: '<right>', ArrowUp: '<up>', ArrowDown: '<down>', Home: '<home>', End: '<end>', PageUp: '<prior>', PageDown: '<next>', Insert: '<insert>' };
   const name = named[key] ?? (/^F\d+$/.test(key) ? `<${key.toLowerCase()}>` : null);
   if (!name && [...key].length !== 1) return `<${key}>`;
+  if (ctrlKey && !altKey && (key === 'Backspace' || key === 'Delete')) return `C-<${key === 'Backspace' ? 'backspace' : 'delete'}>`;
   let base = name ?? key;
   if (!name && ctrlKey) {
     if (key === ' ' || key === '@') base = 'SPC';

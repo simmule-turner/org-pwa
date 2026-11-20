@@ -230,6 +230,19 @@ function forwardSentence(t, from, count, end) {
 }
 
 /**
+ * Emacs's own `forward-sentence` (what `kill-sentence` uses, not `M-e`'s Org version) by `n` sentences.
+ * @param {string} text @param {number} pos @param {number} n @returns {{ pos: number, error?: string }}
+ */
+export function standardForwardSentence(text, pos, n) {
+  try {
+    return { pos: forwardSentence(text, pos, n, SENTENCE_END) };
+  } catch (err) {
+    if (err instanceof Failure) return { pos: err.pos, error: err.message };
+    throw err;
+  }
+}
+
+/**
  * `org-forward-sentence` (`M-e`) by `n` sentences.
  * @param {string} text @param {number} pos @param {number} n @returns {{ pos: number, text?: string, error?: string }}
  */

@@ -9,12 +9,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { feedKey, newKeyInput } from '../src/emacs-keymap.js';
 import { foldedExecute } from '../src/emacs-fold.js';
+import { answerDisabled } from '../src/emacs-edit.js';
 
 const EL = `;; -*- lexical-binding: t -*-
 (require 'org) (require 'json)
 (transient-mark-mode 1)
 (setq line-move-visual nil)
+(defvar orig-dcf disabled-command-function)
 (defun run-case (c)
+  (setq disabled-command-function orig-dcf) (put 'upcase-region 'disabled t) (put 'downcase-region 'disabled t)
   (let ((text (cdr (assq 'text c))) (pos (cdr (assq 'pos c))) (mark (cdr (assq 'mark c)))
         (keys (cdr (assq 'keys c))) (ring (cdr (assq 'kill c))) (err nil))
     (with-temp-buffer
@@ -95,6 +98,11 @@ export function typeKeys(c) {
   });
   for (let i = 0; i < tokens.length; i++) {
     const key = tokens[i] === 'SPC' ? ' ' : tokens[i];
+    if (s.asking) { // a disabled command waits for y, SPC, ! or n
+      s = answerDisabled(s, key) ?? s;
+      if (s.error) return s;
+      continue;
+    }
     const fed = feedKey(input, key);
     input = fed.input;
     const r = fed.result;

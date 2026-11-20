@@ -78,8 +78,16 @@
    "org-open-line"
   ],
   [
+   "RET",
+   "org-return"
+  ],
+  [
    "C-t",
    "transpose-chars"
+  ],
+  [
+   "C-q",
+   "quoted-insert"
   ],
   [
    "M-t",
@@ -198,6 +206,34 @@
    "org-forward-sentence"
   ],
   [
+   "M-k",
+   "kill-sentence"
+  ],
+  [
+   "M-@",
+   "mark-word"
+  ],
+  [
+   "M-^",
+   "org-delete-indentation"
+  ],
+  [
+   "C-M-o",
+   "split-line"
+  ],
+  [
+   "C-x C-t",
+   "transpose-lines"
+  ],
+  [
+   "C-<backspace>",
+   "backward-kill-word"
+  ],
+  [
+   "C-<delete>",
+   "kill-word"
+  ],
+  [
    "M-y",
    "yank-pop"
   ],
@@ -244,6 +280,34 @@
   [
    "M-x",
    "execute-extended-command"
+  ],
+  [
+   "C-x d",
+   "dired"
+  ],
+  [
+   "C-x C-j",
+   "dired-jump"
+  ],
+  [
+   "C-x C-f",
+   "find-file"
+  ],
+  [
+   "M-z",
+   "zap-to-char"
+  ],
+  [
+   "M-q",
+   "org-fill-paragraph"
+  ],
+  [
+   "C-x C-u",
+   "upcase-region"
+  ],
+  [
+   "C-x C-l",
+   "downcase-region"
   ],
   [
    "C-x b",
@@ -330,28 +394,8 @@
    "recenter-top-bottom"
   ],
   [
-   "M-q",
-   "org-fill-paragraph"
-  ],
-  [
-   "C-q",
-   "quoted-insert"
-  ],
-  [
-   "M-^",
-   "org-delete-indentation"
-  ],
-  [
    "C-M-w",
    "append-next-kill"
-  ],
-  [
-   "M-z",
-   "zap-to-char"
-  ],
-  [
-   "M-@",
-   "mark-word"
   ],
   [
    "M-h",

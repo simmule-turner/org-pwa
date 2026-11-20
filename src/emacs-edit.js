@@ -6,9 +6,11 @@
  */
 import { EMACS_ALNUM_RE } from './emacs-chars.js';
 import { orgYank } from './org-yank.js';
-import { orgBackwardSentence, orgForwardSentence } from './emacs-sentence.js';
+import { orgBackwardSentence, orgForwardSentence, standardForwardSentence } from './emacs-sentence.js';
 import * as org from './emacs-org.js';
 import { tableEdit } from './emacs-table.js';
+import { indentString, orgReturn } from './emacs-return.js';
+import { fillParagraphAt, fillRegion } from './emacs-fill.js';
 import { width } from './org-table-layout.js';
 import { boundary, lastChangeWasUndo, newUndo, recordDelete, recordInsert, redo, undo } from './emacs-undo.js';
 import { getTagsColumn, withTags } from './tags-column.js';
@@ -27,6 +29,8 @@ import { getTagsColumn, withTags } from './tags-column.js';
  * @property {{ orig: number, ws: string, n: string | number | null, last: string | null }} [cycle] `cycle-spacing--context`, kept while the command repeats
  * @property {string} [error] set when the command signaled an error: the state is then what Emacs leaves
  * @property {string} [message] what the command printed in the echo area ("Mark set"); unset when it printed nothing or signaled an error
+ * @property {string | null} [asking] the disabled command waiting for an answer to "Use this command?"
+ * @property {string[]} [enabled] the disabled commands that were enabled (`all` after `!`)
  * @property {[number, number][]} [hidden] the folded stretches, which the heading motions skip
  */
 
@@ -195,6 +199,20 @@ const COMMANDS = {
     const ch = s.arg ?? '';
     return next(s, { text: s.text.slice(0, s.pos) + ch + s.text.slice(s.pos), pos: s.pos + ch.length, mark: markerAfter(s.mark, s.pos, s.pos, ch.length), edits: [{ from: s.pos, removed: '', inserted: ch.length }] });
   },
+  'org-return': (s) => orgChange(s, orgReturn(s.text, s.pos, 1), 'RET'),
+  'split-line': splitLine,
+  'transpose-lines': transposeLines,
+  'org-delete-indentation': (s) => deleteIndentation(s, false),
+  'upcase-region': (s) => caseRegion(s, 'upcase-region', (x) => x.toUpperCase()),
+  'downcase-region': (s) => caseRegion(s, 'downcase-region', (x) => x.toLowerCase()),
+  'org-fill-paragraph': (s) => {
+    if (s.active && s.mark !== null) return next(s, fillRegion(s.text, s.pos, s.mark)); // with the region active, every paragraph in it
+    const done = fillParagraphAt(s.text, s.pos);
+    return done ? next(s, { text: done.text, pos: done.pos }) : next(s, {});
+  },
+  'mark-word': (s) => markWord(s, 1),
+  'zap-to-char': (s) => zapToChar(s, 1),
+  'kill-sentence': (s) => killSentence(s, 1),
   'org-open-line': (s) => openRow(s) ?? next(s, { text: s.text.slice(0, s.pos) + '\n' + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, 1), edits: [{ from: s.pos, removed: '', inserted: 1 }] }),
   'transpose-chars': (s) => transposeChars(s, null),
   'org-transpose-words': transposeWords,
@@ -250,6 +268,110 @@ function transposeChars(s, n) {
   if (a + 1 > b) return fail(s, "Don't have two things to transpose", { pos: p });
   const done = swap(s, a, a + 1, b, b + 1);
   return { ...done, pos: s.mark, mark: p };
+}
+
+/** `split-line` (`C-M-o`): the text after the caret (past any spaces) moves to a new line, indented to the caret's column; the caret stays. @param {EditState} s */
+function splitLine(s) {
+  let at = s.pos;
+  while (s.text[at] === ' ' || s.text[at] === '\t') at++;
+  const text = s.text.slice(0, at) + '\n' + indentString(displayColumn(s.text, at)) + s.text.slice(at);
+  return next(s, { text, pos: at, mark: markerAfter(s.mark, at, at, text.length - s.text.length) });
+}
+
+/** `transpose-lines` (`C-x C-t`): the line before the caret's and the caret's change places (on the first line, it and the one below); the caret goes after them.
+ * @param {EditState} s */
+function transposeLines(s) {
+  const t = s.text;
+  if (t === '') return next(s, { text: '\n\n\n', pos: 3 }); // Emacs makes three newlines out of an empty buffer
+  const here = lineStart(t, s.pos);
+  const upper = here === 0 ? 0 : lineStart(t, here - 1);
+  const mid = here === 0 ? lineEnd(t, 0) + 1 : here;
+  const lowerEnd = lineEnd(t, mid);
+  const a = t.slice(upper, mid === upper ? upper : Math.max(upper, mid - 1));
+  const b = t.slice(mid, lowerEnd);
+  const rest = t.slice(lowerEnd + 1);
+  const text = t.slice(0, upper) + b + '\n' + a + '\n' + rest;
+  return next(s, { text, pos: upper + b.length + 1 + a.length + 1 });
+}
+
+/** `org-delete-indentation` (`M-^`): the line joins the one before it (with a prefix, the one after it), with one space between unless a bracket or a line edge is there.
+ * @param {EditState} s @param {boolean} following */
+function deleteIndentation(s, following) {
+  const t = s.text;
+  let start = lineStart(t, s.pos);
+  if (following) {
+    const nl = t.indexOf('\n', s.pos);
+    start = nl < 0 ? t.length : nl + 1;
+    if (start === 0 || t[start - 1] !== '\n') return next(s, { pos: start }); // no line below to join
+  }
+  if (start === 0) return next(s, { pos: 0 });
+  let a = start - 1;
+  while (a > 0 && (t[a - 1] === ' ' || t[a - 1] === '\t')) a--;
+  let b = start;
+  while (b < t.length && (t[b] === ' ' || t[b] === '\t')) b++;
+  const gap = b >= t.length || t[b] === '\n' || ')]}'.includes(t[b]) || a === 0 || t[a - 1] === '\n' || '([{'.includes(t[a - 1]) ? '' : ' ';
+  return next(s, { text: t.slice(0, a) + gap + t.slice(b), pos: a, mark: markerAfter(s.mark, a, b, gap.length) });
+}
+
+/** `mark-word` (`M-@`): the mark goes to the end of the next word, and again on the repeat. @param {EditState} s @param {number} n */
+function markWord(s, n) {
+  const from = s.last === 'mark-word' && s.mark !== null ? s.mark : s.pos;
+  return next(s, { mark: wordsFrom(s.text, from, n) });
+}
+
+const DISABLED_PROMPT = 'Use this command? ([N]o, [Y]es, SPC (space bar) only once, ! use and enable all):';
+
+/** `upcase-region` and `downcase-region` (`C-x C-u`, `C-x C-l`) are disabled commands: the first time Emacs asks, and `y`, SPC or `!` lets it run.
+ * @param {EditState} s @param {string} name @param {(text: string) => string} fn */
+function caseRegion(s, name, fn) {
+  if (!s.enabled?.includes(name) && !s.enabled?.includes('all')) return next(s, { asking: name, message: DISABLED_PROMPT });
+  if (s.mark === null) return fail(s, 'The mark is not set now, so there is no region');
+  const from = Math.min(s.pos, s.mark);
+  const to = Math.max(s.pos, s.mark);
+  const piece = fn(s.text.slice(from, to));
+  const delta = piece.length - (to - from);
+  const at = (/** @type {number} */ p) => (p >= to && to > from ? p + delta : p);
+  return next(s, { text: s.text.slice(0, from) + piece + s.text.slice(to), pos: at(s.pos) }); // the mark stays where it was: it does not follow the text that grows
+}
+
+/**
+ * The key typed while a disabled command waits for its answer: `y` runs it and enables it, SPC runs it once, `!` runs it and enables them all, `n` drops it,
+ * and any other key (but C-g, which quits) is asked again. Null when nothing is being asked.
+ * @param {EditState} state @param {string} key @returns {EditState | null}
+ */
+export function answerDisabled(state, key) {
+  const name = state.asking;
+  if (!name || key === 'C-g') return name ? { ...state, asking: null } : null;
+  const asked = { ...state, asking: null, message: undefined };
+  if (key === 'n') return asked;
+  if (key !== 'y' && key !== ' ' && key !== 'SPC' && key !== '!') return { ...state, message: DISABLED_PROMPT };
+  const kept = key === 'y' ? [...(state.enabled ?? []), name] : key === '!' ? ['all'] : state.enabled;
+  const ran = execute({ ...asked, enabled: [...(state.enabled ?? []), name] }, name, undefined, undefined);
+  return { ...ran, enabled: kept };
+}
+
+/** `zap-to-char` (`M-z`): kills from the caret through the `n`th next occurrence of the character (back to it when negative). A lowercase character
+ * matches either case, as `case-fold-search` has it; an uppercase one matches itself. @param {EditState} s @param {number} n */
+function zapToChar(s, n) {
+  const ch = s.arg ?? '';
+  const fold = ch === ch.toLowerCase();
+  const same = (/** @type {number} */ i) => s.text.startsWith(ch, i) || (fold && s.text.slice(i, i + ch.length).toLowerCase() === ch);
+  let at = s.pos;
+  for (let k = 0; k < Math.abs(n); k++) {
+    let i = n > 0 ? at : at - ch.length;
+    while (i >= 0 && i + ch.length <= s.text.length && !(n > 0 ? same(i) && i >= at : same(i))) i += n > 0 ? 1 : -1;
+    if (i < 0 || i + ch.length > s.text.length) return fail(s, `Search failed: "${ch}"`);
+    at = n > 0 ? i + ch.length : i;
+  }
+  return at >= s.pos ? kill(s, s.pos, at, true) : kill(s, at, s.pos, false);
+}
+
+/** `kill-sentence` (`M-k`): from the caret to the end of the sentence. @param {EditState} s @param {number} n */
+function killSentence(s, n) {
+  if (n < 0) return fail(s, 'kill-sentence does not take a negative count yet');
+  const done = standardForwardSentence(s.text, s.pos, n);
+  if (done.error) return fail(s, done.error, { pos: done.pos });
+  return kill(s, s.pos, done.pos, true);
 }
 
 /** `delete-horizontal-space`: the spaces and tabs around the caret, or only before it with `backward-only`. @param {EditState} s @param {boolean} backwardOnly */
@@ -750,6 +872,13 @@ const COUNTED = {
   'upcase-word': (s, n) => casifyWords(s, (x) => x.toUpperCase(), n),
   'downcase-word': (s, n) => casifyWords(s, (x) => x.toLowerCase(), n),
   'capitalize-word': (s, n) => casifyWords(s, capitalize, n),
+  'org-return': (s, n) => orgChange(s, orgReturn(s.text, s.pos, n), 'RET'),
+  'org-delete-indentation': (s) => deleteIndentation(s, true),
+  'upcase-region': (s) => COMMANDS['upcase-region'](s),
+  'downcase-region': (s) => COMMANDS['downcase-region'](s),
+  'mark-word': (s, n) => markWord(s, n),
+  'zap-to-char': (s, n) => zapToChar(s, n),
+  'kill-sentence': (s, n) => killSentence(s, n),
   'org-open-line': (s, n) => openRow(s) ?? (n < 0 ? fail(s, 'Repetition argument has to be non-negative') : n === 0 ? next(s, { pos: lineEnd(s.text, s.pos) }) : next(s, { text: s.text.slice(0, s.pos) + '\n'.repeat(n) + s.text.slice(s.pos), mark: markerAfter(s.mark, s.pos, s.pos, n), edits: [{ from: s.pos, removed: '', inserted: n }] })),
   'self-insert-command': (s, n) => {
     if (n < 0) return fail(s, `Negative repetition argument ${n}`);
@@ -880,7 +1009,7 @@ function swap(s, s1, e1, s2, e2) {
   return next(s, { text, mark, edits });
 }
 
-const KILLS = new Set(['kill-word', 'backward-kill-word', 'org-kill-line', 'kill-region']);
+const KILLS = new Set(['kill-word', 'backward-kill-word', 'org-kill-line', 'kill-region', 'kill-sentence', 'zap-to-char']);
 
 /** The commands that join the group of the one before them (`undo-auto-amalgamate`). */
 COMMANDS['quoted-insert'] = COMMANDS['self-insert-command']; // C-q: the character is inserted as it is

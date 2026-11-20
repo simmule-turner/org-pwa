@@ -11208,6 +11208,154 @@ check('Emacs mode: Ctrl held from the panel keeps the keys typed so far in the e
   await context.close();
 });
 
+check('Emacs mode: Enter is org-return: C-u 5 RET is five newlines, a list item continues indented, the line break of a phone keyboard is the same', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const value = () => box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+  await page.keyboard.press('Control+u');
+  await page.keyboard.press('5');
+  await page.keyboard.press('Enter');
+  expect((await value()) === '\n\n\n\n\n', `C-u 5 RET: ${JSON.stringify(await value())}`);
+  await page.keyboard.type('- item');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('more');
+  expect((await value()) === '\n\n\n\n\n- item\n  more', `list item: ${JSON.stringify(await value())}`);
+  // a phone keyboard's Enter arrives as an insertLineBreak
+  await page.keyboard.type('  ');
+  await box.evaluate((t) => { t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertLineBreak', bubbles: true, cancelable: true })); });
+  expect((await value()) === '\n\n\n\n\n- item\n  more\n  ', `insertLineBreak: ${JSON.stringify(await value())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-<backspace>, M-^ and C-x C-t do what Emacs does', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const value = () => box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+  await page.keyboard.insertText('one two');
+  await page.keyboard.press('Control+Backspace');
+  expect((await value()) === 'one ', `C-<backspace>: ${JSON.stringify(await value())}`);
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('b');
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+t');
+  expect((await value()) === 'b\none\n', `C-x C-t: ${JSON.stringify(await value())}`);
+  await page.keyboard.press('Escape');
+  await page.keyboard.insertText('^');
+  expect((await value()) === 'b\none', `M-^ joins the empty last line to the one before: ${JSON.stringify(await value())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: M-z kills through the next character typed, and C-x C-j opens the Files list', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const value = () => box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+  await page.keyboard.insertText('one two three');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Alt+z');
+  await page.keyboard.insertText('t');
+  expect((await value()) === 'wo three', `M-z t: ${JSON.stringify(await value())}`);
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+j');
+  await page.locator('#fileScreenBox').waitFor({ state: 'visible', timeout: 5000 });
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-x C-u asks "Use this command?" once, as Emacs does for a disabled command, and y runs it on the region', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const value = () => box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+  const echo = () => page.evaluate(() => document.querySelector('#modelineBar')?.innerText.split('\n').pop());
+  await page.keyboard.insertText('foo bar');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+Space');
+  await page.keyboard.press('Control+e');
+  await page.keyboard.press('Control+x');
+  await page.keyboard.press('Control+u');
+  expect(/Use this command/.test(String(await echo())), `the question: ${await echo()}`);
+  expect((await value()) === 'foo bar', 'nothing is changed before the answer');
+  await page.keyboard.insertText('y');
+  expect((await value()) === 'FOO BAR', `after y: ${JSON.stringify(await value())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: M-q fills the paragraph to 70 columns, as Emacs does', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => t.focus());
+  const value = () => box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+  await page.keyboard.insertText('- The quick brown fox jumps over the lazy dog and keeps running through the forest until night falls.  Then it rests.');
+  await page.keyboard.press('Alt+q');
+  expect((await value()) === '- The quick brown fox jumps over the lazy dog and keeps running\n  through the forest until night falls.  Then it rests.', `M-q: ${JSON.stringify(await value())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-u 5 and then a phone keyboard\'s Enter (a line break the page cannot cancel, or one typed in a composition) is five newlines', async () => {
+  for (const kind of ['uncancelable', 'composing']) {
+    const { context, page, errors } = await freshPage();
+    await newDocument(page, '');
+    await page.evaluate(async () => {
+      const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+      await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+    });
+    await viewMenu(page, 'Text');
+    const box = page.locator('#document-text-edit-input');
+    await box.evaluate((t) => t.focus());
+    await page.keyboard.press('Control+u');
+    await page.keyboard.insertText('5');
+    await box.evaluate((t, how) => {
+      const e = /** @type {HTMLTextAreaElement} */ (t);
+      if (how === 'uncancelable') t.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertLineBreak', bubbles: true, cancelable: false }));
+      const at = e.selectionStart;
+      e.value = `${e.value.slice(0, at)}\n${e.value.slice(at)}`;
+      e.setSelectionRange(at + 1, at + 1);
+      t.dispatchEvent(new InputEvent('input', how === 'composing' ? { inputType: 'insertCompositionText', isComposing: true, data: '\n', bubbles: true } : { inputType: 'insertLineBreak', bubbles: true }));
+    }, kind);
+    const got = await box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).value);
+    expect(got === '\n\n\n\n\n', `${kind}: ${JSON.stringify(got)}`);
+    expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+});
+
 check('Emacs mode: a soft keyboard that composes the word before the caret and sends it whole again with each key types C-u 5 once, not twice', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '');

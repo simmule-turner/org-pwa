@@ -3233,20 +3233,28 @@ key with Meta.  Typing, ‘Backspace’ and the arrow keys work as usual and
 go through the same undo list, grouped as Emacs groups them.  ‘Ctrl-C’
 and ‘Ctrl-V’ keep their meaning in the browser.  Also ‘M-a M-e’
 (sentences, or fields inside a table, as Org's ‘org-backward-sentence’
-and ‘org-forward-sentence’), ‘M-y’ (after ‘C-y’, the previous kill),
-‘M-SPC’ (cycles spacing), ‘C-x C-o’ (deletes blank lines), ‘C-?’ (redo),
-‘C-v M-v’ (a screen at a time, moving the window start as Emacs does;
-text that wraps counts as one line), and ‘C-c C-n C-p C-f C-b C-u’ (move
-between headings), ‘C-c C-t’ (cycle the TODO keyword), ‘C-c C-c’ (align
-the table, or put a list's boxes right), ‘C-c C-x C-b’ (toggle a
-checkbox), ‘M-<up> M-<down>’ (move the heading or list item), ‘M-<left>
-M-<right>’ (promote or demote the heading, outdent or indent the item),
-‘M-x’ (run a command by name, ‘TAB’ completes), ‘C-x b’, ‘C-x k’ and
-‘C-x C-b’ (switch to, kill and list the open files), ‘C-h e’ (the
-messages), and ‘C-s C-r’ (Find; in the Find box ‘Alt+P’ and ‘Alt+N’
-bring back earlier searches, as ‘M-p’ and ‘M-n’ do in Emacs, and ‘Alt+E’
-puts the caret at the end of the string to edit it).  ‘M-<’ and ‘M->’,
-‘C-t’, ‘M-t’, ‘C-x C-x’, ‘M-\’ and ‘M-m’ take a prefix as in Emacs.
+and ‘org-forward-sentence’), ‘RET’ (Org's ‘org-return’: the next table
+row, a split heading, a list item that continues; ‘C-u 5 RET’ is five
+newlines), ‘M-k’ (kills a sentence), ‘M-@’ (marks a word), ‘M-^’ (joins
+the line to the one before), ‘C-M-o’ (splits the line), ‘C-x C-t’ (swaps
+two lines), ‘M-z’ (kills through a character you type), ‘M-q’ (fills the
+paragraph or region to 70 columns), ‘C-x C-u’ and ‘C-x C-l’ (change case
+of the region, after Emacs's "Use this command?"), ‘C-x d’, ‘C-x C-j’
+and ‘C-x C-f’ (the Files list), ‘C-<backspace>’ and ‘C-<delete>’ (kill a
+word), ‘M-y’ (after ‘C-y’, the previous kill), ‘M-SPC’ (cycles spacing),
+‘C-x C-o’ (deletes blank lines), ‘C-?’ (redo), ‘C-v M-v’ (a screen at a
+time, moving the window start as Emacs does; text that wraps counts as
+one line), and ‘C-c C-n C-p C-f C-b C-u’ (move between headings), ‘C-c
+C-t’ (cycle the TODO keyword), ‘C-c C-c’ (align the table, or put a
+list's boxes right), ‘C-c C-x C-b’ (toggle a checkbox), ‘M-<up>
+M-<down>’ (move the heading or list item), ‘M-<left> M-<right>’ (promote
+or demote the heading, outdent or indent the item), ‘M-x’ (run a command
+by name, ‘TAB’ completes), ‘C-x b’, ‘C-x k’ and ‘C-x C-b’ (switch to,
+kill and list the open files), ‘C-h e’ (the messages), and ‘C-s C-r’
+(Find; in the Find box ‘Alt+P’ and ‘Alt+N’ bring back earlier searches,
+as ‘M-p’ and ‘M-n’ do in Emacs, and ‘Alt+E’ puts the caret at the end of
+the string to edit it).  ‘M-<’ and ‘M->’, ‘C-t’, ‘M-t’, ‘C-x C-x’, ‘M-\’
+and ‘M-m’ take a prefix as in Emacs.
 
    The kill ring is shared with the device clipboard
 (‘select-enable-clipboard’): what you kill can be pasted elsewhere, and
@@ -6866,61 +6874,61 @@ Node: Line numbers218822
 Node: Narrowing219748
 Node: The plain-text editor220476
 Node: Emacs mode222759
-Node: Agenda227853
-Node: Dated entry sources233837
-Node: Diary-sexp forms237227
-Node: Sun times241057
-Node: Hebrew diary functions242963
-Node: Diary file244063
-Node: Holidays246658
-Node: General <%%(sexp)> timestamps251729
-Node: Other agenda behavior256393
-Node: Habits257702
-Node: Agenda Files259108
-Node: Contacts Files261182
-Node: Calendar and contacts sync (CalDAV CardDAV)261746
-Node: Agenda notifications264897
-Node: The TODO view266970
-Node: Capture Templates268440
-Node: Capturing from other apps289158
-Node: Extras menu290784
-Node: Menu customization295278
-Node: File management298285
-Node: Files view302297
-Node: Tabs305149
-Node: Citations305836
-Node: Export307025
-Node: Document settings308246
-Node: ASCII316734
-Node: HTML318579
-Node: ODT320133
-Node: Line numbers and references in source blocks321167
-Node: LaTeX322452
-Node: Beamer326108
-Node: Slides (HTML)328496
-Node: As-org329671
-Node: Calendar (ics)331326
-Node: Contacts (vcf)334514
-Node: What is dropped342321
-Node: Import342711
-Node: Help347290
-Node: Info reader347856
-Node: Settings350952
-Node: Offline behavior and sync354829
-Node: Long lists359332
-Node: Size limits360065
-Node: Platform support361204
-Node: Android app361971
-Node: Command palette366004
-Node: Security and privacy370764
-Node: Keybindings372171
-Node: god-mode377992
-Node: God-mode without a hardware keyboard394538
-Node: Differences from Emacs org-mode397059
-Node: Known limitations402122
-Node: Development402677
-Node: Concept Index406878
-Node: Variable Index417079
+Node: Agenda228474
+Node: Dated entry sources234458
+Node: Diary-sexp forms237848
+Node: Sun times241678
+Node: Hebrew diary functions243584
+Node: Diary file244684
+Node: Holidays247279
+Node: General <%%(sexp)> timestamps252350
+Node: Other agenda behavior257014
+Node: Habits258323
+Node: Agenda Files259729
+Node: Contacts Files261803
+Node: Calendar and contacts sync (CalDAV CardDAV)262367
+Node: Agenda notifications265518
+Node: The TODO view267591
+Node: Capture Templates269061
+Node: Capturing from other apps289779
+Node: Extras menu291405
+Node: Menu customization295899
+Node: File management298906
+Node: Files view302918
+Node: Tabs305770
+Node: Citations306457
+Node: Export307646
+Node: Document settings308867
+Node: ASCII317355
+Node: HTML319200
+Node: ODT320754
+Node: Line numbers and references in source blocks321788
+Node: LaTeX323073
+Node: Beamer326729
+Node: Slides (HTML)329117
+Node: As-org330292
+Node: Calendar (ics)331947
+Node: Contacts (vcf)335135
+Node: What is dropped342942
+Node: Import343332
+Node: Help347911
+Node: Info reader348477
+Node: Settings351573
+Node: Offline behavior and sync355450
+Node: Long lists359953
+Node: Size limits360686
+Node: Platform support361825
+Node: Android app362592
+Node: Command palette366625
+Node: Security and privacy371385
+Node: Keybindings372792
+Node: god-mode378613
+Node: God-mode without a hardware keyboard395159
+Node: Differences from Emacs org-mode397680
+Node: Known limitations402743
+Node: Development403298
+Node: Concept Index407499
+Node: Variable Index417700
 
 End Tag Table
 

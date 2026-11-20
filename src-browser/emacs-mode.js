@@ -4,7 +4,7 @@
  * the keymap (src/emacs-keymap.js) to the commands (src/emacs-edit.js) with Emacs's undo list, mark and kill ring; the result is
  * written back to the textarea, drawn with a block caret, a modeline and an echo line, and a panel gives a phone the keys it lacks.
  */
-import { syncExternal } from '../src/emacs-edit.js';
+import { answerDisabled, syncExternal } from '../src/emacs-edit.js';
 import { foldedExecute } from '../src/emacs-fold.js';
 import { scrollWindow } from '../src/emacs-scroll.js';
 import { BINDINGS, eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js';
@@ -59,7 +59,7 @@ function composedTyping(st, value) {
 const FOLD_COMMANDS = new Set(['org-cycle', 'org-shifttab', 'org-fold-reveal']);
 
 /** What a read-only buffer still allows: moving, the mark and copying. */
-const READ_ONLY_OK = new Set(['forward-char', 'backward-char', 'org-beginning-of-line', 'org-end-of-line', 'forward-word', 'backward-word', 'beginning-of-buffer', 'end-of-buffer', 'next-line', 'previous-line', 'set-mark-command', 'exchange-point-and-mark', 'kill-ring-save', 'org-forward-sentence', 'org-backward-sentence', 'isearch-forward', 'isearch-backward', 'scroll-up-command', 'scroll-down-command']);
+const READ_ONLY_OK = new Set(['dired', 'dired-jump', 'find-file', 'forward-char', 'backward-char', 'org-beginning-of-line', 'org-end-of-line', 'forward-word', 'backward-word', 'beginning-of-buffer', 'end-of-buffer', 'next-line', 'previous-line', 'set-mark-command', 'exchange-point-and-mark', 'kill-ring-save', 'org-forward-sentence', 'org-backward-sentence', 'isearch-forward', 'isearch-backward', 'scroll-up-command', 'scroll-down-command']);
 
 /**
  * @param {object} o
@@ -262,6 +262,15 @@ export function attachEmacsMode(o) {
       return true;
     }
     if (!kept) adopt(); // (kept: the field was already changed by the keyboard, and the state is what it was before)
+    if (ctx.st.asking && rawKey !== 'C-g') { // a disabled command (C-x C-u) waits for y, SPC, ! or n
+      const before = ctx.st;
+      ctx.st = answerDisabled(before, rawKey) ?? before;
+      ctx.input = newKeyInput();
+      say(ctx.st.error ?? ctx.st.message ?? '');
+      syncKillRing(before, ctx.st);
+      show();
+      return true;
+    }
     const fed = feedKey(ctx.input, rawKey);
     ctx.input = fed.input;
     const { result } = fed;
@@ -300,6 +309,10 @@ export function attachEmacsMode(o) {
     }
     if (BUFFER_COMMANDS.has(result.command)) {
       void bufferCommand(result.command);
+      return true;
+    }
+    if (result.command === 'dired' || result.command === 'dired-jump' || result.command === 'find-file') { // the Files list, in the folder of the current file
+      void import('./file-screen.js').then((m) => m.openFileScreen('open', { dired: true, jump: result.command === 'dired-jump' }));
       return true;
     }
     if (textarea.readOnly && !READ_ONLY_OK.has(result.command)) {
@@ -450,8 +463,9 @@ export function attachEmacsMode(o) {
     }
     const plainMove = !control && !meta && (e.key in MOVES || e.key === 'Escape');
     if (!control && !meta && !plainMove) {
-      if (e.key === 'Enter' && ctx.input.pending[0] === 'C-q') { // C-q 1 0 1 RET: the Return ends the code and is dropped; C-q RET inserts it
+      if (e.key === 'Enter' && !e.shiftKey && !textarea.readOnly) { // RET is Emacs's: org-return, or the end of a C-q code (C-q 1 0 1 RET drops the Return; C-q RET inserts it)
         if (press('RET')) e.preventDefault();
+        setSticky(false, false);
         return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') ctx.input = newKeyInput(); // keys that are not Emacs's here end a prefix
@@ -487,7 +501,7 @@ export function attachEmacsMode(o) {
     noteKeyLog('emacs beforeinput', { type: e.inputType, data: e.data, composing: e.isComposing, cancelable: e.cancelable, applying: ctx.applying, state: { pos: ctx.st.pos, sel: [textarea.selectionStart, textarea.selectionEnd] } });
     if (ctx.applying || e.isComposing) return;
     const type = e.inputType;
-    if (!['historyUndo', 'historyRedo', 'deleteContentBackward', 'deleteContentForward', 'insertText'].includes(type)) return;
+    if (!['historyUndo', 'historyRedo', 'deleteContentBackward', 'deleteContentForward', 'insertText', 'insertLineBreak', 'insertParagraph'].includes(type)) return;
     if (type === 'insertText' && (!e.data || e.data.includes('\n'))) return;
     // A browser can refuse to let the page cancel an edit (a soft keyboard's, on some phones). It then makes the edit itself, on the range it
     // planned before this event; doing the command as well would delete or type twice, so the edit is left to the browser and taken in as it is.
@@ -506,6 +520,7 @@ export function attachEmacsMode(o) {
     else if (type === 'historyRedo') press('C-?');
     else if (type === 'deleteContentBackward') press('DEL');
     else if (type === 'deleteContentForward') press('C-d');
+    else if (type === 'insertLineBreak' || type === 'insertParagraph') press('RET');
     else typeChars(/** @type {string} */ (e.data));
   }
 
@@ -643,6 +658,13 @@ export function attachEmacsMode(o) {
     if (handledEdit !== null && /** @type {InputEvent} */ (e).inputType === handledEdit) {
       handledEdit = null;
       show(); // the browser made the edit too: the text goes back to what the command made it
+      return;
+    }
+    // a line break the keyboard made itself (it would not let the page cancel it) is RET all the same, with its count
+    const kind = /** @type {InputEvent} */ (e).inputType;
+    if ((kind === 'insertLineBreak' || kind === 'insertParagraph') && !textarea.readOnly && textarea.value !== ctx.st.text && insertedText(ctx.st.text, textarea.value) === '\n') {
+      show();
+      press('RET');
       return;
     }
     // Android keyboards can add a second edit of another kind right after the one the page made (a Backspace that also removes the character

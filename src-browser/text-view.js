@@ -424,7 +424,7 @@ export function buildTextEditor({ textarea, kind, extraRow = null, compact, heig
   textarea.addEventListener('keydown', (e) => {
     if (textarea.readOnly || e.isComposing || e.keyCode === 229) return;
     const { selectionStart: a, selectionEnd: b, value } = textarea;
-    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !getEmacsMode(vars())) { // in Emacs mode RET is org-return
       const insert = newlineWithIndent(value, a);
       if (insert === '\n') return; // nothing to keep: the browser's own Enter
       e.preventDefault();

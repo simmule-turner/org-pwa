@@ -94,7 +94,7 @@ async function placeStatus() {
 }
 
 /** Opens the screen for 'open' or 'saveas' where the person was last, or with `dired` in the folder of the current file.
- * @param {'open' | 'saveas'} mode @param {{ dired?: boolean, attach?: { heading: any, method: 'cp' | 'mv' | 'ln' | 'lns', onAttach: (files: any[]) => Promise<void> } }} [options] */
+ * @param {'open' | 'saveas'} mode @param {{ dired?: boolean, jump?: boolean, attach?: { heading: any, method: 'cp' | 'mv' | 'ln' | 'lns', onAttach: (files: any[]) => Promise<void> } }} [options] */
 export async function openFileScreen(mode, options = {}) {
   if (mode === 'saveas' && !S.state.doc) return;
   if (commitTextModeIfActive()) render();
@@ -115,7 +115,7 @@ export async function openFileScreen(mode, options = {}) {
     const here = currentFileSpot();
     if (here) start = { ...here, note: null };
   }
-  S.fileScreen = { mode, dired: !!options.dired, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, sort: 'name', reverse: false, marks: new Set(), flags: new Set(), found: null, transfer: null, attach: options.attach || null, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false };
+  S.fileScreen = { mode, dired: !!options.dired, point: options.jump && S.state.documentId ? String(S.state.documentId).split('/').pop() || null : null, place: start.place, folder: start.folder, loc, entries: null, error: null, unconfigured: false, sort: 'name', reverse: false, marks: new Set(), flags: new Set(), found: null, transfer: null, attach: options.attach || null, switching: false, note: start.note, detail: status ? status.detail : {}, ready: status ? status.ready : null, name: mode === 'saveas' ? suggestedSaveAsName('notes.org') : '', pathEl: null, nameEl: null, focusPlace: false };
   renderFileScreen();
   loadListing();
 }
@@ -600,6 +600,15 @@ function fillList(f, list) {
     const rows = shownRows(f);
     if (rows.length === 0) list.appendChild(div('padding:10px 12px;font-size:13px;opacity:.6;', f.found ? 'No file matches.' : 'No files or folders here.'));
     for (const entry of rows) list.appendChild(listRow(f, entry));
+    if (f.point) { // dired-jump: point is on the row of the file being edited
+      const row = /** @type {HTMLElement | null} */ (list.querySelector(`[data-row="${CSS.escape(f.point)}"]`));
+      if (row) {
+        row.style.background = 'var(--accent-soft, var(--surface-solid))';
+        row.scrollIntoView({ block: 'center' });
+        /** @type {HTMLElement | null} */ (row.querySelector('[data-entry]'))?.focus({ preventScroll: true });
+      }
+      f.point = null;
+    }
   }
 }
 
