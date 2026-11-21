@@ -147,6 +147,14 @@ const COMMANDS = {
   'org-todo': (s) => orgChange(s, org.cycleTodo(s.text, s.pos), 'C-c C-t'),
   'org-ctrl-c-ctrl-c': (s) => orgChange(s, org.ctrlCCtrlC(s.text, s.pos), 'C-c C-c'),
   'org-toggle-checkbox': (s) => orgChange(s, org.toggleCheckboxAt(s.text, s.pos), 'C-c C-x C-b'),
+  'org-shiftup': (s) => orgShift(s, 'up', 'org-shiftup'),
+  'org-shiftdown': (s) => orgShift(s, 'down', 'org-shiftdown'),
+  'org-shiftleft': (s) => orgShift(s, 'left', 'org-shiftleft'),
+  'org-shiftright': (s) => orgShift(s, 'right', 'org-shiftright'),
+  'org-shiftmetaup': (s) => orgShiftMeta(s, 'up'),
+  'org-shiftmetadown': (s) => orgShiftMeta(s, 'down'),
+  'org-shiftmetaleft': (s) => orgShiftMeta(s, 'left'),
+  'org-shiftmetaright': (s) => orgShiftMeta(s, 'right'),
   'org-metaup': (s) => orgMeta(s, 'up'),
   'org-metadown': (s) => orgMeta(s, 'down'),
   'org-metaleft': (s) => orgMeta(s, 'left'),
@@ -725,6 +733,17 @@ function openRow(s) {
   return change ? orgChange(s, change, 'C-o') : null;
 }
 
+/** `S-up`, `S-down`, `S-left`, `S-right` (`org-shiftup` and the others): the time stamp, heading or list item at the caret.
+ * @param {EditState} s @param {'up' | 'down' | 'left' | 'right'} dir @param {string} name */
+function orgShift(s, dir, name) {
+  return orgChange(s, org.shiftArrow(s.text, s.pos, dir, s.last === name), `S-${dir}`);
+}
+
+/** `M-S-up`, `M-S-down`, `M-S-left`, `M-S-right` (`org-shiftmetaup` and the others). @param {EditState} s @param {'up' | 'down' | 'left' | 'right'} dir */
+function orgShiftMeta(s, dir) {
+  return orgChange(s, org.shiftMetaArrow(s.text, s.pos, dir), `M-S-${dir}`);
+}
+
 /** `M-up`, `M-down`, `M-left`, `M-right` (`org-metaup` and the others): the heading, list item or word at the caret.
  * @param {EditState} s @param {'up' | 'down' | 'left' | 'right'} dir */
 function orgMeta(s, dir, count = /** @type {number | null} */ (null)) {
@@ -908,7 +927,7 @@ export function displayColumn(text, pos) {
 }
 
 /** `move-to-column`: the offset in `line` at the first place that is at or past column `goal` (after the character that crosses it), or its end. @param {string} line @param {number} goal */
-function offsetAtColumn(line, goal) {
+export function offsetAtColumn(line, goal) {
   let col = 0;
   let i = 0;
   for (const ch of line) {

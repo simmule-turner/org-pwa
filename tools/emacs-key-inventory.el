@@ -1,4 +1,5 @@
 (require 'org)
+(require 'cl-lib)
 (with-temp-buffer
   (org-mode)
   (let (keys out)
@@ -15,6 +16,18 @@
     (dolist (k '("RET" "TAB" "DEL" "SPC" "ESC" "<left>" "<right>" "<up>" "<down>" "<home>" "<end>" "<prior>" "<next>" "<delete>" "<backspace>" "<backtab>" "<return>" "<tab>" "<insert>"
                  "C-<left>" "C-<right>" "C-<up>" "C-<down>" "M-<left>" "M-<right>" "M-<up>" "M-<down>" "S-<left>" "S-<right>" "S-<up>" "S-<down>" "C-<home>" "C-<end>" "M-RET" "C-RET" "S-RET" "C-S-RET" "M-S-RET" "M-DEL" "C-DEL" "C-<backspace>" "M-<backspace>" "M-SPC" "C-SPC" "C-M-SPC" "M-TAB" "C-TAB" "C-<delete>" "M-<delete>" "C-S-<left>" "C-S-<right>" "M-S-<left>" "M-S-<right>" "M-S-<up>" "M-S-<down>" "C-M-<left>" "C-M-<right>" "C-/" "C-?" "C-_" "C-@" "M-<" "M->" "C-x C-SPC" "C-x TAB" "C-x DEL" "C-x ESC" "C-x RET" "C-c RET" "C-c TAB" "C-c SPC" "C-c C-SPC" "C-c C-RET" "C-c C-x RET" "C-c C-x TAB"))
       (push k keys))
+    ;; every key sequence of the keymaps an Org buffer reads, found by walking them (the lists above only guess at prefixes)
+    (let ((seen (make-hash-table :test 'equal)))
+      (cl-labels ((walk (map prefix)
+                    (map-keymap
+                     (lambda (ev b)
+                       (when (and (or (integerp ev) (symbolp ev)) (not (memq ev '(remap menu-bar tool-bar tab-bar header-line mode-line tab-line mouse-1 t))))
+                         (let* ((seq (vconcat prefix (vector ev))) (desc (key-description seq)))
+                           (unless (string-match-p "mouse\\|wheel\\|drag\\|down-\\|touch\\|menu\\|switch-frame\\|focus\\|select-window\\|help-echo\\|XF86\\|<f[0-9]" desc)
+                             ;; a prefix key is walked in every map; a command is taken from the first map that binds it (the one that shadows the rest)
+                             (cond ((keymapp b) (when (< (length seq) 4) (walk b seq)))
+                                   ((and (symbolp b) b (not (gethash desc seen))) (puthash desc t seen) (push desc keys))))))) map)))
+        (dolist (m (current-active-maps)) (walk m []))))
     (dolist (k (nreverse keys))
       (let* ((v (ignore-errors (key-binding (kbd k)))))
         (when (and v (symbolp v) (not (memq v '(undefined self-insert-command))))

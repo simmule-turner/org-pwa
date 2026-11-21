@@ -70,7 +70,11 @@ export function tableTab(text, pos, alignOnly = false) {
   const finish = (table, caret) => {
     const before = lines.slice(0, first).reduce((n, l) => n + l.length + 1, 0);
     // a row added at the very end of a buffer that has no final newline brings one
-    const tail = table.length > last - first + 1 && last === lines.length - 1 && caret >= table.slice(0, -1).reduce((n, l) => n + l.length + 1, 0) ? [''] : [];
+    const atEnd = last === lines.length - 1;
+    const added = table.length > last - first + 1 && caret >= table.slice(0, -1).reduce((n, l) => n + l.length + 1, 0);
+    // and so does aligning a last row that changes (`org-table-align` replaces a changed row with a line that ends in a newline)
+    const changed = table.length === last - first + 1 && table[table.length - 1] !== lines[last];
+    const tail = atEnd && (added || changed) ? [''] : [];
     return { text: [...lines.slice(0, first), ...table, ...tail, ...lines.slice(last + 1)].join('\n'), pos: before + caret };
   };
 

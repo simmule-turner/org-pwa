@@ -1,4 +1,4 @@
-// Dumps what Emacs 29.3 binds in an Org buffer (key-binding for the C-, M-, C-M-, C-x, C-c and special keys) to
+// Dumps what Emacs 29.3 binds in an Org buffer (every key sequence of the keymaps the buffer reads, found by walking them) to
 // test/fixtures/emacs-key-inventory.json, and lists the keys Emacs binds that Emacs mode does not in test/emacs-key-gaps.json
 // (only when that file is missing: the gaps are then curated by hand, and the test fails on a key that is neither bound nor listed).
 import fs from 'node:fs';

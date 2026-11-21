@@ -203,9 +203,10 @@ export function timerShowRemaining() {
 
 /**
  * `org-timer-set-timer`: a countdown of the focused heading's effort, or of what is asked for (minutes or h:mm:ss).
- * @param {{ ignoreEffort?: boolean }} [options] `ignoreEffort`: ask even when the heading has an effort
+ * @param {{ ignoreEffort?: boolean, ask?: (message: string, initial: string) => Promise<string | null> }} [options] `ignoreEffort`: ask even when the heading has an effort;
+ *  `ask` reads the answer (the minibuffer in Emacs mode, the app's prompt otherwise)
  */
-export async function timerSetTimer({ ignoreEffort = false } = {}) {
+export async function timerSetTimer({ ignoreEffort = false, ask = promptText } = {}) {
   if (S.timer && !S.timer.countdown) {
     setStatus('Relative timer is running. Stop first');
     return;
@@ -216,7 +217,7 @@ export async function timerSetTimer({ ignoreEffort = false } = {}) {
   const effortMinutes = effort && /\S/.test(effort) ? Math.floor(parseOrgDuration(effort) || 0) : null;
   /** @type {string | null} */
   let minutes = effortMinutes !== null ? String(effortMinutes) : null;
-  if (minutes === null) minutes = await promptText('How much time left? (minutes or h:mm:ss) ', defaultTimer === '0' ? '' : defaultTimer);
+  if (minutes === null) minutes = await ask('How much time left? (minutes or h:mm:ss) ', defaultTimer === '0' ? '' : defaultTimer);
   if (minutes === null) return;
   if (/^[0-9]+$/.test(minutes)) minutes += ':00';
   if (!/[0-9]+/.test(minutes)) {

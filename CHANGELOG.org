@@ -7,6 +7,10 @@ entry is tagged with the service worker cache version it shipped in
 (=sw.js='s own =CACHE_NAME=), so "which build has this" is always a
 direct lookup rather than a guess.
 
+* v731 — Dates asked in the minibuffer with a calendar, and Emacs's Shift keys
+C-c ., C-c !, C-c C-s and C-c C-d now ask "Date+time [2026-11-24]:" as Emacs does (the old prompt said "[now]"), with the month beside it: what you type marks its day, S-arrows and M-S-arrows move the marked day, and a tap on a day answers with it. C-c C-s and C-c C-d write the planning line there instead of opening the Edit details panel. Six more keys (C-c C-q, C-c C-x p, e, ;, C-c , and C-c C-w) ask in the minibuffer and C-c /, C-c ^ and C-c C-x f in the echo area. S-up, S-down, S-left, S-right and the M-S-arrows work on headings, items, time stamps and tables, with the key panel's Shift button too.
+Verified: 2,194 date-prompt cases and every Shift key sequence compared with Emacs 29.3.
+
 * v730 — Emacs's own Enter, M-q, M-z and more in Emacs mode
 RET now follows Emacs's org-return: it continues list items and splits headings, moves down a table, and takes a count (C-u 5 RET is five newlines), including when a phone keyboard sends the line break itself. New keys: M-q fills the paragraph or region to 70 columns, C-x C-u and C-x C-l ask "Use this command?" before changing case, M-z, M-k, M-@, M-^, C-M-o, C-x C-t, C-Backspace and C-Delete, and C-x d, C-x C-j and C-x C-f open the Files list with the current file selected. The keys Emacs binds that are not bound here are listed in the roadmap with an order.
 Verified: 41,971 key sequences compared with Emacs 29.3, and a check of every key Emacs binds.

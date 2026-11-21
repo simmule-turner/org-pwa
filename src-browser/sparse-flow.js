@@ -9,7 +9,7 @@ import { resolveTodoSequence } from '../src/todo-cycle.js';
 import { S } from './app-state.js';
 import { setStatus } from './editing.js';
 import { narrowToSparseMatches } from './gestures-structure.js';
-import { readFromMinibuffer } from './minibuffer-prompt.js';
+import { readFromMinibuffer, readKeyFromMinibuffer } from './minibuffer-prompt.js';
 import { clearOccurHighlights } from './occur-highlights.js';
 import { render } from './render.js';
 
@@ -165,9 +165,9 @@ export async function sparseTreeCommand(prefix = 1) {
     MEMORY.type = (S.state.localVariables['org-sparse-tree-default-date-type'] ?? 'nil').trim().replace(/^'/, '').replace(/^nil$/, '');
   }
   const named = DATE_TYPE_NAMES.get(MEMORY.type) ?? 'scheduled/deadline';
-  const answer = await ask(`${MENU}${named} `, ['r', 't', 'T', 'm', 'p', 'd', 'b', 'a', 'D', 'c']);
-  if (answer === null) return setStatus('Quit');
-  const key = answer.trim().charAt(0);
+  S.godModeActive = false; // the minibuffer is about to ask a question
+  const key = await readKeyFromMinibuffer(`${MENU}${named}`, 'rtTmpdbaDcRPR/');
+  if (key === 'q') return setStatus('Quit');
   switch (key) {
     case 'c':
       MEMORY.type = DATE_TYPES[DATE_TYPES.indexOf(MEMORY.type) + 1] ?? '';

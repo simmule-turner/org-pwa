@@ -4,8 +4,88 @@
  * (C-x and ESC prefixes) and prefix arguments (C-u, M-digits). Keys are written as in Emacs: `C-f`, `M-f`, `C-x C-x`, `DEL`, `<left>`.
  */
 
+/** The keys that run a command of the command palette (the app's own commands for these Emacs functions), as Emacs binds them. @type {Readonly<Record<string, string>>} */
+export const PALETTE_BINDINGS = {
+  'C-c C-d': 'org-deadline',
+  'C-c C-q': 'org-set-tags-command',
+  'C-c C-x p': 'org-set-property',
+  'C-\'': 'org-cycle-agenda-files',
+  'C-,': 'org-cycle-agenda-files',
+  'C-c !': 'org-time-stamp-inactive',
+  'C-c #': 'org-update-statistics-cookies',
+  'C-c $': 'org-archive-subtree',
+  'C-c %': 'org-mark-ring-push',
+  'C-c &': 'org-mark-ring-goto',
+  'C-c ,': 'org-priority',
+  'C-c .': 'org-time-stamp',
+  'C-c /': 'org-sparse-tree',
+  'C-c ;': 'org-toggle-comment',
+  'C-c @': 'org-mark-subtree',
+  'C-c C-,': 'org-insert-structure-template',
+  'C-c C-<': 'org-promote-subtree',
+  'C-c C->': 'org-demote-subtree',
+  'C-c C-a': 'org-attach',
+  'C-c C-e': 'org-export-dispatch',
+  'C-c C-j': 'org-goto',
+  'C-c C-s': 'org-schedule',
+  'C-c C-v C-b': 'org-babel-execute-buffer',
+  'C-c C-v C-e': 'org-babel-execute-maybe',
+  'C-c C-v C-n': 'org-babel-next-src-block',
+  'C-c C-v C-p': 'org-babel-previous-src-block',
+  'C-c C-v C-s': 'org-babel-execute-subtree',
+  'C-c C-v C-t': 'org-babel-tangle',
+  'C-c C-v b': 'org-babel-execute-buffer',
+  'C-c C-v e': 'org-babel-execute-maybe',
+  'C-c C-v i': 'org-babel-lob-ingest',
+  'C-c C-v k': 'org-babel-remove-result-one-or-many',
+  'C-c C-v n': 'org-babel-next-src-block',
+  'C-c C-v p': 'org-babel-previous-src-block',
+  'C-c C-v s': 'org-babel-execute-subtree',
+  'C-c C-v t': 'org-babel-tangle',
+  'C-c C-w': 'org-refile',
+  'C-c C-x ,': 'org-timer-pause-or-continue',
+  'C-c C-x -': 'org-timer-item',
+  'C-c C-x 0': 'org-timer-start',
+  'C-c C-x ;': 'org-timer-set-timer',
+  'C-c C-x <': 'org-agenda-set-restriction-lock',
+  'C-c C-x >': 'org-agenda-remove-restriction-lock',
+  'C-c C-x A': 'org-archive-to-archive-sibling',
+  'C-c C-x C-a': 'org-archive-subtree-default',
+  'C-c C-x C-c': 'org-columns',
+  'C-c C-x C-i': 'org-clock-in',
+  'C-c C-x C-j': 'org-clock-goto',
+  'C-c C-x C-n': 'org-next-link',
+  'C-c C-x C-o': 'org-clock-out',
+  'C-c C-x C-q': 'org-clock-cancel',
+  'C-c C-x C-s': 'org-archive-subtree',
+  'C-c C-x C-u': 'org-dblock-update',
+  'C-c C-x C-x': 'org-clock-in-last',
+  'C-c C-x M': 'org-insert-todo-heading',
+  'C-c C-x TAB': 'org-clock-in',
+  'C-c C-x _': 'org-timer-stop',
+  'C-c C-x c': 'org-clone-subtree-with-time-shift',
+  'C-c C-x d': 'org-insert-drawer',
+  'C-c C-x e': 'org-set-effort',
+  'C-c C-x f': 'org-footnote-action',
+  'C-c [': 'org-agenda-file-to-front',
+  'C-c ]': 'org-remove-file',
+  'C-c ^': 'org-sort',
+  'C-x C-q': 'read-only-mode',
+  'C-x C-s': 'save-buffer',
+  'C-x C-w': 'write-file',
+  'C-x RET r': 'revert-buffer-with-coding-system',
+  'C-x n s': 'org-narrow-to-subtree',
+  'C-x n w': 'widen',
+  'C-x s': 'save-some-buffers',
+  'C-x x r': 'rename-buffer',
+};
+
+/** The commands those keys run: the browser layer hands them to the palette. */
+export const PALETTE_COMMANDS = new Set(Object.values(PALETTE_BINDINGS));
+
 /** Key sequence to command, as Emacs binds them in an Org buffer. @type {Readonly<Record<string, string>>} */
 export const BINDINGS = {
+  ...PALETTE_BINDINGS,
   'C-f': 'forward-char',
   'C-b': 'backward-char',
   'C-n': 'next-line',
@@ -39,6 +119,14 @@ export const BINDINGS = {
   'C-x h': 'mark-whole-buffer',
   TAB: 'org-cycle',
   '<backtab>': 'org-shifttab',
+  'S-<up>': 'org-shiftup',
+  'S-<down>': 'org-shiftdown',
+  'S-<left>': 'org-shiftleft',
+  'S-<right>': 'org-shiftright',
+  'M-S-<up>': 'org-shiftmetaup',
+  'M-S-<down>': 'org-shiftmetadown',
+  'M-S-<left>': 'org-shiftmetaleft',
+  'M-S-<right>': 'org-shiftmetaright',
   'C-c C-r': 'org-fold-reveal',
   'C-c C-n': 'org-next-visible-heading',
   'C-c C-p': 'org-previous-visible-heading',
@@ -94,7 +182,7 @@ export const BINDINGS = {
 /** Every key sequence of the table. */
 export const KEY_SEQUENCES = Object.keys(BINDINGS);
 
-const PREFIXES = new Set(['C-x', 'C-c', 'C-c C-x', 'C-h', 'ESC', 'M-ESC']);
+const PREFIXES = new Set(['C-x', 'C-c', 'C-c C-x', 'C-c C-v', 'C-x n', 'C-h', 'ESC', 'M-ESC']);
 
 /** @typedef {{ n: number, universal: boolean }} Prefix */
 /**
@@ -238,8 +326,9 @@ function typeArgument(input, arg, key) {
 }
 
 /** The key as Emacs names it, from a browser key event; null for a modifier alone.
- * @param {{ key: string, ctrlKey: boolean, altKey: boolean }} e */
-export function eventKey({ key, ctrlKey, altKey }) {
+ * Shift is part of the name only for the keys that have a name (S-<up>, M-S-<left>, S-<return>); a letter typed with Shift is the capital itself.
+ * @param {{ key: string, ctrlKey: boolean, altKey: boolean, shiftKey?: boolean }} e */
+export function eventKey({ key, ctrlKey, altKey, shiftKey = false }) {
   if (['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'CapsLock'].includes(key)) return null;
   /** @type {Record<string, string>} */
   const named = { Backspace: 'DEL', Enter: 'RET', Tab: 'TAB', Escape: 'ESC', Delete: '<deletechar>', ArrowLeft: '<left>', ArrowRight: '<right>', ArrowUp: '<up>', ArrowDown: '<down>', Home: '<home>', End: '<end>', PageUp: '<prior>', PageDown: '<next>', Insert: '<insert>' };
@@ -247,6 +336,7 @@ export function eventKey({ key, ctrlKey, altKey }) {
   if (!name && [...key].length !== 1) return `<${key}>`;
   if (ctrlKey && !altKey && (key === 'Backspace' || key === 'Delete')) return `C-<${key === 'Backspace' ? 'backspace' : 'delete'}>`;
   let base = name ?? key;
+  if (shiftKey && name && !['Tab', 'Backspace', 'Escape', 'Delete'].includes(key)) base = `S-${key === 'Enter' ? '<return>' : name}`; // Return is RET alone, <return> with a modifier, as Emacs names it
   if (!name && ctrlKey) {
     if (key === ' ' || key === '@') base = 'SPC';
     else if (/^[A-Za-z]$/.test(key)) base = key.toLowerCase();

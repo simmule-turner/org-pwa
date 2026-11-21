@@ -12,7 +12,7 @@ import { toggleHeading } from '../src/text-commands.js';
 import { headingLineIndex, serializeOrg } from '../src/org-parser.js';
 import { replaceDocText } from '../src/archive-text.js';
 import { headingAtLine } from './text-commands-flow.js';
-import { readFromMinibuffer } from './minibuffer-prompt.js';
+import { minibufferRouted, readFromMinibuffer, readKeyFromMinibuffer } from './minibuffer-prompt.js';
 import { sortEntries } from '../src/outline-sort.js';
 import { readFunction } from '../src/table-sort-lisp.js';
 import { readPriorityRange } from '../src/priorities.js';
@@ -96,13 +96,15 @@ export function askSortEntries(target, withCase = false) {
     }
     commitAndRender('Sorted entries');
   };
+  /** The question, in Emacs mode in the minibuffer with Emacs's prompt, else in the app's box. @param {string} message @param {string} okLabel */
+  const ask = (message, okLabel) => (minibufferRouted() ? readFromMinibuffer(`${message} `) : promptText(message, '', { okLabel }));
   const byProperty = (/** @type {string} */ type) => async () => {
-    const property = await promptText('Property:', '', { okLabel: 'Sort' });
+    const property = await ask('Property:', 'Sort');
     if (property === null || property === '') return;
     run(type, { property, propertyOf: (h, name) => h.properties[name] ?? null });
   };
   const byFunction = (/** @type {string} */ type) => async () => {
-    const keyName = await promptText('Function for extracting keys:', '', { okLabel: 'Next' });
+    const keyName = await ask('Function for extracting keys:', 'Next');
     if (keyName === null) return;
     const key = readFunction(keyName, false);
     if ('error' in key) {
@@ -110,7 +112,7 @@ export function askSortEntries(target, withCase = false) {
       render();
       return;
     }
-    const compareName = await promptText("Function for comparing keys (empty for default `sort-subr' predicate):", '', { okLabel: 'Sort' });
+    const compareName = await ask("Function for comparing keys (empty for default `sort-subr' predicate):", 'Sort');
     if (compareName === null) return;
     const compare = readFunction(compareName, true);
     if ('error' in compare) {
@@ -122,6 +124,19 @@ export function askSortEntries(target, withCase = false) {
   };
   /** @type {[string, string][]} */
   const kinds = [['a', 'Alphabetic'], ['n', 'Numeric'], ['p', 'Priority'], ['o', 'TODO order'], ['t', 'Time'], ['s', 'Scheduled'], ['d', 'Deadline'], ['c', 'Created'], ['k', 'Clocking'], ['r', 'Property…'], ['f', 'Function…']];
+  /** @param {string} type */
+  const choose = (type) => {
+    const key = type.toLowerCase();
+    if (key === 'r') return byProperty(type)();
+    if (key === 'f') return byFunction(type)();
+    return run(type);
+  };
+  if (minibufferRouted()) {
+    // Emacs mode: the one-key question in the echo area, in Emacs's words
+    const echo = `Sort ${heading ? 'children' : 'top-level'}: [a]lpha  [n]umeric  [p]riority  p[r]operty  todo[o]rder  [f]unc\n               [t]ime [s]cheduled [d]eadline [c]reated cloc[k]ing\n               A/N/P/R/O/F/T/S/D/C/K means reversed:`;
+    void readKeyFromMinibuffer(echo, 'anproftsdckANPROFTSDCK').then((key) => (key === 'q' ? setStatus('Quit') : choose(key)));
+    return;
+  }
   openGridChoiceModal({
     label: `Sort ${what}: [a]lpha [n]umeric [p]riority p[r]operty todo[o]rder [f]unc [t]ime [s]cheduled [d]eadline [c]reated cloc[k]ing. A/N/P/R/O/F/T/S/D/C/K means reversed:`,
     buttons: kinds.flatMap(([key, text]) => [false, true].map((reversed) => {

@@ -58,7 +58,7 @@ import { inlineTaskLevel } from '../src/inline-tasks.js';
 import { askSortEntries, insertDrawerCommand, insertInlineTaskCommand, insertStructureTemplateCommand, insertPropertyDrawerCommand, shiftHeadingOnly, shiftSubtree, toggleCommentCommand, toggleHeadingCommand } from './outline-edit-flow.js';
 import { tableChord, focusedTable, askSort, sendFocusedTable, exportFocusedTable } from './table-edit.js';
 import { askListSort, listChord } from './list-edit-flow.js';
-import { headingCommandInText, TEXT_VIEW_HEADING_COMMANDS } from './text-org-commands.js';
+import { headingCommandInText, headingAtCaretInText } from './text-org-commands.js';
 import { moveArrowHorizontalInTable, moveArrowVertical, moveHeadingFocus, moveKeyboardFocus, moveTableCellFocus, rowNearViewportTop, setKeyboardFocusToRow, moveToParentHeading, moveToSameLevelHeading, setKeyboardFocusToHeading, enterInsertModeAtCurrentLine, visibleHeadingsInOrder } from './keyboard-focus.js';
 import { renderMoreMenu, runExtraMenuEntry } from './menus.js';
 import { openArchiveRefilePanel } from './archive-refile-panel.js';
@@ -629,7 +629,7 @@ export const PALETTE_NEEDS = {
  * @param {object | null} [target]
  */
 export function paletteUnavailableReason(command, target) {
-  const atCaret = S.currentView === 'text' && TEXT_VIEW_HEADING_COMMANDS.has(command.id); // the Text view acts on the heading at the caret
+  const atCaret = S.currentView === 'text'; // the Text view acts on the heading at the caret
   for (const need of command.needs || []) {
     if (atCaret && need === 'heading') continue;
     const reason = /** @type {any} */ (PALETTE_NEEDS)[need](target);
@@ -643,7 +643,7 @@ export function paletteUnavailableReason(command, target) {
  * @param {string} name
  *  resolves to, so the two vocabularies are one. */
 export function findPaletteCommandByOrgName(name) {
-  return paletteCommandList().find((command) => command.orgName === name) || null;
+  return paletteCommandList().find((command) => command.orgName === name || (command.orgAliases ?? []).includes(name)) || null;
 }
 
 /** Runs `command` against `target` exactly as the palette does: a command that
@@ -659,8 +659,17 @@ export function runPaletteCommand(command, target) {
     return;
   }
   if (headingCommandInText(command.id)) return;
+  let aim = target;
+  const atCaret = !aim && S.currentView === 'text' && (command.needs || []).includes('heading'); // the heading the caret is in
+  if (atCaret) {
+    aim = headingAtCaretInText();
+    if (!aim) {
+      render();
+      return;
+    }
+  }
   try {
-    command.run(target);
+    command.run(aim);
   } catch (err) {
     setStatus(`${command.label} failed: ${err.message}`);
     render();
@@ -780,6 +789,7 @@ export function paletteCommandList() {
       id: 'details',
       label: 'Edit details',
       orgName: 'org-schedule',
+      orgAliases: ['org-deadline', 'org-set-tags-command', 'org-set-property'], // the one Edit details panel sets all of these
       keys: 'C-c C-s',
       group: 'Heading',
       keywords: ['scheduled', 'deadline', 'org-deadline', 'timestamp', 'org-time-stamp', 'tags', 'org-set-tags-command', 'properties', 'org-set-property'],

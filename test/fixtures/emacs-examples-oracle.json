@@ -1,0 +1,175 @@
+{
+ "emacs": "29.3",
+ "cases": [
+  {
+   "keys": "M-f",
+   "before": "one ‸two three",
+   "emacs": "one two‸ three"
+  },
+  {
+   "keys": "C-n C-n",
+   "before": "abcdef\nabcde‸f\nab\nabcdefgh",
+   "emacs": "abcdef\nabcdef\nab\nabcde‸fgh"
+  },
+  {
+   "keys": "M-e",
+   "before": "One thing.  ‸Then another.  Last.",
+   "emacs": "One thing.  Then another.‸  Last."
+  },
+  {
+   "keys": "C-u 3 M-f",
+   "before": "‸one two three four",
+   "emacs": "one two three‸ four"
+  },
+  {
+   "keys": "C-k C-k",
+   "before": "abc‸ def\nghi",
+   "emacs": "abc‸ghi"
+  },
+  {
+   "keys": "M-d",
+   "before": "one ‸two three",
+   "emacs": "one ‸ three"
+  },
+  {
+   "keys": "M-k",
+   "before": "One.  ‸Two words.  Three.",
+   "emacs": "One.  ‸  Three."
+  },
+  {
+   "keys": "M-z x",
+   "before": "one ‸two xray",
+   "emacs": "one ‸ray"
+  },
+  {
+   "keys": "C-<backspace>",
+   "before": "one two‸ three",
+   "emacs": "one ‸ three"
+  },
+  {
+   "keys": "C-k C-y",
+   "before": "one ‸two\nthree",
+   "emacs": "one two‸\nthree"
+  },
+  {
+   "keys": "C-SPC M-f C-w",
+   "before": "one ‸two three",
+   "emacs": "one ‸ three"
+  },
+  {
+   "keys": "C-x h C-w",
+   "before": "one\n‸two",
+   "emacs": "‸"
+  },
+  {
+   "keys": "M-@ C-w",
+   "before": "one ‸two three",
+   "emacs": "one ‸ three"
+  },
+  {
+   "keys": "M-u",
+   "before": "one ‸two three",
+   "emacs": "one TWO‸ three"
+  },
+  {
+   "keys": "M-c",
+   "before": "one ‸two three",
+   "emacs": "one Two‸ three"
+  },
+  {
+   "keys": "M-t",
+   "before": "one two‸ three",
+   "emacs": "one three two‸"
+  },
+  {
+   "keys": "C-t",
+   "before": "ab‸cd",
+   "emacs": "acb‸d"
+  },
+  {
+   "keys": "C-x C-t",
+   "before": "first\nsecond‸\nthird",
+   "emacs": "second\nfirst\n‸third"
+  },
+  {
+   "keys": "M-^",
+   "before": "one\n  ‸two",
+   "emacs": "one‸ two"
+  },
+  {
+   "keys": "M-\\",
+   "before": "one   ‸  two",
+   "emacs": "one‸two"
+  },
+  {
+   "keys": "C-x C-o",
+   "before": "one\n\n\n‸\ntwo",
+   "emacs": "one\n‸\ntwo"
+  },
+  {
+   "keys": "C-o",
+   "before": "one ‸two",
+   "emacs": "one ‸\ntwo"
+  },
+  {
+   "keys": "C-M-o",
+   "before": "one ‸two",
+   "emacs": "one ‸\n    two"
+  },
+  {
+   "keys": "C-SPC M-f C-x C-u y",
+   "before": "‸hello world",
+   "emacs": "HELLO‸ world"
+  },
+  {
+   "keys": "M-q",
+   "before": "The quick brown fox jumps over the lazy dog while the sun sets slowly behind the hills, and the evening air turns cool‸ over the quiet fields.",
+   "emacs": "The quick brown fox jumps over the lazy dog while the sun sets slowly\nbehind the hills, and the evening air turns cool‸ over the quiet\nfields."
+  },
+  {
+   "keys": "M-q",
+   "before": "- The quick brown fox jumps over the lazy dog while the sun sets slowly behind the hills,‸ and the evening air turns cool over the quiet fields.",
+   "emacs": "- The quick brown fox jumps over the lazy dog while the sun sets\n  slowly behind the hills,‸ and the evening air turns cool over the\n  quiet fields."
+  },
+  {
+   "keys": "RET",
+   "before": "- item‸",
+   "emacs": "- item\n  ‸"
+  },
+  {
+   "keys": "RET",
+   "before": "* Heading ‸title",
+   "emacs": "* Heading\n‸title"
+  },
+  {
+   "keys": "RET",
+   "before": "| ‸a | b |\n| c | d |",
+   "emacs": "| a | b |\n| ‸c | d |"
+  },
+  {
+   "keys": "M-<right>",
+   "before": "- one\n- t‸wo",
+   "emacs": "- one\n  - t‸wo"
+  },
+  {
+   "keys": "C-c C-c",
+   "before": "| a | bbb |\n| cccc | d‸ |\n\nafter",
+   "emacs": "| a    | bbb |\n| cccc | ‸d   |\n\nafter"
+  },
+  {
+   "keys": "C-u 5 RET",
+   "before": "abc‸def",
+   "emacs": "abc\n\n\n\n\n‸def"
+  },
+  {
+   "keys": "C-u 3 DEL",
+   "before": "abcdef‸ghi",
+   "emacs": "abc‸ghi"
+  },
+  {
+   "keys": "C-k C-/",
+   "before": "one ‸two\nthree",
+   "emacs": "one ‸two\nthree"
+  }
+ ]
+}

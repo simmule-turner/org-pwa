@@ -7,14 +7,19 @@
 import { answerDisabled, syncExternal } from '../src/emacs-edit.js';
 import { foldedExecute } from '../src/emacs-fold.js';
 import { scrollWindow } from '../src/emacs-scroll.js';
-import { BINDINGS, eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js';
+import { BINDINGS, PALETTE_COMMANDS, eventKey, feedKey, newKeyInput } from '../src/emacs-keymap.js';
 import { newUndo } from '../src/emacs-undo.js';
 import { bufferListLines } from '../src/emacs-buffers.js';
-import { readMinibuffer, showList } from './emacs-minibuffer.js';
+import { asksInMinibuffer, runAsking } from './emacs-ask.js';
+import { readKeyEcho, readMinibuffer, showList } from './emacs-minibuffer.js';
+import { routeMinibuffer } from './minibuffer-prompt.js';
 import { describeEditor, noteKeyLog } from './key-log.js';
 import { deviceKeyboardShowing } from './floating-keyboard.js';
 
 /** The keys of a physical keyboard that move the caret, as the Emacs keys they stand for. */
+/** The keys that take Shift into their name (S-<left>, M-S-<up>): the arrows, which Org binds with Shift. */
+const SHIFTED = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+
 const MOVES = /** @type {Record<string, string>} */ ({ ArrowLeft: 'C-b', ArrowRight: 'C-f', ArrowUp: 'C-p', ArrowDown: 'C-n', Home: 'C-a', End: 'C-e', Delete: 'C-d' });
 
 /** The key under an Alt chord, from where it sits on the keyboard (a Mac types another character with Option held).
@@ -90,6 +95,20 @@ export function attachEmacsMode(o) {
     if (messages.length > 1000) messages.shift();
     o.say(text);
   };
+  routeMinibuffer({
+    active: () => textarea.isConnected,
+    line: async (prompt, initialText, choices, calendar) => {
+      const typed = await readMinibuffer({ host: wrap, prompt, candidates: choices, initial: initialText, message: say, calendar });
+      handledAt = 0; // the answer's edit is the command's own, however soon after the key it comes: it is not an extra edit of a soft keyboard
+      textarea.focus();
+      return typed;
+    },
+    key: async (prompt, keys, options) => {
+      const key = await readKeyEcho({ host: wrap, prompt, keys, stay: options.stay, onStay: options.onStay });
+      textarea.focus();
+      return key;
+    },
+  });
   const initial = textarea.value;
   const ctx = {
     /** @type {import('../src/emacs-edit.js').EditState} */
@@ -301,7 +320,7 @@ export function attachEmacsMode(o) {
     return ran;
   }
 
-  /** Runs a command by its Emacs name, from a key or from M-x. @param {{ command: string, char?: string, prefix?: { n: number, universal: boolean } }} result @returns {boolean} */
+  /** Runs a command by its Emacs name, from a key or from M-x. @param {{ command: string, key?: string, char?: string, prefix?: { n: number, universal: boolean } }} result @returns {boolean} */
   function runCommand(result) {
     if (result.command === 'execute-extended-command') {
       void extendedCommand();
@@ -309,6 +328,10 @@ export function attachEmacsMode(o) {
     }
     if (BUFFER_COMMANDS.has(result.command)) {
       void bufferCommand(result.command);
+      return true;
+    }
+    if (PALETTE_COMMANDS.has(result.command)) { // a key for one of the app's own commands (C-c C-s, C-c C-x C-i, C-x C-s): the palette runs it, as M-x does
+      void paletteCommand(result.command, result.key, result.prefix);
       return true;
     }
     if (result.command === 'dired' || result.command === 'dired-jump' || result.command === 'find-file') { // the Files list, in the folder of the current file
@@ -368,9 +391,9 @@ export function attachEmacsMode(o) {
   const modeCommands = () => [...new Set(Object.values(BINDINGS))].filter((c) => !['digit-argument', 'negative-argument', 'universal-argument', 'self-insert-command', 'org-force-self-insert', 'quoted-insert', 'execute-extended-command'].includes(c));
 
   async function extendedCommand() {
-    const { findPaletteCommandByOrgName, paletteCommandList, runPaletteCommand } = await import('./god-mode-palette.js');
+    const { paletteCommandList } = await import('./god-mode-palette.js');
     /** @type {string[]} */ const palette = [];
-    for (const c of paletteCommandList()) if (c.orgName) palette.push(c.orgName);
+    for (const c of paletteCommandList()) for (const n of [c.orgName, ...(c.orgAliases ?? [])]) if (typeof n === 'string' && n !== '') palette.push(n);
     const names = [...new Set([...modeCommands(), ...palette])].sort();
     const typed = await readMinibuffer({ host: wrap, prompt: 'M-x ', candidates: names, requireMatch: true, history: commandHistory, message: say });
     textarea.focus();
@@ -385,11 +408,29 @@ export function attachEmacsMode(o) {
       runCommand({ command: typed });
       return;
     }
-    const command = findPaletteCommandByOrgName(typed);
-    if (command) {
-      adopt();
-      runPaletteCommand(command, null);
+    await paletteCommand(typed);
+  }
+
+  /** Runs the palette command that has this Emacs name, on the heading at the caret. A universal argument picks the command the app has for that
+   *  variant of the key (C-u C-c C-x C-j is the list of recent tasks, C-u C-u C-c C-w the last refile target) when it has one.
+   *  @param {string} name @param {string} [key] @param {{ n: number, universal: boolean }} [prefix] */
+  async function paletteCommand(name, key, prefix) {
+    if (asksInMinibuffer(name) && !prefix?.universal) {
+      await runAsking(name, { host: wrap, say, adopt });
+      return;
     }
+    const { findPaletteCommandByOrgName, paletteCommandList, runPaletteCommand } = await import('./god-mode-palette.js');
+    let command = findPaletteCommandByOrgName(name);
+    if (command && key && prefix?.universal) {
+      const spelled = `${'C-u '.repeat(Math.round(Math.log(prefix.n) / Math.log(4)))}${key}`;
+      command = paletteCommandList().find((c) => c.keys === spelled) ?? command;
+    }
+    if (!command) {
+      say(`${name} is not available`);
+      return;
+    }
+    adopt();
+    runPaletteCommand(command, null);
   }
 
   /** The open files, in tab order, with the one showing. */
@@ -461,8 +502,9 @@ export function attachEmacsMode(o) {
       setSticky(false, false);
       return;
     }
-    const plainMove = !control && !meta && (e.key in MOVES || e.key === 'Escape');
-    if (!control && !meta && !plainMove) {
+    const shifted = (e.shiftKey || ctx.sticky.shift) && SHIFTED.has(e.key);
+    const plainMove = !control && !meta && !shifted && (e.key in MOVES || e.key === 'Escape');
+    if (!control && !meta && !plainMove && !shifted) {
       if (e.key === 'Enter' && !e.shiftKey && !textarea.readOnly) { // RET is Emacs's: org-return, or the end of a C-q code (C-q 1 0 1 RET drops the Return; C-q RET inserts it)
         if (press('RET')) e.preventDefault();
         setSticky(false, false);
@@ -471,8 +513,8 @@ export function attachEmacsMode(o) {
       if (e.key === 'Enter' || e.key === 'Tab') ctx.input = newKeyInput(); // keys that are not Emacs's here end a prefix
       return;
     }
-    const base = e.key in MOVES && !control && !meta ? MOVES[e.key] : baseKey(e);
-    const name = base.startsWith('C-') ? base : eventKey({ key: base, ctrlKey: control, altKey: meta });
+    const base = e.key in MOVES && !control && !meta && !shifted ? MOVES[e.key] : baseKey(e);
+    const name = base.startsWith('C-') ? base : eventKey({ key: base, ctrlKey: control, altKey: meta, shiftKey: shifted });
     if (!name) return;
     if (press(name)) {
       e.preventDefault();
@@ -582,7 +624,13 @@ export function attachEmacsMode(o) {
     return true;
   }
   /** An arrow key: the prompt's (history, the next match) or the text's. @param {string} key @param {string} emacs */
-  const arrow = (key, emacs) => () => void (toPrompt(key) || press(emacs));
+  const arrow = (key, emacs) => () => {
+    if (toPrompt(key)) return;
+    const held = ctx.sticky.ctrl || ctx.sticky.alt || ctx.sticky.shift;
+    const name = held ? eventKey({ key, ctrlKey: ctx.sticky.ctrl, altKey: ctx.sticky.alt, shiftKey: ctx.sticky.shift }) : emacs;
+    setSticky(false, false);
+    if (name) press(name);
+  };
   // Meta, Ctrl, Shift, Tab, the arrows, the device keyboard and the panel's place: every other key is typed with them (C-g is Ctrl and g)
   button('Meta', 'Meta for the next key', () => setSticky(ctx.sticky.ctrl, !ctx.sticky.alt, ctx.sticky.shift));
   button('Ctrl', 'Control for the next key', () => setSticky(!ctx.sticky.ctrl, ctx.sticky.alt, ctx.sticky.shift));

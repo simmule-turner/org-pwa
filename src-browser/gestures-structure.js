@@ -260,6 +260,7 @@ export function narrowToSparseMatches(matchedHeadings) {
   S.searchOpen = false;
   render();
   renderSearchPanel();
+  document.getElementById('document-text-edit-input')?.dispatchEvent(new Event('te-sparse')); // the Text view shows the sparse tree too
 }
 
 /** Drops the sparse-search narrow scope and its saved copy, without rendering -- for render() itself, which
@@ -276,6 +277,7 @@ export function forgetSparseNarrow() {
 export function widenSparseSearch() {
   forgetSparseNarrow();
   render();
+  document.getElementById('document-text-edit-input')?.dispatchEvent(new Event('te-sparse'));
 }
 
 /** Restores Search's Narrow after a reload, from its saved outline paths. Called from render() like

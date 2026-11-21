@@ -1,16 +1,12 @@
 // @ts-check
 // Extracted from app.js: calendar panel.
-import { buildAgendaItems, itemsInRange } from '../src/agenda.js';
-import { MONTH_NAMES, buildDayMarkers, buildMonthGrid, stepMonth, stepYear } from '../src/calendar-grid.js';
-import { getAgendaSkipArchivedTrees, getAgendaSkipCommentTrees } from '../src/local-variables.js';
+import { MONTH_NAMES, buildMonthGrid, stepMonth, stepYear } from '../src/calendar-grid.js';
 import { dateKey } from '../src/org-timestamp.js';
-import { resolveTodoSequence } from '../src/todo-cycle.js';
-import { agendaFileDocs, contactsDocsForAgenda } from './agenda-files.js';
 import { S } from './app-state.js';
 import { closeAllOverlayPanels } from './chrome.js';
-import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { showModalOverlay } from './dialogs.js';
 import { refilePanel, refilePanelBox } from './dom.js';
+import { monthDayMarkers } from './calendar-markers.js';
 import { render } from './render.js';
 import { hideModalOverlay, menuButton } from './ui-widgets.js';
 import { switchToView } from './views.js';
@@ -54,30 +50,7 @@ export function renderCalendarPanel() {
 
   const today = new Date();
 
-  // One agenda computation for the whole visible month, reusing the
-  // exact same pipeline the main Agenda view uses (buildAgendaItems
-  // over agendaFileDocs' own cross-file doc list, the same
-  // done/commented/archived filtering) so a day's own color here
-  // always matches what Agenda would actually show for it -- not a
-  // separate, potentially-drifting computation. "Other event" here
-  // deliberately excludes the ambient, every-day diary-sexp kinds
-  // (sunrise/sunset/civil-*/day-length/weather) and logbook entries:
-  // those would color almost every day if configured, making the
-  // green/blue/orange distinction meaningless.
-  const monthRangeStart = new Date(S.calendarViewYear, S.calendarViewMonth, 1);
-  const monthRangeEnd = new Date(S.calendarViewYear, S.calendarViewMonth + 1, 0);
-  const monthTodoSequence = resolveTodoSequence(S.state.doc, GLOBAL_TODO_DEFAULT);
-  const monthAgendaDocs = agendaFileDocs();
-  const monthItems = buildAgendaItems(monthAgendaDocs, {
-    contactsDocs: contactsDocsForAgenda(monthAgendaDocs),
-    todoFilter: (/** @type {any} */ todo) => !monthTodoSequence.doneKeywords.includes(todo),
-    includeCommented: !getAgendaSkipCommentTrees(S.state.localVariables),
-    includeArchived: !getAgendaSkipArchivedTrees(S.state.localVariables),
-    rangeStart: monthRangeStart,
-    rangeEnd: monthRangeEnd,
-    isDone: (/** @type {any} */ todo) => monthTodoSequence.doneKeywords.includes(todo),
-  });
-  const dayMarkers = buildDayMarkers(itemsInRange(monthItems, monthRangeStart, monthRangeEnd));
+  const dayMarkers = monthDayMarkers(S.calendarViewYear, S.calendarViewMonth);
 
   // Row 1: year navigation.
   const yearRow = document.createElement('div');

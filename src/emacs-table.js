@@ -5,7 +5,7 @@
  * is in, hands it over and puts the caret where Emacs does (test/emacs-keys-oracle.test.js).
  */
 import { flatBodyNodes, parseBody } from './body-parser.js';
-import { insertRowAbove, moveColumn, moveRow } from './table-commands.js';
+import { insertRowAbove, moveCell, moveColumn, moveRow } from './table-commands.js';
 import { width } from './org-table-layout.js';
 
 /** @typedef {{ text: string, pos: number, error?: string }} TableChange */
@@ -46,7 +46,7 @@ function startOfField(line, n) {
 
 /**
  * `org-metaup`, `org-metadown`, `org-metaleft`, `org-metaright` and `org-open-line` where the caret is in a table; null where it is not.
- * @param {string} text @param {number} pos @param {'row-up' | 'row-down' | 'column-left' | 'column-right' | 'insert-row'} what @param {boolean} [underTable] whether the empty last line under a table counts as being on it (`M-up` does; the same move after a prefix does not)
+ * @param {string} text @param {number} pos @param {'row-up' | 'row-down' | 'column-left' | 'column-right' | 'insert-row' | 'cell-up' | 'cell-down' | 'cell-left' | 'cell-right'} what @param {boolean} [underTable] whether the empty last line under a table counts as being on it (`M-up` does; the same move after a prefix does not)
  * @returns {TableChange | null}
  */
 export function tableEdit(text, pos, what, underTable = true) {
@@ -83,6 +83,14 @@ export function tableEdit(text, pos, what, underTable = true) {
       const index = table.lineIndex + to;
       const last = lines.length - 1;
       return { text: joined(lines, !text.endsWith('\n') && (line === last || index === last)), pos: startOf(lines, index) + moveToColumn(lines[index], width(current.slice(0, column))) };
+    }
+    if (what.startsWith('cell-')) { // S-up, S-down, S-left and S-right: the cell swaps with its neighbor
+      if (/^[ \t]*\|-/.test(current) || current.slice(0, column).trim() === '' || current.slice(column).trim() === '') return { text, pos, error: 'Not in table data field' };
+      const field = Math.max(1, current.slice(0, column).split('|').length - 1);
+      const [to, toCol] = moveCell(heading, table, [row, field - 1], /** @type {'up' | 'down' | 'left' | 'right'} */ (what.slice(5)));
+      const rows = heading.bodyLines;
+      const index = table.lineIndex + to;
+      return { text: joined(rows, !text.endsWith('\n') && table.lineIndex + table.lineCount >= rows.length), pos: startOf(rows, index) + startOfField(rows[index], toCol + 1) };
     }
     // org-table-find-dataline: on a rule, the next data line, at the same column; no data line below is an error
     const left = what === 'column-left';

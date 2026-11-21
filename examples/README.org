@@ -24,6 +24,7 @@ One file per feature. Open one in the app, try it, and compare with the text alr
 | crypt.org               | =crypt= entries: encrypt and decrypt by passphrase or key; =crypt-example-key.asc= is the key                | gpg, org-encrypt-entries                          |
 | diary.org               | the diary: date forms, Lisp entries, and when to use it instead of a calendar; =diary= is the file           | diary-list-entries                                |
 | editing.org             | promote, demote and move headings; list items and checkboxes; table rows, columns and cells                  | org-promote-subtree, org-meta-return, org-table-* |
+| emacs-mode.org          | worked examples of the Emacs-mode keys: moving, killing, the mark, case and spacing, filling, RET in lists, headings and tables, counts, undo | the keys typed in an Org buffer                   |
 | export-latex.org        | macros including =(eval ..)=, headline function, classes, =#+ATTR_LATEX=                                     | org-export-as 'latex                              |
 | god-mode.org            | god-mode keys to try, and the rules behind them                                                              | god-mode.el's rules                               |
 | habits.org              | the habit strip: colors, ranges, repeaters                                                                   | org-habit                                         |

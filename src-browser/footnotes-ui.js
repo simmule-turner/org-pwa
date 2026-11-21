@@ -514,7 +514,7 @@ export async function footnoteActionCommand() {
 
 /** The one-key menu org-footnote-action offers where no footnote can be added. */
 async function footnoteMenu() {
-  const key = await readKeyFromMinibuffer('Footnotes: [s]ort | [r]enumber fn:N | [S]=r+s | [n]ormalize | [d]elete: ', 'srSnd');
+  const key = await readKeyFromMinibuffer('Footnotes: [s]ort | [r]enumber fn:N | [S]=r+s | [n]ormalize | [d]elete', 'srSnd');
   if (key === 's') sortFootnotesCommand();
   else if (key === 'r') renumberFootnotesCommand();
   else if (key === 'S') {

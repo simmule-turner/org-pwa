@@ -4,7 +4,8 @@
 import { indentItemTree, outdentItemTree, cycleListBullet, repairListAt } from '../src/list-struct.js';
 import { indentItemAt, moveItemDownAt, moveItemUpAt, outdentItemAt, itemCommandAt, onItemLine, toggleCheckboxAt, shiftHeading, moveSubtree, cycleTodo, headingStarts } from '../src/emacs-org.js';
 import { S } from './app-state.js';
-import { setStatus } from './editing.js';
+import { setStatus, commitTextModeIfActive } from './editing.js';
+import { findHeadingAtLine } from '../src/org-parser.js';
 import { applyTextEdit, selectLines } from './text-view.js';
 import { lineNumberAt } from '../src/text-edit.js';
 
@@ -89,4 +90,31 @@ export function headingCommandInText(id) {
   else if (done.error) setStatus(done.error);
   else applyAtCaret(ta, done);
   return true;
+}
+
+/**
+ * The heading the caret of the Text view is in or under, as the document model has it: the text is committed first (the document is re-read from it),
+ * so a palette command acts on the heading exactly as it does from the outline. Says "Before first heading" and gives null when there is none
+ * (quietly, with `allowNone`, for a command that works before the first heading too).
+ * @param {{ allowNone?: boolean }} [options]
+ * @returns {import('../src/types.js').Heading | null}
+ */
+export function headingAtCaretInText({ allowNone = false } = {}) {
+  const ta = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('document-text-edit-input'));
+  if (S.currentView !== 'text' || !ta) return null;
+  const { value, selectionStart: at } = ta;
+  const lineStart = value.lastIndexOf('\n', at - 1) + 1;
+  const start = headingStarts(value).filter((p) => p <= lineStart).pop();
+  if (start === undefined) {
+    if (allowNone) commitTextModeIfActive();
+    else setStatus('Before first heading');
+    S.currentContextHeading = null;
+    return null;
+  }
+  const local = value.slice(0, start).split('\n').length - 1;
+  commitTextModeIfActive();
+  const heading = S.state.doc ? findHeadingAtLine(S.state.doc, local + (S.narrowedTextModeRange?.startLine ?? 0)) : null;
+  if (!heading) setStatus('Could not find the heading at the caret');
+  S.currentContextHeading = heading; // the Text view, shown again after the command, lands on this heading
+  return heading;
 }

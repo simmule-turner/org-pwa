@@ -488,6 +488,21 @@ export function replaceDocumentText(newText, label) {
 /** The document object each Text view textarea is in step with: the one it was built from, or the one its last commit produced. */
 export const textViewDocs = new WeakMap();
 
+/** The history each Text view textarea was in step with, and the text it held then: when the history has moved on and the text has not been typed in, something else
+ *  changed the document (a palette command run from a key), and the Text view shows the document again. */
+const textViewSynced = new WeakMap();
+
+/** @param {HTMLTextAreaElement} textarea */
+export function noteTextViewSynced(textarea) {
+  textViewSynced.set(textarea, { history: S.history, value: textarea.value });
+}
+
+/** @param {HTMLElement} textarea */
+export function textViewChangedOutside(textarea) {
+  const synced = textViewSynced.get(textarea);
+  return Boolean(synced) && synced.history !== S.history && /** @type {HTMLTextAreaElement} */ (textarea).value === synced.value;
+}
+
 /** The tab a Text view textarea belongs to. */
 export const textViewOwner = () => String(S.activeTabId);
 
@@ -576,6 +591,9 @@ export function commitTextModeIfActive() {
     persistInBackground();
     persistHistoryInBackground();
   }
-  if (textarea) textModeLastCommittedValue.set(textarea, rawValue);
+  if (textarea) {
+    textModeLastCommittedValue.set(textarea, rawValue);
+    noteTextViewSynced(/** @type {HTMLTextAreaElement} */ (textarea));
+  }
   return true;
 }

@@ -8,7 +8,7 @@
  *   node tools/gen-emacs-keys-oracle.mjs        (needs emacs on the PATH)
  */
 import fs from 'node:fs';
-import { BINDINGS } from '../src/emacs-keymap.js';
+import { BINDINGS, PALETTE_BINDINGS } from '../src/emacs-keymap.js';
 import { runEmacs } from './emacs-keys-lib.mjs';
 
 const texts = [
@@ -27,7 +27,7 @@ const all = (/** @type {string} */ text) => [...Array(text.length + 1).keys()].f
 const every = (/** @type {string[]} */ ts, /** @type {string[]} */ seqs, /** @type {string[]} */ kill = []) => ts.flatMap((text) => all(text).flatMap((pos) => seqs.map((keys) => ({ text, pos, keys, kill }))));
 
 // keys Emacs mode does not run through the editing commands: windows, the minibuffer, search, visibility, quitting
-const SKIP = new Set(['M-z', 'C-x d', 'C-x C-j', 'C-x C-f', 'C-x C-u', 'C-x C-l', 'C-q', 'C-g', 'C-s', 'C-r', 'M-x', 'C-x b', 'C-x k', 'C-x C-b', 'C-h e', 'C-v', 'M-v', 'TAB', '<backtab>', 'C-c C-r', 'C-c C-n', 'C-c C-p', 'C-c C-f', 'C-c C-b', 'C-u', 'C-x u', 'C-/', 'C-?', 'C-M-_', 'C-_', 'M-y', 'C-c C-c', 'C-c C-t', 'C-c C-x C-b', 'M-<up>', 'M-<down>', 'M-<left>', 'M-<right>']);
+const SKIP = new Set([...Object.keys(PALETTE_BINDINGS), 'M-z', 'C-x d', 'C-x C-j', 'C-x C-f', 'C-x C-u', 'C-x C-l', 'C-q', 'C-g', 'C-s', 'C-r', 'M-x', 'C-x b', 'C-x k', 'C-x C-b', 'C-h e', 'C-v', 'M-v', 'TAB', '<backtab>', 'C-c C-r', 'C-c C-n', 'C-c C-p', 'C-c C-f', 'C-c C-b', 'C-u', 'C-x u', 'C-/', 'C-?', 'C-M-_', 'C-_', 'M-y', 'C-c C-c', 'C-c C-t', 'C-c C-x C-b', 'M-<up>', 'M-<down>', 'M-<left>', 'M-<right>']);
 const singles = Object.keys(BINDINGS).filter((k) => !SKIP.has(k) && !/^M-[0-9-]$/.test(k));
 const fillGap = (/** @type {{ text: string, keys: string }} */ c) => c.keys === 'M-q' && /[\t\u3000-\u9fff]/.test(c.text); // a tab after a sentence end and wide characters (no space between them) are not filled as Emacs does
 
@@ -98,6 +98,18 @@ cases.push(...every(['*  E x', '**   TODO  y :t:', '*  ', '* TODO'], ['C-c C-t',
 cases.push(...every(['text\n*** deep\nbody\n** two\n* top\n**** four\n'], ['C-c C-u', 'C-c C-u C-c C-u', 'M-2 C-c C-u', 'M-5 C-c C-u', 'C-c C-u C-c C-u C-c C-u']));
 cases.push(...every([orgText], ['C-c C-n', 'C-c C-p', 'M-2 C-c C-n', 'M-2 C-c C-p', 'M-- C-c C-n', 'M-- C-c C-p', 'M-0 C-c C-n', 'M-0 C-c C-p', 'C-u C-c C-n', 'C-c C-u', 'M-2 C-c C-u', 'M-3 M-<left>', 'M-3 M-<right>', 'M-2 M-<up>', 'M-2 M-<down>', 'C-u M-<down>', 'M-0 M-<up>', 'M-1 M-<up>', 'M-- M-<down>', 'M-- M-<up>', 'M-- M-<left>', 'M-0 M-<down>', 'M-0 M-<left>', 'M-2 M-<left>', 'M-- C-c C-f', 'M-- C-c C-b', 'M-0 C-c C-f', 'M-0 C-c C-b', 'M-2 C-c C-f', 'C-u C-c C-b', 'C-u - C-c C-f', 'M-<up>', 'M-<down>', 'M-<left>', 'M-<right>', 'C-c C-t', 'C-c C-t C-c C-t', 'C-c C-x C-b', 'C-e', 'C-a', 'C-k', 'M-d', 'a', 'DEL', 'C-d', 'C-o', 'M-t', 'C-t']));
 
+// the S-arrows and M-S-arrows by context: a heading (priority, TODO keywords, subtree), a time stamp, list items, a table cell and plain text, with the caret everywhere.
+// Known gaps (ROADMAP.org): the M-S-arrows in a table (kill row, delete and insert column), and the caret inside the bullet of an ordered item for M-S-left and M-S-right
+const shiftTexts = [orgText + ':PROPERTIES:\n:A: 1\n:END:\nplain text <2026-11-20 Fri> end [2026-11-21 Sat 10:30]\n', '* Head\n* DONE x\n* [#C] y\n* TODO [#B] z\n', '#+TODO: A B | C\n* A one\n* B two\n* C three\n* four\n', 'plain\n', '- a\n  more\n- b\n  - c\n  - d\n- e\n\ntext', 'a\nb\nc\n', 'a\nb\nc', 'a'];
+const shiftKeys = ['S-<up>', 'S-<down>', 'S-<left>', 'S-<right>', 'S-<up> S-<up>', 'S-<down> S-<down>', 'S-<up> S-<up> S-<up>', 'S-<down> S-<down> S-<down>', 'M-S-<up>', 'M-S-<down>', 'M-S-<left>', 'M-S-<right>'];
+for (const text of shiftTexts) for (const pos of all(text)) for (const keys of shiftKeys) {
+  const start = text.lastIndexOf('\n', pos - 1) + 1;
+  const line = text.slice(start, text.indexOf('\n', start) < 0 ? undefined : text.indexOf('\n', start));
+  if (/^M-S/.test(keys) && /^[ \t]*\|/.test(line) && keys !== 'M-S-<down>') continue;
+  if (/^M-S-<(left|right)>/.test(keys) && /^[ \t]*\d+[.)]/.test(line) && pos - start <= /^[ \t]*\d+[.)]/.exec(line)[0].length + 1) continue;
+  cases.push({ text, pos, keys, kill: [] });
+}
+
 // the table keys: C-o and the M-arrows, on tables of every shape, at every caret position
 const tableTexts = [
   '| a |',
@@ -120,6 +132,15 @@ for (const text of tableTexts) for (const pos of all(text)) {
   for (const keys of ['C-o', 'C-o C-o', 'M-2 C-o', 'C-o M-<left>']) cases.push({ text, pos, keys, kill: [] });
   if (onTable(text, pos) && !text.includes('#+begin_src')) for (const keys of ['M-<up>', 'M-<down>', 'M-<left>', 'M-<right>', 'M-<down> M-<down>', 'M-<up> M-<up>', 'M-<left> M-<right>', 'M-<right> M-<right>', 'M-<right> M-<down>']) cases.push({ text, pos, keys, kill: [] });
 }
+
+// C-c C-c aligns the table: at every caret position, with and without a final newline (Org replaces only the rows that changed, and a changed last row at
+// the end of the buffer brings the newline). Known gaps (ROADMAP.org): a table with #+TBLFM: lines is recalculated, and Emacs fails on a table whose last
+// line is a rule with no newline after it
+for (const text of new Set([...tableTexts, ...tableTexts.map((t) => t.replace(/\n$/, ''))])) {
+  if (text.includes('#+TBLFM') || text.includes('#+begin_src') || /(^|\n)[ \t]*\|-[^\n]*$/.test(text)) continue;
+  for (const pos of all(text)) if (onTable(text, pos)) cases.push({ text, pos, keys: 'C-c C-c', kill: [] });
+}
+for (const text of ['| a | bbb |\n| cccc | d |', 'x\n| a | bbb |\n| cccc | d |', '| a | b |\n| cccc | d |', '| a |\n|---+---|\n| bb |']) for (const pos of all(text)) cases.push({ text, pos, keys: 'C-c C-c', kill: [] });
 
 for (let i = cases.length - 1; i >= 0; i--) if ((cases[i].keys === 'RET' && retGap(cases[i])) || fillGap(cases[i])) cases.splice(i, 1);
 const out = [];

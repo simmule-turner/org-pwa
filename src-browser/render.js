@@ -22,7 +22,7 @@ import { renderMinibuffer, renderModeline, syncContentOffset } from './chrome.js
 import { syncNonUtf8Banner } from './non-utf8-banner.js';
 import { GLOBAL_TODO_DEFAULT } from './constants.js';
 import { outlineEl, saveBtnEl } from './dom.js';
-import { setStatus, applyPendingCursorPosition, textViewBelongsToActive, textViewDocs, textViewOwner } from './editing.js';
+import { setStatus, applyPendingCursorPosition, textViewBelongsToActive, textViewChangedOutside, noteTextViewSynced, textViewDocs, textViewOwner } from './editing.js';
 import { forgetSparseNarrow, maybeRestoreNarrowState, maybeRestoreSparseNarrow, widen, widenSparseSearch } from './gestures-structure.js';
 import { syncExtraMenuButtonVisibility } from './menus.js';
 import { renderRow, syncSidePanel } from './row-render.js';
@@ -125,7 +125,7 @@ function renderNow() {
     const existingTextarea = document.getElementById('document-text-edit-input');
     // The textarea belongs to the buffer (and the document) it was built from: after another buffer is opened, a tab is closed or
     // the document is replaced (reload, merge), keeping it would show -- and later save -- one file's text as another's.
-    if (existingTextarea && outlineEl.contains(existingTextarea) && textViewBelongsToActive(existingTextarea)) {
+    if (existingTextarea && outlineEl.contains(existingTextarea) && textViewBelongsToActive(existingTextarea) && !textViewChangedOutside(existingTextarea)) {
       // Already showing the text editor with the person's own,
       // possibly-unsaved edits sitting in it -- leave it completely
       // alone. Rebuilding it here from state.doc (stale until the
@@ -145,6 +145,7 @@ function renderNow() {
     textViewDocs.set(textarea, S.state.doc);
     const fullText = S.narrowedHeading ? serializeHeadingSubtree(S.narrowedHeading) : serializeOrg(S.state.doc);
     textarea.value = fullText;
+    noteTextViewSynced(textarea);
     textarea.readOnly = S.isBufferReadOnly;
     textarea.spellcheck = false;
     const plainText = isPlainTextFile(S.state.documentId, S.state.storageKind);

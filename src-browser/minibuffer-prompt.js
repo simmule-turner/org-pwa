@@ -5,6 +5,22 @@ import { statusEl } from './dom.js';
 
 export const MINIBUFFER_PROMPT_ID = 'minibufferPrompt';
 
+/** @typedef {{ active: () => boolean, line: (prompt: string, initial: string, choices: string[], calendar?: import('./emacs-minibuffer.js').DateCalendar | null) => Promise<string | null>,
+ *    key: (prompt: string, keys: string, options: { stay?: string, onStay?: (key: string) => void }) => Promise<string> }} Router
+ *  Who asks the questions while Emacs mode's text is showing: its minibuffer, not the status line's (src-browser/emacs-mode.js sets it). */
+
+const routing = { router: /** @type {Router | null} */ (null) };
+
+/** @param {Router | null} next */
+export function routeMinibuffer(next) {
+  routing.router = next;
+}
+
+/** @returns {boolean} whether the questions go to Emacs mode's minibuffer now */
+export function minibufferRouted() {
+  return Boolean(routing.router && routing.router.active());
+}
+
 /** The question now showing, if any. Only one fits in the minibuffer, so a new one cancels it -- answering the old one with
  *  its cancel value instead of leaving the code that asked it waiting for ever. */
 const openPrompt = { cancel: /** @type {(() => void) | null} */ (null) };
@@ -13,8 +29,10 @@ const openPrompt = { cancel: /** @type {(() => void) | null} */ (null) };
  * @param {string} prompt  e.g. 'Rename buffer (to new name): '
  * @param {string} [initial]
  * @param {string[]} [choices]  what completing-read would offer: the browser lists them under the input as it is typed in
+ * @param {import('./emacs-minibuffer.js').DateCalendar | null} [calendar]  a date prompt's calendar: shown in Emacs mode's minibuffer, where the answer is the text typed and the day picked
  * @returns {Promise<string | null>} */
-export function readFromMinibuffer(prompt, initial = '', choices = []) {
+export function readFromMinibuffer(prompt, initial = '', choices = [], calendar = null) {
+  if (routing.router && routing.router.active()) return routing.router.line(prompt, initial, choices, calendar);
   return new Promise((resolve) => {
     if (openPrompt.cancel) openPrompt.cancel();
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);
@@ -83,6 +101,7 @@ export function readFromMinibuffer(prompt, initial = '', choices = []) {
  * @param {{ stay?: string, onStay?: (key: string) => void }} [options]  keys in `stay` call `onStay` and leave the question (and the keyboard) open
  * @returns {Promise<string>} one of `keys` */
 export function readKeyFromMinibuffer(prompt, keys, options = {}) {
+  if (routing.router && routing.router.active()) return routing.router.key(prompt, keys, options);
   return new Promise((resolve) => {
     if (openPrompt.cancel) openPrompt.cancel();
     const old = document.getElementById(MINIBUFFER_PROMPT_ID);

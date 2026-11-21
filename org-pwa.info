@@ -3222,39 +3222,88 @@ selection work as before; the caret is a block, the mode line shows the
 caret's column as usual, and the status line under it shows what a key
 sequence has so far (‘C-x-’) and Emacs's messages (‘End of buffer’).
 
-   The keys: ‘C-f C-b C-n C-p C-a C-e M-f M-b M-< M->’ move; ‘C-d DEL
-M-d M-DEL C-k’ delete and kill; ‘C-SPC’ sets the mark, ‘C-x C-x’ swaps
-it with point and ‘C-x h’ marks the buffer; ‘C-w M-w C-y’ kill, copy and
-yank; ‘C-o C-t M-t M-u M-l M-c M-\ M-m’ open a line, transpose, change
-case and tidy spaces; ‘C-/’, ‘C-_’ and ‘C-x u’ undo, and undoing after
-another command redoes; ‘C-g’ quits.  ‘C-u’, ‘C-u C-u’, ‘M-3’ and ‘C-u
--’ give a count to the commands that take one.  ‘Esc’ then a key is that
-key with Meta.  Typing, ‘Backspace’ and the arrow keys work as usual and
-go through the same undo list, grouped as Emacs groups them.  ‘Ctrl-C’
-and ‘Ctrl-V’ keep their meaning in the browser.  Also ‘M-a M-e’
-(sentences, or fields inside a table, as Org's ‘org-backward-sentence’
-and ‘org-forward-sentence’), ‘RET’ (Org's ‘org-return’: the next table
-row, a split heading, a list item that continues; ‘C-u 5 RET’ is five
-newlines), ‘M-k’ (kills a sentence), ‘M-@’ (marks a word), ‘M-^’ (joins
-the line to the one before), ‘C-M-o’ (splits the line), ‘C-x C-t’ (swaps
-two lines), ‘M-z’ (kills through a character you type), ‘M-q’ (fills the
-paragraph or region to 70 columns), ‘C-x C-u’ and ‘C-x C-l’ (change case
-of the region, after Emacs's "Use this command?"), ‘C-x d’, ‘C-x C-j’
-and ‘C-x C-f’ (the Files list), ‘C-<backspace>’ and ‘C-<delete>’ (kill a
-word), ‘M-y’ (after ‘C-y’, the previous kill), ‘M-SPC’ (cycles spacing),
-‘C-x C-o’ (deletes blank lines), ‘C-?’ (redo), ‘C-v M-v’ (a screen at a
-time, moving the window start as Emacs does; text that wraps counts as
-one line), and ‘C-c C-n C-p C-f C-b C-u’ (move between headings), ‘C-c
-C-t’ (cycle the TODO keyword), ‘C-c C-c’ (align the table, or put a
-list's boxes right), ‘C-c C-x C-b’ (toggle a checkbox), ‘M-<up>
-M-<down>’ (move the heading or list item), ‘M-<left> M-<right>’ (promote
-or demote the heading, outdent or indent the item), ‘M-x’ (run a command
-by name, ‘TAB’ completes), ‘C-x b’, ‘C-x k’ and ‘C-x C-b’ (switch to,
-kill and list the open files), ‘C-h e’ (the messages), and ‘C-s C-r’
-(Find; in the Find box ‘Alt+P’ and ‘Alt+N’ bring back earlier searches,
-as ‘M-p’ and ‘M-n’ do in Emacs, and ‘Alt+E’ puts the caret at the end of
-the string to edit it).  ‘M-<’ and ‘M->’, ‘C-t’, ‘M-t’, ‘C-x C-x’, ‘M-\’
-and ‘M-m’ take a prefix as in Emacs.
+   Keys, by what they do.  A count goes first (‘C-u 5’, ‘C-u C-u’,
+‘M-3’, ‘C-u -’); ‘Esc’ then a key is that key with Meta.  Worked
+examples, each checked against Emacs, are in ‘examples/emacs-mode.org’.
+
+   *Move*
+‘C-f C-b C-n C-p’   character and line; ‘C-n’ and ‘C-p’ keep the column
+‘C-a C-e’           start and end of the line
+‘M-f M-b’           word
+‘M-a M-e’           sentence (a field inside a table)
+‘M-< M->’           start and end of the buffer
+‘C-v M-v’           a screen at a time; wrapped text counts as one line
+
+   *Delete and kill* (a kill goes on the kill ring)
+‘C-d’, ‘DEL’                                    the character after, the character before
+‘M-d’, ‘M-DEL’, ‘C-<delete>’, ‘C-<backspace>’   the word after, the word before
+‘C-k’                                           to the end of the line; again, the line break
+‘M-k’                                           to the end of the sentence
+‘M-z’ then a character                          through the next such character
+‘C-w M-w’                                       kill and copy the region
+‘C-y’, ‘M-y’                                    yank; after ‘C-y’, the previous kill
+
+   *Mark and region*
+‘C-SPC’     set the mark
+‘C-x C-x’   swap caret and mark
+‘C-x h’     mark the buffer
+‘M-@’       mark the next word
+
+   *Case, spacing and lines*
+‘M-u M-l M-c’          upcase, downcase, capitalize the word
+‘C-x C-u’, ‘C-x C-l’   upcase, downcase the region, after Emacs's "Use this command?"
+‘C-t M-t C-x C-t’      swap characters, words, lines
+‘C-o’, ‘C-M-o’         open a line, split the line
+‘M-^’                  join the line to the one before
+‘M-\ M-m M-SPC’        delete spaces, back to indentation, cycle spacing
+‘C-x C-o’              leave one blank line
+‘M-q’                  fill the paragraph (or region) to 70 columns
+
+   *Org*
+‘RET’                       Org's ‘org-return’: the next table row, a split heading, a list item that continues; ‘C-u 5 RET’ is five newlines
+‘C-c C-n C-p C-f C-b C-u’   move between headings
+‘C-c C-t’                   cycle the TODO keyword
+‘C-c C-c’                   align the table, or put a list's boxes right
+‘C-c C-x C-b’               toggle a checkbox
+‘M-<up> M-<down>’           move the heading or list item
+‘M-<left> M-<right>’        promote or demote the heading, outdent or indent the item
+‘S-<up> S-<down>’           the priority of the heading; on a list, the previous or next item; on a time stamp, the date or time up or down
+‘S-<left> S-<right>’        the TODO keyword; the bullet of the item; a table cell moves
+‘M-S-<left> M-S-<right>’    promote or demote the whole subtree, outdent or indent the item with its sub-items
+‘M-S-<up> M-S-<down>’       drag the line up or down; in a table, ‘M-S-<down>’ inserts a row
+
+   *The app's own commands* (the same ones as the palette; ‘M-x’ runs
+them by name)
+‘C-c .’, ‘C-c !’, ‘C-c C-s’, ‘C-c C-d’                                 time stamp, inactive time stamp, schedule, deadline: ‘Date+time [2026-11-24]:’ in the minibuffer with the month above it.  What you type marks its day (‘+1d’, ‘fri’, ‘3 14’, ‘2026-12-01 10:00’); ‘S-<arrows>’ move the marked day, ‘M-S-<arrows>’ a month or year, ‘<’ and ‘>’ scroll, ‘.’ is today; tap a day to answer with
+                                                                       it
+‘C-c C-q’, ‘C-c C-x p’, ‘C-c C-x e’, ‘C-c ,’, ‘C-c C-w’, ‘C-c C-x ;’   tags, property, effort, priority, refile, countdown: asked in the minibuffer with Emacs's prompts
+‘C-c /’, ‘C-c ^’, ‘C-c C-x f’                                          one-key menus in the echo area: sparse tree, sort, footnote
+‘C-c C-x C-o’, ‘C-c C-x C-q’, ‘C-c C-x C-j’, ‘C-c C-x C-x’             clock out, cancel the clock, go to the clocked task, clock in again on the last one
+‘C-c C-x 0’, ‘C-c C-x ,’, ‘C-c C-x ;’, ‘C-c C-x _’                     start, pause, set a countdown, stop the timer
+‘C-c C-x C-c’, ‘C-c C-x f’, ‘C-c C-x C-n’                              column view, footnote, next link
+‘C-c #’                                                                update the statistics cookies
+‘C-c C-j’, ‘C-c @’, ‘C-c %’, ‘C-c &’                                   go to a heading by its path, mark the subtree, save the position, go back
+‘C-c [’, ‘C-c ]’, ‘C-'’, ‘C-,’                                         put this file first in the agenda files, remove it, go to the next agenda file
+‘C-c C-e’                                                              the Export menu
+‘C-c C-v t’, ‘b’, ‘e’, ‘n’, ‘p’                                        Babel: tangle, run the buffer, run the block, next and previous block
+‘C-x C-s’, ‘C-x C-w’, ‘C-x s’, ‘C-x C-q’, ‘C-x n w’                    save, save as, save all, toggle read-only, widen
+
+   *Undo and quit*
+‘C-/’, ‘C-_’, ‘C-x u’   undo; undoing after another command redoes
+‘C-?’                   redo
+‘C-g’                   quit
+
+   *Files, buffers and commands*
+‘C-x d’, ‘C-x C-j’, ‘C-x C-f’   the Files list
+‘C-x b’, ‘C-x k’, ‘C-x C-b’     switch to, kill and list the open files
+‘M-x’                           run a command by name; ‘TAB’ completes
+‘C-h e’                         the messages
+‘C-s C-r’                       Find; in the Find box ‘Alt+P’ and ‘Alt+N’ bring back earlier searches, and ‘Alt+E’ puts the caret at the end of the string to edit it
+
+   Typing, ‘Backspace’ and the arrow keys work as usual and go through
+the same undo list, grouped as Emacs groups them.  ‘Ctrl-C’ and ‘Ctrl-V’
+keep their meaning in the browser.  ‘M-<’, ‘M->’, ‘C-t’, ‘M-t’, ‘C-x
+C-x’, ‘M-\’ and ‘M-m’ take a prefix as in Emacs.
 
    The kill ring is shared with the device clipboard
 (‘select-enable-clipboard’): what you kill can be pasted elsewhere, and
@@ -6484,9 +6533,29 @@ Variable Index
 * c x w:                                 god-mode.            (line 105)
 * c x x:                                 god-mode.            (line 105)
 * c x y:                                 god-mode.            (line 105)
+* C-?:                                   Emacs mode.          (line  83)
+* C-a C-e:                               Emacs mode.          (line  24)
 * C-c -:                                 Table pad.           (line  24)
+* C-c #:                                 Emacs mode.          (line  78)
 * C-c ^:                                 Table pad.           (line  24)
+* C-c C-c:                               Emacs mode.          (line  62)
+* C-c C-e:                               Emacs mode.          (line  78)
+* C-c C-n C-p C-f C-b C-u:               Emacs mode.          (line  62)
+* C-c C-t:                               Emacs mode.          (line  62)
+* C-c C-x C-b:                           Emacs mode.          (line  62)
 * C-c RET:                               Table pad.           (line  24)
+* C-f C-b C-n C-p:                       Emacs mode.          (line  24)
+* C-g:                                   Emacs mode.          (line  83)
+* C-h e:                                 Emacs mode.          (line  90)
+* C-k:                                   Emacs mode.          (line  33)
+* C-s C-r:                               Emacs mode.          (line  90)
+* C-SPC:                                 Emacs mode.          (line  39)
+* C-t M-t C-x C-t:                       Emacs mode.          (line  49)
+* C-v M-v:                               Emacs mode.          (line  24)
+* C-w M-w:                               Emacs mode.          (line  33)
+* C-x C-o:                               Emacs mode.          (line  49)
+* C-x C-x:                               Emacs mode.          (line  39)
+* C-x h:                                 Emacs mode.          (line  39)
 * c::                                    Document settings.   (line  39)
 * calendar-bahai-all-holidays-flag:      Local Variables.     (line 275)
 * calendar-christian-all-holidays-flag:  Local Variables.     (line 275)
@@ -6542,6 +6611,20 @@ Variable Index
 * job-title:                             Contacts (vcf).      (line  78)
 * labels:                                Plots.               (line  29)
 * large-file-warning-threshold:          Local Variables.     (line 275)
+* M-@:                                   Emacs mode.          (line  39)
+* M-\ M-m M-SPC:                         Emacs mode.          (line  49)
+* M-^:                                   Emacs mode.          (line  49)
+* M-< M->:                               Emacs mode.          (line  24)
+* M-<left> M-<right>:                    Emacs mode.          (line  62)
+* M-<up> M-<down>:                       Emacs mode.          (line  62)
+* M-a M-e:                               Emacs mode.          (line  24)
+* M-f M-b:                               Emacs mode.          (line  24)
+* M-k:                                   Emacs mode.          (line  33)
+* M-q:                                   Emacs mode.          (line  49)
+* M-S-<left> M-S-<right>:                Emacs mode.          (line  62)
+* M-S-<up> M-S-<down>:                   Emacs mode.          (line  62)
+* M-u M-l M-c:                           Emacs mode.          (line  49)
+* M-x:                                   Emacs mode.          (line  90)
 * menu:                                  Menu customization.  (line  59)
 * more:                                  Menu customization.  (line  59)
 * n:                                     Contacts (vcf).      (line  78)
@@ -6783,7 +6866,10 @@ Variable Index
 * pN:                                    Table formulas.      (line 127)
 * r:                                     god-mode.            (line 105)
 * recentf-max-saved-items:               Local Variables.     (line 275)
+* RET:                                   Emacs mode.          (line  62)
 * s:                                     god-mode.            (line 105)
+* S-<left> S-<right>:                    Emacs mode.          (line  62)
+* S-<up> S-<down>:                       Emacs mode.          (line  62)
 * S-Tab:                                 god-mode.            (line 105)
 * select-enable-clipboard:               Local Variables.     (line 275)
 * spouse:                                Contacts (vcf).      (line  78)
@@ -6874,61 +6960,61 @@ Node: Line numbers218822
 Node: Narrowing219748
 Node: The plain-text editor220476
 Node: Emacs mode222759
-Node: Agenda228474
-Node: Dated entry sources234458
-Node: Diary-sexp forms237848
-Node: Sun times241678
-Node: Hebrew diary functions243584
-Node: Diary file244684
-Node: Holidays247279
-Node: General <%%(sexp)> timestamps252350
-Node: Other agenda behavior257014
-Node: Habits258323
-Node: Agenda Files259729
-Node: Contacts Files261803
-Node: Calendar and contacts sync (CalDAV CardDAV)262367
-Node: Agenda notifications265518
-Node: The TODO view267591
-Node: Capture Templates269061
-Node: Capturing from other apps289779
-Node: Extras menu291405
-Node: Menu customization295899
-Node: File management298906
-Node: Files view302918
-Node: Tabs305770
-Node: Citations306457
-Node: Export307646
-Node: Document settings308867
-Node: ASCII317355
-Node: HTML319200
-Node: ODT320754
-Node: Line numbers and references in source blocks321788
-Node: LaTeX323073
-Node: Beamer326729
-Node: Slides (HTML)329117
-Node: As-org330292
-Node: Calendar (ics)331947
-Node: Contacts (vcf)335135
-Node: What is dropped342942
-Node: Import343332
-Node: Help347911
-Node: Info reader348477
-Node: Settings351573
-Node: Offline behavior and sync355450
-Node: Long lists359953
-Node: Size limits360686
-Node: Platform support361825
-Node: Android app362592
-Node: Command palette366625
-Node: Security and privacy371385
-Node: Keybindings372792
-Node: god-mode378613
-Node: God-mode without a hardware keyboard395159
-Node: Differences from Emacs org-mode397680
-Node: Known limitations402743
-Node: Development403298
-Node: Concept Index407499
-Node: Variable Index417700
+Node: Agenda232016
+Node: Dated entry sources238000
+Node: Diary-sexp forms241390
+Node: Sun times245220
+Node: Hebrew diary functions247126
+Node: Diary file248226
+Node: Holidays250821
+Node: General <%%(sexp)> timestamps255892
+Node: Other agenda behavior260556
+Node: Habits261865
+Node: Agenda Files263271
+Node: Contacts Files265345
+Node: Calendar and contacts sync (CalDAV CardDAV)265909
+Node: Agenda notifications269060
+Node: The TODO view271133
+Node: Capture Templates272603
+Node: Capturing from other apps293321
+Node: Extras menu294947
+Node: Menu customization299441
+Node: File management302448
+Node: Files view306460
+Node: Tabs309312
+Node: Citations309999
+Node: Export311188
+Node: Document settings312409
+Node: ASCII320897
+Node: HTML322742
+Node: ODT324296
+Node: Line numbers and references in source blocks325330
+Node: LaTeX326615
+Node: Beamer330271
+Node: Slides (HTML)332659
+Node: As-org333834
+Node: Calendar (ics)335489
+Node: Contacts (vcf)338677
+Node: What is dropped346484
+Node: Import346874
+Node: Help351453
+Node: Info reader352019
+Node: Settings355115
+Node: Offline behavior and sync358992
+Node: Long lists363495
+Node: Size limits364228
+Node: Platform support365367
+Node: Android app366134
+Node: Command palette370167
+Node: Security and privacy374927
+Node: Keybindings376334
+Node: god-mode382155
+Node: God-mode without a hardware keyboard398701
+Node: Differences from Emacs org-mode401222
+Node: Known limitations406285
+Node: Development406840
+Node: Concept Index411041
+Node: Variable Index421242
 
 End Tag Table
 

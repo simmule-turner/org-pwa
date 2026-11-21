@@ -35,6 +35,38 @@ export function textFolds(textarea, facade) {
     if (S.state.doc) restoreFolds(S.state.doc, captureFolds(d)); // the outline shows the same folds
     facade.setHidden(hiddenRanges(textarea.value, d));
   }
+  /** A sparse tree (C-c /) shows the headings that hold matches under their ancestors' lines, and hides the rest, as Emacs's org-occur does; with no
+   *  sparse tree the folds of the headings show again. */
+  function showSparse() {
+    const scope = S.sparseNarrowScope;
+    const d = current();
+    const text = textarea.value;
+    if (!scope || !S.state.doc) {
+      facade.setHidden(hiddenRanges(text, d));
+      return;
+    }
+    const lines = headings(text);
+    const source = flatHeadings(S.state.doc);
+    if (source.length !== lines.length) return;
+    /** @type {Array<[number, number]>} */
+    const hidden = [];
+    lines.forEach((h, i) => {
+      const own = i + 1 < lines.length ? lines[i + 1].start - 1 : text.length; // the end of the entry's own text, before its first child
+      const heading = source[i];
+      if (!scope.visible.has(heading)) hidden.push(h.start === 0 ? [0, Math.min(own + 1, text.length)] : [h.start - 1, own]);
+      else if (!scope.matched.has(heading) && own - h.eol > 1) hidden.push([h.eol, own]);
+    });
+    hidden.sort((a, b) => a[0] - b[0]);
+    /** @type {Array<[number, number]>} */
+    const merged = [];
+    for (const r of hidden) {
+      const last = merged[merged.length - 1];
+      if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+      else merged.push([r[0], r[1]]);
+    }
+    facade.setHidden(merged);
+  }
+  textarea.addEventListener('te-sparse', showSparse);
   const archive = () => (getCycleOpenArchivedTrees(S.state.localVariables) ? 'noarchived' : 'archived');
   return {
     /** The text opens as the outline is: folded by #+STARTUP, or as it was left. */

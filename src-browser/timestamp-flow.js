@@ -3,10 +3,11 @@
 // src/timestamp-edit.js. They act at the cursor of the Text view or of a text editor (the Date tool); in the outline the clone command
 // acts on the focused heading.
 import { headingLineIndex, serializeOrg } from '../src/org-parser.js';
-import { clockTimestampsChange, cloneSubtreeAt, compactTimeOfDay, insertTimeStampCommand, subtreeHasTimestamp, timestampAt, timestampChange } from '../src/timestamp-edit.js';
+import { clockTimestampsChange, cloneSubtreeAt, compactTimeOfDay, insertTimeStampCommand, subtreeHasTimestamp, timeStringToTime, timestampAt, timestampChange } from '../src/timestamp-edit.js';
 import { S } from './app-state.js';
 import { openActionSheet } from './bottom-sheet.js';
 import { commitTextModeIfActive, replaceDocumentText, setStatus } from './editing.js';
+import { readDatePrompt } from './date-prompt-flow.js';
 import { readFromMinibuffer } from './minibuffer-prompt.js';
 
 /** @returns {HTMLTextAreaElement | null} */
@@ -50,7 +51,7 @@ export async function insertTimeStamp({ inactive = false, arg = null, area = nul
   if (arg !== 'double') {
     const at = timestampAt(text, pos);
     const initial = at ? compactTimeOfDay(at.ts.m[0]) || '' : '';
-    typed = await readFromMinibuffer('Date+time [now]: ', initial);
+    typed = await readDatePrompt({ defaultTime: at ? timeStringToTime(at.ts.m[0]) : null, withTime: arg === 'single', initial });
     if (typed === null) return;
   }
   guarded(() => applyToTextarea(t, insertTimeStampCommand(t.value, t.selectionStart, { typed, arg, inactive, now: new Date(), vars: { ...S.globalVariables, ...S.state.localVariables } })));

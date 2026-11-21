@@ -1,0 +1,512 @@
+#+TITLE: Emacs mode: keys and what they do
+#+STARTUP: showall
+
+Each example shows a buffer before (=‸= marks the caret), the keys typed, and the buffer after. Open this file in the app with Emacs mode on, put the caret where =‸= is, type the keys and compare. The results are what Emacs 29.3 (Org 9.6.15) gives, and a test in this project checks that the app gives the same. The full list of keys is in the README's Emacs mode section.
+
+* Moving
+Keys that only move the caret. A count goes before the key.
+
+** M-f goes to the end of the next word
+Keys: ~M-f~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one two‸ three
+#+end_example
+
+** C-n keeps the column across a short line
+Keys: ~C-n C-n~
+
+#+begin_example
+abcdef
+abcde‸f
+ab
+abcdefgh
+#+end_example
+
+becomes
+
+#+begin_example
+abcdef
+abcdef
+ab
+abcde‸fgh
+#+end_example
+
+** M-e goes to the end of the sentence
+Keys: ~M-e~
+
+#+begin_example
+One thing.  ‸Then another.  Last.
+#+end_example
+
+becomes
+
+#+begin_example
+One thing.  Then another.‸  Last.
+#+end_example
+
+** C-u 3 M-f repeats the move
+Keys: ~C-u 3 M-f~
+
+#+begin_example
+‸one two three four
+#+end_example
+
+becomes
+
+#+begin_example
+one two three‸ four
+#+end_example
+
+* Killing and yanking
+What a kill takes goes on the kill ring (and the device clipboard); =C-y= puts it back.
+
+** C-k kills to the end of the line; a second C-k kills the line break
+Keys: ~C-k C-k~
+
+#+begin_example
+abc‸ def
+ghi
+#+end_example
+
+becomes
+
+#+begin_example
+abc‸ghi
+#+end_example
+
+** M-d kills the next word
+Keys: ~M-d~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸ three
+#+end_example
+
+** M-k kills to the end of the sentence
+Keys: ~M-k~
+
+#+begin_example
+One.  ‸Two words.  Three.
+#+end_example
+
+becomes
+
+#+begin_example
+One.  ‸  Three.
+#+end_example
+
+** M-z kills through the next character you type
+Keys: ~M-z x~
+
+#+begin_example
+one ‸two xray
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸ray
+#+end_example
+
+** C-<backspace> kills the word before the caret
+Keys: ~C-<backspace>~
+
+#+begin_example
+one two‸ three
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸ three
+#+end_example
+
+** C-y puts back what a kill took
+Keys: ~C-k C-y~
+
+#+begin_example
+one ‸two
+three
+#+end_example
+
+becomes
+
+#+begin_example
+one two‸
+three
+#+end_example
+
+* The mark and the region
+=C-SPC= sets the mark; the region is the text between the mark and the caret.
+
+** C-SPC, a move and C-w kill the region
+Keys: ~C-SPC M-f C-w~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸ three
+#+end_example
+
+** C-x h marks the whole buffer
+Keys: ~C-x h C-w~
+
+#+begin_example
+one
+‸two
+#+end_example
+
+becomes
+
+#+begin_example
+‸
+#+end_example
+
+** M-@ marks the next word without moving the caret
+Keys: ~M-@ C-w~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸ three
+#+end_example
+
+* Case, spacing and lines
+Commands that tidy text without selecting it.
+
+** M-u upcases the word
+Keys: ~M-u~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one TWO‸ three
+#+end_example
+
+** M-c capitalizes the word
+Keys: ~M-c~
+
+#+begin_example
+one ‸two three
+#+end_example
+
+becomes
+
+#+begin_example
+one Two‸ three
+#+end_example
+
+** M-t swaps the words around the caret
+Keys: ~M-t~
+
+#+begin_example
+one two‸ three
+#+end_example
+
+becomes
+
+#+begin_example
+one three two‸
+#+end_example
+
+** C-t swaps the characters around the caret
+Keys: ~C-t~
+
+#+begin_example
+ab‸cd
+#+end_example
+
+becomes
+
+#+begin_example
+acb‸d
+#+end_example
+
+** C-x C-t swaps the line with the one above
+Keys: ~C-x C-t~
+
+#+begin_example
+first
+second‸
+third
+#+end_example
+
+becomes
+
+#+begin_example
+second
+first
+‸third
+#+end_example
+
+** M-^ joins the line to the one before
+Keys: ~M-^~
+
+#+begin_example
+one
+  ‸two
+#+end_example
+
+becomes
+
+#+begin_example
+one‸ two
+#+end_example
+
+** M-\ deletes the spaces around the caret
+Keys: ~M-\~
+
+#+begin_example
+one   ‸  two
+#+end_example
+
+becomes
+
+#+begin_example
+one‸two
+#+end_example
+
+** C-x C-o leaves one blank line
+Keys: ~C-x C-o~
+
+#+begin_example
+one
+
+
+‸
+two
+#+end_example
+
+becomes
+
+#+begin_example
+one
+‸
+two
+#+end_example
+
+** C-o opens a line and leaves the caret
+Keys: ~C-o~
+
+#+begin_example
+one ‸two
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸
+two
+#+end_example
+
+** C-M-o splits the line and keeps the caret on the column
+Keys: ~C-M-o~
+
+#+begin_example
+one ‸two
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸
+    two
+#+end_example
+
+** C-x C-u upcases the region after Emacs asks "Use this command?"
+Keys: ~C-SPC M-f C-x C-u y~
+
+#+begin_example
+‸hello world
+#+end_example
+
+becomes
+
+#+begin_example
+HELLO‸ world
+#+end_example
+
+* Filling
+=M-q= fills to 70 columns, as =fill-column= is in Emacs.
+
+** M-q fills the paragraph to 70 columns
+Keys: ~M-q~
+
+#+begin_example
+The quick brown fox jumps over the lazy dog while the sun sets slowly behind the hills, and the evening air turns cool‸ over the quiet fields.
+#+end_example
+
+becomes
+
+#+begin_example
+The quick brown fox jumps over the lazy dog while the sun sets slowly
+behind the hills, and the evening air turns cool‸ over the quiet
+fields.
+#+end_example
+
+** M-q keeps the indent and the bullet of a list item
+Keys: ~M-q~
+
+#+begin_example
+- The quick brown fox jumps over the lazy dog while the sun sets slowly behind the hills,‸ and the evening air turns cool over the quiet fields.
+#+end_example
+
+becomes
+
+#+begin_example
+- The quick brown fox jumps over the lazy dog while the sun sets
+  slowly behind the hills,‸ and the evening air turns cool over the
+  quiet fields.
+#+end_example
+
+* Org: RET, lists, tables and headings
+=RET= is Org's =org-return=, so it depends on where the caret is.
+
+** RET at the end of a list item starts the next line under its text
+Keys: ~RET~
+
+#+begin_example
+- item‸
+#+end_example
+
+becomes
+
+#+begin_example
+- item
+  ‸
+#+end_example
+
+** RET in the middle of a heading splits it
+Keys: ~RET~
+
+#+begin_example
+,* Heading ‸title
+#+end_example
+
+becomes
+
+#+begin_example
+,* Heading
+‸title
+#+end_example
+
+** RET in a table goes to the next row
+Keys: ~RET~
+
+#+begin_example
+| ‸a | b |
+| c | d |
+#+end_example
+
+becomes
+
+#+begin_example
+| a | b |
+| ‸c | d |
+#+end_example
+
+** M-<right> demotes a list item
+Keys: ~M-<right>~
+
+#+begin_example
+- one
+- t‸wo
+#+end_example
+
+becomes
+
+#+begin_example
+- one
+  - t‸wo
+#+end_example
+
+** C-c C-c aligns a table
+Keys: ~C-c C-c~
+
+#+begin_example
+| a | bbb |
+| cccc | d‸ |
+
+after
+#+end_example
+
+becomes
+
+#+begin_example
+| a    | bbb |
+| cccc | ‸d   |
+
+after
+#+end_example
+
+* Counts and undo
+
+** C-u 5 RET is five newlines
+Keys: ~C-u 5 RET~
+
+#+begin_example
+abc‸def
+#+end_example
+
+becomes
+
+#+begin_example
+abc
+
+
+
+
+‸def
+#+end_example
+
+** C-u 3 DEL deletes three characters before the caret
+Keys: ~C-u 3 DEL~
+
+#+begin_example
+abcdef‸ghi
+#+end_example
+
+becomes
+
+#+begin_example
+abc‸ghi
+#+end_example
+
+** C-/ undoes the last command
+Keys: ~C-k C-/~
+
+#+begin_example
+one ‸two
+three
+#+end_example
+
+becomes
+
+#+begin_example
+one ‸two
+three
+#+end_example

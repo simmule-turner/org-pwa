@@ -11040,6 +11040,191 @@ check('Emacs mode: C-v scrolls a screen less two lines and moves the cursor only
   await context.close();
 });
 
+check('Emacs mode: keys of the app\'s own commands act on the heading at the caret in the Text view (C-c C-x C-i, C-c C-x C-o, C-x C-q)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO Task\nbody\n* Other\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const keys = async (/** @type {string[]} */ ...k) => { for (const x of k) await page.keyboard.press(x); };
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(14, 14); }); // in the body of * TODO Task
+  await keys('Control+c', 'Control+x', 'Control+i');
+  await page.waitForTimeout(500);
+  let value = await box.inputValue();
+  expect(/^\* TODO Task\n:LOGBOOK:\nCLOCK: \[[^\]]+\]\n:END:\nbody\n\* Other\n/.test(value), `C-c C-x C-i starts a clock on the heading the caret is under: ${JSON.stringify(value)}`);
+  await box.evaluate((t) => t.focus());
+  await keys('Control+c', 'Control+x', 'Control+o');
+  await page.waitForTimeout(500);
+  value = await box.inputValue();
+  expect(/CLOCK: \[[^\]]+\]--\[[^\]]+\] =>/.test(value), `C-c C-x C-o stops it: ${JSON.stringify(value)}`);
+  await box.evaluate((t) => t.focus());
+  await keys('Control+x', 'Control+q');
+  await page.waitForTimeout(300);
+  expect(await box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).readOnly), 'C-x C-q makes the buffer read-only');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: a key for a heading command keeps what was typed, and the caret returns to the heading (C-c ; toggles COMMENT)', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\nbody\n* Two\nmore\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(19, 19); }); // in the body of * Two, after mo
+  await page.keyboard.insertText('X');
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press(';');
+  await page.waitForTimeout(500);
+  const value = await box.inputValue();
+  expect(value === '* One\nbody\n* COMMENT Two\nmoXre\n', `C-c ; comments the heading under the caret and keeps the typed X: ${JSON.stringify(value)}`);
+  const at = await box.evaluate((t) => /** @type {HTMLTextAreaElement} */ (t).selectionStart);
+  expect(at === 11, `the caret is on the heading line: ${at}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c C-x p, C-c C-x e, C-c C-q and C-c , ask in the minibuffer with Emacs\'s prompts and apply the answer', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO One\nbody\n* Two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const mini = page.locator('.te-minibuffer');
+  /** @param {string[]} keys @param {string[]} answers @returns {Promise<string[]>} the prompts shown */
+  const ask = async (keys, answers) => {
+    await box.evaluate((t) => { t.focus(); t.setSelectionRange(3, 3); });
+    for (const k of keys) await page.keyboard.press(k);
+    const shown = [];
+    for (const a of answers) {
+      await mini.waitFor({ timeout: 3000 });
+      shown.push((await mini.locator('span').first().textContent()) ?? '');
+      await page.keyboard.type(a);
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(300);
+    }
+    await page.waitForTimeout(400);
+    return shown;
+  };
+  let prompts = await ask(['Control+c', 'Control+x', 'p'], ['FOO', 'bar']);
+  expect(prompts[0] === 'Property: ' && prompts[1] === 'FOO value: ', `C-c C-x p asks Property: then FOO value: ${JSON.stringify(prompts)}`);
+  let v = await box.inputValue();
+  expect(/\* TODO One\n:PROPERTIES:\n:FOO:\s+bar\n:END:\nbody/.test(v), `the property is in the drawer: ${JSON.stringify(v)}`);
+  prompts = await ask(['Control+c', 'Control+x', 'e'], ['1:30']);
+  expect(prompts[0] === 'Effort: ', `C-c C-x e asks Effort: ${JSON.stringify(prompts)}`);
+  v = await box.inputValue();
+  expect(/:Effort:\s+1:30/i.test(v), `the effort is set: ${JSON.stringify(v)}`);
+  prompts = await ask(['Control+c', 'Control+q'], ['a:b']);
+  expect(prompts[0] === 'Tags: ', `C-c C-q asks Tags: ${JSON.stringify(prompts)}`);
+  v = await box.inputValue();
+  expect(/^\* TODO One\s+:a:b:\n/.test(v), `the tags are set: ${JSON.stringify(v)}`);
+  prompts = await ask(['Control+c', ','], ['B']);
+  expect(prompts[0] === 'Priority A-C, SPC to remove: ', `C-c , asks the priority: ${JSON.stringify(prompts)}`);
+  v = await box.inputValue();
+  expect(/^\* TODO \[#B\] One/.test(v), `the priority is set: ${JSON.stringify(v)}`);
+  await ask(['Control+c', ','], [' ']);
+  v = await box.inputValue();
+  expect(/^\* TODO One/.test(v), `SPC removes it: ${JSON.stringify(v)}`);
+  await ask(['Control+c', 'Control+x', 'e'], ['']); // with an effort the countdown starts at once, as in Emacs
+  prompts = await ask(['Control+c', 'Control+x', ';'], ['5']);
+  expect(prompts[0] === 'How much time left? (minutes or h:mm:ss) ', `C-c C-x ; asks in the minibuffer: ${JSON.stringify(prompts)}`);
+  const timer = await page.evaluate(async () => (await import('/src-browser/app-state.js')).S.timer);
+  expect(timer && timer.countdown === 'running', `the countdown runs: ${JSON.stringify(timer)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c / and C-c ^ ask their one-key menus in the echo area, and C-c ^ sorts the children of the heading at the caret', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* Top\n** b\n** a\nneedle\n* Other\n** z\n** y\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const mini = page.locator('.te-minibuffer');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(2, 2); });
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('^');
+  await mini.waitFor({ timeout: 3000 });
+  let prompt = (await mini.innerText()).replace(/\s+/g, ' ');
+  expect(/^Sort children: \[a\]lpha \[n\]umeric \[p\]riority p\[r\]operty todo\[o\]rder \[f\]unc \[t\]ime \[s\]cheduled \[d\]eadline \[c\]reated cloc\[k\]ing A\/N\/P\/R\/O\/F\/T\/S\/D\/C\/K means reversed:/.test(prompt), `the sort menu is Emacs's: ${prompt}`);
+  await page.keyboard.press('a');
+  await page.waitForTimeout(500);
+  let v = await box.inputValue();
+  expect(v.startsWith('* Top\n** a\nneedle\n** b\n* Other\n** z\n** y\n'), `the children of the heading at the caret are sorted, not the top level: ${JSON.stringify(v)}`);
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(2, 2); });
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('/');
+  await mini.waitFor({ timeout: 3000 });
+  prompt = (await mini.innerText()).replace(/\s+/g, ' ');
+  expect(/^Sparse tree: \[r\]egexp \[t\]odo \[T\]odo-kwd \[m\]atch \[p\]roperty \[d\]eadlines \[b\]efore-date \[a\]fter-date \[D\]ates range \[c\]ycle through date types:/.test(prompt), `the sparse tree menu is Emacs's: ${prompt}`);
+  await page.keyboard.press('r');
+  await mini.locator('input').waitFor({ timeout: 3000 });
+  await page.keyboard.type('needle');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(600);
+  const picture = await page.evaluate(() => Array.from(document.querySelectorAll('.te-emacs .te-ln')).map((l) => l.textContent).join('\n'));
+  expect(picture === '* Top\n** a\nneedle...', `the sparse tree shows the match under its ancestors and hides the rest: ${JSON.stringify(picture)}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c C-x f on a keyword line asks the footnote menu in the echo area', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '#+TITLE: x\n* One\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(5, 5); });
+  for (const k of ['Control+c', 'Control+x', 'f']) await page.keyboard.press(k);
+  const mini = page.locator('.te-minibuffer');
+  await mini.waitFor({ timeout: 3000 });
+  const prompt = (await mini.innerText()).replace(/\s+/g, ' ').trim();
+  expect(prompt === 'Footnotes: [s]ort | [r]enumber fn:N | [S]=r+s | [n]ormalize | [d]elete', `the footnote menu: ${prompt}`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  expect((await mini.count()) === 0, 'Esc quits the menu');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c C-d asks DEADLINE Date+time in the minibuffer for the heading at the caret and writes the deadline', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* One\nbody\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(8, 8); });
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('Control+d');
+  await page.locator('.te-minibuffer').waitFor({ timeout: 3000 });
+  const label = (await page.locator('.te-minibuffer > div').last().locator('span').first().textContent()) ?? '';
+  expect(/^DEADLINE Date\+time \[\d{4}-\d\d-\d\d\]: $/.test(label), `C-c C-d asks Emacs's prompt: ${JSON.stringify(label)}`);
+  await page.keyboard.type('2027-03-05');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  expect((await box.inputValue()).startsWith('* One\nDEADLINE: <2027-03-05 Fri>\nbody'), `the deadline is on the planning line: ${JSON.stringify(await box.inputValue())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
 check('Emacs mode: C-c C-x C-b toggles the checkbox at the caret, and the palette command does the same in the Text view', async () => {
   const { context, page, errors } = await freshPage();
   await newDocument(page, '* H\n- [ ] one\n- two\n');
@@ -11741,6 +11926,92 @@ check('Emacs mode: C-q inserts the next key as it is, C-o on a table row inserts
   expect((await box.inputValue()).includes('| a  | b |\n|    |   |\n| cc | d |'), `M-down moves the row down: ${JSON.stringify(await box.inputValue())}`);
   await page.keyboard.press('Alt+ArrowRight');
   expect((await box.inputValue()).includes('| b |  a |') || (await box.inputValue()).includes('| b | a  |'), `M-right moves the column right: ${JSON.stringify(await box.inputValue())}`);
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: C-c ., C-c C-s and C-c C-d ask Date+time in the minibuffer with the calendar beside it: typed dates and S-arrows move the marked day, a tap fills the answer', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO One\nbody\n* Two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const mini = page.locator('.te-minibuffer');
+  const marked = () => page.locator('.te-datecal [aria-current="date"]').getAttribute('data-date');
+  const iso = (/** @type {Date} */ d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const day = (/** @type {number} */ n) => iso(new Date(Date.now() + n * 86400000));
+  const open = async (/** @type {string[]} */ keys, at = 3) => {
+    await box.evaluate((t, n) => { t.focus(); t.setSelectionRange(n, n); }, at);
+    for (const k of keys) await page.keyboard.press(k);
+    await mini.waitFor({ timeout: 3000 });
+  };
+  await open(['Control+c', 'Control+s']);
+  const prompt = (await mini.locator(':scope > div').last().locator('span').first().textContent()) ?? '';
+  expect(prompt === `SCHEDULED Date+time [${day(0)}]: `, `C-c C-s asks Emacs's prompt: ${JSON.stringify(prompt)}`);
+  expect((await marked()) === day(0), 'the calendar marks the default day');
+  await page.keyboard.type('+3d');
+  expect((await marked()) === day(3), `typing +3d moves the mark: ${await marked()}`);
+  expect(((await mini.textContent()) ?? '').includes('=> <'), 'the live display shows => <date>');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  let v = await box.inputValue();
+  expect(new RegExp(`^\\* TODO One\\nSCHEDULED: <${day(3)} \\w+>\\nbody`).test(v), `C-c C-s writes the planning line: ${JSON.stringify(v)}`);
+  // the calendar cursor: S-right is a day, S-down a week, and the answer is that day
+  await open(['Control+c', 'Control+d']);
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+ArrowDown');
+  expect((await marked()) === day(8), `S-right and S-down move the calendar cursor: ${await marked()}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  v = await box.inputValue();
+  expect(new RegExp(`DEADLINE: <${day(8)} \\w+> SCHEDULED: <${day(3)} \\w+>|DEADLINE: <${day(8)} \\w+>`).test(v), `C-c C-d writes the deadline: ${JSON.stringify(v)}`);
+  // a tap on a day answers with it, C-c . puts the stamp at the caret
+  await box.evaluate((t) => { t.value = t.value.replace(/\nbody/, '\nbody x'); t.dispatchEvent(new Event('input', { bubbles: true })); });
+  const at = (await box.inputValue()).indexOf('body x') + 6;
+  await open(['Control+c', '.'], at);
+  const p2 = (await mini.locator(':scope > div').last().locator('span').first().textContent()) ?? '';
+  expect(p2 === `Date+time [${day(0)}]: `, `C-c . asks Emacs's prompt: ${JSON.stringify(p2)}`);
+  const target = day(0).slice(0, 8) + '15';
+  await page.locator(`.te-datecal [data-date="${target}"]`).click();
+  await page.waitForTimeout(400);
+  v = await box.inputValue();
+  expect(new RegExp(`body x<${target} \\w+>`).test(v), `a tap on a day inserts it: ${JSON.stringify(v)} status ${await page.locator('#status').textContent()} minis ${await mini.count()}`);
+  await open(['Control+c', 'Control+s']);
+  await page.keyboard.press('Escape');
+  expect(await mini.count() === 0, 'Escape quits the prompt');
+  expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
+  await context.close();
+});
+
+check('Emacs mode: S-up and S-down change the priority, S-right cycles the TODO keyword and M-S-right demotes the subtree, with the Shift key and with the panel\'s sticky Shift', async () => {
+  const { context, page, errors } = await freshPage();
+  await newDocument(page, '* TODO One\nbody\n** Two\n');
+  await page.evaluate(async () => {
+    const { commitGlobalVariableChange } = await import('/src-browser/settings-quick.js');
+    await commitGlobalVariableChange('org-xx-emacs-mode', 't');
+  });
+  await viewMenu(page, 'Text');
+  const box = page.locator('#document-text-edit-input');
+  const text = () => box.evaluate((t) => t.value);
+  await box.evaluate((t) => { t.focus(); t.setSelectionRange(3, 3); document.dispatchEvent(new Event('selectionchange')); });
+  await page.keyboard.press('Shift+ArrowUp');
+  expect((await text()).startsWith('* TODO [#B] One\n'), `S-up on a heading without priority sets the default, B: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.press('Shift+ArrowDown');
+  expect((await text()).startsWith('* TODO [#B] One\n'), `S-up raises it to A and S-down lowers it to B: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Shift+ArrowRight');
+  expect((await text()).startsWith('* DONE [#B] One\n'), `S-right moves to the next keyword: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  expect((await text()).startsWith('** DONE [#B] One\nbody\n*** Two'), `M-S-right demotes the subtree: ${JSON.stringify(await text())}`);
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  expect((await text()).startsWith('* DONE [#B] One\nbody\n** Two'), `M-S-left promotes it back: ${JSON.stringify(await text())}`);
+  // the panel's Shift button holds Shift for the next key: Shift and the up arrow raise the priority
+  await page.locator('[aria-label="Shift for the next key"]').click();
+  await page.locator('[aria-label="Up"]').click();
+  expect((await text()).startsWith('* DONE [#A] One\n'), `the panel's Shift and Up make S-up: ${JSON.stringify(await text())}`);
   expect(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
 });

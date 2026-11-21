@@ -56,6 +56,23 @@ export function moveRow(heading, table, [row, col], up) {
   return [to, col];
 }
 
+/** `S-<up>`, `S-<down>`, `S-<left>` and `S-<right>` in a table (org-table-move-cell-up and the others): the contents of the cell swap with those of the cell next to it, in the
+ * direction; the cursor goes to that cell. `row` counts rows and rules, `col` is the 0-based field. A refusal is an Error with Emacs's own message.
+ * @param {Heading} heading @param {Table} table @param {Cursor} at @param {'up' | 'down' | 'left' | 'right'} dir @returns {Cursor} */
+export function moveCell(heading, table, [row, col], dir) {
+  const data = table.rows.flatMap((r, i) => (r.type === 'row' ? [i] : []));
+  pad(table);
+  const d = data.indexOf(row);
+  const tr = d + (dir === 'up' ? -1 : dir === 'down' ? 1 : 0);
+  const tc = col + (dir === 'left' ? -1 : dir === 'right' ? 1 : 0);
+  if (tc < 0 || tr < 0 || tc >= columnCount(table) || tr >= data.length) throw new Error('Cannot move cell further');
+  const a = /** @type {{ cells: string[] }} */ (table.rows[row]).cells;
+  const b = /** @type {{ cells: string[] }} */ (table.rows[data[tr]]).cells;
+  [a[col], b[tc]] = [b[tc], a[col]];
+  write(heading, table);
+  return [data[tr], tc];
+}
+
 /** `M-<left>` and `M-<right>` (org-table-move-column): the column swaps places with its neighbor, and the formulas follow.
  * @param {Heading} heading @param {Table} table @param {Cursor} at @param {boolean} left @returns {Cursor} */
 export function moveColumn(heading, table, [row, col], left) {

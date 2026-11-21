@@ -2,6 +2,128 @@
 // Emacs mode's minibuffer: a prompt on the bottom line of the text with the matches above it (completion as Emacs's try-completion has it,
 // src/emacs-complete.js), and a read-only list for *Messages* and the buffer list. Plain DOM on the text's wrapper; nothing else moves.
 import { allCompletions, completeInput } from '../src/emacs-complete.js';
+import { buildMonthGrid, MONTH_NAMES } from '../src/calendar-grid.js';
+import { calendarMotion, dateAnswer, isoDate, moveCalendarDate } from '../src/date-prompt.js';
+import { eventKey } from '../src/emacs-keymap.js';
+
+/** The arrows, which Org's date prompt binds with Shift. */
+const SHIFTED_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+
+/** @typedef {{ cursor: Date, describe: (answer: string) => { date: Date, text: string }, markers: (year: number, month: number) => (date: Date) => { hasBirthday?: boolean, hasOther?: boolean } | undefined }} DateCalendar
+ *  The calendar beside a date prompt: `cursor` is where Emacs's calendar starts (the default date), `describe` the live "=> <date>" for the answer so far, `markers` the days with something on them. */
+
+/**
+ * The calendar of a date prompt as Org has it in the minibuffer: the month with the day the answer means marked, the live display after the input, a tap on a day
+ * that answers with it, S-arrows (a day, a week) and M-S-arrows (a month, a year) that move the calendar cursor, `<` and `>` that scroll a month, and `.` at the start
+ * (or C-.) for today. The answer is what was typed, a space and the day picked (Emacs's `org-ans0`, `org-ans1`, `org-ans2`).
+ * @param {{ calendar: DateCalendar, input: HTMLInputElement, note: HTMLElement, finish: (answer: string) => void }} o
+ * @returns {{ element: HTMLElement, answer: () => string, update: () => void, key: (e: KeyboardEvent) => boolean }}
+ */
+function dateCalendar({ calendar, input, note, finish }) {
+  const element = document.createElement('div');
+  element.className = 'te-datecal';
+  element.style.cssText = 'padding:4px 8px;max-width:21em;';
+  /** @type {string | null} */ let picked = null;
+  let cursor = calendar.cursor;
+  let view = { year: calendar.cursor.getFullYear(), month: calendar.cursor.getMonth() };
+  let scrolled = false;
+  const answer = () => dateAnswer(input.value, picked);
+  const scroll = (/** @type {number} */ months) => {
+    const total = view.year * 12 + view.month + months;
+    view = { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
+    scrolled = true;
+    draw();
+  };
+  const pick = (/** @type {Date} */ date, /** @type {boolean} */ accept) => {
+    picked = isoDate(date);
+    if (accept) finish(answer());
+    else update();
+  };
+  function draw() {
+    const { date: shown } = calendar.describe(answer());
+    const marks = calendar.markers(view.year, view.month);
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
+    const nav = (/** @type {string} */ label, /** @type {string} */ title, /** @type {number} */ by) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.title = title;
+      b.setAttribute('aria-label', title);
+      b.style.cssText = 'font:inherit;border:0;background:transparent;color:inherit;padding:0 8px;cursor:pointer;';
+      b.onpointerdown = (e) => e.preventDefault(); // the input keeps the focus
+      b.onclick = () => scroll(by);
+      return b;
+    };
+    const title = document.createElement('span');
+    title.style.fontWeight = 'bold';
+    title.textContent = `${MONTH_NAMES[view.month]} ${view.year}`;
+    head.append(nav('«', 'Previous year', -12), nav('‹', 'Previous month (<)', -1), title, nav('›', 'Next month (>)', 1), nav('»', 'Next year', 12));
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;';
+    for (const w of ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']) {
+      const d = document.createElement('span');
+      d.textContent = w;
+      d.style.opacity = '.6';
+      grid.appendChild(d);
+    }
+    for (const cell of buildMonthGrid(view.year, view.month, new Date())) {
+      if (!cell) {
+        grid.appendChild(document.createElement('span'));
+        continue;
+      }
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = String(cell.day);
+      b.dataset.date = isoDate(cell.date);
+      b.style.cssText = 'font:inherit;border:1px solid transparent;border-radius:4px;background:transparent;color:inherit;padding:2px 0;cursor:pointer;';
+      const mark = marks(cell.date);
+      if (mark?.hasBirthday && mark.hasOther) b.style.background = '#CC5500';
+      else if (mark?.hasBirthday) b.style.background = '#2E8B57';
+      else if (mark?.hasOther) b.style.background = '#3B6EA5';
+      if (mark?.hasBirthday || mark?.hasOther) b.style.color = '#fff';
+      if (cell.isToday) b.style.textDecoration = 'underline';
+      if (isoDate(cell.date) === isoDate(shown)) {
+        b.style.border = '2px solid currentColor';
+        b.style.fontWeight = 'bold';
+        b.setAttribute('aria-current', 'date');
+      }
+      b.onpointerdown = (e) => e.preventDefault();
+      b.onclick = () => pick(cell.date, true);
+      grid.appendChild(b);
+    }
+    element.replaceChildren(head, grid);
+  }
+  function update() {
+    const { date, text } = calendar.describe(answer());
+    note.textContent = text;
+    if (!scrolled || (picked !== null && isoDate(date) === picked)) {
+      view = { year: date.getFullYear(), month: date.getMonth() };
+      scrolled = false;
+    }
+    draw();
+  }
+  /** @param {KeyboardEvent} e @returns {boolean} whether the key was a calendar key */
+  const key = (e) => {
+    const name = eventKey({ key: e.key, ctrlKey: e.ctrlKey, altKey: e.altKey, shiftKey: e.shiftKey && SHIFTED_KEYS.has(e.key) });
+    const motion = name ? calendarMotion(name) : null;
+    if (motion) {
+      cursor = moveCalendarDate(cursor, motion.unit, motion.n);
+      scrolled = false;
+      pick(cursor, false);
+    } else if (!e.ctrlKey && !e.altKey && (e.key === '<' || e.key === '>')) scroll(e.key === '<' ? -1 : 1);
+    else if (e.ctrlKey && e.key === 'v') scroll(3);
+    else if (e.altKey && e.key === 'v') scroll(-3);
+    else if ((e.ctrlKey && e.key === '.') || (e.key === '.' && !e.ctrlKey && !e.altKey && input.selectionStart === 0 && input.selectionEnd === 0)) {
+      cursor = new Date();
+      scrolled = false;
+      pick(cursor, false);
+    } else return false;
+    e.preventDefault();
+    return true;
+  };
+  return { element, answer, update, key };
+}
 
 /** @param {HTMLElement} host @returns {HTMLDivElement} */
 function panel(host) {
@@ -14,8 +136,9 @@ function panel(host) {
 
 /**
  * Reads a line with completion.
+ * With `calendar` (a date prompt) the month is drawn above the line, and the answer is what was typed and the day picked in it.
  * @param {{ host: HTMLElement, prompt: string, candidates: string[], initial?: string, fold?: boolean, requireMatch?: boolean,
- *   history?: string[], message?: (text: string) => void }} o
+ *   history?: string[], message?: (text: string) => void, calendar?: DateCalendar | null }} o
  * @returns {Promise<string | null>} what was typed, or null when quit (C-g or Esc)
  */
 export function readMinibuffer(o) {
@@ -39,6 +162,12 @@ export function readMinibuffer(o) {
     note.style.cssText = 'opacity:.7;white-space:nowrap;';
     row.append(label, input, note);
     box.append(list, row);
+    const finish = (/** @type {string | null} */ value) => {
+      box.remove();
+      resolve(value);
+    };
+    const cal = o.calendar ? dateCalendar({ calendar: o.calendar, input, note, finish }) : null;
+    if (cal) box.prepend(cal.element);
     const history = o.history ?? [];
     let historyAt = -1;
     const fold = o.fold ?? false;
@@ -58,21 +187,23 @@ export function readMinibuffer(o) {
         list.appendChild(item);
       }
     };
-    const finish = (/** @type {string | null} */ value) => {
-      box.remove();
-      resolve(value);
-    };
     input.addEventListener('input', () => {
       note.textContent = '';
       refresh();
+      cal?.update();
     });
     input.addEventListener('keydown', (e) => {
       const ctrl = e.ctrlKey;
+      if (cal?.key(e)) return;
       if (e.key === 'Escape' || (ctrl && e.key === 'g')) {
         e.preventDefault();
         finish(null);
       } else if (e.key === 'Enter') {
         e.preventDefault();
+        if (cal) {
+          finish(cal.answer());
+          return;
+        }
         const typed = input.value;
         if (o.requireMatch && !o.candidates.includes(typed)) {
           const done = completeInput(typed, o.candidates, fold);
@@ -99,6 +230,53 @@ export function readMinibuffer(o) {
       }
     });
     refresh();
+    cal?.update();
+    input.focus();
+  });
+}
+
+/**
+ * A one-key question in the echo area (Emacs's read-char-exclusive and read-char-choice): no Enter, the first accepted key answers. Space answers as `y`,
+ * Backspace as `n`, Esc, C-g and Enter as `q`; any other key is ignored. Keys in `stay` call `onStay` and leave the question open.
+ * @param {{ host: HTMLElement, prompt: string, keys: string, stay?: string, onStay?: (key: string) => void }} o
+ * @returns {Promise<string>}
+ */
+export function readKeyEcho(o) {
+  return new Promise((resolve) => {
+    const box = panel(o.host);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:flex-start;gap:4px;padding:4px 8px;';
+    const label = document.createElement('span');
+    label.textContent = o.prompt;
+    label.style.cssText = 'font-weight:bold;white-space:pre-wrap;flex:1;min-width:0;';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.autocapitalize = 'off';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.style.cssText = 'flex:0 0 1.5em;width:1.5em;font:inherit;border:0;outline:0;background:transparent;color:inherit;';
+    row.append(label, input);
+    box.append(row);
+    /** @param {string} key */
+    const answer = (key) => {
+      if (o.stay?.includes(key)) {
+        o.onStay?.(key);
+        return;
+      }
+      box.remove();
+      resolve(key);
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape' || e.key === 'Enter' || (e.ctrlKey && e.key === 'g')) answer('q');
+      else if (e.key === 'Backspace' || e.key === 'Delete') answer('n');
+      else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const typed = e.key === ' ' ? 'y' : e.key;
+        if (o.keys.includes(typed)) answer(typed);
+      }
+    });
     input.focus();
   });
 }
